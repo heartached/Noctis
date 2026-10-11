@@ -57,9 +57,11 @@ public partial class LibraryArtistsView : UserControl
                 toggleFavorite: new RelayCommand<Artist>(a => { if (a != null) ToggleFavoriteArtist(a); }),
                 chooseImage: new RelayCommand<Artist>(a => { if (a != null) _ = ChangeArtistImageAsync(a); }),
                 findImage: new RelayCommand<Artist>(a => { if (a != null) _ = SearchArtistImageAsync(a); }),
-                removeImage: new RelayCommand<Artist>(a => { if (a != null) RemoveArtistImage(a); }));
+                removeImage: new RelayCommand<Artist>(a => { if (a != null) RemoveArtistImage(a); }),
+                snoozeArtist: new RelayCommand<Artist>(a => { if (a != null) SnoozeArtistForMonth(a); }));
         }
         _artistMenu.Bind(artist);
+        _artistMenu.BindSendToFolder(artist, (DataContext as LibraryArtistsViewModel)?.SendArtistToFolderCommand); // GitHub #121
 
         var menu = _artistMenu.Menu;
         // Close any menu still open from a previous rapid right-click so menus
@@ -80,8 +82,8 @@ public partial class LibraryArtistsView : UserControl
     }
 
     /// <summary>
-    /// The artist tile's v2 menu: [Set as Favorite / Remove from Favorites] ·
-    /// [Choose from File, Find Picture Online] · [Remove Picture]. No quick tiles: the
+    /// The artist tile's v2 menu: [Set as Favorite / Remove from Favorites] · [Snooze for a
+    /// Month] · [Choose from File, Find Picture Online] · [Remove Picture]. No quick tiles: the
     /// Artists page has no artist-wide play commands.
     /// </summary>
     internal sealed class ArtistTileMenu
@@ -89,11 +91,13 @@ public partial class LibraryArtistsView : UserControl
         public ContextMenu Menu { get; } = new();
         public MenuItem Favorite { get; }
         public MenuItem Unfavorite { get; }
+        public MenuItem SnoozeForMonth { get; }
         public MenuItem ChooseImage { get; }
         public MenuItem FindImage { get; }
         public MenuItem RemoveImage { get; }
+        public MenuItem SendToFolder { get; }
 
-        public ArtistTileMenu(Control host, ICommand toggleFavorite, ICommand chooseImage, ICommand findImage, ICommand removeImage)
+        public ArtistTileMenu(Control host, ICommand toggleFavorite, ICommand chooseImage, ICommand findImage, ICommand removeImage, ICommand snoozeArtist)
         {
             Menu.Classes.Add(MenuV2.MenuClass);
             var items = Menu.Items;
@@ -101,14 +105,20 @@ public partial class LibraryArtistsView : UserControl
             items.Add(Unfavorite = MenuV2.Row(host, Loc.T("LibraryArtists.RemoveFromFavorites"), "MenuLineHeart"));
             MenuV2.IconPath(Unfavorite.Icon)?.Classes.Add("mv2-fav");
             items.Add(new Separator());
+            items.Add(SnoozeForMonth = MenuV2.Row(host, Loc.T("Menu.Snooze"), "MenuLineSnooze"));
+            items.Add(new Separator());
             items.Add(ChooseImage = MenuV2.Row(host, Loc.T("LibraryArtists.ChooseFromFile"), "MenuLineImage"));
             items.Add(FindImage = MenuV2.Row(host, Loc.T("LibraryArtists.FindPictureOnline"), "MenuLineSearch"));
+            // GitHub #121: the artist's songs → Send to Folder (bound by BindSendToFolder).
+            items.Add(new Separator());
+            items.Add(SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false));
             items.Add(new Separator());
             RemoveImage = MenuV2.Row(host, Loc.T("LibraryArtists.RemovePicture"), "MenuLineTrash");
             RemoveImage.Classes.Add("danger");
             items.Add(RemoveImage);
 
             Favorite.Command = Unfavorite.Command = toggleFavorite;
+            SnoozeForMonth.Command = snoozeArtist;
             ChooseImage.Command = chooseImage;
             FindImage.Command = findImage;
             RemoveImage.Command = removeImage;
@@ -117,11 +127,20 @@ public partial class LibraryArtistsView : UserControl
         public void Bind(Artist artist)
         {
             Menu.DataContext = artist;
-            foreach (var item in new[] { Favorite, Unfavorite, ChooseImage, FindImage, RemoveImage })
+            foreach (var item in new[] { Favorite, Unfavorite, SnoozeForMonth, ChooseImage, FindImage, RemoveImage })
                 item.CommandParameter = artist;
             Favorite.IsVisible = !artist.IsFavorite;
             Unfavorite.IsVisible = artist.IsFavorite;
             RemoveImage.IsVisible = !string.IsNullOrEmpty(artist.ImagePath);
+            MenuV2.RefreshLayout(Menu.Items);
+        }
+
+        /// <summary>GitHub #121: Send to Folder for the artist (hidden when null). Call after Bind.</summary>
+        public void BindSendToFolder(Artist artist, ICommand? command)
+        {
+            SendToFolder.Command = command;
+            SendToFolder.CommandParameter = artist;
+            SendToFolder.IsVisible = command != null;
             MenuV2.RefreshLayout(Menu.Items);
         }
     }
@@ -196,6 +215,12 @@ public partial class LibraryArtistsView : UserControl
     {
         if (DataContext is LibraryArtistsViewModel vm)
             vm.ToggleFavoriteArtist(artist);
+    }
+
+    private void SnoozeArtistForMonth(Artist artist)
+    {
+        if (DataContext is LibraryArtistsViewModel vm)
+            vm.SnoozeArtistForMonthCommand.Execute(artist);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

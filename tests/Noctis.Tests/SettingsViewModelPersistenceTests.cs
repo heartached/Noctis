@@ -301,12 +301,15 @@ public class SettingsViewModelPersistenceTests : IDisposable
         return new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
     }
 
-    /// <summary>The Albums view's release Type filter (All/Albums/Singles/EPs/Other) survives a restart.</summary>
+    /// <summary>The Albums view's release Type filter (All/Albums/Singles/EPs/Live Albums/
+    /// Compilations/Other) survives a restart.</summary>
     [AvaloniaTheory]
     [InlineData("album", ReleaseType.Album, "Albums")]
     [InlineData("single", ReleaseType.Single, "Singles")]
     [InlineData("ep", ReleaseType.EP, "EPs")]
-    [InlineData("other", ReleaseType.Compilation, "Other")]
+    [InlineData("live", ReleaseType.Live, "Live Albums")]               // GitHub #122
+    [InlineData("compilation", ReleaseType.Compilation, "Compilations")]
+    [InlineData("other", ReleaseType.Other, "Other")]
     public async Task AlbumReleaseTypeFilter_SurvivesSaveAndReload(string key, ReleaseType expected, string label)
     {
         var vm = CreateViewModel();

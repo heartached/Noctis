@@ -109,6 +109,40 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>The file's genres (<see cref="Track.Genre"/> form) without a full read: the
+    /// FLAC comment block alone, otherwise TagLib with lazy pictures, like <see cref="ReadLabel"/>.</summary>
+    public string ReadGenres(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return string.Empty;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a genre either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ExtendedTagIO.TryReadFlacGenres(stream, out var flacGenres))
+                    return flacGenres;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return Track.JoinGenres(file.Tag.Genres);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;
@@ -218,21 +252,12 @@ public class MetadataService : IMetadataService
 
         var codec = DetermineCodec(file, ext);
         var sampleRate = NormalizeSampleRate(props.AudioSampleRate);
-        var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec);
+        // ALAC: the decoder config atom is the authority for bit depth AND sample rate (see
+        // ResolveAlacSampleRate). Read once here; path-based, so only for entries reachable by path.
+        var alacConfig = localPath != null && IsAlacContainer(ext, codec) ? TryReadAlacConfigFromFile(localPath) : (BitDepth: 0, SampleRate: 0);
+        var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec, alacConfig.BitDepth);
+        sampleRate = ResolveAlacSampleRate(sampleRate, alacConfig.SampleRate);
         var bitrate = NormalizeBitrate(props.AudioBitrate, length, props.Duration);
-
-        // ALAC fallback: TagLib# often returns 0 for sample rate on M4A/ALAC files.
-        // Read it directly from the ALAC decoder config atom. Path-based, so it only
-        // runs for entries reachable by path.
-        if (localPath != null && sampleRate < 8000 && ext is ".m4a" or ".mp4" or ".alac")
-        {
-            var codecLower = (codec ?? "").ToLowerInvariant();
-            if (codecLower.Contains("alac") || codecLower.Contains("lossless"))
-            {
-                var (_, sr) = TryReadAlacConfigFromFile(localPath);
-                if (sr >= 8000) sampleRate = sr;
-            }
-        }
 
         var duration = props.Duration;
         if (localPath != null && NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, IsLosslessFormat(codec ?? string.Empty, ext)))
@@ -264,7 +289,7 @@ public class MetadataService : IMetadataService
             Artist = artist,
             AlbumArtist = albumArtist,
             Album = album,
-            Genre = tag.FirstGenre ?? string.Empty,
+            Genre = Track.JoinGenres(tag.Genres), // every genre, not just the first (GitHub #123 follow-up)
             TrackNumber = (int)tag.Track,
             TrackCount = (int)tag.TrackCount,
             DiscNumber = tag.Disc > 0 ? (int)tag.Disc : 1,
@@ -533,7 +558,13 @@ public class MetadataService : IMetadataService
 
     public bool WriteTrackMetadata(Track track) => WriteTrackMetadata(track, track.FilePath, null);
 
+    public bool WriteTrackMetadata(Track track, bool genreEdited)
+        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited);
+
     public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
+        => WriteTrackMetadataCore(track, targetFilePath, titleOverride, genreEdited: false);
+
+    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
         return SaveTagsAtomically(targetFilePath, file =>
         {
@@ -543,13 +574,18 @@ public class MetadataService : IMetadataService
             tag.Performers = SplitArtistList(track.Artist);
             tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
             tag.Album = track.Album;
-            // The model holds a single genre (FirstGenre on read). Rewrite only
-            // when it actually changed, so an ordinary save of an untouched track
-            // doesn't collapse a file's multi-value genre list to one entry.
-            var newGenre = string.IsNullOrWhiteSpace(track.Genre) ? null : track.Genre;
-            var currentFirstGenre = tag.Genres is { Length: > 0 } existingGenres ? existingGenres[0] : null;
-            if (!string.Equals(newGenre, currentFirstGenre, StringComparison.Ordinal))
-                tag.Genres = newGenre == null ? Array.Empty<string>() : new[] { newGenre };
+            // The model holds every genre joined with "; " (GitHub #123 follow-up, 2026-10-10);
+            // each one is written as its own value. Rewritten only when the list changed, so an
+            // ordinary save leaves the file's genre field exactly as it was. Outside an editor
+            // genre edit, a row holding only some of the file's genres (one read before
+            // multi-genre support keeps just the first) must not shrink the file's list: a
+            // lyrics or rating save would silently drop the rest.
+            var newGenres = Track.SplitGenres(track.Genre);
+            var fileGenres = Track.SplitGenres(Track.JoinGenres(tag.Genres));
+            var wouldOnlyDropGenres = !genreEdited && fileGenres.Length > newGenres.Length
+                                      && newGenres.All(g => fileGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
+            if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !wouldOnlyDropGenres)
+                tag.Genres = newGenres;
             tag.Track = (uint)Math.Max(0, track.TrackNumber);
             tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
             tag.Disc = (uint)Math.Max(0, track.DiscNumber);
@@ -759,20 +795,12 @@ public class MetadataService : IMetadataService
 
             var codec = DetermineCodec(file, ext);
             var sampleRate = NormalizeSampleRate(props.AudioSampleRate);
-            var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec);
+            // ALAC: the decoder config atom is the authority (see ResolveAlacSampleRate); read once.
+            var alacConfig = IsAlacContainer(ext, codec) ? TryReadAlacConfigFromFile(filePath) : (BitDepth: 0, SampleRate: 0);
+            var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec, alacConfig.BitDepth);
+            sampleRate = ResolveAlacSampleRate(sampleRate, alacConfig.SampleRate);
             var isLossless = IsLosslessFormat(codec, ext);
             var bitrate = NormalizeBitrate(props.AudioBitrate, fileInfo.Length, props.Duration);
-
-            // ALAC fallback: TagLib# often returns 0 for sample rate on M4A/ALAC files.
-            if (sampleRate < 8000 && ext is ".m4a" or ".mp4" or ".alac")
-            {
-                var codecLower = (codec ?? "").ToLowerInvariant();
-                if (codecLower.Contains("alac") || codecLower.Contains("lossless"))
-                {
-                    var (_, sr) = TryReadAlacConfigFromFile(filePath);
-                    if (sr >= 8000) sampleRate = sr;
-                }
-            }
 
             var duration = props.Duration;
             if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, isLossless))
@@ -800,7 +828,8 @@ public class MetadataService : IMetadataService
                 Duration = duration,
                 FileSize = fileInfo.Length,
                 DateModified = fileInfo.LastWriteTime,
-                DateAdded = fileInfo.CreationTime
+                DateAdded = fileInfo.CreationTime,
+                Genre = Track.JoinGenres(file.Tag.Genres),
             };
         }
         catch
@@ -842,7 +871,26 @@ public class MetadataService : IMetadataService
         };
     }
 
-    private static int NormalizeBitsPerSample(int bits, TagLib.File file, string ext, int sampleRate, string codec)
+    /// <summary>An MP4-family file whose codec reads as Apple Lossless.</summary>
+    private static bool IsAlacContainer(string ext, string? codec)
+    {
+        if (ext is not (".m4a" or ".mp4" or ".alac"))
+            return false;
+        var codecLower = (codec ?? string.Empty).ToLowerInvariant();
+        return codecLower.Contains("alac") || codecLower.Contains("lossless");
+    }
+
+    /// <summary>
+    /// The sample rate to store for an ALAC file: the decoder config atom's when it is valid,
+    /// else TagLib's. TagLib# reads the MP4 sample entry's 16.16 rate field, which cannot hold
+    /// hi-res rates — a 96 kHz ALAC came back as 48 kHz (harness 10-10, ffmpeg-encoded), and
+    /// some files carry 0 there. The atom (<see cref="TryReadAlacConfigFromFile"/>) holds the
+    /// real rate. Internal for tests.
+    /// </summary>
+    internal static int ResolveAlacSampleRate(int tagLibSampleRate, int alacConfigSampleRate) =>
+        alacConfigSampleRate >= 8000 ? alacConfigSampleRate : tagLibSampleRate;
+
+    private static int NormalizeBitsPerSample(int bits, TagLib.File file, string ext, int sampleRate, string codec, int alacBitDepth = 0)
     {
         if (bits > 0)
             return bits;
@@ -862,15 +910,12 @@ public class MetadataService : IMetadataService
 
         // TagLib# doesn't expose BitsPerSample for ALAC in M4A containers
         // (the MPEG4 codec class doesn't implement ILosslessAudioCodec).
-        // Read the bit depth directly from the ALAC decoder config atom.
-        if (ext is ".m4a" or ".mp4" or ".alac")
+        // Read the bit depth directly from the ALAC decoder config atom —
+        // the caller's copy when it already read the atom, else one read here.
+        if (IsAlacContainer(ext, codec))
         {
-            var codecLower = (codec ?? "").ToLowerInvariant();
-            if (codecLower.Contains("alac") || codecLower.Contains("lossless"))
-            {
-                var (bd, _) = TryReadAlacConfigFromFile(file.Name);
-                if (bd > 0) return bd;
-            }
+            var bd = alacBitDepth > 0 ? alacBitDepth : TryReadAlacConfigFromFile(file.Name).BitDepth;
+            if (bd > 0) return bd;
         }
 
         // Do NOT guess bit depth from sample rate — a 48 kHz FLAC/ALAC file can

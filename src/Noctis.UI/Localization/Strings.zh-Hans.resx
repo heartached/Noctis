@@ -1092,6 +1092,22 @@
     <value>当队列结束时，保持播放类似的歌曲。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>保留已播放的歌曲</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>在队列中将已播放的歌曲显示在“正在播放”上方，并在队列结束时保留最后一首歌曲。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>已播放</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>已播放</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>儿童不宜内容</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -4072,6 +4088,18 @@
   <data name="MiniPlayer.ExplicitTip" xml:space="preserve">
     <value>儿童不宜</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
+    <value>隐藏歌词</value>
+    <comment>Mini player "…" menu item while lyrics are open</comment>
+  </data>
+  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
+    <value>置顶</value>
+    <comment>Mini player pin (tooltip + "…" menu item)</comment>
+  </data>
+  <data name="MiniPlayer.Unpin" xml:space="preserve">
+    <value>取消置顶</value>
+    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
   </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>收藏</value>

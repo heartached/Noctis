@@ -152,7 +152,14 @@ internal sealed class FakeLibraryService : ILibraryService
     }
     public IReadOnlyList<string> GetBadgeNames() => TrackList.Select(t => t.Badge).Where(b => !string.IsNullOrWhiteSpace(b)).Select(b => b!).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(b => b).ToList();
     public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
-    public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;
+    /// <summary>Every SetTracksSnoozedAsync call, in order (tracks copied, so later edits don't alter it).</summary>
+    public List<(List<Track> Tracks, DateTime? Until)> SnoozeCalls { get; } = new();
+    public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until)
+    {
+        SnoozeCalls.Add((tracks.ToList(), until));
+        foreach (var t in tracks) t.SnoozedUntil = until;
+        return Task.CompletedTask;
+    }
     public int MetadataChangedCount { get; private set; }
     public void NotifyMetadataChanged() => MetadataChangedCount++;
     public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);

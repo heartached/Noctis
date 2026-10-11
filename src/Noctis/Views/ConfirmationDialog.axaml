@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
+        xmlns:controls="using:Noctis.Controls"
         xmlns:sys="using:System"
         x:Class="Noctis.Views.ConfirmationDialog"
         Title="{loc:T Confirmation.Confirm}"
@@ -10,78 +11,16 @@
         TransparencyLevelHint="Transparent"
         ShowInTaskbar="False">
 
-    <!-- Full-window dimmed overlay that captures all input.
-         Starts transparent; code-behind fades it in on open and back out
-         before closing (mirrors the Settings modal animation). -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-10: the blurred app behind, like the other pop-ups (it was a flat dark tint;
+         seen on Lyrics Studio's Clear lyrics). PillDialogHost draws the blurred, dimmed owner
+         and the card, swallows clicks and wheel on the backdrop, and plays the open/close
+         animation on every close path. The answer is kept in Confirmed, never in Close(result). -->
+    <controls:PillDialogHost>
 
-        <!-- Centered dialog card -->
-        <Border x:Name="DialogCard"
-                Background="{DynamicResource AppMainBackground}"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Width="380"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-        <DockPanel Margin="0">
-
-            <!-- Bottom: Confirm / Cancel buttons -->
-            <Border DockPanel.Dock="Bottom"
-                    Padding="24,12,24,16">
-                <Grid ColumnDefinitions="*,Auto,Auto">
-                    <Button Grid.Column="1"
-                            Content="{loc:T Confirmation.Cancel}"
-                            Click="OnCancelClick"
-                            Width="100"
-                            Padding="0,8"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Margin="0,0,8,0"
-                            Cursor="Hand" />
-                    <Button Grid.Column="2"
-                            x:Name="ConfirmButton"
-                            Content="{loc:T Confirmation.Confirm}"
-                            Click="OnConfirmClick"
-                            MinWidth="100"
-                            Padding="0,8"
-                            Classes="accent-btn"
-                            Background="{DynamicResource AccentButtonBackground}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Cursor="Hand" />
-                </Grid>
-            </Border>
+        <StackPanel x:Name="DialogCard" Width="332" Margin="24,20,24,18" Spacing="18">
 
             <!-- Message (+ optional title, detail lines, note and checkbox; see ConfirmationRequest) -->
-            <StackPanel Margin="24,16,24,8" VerticalAlignment="Center" Spacing="10">
+            <StackPanel Spacing="10">
                 <TextBlock x:Name="TitleText"
                            IsVisible="False"
                            FontSize="16" FontWeight="SemiBold"
@@ -112,7 +51,17 @@
                            TextWrapping="Wrap" />
                 <CheckBox x:Name="OptionCheck" IsVisible="False" FontSize="13"/>
             </StackPanel>
-        </DockPanel>
-        </Border>
-    </Border>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Classes="pill-secondary"
+                        Content="{loc:T Confirmation.Cancel}"
+                        Click="OnCancelClick" />
+                <Button x:Name="ConfirmButton"
+                        Classes="pill-primary"
+                        Content="{loc:T Confirmation.Confirm}"
+                        Click="OnConfirmClick" />
+            </StackPanel>
+        </StackPanel>
+
+    </controls:PillDialogHost>
 </Window>

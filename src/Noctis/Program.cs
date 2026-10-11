@@ -429,8 +429,10 @@ internal class Program
                 sp.GetRequiredService<ILrcLibService>(),
                 sp.GetRequiredService<IPersistenceService>()));
 
-        // Send to Folder (MusicBee-style copy to a drive/folder).
-        services.AddSingleton<ISendToFolderService, SendToFolderService>();
+        // Send to Folder (MusicBee-style copy to a drive/folder). With the library and the
+        // watcher, a Move relocates the tracks like Organize Files (GitHub #121).
+        services.AddSingleton<ISendToFolderService>(sp => new SendToFolderService(
+            sp.GetRequiredService<ILibraryService>(), sp.GetService<ILibraryWatcherService>()));
 
         // YouTube → library: yt-dlp as an external tool, tagged with TagLib, imported like a drop.
         services.AddSingleton<Services.YouTube.YtDlpTool>(sp =>

@@ -94,4 +94,19 @@ public class SendToFolderViewModelTests
         }
         finally { try { Directory.Delete(root, true); } catch { } }
     }
+
+    /// <summary>Live check 10-10: with Move on, the header and the footer still said "Copy to…".</summary>
+    [AvaloniaFact]
+    public void MoveMode_HeaderAndFooter_SayMove()
+    {
+        var vm = new SendToFolderViewModel(new[] { T("a.flac") }, new RecordingService(), FileOrganizePlanner.DefaultPattern);
+        Assert.Equal(Noctis.Localization.Loc.T("SendToFolder.Subtitle"), vm.SubtitleText);
+        Assert.Equal(Noctis.Localization.Loc.T("SendToFolder.PickFolder"), vm.PlanSummary);
+
+        vm.MoveFiles = true;
+
+        Assert.Equal(Noctis.Localization.Loc.T("SendToFolder.SubtitleMove"), vm.SubtitleText);
+        Assert.Equal(Noctis.Localization.Loc.T("SendToFolder.PickFolderMove"), vm.PlanSummary);
+        Assert.Equal(Noctis.Localization.Loc.T("SendToFolder.PickFolderMove"), vm.StatusMessage);
+    }
 }

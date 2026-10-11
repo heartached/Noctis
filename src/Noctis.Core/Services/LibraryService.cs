@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 11;
+    private const int CurrentMetadataSchemaVersion = 12;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
     // Throttle scan progress so a large library (tens of thousands of files)
@@ -1661,13 +1661,23 @@ public class LibraryService : ILibraryService
         if (moves == null || moves.Count == 0) return remap;
 
         var changed = false;
+        var relocated = new List<Track>();
         var known = AllTrackIndex(); // a move inside a hidden folder is still a move
+        Dictionary<string, Track>? byPath = null;
         foreach (var (oldPath, newPath) in moves)
         {
             if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath)) continue;
 
-            var oldId = ComputeFileId(oldPath);
-            if (!known.TryGetValue(oldId, out var track)) continue;
+            // By the path's id first. A track whose stored id isn't its path's hash (a foreign
+            // or hand-edited library.json) missed here, and the file moved while the library
+            // kept the old path (GitHub #121, 2026-10-10): then find it by its path.
+            if (!known.TryGetValue(ComputeFileId(oldPath), out var track))
+            {
+                byPath ??= BuildPathIndex();
+                if (!byPath.TryGetValue(oldPath, out track)) continue;
+            }
+            // Remapped from the id playlists and the play log actually hold.
+            var oldId = track.Id;
 
             track.FilePath = newPath;
             try
@@ -1688,16 +1698,32 @@ public class LibraryService : ILibraryService
             track.PrepareLyricsForIdChange();
             track.Id = newId;
             if (oldId != newId) remap[oldId] = newId;
+            relocated.Add(track);
             changed = true;
         }
 
         if (!changed) return remap;
+
+        // GitHub #121 (2026-10-10): a track moved out of every music folder (Send to Folder ›
+        // Move to a USB stick, Organize Files to another root) is reached by no folder walk
+        // now; unmarked, the next full scan dropped it with its plays and playlist places.
+        // Marked like a file added on its own (GitHub #108).
+        try { MarkAddedIndividually(relocated, await _persistence.LoadSettingsAsync()); }
+        catch { /* settings unreadable: the move itself still stands */ }
 
         await RebuildIndexesAsync();
         await SaveAsync();
         await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         return remap;
+
+        Dictionary<string, Track> BuildPathIndex()
+        {
+            var index = new Dictionary<string, Track>(PathComparison.Comparer);
+            foreach (var t in _tracks)
+                if (!string.IsNullOrEmpty(t.FilePath)) index.TryAdd(t.FilePath, t);
+            return index;
+        }
     }
 
     /// <summary>
@@ -1811,7 +1837,7 @@ public class LibraryService : ILibraryService
     /// persisted settings, so tests await it before restoring them. Internal for tests.</summary>
     internal Task BackgroundInit { get; private set; } = Task.CompletedTask;
 
-    /// <summary>The v11 label pass (<see cref="RunLabelBackfillAsync"/>), started at the end of
+    /// <summary>The v11 label pass and the v12 genre pass (<see cref="RunTagBackfillsAsync"/>), started at the end of
     /// <see cref="BackgroundInit"/> when it is pending. Internal for tests.</summary>
     internal Task LabelBackfill { get; private set; } = Task.CompletedTask;
 
@@ -1874,10 +1900,10 @@ public class LibraryService : ILibraryService
                     // Cheap when every album already has art (one probe per album).
                     await BackfillMissingArtworkAsync(_shutdownCts.Token);
 
-                    // Last and on its own task: the v11 label pass can take many minutes on a
+                    // Last and on its own task: the v11 label and v12 genre passes can take many minutes on a
                     // hard disk and nothing above should wait for it.
-                    if (_labelBackfillPending)
-                        LabelBackfill = Task.Run(RunLabelBackfillAsync);
+                    if (_labelBackfillPending || _genreBackfillPending)
+                        LabelBackfill = Task.Run(RunTagBackfillsAsync);
                 }
                 catch (Exception ex)
                 {
@@ -2498,9 +2524,11 @@ public class LibraryService : ILibraryService
             didBackfillMetadata |= await BackfillTrackArtworkAsync(_tracks);
 
         // v11 (the record label) is not run here: it opens most of the library, so it runs
-        // last, on its own, resumably — see RunLabelBackfillAsync. Owner 10-08: inline, it
+        // last, on its own, resumably — see RunTagBackfillAsync. Owner 10-08: inline, it
         // held the cover heal and the artist-join pass behind a pass that never finished.
         _labelBackfillPending = settings.MetadataSchemaVersion < LabelSchemaVersion;
+        // v12 (every genre of multi-genre files) runs after it, the same way.
+        _genreBackfillPending = settings.MetadataSchemaVersion < GenreSchemaVersion;
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -2508,8 +2536,11 @@ public class LibraryService : ILibraryService
         if (_shutdownCts.IsCancellationRequested)
             return didBackfillMetadata;
 
-        // Everything up to the label pass is done; that pass stamps v11 itself once it ends.
-        var stamp = _labelBackfillPending ? LabelSchemaVersion - 1 : CurrentMetadataSchemaVersion;
+        // Everything up to the label pass is done; that pass stamps v11 itself once it ends,
+        // the genre pass v12.
+        var stamp = _labelBackfillPending ? LabelSchemaVersion - 1
+            : _genreBackfillPending ? GenreSchemaVersion - 1
+            : CurrentMetadataSchemaVersion;
         if (settings.MetadataSchemaVersion < stamp)
         {
             try
@@ -2823,48 +2854,87 @@ public class LibraryService : ILibraryService
 
     // The schema version the label pass stamps once it has checked every file.
     private const int LabelSchemaVersion = 11;
-    // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the pass last.
+    // The schema version the genre pass stamps (GitHub #123 follow-up, 2026-10-10).
+    private const int GenreSchemaVersion = 12;
+    // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the passes last.
     private bool _labelBackfillPending;
+    private bool _genreBackfillPending;
     // A progress line in the session log every this many files.
     private const int LabelBackfillLogInterval = 250;
 
     /// <summary>
-    /// Pause between files in the label pass, so a foreground read queued behind it (playback,
-    /// the metadata window, lyrics) gets the disk instead of waiting out a long run of reads.
-    /// Internal for tests.
+    /// Pause between files in the label and genre passes, so a foreground read queued behind
+    /// them (playback, the metadata window, lyrics) gets the disk instead of waiting out a long
+    /// run of reads. Internal for tests.
     /// </summary>
     internal static TimeSpan LabelBackfillPause = TimeSpan.FromMilliseconds(10);
 
     /// <summary>
-    /// The label pass's resume log in the data folder, append-only so a checkpoint is one short
-    /// write and a hard kill loses at most the line being written:
-    /// <c>L\t{track id}\t{label}\t$</c> for each label found, <c>C\t{path}\t$</c> for the last
-    /// file checked (files are walked in ordinal path order). Text fields are URI-escaped,
-    /// which also escapes '\t' and '$'; a line without its closing '$' was torn and is ignored.
-    /// Deleted once the pass completes.
+    /// One resumable tag pass (<see cref="RunTagBackfillAsync"/>): which tracks still need the
+    /// field, how to read it from a file (empty = nothing to apply) and how to apply it.
+    /// <paramref name="MarkPhoneTracks"/>: tracks behind Android's document tree are marked for
+    /// the next scan instead (they can't be opened by path here).
     /// </summary>
-    private string LabelBackfillProgressPath => Path.Combine(_persistence.DataDirectory, "label-backfill.progress");
+    private sealed record TagBackfill(
+        string Name, int SchemaVersion, string ProgressFileName,
+        Func<Track, bool> Needs, Func<string, string> Read, Action<Track, string> Apply,
+        bool MarkPhoneTracks, bool Reindex);
+
+    /// <summary>The v11 label pass, then the v12 genre pass, each only when pending. The genre
+    /// pass waits for the label pass to finish: it stamps a later version.</summary>
+    private async Task RunTagBackfillsAsync()
+    {
+        if (_labelBackfillPending)
+        {
+            var label = new TagBackfill("label", LabelSchemaVersion, "label-backfill.progress",
+                t => string.IsNullOrWhiteSpace(t.Label), _metadata.ReadLabel, (t, v) => t.Label = v,
+                MarkPhoneTracks: true, Reindex: false);
+            if (!await RunTagBackfillAsync(label)) return;
+        }
+
+        // GitHub #123 follow-up, 2026-10-10: tracks read before multi-genre support hold only
+        // their file's first genre ("Rock" for Rock + Pop) and a rescan skips unchanged files by
+        // mtime. Only rows with exactly one genre can be affected; only files with several
+        // genres change the row. Phone tracks are left to their next re-read.
+        if (_genreBackfillPending)
+        {
+            var genre = new TagBackfill("genre", GenreSchemaVersion, "genre-backfill.progress",
+                t => Track.SplitGenres(t.Genre).Length == 1,
+                path => _metadata.ReadGenres(path) is var g && Track.SplitGenres(g).Length > 1 ? g : string.Empty,
+                // Only over the stale row it was read for: a genre typed meanwhile wins.
+                (t, v) => { if (Track.SplitGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
+                MarkPhoneTracks: false, Reindex: true);
+            await RunTagBackfillAsync(genre);
+        }
+    }
 
     /// <summary>
-    /// One-time v11 migration: the record label for tracks indexed before it was read. Local
-    /// files are re-read in place, but only for the label (<see cref="IMetadataService.ReadLabel"/>),
+    /// One-time tag migration (v11: the record label for tracks indexed before it was read;
+    /// v12: every genre of multi-genre files). Local files are re-read in place, but only for
+    /// the one field (<see cref="IMetadataService.ReadLabel"/> / <see cref="IMetadataService.ReadGenres"/>),
     /// one file at a time with a pause between them, on its own background task after the rest
     /// of startup. Owner 10-08: v11 label backfill kept the music HDD busy at 50–75 MB/s every
     /// launch and never finished — a full tag + cover read of nearly every file (most files
     /// simply have no label) in parallel, which seek-thrashed the disk and queued every other
     /// read behind it, and was all-or-nothing, so quitting started it over from zero next
-    /// launch. Progress now survives a restart (<see cref="LabelBackfillProgressPath"/>): a file
-    /// that turned out to have no label counts as checked too and is never read again.
+    /// launch. Progress now survives a restart (the pass's progress file in the data folder,
+    /// append-only so a checkpoint is one short write and a hard kill loses at most the line
+    /// being written: <c>L\t{track id}\t{value}\t$</c> for each value found, <c>C\t{path}\t$</c>
+    /// for the last file checked, files walked in ordinal path order; text fields URI-escaped,
+    /// which also escapes '\t' and '$'; a line without its closing '$' was torn and is ignored;
+    /// deleted once the pass completes). A file that turned out to have nothing to apply counts
+    /// as checked too and is never read again.
     /// The phone's files live behind Android's document tree (content://), which only a scan
-    /// through its file source can open, so those are marked instead: clearing the stored
-    /// modification stamp makes the next scan treat them as changed and re-read them once,
-    /// keeping their user state like any re-tagged file. Streamed desktop songs and tracks
-    /// that already have a label are left alone. Stamps v11 only once every file is checked.
+    /// through its file source can open, so for the label those are marked instead: clearing
+    /// the stored modification stamp makes the next scan treat them as changed and re-read them
+    /// once, keeping their user state like any re-tagged file. Streamed desktop songs and tracks
+    /// that no longer need the field are left alone. Stamps the pass's version only once every
+    /// file is checked; returns whether it did.
     /// </summary>
-    private async Task RunLabelBackfillAsync()
+    private async Task<bool> RunTagBackfillAsync(TagBackfill pass)
     {
         var token = _shutdownCts.Token;
-        var progressPath = LabelBackfillProgressPath;
+        var progressPath = Path.Combine(_persistence.DataDirectory, pass.ProgressFileName);
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var snapshot = _tracks;
         StreamWriter? progress = null;
@@ -2873,7 +2943,7 @@ public class LibraryService : ILibraryService
             var byId = new Dictionary<Guid, Track>(snapshot.Count);
             foreach (var t in snapshot) byId.TryAdd(t.Id, t);
 
-            // Labels found by an interrupted pass, and where it stopped.
+            // Values found by an interrupted pass, and where it stopped.
             var found = new Dictionary<Guid, string>();
             string? resumeAfter = null;
             try
@@ -2894,31 +2964,31 @@ public class LibraryService : ILibraryService
             catch (Exception ex)
             {
                 // Unreadable log: start over — a re-read is only slower, never wrong.
-                DebugLog.Write("Library", $"label backfill: progress file unreadable, starting over: {ex.Message}");
+                DebugLog.Write("Library", $"{pass.Name} backfill: progress file unreadable, starting over: {ex.Message}");
                 found.Clear();
                 resumeAfter = null;
             }
 
             var resumed = 0;
-            foreach (var (id, label) in found)
+            foreach (var (id, value) in found)
             {
-                if (byId.TryGetValue(id, out var t) && string.IsNullOrWhiteSpace(t.Label))
+                if (byId.TryGetValue(id, out var t) && pass.Needs(t))
                 {
-                    t.Label = label;
+                    pass.Apply(t, value);
                     resumed++;
                 }
             }
 
             var pending = snapshot
-                .Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)
+                .Where(t => pass.Needs(t) && !string.IsNullOrWhiteSpace(t.FilePath)
                             && !t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)
                             && (resumeAfter == null || string.CompareOrdinal(t.FilePath, resumeAfter) > 0))
                 .OrderBy(t => t.FilePath, StringComparer.Ordinal)
                 .ToList();
 
             DebugLog.Write("Library",
-                $"label backfill: start — {pending.Count:N0} file(s) to check" +
-                (resumeAfter != null ? $", resumed ({found.Count:N0} label(s) from the last run, {resumed:N0} applied)" : ""));
+                $"{pass.Name} backfill: start — {pending.Count:N0} file(s) to check" +
+                (resumeAfter != null ? $", resumed ({found.Count:N0} value(s) from the last run, {resumed:N0} applied)" : ""));
 
             try
             {
@@ -2928,11 +2998,11 @@ public class LibraryService : ILibraryService
             catch (Exception ex)
             {
                 // No resume log (read-only profile): the pass still runs, it just can't resume.
-                DebugLog.Write("Library", $"label backfill: progress file unavailable: {ex.Message}");
+                DebugLog.Write("Library", $"{pass.Name} backfill: progress file unavailable: {ex.Message}");
             }
 
             var checkedCount = 0;
-            var labelled = 0;
+            var applied = 0;
             string? lastChecked = null;
             try
             {
@@ -2942,13 +3012,13 @@ public class LibraryService : ILibraryService
 
                     if (File.Exists(track.FilePath))
                     {
-                        var label = _metadata.ReadLabel(track.FilePath);
-                        if (!string.IsNullOrWhiteSpace(label))
+                        var value = pass.Read(track.FilePath);
+                        if (!string.IsNullOrWhiteSpace(value))
                         {
-                            track.Label = label;
-                            found[track.Id] = label;
-                            labelled++;
-                            WriteProgress("L", track.Id.ToString(), label);
+                            pass.Apply(track, value);
+                            found[track.Id] = value;
+                            applied++;
+                            WriteProgress("L", track.Id.ToString(), value);
                         }
                     }
 
@@ -2958,7 +3028,7 @@ public class LibraryService : ILibraryService
                     {
                         WriteProgress("C", lastChecked);
                         DebugLog.Write("Library",
-                            $"label backfill: {checkedCount:N0}/{pending.Count:N0} checked, {labelled:N0} label(s) found");
+                            $"{pass.Name} backfill: {checkedCount:N0}/{pending.Count:N0} checked, {applied:N0} found");
                     }
 
                     try { await Task.Delay(LabelBackfillPause, token); }
@@ -2967,14 +3037,14 @@ public class LibraryService : ILibraryService
 
                 if (token.IsCancellationRequested)
                 {
-                    // Labels already found are in the log (written as found); the next launch
+                    // Values already found are in the log (written as found); the next launch
                     // re-applies them and continues after the last file checked.
                     if (lastChecked != null)
                         WriteProgress("C", lastChecked);
                     DebugLog.Write("Library",
-                        $"label backfill: cancelled at shutdown after {checkedCount:N0}/{pending.Count:N0} " +
-                        $"({labelled:N0} label(s) found); resumes next launch");
-                    return;
+                        $"{pass.Name} backfill: cancelled at shutdown after {checkedCount:N0}/{pending.Count:N0} " +
+                        $"({applied:N0} found); resumes next launch");
+                    return false;
                 }
             }
             finally
@@ -2982,68 +3052,78 @@ public class LibraryService : ILibraryService
                 progress?.Dispose();
             }
 
-            // A scan during the pass may have swapped in fresh Track instances; put every label
+            // A scan during the pass may have swapped in fresh Track instances; put every value
             // found on the live ones before saving.
+            var changed = new List<Track>();
             foreach (var t in _tracks)
             {
-                if (string.IsNullOrWhiteSpace(t.Label) && found.TryGetValue(t.Id, out var label))
-                    t.Label = label;
+                if (pass.Needs(t) && found.TryGetValue(t.Id, out var value))
+                    pass.Apply(t, value);
+                if (found.ContainsKey(t.Id)) changed.Add(t);
             }
 
-            var phone = _tracks
-                .Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)
-                            && t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            var phone = pass.MarkPhoneTracks
+                ? _tracks.Where(t => pass.Needs(t) && !string.IsNullOrWhiteSpace(t.FilePath)
+                                     && t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase))
+                    .ToList()
+                : new List<Track>();
             foreach (var t in phone) t.LastModified = default;
 
             if (found.Count > 0 || phone.Count > 0)
             {
                 await SaveAsync();
-                if (phone.Count > 0)
+                if (pass.Reindex && changed.Count > 0)
+                    await RebuildIndexesAsync();
+                var upserts = pass.Reindex ? phone.Concat(changed).ToList() : phone;
+                if (upserts.Count > 0)
                 {
-                    try { await _sqliteIndex.UpsertTracksAsync(phone); }
+                    try { await _sqliteIndex.UpsertTracksAsync(upserts); }
                     catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
                 }
                 LibraryUpdated?.Invoke(this, EventArgs.Empty);
             }
 
+            var stamped = false;
             try
             {
                 var fresh = await _persistence.LoadSettingsAsync();
-                if (fresh.MetadataSchemaVersion < LabelSchemaVersion)
+                if (fresh.MetadataSchemaVersion < pass.SchemaVersion)
                 {
-                    fresh.MetadataSchemaVersion = LabelSchemaVersion;
+                    fresh.MetadataSchemaVersion = pass.SchemaVersion;
                     await _persistence.SaveSettingsAsync(fresh);
                 }
+                stamped = true;
                 File.Delete(progressPath);
             }
             catch (Exception ex)
             {
-                // Next launch repeats the pass from the log; already-labelled tracks are skipped.
-                DebugLog.Write("Library", $"label backfill: could not record completion: {ex.Message}");
+                // Next launch repeats the pass from the log; tracks already done are skipped.
+                DebugLog.Write("Library", $"{pass.Name} backfill: could not record completion: {ex.Message}");
             }
 
             DebugLog.Write("Library",
-                $"label backfill: done — {checkedCount:N0} file(s) checked, {labelled:N0} label(s) found" +
+                $"{pass.Name} backfill: done — {checkedCount:N0} file(s) checked, {applied:N0} found" +
                 (resumed > 0 ? $" (+{resumed:N0} from the last run)" : "") +
                 (phone.Count > 0 ? $", {phone.Count:N0} phone track(s) marked for re-scan" : "") +
                 $", {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds:0.0} s");
+            return stamped;
         }
         catch (Exception ex)
         {
-            DebugLog.Write("Library", $"label backfill failed: {ex.Message}");
+            DebugLog.Write("Library", $"{pass.Name} backfill failed: {ex.Message}");
+            return false;
         }
 
         // Appends one log line. After a failed write nothing more is logged: a later cursor
-        // line must never skip past a label that didn't make it to the file.
-        void WriteProgress(string kind, string field, string? label = null)
+        // line must never skip past a value that didn't make it to the file.
+        void WriteProgress(string kind, string field, string? value = null)
         {
             if (progress == null) return;
             try
             {
-                progress.WriteLine(label == null
+                progress.WriteLine(value == null
                     ? $"{kind}\t{Uri.EscapeDataString(field)}\t$"
-                    : $"{kind}\t{field}\t{Uri.EscapeDataString(label)}\t$");
+                    : $"{kind}\t{field}\t{Uri.EscapeDataString(value)}\t$");
             }
             catch
             {

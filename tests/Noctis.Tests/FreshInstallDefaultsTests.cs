@@ -30,6 +30,10 @@ public class FreshInstallDefaultsTests
         // the user didn't queue is opt-in.
         Assert.False(Fresh.AutoplayEnabled);
 
+        // Keep Played Songs (GitHub #124) changes what the queue shows and what the queue
+        // end does — opt-in.
+        Assert.False(Fresh.KeepPlayedInQueue);
+
         // Taskbar progress (GitHub #53) changes what the Windows taskbar shows — opt-in.
         Assert.False(Fresh.TaskbarProgressEnabled);
     }

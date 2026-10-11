@@ -56,9 +56,24 @@ public interface IMetadataService
     string ReadLabel(string filePath) => ReadTrackMetadata(filePath)?.Label ?? string.Empty;
 
     /// <summary>
+    /// Just the genres, as <see cref="Track.Genre"/> holds them, for the v12 genre pass
+    /// (GitHub #123 follow-up, 2026-10-10). The default falls back to the full read.
+    /// </summary>
+    string ReadGenres(string filePath) => ReadTrackMetadata(filePath)?.Genre ?? string.Empty;
+
+    /// <summary>
     /// Writes metadata tags back to the audio file.
     /// </summary>
     bool WriteTrackMetadata(Track track);
+
+    /// <summary>
+    /// <see cref="WriteTrackMetadata(Track)"/> from the metadata editor. <paramref name="genreEdited"/>
+    /// says the user changed the genre in this save: then the list is written as typed, even
+    /// when it drops some of the file's genres. Every other writer (lyrics, ratings, the
+    /// converter) never shrinks the file's genre list (GitHub #123 follow-up, 2026-10-10).
+    /// The default ignores the flag so test stubs keep compiling.
+    /// </summary>
+    bool WriteTrackMetadata(Track track, bool genreEdited) => WriteTrackMetadata(track);
 
     /// <summary>
     /// Writes <paramref name="track"/>'s tags to a specific file (which may differ from

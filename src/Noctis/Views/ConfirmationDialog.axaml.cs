@@ -1,8 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Media.Transformation;
-using Avalonia.Threading;
 using Noctis.Helpers;
 
 namespace Noctis.Views;
@@ -25,8 +22,6 @@ public partial class ConfirmationDialog : Window
 {
     public bool Confirmed { get; private set; }
 
-    private bool _closing;
-
     public ConfirmationDialog()
     {
         InitializeComponent();
@@ -39,7 +34,8 @@ public partial class ConfirmationDialog : Window
 
     public ConfirmationDialog(ConfirmationRequest request) : this(request.Message)
     {
-        DialogCard.Width = request.Width;
+        // Width is the whole card as before; the content sits inside the 24px side margins.
+        DialogCard.Width = Math.Max(0, request.Width - 48);
         if (!string.IsNullOrWhiteSpace(request.Title)) { TitleText.Text = request.Title; TitleText.IsVisible = true; }
         if (request.Details is { Count: > 0 } details) { DetailsList.ItemsSource = details; DetailsList.IsVisible = true; }
         if (!string.IsNullOrWhiteSpace(request.Note)) { NoteText.Text = request.Note; NoteText.IsVisible = true; }
@@ -64,48 +60,16 @@ public partial class ConfirmationDialog : Window
         return new ConfirmationResult(dialog.Confirmed, dialog.OptionCheck.IsChecked == true);
     }
 
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale
-        // transitions animate it (same pattern as the Settings modal).
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-        }, DispatcherPriority.Loaded);
-    }
-
-    private async Task CloseAnimatedAsync()
-    {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
-    }
-
     private void OnConfirmClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         Confirmed = true;
-        _ = CloseAnimatedAsync();
+        Close();
     }
 
     private void OnCancelClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         Confirmed = false;
-        _ = CloseAnimatedAsync();
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
-    }
-
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        e.Handled = true;
+        Close();
     }
 
     /// <summary>Confirmation owned by another dialog (a modal on top of a modal needs its own owner).</summary>

@@ -78,9 +78,38 @@ public class PlaybackQueueTests
 
         Assert.Same(t[1], cur);                 // wrap restarts at the track the user started on
         Assert.Equal(new[] { t[2], t[0] }, q.UpNext);
-        Assert.Empty(q.History);
+        Assert.Equal(new[] { t[2], t[1] }, q.History); // GitHub #124: kept for Back
         Assert.Same(t[2], q.Advance(QueueAdvance.Natural));
         Assert.Same(t[0], q.Advance(QueueAdvance.Natural));
+    }
+
+    [Fact]
+    public void RepeatAll_Back_on_a_new_pass_returns_to_the_last_pass()
+    {
+        var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(3);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);
+        Assert.Same(t[0], q.Advance(QueueAdvance.Natural)); // wrapped
+
+        Assert.Same(t[2], q.Back());
+        Assert.Same(t[1], q.Back());
+    }
+
+    [Fact]
+    public void RepeatAll_without_a_cycle_does_not_double_the_next_pass()
+    {
+        var t = Tracks(2);
+        var state = new PlaybackQueueState(t[1].Id, Array.Empty<Guid>(), new[] { t[0].Id },
+            Array.Empty<Guid>(), RepeatMode.All, false, Array.Empty<Guid>());
+        var byId = t.ToDictionary(x => x.Id);
+        var q = PlaybackQueue.Restore(state, id => byId.GetValueOrDefault(id));
+
+        Assert.Same(t[0], q.Advance(QueueAdvance.Natural)); // fallback wrap from History
+        Assert.Equal(new[] { t[1] }, q.UpNext);
+        q.Advance(QueueAdvance.Natural);
+        Assert.Same(t[0], q.Advance(QueueAdvance.Natural)); // second wrap: same cycle
+        Assert.Equal(new[] { t[1] }, q.UpNext);
     }
 
     [Fact]

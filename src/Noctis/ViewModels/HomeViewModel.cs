@@ -558,8 +558,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         // Dedupe rows against Most Listened To and each other so every row
         // shows tracks the user hasn't already seen further up the page.
         var exclude = TopSongs.Select(t => t.Id).ToHashSet();
+        var tracks = _library.Tracks;
         var (timeIds, heavyIds, rediscoveredIds) = await Task.Run(() =>
         {
+            // These rows are suggestions, and a snoozed song is hidden from suggestions
+            // (owner 10-10). Excluded before ranking so the next candidate takes its slot.
+            foreach (var t in tracks)
+                if (t.IsSnoozed) exclude.Add(t.Id);
             var heavy = HomeRowsBuilder.BuildHeavyRotation(events, now, exclude: exclude);
             exclude.UnionWith(heavy);
             var time = HomeRowsBuilder.BuildTimeOfDayRotation(events, now, exclude: exclude);
@@ -704,13 +709,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// shows the placeholder). Cache files only, never a download; safe off the UI thread
     /// (the track menus' View Artist ▸ calls it from a worker).
     /// </summary>
-    internal string? CachedArtistPhoto(string name)
+    internal string? CachedArtistPhoto(string name) => CachedArtistPhoto(name, _library, _artistImages);
+
+    /// <summary>The same lookup without a Home page: every track menu's View Artist ▸
+    /// (TrackContextMenuBuilder.ArtistPhotoSource) and the player menu use it.</summary>
+    internal static string? CachedArtistPhoto(string name, ILibraryService library, ArtistImageService? images)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         var trimmed = name.Trim();
-        var artist = _library.Artists.FirstOrDefault(a => string.Equals(a.Name, trimmed, StringComparison.OrdinalIgnoreCase))
+        var artist = library.Artists.FirstOrDefault(a => string.Equals(a.Name, trimmed, StringComparison.OrdinalIgnoreCase))
                      ?? new Artist { Id = ComputeArtistId(trimmed), Name = trimmed };
-        return StatisticsViewModel.CachedArtistPhoto(artist, _artistImages);
+        return StatisticsViewModel.CachedArtistPhoto(artist, images);
     }
 
     private static Guid ComputeArtistId(string artistName)
@@ -808,8 +817,25 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
+    // Snooze raises no library event, so the loaded suggestion rows drop the song here
+    // (owner 10-10: snoozed songs still showed on Home). Other views rebuild on visit.
     [RelayCommand]
-    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+    private async Task SnoozeForMonth(Track track)
+    {
+        await _player.SnoozeForMonthCommand.ExecuteAsync(track);
+        await RefreshTimeAwareRowsAsync();
+    }
+
+    /// <summary>The album, or the Ctrl-selection it is in (owner 10-10), in one snooze write;
+    /// then the loaded suggestion rows drop its songs, as the song snooze above does.</summary>
+    [RelayCommand]
+    private async Task SnoozeAlbumForMonth(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        await _player.SnoozeTracksForMonthAsync(tracks);
+        await RefreshTimeAwareRowsAsync();
+    }
 
     /// <summary>Fires when the user wants to view a track's album.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
@@ -1074,6 +1100,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
         await MetadataHelper.OpenReplayGainScannerDialog(album.Tracks.ToList());
+    }
+
+    /// <summary>GitHub #121: the album (or the Ctrl-selection it is in) → Send to Folder.</summary>
+    [RelayCommand]
+    private async Task SendAlbumToFolder(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
     [RelayCommand]

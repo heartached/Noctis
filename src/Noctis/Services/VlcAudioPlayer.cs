@@ -803,6 +803,16 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_disposed) return TimeSpan.Zero;
             var len = _player.Length;
+            if (_gaplessEngine)
+            {
+                // The ring knows more than VLC's length estimate (see EngineReportedLengthMs).
+                var seg = Volatile.Read(ref _engineSegments[EngineSlotOf(_player)]);
+                if (seg != null && !seg.Abandoned)
+                {
+                    var deliveredMs = seg.PositionMs + (long)seg.BufferedSamples * 1000 / (seg.SampleRate * seg.Channels);
+                    len = EngineReportedLengthMs(len, seg.EndOfStream, deliveredMs);
+                }
+            }
             return len > 0 ? TimeSpan.FromMilliseconds(len) : TimeSpan.Zero;
         }
     }
@@ -4416,6 +4426,35 @@ public class VlcAudioPlayer : IAudioPlayer
             return true;
         playerSegment.MarkEndOfStream(); // idempotent: input is done, no more samples
         return playerSegment.IsFinished;
+    }
+
+    // Encoder padding / the resampler tail run a few ms past the claimed length; that is not an
+    // under-report.
+    internal const int EngineLengthSlackMs = 250;
+    // Kept ahead of what the ring holds while the input still decodes: above the view model's
+    // 0.5 s handoff lead plus the ~1 s decode-ahead window, so the advance can never land
+    // before the input's own end.
+    internal const int EngineLengthUnderReportLeadMs = 2000;
+
+    /// <summary>
+    /// The length reported for the current input on the engine. VLC's length for an MP3 with no
+    /// Xing/LAME header, or a concatenated / truncated file, is a bitrate estimate that can run
+    /// seconds short (harness 10-10: a 10 s VBR MP3 reported 6.4 s). The view model advances the
+    /// queue 0.5 s before the length it is told, and PlayInternal's splice then cuts a still-live
+    /// outgoing segment over to the staged track — the last seconds of the track were never heard
+    /// (the tap showed 4 s cut). The ring knows better than the estimate: once the input has
+    /// delivered audio past the claimed length the end is at least that far plus a lead, and once
+    /// the input hit EOF the delivered length IS the length. A plausible estimate is left alone.
+    /// </summary>
+    internal static long EngineReportedLengthMs(long vlcLengthMs, bool inputEnded, long deliveredMs)
+    {
+        if (deliveredMs <= 0)
+            return vlcLengthMs;
+        if (inputEnded)
+            return deliveredMs;
+        return deliveredMs > vlcLengthMs + EngineLengthSlackMs
+            ? deliveredMs + EngineLengthUnderReportLeadMs
+            : vlcLengthMs;
     }
 
     /// <summary>

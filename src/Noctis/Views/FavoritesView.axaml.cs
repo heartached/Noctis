@@ -140,7 +140,8 @@ public partial class FavoritesView : UserControl
                 removeCommand: ItemCommand(vm.RemoveItemFromLibraryCommand),
                 convertCommand: ItemCommand(vm.ConvertItemCommand),
                 scanReplayGainCommand: ItemCommand(vm.ScanItemReplayGainCommand),
-                searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+                searchLyricsCommand: vm.SearchLyricsAlbumCommand,
+            snoozeCommand: vm.SnoozeAlbumForMonthCommand);
             _albumViewAlbum!.Command = ItemCommand(vm.ViewItemAlbumCommand);
             _albumViewAlbum.CommandParameter = item.Album;
             MenuV2.RefreshLayout(builder.Menu.Items);

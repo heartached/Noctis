@@ -204,7 +204,9 @@ public partial class LibraryAlbumsView : UserControl
             removeCommand: vm.RemoveFromLibraryCommand,
             convertCommand: vm.ConvertAlbumCommand,
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+            searchLyricsCommand: vm.SearchLyricsAlbumCommand,
+            snoozeCommand: vm.SnoozeAlbumForMonthCommand);
+        _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, tile);
         return true;

@@ -78,6 +78,11 @@ public sealed class TrackContextMenuBuilder
     /// Read on every Bind so enabling/disabling a plugin shows up on the next menu open.</summary>
     public static Func<IReadOnlyList<Services.Plugins.PluginTrackCommand>>? PluginCommandSource { get; set; }
 
+    /// <summary>App-wide artist picture lookup for View Artist ▸, set once by MainWindowViewModel
+    /// (owner 10-10: the round pictures in every track menu, not only Home's charts). A Bind
+    /// without its own source uses this one.</summary>
+    public static Func<string, string?>? ArtistPhotoSource { get; set; }
+
     /// <summary>Separator above View Album / View Artist; hidden with them.</summary>
     private Separator _viewSeparator = null!;
 
@@ -448,7 +453,7 @@ public sealed class TrackContextMenuBuilder
         // View Album / View Artist (optional). A photo source (opt-in, per open) puts each
         // artist's round picture beside their name in View Artist ▸.
         BindViewAlbum(track, viewAlbumCommand);
-        BindViewArtist(track, viewArtistCommand, artistPhotoSource);
+        BindViewArtist(track, viewArtistCommand, artistPhotoSource ?? ArtistPhotoSource);
         _viewSeparator.IsVisible = ViewAlbum.IsVisible || ViewArtist.IsVisible;
 
         // Badge ▸ (optional). Rebuilt per bind: the names come from what the library holds now.

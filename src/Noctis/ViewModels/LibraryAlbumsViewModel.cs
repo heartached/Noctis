@@ -155,7 +155,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         ReleaseType.Album => "Albums",
         ReleaseType.Single => "Singles",
         ReleaseType.EP => "EPs",
-        ReleaseType.Compilation => "Other",
+        ReleaseType.Live => "Live Albums",
+        ReleaseType.Compilation => "Compilations",
+        ReleaseType.Other => "Other",
         _ => "All",
     };
 
@@ -294,9 +296,19 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         "album" => ReleaseType.Album,
         "single" => ReleaseType.Single,
         "ep" => ReleaseType.EP,
-        "other" => ReleaseType.Compilation,
+        "live" => ReleaseType.Live,
+        "compilation" => ReleaseType.Compilation,
+        "other" => ReleaseType.Other,
         _ => null,
     };
+
+    /// <summary>Whether an album of type <paramref name="type"/> shows under the Type filter
+    /// <paramref name="filter"/>. "Other" groups everything without its own entry (Remix,
+    /// Soundtrack, Other); live albums and compilations were folded into it until they got
+    /// their own entries (GitHub #122, 2026-10-10).</summary>
+    internal static bool MatchesReleaseTypeFilter(ReleaseType type, ReleaseType filter) => filter == ReleaseType.Other
+        ? type is not (ReleaseType.Album or ReleaseType.Single or ReleaseType.EP or ReleaseType.Live or ReleaseType.Compilation)
+        : type == filter;
 
     /// <summary>Inverse of <see cref="ParseReleaseTypeKey"/>; "" for All.</summary>
     private static string ReleaseTypeKey(ReleaseType? filter) => filter switch
@@ -304,7 +316,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         ReleaseType.Album => "album",
         ReleaseType.Single => "single",
         ReleaseType.EP => "ep",
-        ReleaseType.Compilation => "other",
+        ReleaseType.Live => "live",
+        ReleaseType.Compilation => "compilation",
+        ReleaseType.Other => "other",
         _ => "",
     };
 
@@ -401,7 +415,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             new() { Filter = ReleaseType.Album, Label = "Albums" },
             new() { Filter = ReleaseType.Single, Label = "Singles" },
             new() { Filter = ReleaseType.EP, Label = "EPs" },
-            new() { Filter = ReleaseType.Compilation, Label = "Other" },
+            new() { Filter = ReleaseType.Live, Label = "Live Albums" },
+            new() { Filter = ReleaseType.Compilation, Label = "Compilations" },
+            new() { Filter = ReleaseType.Other, Label = "Other" },
         };
 
         // Mark dirty when library changes — actual reload deferred to next Refresh() call.
@@ -610,15 +626,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         // Release-type chip narrows the grid before any other filter.
         if (releaseTypeFilter.HasValue)
-        {
-            filtered = releaseTypeFilter.Value switch
-            {
-                // "Other" chip groups everything that is not Album / Single / EP
-                // (Compilation, Live, Remix, Soundtrack, Other) under one bucket.
-                ReleaseType.Compilation => filtered.Where(a => a.ReleaseType is not (ReleaseType.Album or ReleaseType.Single or ReleaseType.EP)),
-                _ => filtered.Where(a => a.ReleaseType == releaseTypeFilter.Value),
-            };
-        }
+            filtered = filtered.Where(a => MatchesReleaseTypeFilter(a.ReleaseType, releaseTypeFilter.Value));
 
         // Quality chip: an album qualifies when every track meets the bar,
         // matching the album-level quality badge semantics.
@@ -1089,6 +1097,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
 
+    /// <summary>The album, or the Ctrl-selection it is in (owner 10-10), in one snooze write.</summary>
+    [RelayCommand]
+    private Task SnoozeAlbumForMonth(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        return _player.SnoozeTracksForMonthAsync(tracks);
+    }
+
     [RelayCommand]
     private async Task AddTrackToNewPlaylist(Track track)
     {
@@ -1230,6 +1247,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
         await MetadataHelper.OpenReplayGainScannerDialog(album.Tracks.ToList());
+    }
+
+    /// <summary>GitHub #121: the album (or the Ctrl-selection it is in) → Send to Folder.</summary>
+    [RelayCommand]
+    private async Task SendAlbumToFolder(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
     private Action<string>? _viewArtistAction;

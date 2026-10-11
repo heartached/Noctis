@@ -291,17 +291,33 @@
                 </ListBox.DataTemplates>
             </ListBox>
 
-            <!-- Empty state overlay -->
+            <!-- Empty state overlay. With a search or a Type / Quality filter on, the library is
+                 not empty: say nothing matches instead of "add music folders" (live check 10-10:
+                 Type → Live Albums on a library without any read "Add music folders in Settings"). -->
             <StackPanel IsVisible="{Binding !FilteredAlbumRows.Count}"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
                 <TextBlock Text="{loc:T LibraryAlbums.NoAlbumsFound}"
+                           IsVisible="{Binding !HasActiveFilter}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
                 <TextBlock Text="{loc:T LibraryAlbums.AddMusicFoldersSettings}"
+                           IsVisible="{Binding !HasActiveFilter}"
+                           FontSize="13"
+                           Opacity="0.3"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="{loc:T LibraryAlbums.NoFilterMatches}"
+                           IsVisible="{Binding HasActiveFilter}"
+                           FontSize="18"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="{loc:T LibraryAlbums.NoFilterMatchesHint}"
+                           IsVisible="{Binding HasActiveFilter}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

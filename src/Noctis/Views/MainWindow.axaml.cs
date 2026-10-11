@@ -293,6 +293,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         Win10DarkTitleBar.Apply(this);
         ActualThemeVariantChanged += (_, _) => Win10DarkTitleBar.Apply(this);
 
+        // GitHub #124: the queue's played list keeps its newest song (the one just before
+        // Now Playing) in view as songs are added and when the panel first lays it out.
+        QueuePlayedScroll.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ScrollViewer.ExtentProperty)
+                QueuePlayedScroll.ScrollToEnd();
+        };
+
         // Initialize the application once the window is fully loaded.
         //
         // The whole body is guarded. This is an async void handler running *inside*
@@ -1997,6 +2005,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // Play the tapped track but keep the popup open, so the user can keep
         // browsing/queuing without it dismissing out from under them.
         vm.Player.PlayFromUpNextAt(index);
+    }
+
+    /// <summary>GitHub #124: double-click a played row to play it again. The row's container
+    /// index, not IndexOf, so a song that played twice plays the copy that was clicked.</summary>
+    private void OnQueuePlayedDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (sender is not Control row || row.Parent is not Control container) return;
+        var index = QueuePlayedList.IndexFromContainer(container);
+        if (index < 0) return;
+        e.Handled = true;
+        vm.Player.PlayPlayedAt(index);
     }
 
     private void OnQueueRemoveClick(object? sender, RoutedEventArgs e)

@@ -71,10 +71,10 @@ public class LabelBackfillTests : IDisposable
         _persistence.Settings.MetadataSchemaVersion = 10;
 
         await MakeLibrary().LoadAsync();
-        await WaitUntil(() => track.Label.Length > 0 && _persistence.Settings.MetadataSchemaVersion == 11);
+        await WaitUntil(() => track.Label.Length > 0 && _persistence.Settings.MetadataSchemaVersion == 12);
 
         Assert.Equal("Aftermath Entertainment", track.Label);
-        Assert.Equal(11, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class LabelBackfillTests : IDisposable
         _persistence.Settings.MetadataSchemaVersion = 10;
 
         await MakeLibrary().LoadAsync();
-        await WaitUntil(() => _persistence.Settings.MetadataSchemaVersion == 11);
+        await WaitUntil(() => _persistence.Settings.MetadataSchemaVersion == 12);
 
         // A changed stamp is what makes the scan re-read instead of keeping the indexed track.
         Assert.NotEqual(stamp, phone.LastModified);
@@ -206,7 +206,7 @@ public class LabelBackfillTests : IDisposable
         Assert.Equal(new[] { "a3.flac", "a4.flac", "a5.flac" }, second.LabelReads);
         Assert.Equal("Def Jam", tracks[1].Label);
         Assert.Equal("XL Recordings", tracks[4].Label);
-        Assert.Equal(11, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
         Assert.False(File.Exists(Path.Combine(_persistence.DataDirectory, "label-backfill.progress")));
 
         var (_, third) = await LaunchAsync();
@@ -222,7 +222,7 @@ public class LabelBackfillTests : IDisposable
 
         var (_, first) = await LaunchAsync();
         Assert.Equal(2, first.LabelReads.Count);
-        Assert.Equal(11, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
 
         var (_, second) = await LaunchAsync();
         Assert.Empty(second.LabelReads);
@@ -234,7 +234,7 @@ public class LabelBackfillTests : IDisposable
         var stamp = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
         var phone = Indexed("content://com.android.externalstorage.documents/tree/x/document/y.flac", stamp);
         _persistence.LibraryTracks.Add(phone);
-        _persistence.Settings.MetadataSchemaVersion = 11;
+        _persistence.Settings.MetadataSchemaVersion = 12;
 
         await MakeLibrary().LoadAsync();
         await Task.Delay(500);

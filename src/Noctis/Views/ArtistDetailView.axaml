@@ -843,10 +843,21 @@
                                                 <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="{loc:T Menu.Snooze}" Command="{Binding SnoozeArtistForMonthCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSnooze}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <!-- Don't Scrobble This Artist: binds itself on open (ScrobbleMenu.Entry) -->
                                         <MenuItem helpers:ScrobbleMenu.Entry="artist">
                                             <MenuItem.Icon>
                                                 <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineScrobbleOff}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <!-- GitHub #121: every song of the artist → Send to Folder. -->
+                                        <MenuItem Header="{loc:T SendTo.Title}" Command="{Binding SendArtistToFolderCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
@@ -900,6 +911,27 @@
                             AutomationProperties.Name="{loc:T ArtistDetail.SinglesEPs}">
                         <StackPanel>
                             <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" />
+                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
+                                    Background="{DynamicResource AccentColorBrush}" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Live Albums / Compilations (GitHub #122): only for an artist who has any. -->
+                    <Button Classes="page-tab" Classes.selected="{Binding IsTabLive}"
+                            Command="{Binding SelectTabCommand}" CommandParameter="live"
+                            IsVisible="{Binding ShowLiveTab}"
+                            AutomationProperties.Name="{loc:T ArtistDetail.LiveAlbums}">
+                        <StackPanel>
+                            <TextBlock Text="{loc:T ArtistDetail.LiveAlbums}" />
+                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
+                                    Background="{DynamicResource AccentColorBrush}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="page-tab" Classes.selected="{Binding IsTabCompilations}"
+                            Command="{Binding SelectTabCommand}" CommandParameter="compilations"
+                            IsVisible="{Binding ShowCompilationsTab}"
+                            AutomationProperties.Name="{loc:T ArtistDetail.Compilations}">
+                        <StackPanel>
+                            <TextBlock Text="{loc:T ArtistDetail.Compilations}" />
                             <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
                                     Background="{DynamicResource AccentColorBrush}" />
                         </StackPanel>
@@ -1102,7 +1134,7 @@
                     </Border>
                 </Grid>
 
-                <!-- Albums, then Singles & EPs: one full-width row of each at Home's tile size (09-14) -->
+                <!-- Albums, then Singles & EPs (then Live Albums / Compilations when any): one full-width row of each at Home's tile size (09-14) -->
                 <StackPanel Margin="32,26,32,0" Spacing="22">
                     <StackPanel Spacing="8"
                                 IsVisible="{Binding HasOverviewAlbums}">
@@ -1127,6 +1159,37 @@
                                     Command="{Binding SelectTabCommand}" CommandParameter="singles" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding OverviewSingles}" ItemTemplate="{StaticResource AlbumTile}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OverviewSingleColumns}" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                    <!-- Live Albums, then Compilations (GitHub #122): their own rows, out of Albums. -->
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding HasOverviewLive}">
+                        <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,2">
+                            <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.LiveAlbums}" Classes="section-title" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="accent-btn album-header-action see-all-pill" Content="{loc:T ArtistDetail.SeeAll}"
+                                    Command="{Binding SelectTabCommand}" CommandParameter="live" VerticalAlignment="Center" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding OverviewLive}" ItemTemplate="{StaticResource AlbumTile}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OverviewSingleColumns}" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding HasOverviewCompilations}">
+                        <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,2">
+                            <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Compilations}" Classes="section-title" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="accent-btn album-header-action see-all-pill" Content="{loc:T ArtistDetail.SeeAll}"
+                                    Command="{Binding SelectTabCommand}" CommandParameter="compilations" VerticalAlignment="Center" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding OverviewCompilations}" ItemTemplate="{StaticResource AlbumTile}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OverviewSingleColumns}" />
@@ -1263,6 +1326,84 @@
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
                 <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasSingles}" />
+            </StackPanel>
+
+            <!-- ── Live Albums tab (GitHub #122) ── -->
+            <StackPanel x:Name="LivePanel" Classes="tab-page" Margin="32,22,32,0" Spacing="8" IsVisible="{Binding IsTabLive}">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="2,0,0,2">
+                    <TextBlock Text="{loc:T ArtistDetail.LiveAlbums}" Classes="section-title" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding LiveCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
+                    <!-- Sort (GitHub #100): the same shared order as the Albums tab. -->
+                    <Button Classes="grey-pill sort-pill"
+                            Height="34"
+                            Padding="12,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                      Width="9" Height="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="{loc:T ArtistDetail.SortNewest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="newest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortOldest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="oldest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortName}" Command="{Binding SetReleaseSortCommand}" CommandParameter="name" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding LiveReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasLive}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasLive}" />
+            </StackPanel>
+
+            <!-- ── Compilations tab (GitHub #122) ── -->
+            <StackPanel x:Name="CompilationsPanel" Classes="tab-page" Margin="32,22,32,0" Spacing="8" IsVisible="{Binding IsTabCompilations}">
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="2,0,0,2">
+                    <TextBlock Text="{loc:T ArtistDetail.Compilations}" Classes="section-title" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding CompilationCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
+                    <!-- Sort (GitHub #100): the same shared order as the Albums tab. -->
+                    <Button Classes="grey-pill sort-pill"
+                            Height="34"
+                            Padding="12,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                      Width="9" Height="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="{loc:T ArtistDetail.SortNewest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="newest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortOldest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="oldest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortName}" Command="{Binding SetReleaseSortCommand}" CommandParameter="name" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding CompilationReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasCompilations}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasCompilations}" />
             </StackPanel>
 
             <!-- ── Songs tab: Top Favorites, then everything ranked ─── -->

@@ -30,6 +30,11 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
 
     public ObservableCollection<PlaylistNavItem> Playlists { get; }
 
+    /// <summary>The list's rows: each playlist with how many of the songs going in it holds already.</summary>
+    public IReadOnlyList<AddToPlaylistRow> Rows { get; }
+
+    private readonly Dictionary<PlaylistNavItem, AddToPlaylistRow> _rowOf = new();
+
     public bool HasPlaylists => Playlists.Count > 0;
 
     /// <summary>Dialog title follows the mode: list view vs inline create form (localized; it was
@@ -48,11 +53,30 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
 
     public bool ShowEmptyState => !HasPlaylists && !IsCreatingNew;
 
-    public AddToPlaylistDialogViewModel(ObservableCollection<PlaylistNavItem> playlists, int trackCount)
+    /// <param name="trackIds">The songs going in (null: unknown, no row is marked).</param>
+    /// <param name="playlistTrackIds">A playlist's current track ids by playlist id.</param>
+    public AddToPlaylistDialogViewModel(ObservableCollection<PlaylistNavItem> playlists, int trackCount,
+        IEnumerable<Guid>? trackIds = null, Func<Guid, IEnumerable<Guid>?>? playlistTrackIds = null)
     {
         // Smart playlists are filled by their rules, so they can't take added tracks.
         Playlists = new ObservableCollection<PlaylistNavItem>(playlists.Where(p => !p.IsSmartPlaylist));
         TrackCount = trackCount;
+
+        // Discord (Mistery, 10-10) "Already on playlist" indicator: a playlist holds a song once,
+        // so picking one that has every song already silently added nothing. One set of the
+        // songs going in; each playlist's ids are walked once against it (no per-row set).
+        var adding = trackIds == null ? new HashSet<Guid>() : new HashSet<Guid>(trackIds);
+        var rows = new List<AddToPlaylistRow>(Playlists.Count);
+        foreach (var p in Playlists)
+        {
+            var already = 0;
+            if (adding.Count > 0 && p.PlaylistId is Guid id && playlistTrackIds?.Invoke(id) is { } ids)
+                already = ids.Where(adding.Contains).Distinct().Count();
+            var row = new AddToPlaylistRow(p, already, adding.Count);
+            rows.Add(row);
+            _rowOf[p] = row;
+        }
+        Rows = rows;
     }
 
     /// <summary>Fires when the user picks an existing playlist row.</summary>
@@ -68,6 +92,8 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     private void SelectPlaylist(PlaylistNavItem? playlist)
     {
         if (playlist == null || _done || IsCreatingNew) return;
+        // Every song is in it already: nothing to add (the row is greyed and takes no clicks).
+        if (_rowOf.TryGetValue(playlist, out var row) && row.IsAlreadyOnPlaylist) return;
         _done = true;
         PlaylistSelected?.Invoke(this, playlist);
         CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -129,5 +155,39 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     {
         if (!string.IsNullOrWhiteSpace(value))
             ShowNameRequiredError = false;
+    }
+}
+
+/// <summary>One playlist row in the Add to Playlist dialog.</summary>
+public sealed class AddToPlaylistRow
+{
+    public AddToPlaylistRow(PlaylistNavItem playlist, int alreadyCount, int addingCount)
+    {
+        Playlist = playlist;
+        AlreadyCount = alreadyCount;
+        IsAlreadyOnPlaylist = addingCount > 0 && alreadyCount >= addingCount;
+    }
+
+    public PlaylistNavItem Playlist { get; }
+
+    /// <summary>How many of the songs going in the playlist holds already.</summary>
+    public int AlreadyCount { get; }
+
+    /// <summary>Every song is in it already: greyed and not pickable, like the Add Songs
+    /// picker's "Added" rows. Some of them: still pickable, only the rest go in.</summary>
+    public bool IsAlreadyOnPlaylist { get; }
+
+    /// <summary>"67 tracks · 3 hr 17 min · Already on playlist" / "… · 2 already on playlist".</summary>
+    public string SubtitleText
+    {
+        get
+        {
+            var meta = Playlist.MetaText;
+            if (AlreadyCount == 0) return meta;
+            var note = IsAlreadyOnPlaylist
+                ? Loc.T("AddToPlaylist.AlreadyOnPlaylist")
+                : Loc.T("AddToPlaylist.SomeAlreadyOnPlaylist", AlreadyCount);
+            return string.IsNullOrEmpty(meta) ? note : $"{meta} · {note}";
+        }
     }
 }

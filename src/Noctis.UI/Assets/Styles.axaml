@@ -150,6 +150,12 @@
                          render byte-identically; the new overlays give them real palettes. -->
                     <SolidColorBrush x:Key="AppWindowBackgroundBrush" Color="#252525" />
                     <Color x:Key="IslandBackgroundColor">#202020</Color>
+                    <!-- The pill's outline ring and Track Box fill colour (its opacity is the
+                         user's Track Box Opacity). Built-ins keep the white literals; derived
+                         themes flip them to the text polarity so a light pill still shows both
+                         (Discord, Mistery 2026-10-10). -->
+                    <SolidColorBrush x:Key="IslandOutlineBrush" Color="#40FFFFFF" />
+                    <Color x:Key="IslandTrackBoxColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="PrimaryTextBrush" Color="White" />
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#80FFFFFF" />
                     <SolidColorBrush x:Key="TertiaryTextBrush" Color="#4DFFFFFF" />
@@ -305,6 +311,8 @@
                          and multi-select values stay the dark-tuned literals they were. -->
                     <SolidColorBrush x:Key="AppWindowBackgroundBrush" Color="#FFFFFF" />
                     <Color x:Key="IslandBackgroundColor">#202020</Color>
+                    <SolidColorBrush x:Key="IslandOutlineBrush" Color="#40FFFFFF" />
+                    <Color x:Key="IslandTrackBoxColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="PrimaryTextBrush" Color="Black" />
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#80FFFFFF" />
                     <SolidColorBrush x:Key="TertiaryTextBrush" Color="#4DFFFFFF" />
@@ -1452,6 +1460,13 @@
 
     <Style Selector="Button:pressed">
         <Setter Property="RenderTransform" Value="scale(0.96)"/>
+    </Style>
+
+    <!-- Artist credit links (ArtistCreditLink): the hover/press box sits behind the one name
+         under the pointer, so the credit as a whole must not zoom or shrink (Discord, Luwi
+         2026-10-10: the box went around "Bonobo, Jordan Rakei" together). -->
+    <Style Selector="Button.artist-credit-link:pointerover, Button.artist-credit-link:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
     </Style>
 
     <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome.

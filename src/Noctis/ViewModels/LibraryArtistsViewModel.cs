@@ -405,6 +405,15 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         ArtistOpened?.Invoke(this, artist);
     }
 
+    /// <summary>The songs the artist page's Play All plays (its releases, then features).</summary>
+    internal List<Track> TracksOf(Artist artist)
+        => ArtistDetailViewModel.AllTracksOf(_library.Albums, artist.Name);
+
+    /// <summary>GitHub #121: every song of the artist → Send to Folder (copy or move).</summary>
+    [RelayCommand]
+    private Task SendArtistToFolder(Artist artist)
+        => artist == null ? Task.CompletedTask : MetadataHelper.OpenSendToFolderDialog(TracksOf(artist));
+
     /// <summary>
     /// Toggles the artist's favorite flag (GitHub #41): favorites float to the top of
     /// the grid and carry an accent star. Persisted by name, then the rows rebuild so
@@ -418,6 +427,16 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _favoriteArtists.SetFavorite(artist.Name, favorite);
         artist.IsFavorite = favorite;
         ApplyFilter(_currentFilter);
+    }
+
+    /// <summary>Artist tile menu: snoozes every track the artist's page plays for a month.</summary>
+    [RelayCommand]
+    private Task SnoozeArtistForMonth(Artist? artist)
+    {
+        if (artist == null) return Task.CompletedTask;
+        var (releases, _, songs) = ArtistDetailViewModel.Classify(_library.Albums, artist.Name);
+        return _library.SetTracksSnoozedAsync(ArtistDetailViewModel.PlayableTracks(releases, songs),
+            DateTime.UtcNow.AddDays(PlayerViewModel.SnoozeDurationDays));
     }
 
     /// <summary>Whether the artist is favourited — the artist page reads the same

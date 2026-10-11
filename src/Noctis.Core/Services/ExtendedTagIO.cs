@@ -37,6 +37,8 @@ internal static class ExtendedTagIO
     // e.g. "album; soundtrack" — we pick the most specific token).
     private const string ReleaseTypeKey = "RELEASETYPE";
     private const string MusicBrainzAlbumTypeKey = "MUSICBRAINZ_ALBUM_TYPE";
+    // Picard's ID3 name for the same field: TXXX "MusicBrainz Album Type" (GitHub #122).
+    private const string PicardId3AlbumTypeDescription = "MusicBrainz Album Type";
     private const string NoctisReleaseTypeOverrideKey = "NOCTIS_RELEASETYPE";
 
     // Apple MP4 atom names (4 chars including the © sign).
@@ -121,6 +123,31 @@ internal static class ExtendedTagIO
     internal static bool TryReadFlacLabel(Stream stream, out string label)
     {
         label = string.Empty;
+        if (!TryReadFlacComments(stream, out var fields)) return false;
+        string? First(string key) => fields.TryGetValue(key, out var v) ? v[0] : null;
+        label = (First(LabelKey) ?? First(XiphOrganizationKey) ?? First(PublisherKey) ?? string.Empty).Trim();
+        return true;
+    }
+
+    /// <summary>
+    /// The genres of a plain FLAC as <see cref="Track.Genre"/> holds them (every GENRE value),
+    /// reading only the VORBIS_COMMENT block, for the v12 genre pass (GitHub #123 follow-up,
+    /// 2026-10-10). False means "ask TagLib", as for <see cref="TryReadFlacLabel"/>.
+    /// </summary>
+    internal static bool TryReadFlacGenres(Stream stream, out string genres)
+    {
+        genres = string.Empty;
+        if (!TryReadFlacComments(stream, out var fields)) return false;
+        genres = fields.TryGetValue("GENRE", out var values) ? Track.JoinGenres(values) : string.Empty;
+        return true;
+    }
+
+    /// <summary>The VORBIS_COMMENT fields of a plain FLAC, every non-blank value per key (keys
+    /// case-insensitive), without reading any other block. Empty when the file has no comment
+    /// block; false for anything <see cref="TryReadFlacLabel"/> leaves to TagLib.</summary>
+    private static bool TryReadFlacComments(Stream stream, out Dictionary<string, List<string>> fields)
+    {
+        fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         try
         {
             var length = stream.Length;
@@ -159,7 +186,6 @@ internal static class ExtendedTagIO
             if (comment == null) return true;   // no Vorbis comment: TagLib finds no label either
 
             // vendor_length, vendor, count, then count × (length, "KEY=value") — lengths LE.
-            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var offset = 0;
             if (!TryReadUInt32(comment, ref offset, out var vendorLength) || vendorLength > comment.Length - offset)
                 return false;
@@ -177,16 +203,15 @@ internal static class ExtendedTagIO
                 // keys untrimmed; the first remaining value is GetField(key)[0].
                 var value = entry[(eq + 1)..];
                 if (string.IsNullOrWhiteSpace(value)) continue;
-                fields.TryAdd(entry[..eq], value);
+                var key = entry[..eq];
+                if (!fields.TryGetValue(key, out var values)) fields[key] = values = new List<string>();
+                values.Add(value);
             }
-
-            string? First(string key) => fields.TryGetValue(key, out var v) ? v : null;
-            label = (First(LabelKey) ?? First(XiphOrganizationKey) ?? First(PublisherKey) ?? string.Empty).Trim();
             return true;
         }
         catch
         {
-            label = string.Empty;
+            fields.Clear();
             return false;
         }
 
@@ -364,6 +389,7 @@ internal static class ExtendedTagIO
     /// 1. NOCTIS_RELEASETYPE (user override)
     /// 2. RELEASETYPE (mp3tag/foobar2000 convention)
     /// 3. MUSICBRAINZ_ALBUM_TYPE (Picard, may be multi-valued)
+    /// 4. ID3 TXXX "MusicBrainz Album Type" (Picard's MP3 name for 3)
     /// Returns null if none of the tags are set, so callers can fall back to
     /// album-name heuristics or track-count heuristics.
     /// </summary>
@@ -378,13 +404,25 @@ internal static class ExtendedTagIO
             return overrideParsed;
         }
 
-        var primary = ReadCustomString(file, ReleaseTypeKey);
+        var primary = ReadCustomStringValues(file, ReleaseTypeKey);
         if (!string.IsNullOrWhiteSpace(primary) && TryParseReleaseTypeList(primary, out var parsedPrimary))
             return parsedPrimary;
 
-        var mb = ReadCustomString(file, MusicBrainzAlbumTypeKey);
+        var mb = ReadCustomStringValues(file, MusicBrainzAlbumTypeKey);
         if (!string.IsNullOrWhiteSpace(mb) && TryParseReleaseTypeList(mb, out var parsedMb))
             return parsedMb;
+
+        // Picard tags MP3s with TXXX "MusicBrainz Album Type", which neither key above
+        // matched, so a Picard-tagged MP3 live album or compilation fell back to the
+        // track-count heuristic (GitHub #122, 2026-10-10). Matched case-insensitively.
+        if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
+        {
+            var frame = id3.GetFrames<UserTextInformationFrame>().FirstOrDefault(f =>
+                string.Equals(f.Description, PicardId3AlbumTypeDescription, StringComparison.OrdinalIgnoreCase));
+            var picard = frame == null ? null : string.Join("; ", frame.Text.Where(t => !string.IsNullOrWhiteSpace(t)));
+            if (!string.IsNullOrWhiteSpace(picard) && TryParseReleaseTypeList(picard, out var parsedPicard))
+                return parsedPicard;
+        }
 
         return null;
     }
@@ -651,6 +689,23 @@ internal static class ExtendedTagIO
                 return text;
         }
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Like <see cref="ReadCustomString"/>, but every value of a multi-valued field, joined
+    /// with "; ". Picard writes a release type of "album" + "live" as two RELEASETYPE Vorbis
+    /// comments (or one null-separated ID3v2.4 TXXX); reading only the first value left a
+    /// tagged live album or compilation a plain Album (GitHub #122, 2026-10-10).
+    /// </summary>
+    private static string ReadCustomStringValues(TagFile file, string key)
+    {
+        if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3
+            && UserTextInformationFrame.Get(id3, key, false) is { Text: { Length: > 1 } texts })
+            return string.Join("; ", texts.Where(t => !string.IsNullOrWhiteSpace(t)));
+        if (file.GetTag(TagTypes.Xiph, false) is XiphComment xiph
+            && xiph.GetField(key) is { Length: > 1 } values)
+            return string.Join("; ", values.Where(v => !string.IsNullOrWhiteSpace(v)));
+        return ReadCustomString(file, key);
     }
 
     private static void WriteCustomString(TagFile file, string key, string? value)

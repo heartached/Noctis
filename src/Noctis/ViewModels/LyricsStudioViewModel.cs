@@ -397,6 +397,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
     /// </summary>
     private void TryLoadExisting(StudioItem item)
     {
+        // Lyrics the user cleared stay cleared until they save their own.
+        if (item.LyricsCleared) return;
         var existing = LoadExistingOrNull(item.Track);
         if (existing is null) return;
         item.Existing = existing;
@@ -424,7 +426,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     /// </summary>
     private static void PrefillDraft(StudioItem item)
     {
-        if (!string.IsNullOrWhiteSpace(item.DraftText)) return;
+        if (item.LyricsCleared || !string.IsNullOrWhiteSpace(item.DraftText)) return;
         try
         {
             var text = LyricsStudioEngine.FirstText(item.Track.Lyrics);
@@ -694,6 +696,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
             if (!await ConfirmAsync($"Re-sync will replace the timings shown for “{current.Title}” with a fresh run of Lullaby.\n\nNothing is written to disk until you press Save lyrics."))
                 return;
             Requeue(current);
+            // The user's own lyrics (pasted, typed, a corrected transcript) are re-timed as the
+            // review shows them now, edits included: Re-sync used to time the lyrics box, or the
+            // song's .lrc the user had replaced (Discord, Mistery 2026-10-10).
+            if (current.BeforeRerun?.Result is { Source: LyricsStudioSource.PastedLyrics } shown)
+                current.SourceOverride = shown.Lines.Select(l => l.Text).ToList();
             items.Add(current);
         }
         await RunAsync(items);
@@ -811,8 +818,29 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 // A queued song that was never opened has not loaded its timed lyrics yet; without
                 // them the engine re-reads only the text and every line start is lost (09-24: a
                 // batch run placed Cherry Blossom's 0:16–0:28 lines at 0:00).
-                if (!transcribe && pasted is null && item.Existing is null)
+                if (!transcribe && pasted is null && item.Existing is null && !item.LyricsCleared)
                     item.Existing = LoadExistingOrNull(item.Track);
+                // No timed lyrics: the lyrics box on screen is the text, Start and Re-sync alike. They
+                // ignored it and the engine went back to the song's own text or LRCLIB's match —
+                // the wrong lyrics a user had just replaced (Discord, Mistery 2026-10-10).
+                var prefilledBox = false;
+                if (!transcribe && pasted is null && item.Existing is null && LyricsStudioEngine.FirstText(item.DraftText) is { } boxed)
+                {
+                    pasted = boxed;
+                    prefilledBox = !item.LyricsCleared && item.DraftText == item.PrefilledText;
+                }
+                if (!transcribe && pasted is null && item.LyricsCleared)
+                {
+                    // Cleared and the box emptied: never fall back to the lyrics the user dumped.
+                    if (item.BeforeRerun is not null) RestoreBeforeRerun(item, null);
+                    else
+                    {
+                        item.Status = StudioStatus.NeedsLyrics;
+                        item.StatusText = Loc("LyricsStudio.ClearedStatus");
+                    }
+                    done++;
+                    continue;
+                }
                 // Pasted lyrics win; else loaded lyrics (sidecar or embedded) are the text to
                 // time, and the engine only looks online when the song has nothing at all. A song
                 // with no lyrics anywhere stops at "Needs lyrics" rather than being guessed by ear.
@@ -821,7 +849,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     SourceLines: transcribe ? null : pasted ?? item.Existing?.Lines.Select(l => l.Text).ToList(),
                     SourceLineStarts: transcribe || pasted is not null ? null : item.Existing?.Lines.Select(l => l.Start).ToList(),
                     AllowTranscription: false);
-                if (!forced && SkipAlreadyTimed && !transcribe && LyricsFormatDetector.AlreadyHas(item.ExistingFormat, WordTimings))
+                if (!forced && SkipAlreadyTimed && !transcribe && !item.LyricsCleared && LyricsFormatDetector.AlreadyHas(item.ExistingFormat, WordTimings))
                 {
                     item.Status = StudioStatus.Skipped;
                     item.StatusText = $"Skipped · already {LyricsFormatDetector.Label(item.ExistingFormat)}";
@@ -866,7 +894,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         done++;
                         continue;
                     }
-                    if (pasted is not null) result = result with { Source = LyricsStudioSource.PastedLyrics };
+                    if (pasted is not null && !prefilledBox) result = result with { Source = LyricsStudioSource.PastedLyrics };
                     // Timed from the song's own lyrics: their romaji / translation lines ride along.
                     else if (item.Existing is { } source)
                         result = result with { Lines = ExistingLyricsLoader.CarryCompanions(source.Lines, result.Lines) };
@@ -974,6 +1002,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.Status = StudioStatus.Saved;
             _drafts?.Delete(item.Track.Id);
             item.Existing = null;
+            item.LyricsCleared = false;
             item.RefreshExistingFormat();
             // ELRC with no word timed yet is written as plain LRC; say what actually landed.
             var format = !WordTimings ? (ttml is null ? "line timings (LRC)" : "line timings (LRC + TTML)")
@@ -1089,6 +1118,36 @@ public partial class LyricsStudioViewModel : ViewModelBase
         Requeue(item);
         item.StatusText = "Queued for transcription";
         await RunAsync(new List<StudioItem> { item });
+    }
+
+    /// <summary>
+    /// Dumps the lyrics on screen — say, wrong ones matched online for a more popular song with
+    /// the same title — and opens the empty lyrics box for the user's own; Align then times those.
+    /// The song's files and tags are untouched until Save (Discord, Mistery 2026-10-10).
+    /// </summary>
+    [RelayCommand]
+    private async Task ClearLyrics()
+    {
+        if (IsRunning || !HasReview || Selected is not { } item) return;
+        if (!await ConfirmAsync(Loc("LyricsStudio.ClearLyricsConfirm", item.Title))) return;
+        if (IsRunning || !ReferenceEquals(Selected, item)) return;
+        CancelTap();
+        SelectedWord = null;
+        // A restored review would bring the dumped lyrics back at the next open.
+        _drafts?.Delete(item.Track.Id);
+        item.LyricsCleared = true;
+        item.Existing = null;
+        item.BeforeRerun = null;
+        item.SourceOverride = null;
+        item.TranscribeNext = false;
+        item.IsTranscriptDraft = false;
+        item.PrefilledText = null;
+        item.DraftText = string.Empty;
+        item.Result = null;
+        item.Status = StudioStatus.NeedsLyrics;
+        item.StatusText = Loc("LyricsStudio.ClearedStatus");
+        OnSelectedChanged(item);
+        RaiseStartState();
     }
 
     /// <summary>Loads a lyrics file (.txt, or .lrc/.elrc whose timestamps are dropped) into the lyrics box.</summary>
@@ -1418,6 +1477,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         public bool TranscribeNext { get; set; }
         /// <summary>What the lyrics box was filled with from the song itself (not the user's work).</summary>
         internal string? PrefilledText { get; set; }
+        /// <summary>The user cleared the song's lyrics (Clear lyrics): its .lrc / tags are not loaded, prefilled or timed again until Save.</summary>
+        public bool LyricsCleared { get; set; }
 
         /// <summary>
         /// The lyrics box holds work that lives nowhere else: text typed, pasted or imported, or a

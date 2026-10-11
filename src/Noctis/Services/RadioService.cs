@@ -9,10 +9,11 @@ public sealed class RadioService : IRadioService
     {
         var now = DateTime.UtcNow;
         var rng = Random.Shared;
+        var seedGenres = Track.SplitGenres(seed.Genre);
         return library
             .Where(t => t.Id != seed.Id && !exclude.Contains(t.Id) && !t.IsDisliked
                         && (t.SnoozedUntil == null || t.SnoozedUntil <= now))
-            .Select(t => (Track: t, Score: Score(seed, t)))
+            .Select(t => (Track: t, Score: Score(seed, seedGenres, t)))
             .Where(x => x.Score > 0)
             .OrderByDescending(x => x.Score + rng.NextDouble() * 0.05)
             .Take(count)
@@ -20,10 +21,11 @@ public sealed class RadioService : IRadioService
             .ToList();
     }
 
-    private static double Score(Track seed, Track c)
+    private static double Score(Track seed, string[] seedGenres, Track c)
     {
         double score = 0;
-        if (!string.IsNullOrWhiteSpace(seed.Genre) && string.Equals(seed.Genre, c.Genre, StringComparison.OrdinalIgnoreCase))
+        // Any shared genre: "Rock; Pop" matches Rock and Pop (GitHub #123 follow-up, 2026-10-10).
+        if (Track.SharesGenre(seedGenres, c.Genre))
             score += 3.0;
         if (string.Equals(Track.GetPrimaryArtist(seed.Artist), Track.GetPrimaryArtist(c.Artist), StringComparison.OrdinalIgnoreCase))
             score += 2.5;

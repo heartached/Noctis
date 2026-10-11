@@ -914,8 +914,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
+    /// <summary>The row, or the Ctrl-selection it is in (owner 10-10), in one snooze write.</summary>
     [RelayCommand]
-    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+    private Task SnoozeForMonth(Track track) => _player.SnoozeTracksForMonthAsync(TakeSelectionOr(track));
+
+    [RelayCommand]
+    private void SnoozeRelatedAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
 
     /// <summary>Star click on a row or Rate ▸ in its menu. Rates the whole Ctrl-selection when
     /// the row is in it, like the Songs and playlist pages (it used to rate the one row).</summary>

@@ -393,6 +393,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.TracksFlowIntoEach" xml:space="preserve"><value>Tracks flow into each other without a pause.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Autoplay</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Show played songs above Now Playing in the queue, and keep the last song loaded when the queue ends.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Queue.Played" xml:space="preserve"><value>Played</value><comment>Text in MainWindow.axaml</comment></data>
+  <data name="MiniPlayer.Played" xml:space="preserve"><value>Played</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Off skips explicit songs unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>
@@ -549,7 +553,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.UseEmbeddedArtwork" xml:space="preserve"><value>Use Embedded Artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UseArtworkEmbeddedFile" xml:space="preserve"><value>Use artwork embedded in file tags for album covers.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SnoozedTracks" xml:space="preserve"><value>Snoozed Tracks</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve"><value>Hidden from shuffle and radio until their snooze expires.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve"><value>Hidden from shuffle, radio and Home suggestions until their snooze expires.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NoSnoozedTracks" xml:space="preserve"><value>No snoozed tracks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UnSnooze" xml:space="preserve"><value>Un-snooze</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RemovedTracks" xml:space="preserve"><value>Removed Tracks</value><comment>Text in SettingsView.axaml</comment></data>
@@ -645,6 +649,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="AddToPlaylist.Name" xml:space="preserve"><value>Name</value><comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment></data>
   <data name="AddToPlaylist.Description" xml:space="preserve"><value>Description</value><comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment></data>
   <data name="AddToPlaylist.Optional" xml:space="preserve"><value>Optional</value><comment>Watermark of the description field in the create pane of AddToPlaylistDialog.axaml</comment></data>
+  <data name="AddToPlaylist.AlreadyOnPlaylist" xml:space="preserve"><value>Already on playlist</value><comment>Appended to a playlist row's "67 tracks · 3 hr 17 min" line in AddToPlaylistDialog when every song being added is in that playlist already (the row is greyed out)</comment></data>
+  <data name="AddToPlaylist.SomeAlreadyOnPlaylist" xml:space="preserve"><value>{0:N0} already on playlist</value><comment>Appended to a playlist row's "67 tracks · 3 hr 17 min" line in AddToPlaylistDialog when some of the songs being added are in that playlist already; {0} = how many</comment></data>
 
   <!-- AlbumDescriptionDialog.axaml (auto-migrated) -->
   <data name="AlbumDescription.AlbumDescription" xml:space="preserve"><value>Album Description</value><comment>Title in AlbumDescriptionDialog.axaml</comment></data>
@@ -721,6 +727,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="ArtistDetail.Popular" xml:space="preserve"><value>Top Songs</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Albums" xml:space="preserve"><value>Albums</value><comment>Content in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SinglesEPs" xml:space="preserve"><value>Singles &amp; EPs</value><comment>Content in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.LiveAlbums" xml:space="preserve"><value>Live Albums</value><comment>Tab and Overview section in ArtistDetailView.axaml (GitHub #122)</comment></data>
+  <data name="ArtistDetail.Compilations" xml:space="preserve"><value>Compilations</value><comment>Tab and Overview section in ArtistDetailView.axaml (GitHub #122)</comment></data>
   <data name="ArtistDetail.NoReleasesMatch" xml:space="preserve"><value>No releases match.</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SortNewest" xml:space="preserve"><value>Newest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SortOldest" xml:space="preserve"><value>Oldest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
@@ -977,6 +985,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="LibraryAlbums.RemoveFromLibrary" xml:space="preserve"><value>Remove from Library</value><comment>Header in LibraryAlbumsView.axaml</comment></data>
   <data name="LibraryAlbums.NoAlbumsFound" xml:space="preserve"><value>No albums found</value><comment>Text in LibraryAlbumsView.axaml</comment></data>
   <data name="LibraryAlbums.AddMusicFoldersSettings" xml:space="preserve"><value>Add music folders in Settings to get started</value><comment>Text in LibraryAlbumsView.axaml</comment></data>
+  <data name="LibraryAlbums.NoFilterMatches" xml:space="preserve"><value>No albums match</value><comment>Albums page empty state while a search or a Type / Quality filter is on</comment></data>
+  <data name="LibraryAlbums.NoFilterMatchesHint" xml:space="preserve"><value>Try another Type or Quality filter, or clear the search</value><comment>Albums page empty state hint while a search or a Type / Quality filter is on</comment></data>
 
   <!-- LibraryArtistsView.axaml (auto-migrated) -->
   <data name="LibraryArtists.SetAsFavorite" xml:space="preserve"><value>Set as Favorite</value><comment>Header in LibraryArtistsView.axaml</comment></data>
@@ -1151,6 +1161,8 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Main.Albums" xml:space="preserve"><value>Albums</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Singles" xml:space="preserve"><value>Singles</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.EPs" xml:space="preserve"><value>EPs</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.LiveAlbums" xml:space="preserve"><value>Live Albums</value><comment>Header in MainWindow.axaml (Albums Type filter, GitHub #122)</comment></data>
+  <data name="Main.Compilations" xml:space="preserve"><value>Compilations</value><comment>Header in MainWindow.axaml (Albums Type filter, GitHub #122)</comment></data>
   <data name="Main.Other" xml:space="preserve"><value>Other</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.FilterByAudioQualityTip" xml:space="preserve"><value>Filter by audio quality</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.Lossless" xml:space="preserve"><value>Lossless</value><comment>Content in MainWindow.axaml</comment></data>
@@ -1330,6 +1342,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.ShowComposerAllViews" xml:space="preserve"><value>Show composer in all views</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Grouping" xml:space="preserve"><value>grouping</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Genre" xml:space="preserve"><value>genre</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.GenreTip" xml:space="preserve"><value>Pick a genre or type a new one</value><comment>ToolTip.Tip in MetadataWindow.axaml (genre box)</comment></data>
   <data name="Metadata.Year" xml:space="preserve"><value>year</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Track" xml:space="preserve"><value>track</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Disc" xml:space="preserve"><value>disc</value><comment>Text in MetadataWindow.axaml</comment></data>
@@ -1537,6 +1550,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="MiniPlayer.EqualizerOff" xml:space="preserve"><value>Off</value><comment>Mini player "…" menu EQ item state</comment></data>
   <data name="MiniPlayer.PinOnTop" xml:space="preserve"><value>Pin on top</value><comment>Mini player pin (tooltip + "…" menu item): keeps it visible through Show desktop / Minimize all and over games</comment></data>
   <data name="MiniPlayer.Unpin" xml:space="preserve"><value>Unpin</value><comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment></data>
+  <data name="MiniPlayer.HideLyrics" xml:space="preserve"><value>Hide Lyrics</value><comment>Mini player "…" menu item while lyrics are open</comment></data>
   <data name="MiniPlayer.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.PreviousTip" xml:space="preserve"><value>Previous</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.ForwardTip" xml:space="preserve"><value>Forward</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
@@ -2181,6 +2195,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendTo.IncludeLyricsHint" xml:space="preserve"><value>Copies each song's .lrc alongside it when there is one.</value><comment>Toggle help</comment></data>
   <data name="SendTo.LyricsIncluded" xml:space="preserve"><value>Lyrics file included</value><comment>Row tooltip</comment></data>
   <data name="SendTo.Copy" xml:space="preserve"><value>Copy</value><comment>Primary button</comment></data>
+  <data name="SendTo.Move" xml:space="preserve"><value>Move</value><comment>Primary button when "Move instead of copy" is on (GitHub #121)</comment></data>
   <data name="SendTo.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
   <data name="SendToFolder.TitleOne" xml:space="preserve"><value>Send 1 song</value><comment>Title in SendToFolderViewModel, one song</comment></data>
   <data name="SendToFolder.TitleMany" xml:space="preserve"><value>Send {0} songs</value><comment>Title in SendToFolderViewModel; {0} number of songs</comment></data>
@@ -2190,6 +2205,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendToFolder.Lyrics" xml:space="preserve"><value>Include lyrics</value><comment>Option in SendToFolderDialog.axaml</comment></data>
   <data name="SendToFolder.LyricsHint" xml:space="preserve"><value>Each song's lyrics files go with it.</value><comment>Line under the Include lyrics option</comment></data>
   <data name="SendToFolder.PickFolder" xml:space="preserve"><value>Pick a folder to copy to.</value><comment>Footer before a destination is set</comment></data>
+  <data name="SendToFolder.PickFolderMove" xml:space="preserve"><value>Pick a folder to move to.</value><comment>Footer before a destination is set, while Move instead of copy is on</comment></data>
+  <data name="SendToFolder.SubtitleMove" xml:space="preserve"><value>Move to another folder; the library follows.</value><comment>Header line under the title in SendToFolderDialog.axaml while Move instead of copy is on</comment></data>
   <data name="SendToFolder.FolderMissing" xml:space="preserve"><value>That folder doesn't exist.</value><comment>Error under the destination field</comment></data>
   <data name="SendToFolder.NeedFullPath" xml:space="preserve"><value>Type the folder's full path, or use Browse.</value><comment>Error under the destination field for a relative path</comment></data>
   <data name="SendToFolder.SummaryCopy" xml:space="preserve"><value>{0} to copy</value><comment>Plan summary part; {0} number of songs</comment></data>
@@ -2214,6 +2231,15 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendToFolder.StateCopied" xml:space="preserve"><value>Copied</value><comment>Row chip: copied</comment></data>
   <data name="SendToFolder.StateFailed" xml:space="preserve"><value>Failed</value><comment>Row chip: could not be copied (tooltip has the error)</comment></data>
   <data name="SendToFolder.StateStopped" xml:space="preserve"><value>Stopped</value><comment>Row chip: the copy was stopped on this song</comment></data>
+  <data name="SendToFolder.Move" xml:space="preserve"><value>Move instead of copy</value><comment>Option in SendToFolderDialog.axaml (GitHub #121); off = copy</comment></data>
+  <data name="SendToFolder.MoveHint" xml:space="preserve"><value>The library follows them, plays and playlists too.</value><comment>Line under the Move option</comment></data>
+  <data name="SendToFolder.SummaryMove" xml:space="preserve"><value>{0} to move</value><comment>Plan summary part in a move; {0} number of songs</comment></data>
+  <data name="SendToFolder.ProgressMove" xml:space="preserve"><value>Moved {0} of {1}</value><comment>Footer during a move</comment></data>
+  <data name="SendToFolder.DoneMove" xml:space="preserve"><value>Done · {0} moved</value><comment>Footer after a move; {0} number of songs</comment></data>
+  <data name="SendToFolder.StoppedMove" xml:space="preserve"><value>Stopped · {0} moved</value><comment>Footer after Stop in a move; {0} number of songs</comment></data>
+  <data name="SendToFolder.StateMove" xml:space="preserve"><value>Move</value><comment>Row chip: will be moved</comment></data>
+  <data name="SendToFolder.StateMoving" xml:space="preserve"><value>Moving</value><comment>Row chip: being moved</comment></data>
+  <data name="SendToFolder.StateMoved" xml:space="preserve"><value>Moved</value><comment>Row chip: moved</comment></data>
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
@@ -2390,6 +2416,12 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review "…" menu item</comment></data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let Lullaby write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review "…" menu item</comment></data>
+  <data name="LyricsStudio.ClearLyrics" xml:space="preserve"><value>Clear lyrics</value><comment>Review "…" menu item: drop the lyrics on screen and paste your own</comment></data>
+  <data name="LyricsStudio.ClearLyricsTip" xml:space="preserve"><value>Wrong lyrics? Clear them and paste or type the right ones; Lullaby then times yours. Nothing changes on disk until you save.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ClearLyricsConfirm" xml:space="preserve"><value>Clear the lyrics shown for “{0}”?
+
+The lines and their timings are dropped and an empty lyrics box opens for your own lyrics. Nothing changes on disk until you press Save lyrics.</value><comment>Confirm before Clear lyrics ({0} = song title)</comment></data>
+  <data name="LyricsStudio.ClearedStatus" xml:space="preserve"><value>Cleared · paste your lyrics, then Align</value><comment>Song status after Clear lyrics</comment></data>
   <data name="LyricsStudio.MoreTip" xml:space="preserve"><value>More</value><comment>Tooltip on the review's "…" button (Skip, Transcribe instead)</comment></data>
   <data name="LyricsStudio.Format" xml:space="preserve"><value>Format</value><comment>Toolbar label before the ELRC / LRC chips</comment></data>
   <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: language, run options</comment></data>

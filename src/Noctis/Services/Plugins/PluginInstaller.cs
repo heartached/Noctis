@@ -165,6 +165,31 @@ public static class PluginInstaller
         return !Directory.Exists(path);
     }
 
+    /// <summary>Moves a folder, retrying briefly like <see cref="TryDeleteDirectory"/>: a file just
+    /// extracted (or a just-removed old version) can still be held for a moment by another process
+    /// (antivirus, indexer). Without a retry, installs and updates failed now and then with
+    /// "Could not move the plugin into place" (seen 10-10 in PluginInstallTests / ContentPackTests).</summary>
+    internal static bool TryMoveDirectory(string source, string target, out string error)
+    {
+        error = string.Empty;
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                Directory.Move(source, target);
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                error = ex.Message;
+                if (attempt == 4) break;
+                Thread.Sleep(100 * (attempt + 1));
+            }
+        }
+        DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"move {source} -> {target}: {error}");
+        return false;
+    }
+
     private static string Normalize(string name) => name.Replace('\\', '/');
 
     private static bool IsFileUnder(ZipArchiveEntry e, string prefix)

@@ -139,7 +139,7 @@
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" />
-                    <TextBlock Text="{loc:T SendToFolder.Subtitle}"
+                    <TextBlock Text="{Binding SubtitleText}"
                                FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
@@ -201,13 +201,25 @@
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.6" />
 
-                    <StackPanel Spacing="2">
-                        <CheckBox x:Name="LyricsCheck" Classes="metadata-pill-checkbox"
-                                  IsChecked="{Binding IncludeLyrics}">
-                            <TextBlock Classes="stf-option" Text="{loc:T SendToFolder.Lyrics}" />
-                        </CheckBox>
-                        <TextBlock Classes="stf-hint" Margin="38,0,0,0" Text="{loc:T SendToFolder.LyricsHint}" />
-                    </StackPanel>
+                    <!-- Lyrics | Move side by side: the card stays as short as before.
+                         GitHub #121: Move instead of copy; the library follows the songs. -->
+                    <Grid ColumnDefinitions="*,16,*">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <CheckBox x:Name="LyricsCheck" Classes="metadata-pill-checkbox"
+                                      IsChecked="{Binding IncludeLyrics}"
+                                      IsEnabled="{Binding CanChooseLyrics}">
+                                <TextBlock Classes="stf-option" Text="{loc:T SendToFolder.Lyrics}" />
+                            </CheckBox>
+                            <TextBlock Classes="stf-hint" Margin="38,0,0,0" Text="{loc:T SendToFolder.LyricsHint}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="2">
+                            <CheckBox x:Name="MoveCheck" Classes="metadata-pill-checkbox"
+                                      IsChecked="{Binding MoveFiles}">
+                                <TextBlock Classes="stf-option" Text="{loc:T SendToFolder.Move}" />
+                            </CheckBox>
+                            <TextBlock Classes="stf-hint" Margin="38,0,0,0" Text="{loc:T SendToFolder.MoveHint}" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
         </StackPanel>
@@ -306,7 +318,7 @@
                         Margin="0,0,10,0" />
                 <Button x:Name="CopyButton" Grid.Column="3"
                         Classes="pill-primary"
-                        Content="{loc:T SendTo.Copy}"
+                        Content="{Binding StartLabel}"
                         Command="{Binding StartCommand}"
                         MinWidth="108" />
             </Grid>

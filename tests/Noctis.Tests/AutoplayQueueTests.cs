@@ -85,7 +85,8 @@ public class AutoplayQueueTests
         Assert.Equal(PlaybackState.Stopped, vm.State);
         Assert.Null(vm.CurrentTrack);
         Assert.Empty(vm.UpNext);
-        Assert.Empty(vm.History);
+        // GitHub #124: the played song stays so Previous can go back to it.
+        Assert.Equal(new[] { seed }, vm.History);
     }
 
     [AvaloniaFact]

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -29,6 +30,35 @@ public partial class SendToFolderViewModel : ViewModelBase
     [ObservableProperty] private string _destination = string.Empty;
     [ObservableProperty] private bool _organizeIntoFolders;
     [ObservableProperty] private bool _includeLyrics = true;
+
+    /// <summary>GitHub #121 (2026-10-10): move instead of copy (off by default). The library
+    /// follows each moved song; its lyrics files always go with it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartLabel), nameof(CanChooseLyrics), nameof(SubtitleText))]
+    private bool _moveFiles;
+
+    /// <summary>The primary button: Copy, or Move.</summary>
+    public string StartLabel => MoveFiles ? L("SendTo.Move") : L("SendTo.Copy");
+
+    /// <summary>Header line: says move while Move is on (live check 10-10: it kept "Copy to…").</summary>
+    public string SubtitleText => MoveFiles ? L("SendToFolder.SubtitleMove") : L("SendToFolder.Subtitle");
+
+    private string PickFolderText => L(MoveFiles ? "SendToFolder.PickFolderMove" : "SendToFolder.PickFolder");
+
+    /// <summary>Lyrics are a choice for a copy; a move always takes them along.</summary>
+    public bool CanChooseLyrics => !MoveFiles;
+
+    // The mode the current plan was built for (a move plan never skips on a size match).
+    private bool _planMove;
+
+    /// <summary>Points the live playlists and the play log at moved songs' new ids (tests swap it).</summary>
+    internal Func<IReadOnlyDictionary<Guid, Guid>, Task> ApplyTrackIdRemap { get; set; } = static remap =>
+    {
+        if (remap.Count == 0) return Task.CompletedTask;
+        App.Services?.GetService<IPlayHistoryService>()?.RemapTrackIds(remap);
+        return App.Services?.GetService<MainWindowViewModel>()?.Sidebar.ApplyTrackIdRemapAsync(remap)
+               ?? Task.CompletedTask;
+    };
 
     /// <summary>The user's Organize Files pattern (the example's tooltip).</summary>
     public string OrganizePatternText => _organizePattern;
@@ -126,6 +156,12 @@ public partial class SendToFolderViewModel : ViewModelBase
         RebuildPlan(0);
     }
     partial void OnIncludeLyricsChanged(bool value) => RebuildPlan(0);
+    partial void OnMoveFilesChanged(bool value)
+    {
+        // Left behind, a moved song's lyrics would detach from it (paired by basename).
+        if (value && !IncludeLyrics) IncludeLyrics = true;
+        RebuildPlan(0);
+    }
     partial void OnHasPlanChanged(bool value) => NotifyStartState();
     partial void OnIsCopyingChanged(bool value) => NotifyStartState();
     partial void OnIsDoneChanged(bool value) => NotifyStartState();
@@ -181,6 +217,7 @@ public partial class SendToFolderViewModel : ViewModelBase
     {
         IReadOnlyList<SendToFolderItem>? plan = null;
         var root = string.Empty;
+        var move = false;
         string? error = null;
         try
         {
@@ -189,6 +226,7 @@ public partial class SendToFolderViewModel : ViewModelBase
             root = Destination?.Trim() ?? string.Empty;
             var pattern = OrganizeIntoFolders ? _organizePattern : null;
             var includeLyrics = IncludeLyrics;
+            move = MoveFiles;
             if (root.Length == 0) { }
             // "Music" or "." resolved against the app's working directory: the songs went
             // into the program folder instead of anywhere the user picked.
@@ -196,7 +234,10 @@ public partial class SendToFolderViewModel : ViewModelBase
             else
             {
                 plan = await Task.Run(
-                    () => Directory.Exists(root) ? _service.Plan(_tracks, root, pattern, includeLyrics) : null, token);
+                    () => Directory.Exists(root)
+                        ? move ? _service.Plan(_tracks, root, pattern, includeLyrics, move: true)
+                               : _service.Plan(_tracks, root, pattern, includeLyrics)
+                        : null, token);
                 if (plan is null) error = L("SendToFolder.FolderMissing");
             }
             if (token.IsCancellationRequested || IsCopying) return;
@@ -225,20 +266,21 @@ public partial class SendToFolderViewModel : ViewModelBase
             _plan = Array.Empty<SendToFolderItem>();
             _planRoot = string.Empty;
             HasPlan = false;
-            PlanSummary = root.Length == 0 ? L("SendToFolder.PickFolder") : string.Empty;
+            PlanSummary = root.Length == 0 ? PickFolderText : string.Empty;
             if (!keepRunState) StatusMessage = PlanSummary;
             return;
         }
         _plan = plan;
+        _planMove = move;
         _planRoot = Path.GetFullPath(root);
         foreach (var item in _plan)
-            Rows.Add(new PlanRow(item, _planRoot));
+            Rows.Add(new PlanRow(item, _planRoot, move));
         var copy = _plan.Count(p => p.Action != SendToFolderAction.SkipIdentical);
         var skip = _plan.Count - copy;
         var lyricsOnly = _plan.Count(p => p.Action == SendToFolderAction.SkipIdentical && p.Sidecars.Count > 0);
         var lyrics = _plan.Sum(p => p.Sidecars.Count);
         var parts = new List<string>();
-        if (copy > 0) parts.Add(L("SendToFolder.SummaryCopy", copy));
+        if (copy > 0) parts.Add(L(move ? "SendToFolder.SummaryMove" : "SendToFolder.SummaryCopy", copy));
         if (skip > 0) parts.Add(L("SendToFolder.SummaryThere", skip));
         if (lyrics > 0) parts.Add(L("SendToFolder.SummaryLyrics", lyrics));
         PlanSummary = copy == 0 && lyricsOnly == 0 ? L("SendToFolder.AllThere") : string.Join(" · ", parts);
@@ -265,8 +307,10 @@ public partial class SendToFolderViewModel : ViewModelBase
         _landedTargets.Clear();
         foreach (var row in Rows) row.Reset();
         var plan = _plan;
+        var move = _planMove;
+        var progressKey = move ? "SendToFolder.ProgressMove" : "SendToFolder.Progress";
         var total = plan.Count;
-        StatusMessage = L("SendToFolder.Progress", 0, total);
+        StatusMessage = L(progressKey, 0, total);
         var cts = _cts = new CancellationTokenSource();
         var stopped = false;
 
@@ -277,7 +321,7 @@ public partial class SendToFolderViewModel : ViewModelBase
         {
             if (!IsCopying) return;
             Progress = p.Total == 0 ? 1 : p.Done / (double)p.Total;
-            StatusMessage = L("SendToFolder.Progress", p.Done, p.Total);
+            StatusMessage = L(progressKey, p.Done, p.Total);
             if (p.Index >= 0 && p.Index < Rows.Count) Rows[p.Index].Apply(p.Outcome, p.Error);
             if ((p.Outcome is SendToFolderOutcome.Copied or SendToFolderOutcome.Skipped) && p.Index >= 0 && p.Index < plan.Count)
                 _landedTargets.Add(plan[p.Index].TargetPath);
@@ -285,12 +329,20 @@ public partial class SendToFolderViewModel : ViewModelBase
 
         try
         {
-            var result = await _service.CopyAsync(plan, progress, cts.Token);
+            var result = move
+                ? await _service.MoveAsync(plan, progress, cts.Token)
+                : await _service.CopyAsync(plan, progress, cts.Token);
             progress.Drain();
+            // Moved songs have new ids: playlists and the play log follow them (Organize Files' step).
+            if (move && result.TrackIdRemap.Count > 0)
+            {
+                try { await ApplyTrackIdRemap(result.TrackIdRemap); }
+                catch (Exception ex) { DebugLog.Write("SendToFolder", $"Remap after move failed: {ex.Message}"); }
+            }
             foreach (var row in Rows) row.FinishUnfinished(result.Cancelled);
             foreach (var error in result.Errors) Errors.Add(error);
             HasErrors = Errors.Count > 0;
-            StatusMessage = BuildStatus(result);
+            StatusMessage = BuildStatus(result, move);
             IsDone = !result.Cancelled;
             stopped = result.Cancelled;
         }
@@ -319,9 +371,11 @@ public partial class SendToFolderViewModel : ViewModelBase
         if (stopped && !_closing) RebuildPlan(0, keepRunState: true);
     }
 
-    private static string BuildStatus(SendToFolderResult r)
+    private static string BuildStatus(SendToFolderResult r, bool move)
     {
-        var status = r.Cancelled ? L("SendToFolder.Stopped", r.Copied) : L("SendToFolder.Done", r.Copied);
+        var status = move
+            ? r.Cancelled ? L("SendToFolder.StoppedMove", r.Copied) : L("SendToFolder.DoneMove", r.Copied)
+            : r.Cancelled ? L("SendToFolder.Stopped", r.Copied) : L("SendToFolder.Done", r.Copied);
         if (r.Skipped > 0) status += " · " + L("SendToFolder.SummaryThere", r.Skipped);
         if (r.Failed > 0) status += " · " + L("SendToFolder.DoneFailed", r.Failed);
         return status;
@@ -366,9 +420,12 @@ public partial class SendToFolderViewModel : ViewModelBase
     public sealed partial class PlanRow : ObservableObject
     {
         private readonly string _pendingText;
+        // A move's chips read Move / Moving / Moved (GitHub #121).
+        private readonly bool _move;
 
-        public PlanRow(SendToFolderItem item, string root)
+        public PlanRow(SendToFolderItem item, string root, bool move = false)
         {
+            _move = move;
             Title = string.IsNullOrWhiteSpace(item.Track.Title) ? Path.GetFileNameWithoutExtension(item.SourcePath) : item.Track.Title;
             Subtitle = item.Track.ArtistDisplay;
             var rel = Path.GetRelativePath(root, item.TargetPath);
@@ -380,7 +437,7 @@ public partial class SendToFolderViewModel : ViewModelBase
                 SendToFolderAction.SkipIdentical when HasLyrics => L("SendToFolder.StateAddLyrics"),
                 SendToFolderAction.SkipIdentical => L("SendToFolder.StateThere"),
                 SendToFolderAction.Renamed => L("SendToFolder.StateRenamed"),
-                _ => L("SendToFolder.StateCopy"),
+                _ => L(move ? "SendToFolder.StateMove" : "SendToFolder.StateCopy"),
             };
             Detail = item.Action == SendToFolderAction.Renamed ? L("SendToFolder.RenamedTip") : item.TargetPath;
             ChipText = _pendingText;
@@ -418,11 +475,11 @@ public partial class SendToFolderViewModel : ViewModelBase
             {
                 case SendToFolderOutcome.Working:
                     State = RowState.Working;
-                    ChipText = L("SendToFolder.StateCopying");
+                    ChipText = L(_move ? "SendToFolder.StateMoving" : "SendToFolder.StateCopying");
                     break;
                 case SendToFolderOutcome.Copied:
                     State = RowState.Copied;
-                    ChipText = L("SendToFolder.StateCopied");
+                    ChipText = L(_move ? "SendToFolder.StateMoved" : "SendToFolder.StateCopied");
                     break;
                 case SendToFolderOutcome.Skipped:
                     State = RowState.Skipped;

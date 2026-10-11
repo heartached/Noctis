@@ -114,4 +114,41 @@ public class ThemeRegistrationTests
             app.Resources.Remove("IslandBackgroundColor");
         }
     }
+
+    /// <summary>
+    /// The pill's outline ring and Track Box fill were white literals, so a light derived
+    /// theme's light pill lost both (Discord, Mistery 2026-10-10). They now resolve from
+    /// IslandOutlineBrush / IslandTrackBoxColor, keeping the user's Track Box Opacity.
+    /// </summary>
+    [AvaloniaFact]
+    public void IslandOutlineAndTrackBox_FollowThemeResources()
+    {
+        var app = Application.Current!;
+        app.Resources["IslandOutlineBrush"] = new SolidColorBrush(Color.Parse("#40000000"));
+        app.Resources["IslandTrackBoxColor"] = Color.Parse("#000000");
+        var player = new Noctis.ViewModels.PlayerViewModel(
+            new FakeAudioPlayer(), new FakeLibraryService(),
+            new TestPersistenceService(), new FakeAnimatedCoverService());
+        var bar = new Noctis.Views.PlaybackBarView { DataContext = player };
+        var win = new Window { Width = 900, Height = 200, Content = bar };
+        try
+        {
+            win.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var island = Assert.IsType<Border>(bar.FindControl<Border>("IslandBorder"));
+            Assert.Equal(Color.Parse("#40000000"), Assert.IsAssignableFrom<ISolidColorBrush>(island.BorderBrush).Color);
+
+            var box = Assert.IsType<Border>(bar.FindControl<Border>("TrackInfoBox"));
+            var fill = Assert.IsType<SolidColorBrush>(box.Background);
+            Assert.Equal(Color.Parse("#000000"), fill.Color);
+            Assert.Equal(player.IslandTrackBoxOpacity, fill.Opacity, 3);
+        }
+        finally
+        {
+            win.Close();
+            app.Resources.Remove("IslandOutlineBrush");
+            app.Resources.Remove("IslandTrackBoxColor");
+        }
+    }
 }

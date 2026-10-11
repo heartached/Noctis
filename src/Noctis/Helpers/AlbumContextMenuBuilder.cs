@@ -26,12 +26,16 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
+    /// <summary>Snooze every track of the album for a month (optional; hidden unless Bind gets a command).</summary>
+    public MenuItem SnoozeForMonth { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
     public MenuItem EditDescription { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem SearchLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
+    /// <summary>GitHub #121: the album's songs → Send to Folder (copy or move). Bound by <see cref="BindSendToFolder"/>.</summary>
+    public MenuItem SendToFolder { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
 
     public ContextMenu Menu { get; private set; } = null!;
@@ -101,6 +105,9 @@ public sealed class AlbumContextMenuBuilder
         };
         items.Add(Unfavorite);
 
+        SnoozeForMonth = MenuV2.Row(resourceHost, Loc.T("Menu.Snooze"), "MenuLineSnooze", visible: false);
+        items.Add(SnoozeForMonth);
+
         Metadata = new MenuItem { Header = "Metadata" };
         Metadata.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
@@ -138,6 +145,10 @@ public sealed class AlbumContextMenuBuilder
         ShowFolder = new MenuItem { Header = "Show Folder" };
         ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
+
+        SendToFolder = new MenuItem { Header = Loc.T("SendTo.Title"), IsVisible = false };
+        SendToFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
+        items.Add(SendToFolder);
 
         items.Add(new Separator());
 
@@ -182,6 +193,9 @@ public sealed class AlbumContextMenuBuilder
         Unfavorite = MenuV2.Row(host, Loc.T("LibraryAlbums.RemoveFromFavorites"), "MenuLineHeart");
         MenuV2.IconPath(Unfavorite.Icon)?.Classes.Add("mv2-fav");
         items.Add(Unfavorite);
+        // Same row and icon as the track menu's Snooze (TrackContextMenuBuilder.BuildV2).
+        SnoozeForMonth = MenuV2.Row(host, Loc.T("Menu.Snooze"), "MenuLineSnooze", visible: false);
+        items.Add(SnoozeForMonth);
 
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
@@ -202,6 +216,9 @@ public sealed class AlbumContextMenuBuilder
         items.Add(ShowFolder);
         Tools = MenuV2.Row(host, Loc.T("Favorites.Tools"), "MenuLineTools");
         Tools.Classes.Add(MenuV2.AutoHideClass);
+        // GitHub #121: in Tools ▸ like the song menu's Send to Folder.
+        SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
+        Tools.Items.Add(SendToFolder);
         Convert = MenuV2.Row(host, Loc.T("LibraryAlbums.ConvertAlbum"), "MenuLineConvert", visible: false);
         Tools.Items.Add(Convert);
         ScanReplayGain = MenuV2.Row(host, Loc.T("LibraryAlbums.ScanReplayGain"), "MenuLineReplayGain", visible: false);
@@ -238,7 +255,8 @@ public sealed class AlbumContextMenuBuilder
         ICommand? editDescriptionCommand = null,
         ICommand? convertCommand = null,
         ICommand? scanReplayGainCommand = null,
-        ICommand? searchLyricsCommand = null)
+        ICommand? searchLyricsCommand = null,
+        ICommand? snoozeCommand = null)
     {
         Menu.DataContext = album;
 
@@ -278,6 +296,7 @@ public sealed class AlbumContextMenuBuilder
         BindOptional(Convert, convertCommand, album);
         BindOptional(ScanReplayGain, scanReplayGainCommand, album);
         BindOptional(SearchLyrics, searchLyricsCommand, album);
+        BindOptional(SnoozeForMonth, snoozeCommand, album);
 
         ShowFolder.Command = showInExplorerCommand;
         ShowFolder.CommandParameter = album;
@@ -293,6 +312,16 @@ public sealed class AlbumContextMenuBuilder
             MenuV2.Sync(QuickAddToQueue, AddToQueue);
             MenuV2.RefreshLayout(Menu.Items);
         }
+    }
+
+    /// <summary>
+    /// GitHub #121 (2026-10-10): Send to Folder for the album (hidden when null). Separate from
+    /// <see cref="Bind"/> so views opt in one line each; call it after Bind.
+    /// </summary>
+    public void BindSendToFolder(Album album, ICommand? sendToFolderCommand)
+    {
+        BindOptional(SendToFolder, sendToFolderCommand, album);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 
     private static void BindOptional(MenuItem item, ICommand? command, Album album)

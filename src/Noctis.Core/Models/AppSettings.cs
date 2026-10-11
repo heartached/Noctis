@@ -225,6 +225,10 @@ public class AppSettings
     /// user didn't queue is opt-in.</summary>
     public bool AutoplayEnabled { get; set; }
 
+    /// <summary>Keep played songs in the queue (GitHub #124): the queue lists what played above
+    /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
+    public bool KeepPlayedInQueue { get; set; }
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 
@@ -424,7 +428,8 @@ public class AppSettings
     /// newest first instead of chronologically.</summary>
     public bool AlbumSortNewestFirst { get; set; }
 
-    /// <summary>Albums grid release Type filter: "album", "single", "ep", "other", or ""
+    /// <summary>Albums grid release Type filter: "album", "single", "ep", "live",
+    /// "compilation" (GitHub #122), "other", or ""
     /// for All. Unknown values load as All.</summary>
     public string AlbumReleaseTypeFilter { get; set; } = "";
 

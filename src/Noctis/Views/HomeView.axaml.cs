@@ -125,14 +125,14 @@ public partial class HomeView : UserControl
         vm.PlayChartRowCommand.Execute(item);
     }
 
-    // Most Played / Last Played show artist pictures in View Artist ▸ (owner 10-09); the
-    // rails below keep plain names for now.
+    // View Artist ▸ shows each artist's picture in every Home menu (owner 10-09 charts,
+    // 10-10 everywhere).
     private void OnChartRowContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (IsLastPlayedRow(sender as Control))
-            OpenTrackMenu(sender, e, static vm => vm.PlayLastPlayedCommand, static vm => vm.ShuffleLastPlayedCommand, artistPhotos: true);
+            OpenTrackMenu(sender, e, static vm => vm.PlayLastPlayedCommand, static vm => vm.ShuffleLastPlayedCommand);
         else
-            OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand, artistPhotos: true);
+            OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand);
     }
 
 
@@ -146,16 +146,14 @@ public partial class HomeView : UserControl
         => OpenTrackMenu(sender, e, static vm => vm.PlayRediscoveredCommand, static vm => vm.ShuffleRediscoveredCommand);
 
     private void OpenTrackMenu(object? sender, ContextRequestedEventArgs e,
-        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand,
-        bool artistPhotos = false)
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
     {
-        if (OpenTrackMenu(sender as Control, playCommand, shuffleCommand, artistPhotos))
+        if (OpenTrackMenu(sender as Control, playCommand, shuffleCommand))
             e.Handled = true;
     }
 
     private bool OpenTrackMenu(Control? owner,
-        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand,
-        bool artistPhotos)
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
     {
         if (owner == null) return false;
         // Top-song rows wrap their Track in a TopSongRow for rank/bar display.
@@ -194,7 +192,7 @@ public partial class HomeView : UserControl
             snoozeCommand: vm.SnoozeForMonthCommand,
             viewAlbumCommand: vm.ViewAlbumFromTrackCommand,
             viewArtistCommand: vm.ViewArtistCommand,
-            artistPhotoSource: artistPhotos ? vm.CachedArtistPhoto : null);
+            artistPhotoSource: vm.CachedArtistPhoto);
 
         OpenMenu(_trackMenuBuilder.Menu, owner);
         return true;
@@ -236,7 +234,9 @@ public partial class HomeView : UserControl
             removeCommand: vm.RemoveFromLibraryCommand,
             convertCommand: vm.ConvertAlbumCommand,
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+            searchLyricsCommand: vm.SearchLyricsAlbumCommand,
+            snoozeCommand: vm.SnoozeAlbumForMonthCommand);
+        _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, owner);
         return true;

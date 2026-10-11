@@ -313,6 +313,17 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     [RelayCommand]
     private void PlayNextTrack(Track track) => _player.AddNext(track);
 
+    /// <summary>The album, or the Ctrl-selection its tile is in (owner 10-10, albums and songs
+    /// alike), in one snooze write.</summary>
+    [RelayCommand]
+    private Task SnoozeAlbumForMonth(Album album)
+    {
+        var clicked = CtrlSelectedItems.FirstOrDefault(i => i.IsAlbum && ReferenceEquals(i.Album, album));
+        var tracks = clicked != null ? ExpandToTracks(SelectionOr(clicked)) : album?.Tracks?.ToList() ?? new();
+        CtrlSelectedItems.Clear();
+        return _player.SnoozeTracksForMonthAsync(tracks);
+    }
+
     [RelayCommand]
     private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
 

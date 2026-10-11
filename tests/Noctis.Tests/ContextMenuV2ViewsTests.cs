@@ -425,7 +425,7 @@ public class ContextMenuV2ViewsTests
     }
 
     private static Button OptionsPill(Control view)
-        => view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout { Items.Count: 7 });
+        => view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout { Items.Count: 8 });
 
     private static Button SortPill(Control view)
         => view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout { Items.Count: 11 });
@@ -442,7 +442,8 @@ public class ContextMenuV2ViewsTests
         Pump();
         Assert.True(menu.IsOpen);
         var reachable = Reachable(menu.Items);
-        foreach (var command in new ICommand[] { vm.PlayNextAllCommand, vm.AddAllToQueueCommand, vm.AddSongsCommand, vm.EditPlaylistCommand, vm.DeletePlaylistCommand })
+        // GitHub #121: Send to Folder for the whole playlist (its command was never bound before).
+        foreach (var command in new ICommand[] { vm.PlayNextAllCommand, vm.AddAllToQueueCommand, vm.AddSongsCommand, vm.EditPlaylistCommand, vm.SendPlaylistToFolderCommand, vm.DeletePlaylistCommand })
             Assert.Contains(command, reachable);
         var last = menu.Items.OfType<MenuItem>().Last(i => i.IsVisible);
         Assert.Same(vm.DeletePlaylistCommand, last.Command);
@@ -642,8 +643,8 @@ public class ContextMenuV2ViewsTests
             Assert.Contains(MenuV2.MenuClass, menu.Classes);
 
             string?[] Visible() => menu.Items.OfType<MenuItem>().Where(i => i.IsVisible).Select(i => i.Header as string).ToArray();
-            // Not a favourite, no picture: Set as Favorite, Choose, Find; no Remove Picture.
-            Assert.Equal(new[] { Loc.T("LibraryArtists.SetAsFavorite"), Loc.T("LibraryArtists.ChooseFromFile"), Loc.T("LibraryArtists.FindPictureOnline") }, Visible());
+            // Not a favourite, no picture: Set as Favorite, Snooze, Choose, Find, Send to Folder (GitHub #121); no Remove Picture.
+            Assert.Equal(new[] { Loc.T("LibraryArtists.SetAsFavorite"), Loc.T("Menu.Snooze"), Loc.T("LibraryArtists.ChooseFromFile"), Loc.T("LibraryArtists.FindPictureOnline"), Loc.T("SendTo.Title") }, Visible());
             Assert.All(menu.Items.OfType<MenuItem>().Where(i => i.IsVisible), i =>
             {
                 Assert.NotNull(i.Command);
@@ -658,8 +659,8 @@ public class ContextMenuV2ViewsTests
             RightClick(drake);
             Assert.Same(menu, drake.ContextMenu);
             Assert.Null(plain.ContextMenu);
-            Assert.Equal(new[] { Loc.T("LibraryArtists.RemoveFromFavorites"), Loc.T("LibraryArtists.ChooseFromFile"),
-                Loc.T("LibraryArtists.FindPictureOnline"), Loc.T("LibraryArtists.RemovePicture") }, Visible());
+            Assert.Equal(new[] { Loc.T("LibraryArtists.RemoveFromFavorites"), Loc.T("Menu.Snooze"), Loc.T("LibraryArtists.ChooseFromFile"),
+                Loc.T("LibraryArtists.FindPictureOnline"), Loc.T("SendTo.Title"), Loc.T("LibraryArtists.RemovePicture") }, Visible());
             Assert.All(menu.Items.OfType<MenuItem>().Where(i => i.IsVisible), i => Assert.Same(artists[1], i.CommandParameter));
             Assert.Contains("mv2-fav", MenuV2.IconPath(menu.Items.OfType<MenuItem>().First(i => i.IsVisible).Icon)!.Classes);
             Assert.Contains("danger", LastVisible(menu).Classes);

@@ -19,6 +19,8 @@ public class AudioFileInfo
     public TimeSpan Duration { get; set; }
     public DateTime DateAdded { get; set; }
     public DateTime DateModified { get; set; }
+    /// <summary>The file's genres as <see cref="Track.Genre"/> holds them; null when not read.</summary>
+    public string? Genre { get; set; }
 
     public string FileSizeFormatted
     {
