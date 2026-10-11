@@ -1092,6 +1092,22 @@
     <value>عند انتهاء قائمة الانتظار، استمر في تشغيل أغاني مماثلة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>الاحتفاظ بالأغاني التي تم تشغيلها</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>اعرض الأغاني التي تم تشغيلها فوق «قيد التشغيل الآن» في قائمة الانتظار، وأبقِ آخر أغنية محمّلة عند انتهاء القائمة.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>تم تشغيلها</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>تم تشغيلها</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>محتوى صريح</value>
     <comment>Text in SettingsView.axaml</comment>

@@ -375,6 +375,20 @@
         <Style Selector="Border.mini-row:pointerover">
             <Setter Property="Background" Value="{DynamicResource MiniDrawerRowHover}"/>
         </Style>
+        <!-- Queue drawer, Keep Played Songs (GitHub #124): played rows sit back, the
+             hovered one comes forward so its play button reads as live. -->
+        <Style Selector="Border.mini-row.mini-played">
+            <Setter Property="Opacity" Value="0.55"/>
+        </Style>
+        <Style Selector="Border.mini-row.mini-played:pointerover">
+            <Setter Property="Opacity" Value="0.9"/>
+        </Style>
+        <Style Selector="Grid.mini-queue-header">
+            <Setter Property="Margin" Value="6,0,6,6"/>
+        </Style>
+        <Style Selector="Grid.mini-queue-header.up-next">
+            <Setter Property="Margin" Value="6,10,6,6"/>
+        </Style>
 
         <!-- Liquid circle: persistent translucent glass disc behind the glyph
              (Apple Music's star / "…" buttons) -->
@@ -2408,15 +2422,18 @@
 
                     <!-- Queue layer -->
                     <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsQueueDrawer}">
-                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,0,6,6">
+                        <!-- With played songs listed (GitHub #124) the list carries its own
+                             Played / Up Next headers (MiniQueueHeader rows), so this one steps aside. -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,0,6,6"
+                              IsVisible="{Binding !QueuePreviewHasPlayed}">
                             <TextBlock Grid.Column="0" Text="{loc:T MiniPlayer.UpNext}" FontSize="12" FontWeight="SemiBold"
                                        Foreground="{DynamicResource MiniDrawerTextHeader}"/>
                             <TextBlock Grid.Column="1" Text="{loc:T MiniPlayer.ShowingFirst100}" FontSize="10"
                                        Foreground="{DynamicResource MiniDrawerTextFaint}" VerticalAlignment="Center"
                                        IsVisible="{Binding QueuePreviewTruncated}"/>
                         </Grid>
-                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding QueuePreview}">
+                        <ScrollViewer Grid.Row="1" x:Name="QueueScroller" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="QueueList" ItemsSource="{Binding QueuePreview}">
                                 <!-- Virtualized. A plain StackPanel inflates one row per queued
                                      track the moment it is added: measured 1.6-2.5 ms per row,
                                      so 100 rows cost 157-245 ms of blocking UI-thread work.
@@ -2425,22 +2442,39 @@
                                      in the middle of most glide frames — the scroll lag. With a
                                      VirtualizingStackPanel only the ~4 rows in the 155px viewport
                                      are real (measured 13-24 ms for the whole fill), and the rest
-                                     realize a row at a time as they scroll in. -->
+                                     realize a row at a time as they scroll in.
+                                     Played songs (GitHub #124) ride in the SAME list as header +
+                                     song rows, picked by type below, so they virtualize too. -->
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <VirtualizingStackPanel/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="m:Track">
-                                        <Border Classes="mini-row">
+                                <ItemsControl.DataTemplates>
+                                    <DataTemplate x:DataType="vm:MiniQueueHeader">
+                                        <!-- Up Next sits under the played rows: the gap above sets the sections apart. -->
+                                        <Grid Classes="mini-queue-header" Classes.up-next="{Binding IsUpNext}" ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{loc:T MiniPlayer.Played}" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MiniDrawerTextHeader}"
+                                                       IsVisible="{Binding IsPlayed}"/>
+                                            <TextBlock Grid.Column="0" Text="{loc:T MiniPlayer.UpNext}" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource MiniDrawerTextHeader}"
+                                                       IsVisible="{Binding IsUpNext}"/>
+                                            <TextBlock Grid.Column="1" Text="{loc:T MiniPlayer.ShowingFirst100}" FontSize="10"
+                                                       Foreground="{DynamicResource MiniDrawerTextFaint}" VerticalAlignment="Center"
+                                                       IsVisible="{Binding ShowTruncated}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                    <DataTemplate x:DataType="vm:MiniQueueRow">
+                                        <!-- Played rows are dimmed (brighter on hover) — what already played, not what's next. -->
+                                        <Border Classes="mini-row" Classes.mini-played="{Binding IsPlayed}">
                                             <Grid ColumnDefinitions="Auto,*,Auto">
                                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8">
                                                     <Panel>
                                                         <Panel.Clip>
                                                             <RectangleGeometry Rect="0,0,36,36" RadiusX="8" RadiusY="8"/>
                                                         </Panel.Clip>
-                                                        <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                        <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
                                                                               DecodeWidth="128" Width="36" Height="36"
                                                                               Stretch="UniformToFill"/>
                                                     </Panel>
@@ -2452,14 +2486,14 @@
                                                          StackPanel measures at infinite width and a Grid parks the
                                                          badge at the far end of the column instead of against the
                                                          title. -->
-                                                    <controls:MarqueeTextBlock Text="{Binding TitleDisplay}"
+                                                    <controls:MarqueeTextBlock Text="{Binding Track.TitleDisplay}"
                                                                                FontSize="13" FontWeight="SemiBold"
                                                                                Foreground="{DynamicResource MiniDrawerText}"
                                                                                MaxDisplayWidth="{Binding #QueueInfoHost.Bounds.Width}"
                                                                                HorizontalAlignment="Left" IsMiniPlayer="True">
                                                         <controls:MarqueeTextBlock.InlineContent>
                                                             <Border Classes="mini-explicit"
-                                                                    IsVisible="{Binding IsExplicit, FallbackValue=False}"
+                                                                    IsVisible="{Binding Track.IsExplicit, FallbackValue=False}"
                                                                     ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                                                 <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                                            VerticalAlignment="Center" TextAlignment="Center"
@@ -2467,7 +2501,7 @@
                                                             </Border>
                                                         </controls:MarqueeTextBlock.InlineContent>
                                                     </controls:MarqueeTextBlock>
-                                                    <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
+                                                    <TextBlock Text="{Binding Track.ArtistDisplay}" FontSize="11"
                                                                Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
                                                 <!-- Same persistent disc + optical nudge as the search-result row. -->
@@ -2480,7 +2514,7 @@
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
+                                </ItemsControl.DataTemplates>
                             </ItemsControl>
                         </ScrollViewer>
                     </Grid>

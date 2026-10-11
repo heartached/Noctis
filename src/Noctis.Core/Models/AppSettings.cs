@@ -225,6 +225,10 @@ public class AppSettings
     /// user didn't queue is opt-in.</summary>
     public bool AutoplayEnabled { get; set; }
 
+    /// <summary>Keep played songs in the queue (GitHub #124): the queue lists what played above
+    /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
+    public bool KeepPlayedInQueue { get; set; }
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 

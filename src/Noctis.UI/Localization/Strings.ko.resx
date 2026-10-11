@@ -1092,6 +1092,22 @@
     <value>대기열이 끝나면 비슷한 곡을 계속 재생합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>재생한 곡 유지</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>대기열에서 재생한 곡을 '지금 재생 중' 위에 표시하고, 대기열이 끝나도 마지막 곡을 불러온 상태로 둡니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>재생한 곡</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>재생한 곡</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>노골적인 콘텐츠</value>
     <comment>Text in SettingsView.axaml</comment>

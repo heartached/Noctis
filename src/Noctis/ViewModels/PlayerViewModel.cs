@@ -276,6 +276,12 @@ public partial class PlayerViewModel : ViewModelBase
     /// primary artist). Driven by Settings; read at each queue exhaustion, so flipping
     /// it mid-session arms or disarms the next one. Off by default.</summary>
     [ObservableProperty] private bool _autoplayEnabled;
+    /// <summary>Keep played songs in the queue (Settings > Playback, GitHub #124): the Queue
+    /// panel and the mini player list what played above Now Playing, and the last song stays
+    /// loaded when the queue runs out, so Previous still has somewhere to go. Off by default.</summary>
+    [ObservableProperty] private bool _keepPlayedInQueue;
+
+    partial void OnKeepPlayedInQueueChanged(bool value) => OnPropertyChanged(nameof(ShowPlayedInQueue));
 
     // ── Signal path / quality badge (Roon-style) ──
     /// <summary>Overall chain quality: "Bit-perfect", "Hi-Res Lossless", "Lossless", "Enhanced", "Lossy".</summary>
@@ -502,6 +508,31 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Previously played tracks (most recent first).</summary>
     public BulkObservableCollection<Track> History { get; } = new();
 
+    /// <summary><see cref="History"/> oldest-first, the order the queue lists played songs in
+    /// above Now Playing (GitHub #124). Index i is History[Count - 1 - i].</summary>
+    public BulkObservableCollection<Track> PlayedTracks { get; } = new();
+
+    /// <summary>Whether the queue lists played songs: the setting is on and something played.</summary>
+    public bool ShowPlayedInQueue => KeepPlayedInQueue && History.Count > 0;
+
+    /// <summary>Plays the played song at <paramref name="playedIndex"/> in
+    /// <see cref="PlayedTracks"/> order, putting what played after it back in front of Up Next.</summary>
+    public void PlayPlayedAt(int playedIndex)
+    {
+        if (playedIndex < 0 || playedIndex >= History.Count) return;
+        PlayFromHistoryAt(History.Count - 1 - playedIndex);
+    }
+
+    private bool _deferPlayedSync;
+
+    private void SyncPlayedTracks()
+    {
+        if (_deferPlayedSync) return;
+        // At most 50 entries (TrimHistory): a full rebuild is cheaper than mirroring each edit.
+        PlayedTracks.ReplaceAll(History.Reverse().ToList());
+        OnPropertyChanged(nameof(ShowPlayedInQueue));
+    }
+
     /// <summary>Fires when a new track starts playing.</summary>
     public event EventHandler<Track>? TrackStarted;
 
@@ -609,6 +640,7 @@ public partial class PlayerViewModel : ViewModelBase
         // Subscribe to queue changes to update HasContent (skipped during batch updates)
         UpNext.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
         History.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
+        History.CollectionChanged += (_, _) => SyncPlayedTracks();
         // HasContent is raised after every queue/history change, batch ones included.
         PropertyChanged += (_, e) =>
         {
@@ -1636,6 +1668,22 @@ public partial class PlayerViewModel : ViewModelBase
         _parkedExplicit.Clear();
     }
 
+    /// <summary>The queue ran out with Keep played songs on: stop, keep the last song loaded
+    /// at its start and keep the queue's History and Repeat All cycle.</summary>
+    private void StopAtQueueEnd()
+    {
+        _hasPendingSeekTarget = false;
+        CancelAutoMixTransition("queue ended");
+        CancelNaturalEndFallback();
+        MarkQueueChanged();
+        _audioPlayer.Stop();
+        State = PlaybackState.Stopped;
+        Position = TimeSpan.Zero;
+        PositionFraction = 0;
+        PositionText = "0:00";
+        RemainingTimeText = FormatTime(Duration);
+    }
+
     /// <summary>Stops playback and clears all queue data.</summary>
     /// <param name="reason">Why the queue is being wiped; recorded in the log.</param>
     /// <param name="keepHistory">Keep the played songs (the queue ran out) so Previous can
@@ -1793,14 +1841,25 @@ public partial class PlayerViewModel : ViewModelBase
 
         if (CurrentTrack != null)
             UpNext.Insert(0, CurrentTrack);
-        // History[0] is the most recent, so it plays soonest after the target: insert in
-        // order at 0,1,2… → [h0, h1, …, current, rest].
+        // What played after the target replays in the order it played: History[0] is the
+        // most recent, so it goes back last, right before the current track. Each entry is
+        // inserted at the front → [h(index-1), …, h1, h0, current, rest], as that many
+        // Previous presses leave it. (Inserting h0 first at 0 put the newest song FIRST once
+        // two or more were skipped.)
         for (var i = 0; i < index; i++)
-            UpNext.Insert(i, History[i]);
+            UpNext.Insert(0, History[i]);
 
         var target = History[index];
-        for (var i = index; i >= 0; i--)
-            History.RemoveAt(i);
+        // One PlayedTracks rebuild for the whole jump, not one per removed entry (each
+        // rebuild re-creates the Queue panel's played rows).
+        _deferPlayedSync = true;
+        try
+        {
+            for (var i = index; i >= 0; i--)
+                History.RemoveAt(i);
+        }
+        finally { _deferPlayedSync = false; }
+        SyncPlayedTracks();
         _queueHistoryDepth = Math.Max(0, _queueHistoryDepth - (index + 1));
         PlayTrack(target);
     }
@@ -2910,7 +2969,18 @@ public partial class PlayerViewModel : ViewModelBase
             DebugLogger.Info(
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
-                $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
+                $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}, keepPlayed={KeepPlayedInQueue}");
+            if (KeepPlayedInQueue && CurrentTrack != null && History.Count > 0 &&
+                ReferenceEquals(History[0], CurrentTrack))
+            {
+                // Keep played songs (GitHub #124): the last song stays loaded, stopped at its
+                // start, so the bar stays up and its Previous / Play still work. It was pushed
+                // to History above; take it back off, it is the current track again.
+                History.RemoveAt(0);
+                if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+                StopAtQueueEnd();
+                return;
+            }
             // Keep what played (GitHub #124): Previous goes back to the last songs.
             StopAndClear("queueEnded", keepHistory: true);
         }

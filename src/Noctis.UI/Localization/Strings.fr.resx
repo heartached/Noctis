@@ -1092,6 +1092,22 @@
     <value>À la fin de la file d'attente, continuez à jouer des chansons similaires.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>Garder les titres écoutés</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>Affiche les titres écoutés au-dessus de « En cours de lecture » dans la file d'attente et garde le dernier titre chargé à la fin de la file.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>Écoutés</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>Écoutés</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>Contenu explicite</value>
     <comment>Text in SettingsView.axaml</comment>

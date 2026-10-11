@@ -1817,6 +1817,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// from the library. Off by default (new behavior-changing extras ship opt-in).</summary>
     [ObservableProperty] private bool _autoplayEnabled;
 
+    /// <summary>Keep played songs in the queue (GitHub #124). Off by default.</summary>
+    [ObservableProperty] private bool _keepPlayedInQueue;
+
     // ── Audio analysis (background BPM/key detection) ──
 
     [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
@@ -2665,6 +2668,7 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
+            KeepPlayedInQueue = _settings.KeepPlayedInQueue;
             AllowExplicitContent = _settings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
@@ -3119,6 +3123,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
+        _settings.KeepPlayedInQueue = KeepPlayedInQueue;
         _settings.AllowExplicitContent = AllowExplicitContent;
         SaveFeatureSettings();
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
@@ -3316,6 +3321,7 @@ public partial class SettingsViewModel : ViewModelBase
         ApplyAutoMixToPlayer();
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
+        _player.KeepPlayedInQueue = KeepPlayedInQueue;
         _player.AllowExplicitContent = AllowExplicitContent;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
@@ -4950,6 +4956,13 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetGapless(value);
         if (_player != null) _player.GaplessEnabled = value;
+        _ = SaveAsync();
+    }
+
+    partial void OnKeepPlayedInQueueChanged(bool value)
+    {
+        if (_player != null) _player.KeepPlayedInQueue = value;
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -6824,6 +6837,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Read from defaultSettings, not literals: these drifted from AppSettings the
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
+            KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
             AllowExplicitContent = defaultSettings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;

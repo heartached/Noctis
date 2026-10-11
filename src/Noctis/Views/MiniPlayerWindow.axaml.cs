@@ -1506,6 +1506,11 @@ public partial class MiniPlayerWindow : Window
                 if (Vm.IsSearchDrawer)
                     SearchBox.Focus();
             }, Avalonia.Threading.DispatcherPriority.Render);
+            // Keep Played Songs (GitHub #124): open on where playback is, not the top of up to
+            // 50 played songs. After the layout pass, so the rows the VM just filled exist.
+            if (Vm!.IsQueueDrawer && Vm.QueuePreviewHasPlayed)
+                Avalonia.Threading.Dispatcher.UIThread.Post(ScrollQueueToBoundary,
+                    Avalonia.Threading.DispatcherPriority.Loaded);
         }
         else
         {
@@ -1603,6 +1608,27 @@ public partial class MiniPlayerWindow : Window
     /// the live animation), the constant player-area height above the sheet, and the
     /// ceiling for the sheet height. Consumed by the Resized handler.</summary>
     private (int Generation, double FormHeight, double MaxDrawer)? _drawerAnim;
+
+    /// <summary>
+    /// Scrolls the Queue drawer so the last played row sits at the top of the list, with the
+    /// Up Next header and the next songs under it — the boundary stays in view as the sheet
+    /// grows (the offset holds while the viewport extends downward). The list is virtualized,
+    /// so the row is realized first (ScrollIntoView) and placed by its real position rather
+    /// than an estimate from the mixed header/song row heights.
+    /// </summary>
+    private void ScrollQueueToBoundary()
+    {
+        if (Vm is not { IsQueueDrawer: true } vm || vm.QueueBoundaryIndex < 0
+            || vm.QueueBoundaryIndex >= QueueList.ItemCount)
+            return;
+        var index = vm.QueueBoundaryIndex;
+        QueueList.ScrollIntoView(index);
+        QueueList.UpdateLayout();
+        if (QueueList.ContainerFromIndex(index) is not { } row
+            || row.TranslatePoint(default, QueueScroller) is not { } at)
+            return;
+        QueueScroller.Offset = new Vector(QueueScroller.Offset.X, Math.Max(0, QueueScroller.Offset.Y + at.Y));
+    }
 
     private void SetDrawerOffset(double y)
     {

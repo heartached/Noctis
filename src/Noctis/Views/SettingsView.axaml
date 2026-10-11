@@ -3411,6 +3411,19 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #124: list played songs in the queue and keep the last one loaded. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.KeepPlayedInQueue}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.KeepPlayedInQueueHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding KeepPlayedInQueue}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">

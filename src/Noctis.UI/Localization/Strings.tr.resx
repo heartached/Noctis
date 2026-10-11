@@ -304,6 +304,22 @@
   <data name="Settings.TracksFlowIntoEach" xml:space="preserve"><value>Parçalar duraksamadan birbirine akar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Otomatik oynat</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Kuyruk bitince benzer şarkıları çalmaya devam et.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>Çalınan Şarkıları Tut</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>Çalınan şarkıları kuyrukta Şimdi Çalıyor'un üstünde gösterir ve kuyruk bitince son şarkıyı yüklü tutar.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>Çalınanlar</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>Çalınanlar</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Müstehcen İçerik</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Kapalıyken, doğrudan çalmadığın sürece müstehcen şarkılar atlanır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Özel Mod</value><comment>Text in SettingsView.axaml</comment></data>

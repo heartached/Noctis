@@ -44,6 +44,29 @@ public class CoverFlowJumpTests
         Assert.Equal(new[] { b, c, d }, player.UpNext);
     }
 
+    /// <summary>Three back skips two played songs: they replay oldest first, as three
+    /// Previous presses leave them (the newest one came back first, out of order).</summary>
+    [Fact]
+    public void PlayFromHistoryAt_ThreeBack_RequeuesTheSkippedTracksOldestFirst()
+    {
+        var player = new PlayerViewModel(new FakeAudioPlayer(), new FakeLibraryService(),
+            new TestPersistenceService(), new FakeAnimatedCoverService());
+        var a = new Track { Title = "a", FilePath = "a.mp3" };
+        var b = new Track { Title = "b", FilePath = "b.mp3" };
+        var c = new Track { Title = "c", FilePath = "c.mp3" };
+        var d = new Track { Title = "d", FilePath = "d.mp3" };
+        player.ReplaceQueueAndPlay(new[] { a }, 0);
+        player.ReplaceQueueAndPlay(new[] { b }, 0);
+        player.ReplaceQueueAndPlay(new[] { c }, 0);
+        player.ReplaceQueueAndPlay(new[] { d }, 0);
+        Assert.Equal(new[] { c, b, a }, player.History);
+
+        player.PlayFromHistoryAt(2);
+
+        Assert.Same(a, player.CurrentTrack);
+        Assert.Equal(new[] { b, c, d }, player.UpNext);
+    }
+
     [Fact]
     public void PlayFromHistoryAt_OneBack_MatchesPrevious()
     {

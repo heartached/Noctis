@@ -1092,6 +1092,22 @@
     <value>當佇列結束時，保持播放類似的歌曲。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>保留已播放的歌曲</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>在佇列中將已播放的歌曲顯示在「播放中」上方，並在佇列結束時保留最後一首歌曲。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>已播放</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>已播放</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>兒童不宜內容</value>
     <comment>Text in SettingsView.axaml</comment>

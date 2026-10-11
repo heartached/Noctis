@@ -393,6 +393,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.TracksFlowIntoEach" xml:space="preserve"><value>Tracks flow into each other without a pause.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Autoplay</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Show played songs above Now Playing in the queue, and keep the last song loaded when the queue ends.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Queue.Played" xml:space="preserve"><value>Played</value><comment>Text in MainWindow.axaml</comment></data>
+  <data name="MiniPlayer.Played" xml:space="preserve"><value>Played</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Off skips explicit songs unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>

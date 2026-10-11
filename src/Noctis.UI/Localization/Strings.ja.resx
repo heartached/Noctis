@@ -1092,6 +1092,22 @@
     <value>キューが終了したら、同じような曲を再生し続けます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
+    <value>再生済みの曲を残す</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
+    <value>キューで再生済みの曲を「再生中」の上に表示し、キューが終了しても最後の曲を読み込んだままにします。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Queue.Played" xml:space="preserve">
+    <value>再生済み</value>
+    <comment>Text in MainWindow.axaml</comment>
+  </data>
+  <data name="MiniPlayer.Played" xml:space="preserve">
+    <value>再生済み</value>
+    <comment>Text in MiniPlayerWindow.axaml</comment>
+  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>エクスプリシットな内容</value>
     <comment>Text in SettingsView.axaml</comment>

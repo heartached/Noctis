@@ -54,10 +54,14 @@ public partial class MiniPlayerViewModel : ViewModelBase
         Lyrics.LyricLines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoLyrics));
         Lyrics.UnsyncedLines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoLyrics));
 
-        // Queue preview follows live queue edits, but only while its layer is open.
-        Player.UpNext.CollectionChanged += (_, _) =>
+        // Queue preview follows live queue edits, but only while its layer is open: Up Next,
+        // the played songs (GitHub #124) and the Keep Played Songs setting.
+        Player.UpNext.CollectionChanged += (_, _) => ScheduleQueueRefresh();
+        Player.PlayedTracks.CollectionChanged += (_, _) => ScheduleQueueRefresh();
+        Player.PropertyChanged += (_, e) =>
         {
-            if (Drawer == MiniDrawer.Queue) RefreshQueuePreview();
+            if (e.PropertyName == nameof(PlayerViewModel.ShowPlayedInQueue))
+                ScheduleQueueRefresh();
         };
 
         // The design picker (Settings ▸ Appearance) drives the form while a fixed design
@@ -436,14 +440,44 @@ public partial class MiniPlayerViewModel : ViewModelBase
     // ── Queue layer ──
 
     /// <summary>
-    /// The queue can hold tens of thousands of tracks and the drawer's ItemsControl
-    /// is not virtualized, so the layer shows a capped preview.
+    /// The queue can hold tens of thousands of tracks, so the layer shows a capped
+    /// preview of Up Next.
     /// </summary>
     private const int QueuePreviewCap = 100;
 
-    public BulkObservableCollection<Track> QueuePreview { get; } = new();
+    /// <summary>
+    /// The drawer's rows: <see cref="MiniQueueRow"/>s, plus — while played songs are kept
+    /// (<see cref="PlayerViewModel.ShowPlayedInQueue"/>, GitHub #124) — a "Played" header,
+    /// the played rows oldest first, then an "Up Next" <see cref="MiniQueueHeader"/> ahead of
+    /// the Up Next rows. One list rather than two so the drawer keeps its single
+    /// virtualized panel (two lists stacked in the ScrollViewer would both inflate every row).
+    /// </summary>
+    public BulkObservableCollection<object> QueuePreview { get; } = new();
 
     [ObservableProperty] private bool _queuePreviewTruncated;
+
+    /// <summary>The list carries its own Played / Up Next headers, so the fixed Up Next
+    /// header above it steps aside.</summary>
+    [ObservableProperty] private bool _queuePreviewHasPlayed;
+
+    /// <summary>Index in <see cref="QueuePreview"/> of the last played row (the boundary the
+    /// drawer opens on), or -1 when no played rows are listed.</summary>
+    public int QueueBoundaryIndex { get; private set; } = -1;
+
+    private bool _queueRefreshPosted;
+
+    /// <summary>Live edits arrive in bursts (a track end touches Up Next AND History; a jump
+    /// back N songs is ~2N single edits), so they rebuild the rows once, on the next turn.</summary>
+    private void ScheduleQueueRefresh()
+    {
+        if (Drawer != MiniDrawer.Queue || _queueRefreshPosted) return;
+        _queueRefreshPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _queueRefreshPosted = false;
+            if (Drawer == MiniDrawer.Queue) RefreshQueuePreview();
+        }, DispatcherPriority.Normal);
+    }
 
     private void RefreshQueuePreview()
     {
@@ -452,8 +486,26 @@ public partial class MiniPlayerViewModel : ViewModelBase
         // inflated and the whole fill measured 13-24 ms. Streaming it in ten-row slices
         // was what the non-virtualized list needed, and it left the drawer's scrollbar
         // growing under the user's thumb for the first second of scrolling.
-        QueuePreview.ReplaceAll(Player.UpNext.Take(QueuePreviewCap).ToList());
-        QueuePreviewTruncated = Player.UpNext.Count > QueuePreviewCap;
+        var upNext = Player.UpNext;
+        var truncated = upNext.Count > QueuePreviewCap;
+        var showPlayed = Player.ShowPlayedInQueue && Player.PlayedTracks.Count > 0;
+        var played = Player.PlayedTracks;
+        var rows = new List<object>((showPlayed ? played.Count + 2 : 0) + Math.Min(upNext.Count, QueuePreviewCap));
+        if (showPlayed)
+        {
+            rows.Add(new MiniQueueHeader(isPlayed: true, showTruncated: false));
+            for (var i = 0; i < played.Count; i++)
+                rows.Add(new MiniQueueRow(played[i], i, isPlayed: true));
+            rows.Add(new MiniQueueHeader(isPlayed: false, showTruncated: truncated));
+        }
+        var take = Math.Min(upNext.Count, QueuePreviewCap);
+        for (var i = 0; i < take; i++)
+            rows.Add(new MiniQueueRow(upNext[i], i, isPlayed: false));
+
+        QueueBoundaryIndex = showPlayed ? played.Count : -1;
+        QueuePreview.ReplaceAll(rows);
+        QueuePreviewTruncated = truncated;
+        QueuePreviewHasPlayed = showPlayed;
     }
 
     partial void OnDrawerChanged(MiniDrawer value)
@@ -466,11 +518,59 @@ public partial class MiniPlayerViewModel : ViewModelBase
             ShowShuffledSuggestions();
     }
 
+    /// <summary>Plays a drawer row by its own position, so the second copy of a song queued
+    /// twice plays that copy (IndexOf found the first one). A row from before a refresh
+    /// that has not landed yet falls back to the song's first position, as before.</summary>
     [RelayCommand]
-    private void PlayFromQueue(Track track)
+    private void PlayFromQueue(MiniQueueRow row)
     {
-        var index = Player.UpNext.IndexOf(track);
+        if (row.IsPlayed)
+        {
+            var played = Player.PlayedTracks;
+            var at = row.Index < played.Count && ReferenceEquals(played[row.Index], row.Track)
+                ? row.Index
+                : played.IndexOf(row.Track);
+            if (at >= 0) Player.PlayPlayedAt(at);
+            return;
+        }
+
+        var upNext = Player.UpNext;
+        var index = row.Index < upNext.Count && ReferenceEquals(upNext[row.Index], row.Track)
+            ? row.Index
+            : upNext.IndexOf(row.Track);
         if (index >= 0)
             Player.PlayFromUpNextAt(index);
     }
+}
+
+/// <summary>A section label in the mini player's Queue drawer ("Played" / "Up Next").</summary>
+public sealed class MiniQueueHeader
+{
+    public MiniQueueHeader(bool isPlayed, bool showTruncated)
+    {
+        IsPlayed = isPlayed;
+        ShowTruncated = showTruncated;
+    }
+
+    public bool IsPlayed { get; }
+    public bool IsUpNext => !IsPlayed;
+    /// <summary>"Showing first 100" beside the Up Next label.</summary>
+    public bool ShowTruncated { get; }
+}
+
+/// <summary>A song in the mini player's Queue drawer: a played song (<see cref="Index"/> into
+/// <see cref="PlayerViewModel.PlayedTracks"/>) or an Up Next one (into
+/// <see cref="PlayerViewModel.UpNext"/>).</summary>
+public sealed class MiniQueueRow
+{
+    public MiniQueueRow(Track track, int index, bool isPlayed)
+    {
+        Track = track;
+        Index = index;
+        IsPlayed = isPlayed;
+    }
+
+    public Track Track { get; }
+    public int Index { get; }
+    public bool IsPlayed { get; }
 }
