@@ -252,21 +252,12 @@ public class MetadataService : IMetadataService
 
         var codec = DetermineCodec(file, ext);
         var sampleRate = NormalizeSampleRate(props.AudioSampleRate);
-        var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec);
+        // ALAC: the decoder config atom is the authority for bit depth AND sample rate (see
+        // ResolveAlacSampleRate). Read once here; path-based, so only for entries reachable by path.
+        var alacConfig = localPath != null && IsAlacContainer(ext, codec) ? TryReadAlacConfigFromFile(localPath) : (BitDepth: 0, SampleRate: 0);
+        var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec, alacConfig.BitDepth);
+        sampleRate = ResolveAlacSampleRate(sampleRate, alacConfig.SampleRate);
         var bitrate = NormalizeBitrate(props.AudioBitrate, length, props.Duration);
-
-        // ALAC fallback: TagLib# often returns 0 for sample rate on M4A/ALAC files.
-        // Read it directly from the ALAC decoder config atom. Path-based, so it only
-        // runs for entries reachable by path.
-        if (localPath != null && sampleRate < 8000 && ext is ".m4a" or ".mp4" or ".alac")
-        {
-            var codecLower = (codec ?? "").ToLowerInvariant();
-            if (codecLower.Contains("alac") || codecLower.Contains("lossless"))
-            {
-                var (_, sr) = TryReadAlacConfigFromFile(localPath);
-                if (sr >= 8000) sampleRate = sr;
-            }
-        }
 
         var duration = props.Duration;
         if (localPath != null && NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, IsLosslessFormat(codec ?? string.Empty, ext)))
@@ -804,20 +795,12 @@ public class MetadataService : IMetadataService
 
             var codec = DetermineCodec(file, ext);
             var sampleRate = NormalizeSampleRate(props.AudioSampleRate);
-            var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec);
+            // ALAC: the decoder config atom is the authority (see ResolveAlacSampleRate); read once.
+            var alacConfig = IsAlacContainer(ext, codec) ? TryReadAlacConfigFromFile(filePath) : (BitDepth: 0, SampleRate: 0);
+            var bitsPerSample = NormalizeBitsPerSample(props.BitsPerSample, file, ext, sampleRate, codec, alacConfig.BitDepth);
+            sampleRate = ResolveAlacSampleRate(sampleRate, alacConfig.SampleRate);
             var isLossless = IsLosslessFormat(codec, ext);
             var bitrate = NormalizeBitrate(props.AudioBitrate, fileInfo.Length, props.Duration);
-
-            // ALAC fallback: TagLib# often returns 0 for sample rate on M4A/ALAC files.
-            if (sampleRate < 8000 && ext is ".m4a" or ".mp4" or ".alac")
-            {
-                var codecLower = (codec ?? "").ToLowerInvariant();
-                if (codecLower.Contains("alac") || codecLower.Contains("lossless"))
-                {
-                    var (_, sr) = TryReadAlacConfigFromFile(filePath);
-                    if (sr >= 8000) sampleRate = sr;
-                }
-            }
 
             var duration = props.Duration;
             if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, isLossless))
@@ -888,7 +871,26 @@ public class MetadataService : IMetadataService
         };
     }
 
-    private static int NormalizeBitsPerSample(int bits, TagLib.File file, string ext, int sampleRate, string codec)
+    /// <summary>An MP4-family file whose codec reads as Apple Lossless.</summary>
+    private static bool IsAlacContainer(string ext, string? codec)
+    {
+        if (ext is not (".m4a" or ".mp4" or ".alac"))
+            return false;
+        var codecLower = (codec ?? string.Empty).ToLowerInvariant();
+        return codecLower.Contains("alac") || codecLower.Contains("lossless");
+    }
+
+    /// <summary>
+    /// The sample rate to store for an ALAC file: the decoder config atom's when it is valid,
+    /// else TagLib's. TagLib# reads the MP4 sample entry's 16.16 rate field, which cannot hold
+    /// hi-res rates — a 96 kHz ALAC came back as 48 kHz (harness 10-10, ffmpeg-encoded), and
+    /// some files carry 0 there. The atom (<see cref="TryReadAlacConfigFromFile"/>) holds the
+    /// real rate. Internal for tests.
+    /// </summary>
+    internal static int ResolveAlacSampleRate(int tagLibSampleRate, int alacConfigSampleRate) =>
+        alacConfigSampleRate >= 8000 ? alacConfigSampleRate : tagLibSampleRate;
+
+    private static int NormalizeBitsPerSample(int bits, TagLib.File file, string ext, int sampleRate, string codec, int alacBitDepth = 0)
     {
         if (bits > 0)
             return bits;
@@ -908,15 +910,12 @@ public class MetadataService : IMetadataService
 
         // TagLib# doesn't expose BitsPerSample for ALAC in M4A containers
         // (the MPEG4 codec class doesn't implement ILosslessAudioCodec).
-        // Read the bit depth directly from the ALAC decoder config atom.
-        if (ext is ".m4a" or ".mp4" or ".alac")
+        // Read the bit depth directly from the ALAC decoder config atom —
+        // the caller's copy when it already read the atom, else one read here.
+        if (IsAlacContainer(ext, codec))
         {
-            var codecLower = (codec ?? "").ToLowerInvariant();
-            if (codecLower.Contains("alac") || codecLower.Contains("lossless"))
-            {
-                var (bd, _) = TryReadAlacConfigFromFile(file.Name);
-                if (bd > 0) return bd;
-            }
+            var bd = alacBitDepth > 0 ? alacBitDepth : TryReadAlacConfigFromFile(file.Name).BitDepth;
+            if (bd > 0) return bd;
         }
 
         // Do NOT guess bit depth from sample rate — a 48 kHz FLAC/ALAC file can
