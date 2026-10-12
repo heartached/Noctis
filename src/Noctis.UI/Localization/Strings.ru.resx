@@ -1441,10 +1441,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Сохранять прослушанные песни</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>Показывать прослушанные песни над «Сейчас играет» в очереди и оставлять последнюю песню загруженной, когда очередь закончится.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Queue.Played" xml:space="preserve">
     <value>Прослушано</value>
     <comment>Text in MainWindow.axaml</comment>
@@ -1637,17 +1633,9 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Веб-пульт</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>Управляйте воспроизведением с телефона в локальной сети. Соединение не шифруется, поэтому избегайте недоверенных сетей Wi-Fi.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>Нажмите, чтобы увеличить</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>Если телефон помечает ссылку как небезопасную, выберите «Продолжить». Пульт использует обычный HTTP.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>ОТКРОЙТЕ НА ТЕЛЕФОНЕ</value>
@@ -1661,20 +1649,12 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Копировать</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>Ожидание телефона. Отсканируйте код или нажмите на него, чтобы увеличить.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
     <value>Телефон подключён</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApi" xml:space="preserve">
     <value>Локальный API</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LocalApiDesc" xml:space="preserve">
-    <value>Позволяет приложениям на этом ПК (Stream Deck, оверлеям OBS, скриптам) видеть, что играет, и управлять воспроизведением. Доступен только с этого ПК.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApiAddress" xml:space="preserve">
@@ -1700,14 +1680,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Settings.LocalApiRegenerateTip" xml:space="preserve">
     <value>Создать новый токен. Приложения со старым токеном перестанут работать, пока вы не передадите им новый.</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LocalApiWarning" xml:space="preserve">
-    <value>Любая программа на этом ПК, у которой есть токен, может управлять воспроизведением и читать вашу медиатеку. Передавайте его только доверенным приложениям, а при утечке создайте новый.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LocalApiDiscovery" xml:space="preserve">
-    <value>Приложения могут найти адрес и токен в файле local-api.json в папке данных Noctis.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ACCOUNTS" xml:space="preserve">
     <value>АККАУНТЫ</value>
@@ -5274,10 +5246,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Импортировать файл</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>Загрузить с диска файл текста .txt (обычный) или .lrc (синхронизированный)</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>Поделиться текстом</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -5312,10 +5280,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>Скопировать синхронизированный текст (LRC с метками времени) в буфер обмена</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>Загрузить с диска файл текста .lrc (синхронизированный) или .txt (обычный)</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -6244,7 +6208,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="PlaybackBar.SaveLyrics" xml:space="preserve">
     <value>Сохранить текст в файл</value>
-    <comment>Header in PlaybackBarView.axaml (lyrics page, online lyrics shown)</comment>
+    <comment>Submenu header in PlaybackBarView.axaml (lyrics page, time-synced lyrics shown); its items pick the file format</comment>
   </data>
   <data name="PlaybackBar.QueueTip" xml:space="preserve">
     <value>Очередь</value>
@@ -8005,12 +7969,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Server.Port" xml:space="preserve">
     <value>Порт</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>АДРЕС СЕРВЕРА</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>ОТПЕЧАТОК СЕРТИФИКАТА (SHA-256) — сверьте, когда телефон попросит ему доверять</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>Ожидание подключения устройства…</value>
   </data>
@@ -8037,9 +7995,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>API-ключ для</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>Скопируйте его сейчас. Он показывается один раз, а новый ключ заменит его.</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>Готово</value>
@@ -8598,10 +8553,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Создайте аккаунт</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>С ним ваши устройства входят, чтобы просматривать, воспроизводить и синхронизировать музыку. Пароль хранится в виде хеша и никогда не покидает этот компьютер.</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>Имя</value>
     <comment>Create form watermark</comment>
@@ -8613,10 +8564,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="AccountSync.Create" xml:space="preserve">
     <value>Создать</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>Подключить устройство</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>Новый API-ключ</value>
@@ -8633,10 +8580,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="AccountSync.Save" xml:space="preserve">
     <value>Сохранить</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>Удалить</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>Откройте на телефоне Noctis или любое приложение Subsonic, отсканируйте код или введите адрес и войдите.</value>
@@ -8665,26 +8608,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>Дополнительные аккаунты, которые могут входить со своих устройств.</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="AccountSync.SignedInDevices" xml:space="preserve">
-    <value>ПОДКЛЮЧЁННЫЕ УСТРОЙСТВА</value>
-    <comment>Account card list label</comment>
-  </data>
-  <data name="AccountSync.NoSignedInDevices" xml:space="preserve">
-    <value>Пока ни одно устройство не выполнило вход.</value>
-    <comment>Account card list empty state</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>Синхронизация между устройствами</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>Избранное, оценки, число прослушиваний и плейлисты одинаковы на всех устройствах, где выполнен вход. Побеждает самое новое изменение.</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>Это устройство</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>Музыкальные файлы остаются на месте. Нужен включённый сервер Noctis.</value>
@@ -9064,10 +8987,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Импортировать файл…</value>
     <comment>Lyrics box button</comment>
   </data>
-  <data name="LyricsStudio.ImportFileTip" xml:space="preserve">
-    <value>Загрузить текст из файла .txt, .lrc или .elrc (метки времени отбрасываются и расставляются заново)</value>
-    <comment>Tooltip</comment>
-  </data>
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve">
     <value>Распознать на слух · Экспериментально</value>
     <comment>Lyrics box button: transcribe the song into the box</comment>
@@ -9358,10 +9277,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>Хранилище, вспомогательные программы, обновления и сброс.</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>Ваш аккаунт, синхронизация между устройствами и веб-пульт.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
