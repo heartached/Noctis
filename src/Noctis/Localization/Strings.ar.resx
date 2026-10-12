@@ -1747,7 +1747,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>أضيفت</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>لم يتبقَّ شيء للإضافة</value>
@@ -1948,6 +1948,7 @@
     <value>عرض الأعمال الكاملة</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>تشغيل</value>
@@ -2408,7 +2409,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>إزالة الغلاف</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>الاسم</value>
@@ -3532,10 +3533,6 @@
     <value>التفاصيل</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve">
-    <value>البحث عن بيانات وصفية</value>
-    <comment>Content in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.FoundMetadata" xml:space="preserve">
     <value>البيانات الوصفية المعثور عليها</value>
     <comment>Text in MetadataWindow.axaml</comment>
@@ -4461,6 +4458,7 @@
     <value>حفظ</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>إعادة تسمية قائمة التشغيل</value>
@@ -5331,15 +5329,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>الإضافات</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>إسقاط مجلد البرنامج المساعد في دليل الإضافات وإعادة التحميل. قم بتبديل البرنامج المساعد إلى هنا دون حذفه.</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>الإضافات تعمل بنفس الصلاحية مثل Noctis. فقط قم بتثبيت المكونات التي تثق بها.</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>فتح مجلد الإضافات</value>
   </data>
@@ -5854,7 +5843,7 @@
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
     <value>نموذج الكلام يستمع إلى الأغنية ويكتب الكلمات نفسها، حتى عندما تكون للأغنية كلمات بالفعل. الأغاني التي لا تحتوي على كلمات تنتشر دائمًا.</value>
-    <comment>Footer checkbox tooltip</comment>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>ابحث عن كلمات الاغاني على الانترنت عندما لا تملك الاغنية</value>
@@ -5998,15 +5987,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>انسخ بدلاً من ذلك</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>تجاهل هذه الكلمات ونسخ ما هو غروب الشمس</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>تخطي</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>حفظ الكلمات</value>
