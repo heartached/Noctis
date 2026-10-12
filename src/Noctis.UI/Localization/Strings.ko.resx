@@ -1204,17 +1204,9 @@
     <value>웹 리모컨</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>같은 네트워크의 휴대폰에서 재생을 제어합니다. 암호화되지 않으므로 신뢰할 수 없는 Wi-Fi는 피하세요.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>탭하여 확대</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>휴대폰이 링크를 안전하지 않다고 표시하면 계속을 선택하세요. 리모컨은 일반 HTTP를 사용합니다.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>휴대폰에서 열기</value>
@@ -1226,10 +1218,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>복사</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>휴대폰을 기다리는 중입니다. 코드를 스캔하거나 탭하여 확대하세요.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3833,10 +3821,6 @@
     <value>파일 가져오기</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>디스크에서 .txt (일반) 또는 .lrc (싱크) 가사 파일을 불러옵니다</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>가사 공유</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3871,10 +3855,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>싱크 가사(타임스탬프가 있는 LRC)를 클립보드에 복사합니다</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>디스크에서 .lrc (싱크) 또는 .txt (일반) 가사 파일을 불러옵니다</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5332,12 +5312,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>포트</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>서버 주소</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>인증서 지문 (SHA-256) — 휴대폰이 신뢰 여부를 물을 때 비교하세요</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>기기 연결을 기다리는 중…</value>
   </data>
@@ -5364,9 +5338,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>API 키 대상</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>지금 복사하세요. 한 번만 표시되며 새 키가 이를 대체합니다.</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>완료</value>
@@ -5605,10 +5576,6 @@
     <value>계정 만들기</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>기기들이 이 계정으로 로그인해 둘러보고, 재생하고, 동기화합니다. 비밀번호는 해시로 저장되며 이 컴퓨터를 벗어나지 않습니다.</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>이름</value>
     <comment>Create form watermark</comment>
@@ -5620,10 +5587,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>만들기</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>기기 연결</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>새 API 키</value>
@@ -5640,10 +5603,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>저장</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>제거</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>휴대폰에서 Noctis나 아무 Subsonic 앱을 열고 코드를 스캔하거나 주소를 입력한 뒤 로그인하세요.</value>
@@ -5668,18 +5627,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>각자의 기기에서 로그인할 수 있는 추가 계정.</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>기기 간 동기화</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>즐겨찾기, 평가, 재생 횟수, 재생목록이 로그인한 모든 기기에서 동일하게 유지됩니다. 가장 최근 변경이 우선합니다.</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>이 기기</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>음악 파일은 그대로 있습니다. Noctis Server가 켜져 있어야 합니다.</value>
@@ -6023,10 +5970,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>저장 공간, 보조 프로그램, 업데이트, 초기화.</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>계정, 기기 간 동기화, 웹 리모컨.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
