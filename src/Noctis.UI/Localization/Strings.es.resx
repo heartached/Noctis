@@ -1220,17 +1220,9 @@
     <value>Control remoto web</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>Controla la reproducción desde tu teléfono en la red local. Sin cifrar, para evitar Wi-Fi no confiable.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>Toca para ampliar</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>Si tu teléfono marca el enlace como inseguro, elige Continuar. El control remoto utiliza HTTP.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>ABRIR EN TU TELÉFONO</value>
@@ -1242,10 +1234,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>Copiar</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>Esperando un teléfono. Escanea el código o tócalo para ampliarlo.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3849,10 +3837,6 @@
     <value>Importar archivo</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>Carga un archivo de letras .txt (sin sincronizar) o .lrc (sincronizado) desde el disco</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>Compartir letras</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3887,10 +3871,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>Copia las letras sincronizadas (LRC con marcas de tiempo) al portapapeles</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>Carga un archivo de letras .lrc (sincronizado) o .txt (sin sincronizar) desde el disco</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5348,12 +5328,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>Puerto</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>DIRECCIÓN DEL SERVIDOR</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>HUELLA DEL CERTIFICADO (SHA-256): compárala cuando tu teléfono pida confiar en él</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>Esperando a que se conecte un dispositivo…</value>
   </data>
@@ -5380,9 +5354,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>Clave API para</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>Copie ahora. Se muestra una vez y una nueva clave lo reemplaza.</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>Hecho</value>
@@ -5637,10 +5608,6 @@
     <value>Crea tu cuenta</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>Tus dispositivos inician sesión con esto para navegar, reproducir y sincronizar. La contraseña se almacena en un cifrado y nunca sale de este equipo.</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>Nombre</value>
     <comment>Create form watermark</comment>
@@ -5652,10 +5619,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>Crear</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>Emparejar un dispositivo</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>Nueva clave API</value>
@@ -5672,10 +5635,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>Guardar</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>Eliminar</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>En tu teléfono, abre Noctis o cualquier aplicación Subsonic, escanea el código o escribe la dirección e inicia sesión.</value>
@@ -5704,18 +5663,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>Cuentas extra que pueden iniciar sesión desde sus propios dispositivos.</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>Sincronizar entre tus dispositivos</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>Favoritos, valoraciones, contadores de juegos y listas de reproducción permanecen iguales en cada dispositivo de inicio de sesión. El cambio más reciente gana.</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>Este dispositivo</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>Los archivos de música permanecen donde están. Necesita estar en el servidor Noctis.</value>
@@ -6067,10 +6014,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>Guarda, programas de ayuda, actualizaciones y reinicio.</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>Su cuenta, sincronización entre dispositivos y Web Remote.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
