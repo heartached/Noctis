@@ -1212,17 +1212,9 @@
     <value>ウェブリモコン</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>ローカルネットワーク上の端末から再生を制御します。暗号化されていないので、信頼できないWi-Fiは避けてください。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>タップで拡大</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>携帯電話がリンクを安全でないと警告した場合は、「続行」を選択してください。リモートはプレーンな HTTP を使用します。</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>スマートフォンで開く</value>
@@ -1234,10 +1226,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>コピー</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>スマートフォンを待っています。コードをスキャンするか、タップして拡大してください。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3829,10 +3817,6 @@
     <value>ファイルを読み込む</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>ディスクから .txt (プレーン) または .lrc (同期) の歌詞ファイルを読み込みます</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>歌詞を共有</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3867,10 +3851,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>同期歌詞 (タイムスタンプ付き LRC) をクリップボードにコピーします</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>ディスクから .lrc (同期) または .txt (プレーン) の歌詞ファイルを読み込みます</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5328,12 +5308,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>ポート</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>サーバーアドレス</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>証明書のフィンガープリント (SHA-256) — スマートフォンが信頼を求めたときに照合してください</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>デバイスの接続を待っています…</value>
   </data>
@@ -5360,9 +5334,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>API キーの対象</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>今すぐコピーします。それは一度表示され、新しいキーがそれを置き換えます。</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>完了</value>
@@ -5609,10 +5580,6 @@
     <value>アカウントを作成する</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>お使いのデバイスは、閲覧、再生、同期するためにこれでサインインします。パスワードはハッシュ化され、このコンピュータを離れることはありません。</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>名前</value>
     <comment>Create form watermark</comment>
@@ -5624,10 +5591,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>作成</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>デバイスをペアリングする</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>新しいAPIキー</value>
@@ -5644,10 +5607,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>保存</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>削除</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>携帯電話で、NoctisまたはSubsonicアプリを開き、コードをスキャンしたり、アドレスを入力してサインインします。</value>
@@ -5676,18 +5635,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>自分のデバイスからサインインできる追加のアカウント。</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>端末間で同期</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>お気に入り、評価、プレイカウント、プレイリストはサインインしたすべてのデバイスで同じままになります。最新の変更が勝利します。</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>このデバイス</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>音楽ファイルはその場所に留まります。Noctis Serverをオンにする必要があります。</value>
@@ -6031,10 +5978,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>ストレージ、ヘルパープログラム、更新とリセット。</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>アカウント、デバイス間の同期、および Web リモート。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
