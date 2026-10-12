@@ -1220,17 +1220,9 @@
     <value>Télécommande web</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>Contrôlez la lecture de votre téléphone sur le réseau local. Non chiffré, donc évitez les accès Wi-Fi non approuvés.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>Touchez pour agrandir</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>Si votre téléphone marque le lien comme non sécurisé, choisissez Continuer. La télécommande utilise en clair HTTP.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>OUVRIR SUR VOTRE TÉLÉPHONE</value>
@@ -1242,10 +1234,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>Copier</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>En attente d'un téléphone. Scannez le code ou touchez-le pour l'agrandir.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3845,10 +3833,6 @@
     <value>Importer un fichier</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>Charge un fichier de paroles .txt (simple) ou .lrc (synchronisé) depuis le disque</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>Partager les paroles</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3883,10 +3867,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>Copie les paroles synchronisées (LRC avec horodatages) dans le presse-papiers</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>Charge un fichier de paroles .lrc (synchronisé) ou .txt (simple) depuis le disque</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5344,12 +5324,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>Port</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>ADRESSE DU SERVEUR</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>EMPREINTE DU CERTIFICAT (SHA-256) — comparez-la lorsque votre téléphone demande à lui faire confiance</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>En attente de la connexion d'un appareil…</value>
   </data>
@@ -5376,9 +5350,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>Clé API pour</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>Copiez-le maintenant. Il est affiché une fois, et une nouvelle clé le remplace.</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>Terminé</value>
@@ -5633,10 +5604,6 @@
     <value>Créez votre compte</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>Vos appareils se connectent avec cela pour naviguer, jouer et synchroniser. Le mot de passe est stocké haché et ne quitte jamais cet ordinateur.</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>Nom</value>
     <comment>Create form watermark</comment>
@@ -5648,10 +5615,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>Créer</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>Associer un appareil</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>Nouvelle clé API</value>
@@ -5668,10 +5631,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>Enregistrer</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>Retirer</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>Sur votre téléphone, ouvrez Noctis ou n'importe quelle application Subsonic, scannez le code ou tapez l'adresse et connectez-vous.</value>
@@ -5700,18 +5659,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>Comptes supplémentaires qui peuvent se connecter depuis leurs propres appareils.</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>Synchroniser entre vos appareils</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>Les favoris, les évaluations, le nombre de parties et les playlists restent les mêmes sur chaque appareil connecté. Le dernier changement gagne.</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>Cet appareil</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>Les fichiers musicaux restent là où ils se trouvent.</value>
@@ -6063,10 +6010,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>Stockage, programmes d'assistance, mises à jour et réinitialisation.</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>Votre compte, la synchronisation entre vos appareils et votre télécommande Web.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
