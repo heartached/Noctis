@@ -1220,17 +1220,9 @@
     <value>Web Kumandası</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>Yerel ağdaki telefonundan oynatmayı kontrol et. Şifrelenmemiştir; güvenilmeyen Wi-Fi'dan kaçın.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>Büyütmek için dokun</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>Telefonun bağlantıyı güvensiz olarak işaretlerse Devam'ı seç. Kumanda düz HTTP kullanır.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>TELEFONUNDA AÇ</value>
@@ -1242,10 +1234,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>Kopyala</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>Telefon bekleniyor. Kodu tara veya büyütmek için dokun.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3849,10 +3837,6 @@
     <value>Dosya içe aktar</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>Diskten bir .txt (düz) veya .lrc (senkronize) söz dosyası yükle</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>Sözleri paylaş</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3887,10 +3871,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>Senkronize sözleri (zaman damgalı LRC) panoya kopyala</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>Diskten bir .lrc (senkronize) veya .txt (düz) söz dosyası yükle</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5332,12 +5312,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>Port</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>SUNUCU ADRESİ</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>SERTİFİKA PARMAK İZİ (SHA-256) — telefonun güvenmeyi sorduğunda karşılaştır</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>Bir cihazın bağlanması bekleniyor…</value>
   </data>
@@ -5364,9 +5338,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>API anahtarı:</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>Şimdi kopyala. Yalnızca bir kez gösterilir ve yeni bir anahtar onun yerini alır.</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>Bitti</value>
@@ -5621,10 +5592,6 @@
     <value>Hesabını oluştur</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>Cihazların göz atmak, çalmak ve eşitlemek için bununla oturum açar. Parola karma olarak saklanır ve bu bilgisayardan asla çıkmaz.</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>Ad</value>
     <comment>Create form watermark</comment>
@@ -5636,10 +5603,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>Oluştur</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>Cihaz eşleştir</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>Yeni API anahtarı</value>
@@ -5656,10 +5619,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>Kaydet</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>Kaldır</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>Telefonunda Noctis'i veya herhangi bir Subsonic uygulamasını aç, kodu tara ya da adresi yaz ve oturum aç.</value>
@@ -5688,18 +5647,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>Kendi cihazlarından oturum açabilen ek hesaplar.</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>Cihazların arasında eşitle</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>Favoriler, puanlar, çalma sayıları ve çalma listeleri oturum açılmış her cihazda aynı kalır. En yeni değişiklik kazanır.</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>Bu cihaz</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>Müzik dosyaları olduğu yerde kalır. Noctis Sunucusunun açık olması gerekir.</value>
@@ -6039,10 +5986,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>Depolama, yardımcı programlar, güncellemeler ve sıfırlama.</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>Hesabın, cihazlar arası eşitleme ve Web Kumandası.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
