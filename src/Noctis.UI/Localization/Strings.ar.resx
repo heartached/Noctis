@@ -557,24 +557,12 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtwork" xml:space="preserve">
-    <value>لون التمييز يتبع صورة الألبوم</value>
+    <value>اللكنة تتبع صورة الألبوم</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>يأخذ لون التمييز من غلاف المقطع قيد التشغيل. يعود لون التمييز الذي اخترته عندما لا يتم تشغيل أي شيء.</value>
+    <value>استعيد اللهجة من غلاف اللعب. اللهجة التي اخترتها تعود عندما لا يلعب أي شيء.</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AccentTrackLinks" xml:space="preserve">
-    <value>لون التمييز لأسماء الفنانين والألبومات</value>
-    <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>تظهر أسماء الفنانين والألبومات والأنواع في قوائم التشغيل والأغاني والمشغّل بلون التمييز. عند الإيقاف تظهر بلون النص العادي.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Playlist.DragCount" xml:space="preserve">
-    <value>{0} أغانٍ</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>لون التمييز</value>
@@ -1103,22 +1091,6 @@
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve">
     <value>عند انتهاء قائمة الانتظار، استمر في تشغيل أغاني مماثلة.</value>
     <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
-    <value>الاحتفاظ بالأغاني التي تم تشغيلها</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>اعرض الأغاني التي تم تشغيلها فوق «قيد التشغيل الآن» في قائمة الانتظار، وأبقِ آخر أغنية محمّلة عند انتهاء القائمة.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Queue.Played" xml:space="preserve">
-    <value>تم تشغيلها</value>
-    <comment>Text in MainWindow.axaml</comment>
-  </data>
-  <data name="MiniPlayer.Played" xml:space="preserve">
-    <value>تم تشغيلها</value>
-    <comment>Text in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>محتوى صريح</value>
@@ -1775,7 +1747,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>أضيفت</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>لم يتبقَّ شيء للإضافة</value>
@@ -1976,6 +1948,7 @@
     <value>عرض الأعمال الكاملة</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>تشغيل</value>
@@ -2436,7 +2409,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>إزالة الغلاف</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>الاسم</value>
@@ -4101,18 +4074,6 @@
     <value>محتوى صريح</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
-  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
-    <value>إخفاء الكلمات</value>
-    <comment>Mini player "…" menu item while lyrics are open</comment>
-  </data>
-  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
-    <value>تثبيت في الأعلى</value>
-    <comment>Mini player pin (tooltip + "…" menu item)</comment>
-  </data>
-  <data name="MiniPlayer.Unpin" xml:space="preserve">
-    <value>إلغاء التثبيت</value>
-    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
-  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>المفضلة</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
@@ -4497,6 +4458,7 @@
     <value>حفظ</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>إعادة تسمية قائمة التشغيل</value>
@@ -5851,6 +5813,10 @@
     <value>استوديو الكلمات</value>
     <comment>Dialog title</comment>
   </data>
+  <data name="LyricsStudio.Subtitle" xml:space="preserve">
+    <value>أوقات كلمات الأغاني للتسجيل، أو تنسخ عندما لا يكون هناك أحد.</value>
+    <comment>Dialog subtitle</comment>
+  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>الموديل</value>
     <comment>Footer label</comment>
@@ -5875,9 +5841,17 @@
     <value>انسخ بواسطة الأذن (تجاهل الكلمات الموجودة)</value>
     <comment>Footer checkbox</comment>
   </data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
+    <value>نموذج الكلام يستمع إلى الأغنية ويكتب الكلمات نفسها، حتى عندما تكون للأغنية كلمات بالفعل. الأغاني التي لا تحتوي على كلمات تنتشر دائمًا.</value>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
+  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>ابحث عن كلمات الاغاني على الانترنت عندما لا تملك الاغنية</value>
     <comment>Footer checkbox</comment>
+  </data>
+  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
+    <value>يتم جلب كلمات الأغاني السهلة من LRCLIB أولا، لذا يجب على النموذج فقط أن يوقفها. يوقف، النموذج يكتب الكلمات عن طريق الأذن.</value>
+    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>نموذج التحميل</value>
@@ -6013,15 +5987,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>انسخ بدلاً من ذلك</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>تجاهل هذه الكلمات ونسخ ما هو غروب الشمس</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>تخطي</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>حفظ الكلمات</value>
@@ -6313,56 +6287,74 @@
   </data>
   <data name="Settings.Tab.General" xml:space="preserve">
     <value>عام</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Appearance" xml:space="preserve">
     <value>المظهر</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Player" xml:space="preserve">
     <value>المشغّل</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Lyrics" xml:space="preserve">
     <value>كلمات الأغاني</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>الاختصارات</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Audio" xml:space="preserve">
     <value>الصوت</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
     <value>المكتبة</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Advanced" xml:space="preserve">
     <value>متقدم</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.AccountDevices" xml:space="preserve">
     <value>الحساب والأجهزة</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Integrations" xml:space="preserve">
     <value>التكاملات</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Plugins" xml:space="preserve">
     <value>الإضافات</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Statistics" xml:space="preserve">
     <value>الإحصائيات</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.About" xml:space="preserve">
     <value>حول</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.App" xml:space="preserve">
     <value>التطبيق</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Playback" xml:space="preserve">
     <value>التشغيل</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Library" xml:space="preserve">
     <value>المكتبة</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Connect" xml:space="preserve">
     <value>الاتصال</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.More" xml:space="preserve">
     <value>المزيد</value>
+    <comment>Settings rail</comment>
   </data>
 </root>
