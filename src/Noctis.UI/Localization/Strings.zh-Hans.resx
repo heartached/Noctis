@@ -1212,17 +1212,9 @@
     <value>网页遥控</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>控制您在本地网络上的手机回放。未加密，所以可以避免不受信任的Wi-Fi。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>点按放大</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>如果您的手机将链接标记为不安全，请选择继续。远程使用纯HTTP。</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>在手机上打开</value>
@@ -1234,10 +1226,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>复制</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>等待手机连接。扫描二维码,或点按放大。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3841,10 +3829,6 @@
     <value>导入文件</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>从磁盘加载 .txt (纯文本) 或 .lrc (同步) 歌词文件</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>分享歌词</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3879,10 +3863,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>把同步歌词 (含时间戳的 LRC) 复制到剪贴板</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>从磁盘加载 .lrc (同步) 或 .txt (纯文本) 歌词文件</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5340,12 +5320,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>端口</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>服务器地址</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>证书指纹 (SHA-256) — 手机询问是否信任时请核对</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>等待设备连接…</value>
   </data>
@@ -5372,9 +5346,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>API 密钥归属</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>现在复制它。它会显示一次，并且一个新的密钥替换它。</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>完成</value>
@@ -5629,10 +5600,6 @@
     <value>创建您的帐户</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>您的设备使用此登录以浏览、播放和同步。密码被隐藏并且永远不会离开此计算机。</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>名称</value>
     <comment>Create form watermark</comment>
@@ -5644,10 +5611,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>创建</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>配对设备</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>新 API 密钥</value>
@@ -5664,10 +5627,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>保存</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>删除</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>在您的手机上，打开Noctis或任何子音响应用，扫描代码或输入地址并登录。</value>
@@ -5696,18 +5655,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>可以从自己的设备登录的额外帐户。</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>您的设备之间同步</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>收藏、评分、游戏计数和播放列表在每个登录设备上保持不变。最新的更改获胜。</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>此设备</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>音乐文件保持原有位置，需要使用Noctis服务器。</value>
@@ -6055,10 +6002,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>存储、助手程序、更新和重置。</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>您的帐户、设备之间的同步和Web Remote。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
