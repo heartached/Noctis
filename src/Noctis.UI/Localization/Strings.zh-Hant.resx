@@ -296,10 +296,6 @@
     <value>合併專輯版本</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowOneTilePer" xml:space="preserve">
-    <value>One tile per release. Other editions appear under &quot;Other Versions&quot;.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve">
     <value>從標題合併客串藝人</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -436,10 +432,6 @@
     <value>標記repo</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.About.DiscordCaption" xml:space="preserve">
-    <value>Get help &amp; updates</value>
-    <comment>About tile caption in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.About.WebsiteCaption" xml:space="preserve">
     <value>文件和下載</value>
     <comment>About tile caption in SettingsView.axaml</comment>
@@ -557,24 +549,12 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtwork" xml:space="preserve">
-    <value>強調色跟隨專輯封面</value>
+    <value>緊隨專輯封面</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>根據正在播放的封面改變強調色。沒有播放時恢復你選擇的強調色。</value>
+    <value>從遊戲封面重寫重音。您選擇的重音在沒有播放時返回。</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AccentTrackLinks" xml:space="preserve">
-    <value>演出者和專輯名稱使用強調色</value>
-    <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>播放清單、「歌曲」和播放器中的演出者、專輯和類型名稱使用強調色。關閉後使用一般文字顏色。</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Playlist.DragCount" xml:space="preserve">
-    <value>{0} 首歌曲</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>強調色</value>
@@ -936,10 +916,6 @@
     <value>刪除</value>
     <comment>Picker: drop the default clip</comment>
   </data>
-  <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
-  </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
     <value>使用 THER OWN VIDEO</value>
     <comment>Picker: header over the list when not searching</comment>
@@ -959,10 +935,6 @@
   <data name="LyricsBackground.OwnVideo" xml:space="preserve">
     <value>有自己的影片</value>
     <comment>Picker row status</comment>
-  </data>
-  <data name="LyricsBackground.FromYouTube" xml:space="preserve">
-    <value>YouTube</value>
-    <comment>Button: download the backdrop from a YouTube link</comment>
   </data>
   <data name="LyricsBackground.YouTubeWatermark" xml:space="preserve">
     <value>貼上一個 YouTube 連結</value>
@@ -1103,22 +1075,6 @@
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve">
     <value>當佇列結束時，保持播放類似的歌曲。</value>
     <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
-    <value>保留已播放的歌曲</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>在佇列中將已播放的歌曲顯示在「播放中」上方，並在佇列結束時保留最後一首歌曲。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Queue.Played" xml:space="preserve">
-    <value>已播放</value>
-    <comment>Text in MainWindow.axaml</comment>
-  </data>
-  <data name="MiniPlayer.Played" xml:space="preserve">
-    <value>已播放</value>
-    <comment>Text in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>兒童不宜內容</value>
@@ -1775,7 +1731,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>已加入</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>沒有可加入的了</value>
@@ -1976,6 +1932,7 @@
     <value>查看所有作品</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>播放</value>
@@ -2436,7 +2393,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>移除封面</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>名稱</value>
@@ -3481,7 +3438,7 @@
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecIdentification" xml:space="preserve">
-    <value>1. 身份識別</value>
+    <value>身份識別</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecContent" xml:space="preserve">
@@ -4101,18 +4058,6 @@
     <value>兒童不宜</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
-  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
-    <value>隱藏歌詞</value>
-    <comment>Mini player "…" menu item while lyrics are open</comment>
-  </data>
-  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
-    <value>置頂</value>
-    <comment>Mini player pin (tooltip + "…" menu item)</comment>
-  </data>
-  <data name="MiniPlayer.Unpin" xml:space="preserve">
-    <value>取消置頂</value>
-    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
-  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>收藏</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
@@ -4497,6 +4442,7 @@
     <value>儲存</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>重新命名播放清單</value>
@@ -5434,10 +5380,6 @@
   <data name="Server.AddAccount" xml:space="preserve">
     <value>新增帳號</value>
   </data>
-  <data name="Settings.TidalTitle" xml:space="preserve">
-    <value>TIDAL</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TidalDescription" xml:space="preserve">
     <value>登入以透過連結匯入TIDAL 播放列表。</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -5454,20 +5396,12 @@
     <value>漂移</value>
     <comment>Flowing-background picker row (built-in style)</comment>
   </data>
-  <data name="Settings.FlowingKawarp" xml:space="preserve">
-    <value>Kawarp</value>
-    <comment>Flowing-background picker row (liquid warp, beat-reactive)</comment>
-  </data>
   <data name="Settings.FlowingKawarpCalm" xml:space="preserve">
     <value>拳劍(無節拍)</value>
     <comment>Flowing-background picker row</comment>
   </data>
   <data name="Settings.KawarpWarp" xml:space="preserve">
     <value>旋轉強度</value>
-    <comment>Kawarp slider label</comment>
-  </data>
-  <data name="Settings.KawarpBlur" xml:space="preserve">
-    <value>Blur</value>
     <comment>Kawarp slider label</comment>
   </data>
   <!-- 2026-09 feature batch: pitch, click-to-rate, Send to Folder, bulk lyrics, YouTube, Account & Sync, Lyrics Studio, upmix -->
@@ -5727,10 +5661,6 @@
     <value>開啟Noctis 伺服器</value>
     <comment>Pairing block button</comment>
   </data>
-  <data name="AccountSync.SyncSection" xml:space="preserve">
-    <value>SYNC</value>
-    <comment>Account &amp; Sync section title</comment>
-  </data>
   <data name="AccountSync.OtherAccounts" xml:space="preserve">
     <value>其他帳戶</value>
     <comment>Account &amp; Sync section title</comment>
@@ -5851,6 +5781,10 @@
     <value>歌詞工作室</value>
     <comment>Dialog title</comment>
   </data>
+  <data name="LyricsStudio.Subtitle" xml:space="preserve">
+    <value>將歌詞記錄到錄音的時間，或在沒有錄音的情況下進行抄送。</value>
+    <comment>Dialog subtitle</comment>
+  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>模型</value>
     <comment>Footer label</comment>
@@ -5875,9 +5809,17 @@
     <value>用耳機翻譯(忽略現有歌詞)</value>
     <comment>Footer checkbox</comment>
   </data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
+    <value>語音模型聆聽歌曲並寫詞本身，即使歌曲已經有歌詞。 沒有歌詞的歌曲總是被翻譯的。</value>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
+  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>當歌曲沒有歌曲時線上查詢歌詞</value>
     <comment>Footer checkbox</comment>
+  </data>
+  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
+    <value>純歌詞先從 LRCLIB 獲取，所以模型只需要時間。關閉，模型用耳邊寫字。</value>
+    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>下載模型</value>
@@ -5943,10 +5885,6 @@
     <value>線路計時 · LRC</value>
     <comment>Picker: format chip</comment>
   </data>
-  <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
-  </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
     <value>搜尋歌曲或相簿</value>
     <comment>Picker empty state</comment>
@@ -5979,10 +5917,6 @@
     <value>取消全選</value>
     <comment>Picker footer</comment>
   </data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>SONGS</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>還沒有要審查的內容</value>
     <comment>Review pane empty state</comment>
@@ -6013,15 +5947,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>正在翻譯</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>忽略這些歌詞並翻譯正在發生的事件</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>跳過</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>儲存歌詞</value>
@@ -6123,10 +6057,6 @@
     <value>啟動和視窗</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.Sidebar" xml:space="preserve">
-    <value>Sidebar</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.Files" xml:space="preserve">
     <value>檔案</value>
     <comment>Settings section label</comment>
@@ -6207,10 +6137,6 @@
     <value>資料夾和掃描</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.Organisation" xml:space="preserve">
-    <value>Organisation</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.Metadata" xml:space="preserve">
     <value>後設資料源</value>
     <comment>Settings section label</comment>
@@ -6235,10 +6161,6 @@
     <value>更新和開發者</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.Reset" xml:space="preserve">
-    <value>Reset</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
     <value>您的帳戶</value>
     <comment>Settings section label</comment>
@@ -6251,24 +6173,8 @@
     <value>其他賬戶</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NoctisServer" xml:space="preserve">
-    <value>Noctis Server</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.WebRemote" xml:space="preserve">
     <value>網路遙控器</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.Discord" xml:space="preserve">
-    <value>Discord</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.Scrobbling" xml:space="preserve">
-    <value>Scrobbling</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.TIDAL" xml:space="preserve">
-    <value>TIDAL</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.MediaServer" xml:space="preserve">
@@ -6313,56 +6219,74 @@
   </data>
   <data name="Settings.Tab.General" xml:space="preserve">
     <value>一般</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Appearance" xml:space="preserve">
     <value>外觀</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Player" xml:space="preserve">
     <value>播放器</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Lyrics" xml:space="preserve">
     <value>歌詞</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>快捷鍵</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Audio" xml:space="preserve">
     <value>音訊</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
     <value>媒體庫</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Advanced" xml:space="preserve">
     <value>進階</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.AccountDevices" xml:space="preserve">
     <value>帳戶與裝置</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Integrations" xml:space="preserve">
     <value>整合</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Plugins" xml:space="preserve">
     <value>外掛</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Statistics" xml:space="preserve">
     <value>統計</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.About" xml:space="preserve">
     <value>關於</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.App" xml:space="preserve">
     <value>應用程式</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Playback" xml:space="preserve">
     <value>播放</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Library" xml:space="preserve">
     <value>媒體庫</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Connect" xml:space="preserve">
     <value>連線</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.More" xml:space="preserve">
     <value>更多</value>
+    <comment>Settings rail</comment>
   </data>
 </root>
