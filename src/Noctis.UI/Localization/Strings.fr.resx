@@ -561,20 +561,8 @@
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>Reprend la couleur d'accentuation de la pochette en cours de lecture. Votre couleur revient lorsque rien n'est en lecture.</value>
+    <value>Rappelez l'accent de la couverture de jeu. Votre accent choisi revient lorsque rien ne joue.</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AccentTrackLinks" xml:space="preserve">
-    <value>Couleur d'accentuation sur les artistes et albums</value>
-    <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>Les noms d'artiste, d'album et de genre des listes de lecture, de Titres et du lecteur prennent la couleur d'accentuation. Désactivé, ils gardent la couleur de texte normale.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Playlist.DragCount" xml:space="preserve">
-    <value>{0} titres</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Couleur d'accentuation</value>
@@ -1103,22 +1091,6 @@
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve">
     <value>À la fin de la file d'attente, continuez à jouer des chansons similaires.</value>
     <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
-    <value>Garder les titres écoutés</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>Affiche les titres écoutés au-dessus de « En cours de lecture » dans la file d'attente et garde le dernier titre chargé à la fin de la file.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Queue.Played" xml:space="preserve">
-    <value>Écoutés</value>
-    <comment>Text in MainWindow.axaml</comment>
-  </data>
-  <data name="MiniPlayer.Played" xml:space="preserve">
-    <value>Écoutés</value>
-    <comment>Text in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>Contenu explicite</value>
@@ -1775,7 +1747,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>Ajouté</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>Plus rien à ajouter</value>
@@ -1976,6 +1948,7 @@
     <value>Voir la discographie</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>Lire</value>
@@ -2436,7 +2409,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>Retirer la pochette</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>Nom</value>
@@ -2631,10 +2604,6 @@
   <data name="Home.PlayAlbum" xml:space="preserve">
     <value>Jouer l'album</value>
     <comment>Home hero secondary button</comment>
-  </data>
-  <data name="Home.TimeLeft" xml:space="preserve">
-    <value>{0} left</value>
-    <comment>Home hero: remaining time of the last played track, e.g. "1:06 left"</comment>
   </data>
   <!-- LibraryAlbumsView.axaml (auto-migrated) -->
   <data name="LibraryAlbums.Text" xml:space="preserve">
@@ -4101,18 +4070,6 @@
     <value>Explicite</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
-  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
-    <value>Masquer les paroles</value>
-    <comment>Mini player "…" menu item while lyrics are open</comment>
-  </data>
-  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
-    <value>Épingler au premier plan</value>
-    <comment>Mini player pin (tooltip + "…" menu item)</comment>
-  </data>
-  <data name="MiniPlayer.Unpin" xml:space="preserve">
-    <value>Désépingler</value>
-    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
-  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>Favoris</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
@@ -4497,6 +4454,7 @@
     <value>Enregistrer</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>Renommer la liste de lecture</value>
@@ -5851,6 +5809,10 @@
     <value>Lyrics Studio</value>
     <comment>Dialog title</comment>
   </data>
+  <data name="LyricsStudio.Subtitle" xml:space="preserve">
+    <value>Temps les paroles de l'enregistrement, ou transcrive quand il n'y en a pas.</value>
+    <comment>Dialog subtitle</comment>
+  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>Modélisation</value>
     <comment>Footer label</comment>
@@ -5875,9 +5837,17 @@
     <value>Transcrire par oreille (ignorer les paroles existantes)</value>
     <comment>Footer checkbox</comment>
   </data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
+    <value>Le modèle de parole écoute la chanson et écrit les mots lui-même, même si la chanson a déjà des paroles. Les chansons sans paroles sont toujours transcrites.</value>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
+  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>Rechercher les paroles en ligne quand une chanson n'en a pas</value>
     <comment>Footer checkbox</comment>
+  </data>
+  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
+    <value>Les paroles pleines sont extraites de LRCLIB en premier, donc le modèle a seulement pour les chronométrer.</value>
+    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>Télécharger le modèle</value>
@@ -6013,15 +5983,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>Transcrire à la place</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>Ignorer ces paroles et transcrire ce qui est chanté</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>Ignorer</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>Enregistrer les paroles</value>
@@ -6313,56 +6283,70 @@
   </data>
   <data name="Settings.Tab.General" xml:space="preserve">
     <value>Général</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Appearance" xml:space="preserve">
     <value>Apparence</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Player" xml:space="preserve">
     <value>Lecteur</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Lyrics" xml:space="preserve">
     <value>Paroles</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>Raccourcis</value>
-  </data>
-  <data name="Settings.Tab.Audio" xml:space="preserve">
-    <value>Audio</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
     <value>Bibliothèque</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Advanced" xml:space="preserve">
     <value>Avancé</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.AccountDevices" xml:space="preserve">
     <value>Compte et appareils</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Integrations" xml:space="preserve">
     <value>Intégrations</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Plugins" xml:space="preserve">
     <value>Extensions</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Statistics" xml:space="preserve">
     <value>Statistiques</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.About" xml:space="preserve">
     <value>À propos</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.App" xml:space="preserve">
     <value>Application</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Playback" xml:space="preserve">
     <value>Lecture</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Library" xml:space="preserve">
     <value>Bibliothèque</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Connect" xml:space="preserve">
     <value>Connexion</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.More" xml:space="preserve">
     <value>Plus</value>
+    <comment>Settings rail</comment>
   </data>
 </root>
