@@ -1220,17 +1220,9 @@
     <value>جهاز التحكم عبر الويب</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>التحكم في التشغيل من هاتفك على الشبكة المحلية. غير مشفرة، لذلك تجنب Wi-Fi.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
     <value>انقر للتكبير</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>إذا كان هاتفك يعرف الرابط بأنه غير آمن، اختر المتابعة. يستخدم جهاز التحكم عن بعد HTTP عادي.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
     <value>افتحه على هاتفك</value>
@@ -1242,10 +1234,6 @@
   </data>
   <data name="Settings.Copy" xml:space="preserve">
     <value>نسخ</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve">
-    <value>بانتظار هاتف. امسح الرمز أو انقر عليه لتكبيره.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PhoneConnected" xml:space="preserve">
@@ -3849,10 +3837,6 @@
     <value>استيراد ملف</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>حمّل ملف كلمات .txt (عادي) أو .lrc (متزامن) من القرص</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
     <value>مشاركة الكلمات</value>
     <comment>Content in MetadataWindow.axaml</comment>
@@ -3887,10 +3871,6 @@
   </data>
   <data name="Metadata.CopySyncedLyricsLRCTip" xml:space="preserve">
     <value>ينسخ الكلمات المتزامنة (LRC بالطوابع الزمنية) إلى الحافظة</value>
-    <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>حمّل ملف كلمات .lrc (متزامن) أو .txt (عادي) من القرص</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5348,12 +5328,6 @@
   <data name="Server.Port" xml:space="preserve">
     <value>المنفذ</value>
   </data>
-  <data name="Server.AddressLabel" xml:space="preserve">
-    <value>عنوان الخادم</value>
-  </data>
-  <data name="Server.FingerprintLabel" xml:space="preserve">
-    <value>بصمة الشهادة (SHA-256) — قارنها عندما يطلب هاتفك الوثوق بها</value>
-  </data>
   <data name="Server.Waiting" xml:space="preserve">
     <value>بانتظار اتصال جهاز…</value>
   </data>
@@ -5380,9 +5354,6 @@
   </data>
   <data name="Server.ApiKeyFor" xml:space="preserve">
     <value>مفتاح API الخاص بـ</value>
-  </data>
-  <data name="Server.ApiKeyOnce" xml:space="preserve">
-    <value>انسخها الآن. تظهر مرة واحدة ، ويستبدل مفتاح جديد.</value>
   </data>
   <data name="Server.Done" xml:space="preserve">
     <value>تم</value>
@@ -5637,10 +5608,6 @@
     <value>إنشاء حسابك</value>
     <comment>No-account state title</comment>
   </data>
-  <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>أجهزة تسجيل الدخول الخاصة بك بهذا التصفح والتشغيل والمزامنة. يتم تخزين كلمة المرور ولا تترك هذا الكمبيوتر.</value>
-    <comment>No-account state help</comment>
-  </data>
   <data name="AccountSync.Name" xml:space="preserve">
     <value>الاسم</value>
     <comment>Create form watermark</comment>
@@ -5652,10 +5619,6 @@
   <data name="AccountSync.Create" xml:space="preserve">
     <value>إنشاء</value>
     <comment>Create form button</comment>
-  </data>
-  <data name="AccountSync.PairDevice" xml:space="preserve">
-    <value>إقران جهاز</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewApiKey" xml:space="preserve">
     <value>مفتاح API جديد</value>
@@ -5672,10 +5635,6 @@
   <data name="AccountSync.Save" xml:space="preserve">
     <value>حفظ</value>
     <comment>Change password button</comment>
-  </data>
-  <data name="AccountSync.Remove" xml:space="preserve">
-    <value>إزالة</value>
-    <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
     <value>على هاتفك، افتح Noctis أو أي تطبيق Subsonic ، ومسح الكود أو اكتب العنوان، وتسجيل الدخول.</value>
@@ -5704,18 +5663,6 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve">
     <value>حسابات إضافية يمكن تسجيل الدخول من أجهزتهم الخاصة.</value>
     <comment>Other accounts card help</comment>
-  </data>
-  <data name="Sync.Title" xml:space="preserve">
-    <value>المزامنة بين أجهزتك</value>
-    <comment>Sync card title</comment>
-  </data>
-  <data name="Sync.Description" xml:space="preserve">
-    <value>المفضلة، التقييمات، العد و قوائم التشغيل تبقى كما هي على كل جهاز مسجل الدخول. يفوز أحدث تغيير.</value>
-    <comment>Sync card description</comment>
-  </data>
-  <data name="Sync.DeviceName" xml:space="preserve">
-    <value>هذا الجهاز</value>
-    <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
     <value>تبقى ملفات الموسيقى أينما كانت. تحتاج خادم Noctis لتكون قيد التشغيل.</value>
@@ -6067,10 +6014,6 @@
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
     <value>التخزين، برامج المساعد، التحديثات وإعادة الضبط.</value>
-    <comment>Settings page description</comment>
-  </data>
-  <data name="Settings.Desc.AccountDevices" xml:space="preserve">
-    <value>الحساب الخاص بك، المزامنة بين الأجهزة، و الويب عن بعد.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
