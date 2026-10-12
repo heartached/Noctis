@@ -296,10 +296,6 @@
     <value>合并专辑版本</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowOneTilePer" xml:space="preserve">
-    <value>One tile per release. Other editions appear under &quot;Other Versions&quot;.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve">
     <value>从标题中合并客串艺人</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -557,24 +553,12 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtwork" xml:space="preserve">
-    <value>强调色跟随专辑封面</value>
+    <value>紧随专辑封面</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>根据正在播放的封面改变强调色。没有播放时恢复你选择的强调色。</value>
+    <value>从游戏封面重写重音。您选择的重音在没有播放时返回。</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AccentTrackLinks" xml:space="preserve">
-    <value>艺人和专辑名称使用强调色</value>
-    <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>播放列表、“歌曲”和播放器中的艺人、专辑和流派名称使用强调色。关闭后使用普通文字颜色。</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Playlist.DragCount" xml:space="preserve">
-    <value>{0} 首歌曲</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>强调色</value>
@@ -936,10 +920,6 @@
     <value>删除</value>
     <comment>Picker: drop the default clip</comment>
   </data>
-  <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
-  </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
     <value>使用 THER OWN VIDEO</value>
     <comment>Picker: header over the list when not searching</comment>
@@ -1103,22 +1083,6 @@
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve">
     <value>当队列结束时，保持播放类似的歌曲。</value>
     <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
-    <value>保留已播放的歌曲</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>在队列中将已播放的歌曲显示在“正在播放”上方，并在队列结束时保留最后一首歌曲。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Queue.Played" xml:space="preserve">
-    <value>已播放</value>
-    <comment>Text in MainWindow.axaml</comment>
-  </data>
-  <data name="MiniPlayer.Played" xml:space="preserve">
-    <value>已播放</value>
-    <comment>Text in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>儿童不宜内容</value>
@@ -1775,7 +1739,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>已添加</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>没有可添加的了</value>
@@ -1976,6 +1940,7 @@
     <value>查看全部作品</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>播放</value>
@@ -2436,7 +2401,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>移除封面</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>名称</value>
@@ -3481,7 +3446,7 @@
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecIdentification" xml:space="preserve">
-    <value>1. 身份识别</value>
+    <value>身份识别</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecContent" xml:space="preserve">
@@ -4101,18 +4066,6 @@
     <value>儿童不宜</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
-  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
-    <value>隐藏歌词</value>
-    <comment>Mini player "…" menu item while lyrics are open</comment>
-  </data>
-  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
-    <value>置顶</value>
-    <comment>Mini player pin (tooltip + "…" menu item)</comment>
-  </data>
-  <data name="MiniPlayer.Unpin" xml:space="preserve">
-    <value>取消置顶</value>
-    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
-  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>收藏</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
@@ -4497,6 +4450,7 @@
     <value>保存</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>重命名播放列表</value>
@@ -5851,6 +5805,10 @@
     <value>歌词工作室</value>
     <comment>Dialog title</comment>
   </data>
+  <data name="LyricsStudio.Subtitle" xml:space="preserve">
+    <value>将歌词记录到录音的时间，或在没有录音的情况下进行抄送。</value>
+    <comment>Dialog subtitle</comment>
+  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>模型</value>
     <comment>Footer label</comment>
@@ -5875,9 +5833,17 @@
     <value>用耳机翻译(忽略现有歌词)</value>
     <comment>Footer checkbox</comment>
   </data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
+    <value>语音模型聆听歌曲并写词本身，即使歌曲已经有歌词。 没有歌词的歌曲总是被翻译的。</value>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
+  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>当歌曲没有歌曲时在线查找歌词</value>
     <comment>Footer checkbox</comment>
+  </data>
+  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
+    <value>纯歌词先从 LRCLIB 获取，所以模型只需要时间。关闭，模型用耳边写字。</value>
+    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>下载模型</value>
@@ -5942,10 +5908,6 @@
   <data name="LyricsStudioPicker.LineTimings" xml:space="preserve">
     <value>线路计时 · LRC</value>
     <comment>Picker: format chip</comment>
-  </data>
-  <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
   </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
     <value>搜索歌曲或相册</value>
@@ -6013,15 +5975,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>正在翻译</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>忽略这些歌词并翻译正在发生的事件</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>跳过</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>保存歌词</value>
@@ -6313,56 +6275,74 @@
   </data>
   <data name="Settings.Tab.General" xml:space="preserve">
     <value>常规</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Appearance" xml:space="preserve">
     <value>外观</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Player" xml:space="preserve">
     <value>播放器</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Lyrics" xml:space="preserve">
     <value>歌词</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>快捷键</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Audio" xml:space="preserve">
     <value>音频</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
     <value>媒体库</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Advanced" xml:space="preserve">
     <value>高级</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.AccountDevices" xml:space="preserve">
     <value>账户与设备</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Integrations" xml:space="preserve">
     <value>集成</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Plugins" xml:space="preserve">
     <value>插件</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Statistics" xml:space="preserve">
     <value>统计</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.About" xml:space="preserve">
     <value>关于</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.App" xml:space="preserve">
     <value>应用</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Playback" xml:space="preserve">
     <value>播放</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Library" xml:space="preserve">
     <value>媒体库</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Connect" xml:space="preserve">
     <value>连接</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.More" xml:space="preserve">
     <value>更多</value>
+    <comment>Settings rail</comment>
   </data>
 </root>
