@@ -1747,7 +1747,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>Ajouté</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>Plus rien à ajouter</value>
@@ -1948,6 +1948,7 @@
     <value>Voir la discographie</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>Lire</value>
@@ -2408,7 +2409,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>Retirer la pochette</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>Nom</value>
@@ -2603,10 +2604,6 @@
   <data name="Home.PlayAlbum" xml:space="preserve">
     <value>Jouer l'album</value>
     <comment>Home hero secondary button</comment>
-  </data>
-  <data name="Home.TimeLeft" xml:space="preserve">
-    <value>{0} left</value>
-    <comment>Home hero: remaining time of the last played track, e.g. "1:06 left"</comment>
   </data>
   <!-- LibraryAlbumsView.axaml (auto-migrated) -->
   <data name="LibraryAlbums.Text" xml:space="preserve">
@@ -3531,10 +3528,6 @@
   <data name="Metadata.Details" xml:space="preserve">
     <value>Détails</value>
     <comment>Header in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve">
-    <value>Rechercher des métadonnées</value>
-    <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.FoundMetadata" xml:space="preserve">
     <value>Métadonnées trouvées</value>
@@ -4461,6 +4454,7 @@
     <value>Enregistrer</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>Renommer la liste de lecture</value>
@@ -5331,15 +5325,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>Extensions</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>Déposez un dossier de plugin dans le dossier des plugins et rechargez. Désactivez un plugin ici sans le supprimer.</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>Les plugins fonctionnent avec le même accès que Noctis. N'installez que ceux en qui vous avez confiance.</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>Ouvrir le dossier des extensions</value>
   </data>
@@ -5854,7 +5839,7 @@
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
     <value>Le modèle de parole écoute la chanson et écrit les mots lui-même, même si la chanson a déjà des paroles. Les chansons sans paroles sont toujours transcrites.</value>
-    <comment>Footer checkbox tooltip</comment>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>Rechercher les paroles en ligne quand une chanson n'en a pas</value>
@@ -5998,15 +5983,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>Transcrire à la place</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>Ignorer ces paroles et transcrire ce qui est chanté</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>Ignorer</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>Enregistrer les paroles</value>
@@ -6314,10 +6299,6 @@
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>Raccourcis</value>
-    <comment>Settings rail</comment>
-  </data>
-  <data name="Settings.Tab.Audio" xml:space="preserve">
-    <value>Audio</value>
     <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
