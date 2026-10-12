@@ -1747,7 +1747,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>Añadida</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>No queda nada por añadir</value>
@@ -1948,6 +1948,7 @@
     <value>Ver discografía</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>Reproducir</value>
@@ -2408,7 +2409,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>Quitar portada</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>Nombre</value>
@@ -3532,10 +3533,6 @@
     <value>Detalles</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve">
-    <value>Buscar metadatos</value>
-    <comment>Content in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.FoundMetadata" xml:space="preserve">
     <value>Metadatos encontrados</value>
     <comment>Text in MetadataWindow.axaml</comment>
@@ -4461,6 +4458,7 @@
     <value>Guardar</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>Renombrar lista de reproducción</value>
@@ -5331,15 +5329,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>Plugins</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>Arrastra una carpeta de plugins en el directorio de plugins y recarga. Desactiva un plugin aquí sin borrarlo.</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>Plugins ejecutados con el mismo acceso que Noctis. Sólo instale los que confíe.</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>Abrir carpeta de plugins</value>
   </data>
@@ -5854,7 +5843,7 @@
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
     <value>El modelo del discurso escucha la canción y escribe las palabras en sí, incluso cuando la canción ya tiene letras. Las canciones sin letras siempre se transcriban.</value>
-    <comment>Footer checkbox tooltip</comment>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>Busca letras en línea cuando una canción no tiene ninguna</value>
@@ -5998,15 +5987,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>Transcribir en su lugar</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>Ignorar esta letra y transcribir lo que es cantado</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>Saltar</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>Guardar letra</value>
@@ -6296,10 +6285,6 @@
     <value>Escoge tres colores. La vista previa se actualiza en vivo.</value>
     <comment>Dialog subtitle</comment>
   </data>
-  <data name="Settings.Tab.General" xml:space="preserve">
-    <value>General</value>
-    <comment>Settings rail</comment>
-  </data>
   <data name="Settings.Tab.Appearance" xml:space="preserve">
     <value>Apariencia</value>
     <comment>Settings rail</comment>
@@ -6314,10 +6299,6 @@
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>Atajos</value>
-    <comment>Settings rail</comment>
-  </data>
-  <data name="Settings.Tab.Audio" xml:space="preserve">
-    <value>Audio</value>
     <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
