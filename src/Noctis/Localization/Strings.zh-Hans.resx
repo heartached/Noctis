@@ -296,10 +296,6 @@
     <value>合并专辑版本</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowOneTilePer" xml:space="preserve">
-    <value>One tile per release. Other editions appear under &quot;Other Versions&quot;.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve">
     <value>从标题中合并客串艺人</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -923,10 +919,6 @@
   <data name="LyricsBackground.Remove" xml:space="preserve">
     <value>删除</value>
     <comment>Picker: drop the default clip</comment>
-  </data>
-  <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
   </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
     <value>使用 THER OWN VIDEO</value>
@@ -1747,7 +1739,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>已添加</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>没有可添加的了</value>
@@ -1948,6 +1940,7 @@
     <value>查看全部作品</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>播放</value>
@@ -2408,7 +2401,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>移除封面</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>名称</value>
@@ -3453,7 +3446,7 @@
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecIdentification" xml:space="preserve">
-    <value>1. 身份识别</value>
+    <value>身份识别</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecContent" xml:space="preserve">
@@ -3531,10 +3524,6 @@
   <data name="Metadata.Details" xml:space="preserve">
     <value>详细信息</value>
     <comment>Header in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve">
-    <value>搜索元数据</value>
-    <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.FoundMetadata" xml:space="preserve">
     <value>找到的元数据</value>
@@ -4461,6 +4450,7 @@
     <value>保存</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>重命名播放列表</value>
@@ -5331,15 +5321,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>插件</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>将插件文件夹拖放到插件目录并重新加载。将插件关闭到此处而不删除它。</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>插件与Noctis 相同的访问权限运行。仅安装您信任的插件。</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>打开插件文件夹</value>
   </data>
@@ -5854,7 +5835,7 @@
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
     <value>语音模型聆听歌曲并写词本身，即使歌曲已经有歌词。 没有歌词的歌曲总是被翻译的。</value>
-    <comment>Footer checkbox tooltip</comment>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>当歌曲没有歌曲时在线查找歌词</value>
@@ -5928,10 +5909,6 @@
     <value>线路计时 · LRC</value>
     <comment>Picker: format chip</comment>
   </data>
-  <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
-  </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
     <value>搜索歌曲或相册</value>
     <comment>Picker empty state</comment>
@@ -5998,15 +5975,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>正在翻译</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>忽略这些歌词并翻译正在发生的事件</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>跳过</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>保存歌词</value>
