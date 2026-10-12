@@ -412,10 +412,6 @@
     <value>歌詞の背景ビデオ</value>
     <comment>Album page menu</comment>
   </data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>Choose video for this album…</value>
-    <comment>Album page menu</comment>
-  </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
     <value>既定のビデオを使用</value>
     <comment>Album page menu</comment>
@@ -563,18 +559,6 @@
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
     <value>表紙のアクセントを変更します。何も再生していないときに選択したアクセントが戻ります。</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AccentTrackLinks" xml:space="preserve">
-    <value>アーティスト名とアルバム名にアクセントカラー</value>
-    <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>プレイリスト、「曲」、プレーヤーのアーティスト名・アルバム名・ジャンル名をアクセントカラーで表示します。オフにすると通常の文字色になります。</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Playlist.DragCount" xml:space="preserve">
-    <value>{0} 曲</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>アクセントカラー</value>
@@ -853,7 +837,7 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve">
-    <value>カバーカラーでバーを色付けします。format@@0オフにすると、バーが白くなります。</value>
+    <value>カバーカラーでバーを色付けします。オフにすると、バーが白くなります。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
@@ -935,10 +919,6 @@
   <data name="LyricsBackground.Remove" xml:space="preserve">
     <value>削除</value>
     <comment>Picker: drop the default clip</comment>
-  </data>
-  <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
   </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
     <value>彼ら自身のビデオで</value>
@@ -1104,22 +1084,6 @@
     <value>キューが終了したら、同じような曲を再生し続けます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
-    <value>再生済みの曲を残す</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>キューで再生済みの曲を「再生中」の上に表示し、キューが終了しても最後の曲を読み込んだままにします。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Queue.Played" xml:space="preserve">
-    <value>再生済み</value>
-    <comment>Text in MainWindow.axaml</comment>
-  </data>
-  <data name="MiniPlayer.Played" xml:space="preserve">
-    <value>再生済み</value>
-    <comment>Text in MiniPlayerWindow.axaml</comment>
-  </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
     <value>エクスプリシットな内容</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1257,7 +1221,7 @@
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
   </data>
   <data name="Settings.IfPhoneBlocksLink" xml:space="preserve">
-    <value>携帯電話がリンクを安全でないとフラグを立てた場合は、format@@0 を選択します。リモートはプレーンな HTTP を使用します。</value>
+    <value>携帯電話がリンクを安全でないと警告した場合は、「続行」を選択してください。リモートはプレーンな HTTP を使用します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OPENPHONE" xml:space="preserve">
@@ -1775,7 +1739,7 @@
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
     <value>追加済み</value>
-    <comment>Text in AddSongsDialog.axaml</comment>
+    <comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
     <value>追加できる曲がありません</value>
@@ -1976,6 +1940,7 @@
     <value>ディスコグラフィーを見る</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <!-- ArtworkViewerDialog.axaml -->
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve">
     <value>再生</value>
@@ -2157,16 +2122,8 @@
     <value>{0} ファン</value>
     <comment>Hero line under the artist name; {0} = Deezer fan count</comment>
   </data>
-  <data name="ArtistDetail.FindingSimilar" xml:space="preserve">
-    <value>Finding similar artists…</value>
-    <comment>Text in ArtistDetailView.axaml</comment>
-  </data>
   <data name="ArtistDetail.NoSimilar" xml:space="preserve">
     <value>類似したアーティストが見つかりませんでした。</value>
-    <comment>Text in ArtistDetailView.axaml</comment>
-  </data>
-  <data name="ArtistDetail.LookingUp" xml:space="preserve">
-    <value>Looking up the artist…</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NoBiographyFoundArtist" xml:space="preserve">
@@ -2436,7 +2393,7 @@
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
     <value>カバーアートを削除</value>
-    <comment>Content in EditPlaylistDialog.axaml</comment>
+    <comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment>
   </data>
   <data name="EditPlaylist.Name" xml:space="preserve">
     <value>名前</value>
@@ -2631,10 +2588,6 @@
   <data name="Home.PlayAlbum" xml:space="preserve">
     <value>アルバムを再生</value>
     <comment>Home hero secondary button</comment>
-  </data>
-  <data name="Home.TimeLeft" xml:space="preserve">
-    <value>{0} left</value>
-    <comment>Home hero: remaining time of the last played track, e.g. "1:06 left"</comment>
   </data>
   <!-- LibraryAlbumsView.axaml (auto-migrated) -->
   <data name="LibraryAlbums.Text" xml:space="preserve">
@@ -4101,18 +4054,6 @@
     <value>エクスプリシット</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
-  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
-    <value>歌詞を隠す</value>
-    <comment>Mini player "…" menu item while lyrics are open</comment>
-  </data>
-  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
-    <value>最前面に固定</value>
-    <comment>Mini player pin (tooltip + "…" menu item)</comment>
-  </data>
-  <data name="MiniPlayer.Unpin" xml:space="preserve">
-    <value>固定を解除</value>
-    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
-  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>お気に入り</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
@@ -4497,6 +4438,7 @@
     <value>保存</value>
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>プレイリスト名を変更</value>
@@ -5495,10 +5437,6 @@
     <value>USBドライブ、電話、または任意のフォルダ</value>
     <comment>Destination watermark</comment>
   </data>
-  <data name="SendTo.Browse" xml:space="preserve">
-    <value>Browse…</value>
-    <comment>Folder picker button</comment>
-  </data>
   <data name="SendTo.Organize" xml:space="preserve">
     <value>フォルダに整理する</value>
     <comment>Toggle label</comment>
@@ -5550,10 +5488,6 @@
   <data name="YouTube.Subtitle" xml:space="preserve">
     <value>リンクを検索または貼り付けます。カバーアートでライブラリに保存されます。</value>
     <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>Search YouTube or paste a link…</value>
-    <comment>Search box watermark</comment>
   </data>
   <data name="YouTube.Search" xml:space="preserve">
     <value>検索</value>
@@ -5851,6 +5785,10 @@
     <value>歌詞スタジオ</value>
     <comment>Dialog title</comment>
   </data>
+  <data name="LyricsStudio.Subtitle" xml:space="preserve">
+    <value>レコードがないときに歌詞を書いたり、転写したりします。</value>
+    <comment>Dialog subtitle</comment>
+  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>モデル</value>
     <comment>Footer label</comment>
@@ -5875,9 +5813,17 @@
     <value>耳で書き換える（既存の歌詞は無視）</value>
     <comment>Footer checkbox</comment>
   </data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
+    <value>スピーチモデルは、曲に歌詞が既にある場合でも、曲を聴き、単語自体を書き込みます。 歌詞のない曲は常に書き換えられます。</value>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
+  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>曲がない場合、オンラインで歌詞を検索する</value>
     <comment>Footer checkbox</comment>
+  </data>
+  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
+    <value>プレーンな歌詞は最初にLRCLIBから取得されるので、モデルはそれらの時間だけを取得する必要があります。オフ、モデルは耳で単語を書き込みます。</value>
+    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>モデルをダウンロード</value>
@@ -5943,10 +5889,6 @@
     <value>ラインタイミング · LRC</value>
     <comment>Picker: format chip</comment>
   </data>
-  <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>Search songs and albums…</value>
-    <comment>Picker search box</comment>
-  </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
     <value>曲またはアルバムを検索</value>
     <comment>Picker empty state</comment>
@@ -5967,10 +5909,6 @@
     <value>時間をかけずに</value>
     <comment>Picker: header over the suggestions when line timings is chosen</comment>
   </data>
-  <data name="LyricsStudioPicker.Scanning" xml:space="preserve">
-    <value>Looking through the library…</value>
-    <comment>Picker: while the suggestions load</comment>
-  </data>
   <data name="LyricsStudioPicker.SelectAll" xml:space="preserve">
     <value>すべて選択</value>
     <comment>Picker footer</comment>
@@ -5988,7 +5926,7 @@
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
-    <value>曲を選択し、format@@0を押します。</value>
+    <value>リストから曲を選択してください。歌詞のある曲は「開始」を押すとタイミングを付けられます。歌詞のない曲は貼り付け用のボックスが開きます。</value>
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve">
@@ -6013,15 +5951,15 @@
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
     <value>代わりに変換する</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
     <value>これらの歌詞を無視して歌詞を書き起こしてください</value>
-    <comment>Tooltip</comment>
+    <comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
     <value>スキップ</value>
-    <comment>Review button</comment>
+    <comment>Review "…" menu item</comment>
   </data>
   <data name="LyricsStudio.Save" xml:space="preserve">
     <value>歌詞を保存</value>
@@ -6313,56 +6251,74 @@
   </data>
   <data name="Settings.Tab.General" xml:space="preserve">
     <value>一般</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Appearance" xml:space="preserve">
     <value>外観</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Player" xml:space="preserve">
     <value>プレーヤー</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Lyrics" xml:space="preserve">
     <value>歌詞</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Shortcuts" xml:space="preserve">
     <value>ショートカット</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Audio" xml:space="preserve">
     <value>オーディオ</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Library" xml:space="preserve">
     <value>ライブラリ</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Advanced" xml:space="preserve">
     <value>詳細</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.AccountDevices" xml:space="preserve">
     <value>アカウントとデバイス</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Integrations" xml:space="preserve">
     <value>連携</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Plugins" xml:space="preserve">
     <value>プラグイン</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.Statistics" xml:space="preserve">
     <value>統計</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Tab.About" xml:space="preserve">
     <value>情報</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.App" xml:space="preserve">
     <value>アプリ</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Playback" xml:space="preserve">
     <value>再生</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Library" xml:space="preserve">
     <value>ライブラリ</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.Connect" xml:space="preserve">
     <value>接続</value>
+    <comment>Settings rail</comment>
   </data>
   <data name="Settings.Group.More" xml:space="preserve">
     <value>その他</value>
+    <comment>Settings rail</comment>
   </data>
 </root>
