@@ -130,11 +130,95 @@
   <data name="Import.MissingHeader" xml:space="preserve">
     <value>Titres manquants (introuvables dans votre bibliothèque)</value>
   </data>
+  <data name="Import.LinkWatermark" xml:space="preserve">
+    <value>Coller un lien Deezer ou TIDAL</value>
+  </data>
+  <data name="Import.DropTitle" xml:space="preserve">
+    <value>Déposer un fichier de playlist ici</value>
+  </data>
+  <data name="Import.Formats" xml:space="preserve">
+    <value>CSV, JSON ou M3U</value>
+  </data>
+  <data name="Import.FormatsTip" xml:space="preserve">
+    <value>Spotify: exportez un CSV avec Exportify.
+Apple Music, YouTube Music, Amazon: exporter un fichier avec TuneMyMusic.
+Deezer et TIDAL : collez le lien.</value>
+  </data>
+  <data name="Import.CreatePlaylist" xml:space="preserve">
+    <value>Créer une playlist</value>
+  </data>
+  <data name="Import.Done" xml:space="preserve">
+    <value>Terminé</value>
+  </data>
+  <data name="Import.StatusMatching" xml:space="preserve">
+    <value>Correspondance avec votre bibliothèque…</value>
+  </data>
+  <data name="Import.StatusFetching" xml:space="preserve">
+    <value>Récupération depuis {0}…</value>
+    <comment>{0} = Deezer or TIDAL</comment>
+  </data>
+  <data name="Import.StatusEmptyFile" xml:space="preserve">
+    <value>Aucune piste dans ce fichier.</value>
+  </data>
+  <data name="Import.StatusEmptyLink" xml:space="preserve">
+    <value>Ce lien {0} n'a pas de pistes (privées ou supprimées).</value>
+    <comment>{0} = Deezer or TIDAL</comment>
+  </data>
+  <data name="Import.StatusReadFailed" xml:space="preserve">
+    <value>Impossible de lire le fichier : {0}</value>
+    <comment>{0} = error message</comment>
+  </data>
+  <data name="Import.StatusFetchFailed" xml:space="preserve">
+    <value>Impossible de récupérer le lien : {0}</value>
+    <comment>{0} = error message</comment>
+  </data>
+  <data name="Import.StatusResult" xml:space="preserve">
+    <value>{0} sur {1} correspond</value>
+    <comment>{0} = tracks found in the library, {1} = tracks in the playlist</comment>
+  </data>
+  <data name="Import.StatusCreating" xml:space="preserve">
+    <value>Création de la playlist…</value>
+  </data>
+  <data name="Import.StatusCreated" xml:space="preserve">
+    <value>Créé «{0}» avec pistes {1}.</value>
+    <comment>{0} = playlist name, {1} = track count</comment>
+  </data>
+  <data name="Import.StatusCreatedOne" xml:space="preserve">
+    <value>Créé «{0}» avec 1 piste.</value>
+    <comment>{0} = playlist name</comment>
+  </data>
+  <data name="Import.StatusTidalWaiting" xml:space="preserve">
+    <value>Terminez la connexion à TIDAL dans votre navigateur…</value>
+  </data>
+  <data name="Import.StatusTidalFailed" xml:space="preserve">
+    <value>La connexion à TIDAL n'a pas abouti. Veuillez réessayer.</value>
+  </data>
+  <data name="Import.StatusTidalSignedIn" xml:space="preserve">
+    <value>Connecté à TIDAL. Collez un lien TIDAL.</value>
+  </data>
+  <data name="Import.StatusTidalNeeded" xml:space="preserve">
+    <value>Connectez-vous à TIDAL pour importer ce lien.</value>
+  </data>
+  <data name="Import.TidalHelp" xml:space="preserve">
+    <value>Les playlists TIDAL sont lues avec votre propre compte (lecture seule, connexion à un navigateur).</value>
+  </data>
+  <data name="Import.TidalSignIn" xml:space="preserve">
+    <value>Se connecter à TIDAL</value>
+  </data>
+  <data name="Import.PickerTitle" xml:space="preserve">
+    <value>Choisir un export de playlist</value>
+  </data>
+  <data name="Import.PickerFilter" xml:space="preserve">
+    <value>Exportation de la playlist</value>
+  </data>
   <data name="Common.Close" xml:space="preserve">
     <value>Fermer</value>
   </data>
   <data name="Common.Create" xml:space="preserve">
     <value>Créer</value>
+  </data>
+  <data name="Common.Done" xml:space="preserve">
+    <value>Terminé</value>
   </data>
   <!-- Top bar -->
   <data name="Tab.Library" xml:space="preserve">
@@ -368,6 +452,22 @@
     <value>Ajouter</value>
     <comment>Content in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.IgnoreLeadingWordsInArtistSort" xml:space="preserve">
+    <value>Ignorer les mots principaux lors du tri des artistes</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.IgnoreLeadingWordsInArtistSortHint" xml:space="preserve">
+    <value>Trier &quot;Les Beatles&quot; en dessous de B. Les noms sont toujours affichés.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.RemoveWordTip" xml:space="preserve">
+    <value>Effacer mot</value>
+    <comment>ToolTip.Tip in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AddWordEG" xml:space="preserve">
+    <value>Ajouter un mot, par exemple A ou Los</value>
+    <comment>Watermark in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.Noctis" xml:space="preserve">
     <value>Noctis</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -390,6 +490,26 @@
   </data>
   <data name="Settings.Cancel" xml:space="preserve">
     <value>Annuler</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AutoInstallUpdates" xml:space="preserve">
+    <value>Mise à jour automatique</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AutoInstallUpdatesCaption" xml:space="preserve">
+    <value>Télécharger les nouvelles versions en arrière-plan et les installer la prochaine fois que vous ouvrirez Noctis. La lecture n'est jamais interrompue</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve">
+    <value>Télécharger de nouvelles versions en arrière-plan. Cliquez sur Installer et Redémarrer lorsque vous êtes prêt à finir.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.Postpone" xml:space="preserve">
+    <value>Reporter</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.WhatsNew" xml:space="preserve">
+    <value>Quoi de neuf</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve">
@@ -564,6 +684,18 @@
     <value>Rappelez l'accent de la couverture de jeu. Votre accent choisi revient lorsque rien ne joue.</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.AccentTrackLinks" xml:space="preserve">
+    <value>Couleur d'accentuation sur les noms d'artiste et d'album</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
+  </data>
+  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
+    <value>Les noms d'artiste, d'album et de genre dans les listes de lecture, les chansons et le lecteur prennent la couleur de l'accent.</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
+  </data>
+  <data name="Playlist.DragCount" xml:space="preserve">
+    <value>{0} chansons</value>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
+  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Couleur d'accentuation</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -603,6 +735,26 @@
   <data name="Settings.TintEachAlbumS" xml:space="preserve">
     <value>Tint chaque page de l'album avec sa couleur de couverture.</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AlbumPageTintStrength" xml:space="preserve">
+    <value>Force de la teinte</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AlbumPageTintStrengthHint" xml:space="preserve">
+    <value>Avec quelle force la page de l'album prend sa couleur de couverture.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AlbumPageTintWholePage" xml:space="preserve">
+    <value>Teindre toute la page</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AlbumPageTintWholeWindow" xml:space="preserve">
+    <value>Teindre entièrement la fenêtre</value>
+    <comment>Toggle in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AlbumPageTintWholeWindowHint" xml:space="preserve">
+    <value>Remplissez la fenêtre autour de la barre latérale et le lecteur avec la couleur de couverture.</value>
+    <comment>Hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NowPlayingArtwork" xml:space="preserve">
     <value>Pochette en cours de lecture</value>
@@ -755,6 +907,10 @@
   <data name="Settings.ShuffleButtonAfterRepeat" xml:space="preserve">
     <value>Un bouton aléatoire à côté de Répéter.</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.EqualizerButton" xml:space="preserve">
+    <value>Égaliseur</value>
+    <comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment>
   </data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
     <value>Opacité de la boîte de suivi</value>
