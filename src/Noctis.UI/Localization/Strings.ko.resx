@@ -5912,14 +5912,6 @@
     <value>각 단어와 시간을 표시합니다. 클릭하면 들을 수 있습니다.</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>선택한 단어 50ms 앞으로 (이웃 단어는 그대로)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>선택한 단어 50ms 뒤로 (이웃 단어는 그대로)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>단어 탭하기</value>
     <comment>Starts tap-to-time for one line</comment>
