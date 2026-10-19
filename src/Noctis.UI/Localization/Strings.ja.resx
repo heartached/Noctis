@@ -5920,14 +5920,6 @@
     <value>時間とともにそれぞれの単語を表示します。クリックすると聞こえます。</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>選択された単語は50ms以前（隣の単語は留まっています）</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>選択された単語は50ミリ秒後（隣の単語は置いてあります）</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>単語をタップ</value>
     <comment>Starts tap-to-time for one line</comment>
