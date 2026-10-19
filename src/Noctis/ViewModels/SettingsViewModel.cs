@@ -3472,12 +3472,22 @@ public partial class SettingsViewModel : ViewModelBase
         DebugLog.Changed += () =>
         {
             if (Interlocked.Exchange(ref _devLogRefreshQueued, 1) == 1) return;
-            Dispatcher.UIThread.Post(() =>
+            try
             {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Volatile.Write(ref _devLogRefreshQueued, 0);
+                    if (DeveloperMode)
+                        DevLogText = ComposeDevLogText();
+                }, DispatcherPriority.Background);
+            }
+            catch
+            {
+                // Nothing was queued: let the next write try again instead of leaving the
+                // log view stuck. (DebugLog contains the exception itself.)
                 Volatile.Write(ref _devLogRefreshQueued, 0);
-                if (DeveloperMode)
-                    DevLogText = ComposeDevLogText();
-            }, DispatcherPriority.Background);
+                throw;
+            }
         };
 
         if (Avalonia.Application.Current is Noctis.App app)
