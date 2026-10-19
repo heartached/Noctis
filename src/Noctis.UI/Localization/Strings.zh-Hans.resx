@@ -5944,14 +5944,6 @@
     <value>按时间显示每个单词。单击一个来听到它。</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>较早选中的单词 50 ms (其邻居保持put)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>选中的单词50毫秒后(其邻居保持put)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>点击单词</value>
     <comment>Starts tap-to-time for one line</comment>
