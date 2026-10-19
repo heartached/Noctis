@@ -6108,14 +6108,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Montrez chaque mot avec son temps. Cliquez sur un pour l'entendre.</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>Le mot sélectionné 50 ms plus tôt (ses voisins sont restés)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>Le mot sélectionné 50 ms plus tard (ses voisins restent inscrits)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>Tapez sur les mots</value>
     <comment>Starts tap-to-time for one line</comment>
