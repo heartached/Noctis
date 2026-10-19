@@ -5956,14 +5956,6 @@
     <value>إظهار كل كلمة بوقتها. انقر على كلمة واحدة لسماعها.</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>الكلمة المختارة 50 ثانية قبل ذلك (لا يزال جيرانه)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>الكلمة المختارة 50 ثانية في وقت لاحق (لا يزال جيرانه)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>انقر على الكلمات</value>
     <comment>Starts tap-to-time for one line</comment>
