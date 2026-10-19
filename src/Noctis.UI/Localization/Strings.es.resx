@@ -5956,14 +5956,6 @@
     <value>Mostrar cada palabra con su tiempo. Haga clic en una para escucharla.</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>Palabra seleccionada 50 ms antes (sus vecinos permanecen puestos)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>Palabra seleccionada 50 ms más tarde (sus vecinos permanecen puestos)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>Toca palabras</value>
     <comment>Starts tap-to-time for one line</comment>
