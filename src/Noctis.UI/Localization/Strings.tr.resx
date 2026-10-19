@@ -5928,14 +5928,6 @@
     <value>Her kelimeyi zamanıyla göster. Duymak için birine tıkla.</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>Seçili kelime 50 ms öne (komşuları yerinde kalır)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>Seçili kelime 50 ms geriye (komşuları yerinde kalır)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>Kelimelere dokun</value>
     <comment>Starts tap-to-time for one line</comment>
