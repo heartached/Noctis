@@ -9027,14 +9027,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Показать каждое слово с его временем. Нажмите на слово, чтобы его прослушать.</value>
     <comment>Word toggle tooltip</comment>
   </data>
-  <data name="LyricsStudio.WordEarlier" xml:space="preserve">
-    <value>Выбранное слово на 50 мс раньше (соседние остаются на месте)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
-  <data name="LyricsStudio.WordLater" xml:space="preserve">
-    <value>Выбранное слово на 50 мс позже (соседние остаются на месте)</value>
-    <comment>Word nudge tooltip</comment>
-  </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
     <value>Отстучать слова</value>
     <comment>Starts tap-to-time for one line</comment>
