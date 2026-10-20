@@ -116,6 +116,27 @@ public class MobileLibraryRailsTests
         Assert.True(rig.Shell.Library.HasOnRepeat);
     }
 
+    /// <summary>The rail keeps a tile whose song a rescan re-read (a new Track object, same id):
+    /// its › list must list the library's song, not the old object (whose heart and play
+    /// count no longer reach the library).</summary>
+    [Fact]
+    public void OnRepeatPage_ListsTheLibrarysSongs_AfterARescanReReadOne()
+    {
+        var hot = MobileFixtures.Song("Hot");
+        using var rig = MobileFixtures.MakeRig(new[] { hot }, log: h =>
+        {
+            foreach (var d in new[] { 1, 2, 3 }) h.Seed(hot, Now.AddDays(-d));
+        });
+        var reread = new Track { Id = hot.Id, Title = "Hot", Artist = hot.Artist, AlbumArtist = hot.AlbumArtist, Album = hot.Album, FilePath = hot.FilePath, Duration = hot.Duration };
+        rig.Library.TrackList[0] = reread;
+        rig.Library.RaiseLibraryUpdated();
+
+        rig.Shell.OpenOnRepeatCommand.Execute(null);
+
+        var page = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        Assert.Same(reread, Assert.Single(page.Songs));
+    }
+
     [Fact]
     public void PinnedRail_ShowsPinnedAlbums_ThenPinnedPlaylists()
     {

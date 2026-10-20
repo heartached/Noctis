@@ -183,8 +183,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public bool IsTrackPinned(Guid trackId) => _pinnedTrackIds.Contains(trackId);
 
-    /// <summary>The On Repeat rail's songs, in rail order (its › list).</summary>
-    public IEnumerable<Track> OnRepeatTracks() => OnRepeatRail.Select(r => r.Payload).OfType<Track>();
+    /// <summary>The On Repeat rail's songs, in rail order (its › list), as the library holds them
+    /// now: the rail keeps an unchanged tile across refreshes, and with it a Track from before a
+    /// rescan that re-read the file.</summary>
+    public IEnumerable<Track> OnRepeatTracks() =>
+        OnRepeatRail.Select(r => r.Payload).OfType<Track>().Select(t => _library.GetTrackById(t.Id) ?? t);
 
     /// <summary>A playlist's cover: the first of its tracks that has one.</summary>
     public string? PlaylistArtwork(Playlist playlist) =>
