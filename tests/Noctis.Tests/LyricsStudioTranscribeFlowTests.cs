@@ -141,6 +141,20 @@ public class LyricsStudioTranscribeFlowTests : IDisposable
         Assert.Equal("heard words", vm.Queue[0].DraftText);
     }
 
+    [AvaloniaFact]
+    public async Task TranscribeOnlyBatch_FinishLine_CountsTranscripts_NotSongsThatNeedLyrics()
+    {
+        var heard = new[] { W("heard", 1, 1.4), W("words", 1.5, 2) };
+        var vm = Studio(Transcriber(_tmp, heard), T("one"), T("two"));
+        vm.TranscribeOnly = true;
+
+        await vm.StartCommand.ExecuteAsync(null);
+
+        Assert.All(vm.Queue, i => Assert.True(i.IsTranscriptDraft));
+        Assert.DoesNotContain("need lyrics", vm.RunStatusText);
+        Assert.Contains("2 transcripts", vm.RunStatusText);
+    }
+
     private sealed class FakeEngine : ILyricsStudioEngine
     {
         public List<LyricsStudioOptions> Options { get; } = new();

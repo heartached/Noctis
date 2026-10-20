@@ -1242,9 +1242,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
             }
             _secondsPerWindow = _working?.Meter?.SecondsPerWindow ?? _secondsPerWindow;
             _working = null;
-            var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics);
+            // A transcript waits in the lyrics box too, but for checking: a Transcribe-only batch
+            // used to finish on "0 ready for review · 5 need lyrics".
+            var transcripts = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics && i.IsTranscriptDraft);
+            var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics) - transcripts;
             RunStatusText = ct.IsCancellationRequested ? "Stopped."
-                : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review" + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
+                : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review"
+                  + (transcripts > 0 ? $" · {transcripts} transcript{(transcripts == 1 ? "" : "s")} to check" : string.Empty)
+                  + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
             DebugLogger.Info(DebugLogger.Category.Lyrics, ct.IsCancellationRequested ? "LyricsStudio.RunStopped" : "LyricsStudio.RunFinished",
                 $"done={done}/{total}, ready={Queue.Count(i => i.Status == StudioStatus.Ready)}");
             DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionClosing", "disposing the speech model");
