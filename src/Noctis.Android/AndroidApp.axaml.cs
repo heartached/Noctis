@@ -138,6 +138,12 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // The desktop's artist photos: Deezer, asked by artist name only when an artist page
             // opens or artist circles come into view (Settings → About says so).
             ArtistPhotos = DeezerArtistPhotoSource.Create(persistence.DataDirectory, new HttpClient(), library),
+            // Artists' own logos on the artist page (MusicBrainz for the artist, then fanart.tv /
+            // TheAudioDB), asked by name only when an artist page opens; only in a build that
+            // carries a key (Noctis.Android.csproj), else the page shows the name.
+            ArtistLogos = ArtistLogoKeys.FromAssembly(typeof(AndroidApp).Assembly) is { IsEmpty: false } logoKeys
+                ? ArtistLogoSource.Create(persistence.DataDirectory, new HttpClient(), library, logoKeys)
+                : null,
         };
         _shell = shell;
 

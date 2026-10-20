@@ -87,7 +87,7 @@ internal static class MobileFixtures
 
     /// <summary>A shell over the fakes, with the library already initialised. <paramref name="seed"/>
     /// runs against the persistence root first (settings, playlists).</summary>
-    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null, NoPicker? picker = null)
+    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null, NoPicker? picker = null, IArtistLogoSource? logos = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         var library = new FakeLibraryService();
@@ -108,6 +108,7 @@ internal static class MobileFixtures
             TintFactory = tint ?? (() => new PageTint(_ => null, work => Task.FromResult(work()))),
             Theme = theme,
             ArtistPhotos = photos,
+            ArtistLogos = logos,
         };
         RunBlocking(shell.Library.InitializeAsync);
         return new Rig { Shell = shell, Library = library, Player = player, Persistence = persistence, History = history, Root = root };

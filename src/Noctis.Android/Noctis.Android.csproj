@@ -103,6 +103,18 @@
     <TransformFile Include="Libs\FfmpegMetadata.xml" />
   </ItemGroup>
 
+  <!-- Artist logos (ArtistLogoService): the API keys come from the build, never from the
+       repository. Pass -p:NoctisFanartApiKey=... (fanart.tv project key, free at
+       https://fanart.tv/get-an-api-key/), optionally -p:NoctisFanartClientKey=... (a personal
+       key) and -p:NoctisTheAudioDbApiKey=... (a paid TheAudioDB key: its free test key may not be
+       used in a store app), or set environment variables of those names (CI: repository
+       secrets). Without any, the artist page shows the name as before. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="NoctisFanartApiKey" Value="$(NoctisFanartApiKey)" Condition="'$(NoctisFanartApiKey)' != ''" />
+    <AssemblyMetadata Include="NoctisFanartClientKey" Value="$(NoctisFanartClientKey)" Condition="'$(NoctisFanartClientKey)' != ''" />
+    <AssemblyMetadata Include="NoctisTheAudioDbApiKey" Value="$(NoctisTheAudioDbApiKey)" Condition="'$(NoctisTheAudioDbApiKey)' != ''" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Noctis.Core\Noctis.Core.csproj" />
     <ProjectReference Include="..\Noctis.UI\Noctis.UI.csproj" />

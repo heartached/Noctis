@@ -51,18 +51,37 @@
             <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
         </Style>
 
-        <!-- ☆ ▶ ⤨: Apple's three ~50 pt circles, filled with a shade of the page colour. -->
+        <!-- ⤨ ▶ ☆: Apple's circles (iOS 26 reference, 2026-10-20: ~47 pt either side of a ~70 pt
+             Play), the small ones filled with a shade of the page colour. -->
         <Style Selector="views|ArtistPage Button.artist-round">
-            <Setter Property="Width" Value="54" />
-            <Setter Property="Height" Value="54" />
-            <Setter Property="CornerRadius" Value="27" />
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="CornerRadius" Value="24" />
         </Style>
         <Style Selector="views|ArtistPage Button.artist-round PathIcon">
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
         </Style>
         <Style Selector="views|ArtistPage.tinted Button.artist-round">
             <Setter Property="Background" Value="{DynamicResource ArtistButtonFill}" />
+        </Style>
+        <!-- Play: Apple's big filled circle, white with a dark glyph on a deep page; the colours
+             come from the code-behind (ArtistPlayFill / ArtistPlayGlyph: the page's text colour,
+             or the logo's own accent when it has one). -->
+        <Style Selector="views|ArtistPage Button.artist-round.artist-play">
+            <Setter Property="Width" Value="66" />
+            <Setter Property="Height" Value="66" />
+            <Setter Property="CornerRadius" Value="33" />
+            <Setter Property="Background" Value="{DynamicResource ArtistPlayFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource ArtistPlayGlyph}" />
+        </Style>
+        <Style Selector="views|ArtistPage Button.artist-round.artist-play PathIcon">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+        </Style>
+        <Style Selector="views|ArtistPage Button.artist-play:pointerover /template/ ContentPresenter#PART_ContentPresenter, views|ArtistPage Button.artist-play:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
         </Style>
 
         <!-- Carousel cards: a lighter shade of the page colour, Apple's 16 pt corners. -->
@@ -158,24 +177,40 @@
                     <Border Name="HeroFade" VerticalAlignment="Bottom" IsHitTestVisible="False" />
                 </Panel>
 
-                <!-- The name and the buttons over the photo's faded lower part (the margin pulls
-                     them up by their own height, the row's bottom margin is the gap to the
-                     photo's end; see ArtistPage.axaml.cs). -->
+                <!-- The name (or the artist's own logo, Apple Music's artist logos) and the buttons
+                     over the photo's faded lower part (the margin pulls them up by their own
+                     height, the row's bottom margin is the gap to the photo's end; see
+                     ArtistPage.axaml.cs, which also sizes the logo and gives it a halo when its
+                     ink would not read on the page). The logo decodes by width bucket, not
+                     PixelExact, whose decode width assumes square art (a 4:1 logo came out at a
+                     quarter of its width, pixelated, on the emulator 2026-10-20). -->
                 <StackPanel Name="TitleBlock" Margin="20,-121,20,0">
-                    <TextBlock Name="ArtistName" Text="{Binding Name}" FontSize="34" FontWeight="Bold" LineHeight="41"
-                               TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
-                    <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16" Margin="0,14,0,12">
-                        <Button Name="FavouriteButton" Classes="round artist-round" Command="{Binding ToggleFavouriteCommand}">
+                    <Panel Name="TitleArt">
+                        <TextBlock Name="ArtistName" Text="{Binding Name}" FontSize="34" FontWeight="Bold" LineHeight="41"
+                                   TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding !HasLogo}" />
+                        <controls:CachedImage Name="ArtistLogo" SourcePath="{Binding LogoPath}" DecodeWidth="1024"
+                                              Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                              IsVisible="{Binding HasLogo}" AutomationProperties.Name="{Binding Name}" />
+                    </Panel>
+                    <!-- Apple's row: two small circles in a shade of the page colour either side of a
+                         bigger Play in the page's text colour, or in the logo's own colour when it
+                         has one (Doja Cat's blue). The star sits right, where Apple has it. -->
+                    <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="26" Margin="0,16,0,12">
+                        <Button Name="ShuffleButton" Classes="round artist-round" Command="{Binding ShuffleCommand}" VerticalAlignment="Center"
+                                AutomationProperties.Name="Shuffle">
+                            <PathIcon Data="{DynamicResource PhShuffle}" />
+                        </Button>
+                        <Button Name="PlayButton" Classes="round artist-round artist-play" Command="{Binding PlayCommand}" VerticalAlignment="Center"
+                                AutomationProperties.Name="Play">
+                            <PathIcon Data="{DynamicResource PhPlayFill}" Margin="3,0,0,0" />
+                        </Button>
+                        <Button Name="FavouriteButton" Classes="round artist-round" Command="{Binding ToggleFavouriteCommand}" VerticalAlignment="Center"
+                                AutomationProperties.Name="Favourite">
                             <Panel>
                                 <PathIcon Name="StarOutline" Data="{DynamicResource PhStar}" IsVisible="{Binding !IsFavourite}" />
                                 <PathIcon Name="StarFilled" Data="{DynamicResource PhStarFill}" IsVisible="{Binding IsFavourite}" />
                             </Panel>
-                        </Button>
-                        <Button Name="PlayButton" Classes="round artist-round" Command="{Binding PlayCommand}">
-                            <PathIcon Data="{DynamicResource PhPlayFill}" />
-                        </Button>
-                        <Button Name="ShuffleButton" Classes="round artist-round" Command="{Binding ShuffleCommand}">
-                            <PathIcon Data="{DynamicResource PhShuffle}" />
                         </Button>
                     </StackPanel>
                 </StackPanel>
