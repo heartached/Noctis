@@ -105,7 +105,7 @@
                                                     <StackPanel>
                                                         <Panel HorizontalAlignment="Center">
                                                             <PathIcon Data="{DynamicResource PhMenuHeart}" IsVisible="{Binding !IsFavourite}" />
-                                                            <PathIcon Data="{DynamicResource PhMenuHeartFill}" Foreground="#E74856" IsVisible="{Binding IsFavourite}" />
+                                                            <PathIcon Data="{DynamicResource PhMenuHeartFill}" IsVisible="{Binding IsFavourite}" />
                                                         </Panel>
                                                         <TextBlock Text="{Binding FavouriteTileLabel}" />
                                                     </StackPanel>

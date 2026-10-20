@@ -90,6 +90,11 @@
         <Setter Property="Margin" Value="6,0,0,0" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <!-- The explicit badge (Noctis.UI's explicit-badge, its white "E"): the palette's fill, Apple's
+         secondary grey on Light, where the desktop's half-grey over white left the "E" unreadable. -->
+    <Style Selector="Border.explicit-badge">
+        <Setter Property="Background" Value="{DynamicResource PhoneExplicitBadgeBrush}" />
+    </Style>
     <Style Selector="Border.explicit TextBlock">
         <Setter Property="FontSize" Value="10" />
         <Setter Property="FontWeight" Value="Bold" />
@@ -508,8 +513,9 @@
         <Setter Property="Background" Value="{DynamicResource PhoneFillBrush}" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
-    <Style Selector="TextBox.search-field /template/ TextBlock#PART_Watermark, TextBox.search-field /template/ TextBlock#PART_FloatingWatermark">
+    <Style Selector="TextBox.search-field /template/ TextBlock#PART_Placeholder, TextBox.search-field /template/ TextBlock#PART_FloatingPlaceholder">
         <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        <Setter Property="Opacity" Value="1" />
     </Style>
 
     <!-- A tab page's main list: content scrolls under the floating glass bar, so the list

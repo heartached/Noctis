@@ -149,8 +149,11 @@
         </Panel>
 
         <!-- The full-screen layer the chrome stands in, so it steps back under a sheet about the
-             same centre as the app; ShellView raises it over the Queue sheet. -->
-        <Panel Name="ChromeLayer">
+             same centre as the app; ShellView raises it over the Queue sheet. Over a page in its
+             cover's colour (album, artist) the glass takes that colour and the theme its text
+             reads in (ShellView.ApplyChromeTint, TintedGlass), Apple's red glass on a red page. -->
+        <ThemeVariantScope Name="ChromeScope">
+        <Panel Name="ChromeLayer" TextElement.Foreground="{DynamicResource PrimaryTextBrush}">
             <Panel Name="BottomChrome" VerticalAlignment="Bottom" Margin="{Binding BottomSafePadding}">
                 <Panel Name="ChromeHost" Margin="16,0,16,8" VerticalAlignment="Bottom">
 
@@ -311,6 +314,7 @@
                 </Panel>
             </Panel>
         </Panel>
+        </ThemeVariantScope>
 
         <!-- Over the app while a sheet is up: dims it and takes the taps meant for it. -->
         <Border Name="SheetDim" Background="Black" Opacity="0" IsVisible="False" />
@@ -349,14 +353,15 @@
 
         <!-- The player's short message (Player.Notice) over whatever is on screen, as Apple's
              banner: e.g. the computer did not answer, so songs that are not downloaded were
-             passed over. ShellView takes it down after a few seconds; it never takes a tap. -->
+             passed over. ShellView takes it down after a few seconds; it never takes a tap.
+             The pop-ups' glass (MenuGlass) in a pill, in the app's theme (owner 10-20: every
+             pop-up the one liquid glass, never a flat dark box). -->
         <Panel Name="NoticeLayer" ZIndex="3" Margin="{Binding TopSafePadding}" IsHitTestVisible="False">
-            <Border Name="NoticeBanner" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="20,8,20,0"
-                    MaxWidth="360" Padding="18,11" CornerRadius="22" Background="#F22C2C2E"
-                    BoxShadow="0 6 24 0 #40000000" IsVisible="{Binding Player.HasNotice}">
-                <TextBlock Name="NoticeText" Text="{Binding Player.Notice}" Foreground="White" FontSize="14"
-                           FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" />
-            </Border>
+            <views:MenuGlass Name="NoticeBanner" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="20,8,20,0"
+                             MaxWidth="360" CornerRadius="22" IsVisible="{Binding Player.HasNotice}">
+                <TextBlock Name="NoticeText" Text="{Binding Player.Notice}" Foreground="{DynamicResource MenuGlassText}" FontSize="14"
+                           Margin="18,11" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" />
+            </views:MenuGlass>
         </Panel>
     </Grid>
 </UserControl>

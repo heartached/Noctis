@@ -269,8 +269,12 @@ internal sealed class HeroChrome
             var accent = _page.TryFindResource("AccentTextBrush", _page.ActualThemeVariant, out var a)
                          && a is ISolidColorBrush accentBrush ? accentBrush.Color : text;
             _page.Resources[_prefix + "Accent"] = new SolidColorBrush(MobileTheme.Readable(accent, new[] { tint }, text));
+            // The floating back and ⋯ buttons: glass in the page colour (Apple's red glass on a red
+            // page), their glyphs in the page's text colour (the pages' tinted glass-round style).
+            TintedGlass.Apply(_topBar.Resources, tint);
             into = tint;
         }
+        else TintedGlass.Clear(_topBar.Resources);
         ApplyFades();
         _tintApplied(into);
         UpdateStatusBar();

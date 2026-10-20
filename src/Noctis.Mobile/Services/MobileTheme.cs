@@ -32,6 +32,11 @@ public sealed class MobileTheme
     /// The chrome brush is the Liquid Glass tint (translucent: what passes beneath shows
     /// through it), its outline the hairline rim every floating pill carries, and the selected
     /// brush the tab bar's inner capsule: a grey on light glass, darker than the pill on dark.
+    /// Light's secondary text is Apple's secondaryLabel (#3C3C43 at 60 %), translucent, so it
+    /// keeps its contrast on the grey fills it also sits on (the search field's magnifier read
+    /// 2.97:1 as an opaque #8A8A8E); on a white page it is that same #8A8A8E. The explicit badge
+    /// is the desktop's half-grey on dark, and Apple's secondary grey on Light, where the half-grey
+    /// over white left its white "E" at 1.8:1.
     /// </summary>
     public static ResourceDictionary BuildPalette(string? darkTheme = null)
     {
@@ -49,6 +54,7 @@ public sealed class MobileTheme
             ["PhoneChromeSelectedBrush"] = B("#99000000"),
             ["PhoneSecondaryTextBrush"] = B(secondary),
             ["PhoneChevronBrush"] = B(chevron),
+            ["PhoneExplicitBadgeBrush"] = B("#88888888"),
         };
         var palette = new ResourceDictionary();
         palette.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
@@ -61,8 +67,9 @@ public sealed class MobileTheme
             ["PhoneChromeBrush"] = B("#99FAFAFA"),
             ["PhoneChromeOutlineBrush"] = B("#21000000"),
             ["PhoneChromeSelectedBrush"] = B("#12000000"),
-            ["PhoneSecondaryTextBrush"] = B("#8A8A8E"),
+            ["PhoneSecondaryTextBrush"] = B("#993C3C43"),
             ["PhoneChevronBrush"] = B("#C4C4C7"),
+            ["PhoneExplicitBadgeBrush"] = B("#8A8A8E"),
         };
         palette.ThemeDictionaries[ThemeVariant.Dark] = darkTheme switch
         {

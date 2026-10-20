@@ -263,7 +263,7 @@ public class MobileUnreachableComputerPlaybackTests : IDisposable
         var window = new Window { Width = 412, Height = 915, Content = view };
         window.Show();
         window.UpdateLayout();
-        var banner = view.FindControl<Border>("NoticeBanner")!;
+        var banner = view.FindControl<Control>("NoticeBanner")!;
         Assert.False(banner.IsVisible);
 
         nowPlaying.PlayTracks(t, 0);
