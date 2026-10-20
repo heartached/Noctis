@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -358,6 +358,8 @@ public partial class SettingsViewModel
     [ObservableProperty] private bool _lyricsStudioSaveTtml;
     /// <summary>The Studio's live preview pane is open (set from the Studio itself).</summary>
     [ObservableProperty] private bool _lyricsStudioLivePreview = true;
+    /// <summary>Experimental: the speech model on the graphics card (set from the Studio itself).</summary>
+    [ObservableProperty] private bool _lyricsStudioUseGpu;
     /// <summary>Skip songs that already carry the format being written.</summary>
     [ObservableProperty] private bool _lyricsStudioSkipAlreadyTimed = true;
     [ObservableProperty] private string _lyricsStudioStats = string.Empty;
@@ -420,6 +422,13 @@ public partial class SettingsViewModel
         QueueSettingsSave();
     }
 
+    partial void OnLyricsStudioUseGpuChanged(bool value)
+    {
+        if (!_settingsLoaded) return;
+        _settings.LyricsStudioUseGpu = value;
+        QueueSettingsSave();
+    }
+
     /// <summary>The dialog changed model/language/format: mirror it here and persist.</summary>
     public void ApplyLyricsStudioSettings(LyricsStudioPrefs prefs)
     {
@@ -431,6 +440,7 @@ public partial class SettingsViewModel
         LyricsStudioOnlineLyrics = prefs.OnlineLyrics;
         LyricsStudioSaveTtml = prefs.SaveTtml;
         LyricsStudioLivePreview = prefs.LivePreview;
+        LyricsStudioUseGpu = prefs.UseGpu;
     }
 
     private CancellationTokenSource? _lyricsStatsCts;
@@ -537,6 +547,7 @@ public partial class SettingsViewModel
         LyricsStudioOnlineLyrics = _settings.LyricsStudioOnlineLyrics;
         LyricsStudioSaveTtml = _settings.LyricsStudioSaveTtml;
         LyricsStudioLivePreview = _settings.LyricsStudioLivePreview;
+        LyricsStudioUseGpu = _settings.LyricsStudioUseGpu;
     }
 
     private void SaveFeatureSettings()
@@ -556,6 +567,7 @@ public partial class SettingsViewModel
         _settings.LyricsStudioOnlineLyrics = LyricsStudioOnlineLyrics;
         _settings.LyricsStudioSaveTtml = LyricsStudioSaveTtml;
         _settings.LyricsStudioLivePreview = LyricsStudioLivePreview;
+        _settings.LyricsStudioUseGpu = LyricsStudioUseGpu;
     }
 
     /// <summary>Tab opened: refresh what the tab shows.</summary>

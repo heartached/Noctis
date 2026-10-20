@@ -96,6 +96,7 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         _ffmpeg = ffmpeg;
         _lrcLib = lrcLib;
         Models = new WhisperModelManager(persistence.DataDirectory);
+        WhisperGpu.SetMarkerFolder(Models.Directory);
     }
 
     public bool HasFfmpeg => _ffmpeg.GetFfmpegPath() != null;

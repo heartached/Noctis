@@ -82,7 +82,21 @@
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.NoAvx" Version="1.9.1" />
+    <!-- Experimental: Lyrics Studio on the graphics card (WhisperGpu, off by default in the app).
+         Only in builds made with -p:LyricsGpu=true: win-x64 + linux-x64 Vulkan builds, ~60 MB per
+         platform unpacked. Owner decision before it ships (l2-speed report, 10-20). -->
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" Condition="'$(LyricsGpu)' == 'true'" />
   </ItemGroup>
+
+  <!-- Whisper.net.Runtime.Vulkan copies its linux-x64 libraries into every build (no condition in
+       its targets): a Windows build has no use for them (58 MB). -->
+  <Target Name="DropLinuxVulkanRuntimeOnWindows" BeforeTargets="AssignTargetPaths"
+          Condition="'$(LyricsGpu)' == 'true' and $([MSBuild]::IsOSPlatform('Windows'))">
+    <ItemGroup>
+      <_LinuxVulkanRuntime Include="@(None)" Condition="$([System.String]::Copy('%(None.Identity)').ToLowerInvariant().Contains('whisper.net.runtime.vulkan')) and $([System.String]::Copy('%(None.Identity)').Contains('linux-x64'))" />
+      <None Remove="@(_LinuxVulkanRuntime)" />
+    </ItemGroup>
+  </Target>
 
   <!-- MVVM -->
   <ItemGroup>

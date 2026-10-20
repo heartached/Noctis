@@ -151,6 +151,42 @@ public class LyricsStudioRealRunProbeTests
         Assert.False(engine.HasLoadedModel);
     }
 
+    /// <summary>
+    /// Opt-in GPU prototype check (a build made with -p:LyricsGpu=true, NOCTIS_STUDIO_REALRUN_GPU=1, a
+    /// free GPU): the engine runs a song on the Vulkan build and leaves no crash marker behind.
+    /// </summary>
+    [Fact]
+    public async Task Probe_RealModel_OnTheGpu_RunsAndCleansUp()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model) || Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_GPU") != "1") return;
+        Assert.True(WhisperGpu.Available, "this test build has no Vulkan runtime (build with -p:LyricsGpu=true)");
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        var ffmpegPath = ffmpeg.GetFfmpegPath();
+        if (ffmpegPath is null) return;
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.Zero };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+        var audio = Path.Combine(persistence.DataDirectory, "tone.flac");
+        Run(ffmpegPath, $"-hide_banner -loglevel error -f lavfi -i \"sine=frequency=220:duration=40\" -ar 44100 \"{audio}\"");
+        var track = new Track { Title = "tone", Artist = "probe", FilePath = audio, Duration = TimeSpan.FromSeconds(40) };
+
+        WhisperGpu.Requested = true;
+        var clock = Stopwatch.StartNew();
+        using (engine.OpenSession(WhisperModelSize.Medium))
+        {
+            var options = new LyricsStudioOptions(WhisperModelSize.Medium, "en", AllowOnlineLyrics: false,
+                SourceLines: new[] { "probe line one", "probe line two" }, AllowTranscription: false);
+            var result = await engine.ProcessAsync(track, options, null, CancellationToken.None);
+            Assert.Equal(2, result.Lines.Count);
+        }
+        _out.WriteLine($"native={WhisperGpu.Loaded} blocked={WhisperGpu.BlockedReason ?? "-"} total={clock.Elapsed.TotalSeconds:0.0}s");
+        Assert.Null(WhisperGpu.BlockedReason);
+        Assert.True(WhisperGpu.UsingVulkan, $"loaded {WhisperGpu.Loaded}");
+        Assert.False(File.Exists(Path.Combine(engine.Models.Directory, "gpu-session.marker")), "crash marker left behind after a clean run");
+    }
+
     private static void Run(string file, string args)
     {
         var psi = new ProcessStartInfo(file, args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };

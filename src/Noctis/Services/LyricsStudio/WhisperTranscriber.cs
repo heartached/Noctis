@@ -41,12 +41,25 @@ public sealed class WhisperTranscriber
         public Session(string modelPath, WhisperAlignmentHeadsPreset alignmentHeads = WhisperAlignmentHeadsPreset.None)
         {
             ModelPath = modelPath;
+            WhisperGpu.ConfigureBeforeFirstLoad();
             EnsureNativeEngine();
             _dtw = alignmentHeads != WhisperAlignmentHeadsPreset.None;
             _dtwShiftCs = DtwShiftCs(alignmentHeads);
-            _factory = _dtw
-                ? WhisperFactory.FromPath(modelPath, new WhisperFactoryOptions { UseDtwTimeStamps = true, HeadsPreset = alignmentHeads })
-                : WhisperFactory.FromPath(modelPath);
+            // UseGpu stays at Whisper.net's default (true): only the Vulkan build (Windows/Linux, opt-in)
+            // and the macOS arm64 build (Metal, as before) have a GPU backend to use.
+            var options = _dtw ? new WhisperFactoryOptions { UseDtwTimeStamps = true, HeadsPreset = alignmentHeads } : new WhisperFactoryOptions();
+            using var gpuWork = WhisperGpu.BeginGpuWork();
+            try
+            {
+                _factory = WhisperFactory.FromPath(modelPath, options);
+            }
+            catch (Exception ex) when (WhisperGpu.UsingVulkan && options.UseGpu)
+            {
+                // A managed failure on the card (the model does not fit, …): the same build on the CPU.
+                DebugLogger.Warn(DebugLogger.Category.Lyrics, "Whisper.GpuFailed", $"{ex.GetType().Name}: {ex.Message} — loading on the CPU");
+                options.UseGpu = false;
+                _factory = WhisperFactory.FromPath(modelPath, options);
+            }
         }
 
         /// <param name="language">A Whisper language code, or null / "auto" to pick one: the known lyrics' own
@@ -68,6 +81,8 @@ public sealed class WhisperTranscriber
             string? lang = detectLanguage ? null : language!.Trim().ToLowerInvariant();
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             var languageWindows = 0;
+            // A native abort on the card mid-song ends Noctis; the marker tells the next start (WhisperGpu).
+            using var gpuWork = WhisperGpu.BeginGpuWork();
 
             WhisperProcessor Build()
             {

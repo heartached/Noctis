@@ -551,8 +551,9 @@ public class LyricsStudioPickerDialogTests : IDisposable
             Assert.Equal(new CornerRadius(999), chrome.CornerRadius);
             Assert.Same(vm.SelectedLanguage, language.SelectedItem);
 
-            var options = card.GetVisualDescendants().OfType<CheckBox>().ToList();
-            Assert.Equal(5, options.Count);
+            // The experimental GPU option exists only in builds with the Vulkan runtime (-p:LyricsGpu=true).
+            var options = card.GetVisualDescendants().OfType<CheckBox>().Where(o => o.IsVisible).ToList();
+            Assert.Equal(WhisperGpu.Available ? 6 : 5, options.Count);
             Assert.All(options, o => Assert.True(o.Classes.Contains("metadata-pill-checkbox") && o.Classes.Contains("studio-option")));
             flyout.Hide();
         }
