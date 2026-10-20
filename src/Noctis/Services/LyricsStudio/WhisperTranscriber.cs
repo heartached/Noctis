@@ -4,7 +4,8 @@ using Whisper.net.LibraryLoader;
 
 namespace Noctis.Services.LyricsStudio;
 
-public sealed record Transcript(IReadOnlyList<RecognizedWord> Words, string Language);
+/// <param name="SegmentStarts">Index into <paramref name="Words"/> of each Whisper segment's first word, in order.</param>
+public sealed record Transcript(IReadOnlyList<RecognizedWord> Words, string Language, IReadOnlyList<int>? SegmentStarts = null);
 
 /// <summary>The speech engine's native library would not load on this PC (no build for its CPU,
 /// a missing system library); the model file is not at fault.</summary>
@@ -96,6 +97,7 @@ public sealed class WhisperTranscriber
 
             var lines = string.IsNullOrWhiteSpace(prompt) ? null : prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var words = new List<RecognizedWord>();
+            var segmentStarts = new List<int>();
             var detected = language ?? "auto";
             // Async disposal: Whisper.net refuses a synchronous Dispose while a decode is in
             // flight ("Cannot dispose while processing, please use DisposeAsync instead"),
@@ -134,9 +136,11 @@ public sealed class WhisperTranscriber
                     await foreach (var segment in processor.ProcessAsync(pcm16k, ct).ConfigureAwait(false))
                     {
                         if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
+                        var first = words.Count;
                         words.AddRange(WordsFromSegment(segment));
+                        if (words.Count > first) segmentStarts.Add(first);
                     }
-                    return new Transcript(words, detected);
+                    return new Transcript(words, detected, segmentStarts);
                 }
 
                 // whisper.cpp (up to its current master) only hands DTW-timed segments to the
@@ -162,7 +166,9 @@ public sealed class WhisperTranscriber
                     await foreach (var segment in processor.ProcessAsync(new ReadOnlyMemory<float>(pcm16k, seek, span), ct).ConfigureAwait(false))
                     {
                         if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
+                        var first = words.Count;
                         words.AddRange(WordsFromDtwSegment(segment, offset, _dtwShiftCs, ref previousEndCs));
+                        if (words.Count > first) segmentStarts.Add(first);
                         last = segment;
                     }
                     // One language per song, as a single whisper.cpp run detects it once.
@@ -186,7 +192,7 @@ public sealed class WhisperTranscriber
             {
                 if (processor is not null) await processor.DisposeAsync().ConfigureAwait(false);
             }
-            return new Transcript(words, detected);
+            return new Transcript(words, detected, segmentStarts);
         }
 
         public void Dispose() => _factory.Dispose();
