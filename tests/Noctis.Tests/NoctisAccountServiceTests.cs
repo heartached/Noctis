@@ -938,6 +938,80 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         GC.KeepAlive(shell);
     }
 
+    /// <summary>
+    /// Owner 10-20, the phone's playlist editing through the real server and ledger: Rename and
+    /// Remove from Playlist (LibraryViewModel's, as the phone's menus run them) reach the
+    /// desktop's playlists.json on the next sync; Delete Playlist sends a tombstone, so the
+    /// desktop deletes it too and the next sync no longer restores it (it did: "missing" was
+    /// read as a stale save's loss), even when a stale save brings the phone's copy back.
+    /// A phone-only playlist is never sent.
+    /// </summary>
+    [Fact]
+    public async Task PhonePlaylistRenameRemoveAndDelete_ReachTheDesktop()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var tab = await LibraryTabAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await tab.ReloadPlaylistsAsync();
+        var mix = tab.Playlists.Single(p => p.Id == _deskMixId);
+        Assert.True(svc.IsSyncedPlaylist(_deskMixId));
+
+        await Task.Delay(20, ct);
+        await tab.RenamePlaylistAsync(mix, "Phone named");
+        await tab.RemoveFromPlaylistAsync(mix, new[] { Phone(_t3) });
+        var phoneOnly = await tab.CreatePlaylistAsync("Phone only");
+        Assert.False(svc.IsSyncedPlaylist(phoneOnly.Id));
+        await svc.SyncNowAsync(ct);
+        var desk = _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
+        Assert.Equal("Phone named", desk.Name);
+        Assert.Equal(new[] { _t1.Id }, desk.TrackIds);
+        Assert.DoesNotContain(_deskPersistence.Playlists, p => p.Name == "Phone only");
+
+        // Delete: what ShellViewModel.DeletePlaylistAsync does.
+        var stale = await _phonePersistence.LoadPlaylistsAsync();   // a copy from before the delete
+        await Task.Delay(20, ct);
+        svc.RecordPlaylistDeleted(_deskMixId);
+        svc.RecordPlaylistDeleted(phoneOnly.Id);                    // ignored: not the computer's
+        await tab.DeletePlaylistAsync(mix);
+        await _phonePersistence.SavePlaylistsAsync(stale);          // a stale save brings it back
+        await svc.SyncNowAsync(ct);
+        Assert.DoesNotContain(_deskPersistence.Playlists, p => p.Id == _deskMixId);
+        Assert.True(_desk.AppliedPlaylists.Last(a => a.Id == _deskMixId).State.Deleted);
+        Assert.DoesNotContain(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.False(svc.IsSyncedPlaylist(_deskMixId));
+
+        // And it stays gone: no later sync, nor a restart, restores it.
+        var restarted = Restart();
+        await restarted.SyncNowAsync(ct);
+        Assert.DoesNotContain(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.DoesNotContain(_deskPersistence.Playlists, p => p.Id == _deskMixId);
+        Assert.Contains(await _phonePersistence.LoadPlaylistsAsync(), p => p.Name == "Phone only");
+    }
+
+    /// <summary>Last writer wins for a delete too: the desktop editing the playlist after the
+    /// phone deleted it (before the phone synced) keeps it, on both.</summary>
+    [Fact]
+    public async Task PhoneDelete_ThenADesktopEditAfterIt_TheEditWins()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+
+        svc.RecordPlaylistDeleted(_deskMixId);
+        await _phonePersistence.SavePlaylistsAsync((await _phonePersistence.LoadPlaylistsAsync()).Where(p => p.Id != _deskMixId).ToList());
+        await Task.Delay(20, ct);
+        var desk = _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
+        desk.Name = "Edited later";
+        desk.ModifiedAt = DateTime.UtcNow;
+
+        await svc.SyncNowAsync(ct);
+        Assert.Contains(_deskPersistence.Playlists, p => p.Id == _deskMixId);
+        Assert.Equal("Edited later", (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId).Name);
+        await svc.SyncNowAsync(ct);   // the delete is settled, not sent later
+        Assert.Contains(_deskPersistence.Playlists, p => p.Id == _deskMixId);
+    }
+
     [Fact]
     public async Task PhonePlaylistEdits_GoOntoWhatTheSyncWrote_NotOntoTheTabsOldCopy()
     {

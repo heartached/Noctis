@@ -37,6 +37,9 @@ internal sealed class NoctisPendingState
     public string UserName { get; set; } = string.Empty;
     public Dictionary<string, PendingTrackState> Tracks { get; set; } = new();
     public List<PendingPlay> Plays { get; set; } = new();
+    /// <summary>The computer's playlists deleted on the phone (Guid "N" → when), sent as
+    /// tombstones on the next sync.</summary>
+    public Dictionary<string, DateTime> DeletedPlaylists { get; set; } = new();
 }
 
 /// <summary>The phone's own songs already sent to (or found on) the computer of one server + user,

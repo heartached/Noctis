@@ -925,9 +925,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     {
         var phone = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
         Dictionary<string, PlaylistSyncState> agreed;
-        lock (_gate) agreed = new Dictionary<string, PlaylistSyncState>(_sync.Playlists, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, DateTime> deleted;
+        lock (_gate)
+        {
+            agreed = new Dictionary<string, PlaylistSyncState>(_sync.Playlists, StringComparer.OrdinalIgnoreCase);
+            deleted = new Dictionary<string, DateTime>(_pending.DeletedPlaylists, StringComparer.OrdinalIgnoreCase);
+        }
         var now = UtcNow;
         var changed = false;
+
+        // Deleted on the phone: gone from the phone's list even if a stale save brought it back,
+        // unless the computer edited it after the delete (last writer wins, the edit is newer).
+        var resolved = new List<string>();
+        foreach (var (hex, at) in deleted)
+        {
+            if (!NoctisRemoteIds.TryParseSyncId(hex, out var id) || !agreed.ContainsKey(hex)) { resolved.Add(hex); continue; }
+            if (pulled.TryGetValue(id, out var state) && (state.Deleted || Newer(state.ModifiedAt, at))) { resolved.Add(hex); continue; }
+            pulled.Remove(id);
+            if (phone.RemoveAll(p => p.Id == id) > 0) changed = true;
+        }
+        foreach (var hex in resolved) deleted.Remove(hex);
 
         foreach (var (id, state) in pulled)
         {
@@ -954,7 +971,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         foreach (var (hex, state) in agreed.ToList())
         {
             if (!NoctisRemoteIds.TryParseSyncId(hex, out var id) || state.Deleted) { agreed.Remove(hex); continue; }
-            if (pulled.ContainsKey(id)) continue;
+            if (pulled.ContainsKey(id) || deleted.ContainsKey(hex)) continue;
             var local = phone.FirstOrDefault(p => p.Id == id);
             if (local is null)
             {
@@ -971,8 +988,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
 
         var toPush = new List<(string Hex, PlaylistSyncState State)>();
+        foreach (var (hex, at) in deleted)
+            toPush.Add((hex, PlaylistSyncState.Tombstone(Guid.Empty, NotAfter(Utc(at), now) ?? now)));
         foreach (var (hex, state) in agreed)
         {
+            if (deleted.ContainsKey(hex)) continue;
             var local = phone.FirstOrDefault(p => NoctisRemoteIds.TryParseSyncId(hex, out var id) && p.Id == id);
             if (local is null || !Newer(local.ModifiedAt, state.ModifiedAt)) continue;
             var modified = NotAfter(Utc(local.ModifiedAt), now) ?? now;
@@ -996,10 +1016,33 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         {
             var items = chunk.Select(p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)).ToList();
             await client.PushSyncChangesAsync(_deviceId, DeviceName, items, ct).ConfigureAwait(false);
-            foreach (var (hex, state) in chunk) agreed[hex] = state;
+            var tombstones = false;
+            foreach (var (hex, state) in chunk)
+            {
+                if (!state.Deleted)
+                {
+                    agreed[hex] = state;
+                    continue;
+                }
+                // Deleted on the computer now: no longer one of the playlists the phone keeps in step.
+                agreed.Remove(hex);
+                lock (_gate)
+                {
+                    if (_pending.DeletedPlaylists.TryGetValue(hex, out var at) && at == deleted[hex])
+                        _pending.DeletedPlaylists.Remove(hex);
+                }
+                tombstones = true;
+            }
+            if (tombstones) SchedulePendingSave();
         }
 
-        lock (_gate) _sync.Playlists = agreed;
+        lock (_gate)
+        {
+            _sync.Playlists = agreed;
+            // Settled without a push (the computer deleted or re-edited it first): not asked again.
+            foreach (var hex in resolved) _pending.DeletedPlaylists.Remove(hex);
+        }
+        if (resolved.Count > 0) SchedulePendingSave();
         return (agreed.Count, toPush.Count);
     }
 
@@ -1076,6 +1119,24 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         SchedulePendingSave();
     }
 
+    public bool IsSyncedPlaylist(Guid playlistId)
+    {
+        lock (_gate) return _account is not null && _sync.Playlists.ContainsKey(playlistId.ToString("N"));
+    }
+
+    /// <summary>A playlist the phone deleted: one of the computer's is queued for a tombstone on
+    /// the next sync (SyncPlaylistsAsync), which otherwise restored it as a stale save's loss.</summary>
+    public void RecordPlaylistDeleted(Guid playlistId)
+    {
+        var hex = playlistId.ToString("N");
+        lock (_gate)
+        {
+            if (_account is null || !_sync.Playlists.ContainsKey(hex)) return;
+            _pending.DeletedPlaylists[hex] = UtcNow;
+        }
+        SchedulePendingSave();
+    }
+
     /// <summary>The library saved user state (from <see cref="NoctisStateRecorder"/>, on a worker
     /// thread): a desktop song whose favorite/rating/dislike differs from the last agreed state is
     /// queued for the next sync. Anything else (play-position saves, our own applied pulls) is not.</summary>
@@ -1130,6 +1191,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     UserName = _pending.UserName,
                     Tracks = new Dictionary<string, PendingTrackState>(_pending.Tracks),
                     Plays = _pending.Plays.ToList(),
+                    DeletedPlaylists = new Dictionary<string, DateTime>(_pending.DeletedPlaylists),
                 };
             }
             try
