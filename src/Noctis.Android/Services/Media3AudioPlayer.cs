@@ -547,8 +547,8 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             meta.SetTitle(track.Title).SetArtist(track.Artist).SetAlbumTitle(track.Album);
             // The bytes, not a file:// artworkUri. SystemUI draws the notification and the
             // lock screen in its own process and cannot read a path inside our private files
-            // dir, so a URI there renders as a blank cover. Cached covers are small and this
-            // is a private-storage read, so it stays cheap enough for the track-change path;
+            // dir, so a URI there renders as a blank cover. A cached cover can be a full-size
+            // scan, so a big one is shrunk first (SessionArtworkBytes, cached per album);
             // a missing or unreadable file must never take the rest of the metadata down
             // with it, hence the guard and the catch.
             // A track with its own embedded cover (TrackArtwork) shows that, not its album's.
@@ -559,8 +559,8 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             {
                 try
                 {
-                    meta.SetArtworkData(File.ReadAllBytes(art),
-                        JInteger.ValueOf(MediaMetadata.PictureTypeFrontCover));
+                    if (SessionArtworkBytes(art) is { } bytes)
+                        meta.SetArtworkData(bytes, JInteger.ValueOf(MediaMetadata.PictureTypeFrontCover));
                 }
                 catch (Exception ex)
                 {
@@ -578,6 +578,40 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .SetMediaId(path)
             .SetMediaMetadata(meta.Build())
             .Build();
+    }
+
+    // The last few session covers, by path, size and write time: a queue passes the same
+    // album's cover for every song, and shrinking a full-size scan is not free.
+    private readonly Dictionary<string, byte[]> _sessionArtwork = new();
+    private const int SessionArtworkCacheSize = 8;
+
+    /// <summary>The cover bytes for the session: the file itself when small, else a
+    /// <see cref="SessionArtwork.MaxEdge"/> px JPEG of it (Media3 copies these bytes on every
+    /// update; a 16.5 MB scan per queued song ran the heap out). Null when it can't be decoded.</summary>
+    private byte[]? SessionArtworkBytes(string path)
+    {
+        var info = new FileInfo(path);
+        if (!SessionArtwork.NeedsShrinking(info.Length)) return File.ReadAllBytes(path);
+
+        var key = $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+        if (_sessionArtwork.TryGetValue(key, out var cached)) return cached;
+
+        var bounds = new global::Android.Graphics.BitmapFactory.Options { InJustDecodeBounds = true };
+        global::Android.Graphics.BitmapFactory.DecodeFile(path, bounds);
+        var options = new global::Android.Graphics.BitmapFactory.Options
+        {
+            InSampleSize = SessionArtwork.SampleSize(bounds.OutWidth, bounds.OutHeight),
+        };
+        using var bitmap = global::Android.Graphics.BitmapFactory.DecodeFile(path, options);
+        if (bitmap == null) return null;
+        using var stream = new MemoryStream();
+        bitmap.Compress(global::Android.Graphics.Bitmap.CompressFormat.Jpeg!, 88, stream);
+        bitmap.Recycle();
+        var bytes = stream.ToArray();
+
+        if (_sessionArtwork.Count >= SessionArtworkCacheSize) _sessionArtwork.Clear();
+        _sessionArtwork[key] = bytes;
+        return bytes;
     }
 
     /// <summary>What ExoPlayer reads for <paramref name="path"/>: a desktop song's download or
