@@ -225,8 +225,22 @@ public sealed class WhisperTranscriber
     /// <summary>Language detection windows when the lyrics leave the language open (or there are none).</summary>
     private const int LanguageVotes = 3;
 
-    /// <summary>Threads whisper.cpp computes with.</summary>
-    internal static int Threads { get; } = Math.Clamp(Environment.ProcessorCount - 1, 1, 8);
+    /// <summary>Threads whisper.cpp computes with: <see cref="ThreadsFor"/> this PC.</summary>
+    internal static int Threads { get; } = ThreadsFor(Environment.ProcessorCount, CpuTopology.PerformanceCores);
+
+    /// <summary>
+    /// Logical CPUs − 1, as before, but capped at the number of full-speed cores
+    /// (<see cref="CpuTopology"/>, at most 16) instead of a flat 8, so CPUs with more than 8 cores
+    /// use them. Measured 10-20 on a Ryzen 9 5900X (12 cores / 24 threads), interleaved, words
+    /// identical for every thread count: 12 threads took 0.82-0.84× the time of 8 (median). Fewer
+    /// threads than the old rule on small CPUs was measured slower (4-core/8-thread emulation:
+    /// 4 threads 1.42× the time of 7), so CPUs with up to 8 cores keep the old count.
+    /// </summary>
+    internal static int ThreadsFor(int logicalCpus, int? performanceCores)
+    {
+        var cap = Math.Max(8, Math.Min(performanceCores ?? 0, 16));
+        return Math.Clamp(logicalCpus - 1, 1, cap);
+    }
 
     /// <summary>
     /// Whisper's language detection on <paramref name="count"/> 30 s windows spread over the
