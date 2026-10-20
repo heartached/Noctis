@@ -68,7 +68,8 @@ public class MobileLibraryPagesTests
 
         MobileFixtures.Named<Button>(view, "RecentlyAddedHeader").Command!.Execute(null);
         var recent = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
-        Assert.Equal(new[] { "Alpha", "Gamma" }, recent.Songs.Select(t => t.Title).OrderBy(t => t));
+        // The rail's rule: newest album first, its songs in track order, however old (Beta too).
+        Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, recent.Songs.Select(t => t.Title).OrderBy(t => t));
         rig.Shell.NavigateBackCommand.Execute(null);
 
         rig.Shell.OpenFavouritesCommand.Execute(null);

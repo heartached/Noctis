@@ -154,10 +154,20 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public IEnumerable<Track> Favourites() => Songs.Where(t => t.IsFavorite);
 
+    /// <summary>
+    /// Recently Added's › list: the rail's rule (<see cref="MobileLibrary.RecentlyAddedAlbums"/>,
+    /// newest album first, no time limit) with each album's songs in track order. It took only
+    /// the last 30 days, newest file first: a library with nothing new showed a full rail over an
+    /// empty page, and a fresh album listed its songs backwards (the last file scanned is newest).
+    /// </summary>
     public IEnumerable<Track> RecentlyAdded()
     {
-        var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
-        return _library.Tracks.Where(t => t.DateAdded >= cutoff).OrderByDescending(t => t.DateAdded);
+        var tracks = _library.Tracks;
+        var albumNewest = tracks.Where(t => t.AlbumId != Guid.Empty).GroupBy(t => t.AlbumId)
+            .ToDictionary(g => g.Key, g => g.Max(t => t.DateAdded));
+        DateTime Added(Track t) => t.AlbumId != Guid.Empty ? albumNewest[t.AlbumId] : t.DateAdded;
+        return tracks.OrderByDescending(Added).ThenBy(t => t.AlbumId)
+            .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
     }
 
     public bool IsAlbumPinned(Guid albumId) => _pinnedAlbumIds.Contains(albumId);
