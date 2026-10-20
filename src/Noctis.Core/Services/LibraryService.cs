@@ -96,7 +96,8 @@ public class LibraryService : ILibraryService
     /// <summary>
     /// Raised when a scan was abandoned because one or more configured music folders were
     /// unavailable (offline drive / unreachable share). Carries the missing root paths.
-    /// The existing library is left untouched.
+    /// The existing library is left untouched (with <see cref="ScanPastUnavailableFolders"/>:
+    /// only those folders' songs are, and the scan applies the rest).
     /// </summary>
     public event EventHandler<string[]>? ScanAborted;
 
@@ -126,6 +127,14 @@ public class LibraryService : ILibraryService
 
     /// <summary>Where scans enumerate and open files (desktop: directory walk; Android: SAF).</summary>
     private readonly IFileSystemSource _fileSystem;
+
+    /// <summary>
+    /// A scan that finds a music folder unavailable carries that folder's known songs forward
+    /// unchanged and applies the rest (the phone: a card taken out must not freeze the library).
+    /// Off, the scan is abandoned and the library kept as it was (the desktop's rule). Either way
+    /// <see cref="ScanAborted"/> names the unavailable folders.
+    /// </summary>
+    public bool ScanPastUnavailableFolders { get; init; }
 
     public async Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default)
     {
@@ -511,7 +520,38 @@ public class LibraryService : ILibraryService
         {
             var strandedTracks = originalTracks.Count(t => unavailableRoots.Any(root => PathIsUnder(t.FilePath, root)));
 
-            if (strandedTracks > 0)
+            if (strandedTracks > 0 && ScanPastUnavailableFolders)
+            {
+                // The phone: a removed or added folder elsewhere used to wait for the card to come
+                // back (the abort below restored the old library). The unreachable folder's songs
+                // stay as they were (user state and all) and the reachable folders' changes apply.
+                var scannedIds = new HashSet<Guid>(newTracks.Select(t => t.Id));
+                var carried = originalTracks
+                    .Where(t => !IsServerTrack(t) && !scannedIds.Contains(t.Id)
+                                && unavailableRoots.Any(root => PathIsUnder(t.FilePath, root)))
+                    .ToList();
+                foreach (var t in carried) newTracks.Add(t);
+                walkedTrackCount += carried.Count;
+                unchangedCount += carried.Count;
+                var rootList = string.Join(", ", unavailableRoots);
+                DebugLog.Write("Library",
+                    $"Scan: {unavailableRoots.Count} music folder(s) unavailable ({rootList}); keeping their " +
+                    $"{carried.Count} track(s) as they were and applying the other folders.");
+                await _auditTrail.AppendAsync(new AuditEvent
+                {
+                    EventType = "scan.rootsUnavailable",
+                    EntityType = "library",
+                    EntityId = "local",
+                    Reason = "One or more music folders were unavailable; their tracks were kept",
+                    Details = new Dictionary<string, string>
+                    {
+                        ["unavailableRoots"] = rootList,
+                        ["tracksCarriedForward"] = carried.Count.ToString()
+                    }
+                }, ct);
+                ScanAborted?.Invoke(this, unavailableRoots.ToArray());
+            }
+            else if (strandedTracks > 0)
             {
                 RestoreOriginalLibrary();
                 var rootList = string.Join(", ", unavailableRoots);

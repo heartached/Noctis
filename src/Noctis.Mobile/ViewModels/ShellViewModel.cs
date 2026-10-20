@@ -481,45 +481,66 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool ShowsMiniProgress => ShowMiniProgressFill || ShowMiniProgressLine;
 
     private bool _playerBarLoaded;
+    // Switches flipped before the saved values were read (Settings opens while a cold start still
+    // loads the library): the load keeps the user's value and saves it.
+    private readonly HashSet<string> _playerBarSetBeforeLoad = new();
+    private bool _applyingPlayerBar;
     private Task _playerBarSaveChain = Task.CompletedTask;
 
     /// <summary>The tail of the player-bar saves; tests await it.</summary>
     internal Task PendingPlayerBarSave { get; private set; } = Task.CompletedTask;
 
-    partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings();
-    partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings();
-    partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings();
+    partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressFill));
+    partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressLine));
+    partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
         try
         {
             var settings = await Library.Persistence.LoadSettingsAsync();
-            ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
-            ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
-            ArtworkPageColors = settings.MobileArtworkPageColors;
+            // A switch flipped while this load ran keeps the user's value: the load used to put
+            // the saved one back, and the flip was never saved either.
+            _applyingPlayerBar = true;
+            try
+            {
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressFill))) ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressLine))) ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ArtworkPageColors))) ArtworkPageColors = settings.MobileArtworkPageColors;
+            }
+            finally
+            {
+                _applyingPlayerBar = false;
+            }
         }
         catch (Exception ex)
         {
             DebugLog.Write("Settings", $"Player bar settings load failed: {ex.Message}");
         }
         _playerBarLoaded = true;
+        if (_playerBarSetBeforeLoad.Count > 0) SavePlayerBarSettings();
     }
 
     /// <summary>One save after another, so a quick on-off never lands out of order.</summary>
-    private void SavePlayerBarSettings()
+    private void SavePlayerBarSettings(string? setting = null)
     {
-        if (!_playerBarLoaded) return;
+        if (!_playerBarLoaded)
+        {
+            if (setting != null && !_applyingPlayerBar) _playerBarSetBeforeLoad.Add(setting);
+            return;
+        }
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
             {
-                var settings = await Library.Persistence.LoadSettingsAsync();
-                settings.MobilePlayerBarProgressFill = fill;
-                settings.MobilePlayerBarProgressLine = line;
-                settings.MobileArtworkPageColors = pages;
-                await Library.Persistence.SaveSettingsAsync(settings);
+                // One update: another phone save landing between a plain load and save was undone.
+                await Library.Persistence.UpdateSettingsAsync(settings =>
+                {
+                    settings.MobilePlayerBarProgressFill = fill;
+                    settings.MobilePlayerBarProgressLine = line;
+                    settings.MobileArtworkPageColors = pages;
+                });
             }
             catch (Exception ex)
             {

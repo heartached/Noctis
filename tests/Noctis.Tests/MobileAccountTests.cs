@@ -506,16 +506,20 @@ public class MobileAccountTests
     }
 
     /// <summary>Bug (10-14, emulator): signed out with nothing downloaded, a song list's filter
-    /// still offered Downloaded, and picking it emptied the list ("0 of 11").</summary>
+    /// still offered Downloaded, and picking it emptied the list ("0 of 11"). Signed out with
+    /// copies kept (10-20), their songs are gone from the library: still nothing to show.</summary>
     [Fact]
-    public void SongsFilter_OffersDownloaded_OnlySignedIn_OrWhileCopiesAreKept()
+    public void SongsFilter_OffersDownloaded_OnlySignedIn_OrWhileAListedSongIsDownloaded()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Local") });
         var account = new FakeAccount();
         var list = new SongListPageViewModel(ShellWith(rig, account), "Songs", () => rig.Library.TrackList);
         Assert.False(list.CanFilterDownloaded);
 
-        account.DownloadedIds.Add(Guid.NewGuid());          // signed out, copies kept
+        account.DownloadedIds.Add(Guid.NewGuid());          // signed out, a kept copy of a song no longer listed
+        Assert.False(list.CanFilterDownloaded);
+
+        account.DownloadedIds.Add(rig.Library.TrackList[0].Id);   // signed out by the computer: songs and copies stay
         Assert.True(list.CanFilterDownloaded);
 
         account.DownloadedIds.Clear();
@@ -1236,6 +1240,29 @@ public class MobileAccountTests
         shell.OpenAlbumSheetCommand.Execute(album);
         Assert.False(shell.Sheet!.CanDownload);                            // all of its desktop songs are on the phone
         await shell.Sheet.RemoveDownloadCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { a, b }, Assert.Single(account.RemoveCalls));
+    }
+
+    /// <summary>
+    /// Remove Downloads on an album whose download is still running: the sheet handed over only
+    /// the songs already downloaded, so the batch went on to fetch the rest of the album. It hands
+    /// over every desktop song of the album; the service removes the copies and withdraws the rest.
+    /// </summary>
+    [Fact]
+    public async Task AlbumSheet_RemoveDownloadsMidDownload_HandsOverTheSongsStillToCome()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var local = MobileFixtures.Song("Local");
+        var album = MobileFixtures.MakeAlbum("Half", "Artist", a, b, local);
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, local }, new[] { album });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(a.Id);   // b is still on its way
+        var shell = ShellWith(rig, account);
+
+        shell.OpenAlbumSheetCommand.Execute(album);
+        await shell.Sheet!.RemoveDownloadCommand.ExecuteAsync(null);
+
         Assert.Equal(new[] { a, b }, Assert.Single(account.RemoveCalls));
     }
 

@@ -315,8 +315,14 @@ public class MobileAlbumPageRefineTests
         Assert.Equal(expected, AlbumPageViewModel.BuildQualityLine(album));
     }
 
+    // Under a minute it says the seconds: "2 songs, 0 minutes" under an album of two 20-second
+    // clips (emulator 10-20) read as an empty album. No length known: the songs alone.
     [Theory]
-    [InlineData(1, 59, "1 song, 0 minutes")]
+    [InlineData(1, 59, "1 song, 59 seconds")]
+    [InlineData(2, 40, "2 songs, 40 seconds")]
+    [InlineData(1, 1, "1 song, 1 second")]
+    [InlineData(2, 0, "2 songs")]
+    [InlineData(2, 60, "2 songs, 1 minute")]
     [InlineData(15, 56 * 60 + 40, "15 songs, 56 minutes")]
     [InlineData(21, 3600 + 61, "21 songs, 1 hour, 1 minute")]
     [InlineData(30, 2 * 3600 + 12 * 60, "30 songs, 2 hours, 12 minutes")]

@@ -196,43 +196,54 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Pin or unpin an album on the Pinned rail (AppSettings.PinnedAlbumIds).</summary>
     public async Task SetAlbumPinnedAsync(Guid albumId, bool pinned)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PinnedAlbumIds.RemoveAll(id => id == albumId);
-        if (pinned) settings.PinnedAlbumIds.Add(albumId);
-        await SaveSettingsAsync(settings, "Pin");
-        _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
+        void Pin(List<Guid> ids)
+        {
+            ids.RemoveAll(id => id == albumId);
+            if (pinned) ids.Add(albumId);
+        }
+        List<Guid>? saved = null;
+        await UpdateSettingsAsync(s => { Pin(s.PinnedAlbumIds); saved = s.PinnedAlbumIds.ToList(); }, "Pin");
+        if (saved == null) Pin(saved = _pinnedAlbumIds.ToList());   // a failed save still applies this session
+        _pinnedAlbumIds = saved;
         AfterUserEdit();
     }
 
     /// <summary>Pin or unpin an artist on the Pinned rail (AppSettings.PinnedArtistNames).</summary>
     public async Task SetArtistPinnedAsync(string name, bool pinned)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PinnedArtistNames.RemoveAll(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
-        if (pinned) settings.PinnedArtistNames.Add(name);
-        await SaveSettingsAsync(settings, "Pin");
-        _pinnedArtistNames = settings.PinnedArtistNames.ToList();
+        void Pin(List<string> names)
+        {
+            names.RemoveAll(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+            if (pinned) names.Add(name);
+        }
+        List<string>? saved = null;
+        await UpdateSettingsAsync(s => { Pin(s.PinnedArtistNames); saved = s.PinnedArtistNames.ToList(); }, "Pin");
+        if (saved == null) Pin(saved = _pinnedArtistNames.ToList());
+        _pinnedArtistNames = saved;
         AfterUserEdit();
     }
 
     /// <summary>Pin or unpin a song on the Pinned rail (AppSettings.PinnedTrackIds).</summary>
     public async Task SetTrackPinnedAsync(Guid trackId, bool pinned)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PinnedTrackIds.RemoveAll(id => id == trackId);
-        if (pinned) settings.PinnedTrackIds.Add(trackId);
-        await SaveSettingsAsync(settings, "Pin");
-        _pinnedTrackIds = settings.PinnedTrackIds.ToList();
+        void Pin(List<Guid> ids)
+        {
+            ids.RemoveAll(id => id == trackId);
+            if (pinned) ids.Add(trackId);
+        }
+        List<Guid>? saved = null;
+        await UpdateSettingsAsync(s => { Pin(s.PinnedTrackIds); saved = s.PinnedTrackIds.ToList(); }, "Pin");
+        if (saved == null) Pin(saved = _pinnedTrackIds.ToList());
+        _pinnedTrackIds = saved;
         AfterUserEdit();
     }
 
     /// <summary>Saves the Library tab's row order and on/off state (Edit → Done).</summary>
     public async Task SaveLibraryRowKeysAsync(IReadOnlyList<string> keys)
     {
-        LibraryRowKeys = keys.ToList();
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PhoneLibraryRows = keys.ToList();
-        await SaveSettingsAsync(settings, "Library rows");
+        var rows = keys.ToList();
+        LibraryRowKeys = rows;
+        await UpdateSettingsAsync(s => s.PhoneLibraryRows = rows.ToList(), "Library rows");
     }
 
     public Task SetPlaylistPinnedAsync(Playlist playlist, bool pinned)
@@ -347,15 +358,18 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     /// <summary>
-    /// A settings write from a user action. Logged, never thrown: these run from async command
-    /// and sheet handlers, and an exception escaping one reaches the UI thread and ends the app.
-    /// The edit still applies for this session, as a failed playlist save does.
+    /// A settings write from a user action: read, change and save with no other save of the file
+    /// in between (a plain load-then-save let another writer's save land in the gap, and the stale
+    /// copy written after it undid that save). <paramref name="change"/> runs off the UI thread
+    /// and only edits the settings. Logged, never thrown: these run from async command and sheet
+    /// handlers, and an exception escaping one reaches the UI thread and ends the app. The edit
+    /// still applies for this session, as a failed playlist save does.
     /// </summary>
-    private async Task SaveSettingsAsync(AppSettings settings, string what)
+    private async Task UpdateSettingsAsync(Action<AppSettings> change, string what)
     {
         try
         {
-            await _persistence.SaveSettingsAsync(settings);
+            await _persistence.UpdateSettingsAsync(change);
         }
         catch (Exception ex)
         {
@@ -383,9 +397,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void ApplySettings(AppSettings settings)
     {
         SetFolders(settings.MusicFolders);
-        _applyingSettings = true;
-        ScanOnStartup = settings.ScanOnStartup;
-        _applyingSettings = false;
+        // Not over the user's own flip: the start re-reads the settings (InitializeAsync) after the
+        // host applied them, and a flip in between was put back (its save still in flight).
+        if (!_scanOnStartupSetByUser)
+        {
+            _applyingSettings = true;
+            ScanOnStartup = settings.ScanOnStartup;
+            _applyingSettings = false;
+        }
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
         _pinnedArtistNames = settings.PinnedArtistNames.ToList();
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
@@ -438,23 +457,27 @@ public sealed partial class LibraryViewModel : ObservableObject
         var picked = await _picker.PickFolderAsync();
         if (string.IsNullOrWhiteSpace(picked)) return;
 
-        var settings = await _persistence.LoadSettingsAsync();
-        if (!settings.MusicFolders.Any(f => FolderKey(f) == FolderKey(picked)))
+        string? refusal = null;
+        List<string>? folders = null;
+        await UpdateSettingsAsync(settings =>
         {
-            if (settings.MusicFolders.FirstOrDefault(f => IsInside(picked, f)) is { } covering)
+            if (!settings.MusicFolders.Any(f => FolderKey(f) == FolderKey(picked)))
             {
-                RefusePick(picked, $"Already covered by “{FolderName(covering)}”.");
-                return;
+                if (settings.MusicFolders.FirstOrDefault(f => IsInside(picked, f)) is { } covering)
+                    refusal = $"Already covered by “{FolderName(covering)}”.";
+                else if (settings.MusicFolders.FirstOrDefault(f => IsInside(f, picked)) is { } inner)
+                    refusal = $"“{FolderName(inner)}” is inside that folder. Remove it first.";
+                else
+                    settings.MusicFolders.Add(picked);
             }
-            if (settings.MusicFolders.FirstOrDefault(f => IsInside(f, picked)) is { } inner)
-            {
-                RefusePick(picked, $"“{FolderName(inner)}” is inside that folder. Remove it first.");
-                return;
-            }
-            settings.MusicFolders.Add(picked);
-            await SaveSettingsAsync(settings, "Folder");
+            folders = settings.MusicFolders.ToList();
+        }, "Folder");
+        if (refusal != null)
+        {
+            RefusePick(picked, refusal);
+            return;
         }
-        SetFolders(settings.MusicFolders);
+        SetFolders(folders ?? Folders.Append(picked).Distinct().ToList());
         await ScanAsync();
     }
 
@@ -465,10 +488,15 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// </summary>
     public async Task RemoveFolderAsync(string folder)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        if (settings.MusicFolders.RemoveAll(f => f == folder) == 0) return;
-        await SaveSettingsAsync(settings, "Folder");
-        SetFolders(settings.MusicFolders);
+        var removed = 0;
+        List<string>? folders = null;
+        await UpdateSettingsAsync(settings =>
+        {
+            removed = settings.MusicFolders.RemoveAll(f => f == folder);
+            folders = settings.MusicFolders.ToList();
+        }, "Folder");
+        if (folders != null && removed == 0) return;
+        SetFolders(folders ?? Folders.Where(f => f != folder).ToList());
         _picker.ReleaseAccess(folder);
         await ScanAsync(evenWithoutFolders: true);
     }
@@ -530,25 +558,17 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _scanOnStartup = true;
 
     private bool _applyingSettings;
+    private bool _scanOnStartupSetByUser;
 
     partial void OnScanOnStartupChanged(bool value)
     {
-        if (!_applyingSettings) _ = SaveScanOnStartupAsync(value);
+        if (_applyingSettings) return;
+        _scanOnStartupSetByUser = true;
+        _ = SaveScanOnStartupAsync(value);
     }
 
-    private async Task SaveScanOnStartupAsync(bool value)
-    {
-        try
-        {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.ScanOnStartup = value;
-            await SaveSettingsAsync(settings, "Scan on startup");
-        }
-        catch (Exception ex)
-        {
-            DebugLog.Write("Library", $"Scan on startup save failed: {ex.Message}");
-        }
-    }
+    private Task SaveScanOnStartupAsync(bool value) =>
+        UpdateSettingsAsync(s => s.ScanOnStartup = value, "Scan on startup");
 
     /// <summary>The host calls this once the library has loaded at launch.</summary>
     public Task ScanAtStartupAsync() => ScanOnStartup && HasFolders ? ScanAsync() : Task.CompletedTask;
@@ -641,6 +661,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private void RefreshFromLibrary()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var tracks = _library.Tracks;
         SongCount = tracks.Count;
         AlbumCount = _library.Albums.Count;
@@ -649,10 +670,20 @@ public sealed partial class LibraryViewModel : ObservableObject
         var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
         RecentlyAddedCount = tracks.Count(t => t.DateAdded >= cutoff);
         Songs.ReplaceAll(tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase));
+        var sorted = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         RefreshRails();
         RefreshRecents();
         Refreshed?.Invoke(this, EventArgs.Empty);
+        // Runs on each library update, a scan's progressive publishes too (every 1.5 s while it
+        // finds songs). Measured 10-20 on the emulator with 1206 songs: 5-12 ms each, 12-14 per
+        // re-reading scan, 3 per scan with no changes. Logged when slow, so a big library or a
+        // slow phone shows it.
+        var total = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        if (total >= SlowRefreshMs)
+            DebugLog.Write("Library", $"slow refresh: {tracks.Count} songs, sort {sorted:F0} ms, total {total:F0} ms (scanning={IsScanning})");
     }
+
+    private const double SlowRefreshMs = 100;
 
     /// <summary>
     /// A heart toggled: the count and the open lists re-read (Favorites, a filtered list). The

@@ -186,7 +186,9 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         return detail.Length > 0 ? $"{badge} · {detail}" : badge;
     }
 
-    /// <summary>Apple's "15 songs, 56 minutes" ("1 hour, 2 minutes" past the hour), whole minutes.</summary>
+    /// <summary>Apple's "15 songs, 56 minutes" ("1 hour, 2 minutes" past the hour), whole minutes;
+    /// under a minute the seconds ("2 songs, 40 seconds": "0 minutes" read as an empty album), and
+    /// the songs alone when no length is known.</summary>
     public static string BuildSongsLine(Album album)
     {
         static string Count(int n, string unit) => n == 1 ? $"1 {unit}" : $"{n} {unit}s";
@@ -195,8 +197,10 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         var hours = (int)total.TotalHours;
         var length = hours > 0
             ? total.Minutes > 0 ? $"{Count(hours, "hour")}, {Count(total.Minutes, "minute")}" : Count(hours, "hour")
-            : Count((int)total.TotalMinutes, "minute");
-        return $"{songs}, {length}";
+            : total.TotalMinutes >= 1 ? Count((int)total.TotalMinutes, "minute")
+            : (int)total.TotalSeconds > 0 ? Count((int)total.TotalSeconds, "second")
+            : null;
+        return length == null ? songs : $"{songs}, {length}";
     }
 
     private async Task LoadDescriptionAsync(string artist, string album, CancellationToken ct)

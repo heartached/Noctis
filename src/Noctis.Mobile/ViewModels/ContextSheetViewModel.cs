@@ -256,10 +256,13 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks);
     }
 
+    /// <summary>Every desktop song here, not only the downloaded ones: the service removes the
+    /// copies and withdraws the rest from a download still running (an album's batch went on to
+    /// fetch the songs it had not reached yet).</summary>
     [RelayCommand]
     private async Task RemoveDownloadAsync()
     {
-        var tracks = Downloaded.ToList();
+        var tracks = Downloaded.Any() ? RemoteTracks.ToList() : new List<Track>();
         _shell.CloseSheet();
         if (tracks.Count > 0) await _shell.RemoveDownloadsAsync(tracks);
     }

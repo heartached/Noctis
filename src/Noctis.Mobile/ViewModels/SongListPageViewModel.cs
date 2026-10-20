@@ -123,9 +123,12 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     public bool IsFiltered => OnlyFavourites || OnlyDownloaded;
 
     /// <summary>Downloaded means a desktop song's offline copy: offered while signed in to a
-    /// computer, or while copies are kept from one. Signed out with none, the filter could only
-    /// empty the list (it offered itself whenever the account service existed: "0 of 11", 10-14).</summary>
-    public bool CanFilterDownloaded => OffersDownloadedFilter && Shell.Account is { } account && (account.IsSignedIn || account.DownloadedCount > 0);
+    /// computer, or while a song in this list is one (the computer revoked this phone: its songs
+    /// and copies stay). Signed out with none, the filter could only empty the list (it offered
+    /// itself whenever the account service existed: "0 of 11", 10-14), and so it did after a sign
+    /// out that kept the downloads: their songs leave the library, the files wait for a sign-in.</summary>
+    public bool CanFilterDownloaded => OffersDownloadedFilter && Shell.Account is { } account
+        && (account.IsSignedIn || _all.Any(account.IsDownloaded));
 
     // A list that is already one of the filters does not offer it: the Favorites list's filter
     // menu offered Favorites, the Downloaded list's Downloaded, and both did nothing.
@@ -184,6 +187,14 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         TotalCount = _all.Count;
         if (_playlist != null) OnPropertyChanged(nameof(Title));   // renamed since
         OnPropertyChanged(nameof(HasFilters));   // signed in or out since
+        // A filter no longer offered does not stay on: with the filter button gone too (a
+        // Favorites list) nothing could turn it off, and the list stayed empty.
+        if (OnlyDownloaded && !CanFilterDownloaded)
+        {
+            _onlyDownloaded = false;
+            OnPropertyChanged(nameof(OnlyDownloaded));
+            OnPropertyChanged(nameof(IsFiltered));
+        }
         Apply();
     }
 
