@@ -46,7 +46,13 @@
                                     <TextBlock Classes="row-title" Text="{Binding Name}" />
                                     <TextBlock Classes="row-sub" Text="{Binding Subtitle}" />
                                 </StackPanel>
-                                <PathIcon Grid.Column="2" Classes="list-chevron" Data="{DynamicResource PhChevronRight}" />
+                                <!-- The row's ⋯ (the song rows' button): the playlist's menu, with Rename
+                                     and Delete Playlist; a long press opens the same. -->
+                                <Button Grid.Column="2" Name="PlaylistMoreButton" Classes="icon" Width="36" Height="36"
+                                        Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenPlaylistSheetCommand}"
+                                        CommandParameter="{Binding Playlist}" AutomationProperties.Name="{Binding Name, StringFormat='More for {0}'}">
+                                    <PathIcon Data="{DynamicResource PhMore}" />
+                                </Button>
                                 <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="hairline" Margin="14,0,-16,0" />
                             </Grid>
                         </Button>

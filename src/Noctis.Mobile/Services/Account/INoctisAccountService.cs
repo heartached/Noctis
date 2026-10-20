@@ -137,6 +137,13 @@ public interface INoctisAccountService
     /// <summary>Queue a finished play of a desktop song (sent as a scrobble on the next sync).</summary>
     void RecordPlay(Track track, DateTime playedUtc);
 
+    /// <summary>One of the computer's playlists (synced, not made on the phone).</summary>
+    bool IsSyncedPlaylist(Guid playlistId) => false;
+
+    /// <summary>The phone deleted a playlist: one of the computer's is deleted there too on the
+    /// next sync (instead of being restored as a stale save's loss); a phone-only one is ignored.</summary>
+    void RecordPlaylistDeleted(Guid playlistId) { }
+
     // ── Downloads ──
     bool IsRemote(Track track);
     bool IsDownloaded(Track track);

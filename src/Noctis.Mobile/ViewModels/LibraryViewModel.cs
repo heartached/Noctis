@@ -257,6 +257,39 @@ public sealed partial class LibraryViewModel : ObservableObject
         return EditPlaylistAsync(playlist, p => Append(p, tracks, now));
     }
 
+    /// <summary>Desktop parity (SidebarViewModel.RenamePlaylist): the new name and a ModifiedAt
+    /// bump, which is what carries the rename to the computer on the next sync.</summary>
+    public Task RenamePlaylistAsync(Playlist playlist, string name)
+    {
+        var now = DateTime.UtcNow;
+        return EditPlaylistAsync(playlist, p =>
+        {
+            p.Name = name;
+            p.ModifiedAt = now;
+        });
+    }
+
+    /// <summary>Desktop parity (SidebarViewModel.DeletePlaylistAsync): the playlist leaves
+    /// playlists.json, and the Pinned rail with it.</summary>
+    public Task DeletePlaylistAsync(Playlist playlist) =>
+        EditPlaylistsAsync(list => list.RemoveAll(p => p.Id == playlist.Id));
+
+    /// <summary>Desktop parity (PlaylistViewModel.RemoveTrack): the songs leave the playlist with
+    /// their "added" stamps (TrackAddedAt), and ModifiedAt moves so the sync carries it. Not for
+    /// a smart playlist, whose songs come from its rules.</summary>
+    public Task RemoveFromPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
+    {
+        if (playlist.IsSmartPlaylist || tracks.Count == 0) return Task.CompletedTask;
+        var now = DateTime.UtcNow;
+        var ids = tracks.Select(t => t.Id).ToHashSet();
+        return EditPlaylistAsync(playlist, p =>
+        {
+            if (p.TrackIds.RemoveAll(ids.Contains) == 0) return;
+            foreach (var id in ids) p.TrackAddedAt.Remove(id);
+            p.ModifiedAt = now;
+        });
+    }
+
     /// <summary>Desktop parity (SidebarViewModel.AddTracksToPlaylist): each added song is stamped
     /// with when it joined, which the playlist page's Date Added sort reads.</summary>
     private static void Append(Playlist playlist, IReadOnlyList<Track> tracks, DateTime now)

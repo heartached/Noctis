@@ -108,7 +108,7 @@
                                             Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).PlayFeaturedSongCommand}"
                                             CommandParameter="{Binding}"
                                             views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}">
-                                        <views:SongRow />
+                                        <views:SongRow MenuCommand="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}" />
                                     </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -137,7 +137,7 @@
                                         Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).PlaySongCommand}"
                                         CommandParameter="{Binding}"
                                         views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}">
-                                    <views:SongRow />
+                                    <views:SongRow MenuCommand="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}" />
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

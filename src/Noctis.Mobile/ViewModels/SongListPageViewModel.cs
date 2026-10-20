@@ -46,7 +46,29 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     public ShellViewModel Shell { get; }
 
-    public override string Title => _title;
+    /// <summary>A playlist's page reads the name the library holds now (a rename shows at once).</summary>
+    public override string Title => Playlist?.Name ?? _title;
+
+    /// <summary>The playlist this page shows, as the library holds it now; null for other lists.</summary>
+    public Playlist? Playlist => _playlist == null ? null : Shell.CurrentPlaylist(_playlist);
+
+    /// <summary>A playlist's page has its own ⋯ (Rename, Delete Playlist and the playlist's actions).</summary>
+    public bool IsPlaylist => _playlist != null;
+
+    /// <summary>The title row's ⋯ on a playlist's page: the playlist's glass menu.</summary>
+    [RelayCommand]
+    private void ShowPlaylistMenu()
+    {
+        if (Playlist is { } playlist) Shell.OpenPlaylistSheetCommand.Execute(playlist);
+    }
+
+    /// <summary>A row's ⋯ (or a long press): the song's menu, which on a playlist's page also
+    /// offers Remove from Playlist.</summary>
+    [RelayCommand]
+    private void OpenSongMenu(Track? track)
+    {
+        if (track != null) Shell.OpenTrackMenu(track, Playlist);
+    }
 
     /// <summary>The rows shown: the source, filtered and sorted.</summary>
     public BulkObservableCollection<Track> Songs { get; } = new();
@@ -160,6 +182,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         _all = _source().ToList();
         TotalCount = _all.Count;
+        if (_playlist != null) OnPropertyChanged(nameof(Title));   // renamed since
         OnPropertyChanged(nameof(HasFilters));   // signed in or out since
         Apply();
     }
