@@ -527,6 +527,29 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         window.Close();
     }
 
+    /// <summary>Lyrics (and the Queue over it) can be up without Now Playing: opened from a song
+    /// row's menu. Go to Album / Go to Artist from their ⋯ must take them down, or the page
+    /// opened underneath and the tap looked dead.</summary>
+    [AvaloniaFact]
+    public void GoToAlbum_FromLyricsOpenedOverAList_ClosesLyricsAndTheQueue()
+    {
+        var songs = new[] { MobileFixtures.Song("One", artist: "Band"), MobileFixtures.Song("Two", artist: "Band") };
+        var album = MobileFixtures.MakeAlbum("Record", "Band", songs);
+        using var rig = MobileFixtures.MakeRig(songs, new[] { album });
+        rig.Shell.Player.PlayTracks(songs, 0);
+
+        rig.Shell.OpenTrackSheetCommand.Execute(songs[0]);
+        rig.Shell.Sheet!.ShowLyricsCommand.Execute(null);
+        Assert.False(rig.Shell.IsNowPlayingOpen);
+        rig.Shell.ToggleQueueCommand.Execute(null);
+        rig.Shell.OpenCurrentTrackSheetCommand.Execute(null);
+        rig.Shell.Sheet!.GoToAlbumCommand.Execute(null);
+
+        Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+        Assert.False(rig.Shell.IsLyricsOpen);
+        Assert.False(rig.Shell.IsQueueOpen);
+    }
+
     /// <summary>Every ⋯ in the app opens the same glass menu out of itself: a song row (Songs), an
     /// album's track row, the album page's own ⋯, the Library header's and the Queue's.</summary>
     [AvaloniaFact]

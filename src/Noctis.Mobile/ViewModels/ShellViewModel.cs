@@ -524,7 +524,8 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _resetting;
 
     /// <summary>Push <paramref name="page"/> over the current tab (inside the sheet, when one is
-    /// up). A page opened from Now Playing (the artist link) closes the player first.</summary>
+    /// up). A page opened from Now Playing (the artist link), Lyrics or the Queue closes them
+    /// first: Lyrics opens over a list without the player too, and the page landed under it.</summary>
     public void Navigate(MobilePage page) => Push(page, sheet: false);
 
     /// <summary>Present <paramref name="page"/> as a sheet over everything (Settings); Back or its
@@ -534,7 +535,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private void Push(MobilePage page, bool sheet)
     {
         CloseSheet();
-        if (IsNowPlayingOpen) CloseNowPlaying();
+        if (IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen) CloseNowPlaying();
         page.IsSheet = sheet;
         Pages.Add(page);
         LastPageMove = PageMove.Push;
