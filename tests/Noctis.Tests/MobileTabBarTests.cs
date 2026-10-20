@@ -203,6 +203,34 @@ public class MobileTabBarTests : IDisposable
         window.Close();
     }
 
+    /// <summary>Folded on the Search tab, the current-tab circle is Search's: the round Search
+    /// button beside it was a second magnifier (emulator 10-20). It stands aside there and the
+    /// mini player takes its room; on the other tabs it is back.</summary>
+    [AvaloniaFact]
+    public void Folded_OnTheSearchTab_ShowsOneSearchButton()
+    {
+        var songs = new[] { MobileFixtures.Song("One") };
+        using var rig = MobileFixtures.MakeRig(songs);
+        var shell = rig.Shell;
+        shell.Player.PlayTracks(songs, 0);
+        shell.SelectTabCommand.Execute(MobileTab.Search);
+        var window = MobileFixtures.Mount(shell, out var view);
+        shell.IsTabBarCollapsed = true;
+        MobileFixtures.Land(window);
+
+        var bubble = view.FindControl<Noctis.Controls.GlassPanel>("SearchBubble")!;
+        var mini = view.FindControl<Noctis.Controls.GlassPanel>("MiniBar")!;
+        Assert.False(bubble.IsHitTestVisible);
+        Assert.Equal(0, mini.Margin.Right);
+
+        shell.SelectTabCommand.Execute(MobileTab.Home);
+        shell.IsTabBarCollapsed = true;
+        MobileFixtures.Land(window);
+        Assert.True(bubble.IsHitTestVisible);
+        Assert.True(mini.Margin.Right > 0);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void TheBar_HasFiveTabs_InOrder()
     {
