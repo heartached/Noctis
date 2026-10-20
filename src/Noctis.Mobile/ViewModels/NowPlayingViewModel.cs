@@ -26,6 +26,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     // Circuit breaker for the error→skip loop (a folder of dead URIs after a revoked grant).
     private const int MaxConsecutiveErrors = 5;
 
+    internal const string ComputerUnreachableSkipping = "Can't reach your computer. Playing your downloaded songs.";
+    internal const string ComputerUnreachableStopped = "Can't reach your computer. Open Noctis on it, or play songs you've downloaded.";
+    internal const string TooManyErrors = "Several songs in a row couldn't be played, so playback stopped.";
+
     private readonly IAudioPlayer _player;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
@@ -35,6 +39,11 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private PlaybackQueue _queue = new();
     private DateTime _lastSaveUtc = DateTime.MinValue;
     private int _consecutiveErrors;
+    // Where the current track was started from: only a tick past it proves audio is moving.
+    private TimeSpan _startedFrom;
+    // A song that needs the computer failed to connect: until the user picks such a song again,
+    // automatic advances and Next pass over the others instead of each waiting out a timeout.
+    private bool _computerUnreachable;
     private bool _seeking;
     private int _seekIdleTicks;
     private bool _disposed;
@@ -101,6 +110,24 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private bool _isShuffleEnabled;
     [ObservableProperty] private string _errorText = string.Empty;
+
+    /// <summary>
+    /// A short message for the shell's banner, wherever the user is (the error line only shows
+    /// on Now Playing). Empty when there is none; the view dismisses it after a few seconds.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNotice))]
+    private string _notice = string.Empty;
+
+    public bool HasNotice => Notice.Length > 0;
+
+    public void DismissNotice() => Notice = string.Empty;
+
+    /// <summary>
+    /// Whether a song plays only from the computer (a desktop song that is not downloaded).
+    /// Null without an account: then no song does.
+    /// </summary>
+    public Func<Track, bool>? NeedsComputer { get; set; }
 
     /// <summary>Mirror of the queue's UpNext for the Queue page; rebuilt with one Reset per change.</summary>
     public BulkObservableCollection<Track> UpNext { get; } = new();
@@ -202,8 +229,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         IsShuffleEnabled = _queue.IsShuffleEnabled;
         if (first == null) return;
         // A new queue is a new chance: a stale failure streak from a previous queue must
-        // not immediately trip the breaker on this one's very first track.
+        // not immediately trip the breaker on this one's very first track. A song the user
+        // picks is tried even if the computer was unreachable a moment ago: it may be back.
         _consecutiveErrors = 0;
+        _computerUnreachable = false;
         StartTrack(first, fromPosition: null);
     }
 
@@ -225,6 +254,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         IsShuffleEnabled = true;
         if (first == null) return;
         _consecutiveErrors = 0;
+        _computerUnreachable = false;
         StartTrack(first, fromPosition: null);
     }
 
@@ -248,6 +278,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
                 // the loaded track from the position we are showing. A deliberate user action
                 // always clears the error streak, even one the breaker itself just stopped.
                 _consecutiveErrors = 0;
+                _computerUnreachable = false;
                 StartTrack(CurrentTrack, fromPosition: Position);
                 break;
         }
@@ -259,8 +290,43 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // A deliberate skip is a user action, not part of the automatic error cascade the
         // breaker bounds — clear the streak so an unrelated later failure gets its own count.
         _consecutiveErrors = 0;
-        var next = _queue.Advance(QueueAdvance.UserSkip);
-        if (next == null) StopPlayback(); else StartTrack(next, null);
+        var next = AdvancePlayable(QueueAdvance.UserSkip, out var heldBack);
+        if (next != null) StartTrack(next, null);
+        else if (heldBack) Notice = ComputerUnreachableStopped;   // the song playing keeps playing
+        else StopPlayback();
+    }
+
+    /// <summary>
+    /// <see cref="PlaybackQueue.Advance"/>, passing over songs that need the computer while it is
+    /// unreachable (<see cref="_computerUnreachable"/>). When only such songs are left the queue
+    /// is put back as it was, null is returned and <paramref name="heldBack"/> is set, so the
+    /// queue still holds them for when the computer is back.
+    /// </summary>
+    private Track? AdvancePlayable(QueueAdvance reason, out bool heldBack)
+    {
+        heldBack = false;
+        if (!_computerUnreachable || NeedsComputer is not { } needs) return _queue.Advance(reason);
+        var before = _queue.Clone();
+        // Through Up Next, then at most once round a Repeat All cycle (the recorded one, or
+        // History when none was recorded), so an all-desktop Repeat All queue cannot spin.
+        var snapshot = before.Snapshot();
+        var budget = snapshot.UpNextIds.Count + Math.Max(snapshot.RepeatCycleIds.Count, snapshot.HistoryIds.Count) + 1;
+        var next = _queue.Advance(reason);
+        var passedOver = false;
+        for (var i = 0; next != null && needs(next) && i < budget; i++)
+        {
+            passedOver = true;
+            next = _queue.Advance(QueueAdvance.UserSkip);
+        }
+        if (next != null && !needs(next)) return next;
+        // Still on such a song when the budget ran out, or the queue ended after passing over
+        // some. A queue that simply ended (nothing passed over) ends as it always has.
+        if (next != null || passedOver)
+        {
+            heldBack = true;
+            _queue = before;
+        }
+        return null;
     }
 
     [RelayCommand]
@@ -447,6 +513,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
         _unrecordedPlay = track;
         _unrecordedFrom = fromPosition ?? TimeSpan.Zero;
+        _startedFrom = _unrecordedFrom;
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
         Duration = track.Duration;
@@ -467,12 +534,17 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // every natural end ExoPlayer auto-advances into that queued item and its audio
         // reaches the speaker before TrackEnded fires and our Play(current) restarts the loop
         // — an audible blip of the next track on every repeat.
-        if (RepeatMode == RepeatMode.One || _queue.UpNext.Count == 0 || CurrentTrack == null)
+        // While the computer is unreachable the next song is the first that plays without it,
+        // the one AdvancePlayable will land on, so the gapless handoff still matches.
+        var upcoming = _computerUnreachable && NeedsComputer is { } needs
+            ? _queue.UpNext.FirstOrDefault(t => !needs(t))
+            : _queue.UpNext.FirstOrDefault();
+        if (RepeatMode == RepeatMode.One || upcoming == null || CurrentTrack == null)
         {
             _player.CancelPreparedNext();
             return;
         }
-        _player.PrepareNext(_queue.UpNext[0].FilePath);
+        _player.PrepareNext(upcoming.FilePath);
     }
 
     private void StopPlayback()
@@ -511,9 +583,12 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         if (_seeking && playing && ++_seekIdleTicks > SeekWatchdogTicks) EndSeek();
         if (!_seeking) Position = position;
         IsPlaying = playing;
-        // Only a tick that arrives while actually playing proves the stream is healthy;
-        // a timer-driven poll firing while paused/stopped must not clear a live streak.
-        if (playing) _consecutiveErrors = 0;
+        // Only a tick that arrives while actually playing AND past the start proves the stream
+        // is healthy. The Android player reports Playing from Play() on and polls 00:00 while
+        // it is still connecting, so "Playing" alone cleared the streak between every two
+        // errors and the breaker never tripped (S23, 2026-10-19: a 20-song queue of desktop
+        // songs, computer off, cycled in silence for over half an hour).
+        if (playing && position > _startedFrom) _consecutiveErrors = 0;
         // Past the start, not merely Playing: the Android player reports Playing from Play()
         // on, and a file that never decodes keeps polling at its start position until the error.
         if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom)
@@ -546,23 +621,65 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private void OnPlayerTrackEnded(object? sender, EventArgs e) => _marshal(() =>
     {
         if (_disposed) return;
-        var next = _queue.Advance(QueueAdvance.Natural);
-        if (next == null) StopPlayback(); else StartTrack(next, null);
+        var next = AdvancePlayable(QueueAdvance.Natural, out var heldBack);
+        if (next != null)
+        {
+            StartTrack(next, null);
+            return;
+        }
+        StopPlayback();
+        if (heldBack) ShowProblem(ComputerUnreachableStopped);
     });
 
     private void OnPlayerError(object? sender, string message) => _marshal(() =>
     {
         if (_disposed) return;
         DebugLog.Write("Audio", $"Playback error: {message} — track: {CurrentTrack?.Title ?? "(none)"}");
-        ErrorText = message;
+        if (CurrentTrack is { } failed && NeedsComputer?.Invoke(failed) == true && IsConnectionError(message))
+        {
+            // The computer did not answer. Every other song that needs it would wait out the
+            // same timeout in silence, so go straight to the next one on the phone, or stop
+            // here with the queue intact; either way, say why.
+            _computerUnreachable = true;
+            _consecutiveErrors = 0;
+            DebugLog.Write("Audio", "The computer is unreachable: passing over songs that are not downloaded");
+            var playable = AdvancePlayable(QueueAdvance.UserSkip, out _);
+            if (playable != null)
+            {
+                StartTrack(playable, null);
+                ShowProblem(ComputerUnreachableSkipping);
+            }
+            else
+            {
+                StopPlayback();
+                ShowProblem(ComputerUnreachableStopped);
+            }
+            return;
+        }
         if (++_consecutiveErrors >= MaxConsecutiveErrors)
         {
             StopPlayback();
+            ErrorText = TooManyErrors;
             return;
         }
-        var next = _queue.Advance(QueueAdvance.UserSkip);
-        if (next == null) StopPlayback(); else StartTrack(next, null);
+        var next = AdvancePlayable(QueueAdvance.UserSkip, out var heldBack);
+        if (next != null) StartTrack(next, null);
+        else StopPlayback();
+        // After the skip: StartTrack clears the line, so setting it first never showed it.
+        if (heldBack) ShowProblem(ComputerUnreachableStopped);
+        else ErrorText = message;
     });
+
+    /// <summary>Media3's network failures (ERROR_CODE_IO_NETWORK_CONNECTION_FAILED / _TIMEOUT):
+    /// the host did not answer, as opposed to answering with an error or sending a bad file.</summary>
+    private static bool IsConnectionError(string message) =>
+        message.StartsWith("ERROR_CODE_IO_NETWORK_CONNECTION", StringComparison.Ordinal);
+
+    private void ShowProblem(string text)
+    {
+        ErrorText = text;
+        Notice = text;
+    }
 
     /// <summary>Queue + position → queue.json (the desktop's QueueState shape).</summary>
     public Task SaveStateAsync()

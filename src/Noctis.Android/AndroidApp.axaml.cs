@@ -143,6 +143,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // Desktop songs play from their download or the desktop's stream; the stream needs
             // the pinned certificate trusted and the device key sent, for as long as signed in.
             _player.ResolveRemote = account.ResolvePlaybackUri;
+            // The songs that stream from the computer: when it does not answer, the player passes
+            // over them to the downloaded ones instead of trying each in silence.
+            nowPlaying.NeedsComputer = t => account.IsRemote(t) && !account.IsDownloaded(t);
             account.StateChanged += (_, _) => ApplyAccountState(account);
             ApplyAccountState(account);
         }
