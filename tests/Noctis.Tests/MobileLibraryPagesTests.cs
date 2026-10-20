@@ -90,6 +90,25 @@ public class MobileLibraryPagesTests
         window.Close();
     }
 
+    /// <summary>Every playlist edit re-reads playlists.json into new objects: an open playlist page
+    /// must follow its playlist by id, or songs added after any other edit never showed on it
+    /// (nor sorted by their Date Added) until the page was reopened.</summary>
+    [Fact]
+    public async Task OpenPlaylistPage_ShowsSongsAddedAfterAnotherPlaylistEdit()
+    {
+        var a = MobileFixtures.Song("Alpha");
+        var b = MobileFixtures.Song("Beta");
+        var mix = new Playlist { Name = "Mix", TrackIds = { a.Id } };
+        using var rig = MobileFixtures.MakeRig(new[] { a, b }, null, WithFolder(mix));
+        rig.Shell.OpenPlaylistCommand.Execute(rig.Shell.Library.Playlists.Single());
+        var page = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+
+        await rig.Shell.Library.CreatePlaylistAsync("Other");                   // re-reads every playlist
+        await rig.Shell.Library.AddToPlaylistAsync(rig.Shell.Library.Playlists.Single(p => p.Name == "Mix"), new[] { b });
+
+        Assert.Equal(new[] { "Alpha", "Beta" }, page.Songs.Select(t => t.Title));
+    }
+
     [Fact]
     public void SongList_TapPlaysFromThatRow_AndShuffleAllShuffles()
     {

@@ -708,8 +708,13 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenPlaylist(Playlist? playlist)
     {
         if (playlist == null) return;
-        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(playlist), playlist));
+        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(CurrentPlaylist(playlist)), playlist));
     }
+
+    /// <summary>Every playlist edit (and a sync) re-reads playlists.json into new objects: a page
+    /// or menu holding one from before reads the playlist the library holds now, by id.</summary>
+    public Playlist CurrentPlaylist(Playlist playlist) =>
+        Library.Playlists.FirstOrDefault(p => p.Id == playlist.Id) ?? playlist;
 
     /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
     public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>

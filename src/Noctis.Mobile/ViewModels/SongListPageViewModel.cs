@@ -175,6 +175,8 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         var names = StringComparer.CurrentCultureIgnoreCase;
         if (Sort == SongSort.Default) return IsDescending ? rows.Reverse() : rows;
+        // The playlist as the library holds it now: an edit re-reads it into a new object.
+        var playlist = _playlist == null ? null : Shell.CurrentPlaylist(_playlist);
         IOrderedEnumerable<Track> By<TKey>(Func<Track, TKey> key, IComparer<TKey>? comparer = null) =>
             IsDescending ? rows.OrderByDescending(key, comparer) : rows.OrderBy(key, comparer);
         var ordered = Sort switch
@@ -182,7 +184,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             SongSort.Title => By(t => t.Title, names),
             SongSort.Artist => By(t => t.Artist, names),
             SongSort.Album => By(t => t.Album, names),
-            SongSort.DateAdded => By(t => _playlist?.AddedDateFor(t.Id, t.DateAdded) ?? t.DateAdded),
+            SongSort.DateAdded => By(t => playlist?.AddedDateFor(t.Id, t.DateAdded) ?? t.DateAdded),
             SongSort.Year => By(t => t.Year),
             SongSort.Duration => By(t => t.Duration),
             SongSort.MostPlayed => By(t => t.PlayCount),
