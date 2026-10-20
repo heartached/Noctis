@@ -385,6 +385,19 @@ public sealed class WhisperTranscriber
             return Spread(pieces, segStart, segEnd, 0.5f);
         }
 
+        // Whisper.net decodes each token on its own, so a character whose UTF-8 bytes the tokenizer
+        // split over two tokens comes out as U+FFFD pieces (Korean, Japanese, Chinese; benchmark
+        // 10-19: 34 of LOVE DIVE's 185 heard words). The segment's text is decoded whole: a broken
+        // word takes its text from the segment's word at the same place, when the two line up.
+        if (words.Any(w => w.Text.Contains(Broken)) && segmentText is not null)
+        {
+            var whole = segmentText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (whole.Length == words.Count)
+                for (var i = 0; i < words.Count; i++)
+                    if (words[i].Text.Contains(Broken) && FitsBroken(words[i].Text, whole[i]))
+                        words[i] = words[i] with { Text = whole[i] };
+        }
+
         var result = new List<RecognizedWord>(words.Count);
         var tolerance = TimeSpan.FromSeconds(1.5);
         var sane = true;
@@ -413,4 +426,20 @@ public sealed class WhisperTranscriber
     }
 
     private static bool IsPunctuationOnly(string s) => s.All(c => char.IsPunctuation(c) || char.IsSymbol(c));
+
+    /// <summary>What a token's partial UTF-8 bytes decode to.</summary>
+    private const char Broken = '\uFFFD';
+
+    /// <summary>Whether <paramref name="whole"/> reads as <paramref name="broken"/> with each run of U+FFFD standing for one or more characters.</summary>
+    private static bool FitsBroken(string broken, string whole)
+    {
+        var pattern = new System.Text.StringBuilder("^");
+        for (var i = 0; i < broken.Length; i++)
+        {
+            if (broken[i] != Broken) { pattern.Append(System.Text.RegularExpressions.Regex.Escape(broken[i].ToString())); continue; }
+            while (i + 1 < broken.Length && broken[i + 1] == Broken) i++;
+            pattern.Append(".+?");
+        }
+        return System.Text.RegularExpressions.Regex.IsMatch(whole, pattern.Append('$').ToString(), System.Text.RegularExpressions.RegexOptions.Singleline);
+    }
 }
