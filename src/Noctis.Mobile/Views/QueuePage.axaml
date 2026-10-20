@@ -45,6 +45,30 @@
         <Style Selector="TextBlock.row-sub, TextBlock.subtle">
             <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
         </Style>
+        <!-- The current track: title over artist beside a small cover (Apple's queue). -->
+        <Style Selector="TextBlock.now-title">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="LineHeight" Value="22" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="TextBlock.now-sub">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <!-- The list's title (Apple's "Playing Next"), with where it plays from under it. -->
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="LineHeight" Value="25" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="TextBlock.section-sub">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="LineHeight" Value="17" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
+        </Style>
         <!-- Rows as the mockup sets them: a regular-weight title over the artist and album in
              one grey. -->
         <Style Selector="TextBlock.row-title">
@@ -55,23 +79,6 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        </Style>
-        <Style Selector="TextBlock.kicker">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="LineHeight" Value="16" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="LetterSpacing" Value="0.6" />
-            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
-        </Style>
-        <!-- The header's lines, as the mockup sets them: regular weight, the primary text colour. -->
-        <Style Selector="TextBlock.head">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="LineHeight" Value="21" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        </Style>
-        <Style Selector="TextBlock.position">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="LineHeight" Value="17" />
         </Style>
         <Style Selector="Border.sep">
             <Setter Property="Height" Value="1" />
@@ -92,45 +99,60 @@
             <Setter Property="Width" Value="28" />
             <Setter Property="Height" Value="28" />
         </Style>
-        <!-- Clear: accent text on the UP NEXT line; its padding hangs past the margin so the
-             word itself lines up with the sheet's right edge. -->
+        <!-- Clear: accent text at the end of the Up Next title; its padding hangs past the
+             margin so the word itself lines up with the sheet's right edge, the tap target a
+             full 44 tall. -->
         <Style Selector="Button.pill.clear">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
-            <Setter Property="CornerRadius" Value="11" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="Height" Value="22" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="10,0" />
             <Setter Property="MinHeight" Value="0" />
-            <Setter Property="Margin" Value="0,0,-8,0" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Margin" Value="0,0,-10,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <!-- The control pill, as the mockup draws it: plain glyphs in the text colour (the
-             accent when a mode is on), and the two ends as soft circles, an accent wash under an
-             accent glyph. The wash is its own layer so the glyph keeps the full accent. -->
-        <Style Selector="Button.icon.on PathIcon">
-            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
-        </Style>
-        <Style Selector="Button.round.soft">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Background" Value="Transparent" />
+        <!-- The control pill = the desktop's player bar (PlaybackBarView): one row of plain glyphs
+             in one box size - Repeat, Previous, Next, Shuffle, Queue and ⋯ all drawn in the skip
+             buttons' box, Play/Pause a little larger (the desktop's 18 and 20, here 30 and 33).
+             A mode that is on (and Queue, whose sheet is open) turns the glyph accent over the
+             desktop's faint accent square (28 of 34 there, corner 8; the same proportions here).
+             The wash is its own layer so the glyph keeps the full accent. -->
+        <Style Selector="Button.icon.pill-btn">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
-        <Style Selector="Button.round.soft Border.wash">
-            <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="Opacity" Value="{DynamicResource QueueAccentWash}" />
-        </Style>
-        <Style Selector="Button.round.soft PathIcon">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+        <Style Selector="Button.icon.pill-btn PathIcon">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.icon.pill-btn PathIcon.play">
+            <Setter Property="Width" Value="33.3" />
+            <Setter Property="Height" Value="33.3" />
+        </Style>
+        <Style Selector="Button.icon.pill-btn Border.wash">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="{DynamicResource QueueAccentWash}" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.icon.pill-btn.on Border.wash">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="Button.icon.pill-btn.on PathIcon">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
         </Style>
 
@@ -208,46 +230,59 @@
                             </Button>
                         </Grid>
 
-                        <!-- The owner's mockup: the cover, and stacked beside it the kicker, the track,
-                             where the queue plays from and the track's place in it, then UP NEXT
-                             (with Clear) over the list. Unknown lines hide. -->
-                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*" Margin="20,2,20,0" IsVisible="{Binding Player.HasTrack}">
+                        <!-- Apple's queue: the current track as a row of its own (a small cover, the
+                             title over the artist, the playing bars at its end), then the list's title,
+                             Up Next with Clear at its end, and under it where the queue plays from and
+                             the track's place in it. Unknown lines hide. -->
+                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*,Auto" Margin="20,4,20,0" IsVisible="{Binding Player.HasTrack}">
                             <!-- The shadow on an outer border: the cover itself clips to its corners. -->
-                            <Border Width="120" Height="120" CornerRadius="10" VerticalAlignment="Center"
-                                    BoxShadow="0 4 16 0 #38000000">
-                                <Border Name="NowCover" Classes="art" CornerRadius="10">
+                            <Border Width="64" Height="64" CornerRadius="8" VerticalAlignment="Top"
+                                    BoxShadow="0 3 10 0 #33000000">
+                                <Border Name="NowCover" Classes="art" CornerRadius="8">
                                     <Panel>
-                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="36" Height="36" Opacity="0.4" />
+                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="24" Height="24" Opacity="0.4" />
                                         <controls:CachedImage Name="NowArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
                                                               DecodeWidth="384" ClearOnSourceChange="False" Stretch="UniformToFill" />
                                     </Panel>
                                 </Border>
                             </Border>
-                            <StackPanel Grid.Column="1" Name="NowText" Margin="16,0,0,0" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Name="NowKicker" Classes="kicker" Text="CURRENTLY PLAYING" VerticalAlignment="Center" />
-                                    <Panel Name="EqBars" Width="14" Height="12" VerticalAlignment="Center">
-                                        <Border Classes="b1" Height="6" />
-                                        <Border Classes="b2" Height="10" Margin="3.8,0,0,0" />
-                                        <Border Classes="b3" Height="7" Margin="7.6,0,0,0" />
-                                        <Border Classes="b4" Height="9" Margin="11.4,0,0,0" />
-                                    </Panel>
-                                </StackPanel>
-                                <TextBlock Name="NowTitle" Classes="head" Text="{Binding Player.CurrentTrack.Title}" />
-                                <TextBlock Name="NowArtist" Classes="head" Text="{Binding Player.CurrentTrack.Artist}" />
-                                <TextBlock Name="SourceLine" Classes="head" Margin="0,6,0,0" Text="{Binding Player.PlayingFromText}"
-                                           IsVisible="{Binding Player.HasSourceLabel}" />
-                                <TextBlock Name="PositionLine" Classes="position" Text="{Binding Player.QueuePositionText}"
-                                           IsVisible="{Binding Player.HasQueuePosition}" />
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                                    <TextBlock Name="UpNextLabel" Classes="kicker" Text="UP NEXT" VerticalAlignment="Center" />
-                                    <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="Clear" VerticalAlignment="Center"
-                                            Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
-                                </Grid>
+                            <StackPanel Grid.Column="1" Name="NowText" Margin="14,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Name="NowTitle" Classes="now-title" Text="{Binding Player.CurrentTrack.Title}" />
+                                <TextBlock Name="NowArtist" Classes="now-sub" Text="{Binding Player.CurrentTrack.Artist}" />
                             </StackPanel>
+                            <Panel Grid.Column="2" Name="EqBars" Width="14" Height="12" VerticalAlignment="Center">
+                                <Border Classes="b1" Height="6" />
+                                <Border Classes="b2" Height="10" Margin="3.8,0,0,0" />
+                                <Border Classes="b3" Height="7" Margin="7.6,0,0,0" />
+                                <Border Classes="b4" Height="9" Margin="11.4,0,0,0" />
+                            </Panel>
                         </Grid>
 
-                        <Border Grid.Row="2" Name="HeaderRule" Classes="sep" Margin="20,14,20,4" />
+                        <!-- The title row keeps Clear's height when Clear hides: the line under it does not jump. -->
+                        <Grid Grid.Row="2" Name="UpNextHeader" ColumnDefinitions="*,Auto" Margin="20,20,20,6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" MinHeight="32" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Name="UpNextLabel" Classes="section" Text="Up Next" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="Clear" VerticalAlignment="Center"
+                                    Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
+                            <!-- One line: "Playing from X · Track N of M"; the source trims first. -->
+                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
+                                <TextBlock Name="SourceLine" Classes="section-sub" Text="{Binding Player.PlayingFromText}" TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding Player.HasSourceLabel}" />
+                                <TextBlock Grid.Column="1" Name="SourceDot" Classes="section-sub" Text=" · ">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="Player.HasSourceLabel" />
+                                            <Binding Path="Player.HasQueuePosition" />
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Grid.Column="2" Name="PositionLine" Classes="section-sub" Text="{Binding Player.QueuePositionText}"
+                                           IsVisible="{Binding Player.HasQueuePosition}" />
+                            </Grid>
+                        </Grid>
 
                         <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="Nothing up next" HorizontalAlignment="Center"
                                    Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
@@ -284,7 +319,7 @@
                                                         PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
                                                         PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
                                                     <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
-                                                              Foreground="{DynamicResource AccentTextBrush}" />
+                                                              Foreground="{DynamicResource QueueSubtleText}" />
                                                 </Border>
                                                 <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="sep" VerticalAlignment="Bottom" Margin="12,0,14,0" />
                                             </Grid>
@@ -302,46 +337,46 @@
                                 <Panel>
                                     <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="28" IsHitTestVisible="False" />
                                     <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="8,0">
-                                        <Button Grid.Column="0" Name="QueueListButton" Classes="round soft" HorizontalAlignment="Center"
-                                                Command="{Binding ToggleQueueCommand}">
+                                        <Button Grid.Column="0" Name="QueueListButton" Classes="icon pill-btn on"
+                                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
                                             <Panel>
                                                 <Border Classes="wash" />
                                                 <PathIcon Data="{DynamicResource PhQueue}" />
                                             </Panel>
                                         </Button>
-                                        <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon" Classes.on="{Binding Player.IsRepeatOn}"
-                                                HorizontalAlignment="Center" Command="{Binding Player.CycleRepeatCommand}">
-                                            <Panel>
-                                                <PathIcon Data="{DynamicResource PhRepeat}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
-                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" Width="20" Height="20"
-                                                          IsVisible="{Binding Player.IsRepeatOne}" />
-                                            </Panel>
-                                        </Button>
-                                        <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon" HorizontalAlignment="Center"
-                                                Command="{Binding Player.PreviousCommand}">
-                                            <PathIcon Data="{DynamicResource PhRewindFill}" Width="36" Height="36" />
-                                        </Button>
-                                        <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon" HorizontalAlignment="Center"
-                                                Command="{Binding Player.TogglePlayPauseCommand}">
-                                            <Panel>
-                                                <PathIcon Data="{DynamicResource PhPlayFill}" Width="36" Height="36" IsVisible="{Binding !Player.IsPlaying}" />
-                                                <PathIcon Data="{DynamicResource PhPauseFill}" Width="36" Height="36" IsVisible="{Binding Player.IsPlaying}" />
-                                            </Panel>
-                                        </Button>
-                                        <Button Grid.Column="4" Name="QueueNextButton" Classes="icon" HorizontalAlignment="Center"
-                                                Command="{Binding Player.NextCommand}">
-                                            <PathIcon Data="{DynamicResource PhForwardFill}" Width="36" Height="36" />
-                                        </Button>
-                                        <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon" Classes.on="{Binding Player.IsShuffleEnabled}"
-                                                HorizontalAlignment="Center" Command="{Binding Player.ToggleShuffleCommand}">
-                                            <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
-                                        </Button>
-                                        <Button Grid.Column="6" Name="QueueMoreButton" Classes="round soft" HorizontalAlignment="Center"
-                                                Command="{Binding OpenCurrentTrackSheetCommand}">
+                                        <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon pill-btn" Classes.on="{Binding Player.IsRepeatOn}"
+                                                Command="{Binding Player.CycleRepeatCommand}" AutomationProperties.Name="Repeat">
                                             <Panel>
                                                 <Border Classes="wash" />
-                                                <PathIcon Data="{DynamicResource PhMore}" />
+                                                <PathIcon Data="{DynamicResource PhRepeat}" IsVisible="{Binding !Player.IsRepeatOne}" />
+                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" IsVisible="{Binding Player.IsRepeatOne}" />
                                             </Panel>
+                                        </Button>
+                                        <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon pill-btn"
+                                                Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="Previous">
+                                            <PathIcon Data="{DynamicResource PhRewindFill}" />
+                                        </Button>
+                                        <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon pill-btn"
+                                                Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
+                                            <Panel>
+                                                <PathIcon Classes="play" Data="{DynamicResource PhPlayFill}" IsVisible="{Binding !Player.IsPlaying}" />
+                                                <PathIcon Classes="play" Data="{DynamicResource PhPauseFill}" IsVisible="{Binding Player.IsPlaying}" />
+                                            </Panel>
+                                        </Button>
+                                        <Button Grid.Column="4" Name="QueueNextButton" Classes="icon pill-btn"
+                                                Command="{Binding Player.NextCommand}" AutomationProperties.Name="Next">
+                                            <PathIcon Data="{DynamicResource PhForwardFill}" />
+                                        </Button>
+                                        <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon pill-btn" Classes.on="{Binding Player.IsShuffleEnabled}"
+                                                Command="{Binding Player.ToggleShuffleCommand}" AutomationProperties.Name="Shuffle">
+                                            <Panel>
+                                                <Border Classes="wash" />
+                                                <PathIcon Data="{DynamicResource PhShuffle}" />
+                                            </Panel>
+                                        </Button>
+                                        <Button Grid.Column="6" Name="QueueMoreButton" Classes="icon pill-btn"
+                                                Command="{Binding OpenCurrentTrackSheetCommand}" AutomationProperties.Name="More">
+                                            <PathIcon Data="{DynamicResource PhMore}" />
                                         </Button>
                                     </Grid>
                                 </Panel>

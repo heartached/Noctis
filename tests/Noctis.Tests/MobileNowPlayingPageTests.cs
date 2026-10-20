@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
@@ -127,6 +128,41 @@ public class MobileNowPlayingPageTests : IDisposable
         Assert.False(frame.Classes.Contains("paused"));
         rig.Shell.Player.TogglePlayPauseCommand.Execute(null);
         Assert.True(frame.Classes.Contains("paused"));
+        window.Close();
+    }
+
+    /// <summary>
+    /// The bottom row and the transport follow the desktop player bar (owner 10-19: "the same as
+    /// the Windows app ... same sizes"): Lyrics and Queue draw the bar's Lyrics and Queue glyphs
+    /// in one box, the middle button its Volume speaker at the bar's 16 of 18, and Play/Pause is
+    /// the bar's 20 to the skips' 18.
+    /// </summary>
+    [AvaloniaFact]
+    public void TheBottomRowAndTransport_UseTheDesktopBarsGlyphsAndProportions()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        window.UpdateLayout();
+        var page = view.FindControl<NowPlayingPage>("NowPlaying")!;
+        PathIcon Glyph(string button) => MobileFixtures.Named<Button>(page, button).GetVisualDescendants().OfType<PathIcon>().First(i => i.IsVisible);
+        Geometry Key(string key) => (Geometry)page.FindResource(key)!;
+
+        Assert.Same(Key("PhLyrics"), Glyph("LyricsButton").Data);
+        Assert.Same(Key("PhVolumeHigh"), Glyph("OutputButton").Data);
+        Assert.Same(Key("PhQueue"), Glyph("QueueButton").Data);
+        var box = Glyph("LyricsButton").Bounds.Width;
+        Assert.InRange(box, 22, 26);
+        Assert.Equal(box, Glyph("QueueButton").Bounds.Width);
+        Assert.Equal(box * 16 / 18, Glyph("OutputButton").Bounds.Width, 1.0);   // layout rounding
+        var row = new[] { "LyricsButton", "OutputButton", "QueueButton" }
+            .Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
+        Assert.Single(row.Select(b => Math.Round(b.TranslatePoint(new Point(0, b.Bounds.Height / 2), page)!.Value.Y, 1)).Distinct());
+
+        var skip = Glyph("PreviousButton").Bounds.Width;
+        Assert.Equal(skip, Glyph("NextButton").Bounds.Width);
+        Assert.Equal(skip * 20 / 18, Glyph("PlayPauseButton").Bounds.Width, 1.0);
         window.Close();
     }
 

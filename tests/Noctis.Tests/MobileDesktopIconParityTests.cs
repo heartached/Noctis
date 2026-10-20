@@ -32,12 +32,7 @@ public class MobileDesktopIconParityTests
         { "PhoneIcons", "PhVolumeLow", "SpeakerLowIcon", 0 },
         { "PhoneIcons", "PhVolumeHigh", "SpeakerHighIcon", 0 },
         { "PhoneIcons", "PhLyrics", "MenuLineLyrics", 2.25 },
-        { "PhoneIcons", "PhOutput", "MenuLineVolume", 2.25 },
         { "PhoneIcons", "PhQueue", "MenuLineQueue", 2.25 },
-        { "LibraryIcons", "QueueRepeatIcon", "RepeatAllIcon", 0 },
-        { "LibraryIcons", "QueueRepeatOneIcon", "RepeatOneIcon", 0 },
-        { "LibraryIcons", "QueueShuffleIcon", "ShuffleIcon", 0 },
-        { "LibraryIcons", "QueueListIcon", "MenuLineQueue", 2.25 },
         { "LibraryIcons", "LibOnRepeatIcon", "RepeatAllIcon", 0 },
         // Favourite heart (HeartIcon's pair) and the artist star
         { "PhoneIcons", "PhHeart", "HeartOutlineIcon", 0 },
@@ -49,7 +44,6 @@ public class MobileDesktopIconParityTests
         // Common buttons
         { "PhoneIcons", "PhMore", "MoreDotsIcon", 0 },
         { "LibraryIcons", "LibMoreIcon", "MoreDotsIcon", 0 },
-        { "LibraryIcons", "QueueMoreIcon", "MoreDotsIcon", 0 },
         { "PhoneIcons", "PhSearch", "SearchIcon", 0 },
         { "TabIcons", "TabSearchIcon", "SearchIcon", 0 },
         { "TabIcons", "TabSearchFilledIcon", "SearchIcon", 0 },
