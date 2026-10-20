@@ -28,7 +28,7 @@
         <Style Selector="views|ArtistPage Button.row, views|ArtistPage Button.icon, views|ArtistPage Button.round">
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
-        <Style Selector="views|ArtistPage.tinted Button.row, views|ArtistPage.tinted Button.icon, views|ArtistPage.tinted Button.round">
+        <Style Selector="views|ArtistPage.tinted Button.row, views|ArtistPage.tinted Button.icon, views|ArtistPage.tinted Button.round, views|ArtistPage.tinted Button.glass-round">
             <Setter Property="Foreground" Value="{DynamicResource ArtistText}" />
         </Style>
         <Style Selector="views|ArtistPage TextBlock.artist-subtle">

@@ -50,7 +50,8 @@ public partial class ShellView : UserControl
     private void OnQueueSheetPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property != IsVisibleProperty) return;
-        ChromeLayer.ZIndex = QueueSheet.IsVisible ? 1 : 0;
+        ChromeScope.ZIndex = QueueSheet.IsVisible ? 1 : 0;
+        ApplyChromeTint();
         Motion.Stop(ChromeLayer);
         ChromeLayer.RenderTransform = ChromeScale(_covered);
     }
@@ -636,5 +637,32 @@ public partial class ShellView : UserControl
             PageScrim.IsVisible = false;
             BottomScrim.IsVisible = true;
         }
+        ApplyChromeTint();
+    }
+
+    /// <summary>The page colour the chrome's glass wears now, or null for the theme's glass.</summary>
+    internal Color? ChromeTint { get; private set; }
+
+    /// <summary>
+    /// Over a cover-coloured page the tab bar, the mini player and the folded bubbles are glass in
+    /// that colour (TintedGlass), their labels in the text the colour takes and the scope in the
+    /// matching theme (Fluent's button glyphs flip with it); the theme's own glass elsewhere, and
+    /// while the Queue sheet, which follows the app theme, holds the bar over it.
+    /// </summary>
+    private void ApplyChromeTint()
+    {
+        Color? tint = QueueSheet.IsVisible ? null : _scrimTint?.TintColor;
+        ChromeTint = tint;
+        TintedGlass.Clear(ChromeScope.Resources);
+        if (tint is { } c)
+        {
+            TintedGlass.Apply(ChromeScope.Resources, c);
+            var accent = this.TryFindResource("AccentColorBrush", ActualThemeVariant, out var a) && a is ISolidColorBrush ab ? ab.Color
+                : Color.Parse(Noctis.Mobile.Services.MobileTheme.DefaultAccent);
+            TintedGlass.ApplyText(ChromeScope.Resources, c, accent);
+            ChromeScope.RequestedThemeVariant = PageTint.PrefersDarkText(TintedGlass.Face(c))
+                ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+        }
+        else ChromeScope.ClearValue(ThemeVariantScope.RequestedThemeVariantProperty);
     }
 }

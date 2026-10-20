@@ -31,7 +31,7 @@
         <Style Selector="views|AlbumPage Button.row, views|AlbumPage Button.icon, views|AlbumPage Button.round">
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
-        <Style Selector="views|AlbumPage.tinted Button.row, views|AlbumPage.tinted Button.icon, views|AlbumPage.tinted Button.round">
+        <Style Selector="views|AlbumPage.tinted Button.row, views|AlbumPage.tinted Button.icon, views|AlbumPage.tinted Button.round, views|AlbumPage.tinted Button.glass-round">
             <Setter Property="Foreground" Value="{DynamicResource AlbumText}" />
         </Style>
         <Style Selector="views|AlbumPage.tinted Button.round">
