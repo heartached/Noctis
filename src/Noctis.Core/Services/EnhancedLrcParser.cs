@@ -401,14 +401,21 @@ public static partial class EnhancedLrcParser
             if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var seconds))
                 return null;
-            return TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
+            return Exact(minutes, seconds);
         }
 
         if (!int.TryParse(parts[1], out var wholeSeconds)) return null;
         if (!int.TryParse(parts[2], out var fractionalUnit)) return null;
 
         var divisor = Math.Pow(10, parts[2].Length);
-        return TimeSpan.FromMinutes(minutes) +
-               TimeSpan.FromSeconds(wholeSeconds + fractionalUnit / divisor);
+        return Exact(minutes, wholeSeconds + fractionalUnit / divisor);
     }
+
+    /// <summary>
+    /// The tag's time in whole milliseconds (tags carry at most three decimals). TimeSpan.FromSeconds
+    /// truncates to ticks, so "00:00.41" came back as 0.40999… s and was written out again as
+    /// "00:00.40": a Studio save of a loaded .elrc moved ~6 % of its word tags 10 ms earlier.
+    /// </summary>
+    private static TimeSpan Exact(int minutes, double seconds) =>
+        TimeSpan.FromMinutes(minutes) + TimeSpan.FromMilliseconds(Math.Round(seconds * 1000));
 }
