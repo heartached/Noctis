@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
@@ -243,6 +244,69 @@ public class MobileArtistLogoTests : IDisposable
     {
         var path = Save(ArtistLogoInk.Trim(LogoPng(ink))!, name);
         return new ArtistLogo(path, ArtistLogoInk.Analyse(path)!);
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Noctis.sln"))) return dir.FullName;
+            dir = dir.Parent;
+        }
+        throw new DirectoryNotFoundException("Could not locate repo root from " + AppContext.BaseDirectory);
+    }
+
+    /// <summary>A phone glyph's ink, tight, in its 24 box (the "M0 0ZM24 24Z" corners left out).</summary>
+    private static SKRect GlyphInk(string key)
+    {
+        var doc = System.Xml.Linq.XDocument.Load(Path.Combine(RepoRoot(), "src", "Noctis.Mobile", "Views", "PhoneIcons.axaml"));
+        var x = System.Xml.Linq.XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml");
+        var data = doc.Descendants().First(e => (string?)e.Attribute(x + "Key") == key).Value.Replace("M0 0ZM24 24Z", "").Trim();
+        if (data.StartsWith("F0 ") || data.StartsWith("F1 ")) data = data[3..];   // Avalonia's fill rule, not SVG
+        using var path = SKPath.ParseSvgPathData(data);
+        return path.TightBounds;
+    }
+
+    /// <summary>Owner 10-20: "the play and pause button are center middle of the button, and the
+    /// shuffle and the star also": each hero glyph's ink (not its 24 box) sits in the middle of its
+    /// circle, within a quarter of a pixel, and the featured card's Play too.</summary>
+    [AvaloniaFact]
+    public void HeroButtons_DrawTheirGlyphInkDeadCentre()
+    {
+        var (tracks, albums) = Band();
+        using var rig = MobileFixtures.MakeRig(tracks, albums, logos: new FakeLogos());
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenArtistCommand.Execute("Band");
+        MobileFixtures.Land(window);
+        window.UpdateLayout();
+        var page = MobileFixtures.Find<ArtistPage>(view);
+
+        void Centred(Button button, PathIcon icon, string key)
+        {
+            var ink = GlyphInk(key);
+            var scale = icon.Bounds.Width / 24.0;
+            var origin = icon.TranslatePoint(new Point(0, 0), button)!.Value;
+            var centre = new Point(origin.X + ink.MidX * scale, origin.Y + ink.MidY * scale);
+            Assert.True(Math.Abs(button.Bounds.Width / 2 - centre.X) <= 0.25, $"{key} ink centre x {centre.X:0.00} in {button.Bounds.Width}");
+            Assert.True(Math.Abs(button.Bounds.Height / 2 - centre.Y) <= 0.25, $"{key} ink centre y {centre.Y:0.00} in {button.Bounds.Height}");
+        }
+        PathIcon Glyph(Button b) => b.GetVisualDescendants().OfType<PathIcon>().First(p => p.IsVisible);
+
+        var shuffle = MobileFixtures.Named<Button>(page, "ShuffleButton");
+        var play = MobileFixtures.Named<Button>(page, "PlayButton");
+        var star = MobileFixtures.Named<Button>(page, "FavouriteButton");
+        Centred(shuffle, Glyph(shuffle), "PhShuffle");
+        Centred(play, Glyph(play), "PhPlayFill");
+        Centred(star, Glyph(star), "PhStar");
+        var card = page.GetVisualDescendants().OfType<Button>().First(b => b.Name == "CardPlay");
+        Centred(card, Glyph(card), "PhPlayFill");
+
+        star.Command!.Execute(star.CommandParameter);
+        window.UpdateLayout();
+        Assert.Equal("PhStarFill", Glyph(star).Name == "StarFilled" ? "PhStarFill" : "?");
+        Centred(star, Glyph(star), "PhStarFill");
+        window.Close();
     }
 
     [AvaloniaFact]

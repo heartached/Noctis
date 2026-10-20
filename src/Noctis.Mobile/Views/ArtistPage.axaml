@@ -203,13 +203,18 @@
                         </Button>
                         <Button Name="PlayButton" Classes="round artist-round artist-play" Command="{Binding PlayCommand}" VerticalAlignment="Center"
                                 AutomationProperties.Name="Play">
-                            <PathIcon Data="{DynamicResource PhPlayFill}" Margin="3,0,0,0" />
+                            <!-- The desktop's play triangle sits 1.43 of its 24 right of the box's middle
+                                 (its ink runs 5 to 21.86): moved back so the ink is dead centre (owner
+                                 10-20: "center middle of the button"). Same for the stars' ink below. -->
+                            <PathIcon Name="PlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.79px, 0px)" />
                         </Button>
                         <Button Name="FavouriteButton" Classes="round artist-round" Command="{Binding ToggleFavouriteCommand}" VerticalAlignment="Center"
                                 AutomationProperties.Name="Favourite">
                             <Panel>
-                                <PathIcon Name="StarOutline" Data="{DynamicResource PhStar}" IsVisible="{Binding !IsFavourite}" />
-                                <PathIcon Name="StarFilled" Data="{DynamicResource PhStarFill}" IsVisible="{Binding IsFavourite}" />
+                                <PathIcon Name="StarOutline" Data="{DynamicResource PhStar}" IsVisible="{Binding !IsFavourite}"
+                                          RenderTransform="translate(0px, 0.24px)" />
+                                <PathIcon Name="StarFilled" Data="{DynamicResource PhStarFill}" IsVisible="{Binding IsFavourite}"
+                                          RenderTransform="translate(0px, 0.46px)" />
                             </Panel>
                         </Button>
                     </StackPanel>
@@ -257,7 +262,7 @@
                                             <Button Grid.Column="2" Name="CardPlay" Classes="round card-play" VerticalAlignment="Center"
                                                     Command="{Binding $parent[views:ArtistPage].((vm:ArtistPageViewModel)DataContext).PlayCardCommand}"
                                                     CommandParameter="{Binding}">
-                                                <PathIcon Data="{DynamicResource PhPlayFill}" />
+                                                <PathIcon Name="CardPlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.07px, 0px)" />
                                             </Button>
                                         </Grid>
                                     </Border>
