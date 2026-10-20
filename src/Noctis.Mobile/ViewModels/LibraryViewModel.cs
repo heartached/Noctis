@@ -628,6 +628,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private void RefreshFromLibrary()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var tracks = _library.Tracks;
         SongCount = tracks.Count;
         AlbumCount = _library.Albums.Count;
@@ -636,10 +637,20 @@ public sealed partial class LibraryViewModel : ObservableObject
         var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
         RecentlyAddedCount = tracks.Count(t => t.DateAdded >= cutoff);
         Songs.ReplaceAll(tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase));
+        var sorted = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         RefreshRails();
         RefreshRecents();
         Refreshed?.Invoke(this, EventArgs.Empty);
+        // Runs on each library update, a scan's progressive publishes too (every 1.5 s while it
+        // finds songs). Measured 10-20 on the emulator with 1206 songs: 5-12 ms each, 12-14 per
+        // re-reading scan, 3 per scan with no changes. Logged when slow, so a big library or a
+        // slow phone shows it.
+        var total = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        if (total >= SlowRefreshMs)
+            DebugLog.Write("Library", $"slow refresh: {tracks.Count} songs, sort {sorted:F0} ms, total {total:F0} ms (scanning={IsScanning})");
     }
+
+    private const double SlowRefreshMs = 100;
 
     /// <summary>
     /// A heart toggled: the count and the open lists re-read (Favorites, a filtered list). The
