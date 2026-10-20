@@ -197,7 +197,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     [RelayCommand] private void CancelRemoveFolder() => FolderToRemove = null;
 
-    [RelayCommand]
+    /// <summary>Concurrent: it awaits the rescan, and the next folder's Remove stayed greyed out
+    /// for all of it (the confirm runs once per ask: <see cref="FolderToRemove"/> clears first).</summary>
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task ConfirmRemoveFolderAsync()
     {
         if (FolderToRemove is not { } folder) return;

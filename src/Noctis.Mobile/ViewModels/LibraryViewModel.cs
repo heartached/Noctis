@@ -378,8 +378,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// rescans, which is how a folder whose access was lost comes back); a folder inside one
     /// already listed, or around one, is refused with a note, as the scan would list its songs
     /// twice (a SAF song's path carries the folder it was found through).
+    /// Concurrent: it awaits the scan it starts (minutes over SAF), and a command that may not
+    /// overlap is greyed out while it runs; a folder added mid-scan gets the second pass.
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task AddFolderAsync()
     {
         var picked = await _picker.PickFolderAsync();
