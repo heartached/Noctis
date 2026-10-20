@@ -1242,6 +1242,29 @@ public class MobileAccountTests
         Assert.Equal(new[] { a, b }, Assert.Single(account.RemoveCalls));
     }
 
+    /// <summary>
+    /// Remove Downloads on an album whose download is still running: the sheet handed over only
+    /// the songs already downloaded, so the batch went on to fetch the rest of the album. It hands
+    /// over every desktop song of the album; the service removes the copies and withdraws the rest.
+    /// </summary>
+    [Fact]
+    public async Task AlbumSheet_RemoveDownloadsMidDownload_HandsOverTheSongsStillToCome()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var local = MobileFixtures.Song("Local");
+        var album = MobileFixtures.MakeAlbum("Half", "Artist", a, b, local);
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, local }, new[] { album });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(a.Id);   // b is still on its way
+        var shell = ShellWith(rig, account);
+
+        shell.OpenAlbumSheetCommand.Execute(album);
+        await shell.Sheet!.RemoveDownloadCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { a, b }, Assert.Single(account.RemoveCalls));
+    }
+
     [Fact]
     public void PlaylistSheet_LabelsTheDownload()
     {
