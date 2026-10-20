@@ -32,6 +32,32 @@
         <Style Selector="Border#SheetCard TextBlock.row-sub">
             <Setter Property="Foreground" Value="{DynamicResource MenuGlassSecondaryText}" />
         </Style>
+        <!-- The new playlist's name: a pill of the glass's own fill with the glass's text, as the
+             search field on a page (Fluent's TextBox was a grey box: #BFBFBF on the light glass,
+             near-black on the dark, its placeholder 2-2.6:1). No border or accent ring, at rest or
+             focused. -->
+        <Style Selector="TextBox.glass-field">
+            <Setter Property="Background" Value="{DynamicResource MenuGlassFieldFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource MenuGlassText}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBox.glass-field:pointerover /template/ Border#PART_BorderElement, TextBox.glass-field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource MenuGlassFieldFill}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.glass-field:pointerover, TextBox.glass-field:focus">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+        <Style Selector="TextBox.glass-field /template/ TextBlock#PART_Placeholder, TextBox.glass-field /template/ TextBlock#PART_FloatingPlaceholder, TextBox.glass-field:focus /template/ TextBlock#PART_Placeholder, TextBox.glass-field:pointerover /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassSecondaryText}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -79,7 +105,7 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                                 <Grid ColumnDefinitions="*,Auto">
-                                                    <TextBox Name="NewPlaylistBox" Text="{Binding NewPlaylistName}" PlaceholderText="New playlist" />
+                                                    <TextBox Name="NewPlaylistBox" Classes="glass-field" Text="{Binding NewPlaylistName}" PlaceholderText="New playlist" />
                                                     <Button Grid.Column="1" Classes="pill-accent" Margin="8,0,0,0" Content="Create"
                                                             Command="{Binding CreatePlaylistCommand}" />
                                                 </Grid>
