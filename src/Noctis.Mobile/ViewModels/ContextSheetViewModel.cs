@@ -63,14 +63,16 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The quick-action tile's short label: what the heart shows now.</summary>
     public string FavouriteTileLabel => IsFavourite ? "Favorited" : "Favorite";
 
-    /// <summary>Anything can be pinned to Library → Pinned: albums, artists, playlists and songs.</summary>
+    /// <summary>Anything can be pinned to Home → Pinned: albums, artists, playlists and songs.</summary>
     public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;
     public bool IsPinned =>
         Album != null ? _shell.Library.IsAlbumPinned(Album.Id)
         : Artist != null ? _shell.Library.IsArtistPinned(Artist.Name)
         : Playlist != null ? Playlist.IsPinned
         : Track != null && _shell.Library.IsTrackPinned(Track.Id);
-    public string PinLabel => IsPinned ? "Unpin" : "Pin to Library";
+    // Pins show on Home (its Pinned rail) since Home became the start tab: "Pin to Library"
+    // sent people looking for them in the Library tab.
+    public string PinLabel => IsPinned ? "Unpin" : "Pin to Home";
     public string PinTileLabel => IsPinned ? "Pinned" : "Pin";
 
     public bool CanGoToAlbum => Track != null;

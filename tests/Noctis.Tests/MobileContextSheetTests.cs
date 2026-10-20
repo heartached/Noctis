@@ -211,7 +211,7 @@ public class MobileContextSheetTests
 
         rig.Shell.OpenAlbumSheetCommand.Execute(album);
         Assert.True(rig.Shell.Sheet!.CanPin);
-        Assert.Equal("Pin to Library", rig.Shell.Sheet.PinLabel);
+        Assert.Equal("Pin to Home", rig.Shell.Sheet.PinLabel);
         await rig.Shell.Sheet.TogglePinCommand.ExecuteAsync(null);
 
         Assert.Equal(new[] { "Alpha" }, rig.Shell.Library.PinnedRail.Select(r => r.Title));
