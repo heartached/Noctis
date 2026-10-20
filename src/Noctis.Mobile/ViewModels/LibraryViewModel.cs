@@ -320,6 +320,10 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
+    /// <summary>The desktop songs' offline copies changed: open lists (Downloaded, the Downloaded
+    /// filter) re-read.</summary>
+    public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
+
     /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
     private void AfterUserEdit()
     {

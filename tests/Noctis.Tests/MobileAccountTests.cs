@@ -1154,6 +1154,31 @@ public class MobileAccountTests
         Assert.False(rig.Shell.Sheet.CanRemoveDownload);
     }
 
+    /// <summary>Library → Downloaded (and the Downloaded filter) re-read only on a library refresh,
+    /// and a download or Remove Download raises only the account's StateChanged: the removed song
+    /// stayed listed (and then streamed) until the page was reopened.</summary>
+    [Fact]
+    public async Task DownloadedPage_FollowsADownloadAndARemoval()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(a.Id);
+        var shell = ShellWith(rig, account);
+        shell.LibraryRows.ActivateCommand.Execute(shell.LibraryRows.Rows.Single(r => r.Kind == LibraryRowKind.Downloaded));
+        var page = Assert.IsType<SongListPageViewModel>(shell.CurrentPage);
+        Assert.Equal(new[] { "A" }, page.Songs.Select(t => t.Title));
+
+        await shell.RemoveDownloadsAsync(new[] { a });
+        account.RaiseStateChanged();
+        Assert.Empty(page.Songs);
+
+        await shell.DownloadTracksAsync(new[] { b });
+        account.RaiseStateChanged();
+        Assert.Equal(new[] { "B" }, page.Songs.Select(t => t.Title));
+    }
+
     [Fact]
     public void TrackSheet_SignedOut_OffersNoDownload()
     {

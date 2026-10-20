@@ -89,6 +89,7 @@ public sealed partial class ShellViewModel : ObservableObject
             value.PlaylistsChanged += OnAccountPlaylistsChanged;
             value.StateChanged += OnAccountStateChanged;
             _profileAvatarPath = AccountAvatarPath();
+            _downloadedCount = value.DownloadedCount;
         }
     }
     private readonly INoctisAccountService? _account;
@@ -99,10 +100,18 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private string? AccountAvatarPath() => _account is { IsSignedIn: true } a ? a.AvatarPath : null;
 
-    /// <summary>StateChanged fires on every download step too: hop to the UI thread only for a new picture.</summary>
+    private int _downloadedCount;
+
+    /// <summary>StateChanged fires on every download step too: hop to the UI thread only for a new
+    /// picture, or when the offline copies changed (a download batch ended, Remove Download): the
+    /// Downloaded list and filter re-read only on a library refresh, and a removed song stayed
+    /// listed until the page was reopened.</summary>
     private void OnAccountStateChanged(object? sender, EventArgs e)
     {
         if (AccountAvatarPath() != ProfileAvatarPath) Marshal(() => ProfileAvatarPath = AccountAvatarPath());
+        if (_account is not { } account) return;
+        var downloaded = account.DownloadedCount;
+        if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
     }
 
     /// <summary>
