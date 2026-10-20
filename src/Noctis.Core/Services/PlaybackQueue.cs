@@ -236,6 +236,20 @@ public sealed class PlaybackQueue
         _originalOrder.Select(t => t.Id).ToList(),
         PlayedInQueue);
 
+    /// <summary>An independent copy holding the same tracks, for undoing a look-ahead.</summary>
+    public PlaybackQueue Clone()
+    {
+        var q = new PlaybackQueue(_historyCap)
+        {
+            Current = Current, RepeatMode = RepeatMode, IsShuffleEnabled = IsShuffleEnabled, PlayedInQueue = PlayedInQueue,
+        };
+        q._upNext.AddRange(_upNext);
+        q._history.AddRange(_history);
+        q._repeatCycle = new List<Track>(_repeatCycle);
+        q._originalOrder = new List<Track>(_originalOrder);
+        return q;
+    }
+
     /// <summary>Rebuild from a snapshot; ids that no longer resolve are dropped.</summary>
     public static PlaybackQueue Restore(PlaybackQueueState s, Func<Guid, Track?> resolve, int historyCap = DefaultHistoryCap)
     {

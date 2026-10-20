@@ -147,12 +147,31 @@ public partial class ShellView : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null) _vm.PropertyChanged -= OnShellPropertyChanged;
+        if (_vm != null) _vm.Player.PropertyChanged -= OnPlayerPropertyChanged;
         _vm = DataContext as ShellViewModel;
         if (_vm != null) _vm.PropertyChanged += OnShellPropertyChanged;
+        if (_vm != null) _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
         ApplyChromeLayout();
         SyncPages(animate: false);
         ShowPlayer(animate: false);
         ShowLyrics(animate: false);
+    }
+
+    /// <summary>How long the player's banner (NowPlayingViewModel.Notice) stays up.</summary>
+    internal static readonly TimeSpan NoticeTime = TimeSpan.FromSeconds(5);
+    private DispatcherTimer? _noticeTimer;
+
+    /// <summary>Each new notice gets its full time on screen, then the banner goes.</summary>
+    private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(NowPlayingViewModel.Notice) || _vm?.Player is not { HasNotice: true }) return;
+        _noticeTimer ??= new DispatcherTimer(NoticeTime, DispatcherPriority.Normal, (_, _) =>
+        {
+            _noticeTimer?.Stop();
+            _vm?.Player.DismissNotice();
+        });
+        _noticeTimer.Stop();
+        _noticeTimer.Start();
     }
 
     private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)

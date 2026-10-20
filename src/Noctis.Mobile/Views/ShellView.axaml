@@ -344,5 +344,17 @@
              well); the bottom sheet is only its Add to Playlist list, on the same glass with the same pop. -->
         <views:PopMenu Name="Menu" DataContext="{Binding}" ZIndex="2" />
         <views:ContextSheet Name="Sheet" DataContext="{Binding}" ZIndex="2" />
+
+        <!-- The player's short message (Player.Notice) over whatever is on screen, as Apple's
+             banner: e.g. the computer did not answer, so songs that are not downloaded were
+             passed over. ShellView takes it down after a few seconds; it never takes a tap. -->
+        <Panel Name="NoticeLayer" ZIndex="3" Margin="{Binding TopSafePadding}" IsHitTestVisible="False">
+            <Border Name="NoticeBanner" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="20,8,20,0"
+                    MaxWidth="360" Padding="18,11" CornerRadius="22" Background="#F22C2C2E"
+                    BoxShadow="0 6 24 0 #40000000" IsVisible="{Binding Player.HasNotice}">
+                <TextBlock Name="NoticeText" Text="{Binding Player.Notice}" Foreground="White" FontSize="14"
+                           FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" />
+            </Border>
+        </Panel>
     </Grid>
 </UserControl>
