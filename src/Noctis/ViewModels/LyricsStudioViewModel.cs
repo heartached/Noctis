@@ -1433,6 +1433,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
+        // As Re-sync and lrc.red's sync do: a review on screen, or lyrics typed into the box, is replaced
+        // only after asking. The transcript used to replace them unasked, the box's text for good.
+        if ((item.Result is not null && item.Status is StudioStatus.Loaded or StudioStatus.Ready || item.HasUnsavedLyricsBox)
+            && !await ConfirmAsync($"What Lullaby hears will replace the lyrics shown for “{item.Title}”.\n\nNothing is written to disk until you press Save lyrics."))
+            return;
+        if (IsRunning || !ReferenceEquals(Selected, item)) return;
         item.TranscribeNext = true;
         Requeue(item);
         item.StatusText = "Queued for transcription";

@@ -78,6 +78,69 @@ public class LyricsStudioTranscribeFlowTests : IDisposable
         Assert.DoesNotContain("w0", saved);
     }
 
+    [AvaloniaFact]
+    public async Task ListenInstead_AsksBeforeReplacingLyricsTypedInTheBox()
+    {
+        var heard = new[] { W("heard", 1, 1.4), W("words", 1.5, 2) };
+        var engine = Transcriber(_tmp, heard);
+        var vm = Studio(engine, T("song"));
+        var asked = new List<string>();
+        var answer = false;
+        vm.Confirm = message => { asked.Add(message); return Task.FromResult(answer); };
+        vm.Selected = vm.Queue[0];
+        var item = vm.Queue[0];
+        item.DraftText = "my own first line\nmy own second line";
+
+        await vm.TranscribeDraftCommand.ExecuteAsync(null);
+
+        Assert.Contains("song", Assert.Single(asked));
+        Assert.Empty(engine.Options);
+        Assert.Equal("my own first line\nmy own second line", item.DraftText);
+        Assert.True(vm.IsComposing);
+
+        answer = true;
+        await vm.TranscribeDraftCommand.ExecuteAsync(null);
+        Assert.Equal(2, asked.Count);
+        Assert.True(item.IsTranscriptDraft);
+        Assert.Equal("heard words", item.DraftText);
+    }
+
+    [AvaloniaFact]
+    public async Task TranscribeInstead_AsksBeforeReplacingTheReviewOnScreen_AsResyncDoes()
+    {
+        var heard = new[] { W("heard", 1, 1.4), W("words", 1.5, 2) };
+        var engine = Transcriber(_tmp, heard);
+        var track = T("song");
+        File.WriteAllText(Path.ChangeExtension(track.FilePath!, ".lrc"), "[00:01.00]the song's own\n[00:04.00]timed lyrics");
+        var vm = Studio(engine, track);
+        var asked = 0;
+        vm.Confirm = _ => { asked++; return Task.FromResult(false); };
+        vm.Selected = vm.Queue[0];
+        Assert.Equal(Status.Loaded, vm.Queue[0].Status);
+
+        await vm.RedoAsTranscriptionCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, asked);
+        Assert.Empty(engine.Options);
+        Assert.Equal(Status.Loaded, vm.Queue[0].Status);
+        Assert.Equal(new[] { "the song's own", "timed lyrics" }, vm.ReviewLines.Select(l => l.Text));
+    }
+
+    [AvaloniaFact]
+    public async Task ListenInstead_NothingToLose_DoesNotAsk()
+    {
+        var heard = new[] { W("heard", 1, 1.4), W("words", 1.5, 2) };
+        var vm = Studio(Transcriber(_tmp, heard), T("song"));
+        var asked = 0;
+        vm.Confirm = _ => { asked++; return Task.FromResult(false); };
+        vm.Selected = vm.Queue[0];
+
+        await vm.TranscribeDraftCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, asked);
+        Assert.Equal("heard words", vm.Queue[0].DraftText);
+    }
+
     private sealed class FakeEngine : ILyricsStudioEngine
     {
         public List<LyricsStudioOptions> Options { get; } = new();
