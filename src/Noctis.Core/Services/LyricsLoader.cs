@@ -5,7 +5,7 @@ using Noctis.Models;
 
 namespace Noctis.Services;
 
-public enum LyricsSource { None, SidecarTtml, SidecarElrc, SidecarLrc, EmbeddedSynced, EmbeddedSylt, EmbeddedPlain, SidecarUnparsed }
+public enum LyricsSource { None, SidecarTtml, SidecarElrc, SidecarLrc, EmbeddedSynced, EmbeddedSylt, EmbeddedPlain, SidecarUnparsed, Online }
 
 /// <summary>What <see cref="LyricsLoader.Load"/> found. Plain lines are pre-activated.</summary>
 public sealed record LoadedLyrics(IReadOnlyList<LyricLine> Lines, bool IsSynced, LyricsSource Source)
@@ -82,6 +82,11 @@ public static class LyricsLoader
 
         return LoadedLyrics.None;
     }
+
+    /// <summary>Lyrics an online source returned (LRC, synced or plain lines) for a song that had
+    /// none of its own, parsed as an .lrc sidecar is; null when the text yields no line.</summary>
+    public static LoadedLyrics? FromOnlineText(string text) =>
+        string.IsNullOrWhiteSpace(text) ? null : FromLrc(text, LyricsSource.Online);
 
     /// <summary>A real lyric TTML is tens of KB; past this the raw fallback is not attempted.</summary>
     private const int MaxRawTextChars = 1_000_000;

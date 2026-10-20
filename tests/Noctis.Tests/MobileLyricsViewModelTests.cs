@@ -219,7 +219,9 @@ public class MobileLyricsViewModelTests : IDisposable
         await WaitForAsync(() => !vm.IsLoading);
 
         Assert.False(vm.HasLyrics);
-        Assert.Equal("No lyrics", vm.StatusText);
+        Assert.Equal("No Lyrics", vm.StatusText);
+        Assert.Equal("This song has no lyrics file or lyrics in its tags.", vm.StatusDetail);
+        Assert.True(vm.ShowsEmptyState);
     }
 
     [Fact]
