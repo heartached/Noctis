@@ -136,6 +136,29 @@ public class MobileArtistGridTests
         window.Close();
     }
 
+    /// <summary>The library rebuilds every Artist object on each update (a scan publishes one every
+    /// 1.5 s): the same artists must leave the grid alone, or every update tore it down and
+    /// cancelled the photo lookups of the circles on screen. A real change still lands.</summary>
+    [Fact]
+    public void Grid_IsNotRebuilt_WhenAnUpdateOnlyRebuildsTheArtistObjects()
+    {
+        using var rig = RigWithArtists("Adele", "Bjork", "Coldplay", "Drake");
+        var page = OpenArtists(rig);
+        var changes = 0;
+        page.Rows.CollectionChanged += (_, _) => changes++;
+
+        var again = rig.Library.ArtistList.Select(a => new Artist { Id = a.Id, Name = a.Name, AlbumCount = a.AlbumCount, TrackCount = a.TrackCount }).ToList();
+        rig.Library.ArtistList.Clear();
+        rig.Library.ArtistList.AddRange(again);
+        rig.Library.RaiseLibraryUpdated();
+        Assert.Equal(0, changes);
+
+        rig.Library.ArtistList[0].TrackCount = 4;                              // a new song: the subtitle changes
+        rig.Library.RaiseLibraryUpdated();
+        Assert.True(changes > 0);
+        Assert.Equal("1 album · 4 songs", page.Artists[0].Subtitle);
+    }
+
     [Fact]
     public void Order_IsAToZ_WithAccentsUnderTheirLetter_AndDigitsSymbolsAndOtherScriptsLast()
     {
