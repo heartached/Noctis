@@ -6,9 +6,10 @@
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.SongRow"
              x:DataType="models:Track">
-    <!-- One song: cover, title, artist, explicit badge, then the heart and the overflow button
-         (a favourite is one tap, not a trip through the sheet). -->
-    <Grid Name="RowGrid" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Height="60" Margin="8,0">
+    <!-- One song: cover, title, artist, explicit badge, then the overflow button. No heart on the
+         row (owner 10-19, the album page's rule): Favorite is the first tile of the ⋯ menu, which
+         shows whether the song is one. -->
+    <Grid Name="RowGrid" ColumnDefinitions="Auto,*,Auto,Auto" Height="60" Margin="8,0">
         <Border Classes="art" Width="44" Height="44">
             <Panel>
                 <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
@@ -22,16 +23,7 @@
         <Border Grid.Column="2" Name="ExplicitBadge" Classes="explicit" IsVisible="{Binding IsExplicit}">
             <TextBlock Text="E" />
         </Border>
-        <Button Grid.Column="3" Name="HeartButton" Classes="icon row-heart" Width="36" Height="36"
-                Classes.on="{Binding IsFavorite}"
-                Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).ToggleTrackFavouriteCommand}"
-                CommandParameter="{Binding}">
-            <Panel>
-                <PathIcon Data="{DynamicResource PhHeart}" Width="20" Height="20" IsVisible="{Binding !IsFavorite}" />
-                <PathIcon Data="{DynamicResource PhHeartFill}" Width="20" Height="20" IsVisible="{Binding IsFavorite}" />
-            </Panel>
-        </Button>
-        <Button Grid.Column="4" Name="MoreButton" Classes="icon" Width="36" Height="36"
+        <Button Grid.Column="3" Name="MoreButton" Classes="icon" Width="36" Height="36"
                 Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
                 CommandParameter="{Binding}">
             <PathIcon Data="{DynamicResource PhMore}" Width="22" Height="22" />

@@ -817,13 +817,6 @@ public sealed partial class ShellViewModel : ObservableObject
         Library.Service.NotifyFavoritesChanged(tracks.ToList());
     }
 
-    /// <summary>A song row's heart: one tap favourites or unfavourites that song.</summary>
-    [RelayCommand]
-    private async Task ToggleTrackFavouriteAsync(Track? track)
-    {
-        if (track != null) await SetFavouriteAsync(new[] { track }, !track.IsFavorite);
-    }
-
     [RelayCommand]
     private async Task ToggleCurrentFavouriteAsync()
     {

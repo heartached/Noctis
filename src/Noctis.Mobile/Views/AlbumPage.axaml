@@ -250,14 +250,15 @@
                                        Margin="24,16,24,4" />
                         </DataTemplate>
                         <DataTemplate DataType="vm:AlbumTrackRow">
-                            <!-- Apple's row: a narrow number column with the title right after it, and the
-                                 explicit badge straight after the title (the desktop's compact badge). -->
+                            <!-- Apple's row: a narrow number column with the title right after it, the
+                                 explicit badge straight after the title (the desktop's compact badge), and
+                                 only ⋯ at the end: favouriting is in its menu (owner 10-19, no row heart). -->
                             <Button Classes="row"
                                     Command="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).PlayTrackCommand}"
                                     CommandParameter="{Binding}"
                                     views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
                                     views:LongPress.CommandParameter="{Binding Track}">
-                                <Grid ColumnDefinitions="30,*,Auto,Auto" Height="50" Margin="14,0,8,0">
+                                <Grid ColumnDefinitions="30,*,Auto" Height="50" Margin="14,0,8,0">
                                     <TextBlock Name="RowNumber" Classes="album-subtle" FontSize="15" Text="{Binding Number}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowsNumber}" />
                                     <views:PlayingBars Name="EqBars" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -273,21 +274,12 @@
                                             <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
                                         </Border>
                                     </Grid>
-                                    <Button Grid.Column="2" Name="RowHeart" Classes="icon row-heart" Width="40" Height="40"
-                                            Classes.on="{Binding Track.IsFavorite}"
-                                            Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).ToggleTrackFavouriteCommand}"
-                                            CommandParameter="{Binding Track}">
-                                        <Panel>
-                                            <PathIcon Data="{DynamicResource PhHeart}" Width="20" Height="20" IsVisible="{Binding !Track.IsFavorite}" />
-                                            <PathIcon Data="{DynamicResource PhHeartFill}" Width="20" Height="20" IsVisible="{Binding Track.IsFavorite}" />
-                                        </Panel>
-                                    </Button>
-                                    <Button Grid.Column="3" Classes="icon" Width="40" Height="40"
+                                    <Button Grid.Column="2" Name="RowMore" Classes="icon" Width="40" Height="40"
                                             Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
                                             CommandParameter="{Binding Track}">
                                         <PathIcon Data="{DynamicResource PhMore}" />
                                     </Button>
-                                    <Border Grid.Column="1" Grid.ColumnSpan="3" Classes="rule" Height="0.5" Margin="4,0,0,0"
+                                    <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="rule" Height="0.5" Margin="4,0,0,0"
                                             VerticalAlignment="Bottom" IsHitTestVisible="False" />
                                 </Grid>
                             </Button>
