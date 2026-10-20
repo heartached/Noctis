@@ -162,7 +162,13 @@ public static class WhisperGpu
         public void Dispose() { }
     }
 
-    /// <summary>whisper.cpp says which device it took ("using Vulkan0 backend", "no GPU found"); keep those lines in the session log.</summary>
+    private static readonly HashSet<string> LoggedNative = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// whisper.cpp says which device it took ("using Vulkan0 backend", "no GPU found"); keep those
+    /// lines in the session log, each distinct line once per process (whisper.cpp repeats them for
+    /// every 30 s window, as each window gets a fresh state).
+    /// </summary>
     private static void HookNativeLog()
     {
         _logHook ??= LogProvider.AddLogger((level, message) =>
@@ -175,7 +181,12 @@ public static class WhisperGpu
             {
                 // "encoder_begin_callback returned false" is the transcriber stopping each call after one window on purpose.
                 if (message.Contains("encoder_begin_callback returned false", StringComparison.Ordinal)) return;
-                DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.Native", message.Trim());
+                var line = message.Trim();
+                lock (LoggedNative)
+                {
+                    if (LoggedNative.Count > 200 || !LoggedNative.Add(line)) return;
+                }
+                DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.Native", line);
             }
         });
     }
