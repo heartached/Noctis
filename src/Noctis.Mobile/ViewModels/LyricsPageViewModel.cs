@@ -45,6 +45,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     private readonly LyricsPlaybackClock _clock = new();
     private int _generation;
     private bool _settingsLoaded;
+    // Settings changed by the user before InitializeAsync read the saved ones (Settings opens
+    // while a cold start still loads the library): the load keeps these and saves them.
+    private readonly HashSet<string> _setBeforeLoad = new();
+    private bool _applyingSaved;
     private int _opacitySaveGeneration;
     private bool _disposed;
 
@@ -177,35 +181,60 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         try
         {
             var settings = await _persistence.LoadSettingsAsync();
-            ShowTranslation = settings.LyricsShowTranslations;
-            ShowRomanization = settings.LyricsShowRomanization;
-            ShowBackgroundVocals = settings.LyricsShowBackgroundVocals;
-            MinLineOpacity = Math.Clamp(settings.LyricsMinLineOpacity, 0, 60);
-            JoinSplitWords = settings.LyricsJoinSplitWords;
-            TextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
-            FindLyricsOnline = settings.LrcLibEnabled;
-            WordMotion = settings.LyricsGlowAndLift;
+            // A switch flipped while this load ran keeps the user's value, not the file's: the
+            // load used to put the saved value back, and the flip was lost (never saved either).
+            _applyingSaved = true;
+            try
+            {
+                if (Saved(nameof(ShowTranslation))) ShowTranslation = settings.LyricsShowTranslations;
+                if (Saved(nameof(ShowRomanization))) ShowRomanization = settings.LyricsShowRomanization;
+                if (Saved(nameof(ShowBackgroundVocals))) ShowBackgroundVocals = settings.LyricsShowBackgroundVocals;
+                if (Saved(nameof(MinLineOpacity))) MinLineOpacity = Math.Clamp(settings.LyricsMinLineOpacity, 0, 60);
+                if (Saved(nameof(JoinSplitWords))) JoinSplitWords = settings.LyricsJoinSplitWords;
+                if (Saved(nameof(TextScale))) TextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+                if (Saved(nameof(FindLyricsOnline))) FindLyricsOnline = settings.LrcLibEnabled;
+                WordMotion = settings.LyricsGlowAndLift;
+            }
+            finally
+            {
+                _applyingSaved = false;
+            }
         }
         catch (Exception ex)
         {
             DebugLog.Write("Lyrics", $"Settings load failed: {ex.Message}");
         }
         _settingsLoaded = true;
+        // TextScale is the Settings page's to save (its own slider); the rest are saved here.
+        if (_setBeforeLoad.Any(name => name != nameof(TextScale))) PersistLayerToggles();
         await LoadAsync(_nowPlaying.CurrentTrack);
     }
 
-    partial void OnShowTranslationChanged(bool value) => PersistLayerToggles();
+    private bool Saved(string setting) => !_setBeforeLoad.Contains(setting);
 
-    partial void OnShowRomanizationChanged(bool value) => PersistLayerToggles();
+    /// <summary>A setting changed before the saved ones were read: true (and remembered) when the
+    /// user changed it, so InitializeAsync keeps it.</summary>
+    private bool SetBeforeLoad(string setting)
+    {
+        if (_settingsLoaded) return false;
+        if (!_applyingSaved) _setBeforeLoad.Add(setting);
+        return true;
+    }
 
-    partial void OnShowBackgroundVocalsChanged(bool value) => PersistLayerToggles();
+    partial void OnShowTranslationChanged(bool value) => PersistLayerToggles(nameof(ShowTranslation));
+
+    partial void OnShowRomanizationChanged(bool value) => PersistLayerToggles(nameof(ShowRomanization));
+
+    partial void OnShowBackgroundVocalsChanged(bool value) => PersistLayerToggles(nameof(ShowBackgroundVocals));
+
+    partial void OnTextScaleChanged(double value) => SetBeforeLoad(nameof(TextScale));
 
     partial void OnWordMotionChanged(bool value) => _timeline.WordMotion = value;
 
     /// <summary>Switched on with nothing shown, the current song is looked up straight away.</summary>
     partial void OnFindLyricsOnlineChanged(bool value)
     {
-        if (!_settingsLoaded) return;
+        if (SetBeforeLoad(nameof(FindLyricsOnline))) return;
         PersistLayerToggles();
         if (value && !HasLyrics && !IsLoading && !IsInstrumental) _ = LoadAsync(_nowPlaying.CurrentTrack);
     }
@@ -221,7 +250,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     partial void OnMinLineOpacityChanged(int value)
     {
         if (IsSynced && Lines.Count > 0) ApplyOpacities(ActiveLineIndex);
-        if (!_settingsLoaded) return;
+        if (SetBeforeLoad(nameof(MinLineOpacity))) return;
         var generation = ++_opacitySaveGeneration;
         PendingSave = SaveAfterSliderSettlesAsync(generation);
     }
@@ -230,7 +259,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// goes back through the load path, as on the desktop.</summary>
     partial void OnJoinSplitWordsChanged(bool value)
     {
-        if (!_settingsLoaded) return;
+        if (SetBeforeLoad(nameof(JoinSplitWords))) return;
         PersistLayerToggles();
         _ = LoadAsync(_nowPlaying.CurrentTrack);
     }
@@ -248,9 +277,9 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>settings.json writes so far; tests count them.</summary>
     internal int SaveCount;
 
-    private void PersistLayerToggles()
+    private void PersistLayerToggles(string? setting = null)
     {
-        if (!_settingsLoaded) return;   // InitializeAsync assigning the saved values
+        if (setting != null ? SetBeforeLoad(setting) : !_settingsLoaded) return;   // saved once loaded
         PendingSave = SaveLayerTogglesAsync();
     }
 

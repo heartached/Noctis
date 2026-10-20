@@ -350,9 +350,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void ApplySettings(AppSettings settings)
     {
         SetFolders(settings.MusicFolders);
-        _applyingSettings = true;
-        ScanOnStartup = settings.ScanOnStartup;
-        _applyingSettings = false;
+        // Not over the user's own flip: the start re-reads the settings (InitializeAsync) after the
+        // host applied them, and a flip in between was put back (its save still in flight).
+        if (!_scanOnStartupSetByUser)
+        {
+            _applyingSettings = true;
+            ScanOnStartup = settings.ScanOnStartup;
+            _applyingSettings = false;
+        }
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
         _pinnedArtistNames = settings.PinnedArtistNames.ToList();
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
@@ -497,10 +502,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _scanOnStartup = true;
 
     private bool _applyingSettings;
+    private bool _scanOnStartupSetByUser;
 
     partial void OnScanOnStartupChanged(bool value)
     {
-        if (!_applyingSettings) _ = SaveScanOnStartupAsync(value);
+        if (_applyingSettings) return;
+        _scanOnStartupSetByUser = true;
+        _ = SaveScanOnStartupAsync(value);
     }
 
     private async Task SaveScanOnStartupAsync(bool value)
