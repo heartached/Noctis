@@ -45,6 +45,26 @@ public class MobileLibraryPagesTests
         window.Close();
     }
 
+    /// <summary>Signed in to a computer with no folder on the phone: the desktop's songs are the
+    /// library. The tabs gated everything on a folder, so Library showed only "Add your music"
+    /// (no Songs/Albums/Artists rows, no Edit) and Home no Pinned section, over a full library.</summary>
+    [AvaloniaFact]
+    public void SongsWithoutAFolder_ShowTheRows_NotTheConnectCard()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("From the computer") });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+
+        Assert.False(rig.Shell.Library.HasFolders);
+        Assert.True(MobileFixtures.Named<StackPanel>(view, "PinnedSection").IsVisible);
+        rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
+        window.UpdateLayout();
+        var library = MobileFixtures.Find<LibraryPage>(view);
+        Assert.True(MobileFixtures.Named<ItemsControl>(library, "LibraryRowList").IsVisible);
+        Assert.False(rig.Shell.Library.ShowConnectCard);
+        Assert.DoesNotContain(view.GetVisualDescendants().OfType<Border>(), b => b.Name == "ConnectCard" && b.IsEffectivelyVisible);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Tiles_ShowCounts_AndOpenTheirLists()
     {

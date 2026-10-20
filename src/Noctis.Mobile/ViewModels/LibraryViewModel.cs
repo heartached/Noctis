@@ -72,7 +72,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
 
-    [ObservableProperty] private int _songCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
+    private int _songCount;
     [ObservableProperty] private int _albumCount;
     [ObservableProperty] private int _artistCount;
     [ObservableProperty] private int _favoriteCount;
@@ -84,8 +86,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private int _scanProgress;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private bool _hasFolders;
+
+    /// <summary>A folder, or songs without one (a computer's, signed in with no folder on the
+    /// phone): the Library rows, Edit and the sections show. Gated on a folder alone, a phone
+    /// streaming its computer's library saw only "Add your music".</summary>
+    public bool HasMusic => HasFolders || SongCount > 0;
 
     /// <summary>The last scan aborted on an unreadable root (a revoked SAF grant, spec §7):
     /// the page offers to re-pick the folder, which is how a dead grant is recovered.</summary>
@@ -120,12 +127,12 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>First launch: no folder yet, so the only thing to show is the way in. Held
     /// back until the settings have loaded, or a user with folders sees it flash on launch.</summary>
-    public bool ShowConnectCard => IsLoaded && !HasFolders;
+    public bool ShowConnectCard => IsLoaded && !HasMusic;
 
     /// <summary>The sections under the rows (Pinned and its hint): the rows show from the settings
     /// alone (<see cref="ApplySettings"/>), the sections wait for the library, or the pin hint
     /// flashed over a Pinned rail still loading.</summary>
-    public bool ShowSections => IsLoaded && HasFolders;
+    public bool ShowSections => IsLoaded && HasMusic;
 
     /// <summary>Any card above the Library sections (connect, reconnect, scan progress), so an
     /// empty card area takes no room.</summary>
