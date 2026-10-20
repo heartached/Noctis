@@ -147,6 +147,85 @@ public class MobileDesktopIconParityTests
         Assert.True(missed <= inked * 0.12, $"{missed} of {inked} desktop pixels outside the filled house");
     }
 
+    /// <summary>
+    /// The desktop draws its sidebar's Songs, Albums, Artists and Playlists from 48 px PNG masks
+    /// (IconKeyToGeometryConverter; no vector exists): the phone's Library rows, Search chips and
+    /// Playlists tab draw those masks traced to vectors. Drawn at the PNG's own size each covers
+    /// the same pixels (intersection over union of the inked pixels) and carries the same ink.
+    /// </summary>
+    [Theory]
+    [InlineData("LibraryIcons", "ChipSongsIcon", "Songs ICON.png")]
+    [InlineData("LibraryIcons", "ChipAlbumsIcon", "Albums ICON.png")]
+    [InlineData("LibraryIcons", "ChipArtistsIcon", "Artists ICON.png")]
+    [InlineData("LibraryIcons", "ChipPlaylistsIcon", "Playlist icon.png")]
+    [InlineData("TabIcons", "TabPlaylistsIcon", "Playlist icon.png")]
+    [InlineData("TabIcons", "TabHomeIcon", "Home ICON.png")]
+    public void TracedGlyph_CoversTheDesktopsPngMask(string dictionary, string key, string png)
+    {
+        var data = Geometries(Path.Combine("src", "Noctis.Mobile", "Views", dictionary + ".axaml"))[key];
+        using var mask = SKBitmap.Decode(Path.Combine(RepoRoot(), "src", "Noctis.UI", "Assets", "Icons", png));
+        using var phone = Rasterize(data, 0, mask.Width / 24);
+        int both = 0, either = 0;
+        double inkPhone = 0, inkDesktop = 0;
+        for (var y = 0; y < mask.Height; y++)
+        for (var x = 0; x < mask.Width; x++)
+        {
+            var a = phone.GetPixel(x, y).Alpha / 255.0;
+            var b = mask.GetPixel(x, y).Alpha / 255.0;
+            inkPhone += a;
+            inkDesktop += b;
+            if (a > 0.5 && b > 0.5) both++;
+            if (a > 0.5 || b > 0.5) either++;
+        }
+        var iou = (double)both / either;
+        Assert.True(iou >= 0.8 && inkPhone / inkDesktop is > 0.85 and < 1.15,
+            $"{key} vs {png}: IoU {iou:0.00}, ink {inkPhone / inkDesktop:0.00}");
+    }
+
+    /// <summary>The selected Playlists tab is the traced mask's silhouette with the note's head
+    /// filled in: it covers every inked pixel of the outline glyph.</summary>
+    [Fact]
+    public void TabPlaylistsFilled_IsTheTracedOutline_FilledIn()
+    {
+        var icons = Geometries(Path.Combine("src", "Noctis.Mobile", "Views", "TabIcons.axaml"));
+        using var outline = Rasterize(icons["TabPlaylistsIcon"], 0, 2);
+        using var filled = Rasterize(icons["TabPlaylistsFilledIcon"], 0, 2);
+        int inked = 0, missed = 0;
+        for (var y = 0; y < outline.Height; y++)
+        for (var x = 0; x < outline.Width; x++)
+            if (outline.GetPixel(x, y).Alpha > 127)
+            {
+                inked++;
+                if (filled.GetPixel(x, y).Alpha < 64) missed++;
+            }
+        Assert.True(inked > 0 && missed <= inked * 0.01, $"{missed} of {inked} outline pixels left out of the filled glyph");
+    }
+
+    /// <summary>
+    /// Bug (10-20, emulator): the Lyrics screen's Output button drew nothing - it still named
+    /// PhOutput, dropped from PhoneIcons when Now Playing's Output moved to the desktop's
+    /// speaker. Every glyph a phone view names must be one the phone loads: its own icon
+    /// dictionaries and page resources, or Noctis.UI's Icons.axaml (AndroidApp.axaml merges only that).
+    /// </summary>
+    [Fact]
+    public void EveryGlyphThePhoneNames_IsOneItLoads()
+    {
+        var views = Path.Combine(RepoRoot(), "src", "Noctis.Mobile", "Views");
+        var defined = new HashSet<string>(Geometries(Path.Combine("src", "Noctis.UI", "Assets", "Icons.axaml")).Keys);
+        var used = new List<(string File, string Key)>();
+        foreach (var file in Directory.EnumerateFiles(views, "*.axaml"))
+        {
+            var text = File.ReadAllText(file);
+            foreach (Match m in Regex.Matches(text, @"<StreamGeometry x:Key=""(\w+)"""))
+                defined.Add(m.Groups[1].Value);
+            foreach (Match m in Regex.Matches(text, @"(?:Data=""|Property=""Data"" Value="")\{(?:Dynamic|Static)Resource (\w+)\}"))
+                used.Add((Path.GetFileName(file), m.Groups[1].Value));
+        }
+        Assert.NotEmpty(used);
+        var missing = used.Where(u => !defined.Contains(u.Key)).Select(u => $"{u.File}: {u.Key}").ToList();
+        Assert.True(missing.Count == 0, "glyphs the phone never loads:\n" + string.Join("\n", missing));
+    }
+
     private static SKBitmap Rasterize(string data, double strokeWidth, int scale = Scale)
     {
         var nonZero = data.StartsWith("F1", StringComparison.Ordinal);

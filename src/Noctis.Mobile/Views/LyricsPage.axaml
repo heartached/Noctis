@@ -181,6 +181,11 @@
             <Setter Property="Width" Value="24" />
             <Setter Property="Height" Value="24" />
         </Style>
+        <!-- Now Playing's bottom row, the same glyphs: the speaker at 16 of Lyrics' and Queue's 18. -->
+        <Style Selector="Button.icon.bottom PathIcon.speaker">
+            <Setter Property="Width" Value="21.3" />
+            <Setter Property="Height" Value="21.3" />
+        </Style>
 
         <!-- The transport fades out while the song plays (LyricsPage.axaml.cs) and back on a touch. -->
         <Style Selector="Panel#ControlsLayer">
@@ -425,7 +430,7 @@
                         </Button>
                         <Button Grid.Column="1" Name="OutputButton" Classes="icon bottom" HorizontalAlignment="Center"
                                 Command="{Binding ShowOutputCommand}" AutomationProperties.Name="Output">
-                            <PathIcon Data="{DynamicResource PhOutput}" />
+                            <PathIcon Classes="speaker" Data="{DynamicResource PhVolumeHigh}" />
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon bottom" HorizontalAlignment="Center"
                                 Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
