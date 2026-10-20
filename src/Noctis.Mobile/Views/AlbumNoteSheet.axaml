@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.AlbumNoteSheet"
+             x:DataType="vm:ShellViewModel"
+             IsVisible="False">
+
+    <!-- An album's description, whole (owner 10-19: "a clean pop-up"): the menu's glass card
+         (MenuGlass) rising out of the bottom edge with the menu's pop, as the Add to Playlist
+         sheet does. A grabber, the album's cover, title and artist with a close button, a hairline,
+         then the text, scrolling when it is long. It wears the album page's look: light glass over
+         a light cover tint, dark over a dark one. A tap on the dim, the close button, a swipe down
+         on its top or Back closes it. -->
+    <UserControl.Styles>
+        <Style Selector="Border#NoteCard TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+        <Style Selector="Border#NoteCard TextBlock.note-sub">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassSecondaryText}" />
+        </Style>
+        <Style Selector="Button#NoteClose">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource MenuGlassGroupGap}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassSecondaryText}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button#NoteClose:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button#NoteClose:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource MenuGlassHairline}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <Border Name="Scrim" Background="#99000000" PointerPressed="OnScrimPressed" />
+
+        <Border Name="NoteCard" VerticalAlignment="Bottom" Padding="{Binding BottomSafePadding}">
+            <ThemeVariantScope Name="NoteScope">
+                <Panel Name="NotePop" Margin="8,0,8,8">
+                    <views:MenuGlass Name="NoteGlass">
+                        <!-- The note shown, set by the code-behind: kept while the card closes, so it never empties. -->
+                        <Grid Name="NoteBody" RowDefinitions="Auto,Auto,*" x:DataType="vm:AlbumNoteViewModel">
+                            <!-- The top: grabber and header, where a swipe down takes the card with it. -->
+                            <StackPanel Name="NoteTop" Background="Transparent">
+                                <Border Name="Grabber" Width="36" Height="5" CornerRadius="2.5" Margin="0,8,0,0"
+                                        HorizontalAlignment="Center" Background="{DynamicResource MenuGlassSecondaryText}" Opacity="0.45" />
+                                <Grid Name="NoteHeader" ColumnDefinitions="Auto,*,Auto" Margin="20,10,14,14">
+                                    <Border Classes="art" Width="48" Height="48">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource AlbumsIcon}" Width="20" Height="20" Opacity="0.5" />
+                                            <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Name="NoteTitle" Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"
+                                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Name="NoteArtist" Classes="note-sub" Text="{Binding Artist}" FontSize="14"
+                                                   MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Name="NoteClose" VerticalAlignment="Top" Command="{Binding CloseCommand}"
+                                            AutomationProperties.Name="Close">
+                                        <PathIcon Data="{DynamicResource PhClose}" Width="18" Height="18" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                            <Border Grid.Row="1" Height="0.5" Margin="20,0" Background="{DynamicResource MenuGlassHairline}" />
+                            <ScrollViewer Grid.Row="2" Name="NoteScroll" HorizontalScrollBarVisibility="Disabled">
+                                <TextBlock Name="NoteText" Text="{Binding Text}" FontSize="16" LineHeight="23"
+                                           TextWrapping="Wrap" Margin="20,14,20,22" />
+                            </ScrollViewer>
+                        </Grid>
+                    </views:MenuGlass>
+                </Panel>
+            </ThemeVariantScope>
+        </Border>
+    </Grid>
+</UserControl>

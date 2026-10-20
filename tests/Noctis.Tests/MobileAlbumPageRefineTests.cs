@@ -413,10 +413,11 @@ public class MobileAlbumPageRefineTests
         Assert.Null(vm.Description);
     }
 
-    /// <summary>Folded: three lines with MORE over the end of the last; a tap eases the clip
-    /// open to the whole text with LESS under it, another folds it back.</summary>
+    /// <summary>Folded: three lines with MORE over the end of the last; a tap shows the whole text
+    /// on the glass sheet (owner 10-19: "a clean pop-up") under the album's title and artist, the
+    /// page staying folded under it; Back closes the sheet only.</summary>
     [AvaloniaFact]
-    public void Description_FoldsToThreeLines_AndUnfoldsInPlace()
+    public void Description_FoldsToThreeLines_AndATapPopsTheWholeTextOnTheGlassSheet()
     {
         var (album, tracks) = Sample();
         using var rig = Rig(tracks, album, new FakeDescriptions(LongText));
@@ -431,34 +432,105 @@ public class MobileAlbumPageRefineTests
         var clip = MobileFixtures.Named<Border>(page, "DescriptionClip");
         var text = MobileFixtures.Named<TextBlock>(page, "DescriptionText");
         var more = MobileFixtures.Named<Border>(page, "DescriptionMore");
-        var less = MobileFixtures.Named<TextBlock>(page, "DescriptionLess");
         Assert.True(block.IsVisible);
         Assert.Equal(LongText, text.Text);
         Assert.True(text.Bounds.Height > 3 * 20, $"sample too short to fold: {text.Bounds.Height}");
         Assert.Equal(3 * 20, clip.Bounds.Height, 1);
         Assert.True(more.IsVisible);
-        Assert.Equal(1, more.Opacity);
-        Assert.Equal(0, less.Opacity);
 
         block.Command!.Execute(null);
-        Assert.True(vm.IsDescriptionExpanded);
-        Pump();
+        Pump(20);
         window.UpdateLayout();
-        Assert.Equal(text.Bounds.Height + less.Bounds.Height + less.Margin.Top, clip.Bounds.Height, 1);
-        Assert.False(more.IsVisible);
-        Assert.Equal(1, less.Opacity);
-
-        block.Command!.Execute(null);
-        Assert.False(vm.IsDescriptionExpanded);
-        Pump();
-        window.UpdateLayout();
+        var note = Assert.IsType<AlbumNoteViewModel>(rig.Shell.AlbumNote);
+        Assert.Equal(album.Name, note.Title);
+        Assert.Equal(album.Artist, note.Artist);
+        Assert.Equal(LongText, note.Text);
+        var sheet = view.FindControl<AlbumNoteSheet>("Note")!;
+        Assert.True(sheet.IsVisible);
+        Assert.IsType<MenuGlass>(sheet.FindControl<Noctis.Controls.GlassPanel>("NoteGlass"));
+        Assert.Equal(LongText, MobileFixtures.Named<TextBlock>(sheet, "NoteText").Text);
+        Assert.Equal(album.Name, MobileFixtures.Named<TextBlock>(sheet, "NoteTitle").Text);
+        Assert.Equal(album.Artist, MobileFixtures.Named<TextBlock>(sheet, "NoteArtist").Text);
+        // The page under it stays folded.
         Assert.Equal(3 * 20, clip.Bounds.Height, 1);
-        Assert.True(more.IsVisible);
+
+        Assert.True(rig.Shell.TryHandleBack());
+        Assert.Null(rig.Shell.AlbumNote);
+        Assert.Same(vm, rig.Shell.CurrentPage);
+        Assert.False(sheet.IsHitTestVisible);
+        Pump((int)(PopMenu.PopCloseMs / 16) + 8);
+        Assert.False(sheet.IsVisible);
+        window.Close();
+    }
+
+    /// <summary>The sheet's close button and a tap on MORE close and open it; a short swipe down
+    /// settles back, a long one drops it.</summary>
+    [AvaloniaFact]
+    public void DescriptionSheet_ClosesByItsButton_AndByASwipeDown()
+    {
+        var (album, tracks) = Sample();
+        using var rig = Rig(tracks, album, new FakeDescriptions(LongText));
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+        var vm = Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+        var sheet = view.FindControl<AlbumNoteSheet>("Note")!;
+
+        vm.ShowDescriptionCommand.Execute(null);
+        Pump(20);
+        MobileFixtures.Named<Button>(sheet, "NoteClose").Command!.Execute(null);
+        Assert.Null(rig.Shell.AlbumNote);
+        Pump((int)(PopMenu.PopCloseMs / 16) + 8);
+        Assert.False(sheet.IsVisible);
+
+        vm.ShowDescriptionCommand.Execute(null);
+        Pump(20);
+        Assert.True(sheet.IsVisible);
+        sheet.FollowForTest(40);
+        sheet.Release(drop: false);
+        Assert.NotNull(rig.Shell.AlbumNote);
+        sheet.FollowForTest(AlbumNoteSheet.DismissDistance + 40);
+        sheet.Release(drop: true);
+        Assert.Null(rig.Shell.AlbumNote);
+        Pump((int)(PopMenu.PopCloseMs / 16) + 8);
+        Assert.False(sheet.IsVisible);
+        Assert.Same(vm, rig.Shell.CurrentPage);
+        window.Close();
+    }
+
+    /// <summary>Owner 10-19: no heart on an album's song rows, only ⋯, whose menu favourites the
+    /// song and says so when it is one.</summary>
+    [AvaloniaFact]
+    public void TrackRows_HaveNoHeart_AndTheirMenuFavouritesTheSong()
+    {
+        var (album, tracks) = Sample();
+        using var rig = Rig(tracks, album);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+
+        var list = MobileFixtures.Named<ItemsControl>(MobileFixtures.Find<AlbumPage>(view), "TrackList");
+        var row = list.ContainerFromIndex(1)!;
+        var buttons = row.GetVisualDescendants().OfType<Button>().ToList();
+        Assert.Equal(new[] { "RowMore" }, buttons.Where(b => !b.Classes.Contains("row")).Select(b => b.Name));
+        var heart = view.FindResource("PhHeart");
+        Assert.DoesNotContain(row.GetVisualDescendants().OfType<PathIcon>(), p => ReferenceEquals(p.Data, heart));
+
+        var moreButton = buttons.Single(b => b.Name == "RowMore");
+        moreButton.Command!.Execute(moreButton.CommandParameter);
+        var menu = Assert.IsType<ContextSheetViewModel>(rig.Shell.Sheet);
+        Assert.Same(tracks[1], menu.Tracks.Single());
+        Assert.Equal("Favorite", menu.FavouriteTileLabel);
+        menu.ToggleFavouriteCommand.Execute(null);
+        Assert.True(tracks[1].IsFavorite);
+
+        moreButton.Command!.Execute(moreButton.CommandParameter);
+        Assert.Equal("Favorited", rig.Shell.Sheet!.FavouriteTileLabel);
         window.Close();
     }
 
     [AvaloniaFact]
-    public void ShortDescription_ShowsWhole_WithoutMoreOrLess()
+    public void ShortDescription_ShowsWhole_WithoutMore()
     {
         var (album, tracks) = Sample();
         using var rig = Rig(tracks, album, new FakeDescriptions("A short note."));
@@ -471,7 +543,7 @@ public class MobileAlbumPageRefineTests
         var text = MobileFixtures.Named<TextBlock>(page, "DescriptionText");
         Assert.Equal(text.Bounds.Height, MobileFixtures.Named<Border>(page, "DescriptionClip").Bounds.Height, 1);
         Assert.False(MobileFixtures.Named<Border>(page, "DescriptionMore").IsVisible);
-        Assert.Equal(0, MobileFixtures.Named<TextBlock>(page, "DescriptionLess").Opacity);
+        Assert.Equal(1, text.Opacity);
         window.Close();
     }
 }

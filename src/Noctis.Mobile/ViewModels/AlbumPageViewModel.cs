@@ -112,9 +112,6 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     public bool HasDescription => !string.IsNullOrEmpty(Description);
 
-    /// <summary>The paragraph shows in full (LESS) rather than its first lines (MORE).</summary>
-    [ObservableProperty] private bool _isDescriptionExpanded;
-
     /// <summary>The description lookup started with the page; tests await it.</summary>
     internal Task DescriptionLoad { get; }
 
@@ -220,12 +217,13 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         }
     }
 
-    partial void OnDescriptionChanged(string? value) => IsDescriptionExpanded = false;
-
+    /// <summary>The paragraph (or its MORE) tapped: the whole text on the glass sheet, under the
+    /// album's cover, title and artist (owner 10-19: "a clean pop-up" rather than unfolding in place).</summary>
     [RelayCommand]
-    private void ToggleDescription()
+    private void ShowDescription()
     {
-        if (HasDescription) IsDescriptionExpanded = !IsDescriptionExpanded;
+        if (Description is { Length: > 0 } text)
+            Shell.ShowAlbumNote(new AlbumNoteViewModel(Shell, Album.Name, Album.Artist, Album.ArtworkPath, text));
     }
 
     private static IReadOnlyList<object> BuildRows(IReadOnlyList<AlbumTrackRow> tracks)

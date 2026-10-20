@@ -232,11 +232,26 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool IsMenuOpen => PopMenu != null;
 
+    /// <summary>An album's description, whole, on the glass sheet (<see cref="ShowAlbumNote"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAlbumNoteOpen))]
+    private AlbumNoteViewModel? _albumNote;
+
+    public bool IsAlbumNoteOpen => AlbumNote != null;
+
+    /// <summary>Shows an album's description on the glass sheet, closing whatever menu was up.</summary>
+    public void ShowAlbumNote(AlbumNoteViewModel note)
+    {
+        CloseSheet();
+        AlbumNote = note;
+    }
+
     partial void OnSheetChanged(ContextSheetViewModel? oldValue, ContextSheetViewModel? newValue)
     {
         if (oldValue != null) oldValue.PropertyChanged -= OnSheetPropertyChanged;
         if (newValue == null) return;
         newValue.PropertyChanged += OnSheetPropertyChanged;
+        AlbumNote = null;
         LibraryMenu = null;
         OptionsMenu = null;
         LinksMenu = null;
@@ -599,7 +614,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// </summary>
     public bool TryHandleBack()
     {
-        if (IsSheetOpen || IsMenuOpen) { CloseSheet(); return true; }
+        if (IsSheetOpen || IsMenuOpen || IsAlbumNoteOpen) { CloseSheet(); return true; }
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
@@ -779,6 +794,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     public void CloseSheet()
     {
+        AlbumNote = null;
         Sheet = null;
         LibraryMenu = null;
         OptionsMenu = null;
@@ -790,6 +806,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// tapped, closing whatever menu was up.</summary>
     public void ShowOptions(OptionsMenuViewModel menu)
     {
+        AlbumNote = null;
         Sheet = null;
         LibraryMenu = null;
         LinksMenu = null;
@@ -815,13 +832,6 @@ public sealed partial class ShellViewModel : ObservableObject
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
         Library.Service.NotifyFavoritesChanged(tracks.ToList());
-    }
-
-    /// <summary>A song row's heart: one tap favourites or unfavourites that song.</summary>
-    [RelayCommand]
-    private async Task ToggleTrackFavouriteAsync(Track? track)
-    {
-        if (track != null) await SetFavouriteAsync(new[] { track }, !track.IsFavorite);
     }
 
     [RelayCommand]
