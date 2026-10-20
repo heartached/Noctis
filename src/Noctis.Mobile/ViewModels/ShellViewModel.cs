@@ -73,6 +73,10 @@ public sealed partial class ShellViewModel : ObservableObject
     }
     private readonly IArtistPhotoSource? _artistPhotos;
 
+    /// <summary>Artists' own logos for the artist page (fanart.tv / TheAudioDB on an Android
+    /// build that carries a key); null without one, and the page shows the name.</summary>
+    public IArtistLogoSource? ArtistLogos { get; init; }
+
     /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
     public string VersionText { get; init; } = "Noctis";
 

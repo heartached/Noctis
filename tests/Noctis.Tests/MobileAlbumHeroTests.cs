@@ -428,11 +428,12 @@ public class MobileAlbumHeroTests : IDisposable
         Assert.True(brush.GradientStops.Zip(brush.GradientStops.Skip(1)).All(p => p.First.Color.A >= p.Second.Color.A));
     }
 
-    /// <summary>At rest the theme fade lies under the bar, so the theme's own icons stay (null);
-    /// scrolled, the page colour does, and the page asks for icons readable on it (light on a dark
-    /// page); Now Playing's dark backdrop takes light icons over it; leaving hands the bar back.</summary>
+    /// <summary>At rest the haze in the picture's top colour lies under the bar, so the page asks
+    /// for icons readable on it (the Light theme's dark icons vanished on a dark photo, 2026-10-20);
+    /// scrolled, the page colour does (light on a dark page); Now Playing's dark backdrop takes
+    /// light icons over it; leaving hands the bar back to the theme.</summary>
     [AvaloniaFact]
-    public void StatusBarIcons_FollowTheThemeAtRest_ThePageScrolled_AndReturnToTheTheme()
+    public void StatusBarIcons_FollowTheHazeAtRest_ThePageScrolled_AndReturnToTheTheme()
     {
         var theme = new RecordingTheme();
         var tracks = Enumerable.Range(1, 40).Select(i => { var t = MobileFixtures.Song($"T{i}"); t.TrackNumber = i; return t; }).ToArray();
@@ -444,8 +445,7 @@ public class MobileAlbumHeroTests : IDisposable
         rig.Shell.OpenAlbumsCommand.Execute(null);
         rig.Shell.OpenAlbumCommand.Execute(album);
         window.UpdateLayout();
-        Assert.Null(rig.Shell.PageStatusBarIcons);   // the theme's icons over the theme fade
-        Assert.Empty(theme.Icons);
+        Assert.Equal(false, rig.Shell.PageStatusBarIcons);   // light icons over the dark navy haze
 
         MobileFixtures.Named<ScrollViewer>(MobileFixtures.Find<AlbumPage>(view), "AlbumScroll").Offset = new Vector(0, 600);
         window.UpdateLayout();
@@ -478,11 +478,11 @@ public class MobileAlbumHeroTests : IDisposable
         return path;
     }
 
-    /// <summary>The theme fade replaces the busy-cover shade and the per-cover icon choice: on a
-    /// busy black-and-white top and on a plain light one alike the page leaves the icons to the
-    /// theme at rest.</summary>
+    /// <summary>The haze replaces the busy-cover shade and the per-pixel icon choice: on a busy
+    /// black-and-white top and on a plain light one alike the icons follow the haze's one colour
+    /// (the tint's top colour, here a dark grey: light icons) at rest.</summary>
     [AvaloniaFact]
-    public void StatusBarIcons_StayTheThemes_OnBusyAndPlainCoverTops()
+    public void StatusBarIcons_FollowTheHaze_OnBusyAndPlainCoverTops()
     {
         foreach (var cover in new[]
                  {
@@ -497,8 +497,7 @@ public class MobileAlbumHeroTests : IDisposable
             var window = MobileFixtures.Mount(rig.Shell, out var view);
             rig.Shell.OpenAlbumCommand.Execute(album);
             window.UpdateLayout();
-            Assert.Null(rig.Shell.PageStatusBarIcons);
-            Assert.Empty(theme.Icons);
+            Assert.Equal(false, rig.Shell.PageStatusBarIcons);
             Assert.Equal(1, MobileFixtures.Named<Border>(MobileFixtures.Find<AlbumPage>(view), "TopFade").Opacity);
             window.Close();
         }

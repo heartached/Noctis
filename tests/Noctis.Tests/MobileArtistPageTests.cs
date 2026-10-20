@@ -351,9 +351,10 @@ public class MobileArtistPageTests : IDisposable
         var back = MobileFixtures.Named<Button>(page, "BackButton");
         Assert.InRange(back.TranslatePoint(new Point(0, 0), view)!.Value.Y, 40, 60);
 
-        // The big name and the three buttons sit over the photo's faded lower part, centred.
+        // The big name and the three buttons (⤨ ▶ ☆, Apple's order) sit over the photo's faded
+        // lower part, centred.
         var name = MobileFixtures.Named<TextBlock>(page, "ArtistName");
-        var buttons = new[] { "FavouriteButton", "PlayButton", "ShuffleButton" }.Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
+        var buttons = new[] { "ShuffleButton", "PlayButton", "FavouriteButton" }.Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
         var heroBottom = hero.Bounds.Height;
         var nameBox = BoundsIn(name, view);
         Assert.InRange(nameBox.Top, heroBottom * (1 - ArtistPage.HeroFadeShare), heroBottom);
@@ -362,20 +363,24 @@ public class MobileArtistPageTests : IDisposable
             var box = BoundsIn(b, view);
             Assert.True(box.Bottom <= heroBottom, $"{b.Name} bottom {box.Bottom} > {heroBottom}");
             Assert.True(box.Top > nameBox.Bottom);
-            Assert.Equal(54, box.Width, 1);
+            Assert.Equal(b.Name == "PlayButton" ? 66 : 48, box.Width, 1);
         }
+        Assert.True(BoundsIn(buttons[0], view).Right < BoundsIn(buttons[1], view).Left);
+        Assert.True(BoundsIn(buttons[1], view).Right < BoundsIn(buttons[2], view).Left);
         Assert.Equal(view.Bounds.Width / 2, BoundsIn(buttons[1], view).Center.X, 1);
         Assert.Equal(view.Bounds.Width / 2, nameBox.Center.X, 1);
 
-        // The page is the deep shade of this red; the buttons wear a shade of the page colour,
-        // lighter than it, with white glyphs.
+        // The page is the deep shade of this red; the small buttons wear a shade of the page
+        // colour, lighter than it, with white glyphs; Play is Apple's white circle, glyph black.
         var pageColour = ((ArtistPageViewModel)rig.Shell.CurrentPage!).Tint.TintColor!.Value;
         Assert.Equal(Noctis.Services.DominantColorExtractor.DeepPageColor(Color.FromRgb(0xC8, 0x10, 0x2E)), pageColour);
-        var fill = ((ISolidColorBrush)buttons[1].Background!).Color;
+        var fill = ((ISolidColorBrush)buttons[2].Background!).Color;
         Assert.Equal(ArtistPage.Shade(pageColour, ArtistPage.ButtonShade), fill);
         Assert.True(ArtistPage.Lightness(fill) > ArtistPage.Lightness(pageColour));
         Assert.Equal(Colors.White, ((ISolidColorBrush)name.Foreground!).Color);
-        Assert.Equal(Colors.White, ((ISolidColorBrush)buttons[1].Foreground!).Color);
+        Assert.Equal(Colors.White, ((ISolidColorBrush)buttons[2].Foreground!).Color);
+        Assert.Equal(Colors.White, ((ISolidColorBrush)buttons[1].Background!).Color);
+        Assert.Equal(Colors.Black, ((ISolidColorBrush)buttons[1].Foreground!).Color);
 
         rig.Shell.NavigateBackCommand.Execute(null);
         MobileFixtures.Land(window);   // the page slides away, then lets go of its host
@@ -409,7 +414,7 @@ public class MobileArtistPageTests : IDisposable
         window.UpdateLayout();
 
         var page = MobileFixtures.Find<ArtistPage>(view);
-        var big = MobileFixtures.Named<TextBlock>(page, "ArtistName");
+        var big = MobileFixtures.Named<Panel>(page, "TitleArt");   // the name, or the logo in its place
         var small = MobileFixtures.Named<TextBlock>(page, "SmallTitle");
         var scroll = MobileFixtures.Named<ScrollViewer>(page, "ArtistScroll");
         Assert.Equal(1, big.Opacity);

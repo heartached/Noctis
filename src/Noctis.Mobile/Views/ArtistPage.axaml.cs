@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 
 namespace Noctis.Mobile.Views;
@@ -9,7 +10,10 @@ namespace Noctis.Mobile.Views;
 /// The artist page's chrome: the album page's (<see cref="HeroChrome"/>: the photo under the
 /// status bar, its fades, the scroll-edge scrim and the small title), the two shades of the page
 /// colour for the round buttons and the cards, and the widths that make the carousel and the Top
-/// Songs grid page sideways with the next card or column peeking in.
+/// Songs grid page sideways with the next card or column peeking in. With the artist's own logo
+/// in the name's place it sizes the logo (<see cref="LogoSize"/>), keeps its ink readable on the
+/// page with a halo rather than by recolouring it (<see cref="LogoHalo"/>), and gives the Play
+/// button the logo's accent when it has one (<see cref="PlayColours"/>).
 /// </summary>
 public partial class ArtistPage : UserControl
 {
@@ -33,6 +37,23 @@ public partial class ArtistPage : UserControl
     /// (HSL lightness; see <see cref="Shade"/>).</summary>
     internal const double ButtonShade = 0.1, CardShade = 0.07;
 
+    /// <summary>The logo's height when its width allows (Apple's artist logos stand ~85–95 pt
+    /// tall and ~135–205 pt wide on a 430 pt screen, 2026-10-20 references), the tallest a narrow
+    /// logo may stand, and the widest a long one may run: a share of the page, never more than a
+    /// fixed width.</summary>
+    internal const double LogoHeight = 84, LogoMaxHeight = 104, LogoWidthShare = 0.66, LogoMaxWidth = 300;
+
+    /// <summary>How far a logo may be blown up past its own pixels: TheAudioDB's older logos are
+    /// 400 px wide, which drawn 300 dp wide on a 2.6x screen went soft (emulator, 2026-10-20).</summary>
+    internal const double LogoMaxUpscale = 1.35;
+
+    /// <summary>Below this share of its ink reading on the page (3:1), a logo gets a halo.</summary>
+    internal const double LogoLegibleShare = 0.5;
+
+    /// <summary>The least contrast an accent Play button needs against the page; less, and it
+    /// takes the page's text colour as without a logo.</summary>
+    internal const double AccentMinContrast = 1.8;
+
     public static readonly StyledProperty<double> CardWidthProperty =
         AvaloniaProperty.Register<ArtistPage, double>(nameof(CardWidth), 320);
 
@@ -48,7 +69,7 @@ public partial class ArtistPage : UserControl
         _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Artist", UpdateScrollChrome, ApplyShades);
         ArtistScroll.SizeChanged += (_, _) => LayoutPage();
         ArtistScroll.ScrollChanged += (_, _) => UpdateScrollChrome();
-        ArtistName.SizeChanged += (_, _) => LayoutTitle();
+        TitleArt.SizeChanged += (_, _) => LayoutTitle();
         ButtonRow.SizeChanged += (_, _) => LayoutTitle();
         DataContextChanged += (_, _) => Attach();
         _chrome.ApplyTint();
@@ -101,6 +122,92 @@ public partial class ArtistPage : UserControl
     private void OnPageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ArtistPageViewModel.Cards)) LayoutPage();
+        else if (e.PropertyName == nameof(ArtistPageViewModel.Logo))
+        {
+            LayoutLogo();
+            ApplyShades(null);
+        }
+    }
+
+    /// <summary>
+    /// The logo's size on a page <paramref name="pageWidth"/> wide: <see cref="LogoHeight"/> tall
+    /// with its width following its shape, a long logo narrowed to the page's
+    /// <see cref="LogoWidthShare"/> (at most <see cref="LogoMaxWidth"/>) and a narrow one standing
+    /// no taller than <see cref="LogoMaxHeight"/>, so a wordmark and a monogram read alike; and
+    /// never wider than <paramref name="sharpWidth"/> (its own pixels at
+    /// <see cref="LogoMaxUpscale"/>), so a small logo stays sharp.
+    /// </summary>
+    internal static Size LogoSize(double aspect, double pageWidth, double sharpWidth = double.PositiveInfinity)
+    {
+        aspect = Math.Clamp(aspect, 0.2, 20);
+        var maxWidth = Math.Min(Math.Min(LogoMaxWidth, sharpWidth), Math.Max(120, pageWidth * LogoWidthShare));
+        var height = aspect < 1 ? LogoMaxHeight : LogoHeight;
+        var width = height * aspect;
+        if (width > maxWidth)
+        {
+            width = maxWidth;
+            height = width / aspect;
+        }
+        return new Size(Math.Round(width), Math.Round(height));
+    }
+
+    /// <summary>
+    /// What keeps a logo readable on <paramref name="background"/> without changing its colours
+    /// (TheAudioDB's terms: logos as they are): when less than <see cref="LogoLegibleShare"/> of
+    /// its ink reads there, a soft halo in the opposite tone (dark under a white logo on a light
+    /// page, light under a black one on a deep page); otherwise, under light ink, the faint lift
+    /// Apple's white logos have over the photo; nothing under dark ink on a light page.
+    /// </summary>
+    internal static DropShadowEffect? LogoHalo(ArtistLogoInk ink, Color background)
+    {
+        if (ink.LegibleShare(background) < LogoLegibleShare)
+            return new DropShadowEffect
+            {
+                OffsetX = 0, OffsetY = 0, BlurRadius = 16,
+                Color = ink.IsLight ? Colors.Black : Colors.White,
+                Opacity = ink.IsLight ? 0.6 : 0.7,
+            };
+        return ink.IsLight
+            ? new DropShadowEffect { OffsetX = 0, OffsetY = 1, BlurRadius = 10, Color = Colors.Black, Opacity = 0.28 }
+            : null;
+    }
+
+    /// <summary>
+    /// Play's fill and glyph: the logo's accent on a page it stands out from (Apple's Doja Cat
+    /// page: a blue Play under the blue logo), else the page's text colour (Apple's white Play on
+    /// a deep page), the glyph black or white, whichever reads on the fill.
+    /// </summary>
+    internal static (Color Fill, Color Glyph) PlayColours(Color page, Color text, Color? accent)
+    {
+        var fill = accent is { } a && PageTint.ContrastRatio(a, page) >= AccentMinContrast ? a : text;
+        return (fill, PageTint.PrefersDarkText(fill) ? Colors.Black : Colors.White);
+    }
+
+    /// <summary>The logo at <see cref="LogoSize"/> for the page's width, with its halo.</summary>
+    private void LayoutLogo()
+    {
+        if (_vm?.Logo is not { } logo)
+        {
+            ArtistLogo.Effect = null;
+            return;
+        }
+        var width = ArtistScroll.Bounds.Width > 0 ? ArtistScroll.Bounds.Width : Bounds.Width;
+        if (width <= 0) return;
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        var size = LogoSize(logo.Ink.Aspect, width, logo.Ink.Width * LogoMaxUpscale / Math.Max(1, scaling));
+        ArtistLogo.Width = size.Width;
+        ArtistLogo.Height = size.Height;
+        ArtistLogo.Effect = LogoHalo(logo.Ink, LogoBackground());
+    }
+
+    /// <summary>What lies behind the logo: the photo's foot (the colour its fade starts from),
+    /// else the theme's page.</summary>
+    private Color LogoBackground()
+    {
+        if (_vm?.Tint.CoverColor is { } cover) return cover;
+        return this.TryFindResource("AppWindowBackgroundBrush", ActualThemeVariant, out var b) && b is ISolidColorBrush s
+            ? s.Color
+            : ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark ? Colors.Black : Colors.White;
     }
 
     /// <summary>
@@ -123,6 +230,7 @@ public partial class ArtistPage : UserControl
         TopSongPageWidth = width - PageInset - ColumnGap - ColumnPeek;
         // The last column's own right margin is the gap; the peek's room comes after it.
         TopSongPages.Margin = new Thickness(PageInset, 0, ColumnPeek, 0);
+        LayoutLogo();
         LayoutTitle();
     }
 
@@ -135,8 +243,8 @@ public partial class ArtistPage : UserControl
     /// </summary>
     private void LayoutTitle()
     {
-        var content = ArtistName.Bounds.Height + ButtonRow.Margin.Top + ButtonRow.Bounds.Height + ButtonRow.Margin.Bottom;
-        if (ArtistName.Bounds.Height <= 0) return;
+        var content = TitleArt.Bounds.Height + ButtonRow.Margin.Top + ButtonRow.Bounds.Height + ButtonRow.Margin.Bottom;
+        if (TitleArt.Bounds.Height <= 0) return;
         var top = -Math.Round(content);
         if (Math.Abs(TitleBlock.Margin.Top - top) > 0.5) TitleBlock.Margin = new Thickness(20, top, 20, 0);
         UpdateScrollChrome();
@@ -147,9 +255,9 @@ public partial class ArtistPage : UserControl
     private void UpdateScrollChrome()
     {
         var titleTop = Hero.Height + TitleBlock.Margin.Top - ArtistScroll.Offset.Y;
-        var chrome = HeroChrome.ScrollChrome(titleTop, ArtistName.Bounds.Height, _chrome.BarBottom);
+        var chrome = HeroChrome.ScrollChrome(titleTop, TitleArt.Bounds.Height, _chrome.BarBottom);
         _chrome.ApplyScrim(chrome.Scrim, ArtistScroll.Offset.Y + _chrome.BarBottom - Hero.Height);
-        ArtistName.Opacity = chrome.BigTitle;
+        TitleArt.Opacity = chrome.BigTitle;
         SmallTitle.Opacity = chrome.SmallTitle;
     }
 
@@ -157,14 +265,28 @@ public partial class ArtistPage : UserControl
     /// The two shades of the page colour: the round buttons a step toward the text colour's side
     /// (lighter on a dark page, deeper on a light one, like Apple's red buttons on a red page),
     /// the cards a lighter step (a deeper one on a near-white page, where lighter would vanish).
-    /// Without a tint the styles keep the theme's fills.
+    /// Without a tint the styles keep the theme's fills. Then Play's colours
+    /// (<see cref="PlayColours"/>) and the logo's halo, which both follow the page colour.
     /// </summary>
     private void ApplyShades(Color? _)
     {
-        if (DataContext is not ArtistPageViewModel { Tint.TintColor: { } tint }) return;
-        var lightPage = PageTint.PrefersDarkText(tint);
-        Resources["ArtistButtonFill"] = new SolidColorBrush(Shade(tint, lightPage ? -ButtonShade : ButtonShade));
-        Resources["ArtistCardFill"] = new SolidColorBrush(Shade(tint, Lightness(tint) > 0.88 ? -CardShade : CardShade));
+        var vm = DataContext as ArtistPageViewModel;
+        if (vm is { Tint.TintColor: { } tint })
+        {
+            var lightPage = PageTint.PrefersDarkText(tint);
+            Resources["ArtistButtonFill"] = new SolidColorBrush(Shade(tint, lightPage ? -ButtonShade : ButtonShade));
+            Resources["ArtistCardFill"] = new SolidColorBrush(Shade(tint, Lightness(tint) > 0.88 ? -CardShade : CardShade));
+        }
+        var page = vm?.Tint.TintColor ?? LogoBackground();
+        var text = vm?.Tint.TintColor is { } t
+            ? (PageTint.PrefersDarkText(t) ? Colors.Black : Colors.White)
+            : this.TryFindResource("PrimaryTextBrush", ActualThemeVariant, out var p) && p is ISolidColorBrush primary
+                ? primary.Color
+                : (PageTint.PrefersDarkText(page) ? Colors.Black : Colors.White);
+        var (fill, glyph) = PlayColours(page, text, vm?.Logo?.Ink.Accent);
+        Resources["ArtistPlayFill"] = new SolidColorBrush(fill);
+        Resources["ArtistPlayGlyph"] = new SolidColorBrush(glyph);
+        LayoutLogo();
     }
 
     /// <summary><paramref name="color"/> with its HSL lightness moved by <paramref name="amount"/>
