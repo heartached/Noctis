@@ -425,15 +425,18 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         try
         {
-            var settings = await Shell.Library.Persistence.LoadSettingsAsync();
-            settings.MobileAppearance = Appearance;
-            settings.Theme = DarkTheme;
-            // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
-            settings.ThemeV2Migrated = true;
-            settings.AccentColorHex = _accentHex;
-            settings.AccentPresetName = AccentName;
-            settings.MobileLyricsTextScale = LyricsTextScale;
-            await Shell.Library.Persistence.SaveSettingsAsync(settings);
+            // One update: a plain load-then-save let another phone save (a lyrics switch, a pin)
+            // land in between, and this stale copy undid it.
+            await Shell.Library.Persistence.UpdateSettingsAsync(settings =>
+            {
+                settings.MobileAppearance = Appearance;
+                settings.Theme = DarkTheme;
+                // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
+                settings.ThemeV2Migrated = true;
+                settings.AccentColorHex = _accentHex;
+                settings.AccentPresetName = AccentName;
+                settings.MobileLyricsTextScale = LyricsTextScale;
+            });
             Interlocked.Increment(ref SaveCount);
         }
         catch (Exception ex)

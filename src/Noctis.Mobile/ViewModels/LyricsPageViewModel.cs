@@ -287,14 +287,18 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.LyricsShowTranslations = ShowTranslation;
-            settings.LyricsShowRomanization = ShowRomanization;
-            settings.LyricsShowBackgroundVocals = ShowBackgroundVocals;
-            settings.LyricsMinLineOpacity = MinLineOpacity;
-            settings.LyricsJoinSplitWords = JoinSplitWords;
-            settings.LrcLibEnabled = FindLyricsOnline;
-            await _persistence.SaveSettingsAsync(settings);
+            // One update, so no other phone save lands between the read and the write (a pin, a
+            // player-bar switch: the stale copy written after it undid it). The values are read
+            // inside, as the latest: two quick flips saved in either order end on the last one.
+            await _persistence.UpdateSettingsAsync(settings =>
+            {
+                settings.LyricsShowTranslations = ShowTranslation;
+                settings.LyricsShowRomanization = ShowRomanization;
+                settings.LyricsShowBackgroundVocals = ShowBackgroundVocals;
+                settings.LyricsMinLineOpacity = MinLineOpacity;
+                settings.LyricsJoinSplitWords = JoinSplitWords;
+                settings.LrcLibEnabled = FindLyricsOnline;
+            });
             Interlocked.Increment(ref SaveCount);
         }
         catch (Exception ex)

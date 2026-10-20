@@ -509,11 +509,13 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             try
             {
-                var settings = await Library.Persistence.LoadSettingsAsync();
-                settings.MobilePlayerBarProgressFill = fill;
-                settings.MobilePlayerBarProgressLine = line;
-                settings.MobileArtworkPageColors = pages;
-                await Library.Persistence.SaveSettingsAsync(settings);
+                // One update: another phone save landing between a plain load and save was undone.
+                await Library.Persistence.UpdateSettingsAsync(settings =>
+                {
+                    settings.MobilePlayerBarProgressFill = fill;
+                    settings.MobilePlayerBarProgressLine = line;
+                    settings.MobileArtworkPageColors = pages;
+                });
             }
             catch (Exception ex)
             {
