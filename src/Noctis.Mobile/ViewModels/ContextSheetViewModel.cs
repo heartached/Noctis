@@ -137,8 +137,9 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
     [RelayCommand] private void ShowPlaylists() => IsPickingPlaylist = true;
 
-    /// <summary>Lyrics are the playing song's page: the row shows only on that song's menu.</summary>
-    public bool CanShowLyrics => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id;
+    /// <summary>Lyrics are the playing song's page: the row shows only on that song's menu, and
+    /// not on the menu opened from the lyrics page itself (where it did nothing).</summary>
+    public bool CanShowLyrics => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id && !_shell.IsLyricsOpen;
 
     /// <summary>The menu's Lyrics: the lyrics page, over the player or a list (the Queue, which
     /// would sit over it, gives way).</summary>

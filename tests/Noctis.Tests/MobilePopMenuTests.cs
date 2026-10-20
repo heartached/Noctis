@@ -524,6 +524,9 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         rig.Shell.Sheet!.ShowLyricsCommand.Execute(null);
         Assert.False(rig.Shell.IsQueueOpen);
         Assert.True(rig.Shell.IsLyricsOpen);
+        // The lyrics page's own ⋯: no Lyrics row, it is already up.
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        Assert.False(rig.Shell.Sheet!.CanShowLyrics);
         window.Close();
     }
 
