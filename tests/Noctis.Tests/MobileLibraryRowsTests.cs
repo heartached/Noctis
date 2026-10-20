@@ -74,6 +74,32 @@ public class MobileLibraryRowsTests
         window.Close();
     }
 
+    /// <summary>In the Songs list the E badge sits right after the title, not at the row's end.</summary>
+    [AvaloniaFact]
+    public void SongsList_PutsTheEBadgeRightAfterTheTitle()
+    {
+        using var rig = MakeRig();
+        foreach (var t in rig.Shell.Library.Songs) t.IsExplicit = t.Title == "Alpha";
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        Tap(RowButton(view, LibraryRowKind.Songs));
+        window.UpdateLayout();
+        window.UpdateLayout();
+
+        var rows = view.GetVisualDescendants().OfType<SongRow>().ToList();
+        var alpha = rows.Single(r => ((Track)r.DataContext!).Title == "Alpha");
+        var beta = rows.Single(r => ((Track)r.DataContext!).Title == "Beta");
+        var title = alpha.FindControl<TextBlock>("RowTitle")!;
+        var badge = alpha.FindControl<Border>("ExplicitBadge")!;
+        Assert.True(badge.IsEffectivelyVisible);
+        Assert.True(badge.Classes.Contains("explicit-badge"));
+        var titleRight = title.TranslatePoint(new Point(title.Bounds.Width, 0), alpha)!.Value.X;
+        var badgeLeft = badge.TranslatePoint(new Point(0, 0), alpha)!.Value.X;
+        Assert.Equal(titleRight + 6, badgeLeft, 1);
+        Assert.True(badgeLeft < alpha.Bounds.Width / 2, $"badge at {badgeLeft} of {alpha.Bounds.Width}");
+        Assert.False(beta.FindControl<Border>("ExplicitBadge")!.IsVisible);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void TappingARow_PushesItsList()
     {

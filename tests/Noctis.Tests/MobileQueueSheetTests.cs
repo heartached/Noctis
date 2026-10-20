@@ -80,6 +80,35 @@ public class MobileQueueSheetTests
     }
 
     [AvaloniaFact]
+    public void ExplicitTracks_ShowTheEBadge_InTheHeaderAndOnTheirRows()
+    {
+        var songs = Songs(3);
+        songs[0].IsExplicit = true;
+        songs[2].IsExplicit = true;
+        using var rig = MobileFixtures.MakeRig(songs);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(songs, 0, "Alpha");
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        rig.Shell.ToggleQueueCommand.Execute(null);
+        window.UpdateLayout();
+        var page = MobileFixtures.Find<QueuePage>(view);
+        page.CompleteSlide();
+        window.UpdateLayout();
+
+        var now = MobileFixtures.Named<Border>(page, "NowExplicit");
+        Assert.True(now.IsEffectivelyVisible);
+        Assert.True(now.Classes.Contains("explicit-badge"));
+        var rows = page.GetVisualDescendants().OfType<Border>().Where(b => b.Name == "RowExplicit").ToList();
+        Assert.Equal(2, rows.Count);                        // S1 and S2 up next
+        Assert.Equal(1, rows.Count(b => b.IsVisible));      // only S2 is explicit
+
+        rig.Shell.Player.NextCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.False(now.IsVisible);                        // S1 is clean
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Header_ShowsTheTrack_WhereItPlaysFrom_AndItsPlace()
     {
         var (rig, window, _, page, _) = OpenQueue();
@@ -217,7 +246,7 @@ public class MobileQueueSheetTests
         var all = new[] { "QueueListButton", "QueueRepeatButton", "QueuePreviousButton", "QueuePlayPauseButton", "QueueNextButton", "QueueShuffleButton", "QueueMoreButton" };
 
         var skip = Glyph("QueuePreviousButton").Bounds.Width;
-        Assert.InRange(skip, 28, 32);
+        Assert.InRange(skip, 22, 26);   // owner 10-20: "a little smaller" than the first 30
         foreach (var name in all.Where(n => n != "QueuePlayPauseButton"))
             Assert.Equal(skip, Glyph(name).Bounds.Width);
         Assert.Equal(skip * 20 / 18, Glyph("QueuePlayPauseButton").Bounds.Width, 1.0);   // layout rounding

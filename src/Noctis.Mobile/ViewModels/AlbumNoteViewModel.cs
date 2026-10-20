@@ -12,16 +12,20 @@ public sealed partial class AlbumNoteViewModel
 {
     private readonly ShellViewModel _shell;
 
-    public AlbumNoteViewModel(ShellViewModel shell, string title, string artist, string? artworkPath, string text)
+    public AlbumNoteViewModel(ShellViewModel shell, string title, string artist, string? artworkPath, string text,
+        bool isExplicit = false)
     {
         _shell = shell;
         Title = title;
         Artist = artist;
         ArtworkPath = artworkPath;
         Text = text;
+        IsExplicit = isExplicit;
     }
 
     public string Title { get; }
+    /// <summary>The album's E badge after its title, as on the album page's rows.</summary>
+    public bool IsExplicit { get; }
     public string Artist { get; }
     public string? ArtworkPath { get; }
     public string Text { get; }

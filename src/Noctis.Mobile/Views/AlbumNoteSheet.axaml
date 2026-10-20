@@ -57,8 +57,14 @@
                                         </Panel>
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center" Spacing="1">
-                                        <TextBlock Name="NoteTitle" Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"
-                                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                            <TextBlock Name="NoteTitle" Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"
+                                                       TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="1" Name="NoteExplicit" Classes="explicit-badge compact" Margin="6,0,0,0"
+                                                    IsVisible="{Binding IsExplicit}">
+                                                <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                                            </Border>
+                                        </Grid>
                                         <TextBlock Name="NoteArtist" Classes="note-sub" Text="{Binding Artist}" FontSize="14"
                                                    MaxLines="1" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>

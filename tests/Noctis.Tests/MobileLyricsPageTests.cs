@@ -253,6 +253,35 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>An explicit song carries the E badge after its title in the header.</summary>
+    [AvaloniaFact]
+    public void Header_ShowsTheEBadge_ForAnExplicitSong()
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var (view, window) = Mount(shell);
+        var clean = NewTrack();
+        var dirty = NewTrack();
+        dirty.IsExplicit = true;
+
+        shell.Player.PlayTracks(new[] { dirty, clean }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var badge = page.FindControl<Border>("HeaderExplicit")!;
+        Assert.True(badge.IsEffectivelyVisible);
+        Assert.True(badge.Classes.Contains("explicit-badge"));
+
+        shell.Player.NextCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.False(badge.IsVisible);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>Apple's header: the playing song's title and artist over the wash.</summary>
     [AvaloniaFact]
     public void Header_ShowsTheSong()

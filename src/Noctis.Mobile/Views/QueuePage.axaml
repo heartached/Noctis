@@ -117,7 +117,8 @@
 
         <!-- The control pill = the desktop's player bar (PlaybackBarView): one row of plain glyphs
              in one box size - Repeat, Previous, Next, Shuffle, Queue and ⋯ all drawn in the skip
-             buttons' box, Play/Pause a little larger (the desktop's 18 and 20, here 30 and 33).
+             buttons' box, Play/Pause a little larger (the desktop's 18 and 20, here 24 and 26.7;
+             owner 10-20: "a little smaller" than the first 30 and 33).
              A mode that is on (and Queue, whose sheet is open) turns the glyph accent over the
              desktop's faint accent square (28 of 34 there, corner 8; the same proportions here).
              The wash is its own layer so the glyph keeps the full accent. -->
@@ -130,19 +131,19 @@
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
         <Style Selector="Button.icon.pill-btn PathIcon">
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="30" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.icon.pill-btn PathIcon.play">
-            <Setter Property="Width" Value="33.3" />
-            <Setter Property="Height" Value="33.3" />
+            <Setter Property="Width" Value="26.7" />
+            <Setter Property="Height" Value="26.7" />
         </Style>
         <Style Selector="Button.icon.pill-btn Border.wash">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="CornerRadius" Value="10" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
@@ -247,7 +248,14 @@
                                 </Border>
                             </Border>
                             <StackPanel Grid.Column="1" Name="NowText" Margin="14,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Name="NowTitle" Classes="now-title" Text="{Binding Player.CurrentTrack.Title}" />
+                                <!-- Left-aligned, so the explicit badge follows the title, not the row's end. -->
+                                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                    <TextBlock Name="NowTitle" Classes="now-title" Text="{Binding Player.CurrentTrack.Title}" MaxLines="1" />
+                                    <Border Grid.Column="1" Name="NowExplicit" Classes="explicit-badge compact" Margin="6,0,0,0"
+                                            IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}">
+                                        <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                                    </Border>
+                                </Grid>
                                 <TextBlock Name="NowArtist" Classes="now-sub" Text="{Binding Player.CurrentTrack.Artist}" />
                             </StackPanel>
                             <Panel Grid.Column="2" Name="EqBars" Width="14" Height="12" VerticalAlignment="Center">
@@ -311,7 +319,13 @@
                                                     </Panel>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                                                    <TextBlock Classes="row-title" Text="{Binding Title}" />
+                                                    <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                                        <TextBlock Classes="row-title" Text="{Binding Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                                        <Border Grid.Column="1" Name="RowExplicit" Classes="explicit-badge compact" Margin="6,0,0,0"
+                                                                IsVisible="{Binding IsExplicit}">
+                                                            <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                                                        </Border>
+                                                    </Grid>
                                                     <TextBlock Classes="row-sub" Text="{Binding Artist}" />
                                                     <TextBlock Classes="row-album" Text="{Binding Album}" />
                                                 </StackPanel>

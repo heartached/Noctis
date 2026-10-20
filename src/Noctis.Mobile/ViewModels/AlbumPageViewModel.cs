@@ -223,7 +223,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     private void ShowDescription()
     {
         if (Description is { Length: > 0 } text)
-            Shell.ShowAlbumNote(new AlbumNoteViewModel(Shell, Album.Name, Album.Artist, Album.ArtworkPath, text));
+            Shell.ShowAlbumNote(new AlbumNoteViewModel(Shell, Album.Name, Album.Artist, Album.ArtworkPath, text, Album.IsExplicit));
     }
 
     private static IReadOnlyList<object> BuildRows(IReadOnlyList<AlbumTrackRow> tracks)

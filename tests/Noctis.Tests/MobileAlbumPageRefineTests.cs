@@ -451,6 +451,7 @@ public class MobileAlbumPageRefineTests
         Assert.Equal(LongText, MobileFixtures.Named<TextBlock>(sheet, "NoteText").Text);
         Assert.Equal(album.Name, MobileFixtures.Named<TextBlock>(sheet, "NoteTitle").Text);
         Assert.Equal(album.Artist, MobileFixtures.Named<TextBlock>(sheet, "NoteArtist").Text);
+        Assert.False(MobileFixtures.Named<Border>(sheet, "NoteExplicit").IsVisible);   // a clean album
         // The page under it stays folded.
         Assert.Equal(3 * 20, clip.Bounds.Height, 1);
 
@@ -460,6 +461,27 @@ public class MobileAlbumPageRefineTests
         Assert.False(sheet.IsHitTestVisible);
         Pump((int)(PopMenu.PopCloseMs / 16) + 8);
         Assert.False(sheet.IsVisible);
+        window.Close();
+    }
+
+    /// <summary>An explicit album's description sheet carries the E badge after its title.</summary>
+    [AvaloniaFact]
+    public void DescriptionSheet_ShowsTheEBadge_ForAnExplicitAlbum()
+    {
+        var (album, tracks) = Sample(2, (t, i) => t.IsExplicit = i == 1);
+        using var rig = Rig(tracks, album, new FakeDescriptions(LongText));
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+        window.UpdateLayout();
+
+        MobileFixtures.Named<Button>(MobileFixtures.Find<AlbumPage>(view), "DescriptionBlock").Command!.Execute(null);
+        Pump(20);
+        window.UpdateLayout();
+        Assert.True(Assert.IsType<AlbumNoteViewModel>(rig.Shell.AlbumNote).IsExplicit);
+        var badge = MobileFixtures.Named<Border>(view.FindControl<AlbumNoteSheet>("Note")!, "NoteExplicit");
+        Assert.True(badge.IsEffectivelyVisible);
+        Assert.True(badge.Classes.Contains("explicit-badge"));
         window.Close();
     }
 

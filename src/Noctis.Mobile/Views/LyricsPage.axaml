@@ -232,8 +232,14 @@
                     </Border>
                 </Button>
                 <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Spacing="1">
-                    <TextBlock Name="HeaderTitle" Text="{Binding Player.CurrentTrack.Title}" FontSize="17" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                    <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                        <TextBlock Name="HeaderTitle" Text="{Binding Player.CurrentTrack.Title}" FontSize="17" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                        <Border Grid.Column="1" Name="HeaderExplicit" Classes="explicit-badge compact" Margin="6,0,0,0"
+                                IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}">
+                            <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                        </Border>
+                    </Grid>
                     <TextBlock Name="HeaderArtist" Text="{Binding Player.CurrentTrack.Artist}" FontSize="15" Foreground="#99FFFFFF"
                                TextTrimming="CharacterEllipsis" MaxLines="1" />
                 </StackPanel>
