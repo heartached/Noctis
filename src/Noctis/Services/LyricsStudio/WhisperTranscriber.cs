@@ -66,6 +66,8 @@ public sealed class WhisperTranscriber
             var progressShown = 0.0;
             var detectLanguage = string.IsNullOrWhiteSpace(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase);
             string? lang = detectLanguage ? null : language!.Trim().ToLowerInvariant();
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var languageWindows = 0;
 
             WhisperProcessor Build()
             {
@@ -78,7 +80,7 @@ public sealed class WhisperTranscriber
                     // off gave the best line starts on every one (median 0.26–0.54 s vs 0.74–33 s).
                     // whisper.cpp also ignores any initial prompt when this is 0.
                     .WithMaxLastTextTokens(0)
-                    .WithThreads(Math.Clamp(Environment.ProcessorCount - 1, 1, 8))
+                    .WithThreads(Threads)
                     .WithProgressHandler(p =>
                     {
                         reportedPercent = p;
@@ -116,7 +118,7 @@ public sealed class WhisperTranscriber
                     else
                     {
                         processor = Build();
-                        lang = VoteLanguage(processor, pcm16k, LanguageVotes, guess.Candidates, ct) ?? guess.Code;
+                        lang = VoteLanguage(processor, pcm16k, LanguageVotes, guess.Candidates, ct, out languageWindows) ?? guess.Code;
                         if (lang is not null) processor.ChangeLanguage(lang);
                     }
                     if (lang is not null)
@@ -149,10 +151,12 @@ public sealed class WhisperTranscriber
                 // is repeated or reordered at a boundary. Passing the whole song with WithOffset/
                 // WithDuration instead (identical scaling) measured no better and 55% slower.
                 var resumes = 0;
+                var decoded = 0;
                 var maxResumes = 2 + pcm16k.Length / WindowSamples;
                 // Like whisper.cpp: stop when less than a second is left.
                 while (seek + PcmDecoder16k.SampleRate < pcm16k.Length)
                 {
+                    decoded++;
                     span = Math.Min(WindowSamples, pcm16k.Length - seek);
                     windows = 0;
                     reportedPercent = 0;
@@ -181,6 +185,11 @@ public sealed class WhisperTranscriber
                     }
                     seek += step;
                 }
+                // Session-log record of where a song's time went (users report "slow"; this says why).
+                var seconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
+                var audio = pcm16k.Length / (double)PcmDecoder16k.SampleRate;
+                DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.Listened",
+                    $"audio={audio:0}s windows={decoded} resumed={resumes} languageWindows={languageWindows} seconds={seconds:0.0} rtf={seconds / Math.Max(1, audio):0.00} threads={Threads} runtime={RuntimeOptions.LoadedLibrary}");
             }
             finally
             {
@@ -216,17 +225,27 @@ public sealed class WhisperTranscriber
     /// <summary>Language detection windows when the lyrics leave the language open (or there are none).</summary>
     private const int LanguageVotes = 3;
 
+    /// <summary>Threads whisper.cpp computes with.</summary>
+    internal static int Threads { get; } = Math.Clamp(Environment.ProcessorCount - 1, 1, 8);
+
     /// <summary>
     /// Whisper's language detection on <paramref name="count"/> 30 s windows spread over the
     /// song (the middle, not the intro), probabilities summed per language: one window can be
     /// an intro sample, a spoken skit or a hook in another language. Restricted to
     /// <paramref name="candidates"/> when the lyrics narrowed the choice.
     /// </summary>
-    private static string? VoteLanguage(WhisperProcessor processor, float[] pcm, int count, IReadOnlyList<string> candidates, CancellationToken ct)
+    private static string? VoteLanguage(WhisperProcessor processor, float[] pcm, int count, IReadOnlyList<string> candidates, CancellationToken ct, out int asked)
     {
         var cands = candidates.ToArray();
         var windows = LanguageWindows(pcm.Length, Math.Max(1, count)).ToList();
-        return Vote(windows.Count, i => processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, windows[i].From, windows[i].Length), cands), ct);
+        var n = 0;
+        var winner = Vote(windows.Count, i =>
+        {
+            n++;
+            return processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, windows[i].From, windows[i].Length), cands);
+        }, ct);
+        asked = n;
+        return winner;
     }
 
     /// <summary>
