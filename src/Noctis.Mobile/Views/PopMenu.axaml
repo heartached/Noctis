@@ -37,6 +37,10 @@
         <Style Selector="Button.np-row">
             <Setter Property="MinHeight" Value="52" />
         </Style>
+        <!-- Delete Playlist, Remove from Playlist: the glass's red (MenuGlassDestructive). -->
+        <Style Selector="Button.np-row.np-danger">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassDestructive}" />
+        </Style>
         <Style Selector="Button.np-row PathIcon">
             <Setter Property="Width" Value="24" />
             <Setter Property="Height" Value="24" />
@@ -176,6 +180,32 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhLyrics}" />
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="Lyrics" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <!-- A playlist's own edits, the desktop's glyphs (MenuLineEdit, MenuLineTrash,
+                                                 MenuLinePlaylistRemove); the destructive rows last, in red, as the
+                                                 desktop's v2 menus and Apple's. -->
+                                            <Button Name="MenuRename" Classes="row np-row" Command="{Binding RenamePlaylistCommand}" IsVisible="{Binding CanEditPlaylist}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhEdit}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Rename" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Name="MenuRemoveFromPlaylist" Classes="row np-row np-danger" Command="{Binding RemoveFromPlaylistCommand}"
+                                                    IsVisible="{Binding CanRemoveFromPlaylist}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhPlaylistRemove}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Remove from Playlist" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Name="MenuDeletePlaylist" Classes="row np-row np-danger" Command="{Binding DeletePlaylistCommand}"
+                                                    IsVisible="{Binding CanEditPlaylist}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhTrash}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Delete Playlist" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
@@ -1482,10 +1483,13 @@ public class MobileAccountTests
             }
             Assert.Equal("0 songs · 0 MB", MobileFixtures.Named<TextBlock>(page, "StorageLabel").Text);
 
-            // Remove all downloads still asks first, inline.
+            // Remove all downloads still asks first, on the glass prompt over the sheet (owner 10-20).
             MobileFixtures.Named<Button>(page, "RemoveDownloadsButton").Command!.Execute(null);
             window.UpdateLayout();
-            Assert.True(MobileFixtures.Named<StackPanel>(page, "RemoveDownloadsConfirm").IsEffectivelyVisible);
+            var prompt = window.GetVisualDescendants().OfType<Noctis.Mobile.Views.PromptSheet>().Single();
+            Assert.True(prompt.IsVisible);
+            Assert.Equal("Remove all downloads?", MobileFixtures.Named<TextBlock>(prompt, "PromptTitle").Text);
+            MobileFixtures.Named<Button>(prompt, "PromptCancel").Command!.Execute(null);
 
             // No picture: the initials on the accent circle.
             account.AvatarPath = null;
@@ -1564,5 +1568,62 @@ public class MobileAccountTests
             Text = text;
             return Task.FromResult(true);
         }
+    }
+
+    // ── The glass prompt (owner 10-20: confirm prompts are pop-ups, not cards in the page) ──
+
+    /// <summary>Sign out asks on the shell's glass prompt: the question, one line, Sign Out in red,
+    /// and only with downloads on the phone a second red Sign Out and Remove Downloads (the switch
+    /// row offered it with nothing to remove). That second action removes them.</summary>
+    [Fact]
+    public async Task SignOut_AsksOnTheGlassPrompt_AndOffersRemovingDownloadsOnlyWithSome()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+
+        page.AskSignOutCommand.Execute(null);
+        var prompt = Assert.IsType<PromptViewModel>(shell.Prompt);
+        Assert.Equal("Sign out of Studio PC?", prompt.Title);
+        Assert.Equal("Its songs leave this phone's library. You can sign in again any time.", prompt.Message);
+        var only = Assert.Single(prompt.Actions);
+        Assert.Equal("Sign Out", only.Label);
+        Assert.True(only.IsDestructive);
+        prompt.CancelCommand.Execute(null);
+        Assert.False(shell.IsPromptOpen);
+        Assert.False(page.IsConfirmingSignOut);
+
+        account.DownloadedIds.Add(Guid.NewGuid());
+        account.RaiseStateChanged();
+        page.AskSignOutCommand.Execute(null);
+        Assert.Equal(new[] { "Sign Out", "Sign Out and Remove Downloads" }, shell.Prompt!.Actions.Select(a => a.Label));
+        await shell.Prompt.Actions[1].RunCommand.ExecuteAsync(null);
+        Assert.False(shell.IsPromptOpen);
+        Assert.Equal(new[] { true }, account.SignOuts);
+    }
+
+    /// <summary>Back, a tap off the card or Cancel: the question goes and the page forgets it
+    /// (the Remove downloads tile, greyed while asked, is live again); nothing is removed.</summary>
+    [Fact]
+    public void RemoveDownloads_BackCancelsTheGlassPrompt()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(Guid.NewGuid());
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+
+        page.AskRemoveDownloadsCommand.Execute(null);
+        Assert.Equal("Remove all downloads?", shell.Prompt!.Title);
+        Assert.Equal("Remove Downloads", Assert.Single(shell.Prompt.Actions).Label);
+        Assert.False(page.CanRemoveDownloads);
+
+        Assert.True(shell.TryHandleBack());
+        Assert.False(shell.IsPromptOpen);
+        Assert.False(page.IsConfirmingRemoveDownloads);
+        Assert.True(page.CanRemoveDownloads);
+        Assert.Equal(0, account.RemoveAllCalls);
+        Assert.IsType<AccountPageViewModel>(shell.CurrentPage);   // Back took the question, not the page
     }
 }

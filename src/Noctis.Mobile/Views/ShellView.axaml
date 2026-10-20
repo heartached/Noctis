@@ -350,6 +350,9 @@
         <views:ContextSheet Name="Sheet" DataContext="{Binding}" ZIndex="2" />
         <!-- An album's description, whole, on the same glass with the same pop. -->
         <views:AlbumNoteSheet Name="Note" DataContext="{Binding}" ZIndex="2" />
+        <!-- Every "are you sure?" and every name to type (Delete Playlist, Rename, Sign Out, Remove
+             Folder…), as Apple's action sheet on the same glass with the same pop. -->
+        <views:PromptSheet Name="Prompt" DataContext="{Binding}" ZIndex="2" />
 
         <!-- The player's short message (Player.Notice) over whatever is on screen, as Apple's
              banner: e.g. the computer did not answer, so songs that are not downloaded were

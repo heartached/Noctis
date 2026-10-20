@@ -252,6 +252,31 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool IsAlbumNoteOpen => AlbumNote != null;
 
+    /// <summary>An "are you sure?" or a name to type, as Apple's action sheet on the glass
+    /// (PromptSheet): Sign Out, Remove Downloads, Remove Folder, Delete Playlist, Rename.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPromptOpen))]
+    private PromptViewModel? _prompt;
+
+    public bool IsPromptOpen => Prompt != null;
+
+    /// <summary>Asks <paramref name="prompt"/>, closing whatever menu was up (the one it was
+    /// picked in) and any earlier question, which counts as cancelled.</summary>
+    public void ShowPrompt(PromptViewModel prompt)
+    {
+        CloseSheet();
+        Prompt = prompt;
+    }
+
+    /// <summary>Takes <paramref name="prompt"/> down if it is the one up: cancelled unless one
+    /// of its actions ran.</summary>
+    public void ClosePrompt(PromptViewModel prompt)
+    {
+        if (!ReferenceEquals(Prompt, prompt)) return;
+        Prompt = null;
+        prompt.NotifyCancelled();
+    }
+
     /// <summary>Shows an album's description on the glass sheet, closing whatever menu was up.</summary>
     public void ShowAlbumNote(AlbumNoteViewModel note)
     {
@@ -628,7 +653,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// </summary>
     public bool TryHandleBack()
     {
-        if (IsSheetOpen || IsMenuOpen || IsAlbumNoteOpen) { CloseSheet(); return true; }
+        if (IsSheetOpen || IsMenuOpen || IsAlbumNoteOpen || IsPromptOpen) { CloseSheet(); return true; }
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
@@ -756,6 +781,62 @@ public sealed partial class ShellViewModel : ObservableObject
     public Playlist CurrentPlaylist(Playlist playlist) =>
         Library.Playlists.FirstOrDefault(p => p.Id == playlist.Id) ?? playlist;
 
+    // ── Playlist editing (desktop parity: SidebarViewModel / PlaylistViewModel) ──
+
+    /// <summary>Rename: the glass prompt with the name in a pill field, selected to be typed
+    /// over. An empty name cannot be saved; the same name saves nothing (the desktop's rule).</summary>
+    public void AskRenamePlaylist(Playlist playlist)
+    {
+        var current = CurrentPlaylist(playlist);
+        ShowPrompt(new PromptViewModel(this, "Rename Playlist", string.Empty,
+            new[] { new PromptAction("Save", p => RenamePlaylistAsync(current, p.Entered)) })
+        {
+            HasField = true,
+            FieldPlaceholder = "Playlist Name",
+            FieldText = current.Name,
+        });
+    }
+
+    public async Task RenamePlaylistAsync(Playlist playlist, string name)
+    {
+        name = name.Trim();
+        if (name.Length == 0 || string.Equals(name, CurrentPlaylist(playlist).Name, StringComparison.Ordinal)) return;
+        await Library.RenamePlaylistAsync(playlist, name);
+    }
+
+    /// <summary>Delete Playlist asks first, as the desktop does ("This cannot be undone"); one of
+    /// the computer's says it goes there too.</summary>
+    public void AskDeletePlaylist(Playlist playlist)
+    {
+        var current = CurrentPlaylist(playlist);
+        var synced = Account?.IsSyncedPlaylist(current.Id) == true;
+        ShowPrompt(new PromptViewModel(this, $"Delete “{current.Name}”?",
+            synced ? "It's deleted from your computer too. This can't be undone." : "This can't be undone. The songs stay in your library.",
+            new[] { new PromptAction("Delete Playlist", _ => DeletePlaylistAsync(current), isDestructive: true) }));
+    }
+
+    /// <summary>Deletes the playlist (and its page, if it is the one on top); one of the
+    /// computer's is queued to be deleted there on the next sync.</summary>
+    public async Task DeletePlaylistAsync(Playlist playlist)
+    {
+        try
+        {
+            Account?.RecordPlaylistDeleted(playlist.Id);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Recording a playlist delete failed: {ex.Message}");
+        }
+        if (CurrentPage is SongListPageViewModel { Playlist: { } shown } && shown.Id == playlist.Id) GoBack();
+        await Library.DeletePlaylistAsync(playlist);
+    }
+
+    /// <summary>A song's Remove from Playlist (no question asked, as on the desktop and Apple's).</summary>
+    public async Task RemoveFromPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
+    {
+        await Library.RemoveFromPlaylistAsync(CurrentPlaylist(playlist), tracks);
+    }
+
     /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
     public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>
         playlist.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>();
@@ -792,6 +873,11 @@ public sealed partial class ShellViewModel : ObservableObject
         if (track != null) Sheet = ContextSheetViewModel.ForTrack(this, track);
     }
 
+    /// <summary>A song's menu on a list; <paramref name="inPlaylist"/> is the playlist whose page
+    /// it is on, which adds Remove from Playlist.</summary>
+    public void OpenTrackMenu(Track track, Playlist? inPlaylist) =>
+        Sheet = ContextSheetViewModel.ForTrack(this, track, inPlaylist);
+
     [RelayCommand]
     private void OpenAlbumSheet(Album? album)
     {
@@ -801,7 +887,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void OpenPlaylistSheet(Playlist? playlist)
     {
-        if (playlist != null) Sheet = ContextSheetViewModel.ForPlaylist(this, playlist);
+        if (playlist != null) Sheet = ContextSheetViewModel.ForPlaylist(this, CurrentPlaylist(playlist));
     }
 
     [RelayCommand]
@@ -840,6 +926,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     public void CloseSheet()
     {
+        if (Prompt is { } prompt) ClosePrompt(prompt);
         AlbumNote = null;
         Sheet = null;
         LibraryMenu = null;

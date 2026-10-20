@@ -411,21 +411,47 @@ public sealed partial class AccountPageViewModel : MobilePage
         }
     }
 
-    /// <summary>One question at a time: asking to remove the downloads closes a pending sign-out
-    /// question (both cards stood open at once, each with its own red button).</summary>
+    // The question up now (the shell's glass prompt), so a confirm from elsewhere takes it down.
+    private PromptViewModel? _question;
+
+    private void Ask(PromptViewModel question)
+    {
+        _question = question;
+        Shell.ShowPrompt(question);
+    }
+
+    private void DropQuestion()
+    {
+        if (_question is { } q) Shell.ClosePrompt(q);
+        _question = null;
+    }
+
+    /// <summary>One question at a time, on the glass prompt (owner 10-20: no more cards inside
+    /// the page): asking to remove the downloads closes a pending sign-out question.</summary>
     [RelayCommand]
     private void AskRemoveDownloads()
     {
+        DropQuestion();   // the one before is cancelled first, so its reset cannot undo this one
         IsConfirmingSignOut = false;
         IsConfirmingRemoveDownloads = true;
+        Ask(new PromptViewModel(Shell, "Remove all downloads?",
+            $"{StorageValue} leave this phone. They stay on your computer and still stream.",
+            new[] { new PromptAction("Remove Downloads", _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) },
+            cancelled: () => IsConfirmingRemoveDownloads = false));
     }
 
-    [RelayCommand] private void CancelRemoveDownloads() => IsConfirmingRemoveDownloads = false;
+    [RelayCommand]
+    private void CancelRemoveDownloads()
+    {
+        IsConfirmingRemoveDownloads = false;
+        DropQuestion();
+    }
 
     [RelayCommand]
     private async Task ConfirmRemoveDownloadsAsync()
     {
         IsConfirmingRemoveDownloads = false;
+        DropQuestion();
         await RunAsync("Removing downloads…", () => _account.RemoveAllDownloadsAsync());
         // The last download's report goes too: it put "Downloads finished" back under the
         // Download everything card over a phone that had just removed them all.
@@ -437,17 +463,35 @@ public sealed partial class AccountPageViewModel : MobilePage
     [RelayCommand]
     private void AskSignOut()
     {
+        DropQuestion();
         IsConfirmingRemoveDownloads = false;
         AlsoRemoveDownloads = false;
         IsConfirmingSignOut = true;
+        // Apple's way to ask "and the downloads too?": a second red action, only with something
+        // downloaded to remove (the switch row asked it with nothing on the phone).
+        var actions = new List<PromptAction> { new("Sign Out", _ => ConfirmSignOutCommand.ExecuteAsync(null), isDestructive: true) };
+        if (HasDownloads)
+            actions.Add(new PromptAction("Sign Out and Remove Downloads", _ =>
+            {
+                AlsoRemoveDownloads = true;
+                return ConfirmSignOutCommand.ExecuteAsync(null);
+            }, isDestructive: true));
+        Ask(new PromptViewModel(Shell, SignOutQuestion, "Its songs leave this phone's library. You can sign in again any time.",
+            actions, cancelled: () => IsConfirmingSignOut = false));
     }
 
-    [RelayCommand] private void CancelSignOut() => IsConfirmingSignOut = false;
+    [RelayCommand]
+    private void CancelSignOut()
+    {
+        IsConfirmingSignOut = false;
+        DropQuestion();
+    }
 
     [RelayCommand]
     private async Task ConfirmSignOutAsync()
     {
         IsConfirmingSignOut = false;
+        DropQuestion();
         var removeDownloads = AlsoRemoveDownloads;
         await RunAsync("Signing out…", () => _account.SignOutAsync(removeDownloads));
         SyncText = string.Empty;
@@ -562,6 +606,7 @@ public sealed partial class AccountPageViewModel : MobilePage
             IsCertificateChanged = false;
             IsConfirmingSignOut = false;
             IsConfirmingRemoveDownloads = false;
+            DropQuestion();
         }
         RefreshDownloads();
     }

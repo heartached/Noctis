@@ -74,6 +74,9 @@ public class MobileDesktopIconParityTests
         { "PhoneIcons", "PhRescan", "PluginsRefreshGlyph", 2.25 },
         { "PhoneIcons", "PhSettings", "SettingsIcon", -0.75 },
         { "PhoneIcons", "PhPlaylist", "MenuLinePlaylist", 2.25 },
+        // Playlist editing (owner 10-20): Rename, Remove from Playlist (Delete Playlist is PhTrash)
+        { "PhoneIcons", "PhEdit", "MenuLineEdit", 2.25 },
+        { "PhoneIcons", "PhPlaylistRemove", "MenuLinePlaylistRemove", 2.25 },
         // The lossless waveform (the album page's badge, Now Playing's quality badge): the mini player's
         { "PhoneIcons", "PhLossless", "LosslessWaveIcon", 0 },
         // Account: the desktop account card's glyphs (SettingsView.axaml)
