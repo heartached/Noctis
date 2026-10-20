@@ -219,7 +219,9 @@ public static partial class ExistingLyricsLoader
     public static IReadOnlyList<AlignedLine> ParseTimed(string text)
     {
         var raw = new List<(TimeSpan Start, string Text, List<WordTiming>? Words, LyricVoice Voice, List<AlignedWord>? Background)>();
-        foreach (var rawLine in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+        // A BOM kept in the text (lyrics copied into a tag from a file) is not part of the first
+        // line: Trim leaves it, its stamp then did not start the line, and the line was dropped.
+        foreach (var rawLine in text.TrimStart('﻿').Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
         {
             var line = rawLine.Trim();
             // A "[bg: …]" background vocal belongs to the timed line above it in the file, as on

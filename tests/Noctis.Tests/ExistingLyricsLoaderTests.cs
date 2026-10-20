@@ -100,6 +100,21 @@ public class ExistingLyricsLoaderTests : IDisposable
     }
 
     [Fact]
+    public void ParseTimed_TextStartingWithAByteOrderMark_KeepsItsFirstLine()
+    {
+        // Lyrics a tagger copied from a file with its BOM: the lyrics page shows the first line,
+        // and the Studio dropped it (its stamp no longer started the line), so a save lost it.
+        const string text = "﻿[00:01.00]First line\n[00:02.00]Second line";
+        var track = new Track { Title = "Song", SyncedLyrics = text };
+
+        var lines = ExistingLyricsLoader.Load(track)!.Lines;
+
+        Assert.Equal(new[] { "First line", "Second line" }, lines.Select(l => l.Text));
+        Assert.Equal(S(1), lines[0].Start);
+        Assert.Equal(Noctis.ViewModels.LyricsViewModel.ParseLrcContent(text).Where(l => !l.IsIntroPlaceholder).Select(l => l.Text), lines.Select(l => l.Text));
+    }
+
+    [Fact]
     public void Load_PrefersElrcSidecar_ThenLrc_ThenEmbedded()
     {
         TagLyrics("[00:01.00]embedded");
