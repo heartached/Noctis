@@ -75,8 +75,13 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public string PinLabel => IsPinned ? "Unpin" : "Pin to Home";
     public string PinTileLabel => IsPinned ? "Pinned" : "Pin";
 
-    public bool CanGoToAlbum => Track != null;
-    public bool CanGoToArtist => Track != null || Album != null;
+    // Not on that album's or artist's own page (it pushed the same page again), unless the
+    // player covers it: then the row uncovers the page.
+    public bool CanGoToAlbum => Track != null && (_shell.IsPlayerUp || !_shell.IsShowingAlbum(Track.AlbumId));
+    public bool CanGoToArtist => (Track != null || Album != null)
+        && (_shell.IsPlayerUp || ArtistTarget is not { } name || !_shell.IsShowingArtist(name));
+
+    private string? ArtistTarget => Track?.GroupingArtist ?? Album?.Artist;
 
     // ── Desktop songs (Settings → Account): offline copies ──
 
@@ -194,7 +199,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [RelayCommand]
     private void GoToArtist()
     {
-        var name = Track?.GroupingArtist ?? Album?.Artist;
+        var name = ArtistTarget;
         _shell.CloseSheet();
         if (!string.IsNullOrWhiteSpace(name)) _shell.OpenArtistCommand.Execute(name);
     }

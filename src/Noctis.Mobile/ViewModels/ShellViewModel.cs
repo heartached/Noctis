@@ -544,7 +544,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private void Push(MobilePage page, bool sheet)
     {
         CloseSheet();
-        if (IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen) CloseNowPlaying();
+        if (IsPlayerUp) CloseNowPlaying();
         page.IsSheet = sheet;
         Pages.Add(page);
         LastPageMove = PageMove.Push;
@@ -702,6 +702,11 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenAlbum(Album? album)
     {
         if (album == null) return;
+        if (IsShowingAlbum(album.Id))
+        {
+            ShowCurrentPage();
+            return;
+        }
         Navigate(new AlbumPageViewModel(this, CurrentAlbum(album)));
     }
 
@@ -710,7 +715,29 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenArtist(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
+        if (IsShowingArtist(name))
+        {
+            ShowCurrentPage();
+            return;
+        }
         Navigate(new ArtistPageViewModel(this, name));
+    }
+
+    // Go to Album / Go to Artist from that album's or artist's own page (Now Playing over it, a
+    // track's menu on it) pushed the same page again, and Back then showed it twice.
+    public bool IsShowingAlbum(Guid albumId) => CurrentPage is AlbumPageViewModel page && page.Album.Id == albumId;
+
+    public bool IsShowingArtist(string name) =>
+        CurrentPage is ArtistPageViewModel page && string.Equals(page.Name, name, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether Now Playing, Lyrics or the Queue covers the pages.</summary>
+    public bool IsPlayerUp => IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen;
+
+    /// <summary>The page asked for is the one under the menus and the player: uncover it.</summary>
+    private void ShowCurrentPage()
+    {
+        CloseSheet();
+        if (IsPlayerUp) CloseNowPlaying();
     }
 
     [RelayCommand]
