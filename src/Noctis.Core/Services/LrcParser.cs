@@ -367,7 +367,8 @@ public static partial class LrcParser
         TimeSpan Shift(TimeSpan t) => t + delta < TimeSpan.Zero ? TimeSpan.Zero : t + delta;
     }
 
-    private static int ParseLrcOffsetMilliseconds(string[] rawLines)
+    /// <summary>The file's global [offset:±ms] (the first one), 0 when none: added to every line and word time.</summary>
+    internal static int ParseLrcOffsetMilliseconds(string[] rawLines)
     {
         foreach (var rawLine in rawLines)
         {
