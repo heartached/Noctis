@@ -98,8 +98,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // Favourite/rating changes to desktop songs go through this to the account service,
         // which queues them for the next sync (it attaches itself once constructed).
         var stateRecorder = new NoctisStateRecorder();
+        // A folder that is out of reach (a card taken out, a folder renamed) keeps its songs and
+        // no longer holds up the others: removing or adding a folder still applies.
         var library = new LibraryService(metadata, persistence, index, audit, syncRecorder: stateRecorder,
-            fileSystem: new AndroidFileSystemSource(context));
+            fileSystem: new AndroidFileSystemSource(context)) { ScanPastUnavailableFolders = true };
         var history = new PlayHistoryService();
         // The application context, never the activity: the player outlives the activity
         // (it keeps playing in the background service) and holding the activity leaks it.
