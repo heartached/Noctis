@@ -51,9 +51,15 @@
             <Setter Property="Padding" Value="9,3,10,3" />
             <Setter Property="Height" Value="23" />
         </Style>
+        <!-- The bottom row = the desktop player bar's Lyrics, Volume and Queue buttons, their
+             glyphs and proportions: Lyrics and Queue in one box, the speaker at 16 of their 18. -->
         <Style Selector="Button.icon.bottom PathIcon">
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+        </Style>
+        <Style Selector="Button.icon.bottom PathIcon.speaker">
+            <Setter Property="Width" Value="21.3" />
+            <Setter Property="Height" Value="21.3" />
         </Style>
         <!-- The cover sits back while paused and comes forward when playing (Apple's). Nothing
              per-frame drives the class: IsPlaying changes only on play/pause. -->
@@ -184,7 +190,8 @@
                     </Grid>
                 </Grid>
 
-                <!-- Apple's sizes: filled glyphs, no circle, Play/Pause a little larger than the skips.
+                <!-- Filled glyphs, no circle, Play/Pause a little larger than the skips: the desktop
+                     player bar's 18 and 20, here 44 and 48 (the Queue pill: 30 and 33).
                      Shuffle and Repeat are on the Queue page (Apple's). -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
                     <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport"
@@ -194,8 +201,8 @@
                     <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport"
                             Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
                         <Panel>
-                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="46" Height="46" IsVisible="{Binding !Player.IsPlaying}" />
-                            <PathIcon Data="{DynamicResource PhPauseFill}" Width="46" Height="46" IsVisible="{Binding Player.IsPlaying}" />
+                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="48" Height="48" IsVisible="{Binding !Player.IsPlaying}" />
+                            <PathIcon Data="{DynamicResource PhPauseFill}" Width="48" Height="48" IsVisible="{Binding Player.IsPlaying}" />
                         </Panel>
                     </Button>
                     <Button Grid.Column="3" Name="NextButton" Classes="icon transport"
@@ -221,7 +228,7 @@
                         </Button>
                         <Button Grid.Column="1" Name="OutputButton" Classes="icon bottom" HorizontalAlignment="Center"
                                 Command="{Binding ShowOutputCommand}" AutomationProperties.Name="Output">
-                            <PathIcon Data="{DynamicResource PhOutput}" />
+                            <PathIcon Classes="speaker" Data="{DynamicResource PhVolumeHigh}" />
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon bottom" HorizontalAlignment="Center"
                                 Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
