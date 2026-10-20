@@ -89,6 +89,8 @@ public class MobileAccountTests
             Account = null;
             AvatarPath = null;
             if (removeDownloads) DownloadedIds.Clear();
+            // As the service does (NoctisAccountService.SignOutAsync): a final report with nothing running.
+            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes));
             StateChanged?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
@@ -1053,6 +1055,24 @@ public class MobileAccountTests
         Assert.False(page.IsSignedIn);
         Assert.True(page.IsFormVisible);
         Assert.False(page.IsConfirmingSignOut);
+    }
+
+    /// <summary>Sign-out's final download report (nothing running) was kept as the page's last
+    /// download, so signing back in on the same page showed "Downloads finished" under
+    /// Download everything with nothing downloaded.</summary>
+    [Fact]
+    public async Task SignOutThenIn_ShowsNoStaleDownloadsFinished()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var page = OpenAccount(ShellWith(rig, account));
+
+        page.AskSignOutCommand.Execute(null);
+        await page.ConfirmSignOutCommand.ExecuteAsync(null);
+        await account.SignInAsync("https://192.168.1.20:4747", "owner", "pw", Fingerprint);
+
+        Assert.True(page.IsSignedIn);
+        Assert.Equal(string.Empty, page.DownloadText);
     }
 
     [Fact]

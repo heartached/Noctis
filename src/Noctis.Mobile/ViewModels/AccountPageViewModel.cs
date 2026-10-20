@@ -522,7 +522,9 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     private void OnDownloadProgress(object? sender, NoctisDownloadProgress progress) => _marshal(() =>
     {
-        _lastDownload = progress;
+        // Sign-out's last report (nothing running, signed out) is not a download that finished:
+        // kept, it put "Downloads finished" back on the page at the next sign-in.
+        _lastDownload = progress.Pending == 0 && !_account.IsSignedIn ? null : progress;
         RefreshDownloads();
     });
 
