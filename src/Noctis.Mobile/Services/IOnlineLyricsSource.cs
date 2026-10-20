@@ -4,13 +4,21 @@ using Noctis.Services;
 namespace Noctis.Mobile.Services;
 
 /// <summary>What an online lookup found for a song: LRC text (synced when the source has it,
-/// else plain lines), or an instrumental answer with no text.</summary>
-public sealed record OnlineLyrics(string Text, bool Instrumental);
+/// else plain lines), an instrumental answer with no text, or <see cref="Unreachable"/>.</summary>
+public sealed record OnlineLyrics(string Text, bool Instrumental)
+{
+    /// <summary>The lookup failed (offline, timed out, the service busy or erroring), as opposed
+    /// to a miss: the page must not say none were found.</summary>
+    public bool Failed { get; init; }
+
+    public static OnlineLyrics Unreachable { get; } = new(string.Empty, false) { Failed = true };
+}
 
 /// <summary>
 /// Where the lyrics page goes when a song has nothing of its own (no sidecar, no tags) — the
-/// desktop's automatic online lookup. Null when nothing was found, offline or timed out; never
-/// throws for a failed lookup (cancelling may throw <see cref="OperationCanceledException"/>).
+/// desktop's automatic online lookup. Null when nothing was found; <see cref="OnlineLyrics.Unreachable"/>
+/// when offline, timed out or the service failed; never throws for a failed lookup (cancelling
+/// may throw <see cref="OperationCanceledException"/>).
 /// Tests inject a fake; the Android head injects <see cref="LrcLibOnlineLyricsSource"/>.
 /// </summary>
 public interface IOnlineLyricsSource
@@ -87,12 +95,12 @@ public sealed class LrcLibOnlineLyricsSource : IOnlineLyricsSource
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             DebugLog.Write("Lyrics", "Online lookup timed out");
-            return null;
+            return OnlineLyrics.Unreachable;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             DebugLog.Write("Lyrics", $"Online lookup failed: {ex.GetType().Name}: {ex.Message}");
-            return null;
+            return OnlineLyrics.Unreachable;
         }
     }
 

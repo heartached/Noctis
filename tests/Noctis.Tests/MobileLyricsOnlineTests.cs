@@ -213,10 +213,28 @@ public class MobileLyricsOnlineTests : IDisposable
     }
 
     [Fact]
-    public async Task LrcLibSource_AFailingProvider_IsNullNotAThrow()
+    public async Task LrcLibSource_AFailingProvider_IsAFailureNotAThrow()
     {
         var source = new LrcLibOnlineLyricsSource(new ThrowingLrcLib(), Path.Combine(_root, "lyrics_cache"));
-        Assert.Null(await source.FindAsync(NewTrack("Song"), CancellationToken.None));
+        var answer = await source.FindAsync(NewTrack("Song"), CancellationToken.None);
+        Assert.True(answer is { Failed: true, Instrumental: false });
+    }
+
+    /// <summary>Emulator 10-20: LRCLIB answered 503 (busy) and the page said "none were found
+    /// online", as if the song had no lyrics there. A lookup that failed says so.</summary>
+    [Fact]
+    public async Task AFailedLookup_SaysTheServiceWasNotReached_NotThatNoneWereFound()
+    {
+        var online = new FakeOnline { Answer = _ => Task.FromResult<OnlineLyrics?>(OnlineLyrics.Unreachable) };
+        var (vm, np, _, _, _) = Make(online);
+
+        np.PlayTracks(new[] { NewTrack("a") }, 0);
+        await WaitForAsync(() => !vm.IsLoading);
+
+        Assert.True(vm.ShowsEmptyState);
+        Assert.Equal("No Lyrics", vm.StatusText);
+        Assert.DoesNotContain("none were found", vm.StatusDetail);
+        Assert.Contains("couldn't be reached", vm.StatusDetail);
     }
 
     private sealed class ThrowingLrcLib : ILrcLibService

@@ -108,6 +108,9 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>The online source lists the song as instrumental.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusDetail))] private bool _isInstrumental;
 
+    /// <summary>The online lookup failed (offline, timed out, LRCLIB busy), not missed.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusDetail))] private bool _onlineLookupFailed;
+
     /// <summary>Where the shown lyrics came from (online ones get a credit under the last line).</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(SourceCredit))] private LyricsSource _source;
 
@@ -148,6 +151,8 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     public string StatusDetail =>
         IsSearchingOnline ? string.Empty
         : IsInstrumental ? "This song has no words to sing along to."
+        // LRCLIB busy (503) or no network read as "none were found online" (emulator 10-20).
+        : OnlineLookupFailed ? "This song has no lyrics file or lyrics in its tags, and the online lyrics service couldn't be reached. It's asked again the next time this song plays."
         : FindLyricsOnline && Online != null
             ? "This song has no lyrics file or lyrics in its tags, and none were found online."
             : "This song has no lyrics file or lyrics in its tags.";
@@ -300,6 +305,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsRawFallback = false;
         IsSearchingOnline = false;
         IsInstrumental = false;
+        OnlineLookupFailed = false;
         Source = LyricsSource.None;
         if (track == null)
         {
@@ -331,7 +337,11 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
             var found = await FindOnlineAsync(online, track);
             if (generation != _generation || _disposed) return;
             IsSearchingOnline = false;
-            if (found is { Instrumental: true })
+            if (found is { Failed: true })
+            {
+                OnlineLookupFailed = true;
+            }
+            else if (found is { Instrumental: true })
             {
                 IsInstrumental = true;
             }
@@ -373,7 +383,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             DebugLog.Write("Lyrics", $"Online lookup failed for {track.Title}: {ex.GetType().Name}");
-            return null;
+            return OnlineLyrics.Unreachable;
         }
     }
 
