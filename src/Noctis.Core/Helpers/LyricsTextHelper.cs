@@ -49,11 +49,11 @@ public static class LyricsTextHelper
     }
 
     private static readonly Regex TimestampRegex =
-        new(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]\s*", RegexOptions.Compiled);
+        new(@"\[\d{1,3}:\d{2,3}(?:[.:]\d{1,3})?\]\s*", RegexOptions.Compiled);
 
     // Inline enhanced-LRC ("A2") word tags, e.g. <00:05.41>.
     private static readonly Regex WordTagRegex =
-        new(@"<\d{1,3}:\d{2}(?:[.:]\d{1,3})?>", RegexOptions.Compiled);
+        new(@"<\d{1,3}:\d{2,3}(?:[.:]\d{1,3})?>", RegexOptions.Compiled);
 
     public static bool ContainsTimestamps(string? text) =>
         !string.IsNullOrWhiteSpace(text) && TimestampRegex.IsMatch(text);
@@ -61,7 +61,7 @@ public static class LyricsTextHelper
     // Every timing tag the shift must move: line tags [mm:ss.xx] and inline word tags
     // <mm:ss.xx>. Captures the bracket so the replacement keeps the tag's kind.
     private static readonly Regex AnyTimeTagRegex =
-        new(@"(?<open>[\[<])(?<min>\d{1,3}):(?<sec>\d{2})(?:[.:](?<frac>\d{1,3}))?(?<close>[\]>])", RegexOptions.Compiled);
+        new(@"(?<open>[\[<])(?<min>\d{1,3}):(?<sec>\d{2,3})(?:[.:](?<frac>\d{1,3}))?(?<close>[\]>])", RegexOptions.Compiled);
 
     /// <summary>
     /// GitHub #57: moves every line and word timestamp in <paramref name="lrc"/> by
@@ -77,7 +77,7 @@ public static class LyricsTextHelper
 
     // Inline word tags only (<mm:ss.xx>), with the same groups as AnyTimeTagRegex.
     private static readonly Regex WordTimeTagRegex =
-        new(@"(?<open><)(?<min>\d{1,3}):(?<sec>\d{2})(?:[.:](?<frac>\d{1,3}))?(?<close>>)", RegexOptions.Compiled);
+        new(@"(?<open><)(?<min>\d{1,3}):(?<sec>\d{2,3})(?:[.:](?<frac>\d{1,3}))?(?<close>>)", RegexOptions.Compiled);
 
     /// <summary>
     /// Moves the inline word tags (&lt;mm:ss.xx&gt;) in one line of LRC by <paramref name="offset"/>,

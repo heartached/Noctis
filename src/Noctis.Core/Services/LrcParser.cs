@@ -419,7 +419,9 @@ public static partial class LrcParser
                TimeSpan.FromSeconds(wholeSeconds + fractionalSeconds);
     }
 
-    [GeneratedRegex(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]")]
+    // Seconds may run past 59 ("[00:168.80]" = 2:48.80): some taggers never roll them into minutes,
+    // and with exactly two digits every line from 1:40 on was dropped (121 library files, 4,349 lines).
+    [GeneratedRegex(@"\[\d{1,3}:\d{2,3}(?:[.:]\d{1,3})?\]")]
     private static partial Regex LrcTimestampRegex();
 
     [GeneratedRegex(@"^\[(ar|ti|al|by|offset|re|ve|length|id):")]

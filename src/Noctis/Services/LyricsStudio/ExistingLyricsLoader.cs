@@ -23,7 +23,7 @@ public static partial class ExistingLyricsLoader
     private static readonly string[] LrcExtensions = { ".lrc", ".LRC", ".Lrc" };
     private static readonly string[] TtmlExtensions = { ".ttml", ".TTML", ".Ttml" };
 
-    [GeneratedRegex(@"^\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]")]
+    [GeneratedRegex(@"^\[(\d{1,3}):(\d{2,3})(?:[.:](\d{1,3}))?\]")]
     private static partial Regex LeadingTimestamp();
 
     [GeneratedRegex(@"^\[[A-Za-z][A-Za-z0-9_]*:[^\]]*\]$")]

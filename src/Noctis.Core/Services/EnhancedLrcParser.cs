@@ -14,8 +14,9 @@ namespace Noctis.Services;
 /// </summary>
 public static partial class EnhancedLrcParser
 {
-    // Inline word tag: <mm:ss.xx>, <mm:ss:xx> or <mm:ss>. Captures the time body.
-    [GeneratedRegex(@"<(\d{1,3}:\d{2}(?:[.:]\d{1,3})?)>")]
+    // Inline word tag: <mm:ss.xx>, <mm:ss:xx> or <mm:ss>; the seconds may run past 59 as in
+    // LrcParser's line stamps (<00:168.80>). Captures the time body.
+    [GeneratedRegex(@"<(\d{1,3}:\d{2,3}(?:[.:]\d{1,3})?)>")]
     private static partial Regex WordTagRegex();
 
     /// <summary>
