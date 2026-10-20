@@ -754,24 +754,27 @@ public class MobileSettingsTests
             var bins = page.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("folder-remove")).ToList();
             Assert.Equal(new[] { "Remove Tones", "Remove Beats" }, bins.Select(Avalonia.Automation.AutomationProperties.GetName));
             Assert.All(bins, b => Assert.True(b.Bounds.Width >= 44 && b.Bounds.Height >= 44));
-            var card = MobileFixtures.Named<Border>(page, "RemoveFolderCard");
-            Assert.False(card.IsEffectivelyVisible);
+            // Asked on the glass prompt over the sheet (owner 10-20), not in a card on the page.
+            var sheet = view.FindControl<PromptSheet>("Prompt")!;
+            Assert.False(sheet.IsVisible);
 
             bins[1].Command!.Execute(bins[1].CommandParameter);
             window.UpdateLayout();
-            Assert.True(card.IsEffectivelyVisible);
-            Assert.Equal("Remove “Beats”? Its songs leave your library on this phone. The files stay where they are.",
-                MobileFixtures.Named<TextBlock>(page, "RemoveFolderQuestion").Text);
+            Assert.True(sheet.IsVisible);
+            Assert.Equal("Remove “Beats”?", MobileFixtures.Named<TextBlock>(sheet, "PromptTitle").Text);
+            Assert.Equal("Its songs leave your library on this phone. The files stay where they are.",
+                MobileFixtures.Named<TextBlock>(sheet, "PromptMessage").Text);
+            Assert.Equal("Remove Folder", Assert.Single(rig.Shell.Prompt!.Actions).Label);
 
-            MobileFixtures.Named<Button>(page, "CancelRemoveFolderButton").Command!.Execute(null);
-            window.UpdateLayout();
-            Assert.False(card.IsEffectivelyVisible);
+            MobileFixtures.Named<Button>(sheet, "PromptCancel").Command!.Execute(null);
+            Assert.False(rig.Shell.IsPromptOpen);
+            Assert.False(vm.IsConfirmingRemoveFolder);
             Assert.Equal(2, vm.FolderRows.Count);
 
             bins[1].Command!.Execute(bins[1].CommandParameter);
-            await vm.ConfirmRemoveFolderCommand.ExecuteAsync(null);
+            await rig.Shell.Prompt!.Actions[0].RunCommand.ExecuteAsync(null);
             window.UpdateLayout();
-            Assert.False(card.IsEffectivelyVisible);
+            Assert.False(rig.Shell.IsPromptOpen);
             Assert.Equal(new[] { Tones }, (await rig.Persistence.LoadSettingsAsync()).MusicFolders);
             Assert.Equal(new[] { Tones }, rig.Library.ScanPasses.Last());
             Assert.Equal(new[] { "Tones", "Music/Tones" },
@@ -788,6 +791,15 @@ public class MobileSettingsTests
             vm.AskRemoveFolderCommand.Execute(vm.FolderRows[0]);
             vm.ShowMainCommand.Execute(null);
             Assert.False(vm.IsConfirmingRemoveFolder);
+            Assert.False(rig.Shell.IsPromptOpen);
+
+            // Back cancels it, as a tap off the card does.
+            vm.OpenPaneCommand.Execute(SettingsPane.Folders);
+            vm.AskRemoveFolderCommand.Execute(vm.FolderRows[0]);
+            Assert.True(rig.Shell.TryHandleBack());
+            Assert.False(rig.Shell.IsPromptOpen);
+            Assert.False(vm.IsConfirmingRemoveFolder);
+            Assert.Equal(SettingsPane.Folders, vm.Pane);   // Back took the question, not the page
         }
         finally
         {

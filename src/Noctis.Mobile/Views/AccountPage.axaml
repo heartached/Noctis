@@ -16,7 +16,7 @@
          look: GroupedStyles.axaml. -->
 
     <UserControl.Resources>
-        <!-- Destructive actions: the red of Settings' confirm rows. -->
+        <!-- Destructive actions: the red of the glass prompt's destructive pill (PromptSheet). -->
         <SolidColorBrush x:Key="AccountDangerBrush" Color="#E5484D" />
         <!-- Sign out: a door bracket with an arrow leaving it, drawn on the 24-grid like
              PhoneIcons.axaml (the corner anchors keep its box). The desktop has no sign-out glyph. -->
@@ -320,41 +320,11 @@
         <Style Selector="Button.action-tile:disabled /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
         </Style>
-        <!-- Leaving and removing: the tiles and confirm buttons in red. -->
+        <!-- Leaving and removing: the tiles in red (their questions ask on the glass prompt, PromptSheet). -->
         <Style Selector="Button.action-tile.danger views|GridIcon">
             <Setter Property="Foreground" Value="{DynamicResource AccountDangerBrush}" />
         </Style>
         <Style Selector="Button.action-tile.danger TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource AccountDangerBrush}" />
-        </Style>
-        <!-- An "are you sure?" card under the tiles (Settings' folder Remove asks the same way):
-             the question, a grey line of what follows, then its rows. -->
-        <Style Selector="TextBlock.confirm-title">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="16,14,16,0" />
-        </Style>
-        <Style Selector="TextBlock.confirm-text">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="16,4,16,12" />
-        </Style>
-        <Style Selector="Border.confirm-separator">
-            <Setter Property="Height" Value="0.5" />
-            <Setter Property="Margin" Value="16,0" />
-            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
-        </Style>
-        <Style Selector="Button.confirm-row">
-            <Setter Property="MinHeight" Value="52" />
-            <Setter Property="Padding" Value="16,0" />
-        </Style>
-        <Style Selector="Button.confirm-row TextBlock">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.confirm-row.danger TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource AccountDangerBrush}" />
         </Style>
     </UserControl.Styles>
@@ -625,44 +595,6 @@
                             <TextBlock Name="UploadLabel" Classes="group-footnote" Text="{Binding UploadText}"
                                        IsVisible="{Binding UploadText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
-
-                        <!-- Remove all downloads asks first. -->
-                        <Border Name="RemoveDownloadsCard" Classes="group-card" IsVisible="{Binding IsConfirmingRemoveDownloads}">
-                            <StackPanel Name="RemoveDownloadsConfirm" IsVisible="{Binding IsConfirmingRemoveDownloads}">
-                                <TextBlock Classes="confirm-title" Text="Remove all downloads?" />
-                                <TextBlock Classes="confirm-text"
-                                           Text="{Binding StorageValue, StringFormat='{}{0} leave this phone. They stay on your computer and still stream.'}" />
-                                <Border Classes="confirm-separator" />
-                                <Button Name="ConfirmRemoveDownloadsButton" Classes="row confirm-row danger" Command="{Binding ConfirmRemoveDownloadsCommand}">
-                                    <TextBlock Text="Remove Downloads" FontWeight="SemiBold" />
-                                </Button>
-                                <Border Classes="confirm-separator" />
-                                <Button Classes="row confirm-row" Command="{Binding CancelRemoveDownloadsCommand}">
-                                    <TextBlock Text="Cancel" />
-                                </Button>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Sign out asks first, and whether the downloads go too (Settings' switch row). -->
-                        <Border Name="SignOutCard" Classes="group-card" IsVisible="{Binding IsConfirmingSignOut}">
-                            <StackPanel Name="SignOutConfirm" IsVisible="{Binding IsConfirmingSignOut}">
-                                <TextBlock Classes="confirm-title" Text="{Binding SignOutQuestion}" />
-                                <TextBlock Classes="confirm-text" Text="Its songs leave this phone's library. You can sign in again any time." />
-                                <Border Classes="confirm-separator" />
-                                <ToggleButton Name="AlsoRemoveDownloadsBox" Classes="switch-row" IsChecked="{Binding AlsoRemoveDownloads}"
-                                              AutomationProperties.Name="Also remove downloads">
-                                    <TextBlock Classes="row-label" Text="Also remove downloads" />
-                                </ToggleButton>
-                                <Border Classes="confirm-separator" />
-                                <Button Name="ConfirmSignOutButton" Classes="row confirm-row danger" Command="{Binding ConfirmSignOutCommand}">
-                                    <TextBlock Text="Sign Out" FontWeight="SemiBold" />
-                                </Button>
-                                <Border Classes="confirm-separator" />
-                                <Button Classes="row confirm-row" Command="{Binding CancelSignOutCommand}">
-                                    <TextBlock Text="Cancel" />
-                                </Button>
-                            </StackPanel>
-                        </Border>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

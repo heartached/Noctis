@@ -259,29 +259,6 @@
         <Style Selector="Button.folder-remove:pressed">
             <Setter Property="Opacity" Value="0.5" />
         </Style>
-        <!-- Removing a folder asks first (AccountPage's "are you sure?" card): the question, then its rows. -->
-        <Style Selector="TextBlock.confirm-text">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="16,14,16,10" />
-        </Style>
-        <Style Selector="Border.confirm-separator">
-            <Setter Property="Height" Value="0.5" />
-            <Setter Property="Margin" Value="16,0" />
-            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
-        </Style>
-        <Style Selector="Button.confirm-row">
-            <Setter Property="MinHeight" Value="52" />
-            <Setter Property="Padding" Value="16,0" />
-        </Style>
-        <Style Selector="Button.confirm-row TextBlock">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.confirm-row.danger TextBlock">
-            <Setter Property="Foreground" Value="#E5484D" />
-        </Style>
-
         <!-- The Windows Settings slider (SettingsView's accent-slider): an 8 dp round-ended track,
              the accent filling up to a round thumb, the rest a soft grey. A SmoothSlider, as on
              the desktop: the thumb follows the finger, the setting moves in whole steps.
@@ -547,20 +524,6 @@
                                 </Border>
                                 <TextBlock Classes="group-footnote" Text="Your library on this phone is the music in these folders." />
                             </StackPanel>
-                            <!-- Remove asks first. -->
-                            <Border Name="RemoveFolderCard" Classes="group-card" IsVisible="{Binding IsConfirmingRemoveFolder}">
-                                <StackPanel>
-                                    <TextBlock Name="RemoveFolderQuestion" Classes="confirm-text" Text="{Binding RemoveFolderQuestion}" />
-                                    <Border Classes="confirm-separator" />
-                                    <Button Name="ConfirmRemoveFolderButton" Classes="row confirm-row danger" Command="{Binding ConfirmRemoveFolderCommand}">
-                                        <TextBlock Text="Remove Folder" FontWeight="SemiBold" />
-                                    </Button>
-                                    <Border Classes="confirm-separator" />
-                                    <Button Name="CancelRemoveFolderButton" Classes="row confirm-row" Command="{Binding CancelRemoveFolderCommand}">
-                                        <TextBlock Text="Cancel" />
-                                    </Button>
-                                </StackPanel>
-                            </Border>
                             <StackPanel>
                                 <Border Classes="group-card">
                                     <Button Name="AddFolderButton" Classes="row accent-row" Command="{Binding Shell.Library.AddFolderCommand}"

@@ -252,6 +252,31 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool IsAlbumNoteOpen => AlbumNote != null;
 
+    /// <summary>An "are you sure?" or a name to type, as Apple's action sheet on the glass
+    /// (PromptSheet): Sign Out, Remove Downloads, Remove Folder, Delete Playlist, Rename.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPromptOpen))]
+    private PromptViewModel? _prompt;
+
+    public bool IsPromptOpen => Prompt != null;
+
+    /// <summary>Asks <paramref name="prompt"/>, closing whatever menu was up (the one it was
+    /// picked in) and any earlier question, which counts as cancelled.</summary>
+    public void ShowPrompt(PromptViewModel prompt)
+    {
+        CloseSheet();
+        Prompt = prompt;
+    }
+
+    /// <summary>Takes <paramref name="prompt"/> down if it is the one up: cancelled unless one
+    /// of its actions ran.</summary>
+    public void ClosePrompt(PromptViewModel prompt)
+    {
+        if (!ReferenceEquals(Prompt, prompt)) return;
+        Prompt = null;
+        prompt.NotifyCancelled();
+    }
+
     /// <summary>Shows an album's description on the glass sheet, closing whatever menu was up.</summary>
     public void ShowAlbumNote(AlbumNoteViewModel note)
     {
@@ -628,7 +653,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// </summary>
     public bool TryHandleBack()
     {
-        if (IsSheetOpen || IsMenuOpen || IsAlbumNoteOpen) { CloseSheet(); return true; }
+        if (IsSheetOpen || IsMenuOpen || IsAlbumNoteOpen || IsPromptOpen) { CloseSheet(); return true; }
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
@@ -840,6 +865,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     public void CloseSheet()
     {
+        if (Prompt is { } prompt) ClosePrompt(prompt);
         AlbumNote = null;
         Sheet = null;
         LibraryMenu = null;

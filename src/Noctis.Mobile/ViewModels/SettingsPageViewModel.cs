@@ -147,7 +147,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     partial void OnPaneChanged(SettingsPane value)
     {
         if (value != SettingsPane.Main) ShownSubPane = value;
-        else FolderToRemove = null;   // a question left open on Music Folders does not wait there
+        else
+        {
+            FolderToRemove = null;   // a question left open on Music Folders does not wait there
+            DropQuestion();
+        }
     }
 
     [RelayCommand] private void OpenPane(SettingsPane pane) => Pane = pane;
@@ -193,9 +197,35 @@ public sealed partial class SettingsPageViewModel : MobilePage
         ? $"Remove “{folder.Title}”? Its songs leave your library on this phone. The files stay where they are."
         : string.Empty;
 
-    [RelayCommand] private void AskRemoveFolder(SettingsFolder folder) => FolderToRemove = folder;
+    // The question up now (the shell's glass prompt).
+    private PromptViewModel? _question;
 
-    [RelayCommand] private void CancelRemoveFolder() => FolderToRemove = null;
+    /// <summary>Asks on the glass prompt (owner 10-20: no more cards inside the page).</summary>
+    [RelayCommand]
+    private void AskRemoveFolder(SettingsFolder folder)
+    {
+        DropQuestion();
+        FolderToRemove = folder;
+        var question = new PromptViewModel(Shell, $"Remove “{folder.Title}”?",
+            "Its songs leave your library on this phone. The files stay where they are.",
+            new[] { new PromptAction("Remove Folder", _ => ConfirmRemoveFolderCommand.ExecuteAsync(null), isDestructive: true) },
+            cancelled: () => { if (ReferenceEquals(FolderToRemove, folder)) FolderToRemove = null; });
+        _question = question;
+        Shell.ShowPrompt(question);
+    }
+
+    [RelayCommand]
+    private void CancelRemoveFolder()
+    {
+        FolderToRemove = null;
+        DropQuestion();
+    }
+
+    private void DropQuestion()
+    {
+        if (_question is { } q) Shell.ClosePrompt(q);
+        _question = null;
+    }
 
     /// <summary>Concurrent: it awaits the rescan, and the next folder's Remove stayed greyed out
     /// for all of it (the confirm runs once per ask: <see cref="FolderToRemove"/> clears first).</summary>
@@ -204,6 +234,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         if (FolderToRemove is not { } folder) return;
         FolderToRemove = null;
+        DropQuestion();
         await Shell.Library.RemoveFolderAsync(folder.Root);
     }
 
