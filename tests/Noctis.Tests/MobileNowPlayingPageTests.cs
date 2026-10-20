@@ -422,8 +422,10 @@ public class MobileNowPlayingPageTests : IDisposable
         Assert.Equal(LyricsSource.None, LyricsLoader.Load(MobileFixtures.Song("Tone"), files, joinSplitWords: false).Source);
     }
 
+    /// <summary>Apple Music's lyrics show a thin auto-hiding scroll indicator at the right edge
+    /// (the owner's reference, 10-20), so the scroller keeps its overlay bar (Auto), not Hidden.</summary>
     [AvaloniaFact]
-    public void LyricsPage_HidesItsScrollBar_AndTheBannerWithoutAFallback()
+    public void LyricsPage_ShowsAThinScrollIndicator_AndHidesTheBannerWithoutAFallback()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
         var window = MobileFixtures.Mount(rig.Shell, out var view);
@@ -432,7 +434,7 @@ public class MobileNowPlayingPageTests : IDisposable
         window.UpdateLayout();
 
         var page = MobileFixtures.Find<LyricsPage>(view);
-        Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,
+        Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             MobileFixtures.Named<ScrollViewer>(page, "LyricsScroll").VerticalScrollBarVisibility);
         Assert.False(MobileFixtures.Named<TextBlock>(page, "FallbackBanner").IsVisible);
         window.Close();

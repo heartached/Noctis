@@ -669,9 +669,10 @@
 
                         <!-- Lyrics: the desktop's lyrics display settings that the phone's lyrics
                              page honours: the extra lines, the text size and the dimmed lines'
-                             floor, then joining split words. (The desktop's online sources,
-                             backgrounds, visualizer and fullscreen focus have nothing to act
-                             on here.) -->
+                             floor, joining split words, then the desktop's first online source
+                             (LRCLIB) for songs with no lyrics of their own. (The desktop's other
+                             sources, backgrounds, visualizer and fullscreen focus have nothing
+                             to act on here.) -->
                         <StackPanel Name="LyricsPane" Classes="grouped-content" IsVisible="{Binding ShowsLyricsPane}">
                             <StackPanel>
                                 <Border Name="LyricsCard" Classes="group-card">
@@ -726,6 +727,15 @@
                                     </ToggleButton>
                                 </Border>
                                 <TextBlock Classes="group-footnote" Text="Keeps words whole when TTML lyrics split them into syllables." />
+                            </StackPanel>
+                            <StackPanel>
+                                <Border Classes="group-card">
+                                    <ToggleButton Name="FindOnlineSwitch" Classes="switch-row" AutomationProperties.Name="Find Lyrics Online"
+                                                  IsChecked="{Binding Shell.Lyrics.FindLyricsOnline}">
+                                        <TextBlock Classes="row-label" Text="Find Lyrics Online" />
+                                    </ToggleButton>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="When a song has no lyrics file or lyrics in its tags, asks LRCLIB by its title, artist and length, as the desktop app does. Found lyrics are kept on the phone." />
                             </StackPanel>
                         </StackPanel>
                     </Panel>
