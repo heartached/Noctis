@@ -1517,7 +1517,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.IsTranscriptDraft = false;
             item.StatusText = $"{Math.Round(confidence * 100)}% matched · review";
             _drafts?.Save(item.Track.Id, LyricsStudioDraft.From(result));
-            OnSelectedChanged(item);
+            // The align runs off the UI thread: a song picked meanwhile keeps the screen. Rebuilding
+            // the review regardless put this song's lines under the other one, and Save wrote them there.
+            if (ReferenceEquals(Selected, item))
+                OnSelectedChanged(item);
             RaiseStartState();
             return;
         }
