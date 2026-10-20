@@ -1247,7 +1247,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review" + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
             DebugLogger.Info(DebugLogger.Category.Lyrics, ct.IsCancellationRequested ? "LyricsStudio.RunStopped" : "LyricsStudio.RunFinished",
                 $"done={done}/{total}, ready={Queue.Count(i => i.Status == StudioStatus.Ready)}");
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionClosing", "disposing the speech model");
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionClosing", "releasing the speech model (kept loaded a few minutes for the next run)");
         }
         catch (WhisperEngineUnavailableException ex)
         {

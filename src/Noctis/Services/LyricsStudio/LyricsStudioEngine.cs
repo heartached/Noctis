@@ -77,7 +77,17 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
     private readonly IAudioConverterService _ffmpeg;
     private readonly ILrcLibService _lrcLib;
     private WhisperTranscriber.Session? _session;
+    /// <summary>Which file <see cref="_session"/> holds: path, length and write time (a re-download reloads).</summary>
+    private string? _sessionKey;
+    private int _sessionUsers;
+    private Timer? _idleRelease;
     private readonly object _sessionGate = new();
+
+    /// <summary>
+    /// How long the speech model stays loaded after the last run ends, so the next Start skips
+    /// the load (seconds warm, up to 46 s from a cold disk, 09-29). Zero releases it at once.
+    /// </summary>
+    internal TimeSpan KeepModelLoaded { get; init; } = TimeSpan.FromMinutes(3);
 
     public WhisperModelManager Models { get; }
 
@@ -90,31 +100,85 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
 
     public bool HasFfmpeg => _ffmpeg.GetFfmpegPath() != null;
 
+    /// <summary>True while a loaded model is waiting for the next run (for tests and the session log).</summary>
+    internal bool HasLoadedModel { get { lock (_sessionGate) return _session is not null; } }
+
     public IDisposable OpenSession(WhisperModelSize model)
     {
         var path = Models.PathFor(model);
         if (!Models.IsInstalled(model))
             throw new InvalidOperationException($"The {WhisperModelManager.Info(model).DisplayName} model is not installed.");
+        var key = SessionKey(path);
         lock (_sessionGate)
         {
-            _session?.Dispose();
-            _session = new WhisperTranscriber.Session(path, WhisperModelManager.AlignmentHeads(model));
+            _idleRelease?.Dispose();
+            _idleRelease = null;
+            // A model loaded by an earlier run is reused; a changed file (a fresh download) is
+            // loaded again, but never under a run that still holds the old one.
+            if (_session is not null && _sessionKey != key && _sessionUsers == 0)
+            {
+                _session.Dispose();
+                _session = null;
+            }
+            if (_session is null)
+            {
+                _session = new WhisperTranscriber.Session(path, WhisperModelManager.AlignmentHeads(model));
+                _sessionKey = key;
+            }
+            else DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ModelReused", Path.GetFileName(path));
+            _sessionUsers++;
             return new SessionHandle(this);
         }
     }
 
+    private static string SessionKey(string path)
+    {
+        var file = new FileInfo(path);
+        return $"{file.FullName}|{(file.Exists ? file.Length : -1)}|{(file.Exists ? file.LastWriteTimeUtc.Ticks : 0)}";
+    }
+
+    /// <summary>The last run let go of the model: keep it for <see cref="KeepModelLoaded"/>, then free it.</summary>
+    private void ReleaseSession()
+    {
+        lock (_sessionGate)
+        {
+            if (--_sessionUsers > 0 || _session is null) return;
+            if (KeepModelLoaded <= TimeSpan.Zero)
+            {
+                FreeIdleSession();
+                return;
+            }
+            Timer? timer = null;
+            timer = new Timer(_ =>
+            {
+                lock (_sessionGate)
+                {
+                    if (!ReferenceEquals(_idleRelease, timer)) return;
+                    FreeIdleSession();
+                }
+            });
+            _idleRelease = timer;
+            timer.Change(KeepModelLoaded, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    /// <summary>Frees the model when no run holds it. Call under <see cref="_sessionGate"/>.</summary>
+    private void FreeIdleSession()
+    {
+        if (_sessionUsers > 0) return;
+        _idleRelease?.Dispose();
+        _idleRelease = null;
+        _session?.Dispose();
+        _session = null;
+        _sessionKey = null;
+        DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ModelReleased", "speech model freed after idle");
+    }
+
     private sealed class SessionHandle : IDisposable
     {
-        private readonly LyricsStudioEngine _owner;
+        private LyricsStudioEngine? _owner;
         public SessionHandle(LyricsStudioEngine owner) => _owner = owner;
-        public void Dispose()
-        {
-            lock (_owner._sessionGate)
-            {
-                _owner._session?.Dispose();
-                _owner._session = null;
-            }
-        }
+        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.ReleaseSession();
     }
 
     public async Task<LyricsStudioResult> ProcessAsync(Track track, LyricsStudioOptions options, IProgress<LyricsStudioProgress>? progress, CancellationToken ct)

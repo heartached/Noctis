@@ -100,6 +100,57 @@ public class LyricsStudioRealRunProbeTests
         Assert.Equal(1, final.Overall);
     }
 
+    /// <summary>
+    /// The model stays loaded for a while after a run (l2-speed 10-19: loads measured 1-100 s on
+    /// this PC, the slow ones from a busy hard disk), so the next Start reuses it; then it is freed.
+    /// </summary>
+    [Fact]
+    public async Task Probe_RealModel_IsKeptForTheNextRun_ThenFreed()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model)) return;
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.FromSeconds(1) };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+        Assert.True(engine.Models.IsInstalled(), "hard link failed: is the temp dir on the model's drive?");
+
+        var clock = Stopwatch.StartNew();
+        using (engine.OpenSession(WhisperModelSize.Medium)) { }
+        var firstLoad = clock.Elapsed;
+        Assert.True(engine.HasLoadedModel);
+
+        clock.Restart();
+        using (engine.OpenSession(WhisperModelSize.Medium)) { }
+        var reopen = clock.Elapsed;
+        _out.WriteLine($"first load {firstLoad.TotalSeconds:0.00}s, reopen {reopen.TotalMilliseconds:0}ms");
+        Assert.True(reopen < TimeSpan.FromMilliseconds(250), $"reopen took {reopen.TotalMilliseconds:0} ms");
+
+        // Idle past the keep time: freed.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (engine.HasLoadedModel && DateTime.UtcNow < deadline) await Task.Delay(100);
+        Assert.False(engine.HasLoadedModel);
+    }
+
+    [Fact]
+    public void Probe_RealModel_KeepZero_FreesAtOnce()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model)) return;
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.Zero };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+
+        var handle = engine.OpenSession(WhisperModelSize.Medium);
+        Assert.True(engine.HasLoadedModel);
+        handle.Dispose();
+        handle.Dispose(); // a second dispose is harmless
+        Assert.False(engine.HasLoadedModel);
+    }
+
     private static void Run(string file, string args)
     {
         var psi = new ProcessStartInfo(file, args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
