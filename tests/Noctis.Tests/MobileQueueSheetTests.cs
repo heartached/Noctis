@@ -385,7 +385,8 @@ public class MobileQueueSheetTests
         var (rig, window, view, page, _) = OpenQueue();
         using var _rig = rig;
         var chrome = view.FindControl<Panel>("BottomChrome")!;
-        var layer = view.FindControl<Panel>("ChromeLayer")!;   // the bar's full-screen layer, raised over the Queue
+        // The bar's full-screen layer, raised over the Queue: its theme scope is the shell grid's child.
+        var layer = view.FindControl<ThemeVariantScope>("ChromeScope")!;
         var sheet = MobileFixtures.Named<Border>(page, "Sheet");
         Assert.True(layer.ZIndex > page.ZIndex);
 
