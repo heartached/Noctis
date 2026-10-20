@@ -124,7 +124,6 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         // Each list is replaced only when its results differ: a keystroke that narrows nothing
         // (and every library refresh) used to Reset all of them, re-realising every row and
         // every album tile — the typing lag on a broad query.
-        MobileLibrary.ReplaceIfChanged(Songs, Shows(SearchScope.Songs) ? results.Songs : Array.Empty<Track>());
         MobileLibrary.ReplaceIfChanged(Albums, Shows(SearchScope.Albums) ? results.Albums : Array.Empty<Album>());
         MobileLibrary.ReplaceIfChanged(Playlists, Shows(SearchScope.Playlists)
             ? results.Playlists.Select(p => new PlaylistResult(p, Shell.Library.PlaylistArtwork(p))).ToList()
@@ -146,6 +145,17 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
                 .ToList());
         if (Featured != null) Photos.Request(Featured, PhotoDelay);
         foreach (var artist in Artists) Photos.Request(artist, PhotoDelay);
+
+        // Under All the featured artist's card already lists their top songs: the Songs section
+        // repeated the same rows right under it (an artist's name matches their songs). It
+        // keeps the rest; the Songs chip (and its ›) still lists every match.
+        var shownSongs = Shows(SearchScope.Songs) ? results.Songs : Array.Empty<Track>();
+        if (FeaturedSongs.Count > 0)
+        {
+            var inCard = new HashSet<Track>(FeaturedSongs, ReferenceEqualityComparer.Instance);
+            shownSongs = shownSongs.Where(t => !inCard.Contains(t)).ToList();
+        }
+        MobileLibrary.ReplaceIfChanged(Songs, shownSongs);
 
         HasSongs = Songs.Count > 0;
         HasAlbums = Albums.Count > 0;
