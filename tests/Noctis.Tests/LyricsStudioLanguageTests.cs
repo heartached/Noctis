@@ -122,4 +122,49 @@ public class LyricsStudioLanguageTests
     {
         Assert.Equal(new[] { (0, 20 * 16000) }, WhisperTranscriber.LanguageWindows(20 * 16000, 3).ToArray());
     }
+
+    // ── The vote stops when the last window cannot change it (each window is an encoder pass) ──
+
+    private static (string? Winner, int Asked) RunVote(params (string? Code, float P)[] windows)
+    {
+        var asked = 0;
+        var winner = WhisperTranscriber.Vote(windows.Length, i => { asked++; return windows[i]; }, CancellationToken.None);
+        return (winner, asked);
+    }
+
+    [Fact]
+    public void Vote_TwoSureWindowsThatAgree_SkipTheThird()
+    {
+        Assert.Equal(("en", 2), RunVote(("en", 0.9f), ("en", 0.8f), ("es", 1f)));
+    }
+
+    [Fact]
+    public void Vote_WindowsThatDisagree_AskThemAll()
+    {
+        Assert.Equal(("es", 3), RunVote(("en", 0.9f), ("es", 0.8f), ("es", 0.7f)));
+    }
+
+    [Fact]
+    public void Vote_AgreeingButUnsureWindows_AskTheThird()
+    {
+        // 0.5 + 0.4 is not more than the 1 a third window can add: it could still win alone.
+        Assert.Equal(("ru", 3), RunVote(("en", 0.5f), ("en", 0.4f), ("ru", 1f)));
+    }
+
+    [Fact]
+    public void Vote_StoppingEarly_NeverChangesTheWinner()
+    {
+        var rng = new Random(1234);
+        var codes = new string?[] { "en", "es", "ru", null };
+        for (var n = 0; n < 20000; n++)
+        {
+            var count = rng.Next(1, 5);
+            var windows = Enumerable.Range(0, count).Select(_ => (codes[rng.Next(codes.Length)], rng.Next(3) == 0 ? 1f : (float)rng.NextDouble())).ToArray();
+            var full = windows.Where(w => w.Item1 is not null).GroupBy(w => w.Item1!)
+                .Select(g => (Code: g.Key, Sum: g.Sum(w => (double)w.Item2)))
+                .OrderByDescending(x => x.Sum).ThenBy(x => x.Code, StringComparer.Ordinal)
+                .Select(x => x.Code).FirstOrDefault();
+            Assert.Equal(full, RunVote(windows).Winner);
+        }
+    }
 }

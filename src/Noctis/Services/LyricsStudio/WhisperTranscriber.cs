@@ -224,16 +224,48 @@ public sealed class WhisperTranscriber
     /// </summary>
     private static string? VoteLanguage(WhisperProcessor processor, float[] pcm, int count, IReadOnlyList<string> candidates, CancellationToken ct)
     {
-        var votes = new Dictionary<string, double>(StringComparer.Ordinal);
         var cands = candidates.ToArray();
-        foreach (var (from, length) in LanguageWindows(pcm.Length, Math.Max(1, count)))
+        var windows = LanguageWindows(pcm.Length, Math.Max(1, count)).ToList();
+        return Vote(windows.Count, i => processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, windows[i].From, windows[i].Length), cands), ct);
+    }
+
+    /// <summary>
+    /// The vote itself: <paramref name="detect"/> names window i's language and its probability;
+    /// the language with the highest sum wins (ties by code). Each window is a full encoder pass
+    /// (seconds on a CPU), so the vote stops as soon as the windows left could not change the
+    /// winner (<see cref="VoteSettled"/>): the result is the one all windows would give.
+    /// </summary>
+    internal static string? Vote(int windowCount, Func<int, (string? Code, float P)> detect, CancellationToken ct)
+    {
+        var votes = new Dictionary<string, double>(StringComparer.Ordinal);
+        for (var i = 0; i < windowCount; i++)
         {
             ct.ThrowIfCancellationRequested();
-            var (code, p) = processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, from, length), cands);
-            if (string.IsNullOrWhiteSpace(code)) continue;
-            votes[code] = votes.GetValueOrDefault(code) + Math.Max(0, p);
+            var (code, p) = detect(i);
+            if (!string.IsNullOrWhiteSpace(code))
+                votes[code] = votes.GetValueOrDefault(code) + Math.Clamp(p, 0f, 1f);
+            if (VoteSettled(votes, windowCount - i - 1)) break;
         }
         return votes.Count == 0 ? null : votes.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).First().Key;
+    }
+
+    /// <summary>
+    /// True when <paramref name="windowsLeft"/> more windows cannot change the vote's winner: each
+    /// adds at most 1 to one language, so the leader is safe once it is more than that ahead of
+    /// every other language (one with no vote yet included). Strictly ahead, so no tie can reorder it.
+    /// </summary>
+    internal static bool VoteSettled(IReadOnlyDictionary<string, double> votes, int windowsLeft)
+    {
+        if (windowsLeft <= 0) return true;
+        if (votes.Count == 0) return false;
+        var leader = double.MinValue;
+        var second = 0.0;
+        foreach (var v in votes.Values)
+        {
+            if (v > leader) { second = Math.Max(second, leader); leader = v; }
+            else second = Math.Max(second, v);
+        }
+        return leader - second > windowsLeft;
     }
 
     /// <summary>Where the language windows go: centred at 1/(n+1) … n/(n+1) of the song, 30 s long (shorter songs: the whole song).</summary>
