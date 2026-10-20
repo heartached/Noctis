@@ -837,16 +837,20 @@ public sealed partial class ShellViewModel : ObservableObject
     public async Task SetFavouriteAsync(IReadOnlyList<Track> tracks, bool favourite)
     {
         if (tracks.Count == 0) return;
-        foreach (var t in tracks) t.IsFavorite = favourite;
+        // The library's own songs too: the queue keeps its Track objects, and a rescan that
+        // re-read a changed file (or a sync) made the library a new one. The save journals the
+        // library's copy, so flagging only the queue's lost the heart (never in Favorites).
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).ToList();
+        foreach (var t in tracks.Concat(current)) t.IsFavorite = favourite;
         try
         {
-            await Library.Service.SaveTrackUserStateAsync(tracks.ToList());
+            await Library.Service.SaveTrackUserStateAsync(current);
         }
         catch (Exception ex)
         {
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
-        Library.Service.NotifyFavoritesChanged(tracks.ToList());
+        Library.Service.NotifyFavoritesChanged(current);
     }
 
     [RelayCommand]
