@@ -338,4 +338,36 @@ public class MobileThemeSweepTests
         foreach (var f in failures) _o.WriteLine(f);
         Assert.True(failures.Count == 0, $"{failures.Count} unreadable:\n" + string.Join("\n", failures.Take(80)));
     }
+    /// <summary>One size per role (owner 10-20, "consistent"): a song row's ⋯ is the same glyph at
+    /// the same size in the Songs list, on an album and on an artist page (the list's drew 22 to
+    /// the album's and artist's 24).</summary>
+    [AvaloniaFact]
+    public void ARowsOverflowGlyph_IsOneSize_OnEveryPage()
+    {
+        var (tracks, albums) = Library();
+        using var rig = MobileFixtures.MakeRig(tracks, albums);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        var sizes = new List<(string Page, Size Size)>();
+        void Collect(string page)
+        {
+            MobileFixtures.Land(window);
+            var more = view.FindResource("PhMore");
+            var top = (Visual?)MobileFixtures.PageView(view, rig.Shell.CurrentPage!) ?? view;
+            foreach (var glyph in top.GetVisualDescendants().OfType<PathIcon>()
+                         .Where(g => ReferenceEquals(g.Data, more) && g.IsEffectivelyVisible
+                                     && !g.GetVisualAncestors().OfType<GlassPanel>().Any()))
+                sizes.Add((page, glyph.Bounds.Size));
+        }
+        rig.Shell.OpenSongsCommand.Execute(null);
+        Collect("Songs");
+        rig.Shell.OpenAlbumCommand.Execute(albums[0]);
+        Collect("Album");
+        rig.Shell.OpenArtistCommand.Execute("M83");
+        Collect("Artist");
+        window.Close();
+        Assert.Contains(sizes, s => s.Page == "Songs");
+        Assert.Contains(sizes, s => s.Page == "Album");
+        Assert.True(sizes.Select(s => s.Size).Distinct().Count() == 1,
+            string.Join(", ", sizes.Select(s => $"{s.Page} {s.Size}").Distinct()));
+    }
 }
