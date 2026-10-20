@@ -529,6 +529,63 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         }
     }
 
+    /// <summary>The socket handler, with every song's download held until the test lets them go.</summary>
+    private sealed class HeldDownloads(HttpMessageHandler inner) : DelegatingHandler(inner)
+    {
+        private readonly TaskCompletionSource _go = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly List<string> _waiting = new();
+        public string[] Waiting { get { lock (_waiting) return _waiting.ToArray(); } }
+        public void Release() => _go.TrySetResult();
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("download.view", StringComparison.Ordinal))
+            {
+                lock (_waiting) _waiting.Add(request.RequestUri.Query);
+                await _go.Task.WaitAsync(ct);
+            }
+            return await base.SendAsync(request, ct);
+        }
+    }
+
+    /// <summary>
+    /// Remove Download on a song of a running batch: the batch went on and downloaded it anyway,
+    /// a song still queued when it came up and one already downloading once its file landed.
+    /// </summary>
+    [Fact]
+    public async Task RemoveDownload_DuringABatch_StopsThatSong_WhetherQueuedOrDownloading()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        HeldDownloads? held = null;
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => held = new HeldDownloads(NoctisHandlers.Sockets(accept)),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+        await svc.SyncNowAsync(ct);
+        NoctisDownloadProgress? last = null;
+        svc.DownloadProgress += (_, p) => last = p;
+
+        var batch = svc.DownloadAllAsync(ct);
+        await Until(() => held is { Waiting.Length: 2 });   // two downloading, one queued
+        var desk = new[] { _t1, _t2, _t3 };
+        var downloading = desk.Where(t => held!.Waiting.Any(q => q.Contains(t.Id.ToString("N"), StringComparison.Ordinal))).ToList();
+        var queued = desk.Except(downloading).Single();
+        var kept = downloading[1];
+        await svc.RemoveDownloadsAsync(new[] { Phone(downloading[0]), Phone(queued) });
+        held!.Release();
+        await batch.WaitAsync(TimeSpan.FromSeconds(20), ct);
+
+        Assert.True(svc.IsDownloaded(Phone(kept)));
+        Assert.False(svc.IsDownloaded(Phone(downloading[0])));
+        Assert.False(svc.IsDownloaded(Phone(queued)));
+        Assert.Equal(1, svc.DownloadedCount);
+        Assert.Single(Directory.GetFiles(OfflineDir));
+        Assert.Equal(new NoctisDownloadProgress(0, 1, 0, _audio.Length), last);   // removed is not failed
+
+        // Asked for again later, it downloads as usual.
+        await svc.DownloadAsync(new[] { Phone(queued) }, ct).WaitAsync(TimeSpan.FromSeconds(20), ct);
+        Assert.True(svc.IsDownloaded(Phone(queued)));
+    }
+
     [Fact]
     public async Task ADownloadThatStalls_FailsThatSong_AndTheBatchCarriesOn()
     {

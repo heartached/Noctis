@@ -81,7 +81,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     private sealed record DownloadedFile(string Path, long Size);
     private readonly ConcurrentDictionary<Guid, DownloadedFile> _downloaded = new();
-    private readonly ConcurrentDictionary<Guid, byte> _inFlight = new();
+    /// <summary>Songs downloading now, each with its own stop (Remove Download on it).</summary>
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _inFlight = new();
+    /// <summary>Songs whose download was removed: a batch that still holds one skips it, and one
+    /// that finishes it throws the file away. Cleared when the song is asked for again.</summary>
+    private readonly ConcurrentDictionary<Guid, byte> _withdrawn = new();
+    /// <summary>A finished download joins <see cref="_downloaded"/> and a removal withdraws it under this,
+    /// so a removal can never land between the check and the add.</summary>
+    private readonly object _downloadCommit = new();
     private readonly SemaphoreSlim _downloadSlots = new(DownloadConcurrency, DownloadConcurrency);
     private readonly List<Task> _downloadRuns = new();
     private CancellationTokenSource _downloadCts = new();
@@ -1187,6 +1194,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
     {
         var ids = tracks.Where(IsRemote).Select(t => t.Id).Distinct().Where(id => !_downloaded.ContainsKey(id)).ToList();
+        foreach (var id in ids) _withdrawn.TryRemove(id, out _);   // asked for again: no longer removed
         return RunDownloadsAsync(ids, ct);
     }
 
@@ -1235,19 +1243,25 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 try
                 {
-                    if (token.IsCancellationRequested || _downloaded.ContainsKey(id) || !_inFlight.TryAdd(id, 0)) continue;
+                    // Removed while it waited in this batch's queue: skipped, not downloaded anyway.
+                    if (token.IsCancellationRequested || _downloaded.ContainsKey(id) || _withdrawn.ContainsKey(id)) continue;
+                    using var song = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    if (!_inFlight.TryAdd(id, song)) continue;
                     try
                     {
-                        await _downloadSlots.WaitAsync(token).ConfigureAwait(false);
+                        if (_withdrawn.ContainsKey(id)) continue;   // removed just before it was marked in flight
+                        await _downloadSlots.WaitAsync(song.Token).ConfigureAwait(false);
                         try
                         {
-                            await DownloadOneAsync(client, id, token).ConfigureAwait(false);
+                            await DownloadOneAsync(client, id, song.Token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);
                             Interlocked.Increment(ref done);
                         }
                         finally { _downloadSlots.Release(); }
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+                    // Remove Download on this song mid-transfer: stopped, neither done nor failed.
+                    catch (Exception) when (song.IsCancellationRequested || _withdrawn.ContainsKey(id)) { }
                     catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull)
                     {
                         // Every other song would fail the same way.
@@ -1271,7 +1285,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         Interlocked.Increment(ref failed);
                         DebugLog.Write("Account", $"download failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
                     }
-                    finally { _inFlight.TryRemove(id, out _); }
+                    finally { _inFlight.TryRemove(new KeyValuePair<Guid, CancellationTokenSource>(id, song)); }
                 }
                 finally
                 {
@@ -1316,7 +1330,18 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             var final = InsideOffline(hex + "." + ExtensionFor(id, contentType, flac));
             if (_downloaded.TryGetValue(id, out var old) && old.Path != final) NoctisServerClient.TryDelete(old.Path);
             File.Move(part, final, overwrite: true);
-            _downloaded[id] = new DownloadedFile(final, new FileInfo(final).Length);
+            bool removed;
+            lock (_downloadCommit)
+            {
+                removed = _withdrawn.ContainsKey(id);
+                if (!removed) _downloaded[id] = new DownloadedFile(final, new FileInfo(final).Length);
+            }
+            if (removed)
+            {
+                // Remove Download came as the last bytes landed: the file goes, as it asked.
+                NoctisServerClient.TryDelete(final);
+                throw new OperationCanceledException("The download was removed.");
+            }
         }
         finally
         {
@@ -1369,7 +1394,22 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         return Task.Run(() =>
         {
             foreach (var id in ids)
-                if (_downloaded.TryRemove(id, out var f)) NoctisServerClient.TryDelete(f.Path);
+            {
+                // A running batch that holds the song skips it, or stops it mid-transfer; removing
+                // only the finished file left both to download it anyway.
+                DownloadedFile? f;
+                lock (_downloadCommit)
+                {
+                    _withdrawn[id] = 0;
+                    _downloaded.TryRemove(id, out f);
+                }
+                if (f != null) NoctisServerClient.TryDelete(f.Path);
+                if (_inFlight.TryGetValue(id, out var song))
+                {
+                    try { song.Cancel(); }
+                    catch (ObjectDisposedException) { /* it just finished */ }
+                }
+            }
             RaiseDownloadProgress();
             RaiseStateChanged();
         });
