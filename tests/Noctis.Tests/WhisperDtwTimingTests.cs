@@ -170,6 +170,28 @@ public class WhisperDtwTimingTests
         Assert.Equal("\uFFFD서", WhisperTranscriber.WordsFromTokens(tokens, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), " 따와 love")[0].Text);
     }
 
+    [Fact]
+    public void BracketedSegment_TheAudioDoesNotHold_IsADescriptionOfTheMusic_NotLyrics()
+    {
+        // "(Instrumental)" over an intro (benchmark 10-19, 8 of 11 transcripts): DTW finds no place
+        // for it inside its segment, so it used to be spread over 0:00–0:03 as the draft's first line.
+        var lost = new[]
+        {
+            new WhisperTranscriber.TokenView(" (", 900, 920, 0.6f),
+            new WhisperTranscriber.TokenView("Instrumental", 920, 960, 0.6f),
+            new WhisperTranscriber.TokenView(")", 960, 970, 0.6f),
+        };
+        Assert.Empty(WhisperTranscriber.WordsFromTokens(lost, TimeSpan.Zero, TimeSpan.FromSeconds(3.4), " (Instrumental)"));
+
+        // Not wholly in brackets, or placed by DTW (a backing vocal): kept as before.
+        var sung = new[] { new WhisperTranscriber.TokenView(" (Ooh)", 900, 960, 0.6f), new WhisperTranscriber.TokenView(" yeah", 960, 990, 0.6f) };
+        Assert.Equal(new[] { "(Ooh)", "yeah" }, WhisperTranscriber.WordsFromTokens(sung, TimeSpan.Zero, TimeSpan.FromSeconds(3.4), " (Ooh) yeah").Select(w => w.Text));
+        var twoGroups = new[] { new WhisperTranscriber.TokenView(" (Ooh)", 900, 960, 0.6f), new WhisperTranscriber.TokenView(" (yeah)", 960, 990, 0.6f) };
+        Assert.Equal(2, WhisperTranscriber.WordsFromTokens(twoGroups, TimeSpan.Zero, TimeSpan.FromSeconds(3.4), " (Ooh) (yeah)").Count);
+        var placed = new[] { new WhisperTranscriber.TokenView(" (Ooh)", 100, 160, 0.9f) };
+        Assert.Equal(Cs(100), Assert.Single(WhisperTranscriber.WordsFromTokens(placed, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), " (Ooh)")).Start);
+    }
+
     private const int Sr = PcmDecoder16k.SampleRate;
     private const int Window = 30 * Sr;
 

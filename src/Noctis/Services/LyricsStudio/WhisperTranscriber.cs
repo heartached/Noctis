@@ -420,8 +420,23 @@ public sealed class WhisperTranscriber
             result.Add(new RecognizedWord(w.Text, s, e, w.Prob / Math.Max(1, w.Count)));
         }
         if (!sane)
+        {
+            // A segment wholly in brackets that the audio does not hold is Whisper describing the
+            // music, not lyrics: "(Instrumental)", "(MÚSICA)", "(Gritos y aplausos)" over an intro
+            // were the first line of 8 of 11 transcripts (benchmark 10-19). Dropped: corpus WER
+            // 0.353 → 0.346, no song worse; Align's line starts against the transcript unchanged.
+            if (IsBracketed(segmentText ?? string.Join(' ', words.Select(w => w.Text))))
+                return new List<RecognizedWord>();
             return Spread(words.Select(w => w.Text).ToArray(), segStart, segEnd, (float)words.Average(w => w.Prob / Math.Max(1, w.Count)));
+        }
         return result;
+    }
+
+    /// <summary>One bracketed group and nothing else: "(…)" or "[…]".</summary>
+    private static bool IsBracketed(string text)
+    {
+        var t = text.Trim();
+        return t.Length > 2 && t[0] is '(' or '[' && t.IndexOfAny(new[] { ')', ']' }) == t.Length - 1;
     }
 
     private static List<RecognizedWord> Spread(string[] pieces, TimeSpan start, TimeSpan end, float probability)
