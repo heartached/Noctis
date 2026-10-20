@@ -53,6 +53,26 @@ public class MobileUnreachableComputerPlaybackTests : IDisposable
         return (vm, player);
     }
 
+    /// <summary>The computer came back: a song that needs it really plays (Previous restarted it).
+    /// "Unreachable" was cleared only by a new queue or Play from stopped, so at its end every
+    /// later desktop song was still passed over and playback stopped with "Can't reach".</summary>
+    [Fact]
+    public void ADesktopSongThatPlays_ProvesTheComputerIsBack()
+    {
+        var t = Tracks("ss");
+        var (vm, player) = Make(t);
+        vm.PlayTracks(t, 0);
+        player.RaisePlaybackError(Timeout);                       // computer off: stops on s0
+        Assert.Same(t[0], vm.CurrentTrack);
+
+        vm.PreviousCommand.Execute(null);                         // computer on again: s0 streams
+        player.RaisePositionChanged(TimeSpan.FromSeconds(1));
+        player.RaiseTrackEnded();
+
+        Assert.Same(t[1], vm.CurrentTrack);
+        Assert.Equal(t[1].FilePath, player.PlayedPaths[^1]);
+    }
+
     [Fact]
     public void ErrorStreak_IsNotClearedByTicksThatNeverLeaveTheStart()
     {

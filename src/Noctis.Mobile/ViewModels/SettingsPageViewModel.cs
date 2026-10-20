@@ -197,7 +197,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     [RelayCommand] private void CancelRemoveFolder() => FolderToRemove = null;
 
-    [RelayCommand]
+    /// <summary>Concurrent: it awaits the rescan, and the next folder's Remove stayed greyed out
+    /// for all of it (the confirm runs once per ask: <see cref="FolderToRemove"/> clears first).</summary>
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task ConfirmRemoveFolderAsync()
     {
         if (FolderToRemove is not { } folder) return;
@@ -449,8 +451,17 @@ public sealed partial class SettingsPageViewModel : MobilePage
             return;
         }
         // Redacted: the file leaves the app, and account errors can carry key or password text.
-        var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", LogRedactor.Redact(DebugLog.Snapshot()));
-        ExportStatus = saved ? "Log saved" : "Export cancelled";
+        try
+        {
+            var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", LogRedactor.Redact(DebugLog.Snapshot()));
+            ExportStatus = saved ? "Log saved" : "Export cancelled";
+        }
+        catch (Exception ex)
+        {
+            // A failed write said "Export cancelled", as if the user had backed out.
+            DebugLog.Write("Settings", $"Log export failed: {ex.Message}");
+            ExportStatus = "Couldn't save the log";
+        }
     }
 
     /// <summary>"content://…/tree/primary%3AMusic%2FTones" → "Music/Tones": the tree document

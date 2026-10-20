@@ -33,11 +33,12 @@ public class MobileSettingsTests
     {
         public string? FileName { get; private set; }
         public string? Text { get; private set; }
+        public Exception? Failure { get; set; }
         public Task<bool> ExportAsync(string suggestedFileName, string text)
         {
             FileName = suggestedFileName;
             Text = text;
-            return Task.FromResult(true);
+            return Failure != null ? Task.FromException<bool>(Failure) : Task.FromResult(true);
         }
     }
 
@@ -233,6 +234,21 @@ public class MobileSettingsTests
         Assert.Contains("export-marker-5f1c", exporter.Text);
         Assert.Equal("Log saved", page.ExportStatus);
         Assert.Equal("Noctis 9.9.9", page.VersionText);
+    }
+
+    /// <summary>A write that failed (the picked place refused it, no documents app) said "Export
+    /// cancelled", as if the user had backed out: the failure was visible only in logcat.</summary>
+    [Fact]
+    public async Task ExportLogs_AFailedWrite_SaysSo()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var exporter = new FakeLogExporter { Failure = new IOException("no space") };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Logs = exporter };
+        var page = await OpenSettings(shell);
+
+        await page.ExportLogsCommand.ExecuteAsync(null);
+
+        Assert.Equal("Couldn't save the log", page.ExportStatus);
     }
 
     /// <summary>S23 2026-10-05: the folder's grant was dropped and every song failed with a bare

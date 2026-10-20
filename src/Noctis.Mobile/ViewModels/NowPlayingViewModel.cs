@@ -589,6 +589,15 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // errors and the breaker never tripped (S23, 2026-10-19: a 20-song queue of desktop
         // songs, computer off, cycled in silence for over half an hour).
         if (playing && position > _startedFrom) _consecutiveErrors = 0;
+        // A song that needs the computer really playing proves it is back: stop passing over
+        // the others (only a new queue or Play from stopped cleared this, so after Previous
+        // restarted one, its end still skipped every later desktop song and stopped).
+        if (_computerUnreachable && playing && position > _startedFrom && CurrentTrack is { } streaming
+            && NeedsComputer?.Invoke(streaming) == true)
+        {
+            _computerUnreachable = false;
+            PrepareUpcoming();
+        }
         // Past the start, not merely Playing: the Android player reports Playing from Play()
         // on, and a file that never decodes keeps polling at its start position until the error.
         if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom)

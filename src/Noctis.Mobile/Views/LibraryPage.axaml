@@ -256,7 +256,7 @@
                 <controls:GlassPanel Name="LibraryActionsGlass" Classes="header-glass" Width="NaN">
                     <StackPanel Orientation="Horizontal" Margin="4,0">
                         <Button Name="LibraryEditButton" Classes="glass-round" Command="{Binding LibraryRows.EditCommand}"
-                                IsVisible="{Binding Library.HasFolders}">
+                                IsVisible="{Binding Library.HasMusic}">
                             <PathIcon Data="{DynamicResource PhList}" />
                         </Button>
                         <!-- Add Folder…, Rescan Library and Settings on the glass pop menu (PopMenu). -->
@@ -282,7 +282,7 @@
 
                 <!-- The lists, as rows that push their page (Apple's Library). Which rows show,
                      and in what order, is the user's: Edit. -->
-                <ItemsControl Name="LibraryRowList" ItemsSource="{Binding LibraryRows.Rows}" IsVisible="{Binding Library.HasFolders}">
+                <ItemsControl Name="LibraryRowList" ItemsSource="{Binding LibraryRows.Rows}" IsVisible="{Binding Library.HasMusic}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:LibraryRowItem">
                             <Button Classes="row lib-row" IsVisible="{Binding IsListed}"

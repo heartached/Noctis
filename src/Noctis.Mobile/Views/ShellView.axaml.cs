@@ -324,15 +324,18 @@ public partial class ShellView : UserControl
         CollapsedTabButton.Opacity = folded ? 1 : 0;
         CollapsedTabButton.IsHitTestVisible = folded;
 
+        // Folded on the Search tab the current-tab circle is already Search: the round Search
+        // button beside it was a second magnifier. It stands aside and the mini player takes its room.
+        var searchBubble = folded && vm.SelectedTab != MobileTab.Search;
         SearchBubble.Width = Bubble;
         SearchBubble.Height = Bubble;
-        SearchBubble.Fade = folded ? 1 : 0;
-        SearchBubble.RenderTransform = TransformOperations.Parse(folded ? "scale(1)" : "scale(0.6)");
-        SearchBubbleContent.Opacity = folded ? 1 : 0;
-        SearchBubble.IsHitTestVisible = folded;
+        SearchBubble.Fade = searchBubble ? 1 : 0;
+        SearchBubble.RenderTransform = TransformOperations.Parse(searchBubble ? "scale(1)" : "scale(0.6)");
+        SearchBubbleContent.Opacity = searchBubble ? 1 : 0;
+        SearchBubble.IsHitTestVisible = searchBubble;
 
         MiniBar.Height = MiniHeight;
-        MiniBar.Margin = folded ? new Thickness(Bubble + FoldGap, 0, Bubble + FoldGap, 0) : new Thickness(0, 0, 0, TabHeight + Gap);
+        MiniBar.Margin = folded ? new Thickness(Bubble + FoldGap, 0, searchBubble ? Bubble + FoldGap : 0, 0) : new Thickness(0, 0, 0, TabHeight + Gap);
         MiniNextButton.IsVisible = !folded;
 
         var index = TabIndex(vm.SelectedTab);

@@ -87,13 +87,30 @@ public sealed class PlaybackQueue
         return Current;
     }
 
+    // While shuffled, songs queued go into the pre-shuffle order too (Play Next at its front,
+    // Add to Queue at its end): Shuffle off rebuilds Up Next from that order, and without them
+    // there it dropped every song queued in the meantime.
+
     /// <summary>"Play Next": front of UpNext.</summary>
-    public void AddNext(Track track) => _upNext.Insert(0, track);
+    public void AddNext(Track track)
+    {
+        _upNext.Insert(0, track);
+        if (IsShuffleEnabled) _originalOrder.Insert(0, track);
+    }
 
     /// <summary>"Add to Queue": end of UpNext.</summary>
-    public void Add(Track track) => _upNext.Add(track);
+    public void Add(Track track)
+    {
+        _upNext.Add(track);
+        if (IsShuffleEnabled) _originalOrder.Add(track);
+    }
 
-    public void AddRange(IEnumerable<Track> tracks) => _upNext.AddRange(tracks);
+    public void AddRange(IEnumerable<Track> tracks)
+    {
+        var list = tracks.ToList();
+        _upNext.AddRange(list);
+        if (IsShuffleEnabled) _originalOrder.AddRange(list);
+    }
 
     public void RemoveAt(int upNextIndex)
     {

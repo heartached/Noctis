@@ -48,10 +48,9 @@ public sealed class OptionsMenuViewModel
     /// kept offline; Show All after a group break while one is on.</summary>
     public static OptionsMenuViewModel ForFilter(ShellViewModel shell, SongListPageViewModel list)
     {
-        var items = new List<OptionsMenuItem>
-        {
-            new(shell, "Favorites", list.OnlyFavourites, () => list.OnlyFavourites = !list.OnlyFavourites),
-        };
+        var items = new List<OptionsMenuItem>();
+        if (list.OffersFavouritesFilter)
+            items.Add(new OptionsMenuItem(shell, "Favorites", list.OnlyFavourites, () => list.OnlyFavourites = !list.OnlyFavourites));
         if (list.CanFilterDownloaded)
             items.Add(new OptionsMenuItem(shell, "Downloaded", list.OnlyDownloaded, () => list.OnlyDownloaded = !list.OnlyDownloaded));
         if (list.IsFiltered)

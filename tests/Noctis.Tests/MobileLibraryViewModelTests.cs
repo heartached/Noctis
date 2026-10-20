@@ -58,6 +58,48 @@ public class MobileLibraryViewModelTests : IDisposable
     /// ("Flac Tone" ×2): a SAF song's path carries the folder it was found through. The desktop
     /// refuses a folder inside (or around) a listed one; so does the phone now, and gives back
     /// the access the pick just granted.</summary>
+    /// <summary>Add Folder awaits the scan it starts (minutes over SAF), and an async command is
+    /// greyed out while it runs: Add Folder (and the Reconnect card, the same command) stayed
+    /// dead for the whole scan, though a folder added mid-scan is handled (a second pass).</summary>
+    [Fact]
+    public async Task AddFolder_StaysTappable_WhileTheScanItStartedRuns()
+    {
+        var (vm, library, picker, _) = await WithFolders(Music);
+        var hold = new TaskCompletionSource();
+        library.HoldScan = hold;
+        picker.Next = Tree + "1234-ABCD%3AMusic";
+        var first = vm.AddFolderCommand.ExecuteAsync(null);
+        for (var waited = 0; library.ScanPasses.Count == 0 && waited < 5000; waited += 10) await Task.Delay(10);
+
+        Assert.True(vm.AddFolderCommand.CanExecute(null));
+
+        hold.SetResult();
+        await first;
+    }
+
+    /// <summary>At a cold start the folders (so Rescan and Add Folder) are on screen before the
+    /// library has loaded. A scan then would start from an empty library while the load fills
+    /// it, re-reading every song as new (no favourites, plays or Date Added) and racing the load
+    /// to publish. It waits for the load instead, then runs.</summary>
+    [Fact]
+    public async Task Rescan_BeforeTheLibraryLoaded_WaitsForTheLoad()
+    {
+        var persistence = new PersistenceService(_root);
+        var settings = await persistence.LoadSettingsAsync();
+        settings.MusicFolders.Add(Music);
+        await persistence.SaveSettingsAsync(settings);
+        var library = new FakeLibraryService();
+        var vm = new LibraryViewModel(library, persistence, new ScriptedPicker(), marshal: a => a());
+        vm.ApplySettings(settings);                                            // what the host does first
+
+        await vm.RescanCommand.ExecuteAsync(null);
+        Assert.Empty(library.ScanPasses);
+
+        await vm.InitializeAsync();
+        for (var waited = 0; library.ScanPasses.Count == 0 && waited < 5000; waited += 10) await Task.Delay(10);
+        Assert.Equal(new[] { Music }, Assert.Single(library.ScanPasses));
+    }
+
     [Fact]
     public async Task AddFolder_InsideAListedFolder_IsRefusedWithANote()
     {

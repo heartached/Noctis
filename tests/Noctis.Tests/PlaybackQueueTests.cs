@@ -192,6 +192,20 @@ public class PlaybackQueueTests
     }
 
     [Fact]
+    public void Songs_queued_while_shuffled_survive_shuffle_off()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(4); var next = new Track { Title = "next" }; var last = new Track { Title = "last" };
+        q.ReplaceAll(t, 0);                     // upnext t1..t3
+        q.SetShuffle(true, new Random(7));
+
+        q.AddNext(next);                        // Play Next while shuffled
+        q.Add(last);                            // Add to Queue while shuffled
+        q.SetShuffle(false);
+
+        Assert.Equal(new[] { next, t[1], t[2], t[3], last }, q.UpNext);
+    }
+
+    [Fact]
     public void History_is_capped()
     {
         var q = new PlaybackQueue(historyCap: 2); var t = Tracks(5);

@@ -72,7 +72,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
 
-    [ObservableProperty] private int _songCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
+    private int _songCount;
     [ObservableProperty] private int _albumCount;
     [ObservableProperty] private int _artistCount;
     [ObservableProperty] private int _favoriteCount;
@@ -84,8 +86,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private int _scanProgress;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private bool _hasFolders;
+
+    /// <summary>A folder, or songs without one (a computer's, signed in with no folder on the
+    /// phone): the Library rows, Edit and the sections show. Gated on a folder alone, a phone
+    /// streaming its computer's library saw only "Add your music".</summary>
+    public bool HasMusic => HasFolders || SongCount > 0;
 
     /// <summary>The last scan aborted on an unreadable root (a revoked SAF grant, spec §7):
     /// the page offers to re-pick the folder, which is how a dead grant is recovered.</summary>
@@ -120,12 +127,12 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>First launch: no folder yet, so the only thing to show is the way in. Held
     /// back until the settings have loaded, or a user with folders sees it flash on launch.</summary>
-    public bool ShowConnectCard => IsLoaded && !HasFolders;
+    public bool ShowConnectCard => IsLoaded && !HasMusic;
 
     /// <summary>The sections under the rows (Pinned and its hint): the rows show from the settings
     /// alone (<see cref="ApplySettings"/>), the sections wait for the library, or the pin hint
     /// flashed over a Pinned rail still loading.</summary>
-    public bool ShowSections => IsLoaded && HasFolders;
+    public bool ShowSections => IsLoaded && HasMusic;
 
     /// <summary>Any card above the Library sections (connect, reconnect, scan progress), so an
     /// empty card area takes no room.</summary>
@@ -154,10 +161,20 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public IEnumerable<Track> Favourites() => Songs.Where(t => t.IsFavorite);
 
+    /// <summary>
+    /// Recently Added's › list: the rail's rule (<see cref="MobileLibrary.RecentlyAddedAlbums"/>,
+    /// newest album first, no time limit) with each album's songs in track order. It took only
+    /// the last 30 days, newest file first: a library with nothing new showed a full rail over an
+    /// empty page, and a fresh album listed its songs backwards (the last file scanned is newest).
+    /// </summary>
     public IEnumerable<Track> RecentlyAdded()
     {
-        var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
-        return _library.Tracks.Where(t => t.DateAdded >= cutoff).OrderByDescending(t => t.DateAdded);
+        var tracks = _library.Tracks;
+        var albumNewest = tracks.Where(t => t.AlbumId != Guid.Empty).GroupBy(t => t.AlbumId)
+            .ToDictionary(g => g.Key, g => g.Max(t => t.DateAdded));
+        DateTime Added(Track t) => t.AlbumId != Guid.Empty ? albumNewest[t.AlbumId] : t.DateAdded;
+        return tracks.OrderByDescending(Added).ThenBy(t => t.AlbumId)
+            .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
     }
 
     public bool IsAlbumPinned(Guid albumId) => _pinnedAlbumIds.Contains(albumId);
@@ -166,8 +183,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public bool IsTrackPinned(Guid trackId) => _pinnedTrackIds.Contains(trackId);
 
-    /// <summary>The On Repeat rail's songs, in rail order (its › list).</summary>
-    public IEnumerable<Track> OnRepeatTracks() => OnRepeatRail.Select(r => r.Payload).OfType<Track>();
+    /// <summary>The On Repeat rail's songs, in rail order (its › list), as the library holds them
+    /// now: the rail keeps an unchanged tile across refreshes, and with it a Track from before a
+    /// rescan that re-read the file.</summary>
+    public IEnumerable<Track> OnRepeatTracks() =>
+        OnRepeatRail.Select(r => r.Payload).OfType<Track>().Select(t => _library.GetTrackById(t.Id) ?? t);
 
     /// <summary>A playlist's cover: the first of its tracks that has one.</summary>
     public string? PlaylistArtwork(Playlist playlist) =>
@@ -310,6 +330,10 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
+    /// <summary>The desktop songs' offline copies changed: open lists (Downloaded, the Downloaded
+    /// filter) re-read.</summary>
+    public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
+
     /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
     private void AfterUserEdit()
     {
@@ -348,8 +372,16 @@ public sealed partial class LibraryViewModel : ObservableObject
             // Even after a failed load: otherwise an empty library would show no connect card
             // and so no way to add music.
             IsLoaded = true;
+            if (_scanWhenLoaded)
+            {
+                _scanWhenLoaded = false;
+                _ = ScanAsync();
+            }
         }
     }
+
+    /// <summary>A scan asked for before the library loaded (<see cref="ScanAsync"/>), run once it has.</summary>
+    private bool _scanWhenLoaded;
 
     [RelayCommand] private void ToggleShelfLayout() => IsShelfGrid = !IsShelfGrid;
 
@@ -364,8 +396,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// rescans, which is how a folder whose access was lost comes back); a folder inside one
     /// already listed, or around one, is refused with a note, as the scan would list its songs
     /// twice (a SAF song's path carries the folder it was found through).
+    /// Concurrent: it awaits the scan it starts (minutes over SAF), and a command that may not
+    /// overlap is greyed out while it runs; a folder added mid-scan gets the second pass.
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task AddFolderAsync()
     {
         var picked = await _picker.PickFolderAsync();
@@ -499,6 +533,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     private async Task ScanAsync(bool evenWithoutFolders = false)
     {
         _scanWithoutFolders |= evenWithoutFolders;
+        // At a cold start the folders (Rescan, Add Folder) show before the library has loaded.
+        // A scan then started from an empty library while the load filled it: every song was
+        // re-read as new (no favourites, plays, Date Added) and the two raced to publish.
+        if (!IsLoaded)
+        {
+            _scanWhenLoaded = true;
+            return;
+        }
         if (IsScanning)
         {
             _scanAgain = true;

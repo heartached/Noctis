@@ -79,9 +79,10 @@ public class MobileButtonStyleTests
     [AvaloniaFact]
     public void Pills_AreFullTouchTargets_WithRoundEnds()
     {
-        var (rig, window, view) = Open();
-        using var _rig = rig;
-        // Library's own pills (Settings' were rows of Apple's grouped cards since 10-12).
+        // Library's own pills (Settings' were rows of Apple's grouped cards since 10-12): the
+        // first-run card's, on a phone with no music yet.
+        using var rig = MobileFixtures.MakeRig();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
         window.UpdateLayout();
 
         var pills = view.GetVisualDescendants().OfType<Button>()

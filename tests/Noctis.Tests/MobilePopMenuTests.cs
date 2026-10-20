@@ -524,7 +524,63 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         rig.Shell.Sheet!.ShowLyricsCommand.Execute(null);
         Assert.False(rig.Shell.IsQueueOpen);
         Assert.True(rig.Shell.IsLyricsOpen);
+        // The lyrics page's own ⋯: no Lyrics row, it is already up.
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        Assert.False(rig.Shell.Sheet!.CanShowLyrics);
         window.Close();
+    }
+
+    /// <summary>Lyrics (and the Queue over it) can be up without Now Playing: opened from a song
+    /// row's menu. Go to Album / Go to Artist from their ⋯ must take them down, or the page
+    /// opened underneath and the tap looked dead.</summary>
+    [AvaloniaFact]
+    public void GoToAlbum_FromLyricsOpenedOverAList_ClosesLyricsAndTheQueue()
+    {
+        var songs = new[] { MobileFixtures.Song("One", artist: "Band"), MobileFixtures.Song("Two", artist: "Band") };
+        var album = MobileFixtures.MakeAlbum("Record", "Band", songs);
+        using var rig = MobileFixtures.MakeRig(songs, new[] { album });
+        rig.Shell.Player.PlayTracks(songs, 0);
+
+        rig.Shell.OpenTrackSheetCommand.Execute(songs[0]);
+        rig.Shell.Sheet!.ShowLyricsCommand.Execute(null);
+        Assert.False(rig.Shell.IsNowPlayingOpen);
+        rig.Shell.ToggleQueueCommand.Execute(null);
+        rig.Shell.OpenCurrentTrackSheetCommand.Execute(null);
+        rig.Shell.Sheet!.GoToAlbumCommand.Execute(null);
+
+        Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+        Assert.False(rig.Shell.IsLyricsOpen);
+        Assert.False(rig.Shell.IsQueueOpen);
+    }
+
+    /// <summary>On an album's own page, a track's menu offered Go to Album (it pushed the same page
+    /// again, and Back then showed it twice); from Now Playing over that page, Go to Album only
+    /// needs the player out of the way. Go to Artist on that artist's page likewise.</summary>
+    [AvaloniaFact]
+    public void GoToAlbum_OnThatAlbumsPage_IsNotOffered_AndNeverPushesItTwice()
+    {
+        var songs = new[] { MobileFixtures.Song("One", artist: "Band"), MobileFixtures.Song("Two", artist: "Band") };
+        var album = MobileFixtures.MakeAlbum("Record", "Band", songs);
+        using var rig = MobileFixtures.MakeRig(songs, new[] { album });
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        var page = Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+
+        rig.Shell.OpenTrackSheetCommand.Execute(songs[1]);
+        Assert.False(rig.Shell.Sheet!.CanGoToAlbum);
+        Assert.True(rig.Shell.Sheet.CanGoToArtist);
+
+        rig.Shell.Player.PlayTracks(songs, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        Assert.True(rig.Shell.Sheet!.CanGoToAlbum);                              // the player covers the page
+        rig.Shell.Sheet.GoToAlbumCommand.Execute(null);
+        Assert.False(rig.Shell.IsNowPlayingOpen);
+        Assert.Same(page, rig.Shell.CurrentPage);
+        Assert.Single(rig.Shell.Pages);
+
+        rig.Shell.OpenArtistCommand.Execute("Band");
+        rig.Shell.OpenArtistCommand.Execute("Band");
+        Assert.Equal(2, rig.Shell.Pages.Count);
     }
 
     /// <summary>Every ⋯ in the app opens the same glass menu out of itself: a song row (Songs), an
@@ -565,7 +621,7 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         MobileFixtures.Land(window);
         var albumPage = MobileFixtures.Find<AlbumPage>(view);
         var rowMore = albumPage.GetVisualDescendants().OfType<Button>().First(b => b.Command == rig.Shell.OpenTrackSheetCommand);
-        Check(rowMore, "album track row", "MenuGoToAlbum");
+        Check(rowMore, "album track row", "MenuGoToArtist");   // no Go to Album on its own page
         Check(MobileFixtures.Named<Button>(albumPage, "MoreButton"), "album header", "MenuAddToQueue");
 
         rig.Shell.SelectTabCommand.Execute(MobileTab.Library);

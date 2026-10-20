@@ -103,7 +103,15 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     /// <summary>Downloaded means a desktop song's offline copy: offered while signed in to a
     /// computer, or while copies are kept from one. Signed out with none, the filter could only
     /// empty the list (it offered itself whenever the account service existed: "0 of 11", 10-14).</summary>
-    public bool CanFilterDownloaded => Shell.Account is { } account && (account.IsSignedIn || account.DownloadedCount > 0);
+    public bool CanFilterDownloaded => OffersDownloadedFilter && Shell.Account is { } account && (account.IsSignedIn || account.DownloadedCount > 0);
+
+    // A list that is already one of the filters does not offer it: the Favorites list's filter
+    // menu offered Favorites, the Downloaded list's Downloaded, and both did nothing.
+    public bool OffersFavouritesFilter { get; init; } = true;
+    public bool OffersDownloadedFilter { get; init; } = true;
+
+    /// <summary>The filter button: only with a filter to offer.</summary>
+    public bool HasFilters => OffersFavouritesFilter || CanFilterDownloaded;
 
     // ── Sort ──
 
@@ -152,6 +160,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         _all = _source().ToList();
         TotalCount = _all.Count;
+        OnPropertyChanged(nameof(HasFilters));   // signed in or out since
         Apply();
     }
 
@@ -175,6 +184,8 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         var names = StringComparer.CurrentCultureIgnoreCase;
         if (Sort == SongSort.Default) return IsDescending ? rows.Reverse() : rows;
+        // The playlist as the library holds it now: an edit re-reads it into a new object.
+        var playlist = _playlist == null ? null : Shell.CurrentPlaylist(_playlist);
         IOrderedEnumerable<Track> By<TKey>(Func<Track, TKey> key, IComparer<TKey>? comparer = null) =>
             IsDescending ? rows.OrderByDescending(key, comparer) : rows.OrderBy(key, comparer);
         var ordered = Sort switch
@@ -182,7 +193,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             SongSort.Title => By(t => t.Title, names),
             SongSort.Artist => By(t => t.Artist, names),
             SongSort.Album => By(t => t.Album, names),
-            SongSort.DateAdded => By(t => _playlist?.AddedDateFor(t.Id, t.DateAdded) ?? t.DateAdded),
+            SongSort.DateAdded => By(t => playlist?.AddedDateFor(t.Id, t.DateAdded) ?? t.DateAdded),
             SongSort.Year => By(t => t.Year),
             SongSort.Duration => By(t => t.Duration),
             SongSort.MostPlayed => By(t => t.PlayCount),

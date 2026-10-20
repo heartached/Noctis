@@ -45,6 +45,26 @@ public class MobileLibraryPagesTests
         window.Close();
     }
 
+    /// <summary>Signed in to a computer with no folder on the phone: the desktop's songs are the
+    /// library. The tabs gated everything on a folder, so Library showed only "Add your music"
+    /// (no Songs/Albums/Artists rows, no Edit) and Home no Pinned section, over a full library.</summary>
+    [AvaloniaFact]
+    public void SongsWithoutAFolder_ShowTheRows_NotTheConnectCard()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("From the computer") });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+
+        Assert.False(rig.Shell.Library.HasFolders);
+        Assert.True(MobileFixtures.Named<StackPanel>(view, "PinnedSection").IsVisible);
+        rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
+        window.UpdateLayout();
+        var library = MobileFixtures.Find<LibraryPage>(view);
+        Assert.True(MobileFixtures.Named<ItemsControl>(library, "LibraryRowList").IsVisible);
+        Assert.False(rig.Shell.Library.ShowConnectCard);
+        Assert.DoesNotContain(view.GetVisualDescendants().OfType<Border>(), b => b.Name == "ConnectCard" && b.IsEffectivelyVisible);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Tiles_ShowCounts_AndOpenTheirLists()
     {
@@ -57,6 +77,8 @@ public class MobileLibraryPagesTests
         var window = MobileFixtures.Mount(rig.Shell, out var view);
 
         Assert.True(MobileFixtures.Named<Border>(view, "PinnedHint").IsVisible);     // Home: nothing pinned yet
+        Assert.False(MobileFixtures.Named<PathIcon>(view, "PinnedChevron").IsVisible); // so no › into an empty page
+        Assert.False(MobileFixtures.Named<Button>(view, "PinnedHeader").IsHitTestVisible);
         rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
         window.UpdateLayout();
         Assert.True(MobileFixtures.Named<ItemsControl>(view, "LibraryRowList").IsVisible);
@@ -68,7 +90,8 @@ public class MobileLibraryPagesTests
 
         MobileFixtures.Named<Button>(view, "RecentlyAddedHeader").Command!.Execute(null);
         var recent = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
-        Assert.Equal(new[] { "Alpha", "Gamma" }, recent.Songs.Select(t => t.Title).OrderBy(t => t));
+        // The rail's rule: newest album first, its songs in track order, however old (Beta too).
+        Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, recent.Songs.Select(t => t.Title).OrderBy(t => t));
         rig.Shell.NavigateBackCommand.Execute(null);
 
         rig.Shell.OpenFavouritesCommand.Execute(null);
@@ -88,6 +111,43 @@ public class MobileLibraryPagesTests
         var grid = MobileFixtures.Find<AlbumGridPage>(view);
         Assert.Contains(grid.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "First");
         window.Close();
+    }
+
+    /// <summary>Every playlist edit re-reads playlists.json into new objects: an open playlist page
+    /// must follow its playlist by id, or songs added after any other edit never showed on it
+    /// (nor sorted by their Date Added) until the page was reopened.</summary>
+    [Fact]
+    public async Task OpenPlaylistPage_ShowsSongsAddedAfterAnotherPlaylistEdit()
+    {
+        var a = MobileFixtures.Song("Alpha");
+        var b = MobileFixtures.Song("Beta");
+        var mix = new Playlist { Name = "Mix", TrackIds = { a.Id } };
+        using var rig = MobileFixtures.MakeRig(new[] { a, b }, null, WithFolder(mix));
+        rig.Shell.OpenPlaylistCommand.Execute(rig.Shell.Library.Playlists.Single());
+        var page = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+
+        await rig.Shell.Library.CreatePlaylistAsync("Other");                   // re-reads every playlist
+        await rig.Shell.Library.AddToPlaylistAsync(rig.Shell.Library.Playlists.Single(p => p.Name == "Mix"), new[] { b });
+
+        Assert.Equal(new[] { "Alpha", "Beta" }, page.Songs.Select(t => t.Title));
+    }
+
+    /// <summary>The Favorites list's filter menu offered Favorites (a no-op there); with nothing
+    /// else to offer (no computer) its filter button goes. Other lists keep it.</summary>
+    [Fact]
+    public void FavoritesList_DoesNotOfferTheFavoritesFilter()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Alpha", favourite: true) });
+
+        rig.Shell.FavoritesRoot.ShowFilterMenuCommand.Execute(null);
+        Assert.DoesNotContain(rig.Shell.OptionsMenu?.Items ?? Array.Empty<OptionsMenuItem>(), i => i.Label == "Favorites");
+        Assert.False(rig.Shell.FavoritesRoot.HasFilters);
+
+        rig.Shell.OpenSongsCommand.Execute(null);
+        var songs = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        Assert.True(songs.HasFilters);
+        songs.ShowFilterMenuCommand.Execute(null);
+        Assert.Contains(rig.Shell.OptionsMenu!.Items, i => i.Label == "Favorites");
     }
 
     [Fact]

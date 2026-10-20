@@ -93,6 +93,7 @@ public sealed partial class ShellViewModel : ObservableObject
             value.PlaylistsChanged += OnAccountPlaylistsChanged;
             value.StateChanged += OnAccountStateChanged;
             _profileAvatarPath = AccountAvatarPath();
+            _downloadedCount = value.DownloadedCount;
         }
     }
     private readonly INoctisAccountService? _account;
@@ -103,10 +104,18 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private string? AccountAvatarPath() => _account is { IsSignedIn: true } a ? a.AvatarPath : null;
 
-    /// <summary>StateChanged fires on every download step too: hop to the UI thread only for a new picture.</summary>
+    private int _downloadedCount;
+
+    /// <summary>StateChanged fires on every download step too: hop to the UI thread only for a new
+    /// picture, or when the offline copies changed (a download batch ended, Remove Download): the
+    /// Downloaded list and filter re-read only on a library refresh, and a removed song stayed
+    /// listed until the page was reopened.</summary>
     private void OnAccountStateChanged(object? sender, EventArgs e)
     {
         if (AccountAvatarPath() != ProfileAvatarPath) Marshal(() => ProfileAvatarPath = AccountAvatarPath());
+        if (_account is not { } account) return;
+        var downloaded = account.DownloadedCount;
+        if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
     }
 
     /// <summary>
@@ -300,7 +309,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
+        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -528,7 +537,8 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _resetting;
 
     /// <summary>Push <paramref name="page"/> over the current tab (inside the sheet, when one is
-    /// up). A page opened from Now Playing (the artist link) closes the player first.</summary>
+    /// up). A page opened from Now Playing (the artist link), Lyrics or the Queue closes them
+    /// first: Lyrics opens over a list without the player too, and the page landed under it.</summary>
     public void Navigate(MobilePage page) => Push(page, sheet: false);
 
     /// <summary>Present <paramref name="page"/> as a sheet over everything (Settings); Back or its
@@ -538,7 +548,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private void Push(MobilePage page, bool sheet)
     {
         CloseSheet();
-        if (IsNowPlayingOpen) CloseNowPlaying();
+        if (IsPlayerUp) CloseNowPlaying();
         page.IsSheet = sheet;
         Pages.Add(page);
         LastPageMove = PageMove.Push;
@@ -674,7 +684,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites));
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { OffersFavouritesFilter = false });
 
     [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Recently Added", Library.RecentlyAdded));
 
@@ -696,6 +706,11 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenAlbum(Album? album)
     {
         if (album == null) return;
+        if (IsShowingAlbum(album.Id))
+        {
+            ShowCurrentPage();
+            return;
+        }
         Navigate(new AlbumPageViewModel(this, CurrentAlbum(album)));
     }
 
@@ -704,15 +719,42 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenArtist(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
+        if (IsShowingArtist(name))
+        {
+            ShowCurrentPage();
+            return;
+        }
         Navigate(new ArtistPageViewModel(this, name));
+    }
+
+    // Go to Album / Go to Artist from that album's or artist's own page (Now Playing over it, a
+    // track's menu on it) pushed the same page again, and Back then showed it twice.
+    public bool IsShowingAlbum(Guid albumId) => CurrentPage is AlbumPageViewModel page && page.Album.Id == albumId;
+
+    public bool IsShowingArtist(string name) =>
+        CurrentPage is ArtistPageViewModel page && string.Equals(page.Name, name, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether Now Playing, Lyrics or the Queue covers the pages.</summary>
+    public bool IsPlayerUp => IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen;
+
+    /// <summary>The page asked for is the one under the menus and the player: uncover it.</summary>
+    private void ShowCurrentPage()
+    {
+        CloseSheet();
+        if (IsPlayerUp) CloseNowPlaying();
     }
 
     [RelayCommand]
     private void OpenPlaylist(Playlist? playlist)
     {
         if (playlist == null) return;
-        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(playlist), playlist));
+        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(CurrentPlaylist(playlist)), playlist));
     }
+
+    /// <summary>Every playlist edit (and a sync) re-reads playlists.json into new objects: a page
+    /// or menu holding one from before reads the playlist the library holds now, by id.</summary>
+    public Playlist CurrentPlaylist(Playlist playlist) =>
+        Library.Playlists.FirstOrDefault(p => p.Id == playlist.Id) ?? playlist;
 
     /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
     public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>
@@ -826,16 +868,20 @@ public sealed partial class ShellViewModel : ObservableObject
     public async Task SetFavouriteAsync(IReadOnlyList<Track> tracks, bool favourite)
     {
         if (tracks.Count == 0) return;
-        foreach (var t in tracks) t.IsFavorite = favourite;
+        // The library's own songs too: the queue keeps its Track objects, and a rescan that
+        // re-read a changed file (or a sync) made the library a new one. The save journals the
+        // library's copy, so flagging only the queue's lost the heart (never in Favorites).
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).ToList();
+        foreach (var t in tracks.Concat(current)) t.IsFavorite = favourite;
         try
         {
-            await Library.Service.SaveTrackUserStateAsync(tracks.ToList());
+            await Library.Service.SaveTrackUserStateAsync(current);
         }
         catch (Exception ex)
         {
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
-        Library.Service.NotifyFavoritesChanged(tracks.ToList());
+        Library.Service.NotifyFavoritesChanged(current);
     }
 
     [RelayCommand]

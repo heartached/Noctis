@@ -37,12 +37,17 @@ public class MobileSearchTests
 
         search.Query = "beyonce";
 
-        Assert.Equal(new[] { "Halo", "Crazy In Love" }, search.Songs.Select(t => t.Title));   // more plays first
         Assert.Equal(new[] { "Dangerously in Love" }, search.Albums.Select(a => a.Name));
-        // The query names the artist: they head the results instead of sitting in the Artists row.
+        // The query names the artist: they head the results instead of sitting in the Artists row,
+        // with their songs, which the Songs section then does not repeat.
         Assert.Equal("Beyoncé", search.Featured!.Name);
+        Assert.Equal(new[] { "Halo", "Crazy In Love" }, search.FeaturedSongs.Select(t => t.Title));   // more plays first
+        Assert.Empty(search.Songs);
         Assert.Empty(search.Artists);
         Assert.False(search.ShowNoResults);
+
+        search.SetScopeCommand.Execute(SearchScope.Songs);
+        Assert.Equal(new[] { "Halo", "Crazy In Love" }, search.Songs.Select(t => t.Title));
     }
 
     [Fact]
@@ -81,9 +86,11 @@ public class MobileSearchTests
         var search = rig.Shell.Search;
         search.Query = "beyonce";
 
+        search.SetScopeCommand.Execute(SearchScope.Songs);      // under All her songs are in her card
         search.PlaySongCommand.Execute(search.Songs[1]);
         Assert.Equal("Crazy In Love", rig.Shell.Player.CurrentTrack!.Title);
 
+        search.SetScopeCommand.Execute(SearchScope.Songs);      // back to All
         search.OpenArtistCommand.Execute(search.Featured);
         Assert.Equal("Beyoncé", rig.Shell.CurrentPage!.Title);
     }

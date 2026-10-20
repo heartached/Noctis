@@ -63,18 +63,25 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The quick-action tile's short label: what the heart shows now.</summary>
     public string FavouriteTileLabel => IsFavourite ? "Favorited" : "Favorite";
 
-    /// <summary>Anything can be pinned to Library → Pinned: albums, artists, playlists and songs.</summary>
+    /// <summary>Anything can be pinned to Home → Pinned: albums, artists, playlists and songs.</summary>
     public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;
     public bool IsPinned =>
         Album != null ? _shell.Library.IsAlbumPinned(Album.Id)
         : Artist != null ? _shell.Library.IsArtistPinned(Artist.Name)
         : Playlist != null ? Playlist.IsPinned
         : Track != null && _shell.Library.IsTrackPinned(Track.Id);
-    public string PinLabel => IsPinned ? "Unpin" : "Pin to Library";
+    // Pins show on Home (its Pinned rail) since Home became the start tab: "Pin to Library"
+    // sent people looking for them in the Library tab.
+    public string PinLabel => IsPinned ? "Unpin" : "Pin to Home";
     public string PinTileLabel => IsPinned ? "Pinned" : "Pin";
 
-    public bool CanGoToAlbum => Track != null;
-    public bool CanGoToArtist => Track != null || Album != null;
+    // Not on that album's or artist's own page (it pushed the same page again), unless the
+    // player covers it: then the row uncovers the page.
+    public bool CanGoToAlbum => Track != null && (_shell.IsPlayerUp || !_shell.IsShowingAlbum(Track.AlbumId));
+    public bool CanGoToArtist => (Track != null || Album != null)
+        && (_shell.IsPlayerUp || ArtistTarget is not { } name || !_shell.IsShowingArtist(name));
+
+    private string? ArtistTarget => Track?.GroupingArtist ?? Album?.Artist;
 
     // ── Desktop songs (Settings → Account): offline copies ──
 
@@ -135,8 +142,9 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
     [RelayCommand] private void ShowPlaylists() => IsPickingPlaylist = true;
 
-    /// <summary>Lyrics are the playing song's page: the row shows only on that song's menu.</summary>
-    public bool CanShowLyrics => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id;
+    /// <summary>Lyrics are the playing song's page: the row shows only on that song's menu, and
+    /// not on the menu opened from the lyrics page itself (where it did nothing).</summary>
+    public bool CanShowLyrics => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id && !_shell.IsLyricsOpen;
 
     /// <summary>The menu's Lyrics: the lyrics page, over the player or a list (the Queue, which
     /// would sit over it, gives way).</summary>
@@ -191,7 +199,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [RelayCommand]
     private void GoToArtist()
     {
-        var name = Track?.GroupingArtist ?? Album?.Artist;
+        var name = ArtistTarget;
         _shell.CloseSheet();
         if (!string.IsNullOrWhiteSpace(name)) _shell.OpenArtistCommand.Execute(name);
     }
