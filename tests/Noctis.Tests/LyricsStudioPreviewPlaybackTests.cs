@@ -115,6 +115,48 @@ public class LyricsStudioPreviewPlaybackTests : IDisposable
         Assert.Equal(PlaybackState.Playing, player.State);
     }
 
+    // ── Tap mode times words on this song's clock only ──
+
+    [AvaloniaFact]
+    public async Task Tap_WhileAnotherSongPlays_StampsNothing()
+    {
+        var song = SongWithLrc("song");
+        var other = new Track { Title = "other", Artist = "B", FilePath = Path.Combine(_root, "other.mp3"), Duration = TimeSpan.FromMinutes(4) };
+        File.WriteAllText(other.FilePath, string.Empty);
+        var (studio, player, _) = Studio(song);
+        var line = studio.ReviewLines[1];
+        await studio.StartTapCommand.ExecuteAsync(line);
+        var before = line.Words.Select(w => w.Start).ToList();
+
+        // The song ended and the user started another one (or the queue moved on): the
+        // player's clock is that song's now, 0:01 into it.
+        player.ReplaceQueueAndPlay(new[] { other }, 0);
+        player.Position = TimeSpan.FromSeconds(1);
+        studio.TapCommand.Execute(null);
+
+        Assert.Equal(before, line.Words.Select(w => w.Start));
+        Assert.True(studio.IsTapping);
+        Assert.Contains("this song playing", studio.TapHint);
+    }
+
+    [AvaloniaFact]
+    public async Task Tap_AfterTheSongStopped_StampsNothing()
+    {
+        var song = SongWithLrc("song");
+        var (studio, player, audio) = Studio(song);
+        var line = studio.ReviewLines[1];
+        await studio.StartTapCommand.ExecuteAsync(line);
+        var before = line.Words.Select(w => w.Start).ToList();
+
+        // Played to the end: nothing is playing, and the clock no longer runs with the song.
+        audio.RaiseTrackEnded();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(PlaybackState.Stopped, player.State);
+        studio.TapCommand.Execute(null);
+
+        Assert.Equal(before, line.Words.Select(w => w.Start));
+    }
+
     private sealed class NoEngine : ILyricsStudioEngine
     {
         public bool HasFfmpeg => true;
