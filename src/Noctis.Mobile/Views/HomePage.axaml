@@ -39,11 +39,13 @@
 
                 <!-- Pinned: always shown once there is music, so the pin system is discoverable. -->
                 <StackPanel Name="PinnedSection" Spacing="10" IsVisible="{Binding Library.ShowSections}">
-                    <Button Name="PinnedHeader" Classes="row section-header" Command="{Binding OpenPinnedCommand}">
+                    <!-- Nothing pinned: no ›, and no tap into an empty page; the hint card says how. -->
+                    <Button Name="PinnedHeader" Classes="row section-header" Command="{Binding OpenPinnedCommand}"
+                            IsHitTestVisible="{Binding Library.HasPinned}">
                         <StackPanel Orientation="Horizontal">
                             <PathIcon Data="{DynamicResource LibPinIcon}" />
                             <TextBlock Classes="section" Text="Pinned" />
-                            <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                            <PathIcon Name="PinnedChevron" Classes="chevron" Data="{DynamicResource LibChevronIcon}" IsVisible="{Binding Library.HasPinned}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding Library.HasPinned}">

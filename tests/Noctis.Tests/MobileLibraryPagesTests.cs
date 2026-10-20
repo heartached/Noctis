@@ -77,6 +77,8 @@ public class MobileLibraryPagesTests
         var window = MobileFixtures.Mount(rig.Shell, out var view);
 
         Assert.True(MobileFixtures.Named<Border>(view, "PinnedHint").IsVisible);     // Home: nothing pinned yet
+        Assert.False(MobileFixtures.Named<PathIcon>(view, "PinnedChevron").IsVisible); // so no › into an empty page
+        Assert.False(MobileFixtures.Named<Button>(view, "PinnedHeader").IsHitTestVisible);
         rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
         window.UpdateLayout();
         Assert.True(MobileFixtures.Named<ItemsControl>(view, "LibraryRowList").IsVisible);
