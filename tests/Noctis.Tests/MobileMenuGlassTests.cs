@@ -103,6 +103,7 @@ public class MobileMenuGlassTests
         {
             ["PopMenu"] = new PopMenu().FindControl<GlassPanel>("Glass")!,
             ["ContextSheet"] = new ContextSheet().FindControl<GlassPanel>("SheetGlass")!,
+            ["AlbumNoteSheet"] = new AlbumNoteSheet().FindControl<GlassPanel>("NoteGlass")!,
         };
         foreach (var (owner, card) in cards)
         {

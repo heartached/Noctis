@@ -344,5 +344,7 @@
              well); the bottom sheet is only its Add to Playlist list, on the same glass with the same pop. -->
         <views:PopMenu Name="Menu" DataContext="{Binding}" ZIndex="2" />
         <views:ContextSheet Name="Sheet" DataContext="{Binding}" ZIndex="2" />
+        <!-- An album's description, whole, on the same glass with the same pop. -->
+        <views:AlbumNoteSheet Name="Note" DataContext="{Binding}" ZIndex="2" />
     </Grid>
 </UserControl>

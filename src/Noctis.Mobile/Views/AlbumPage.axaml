@@ -117,7 +117,7 @@
             <Setter Property="CornerRadius" Value="23" />
         </Style>
 
-        <!-- The description's MORE / LESS, Apple's small bold caps. -->
+        <!-- The description's MORE, Apple's small bold caps. -->
         <Style Selector="views|AlbumPage TextBlock.album-more">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="Bold" />
@@ -206,16 +206,17 @@
                 </StackPanel>
 
                 <!-- Apple's description under the buttons: its first lines with MORE over the end of
-                     the last one, the whole text on a tap (LESS, or another tap, folds it back). The
-                     clip's height eases between the two in the code-behind. -->
+                     the last one; a tap shows the whole text on the glass sheet (AlbumNoteSheet). -->
                 <Button Name="DescriptionBlock" Classes="row" Margin="24,16,24,0" IsVisible="{Binding HasDescription}"
-                        Command="{Binding ToggleDescriptionCommand}">
+                        Command="{Binding ShowDescriptionCommand}">
                     <Panel>
                         <Border Name="DescriptionClip" ClipToBounds="True" VerticalAlignment="Top">
-                            <StackPanel Name="DescriptionContent" VerticalAlignment="Top">
-                                <!-- Folded, the full text hides behind a copy cut at the last line by
-                                     character, not by word, so that line runs on under MORE (Apple's) instead
-                                     of stopping short where the next word wrapped away. -->
+                            <!-- Measured by a StackPanel, so the text keeps its full height inside the
+                                 clip (how the code-behind knows it overflows). Folded, the full text hides
+                                 behind a copy cut at the last line by character, not by word, so that line
+                                 runs on under MORE (Apple's) instead of stopping short where the next word
+                                 wrapped away. -->
+                            <StackPanel VerticalAlignment="Top">
                                 <Panel>
                                     <TextBlock Name="DescriptionText" Text="{Binding Description}" FontSize="15" LineHeight="20"
                                                TextWrapping="Wrap" />
@@ -224,8 +225,6 @@
                                         <TextBlock Name="DescriptionFoldedTail" FontSize="15" LineHeight="20" TextWrapping="NoWrap" />
                                     </StackPanel>
                                 </Panel>
-                                <TextBlock Name="DescriptionLess" Classes="album-more" Text="LESS" HorizontalAlignment="Right"
-                                           Margin="0,2,0,0" />
                             </StackPanel>
                         </Border>
                         <Border Name="DescriptionMore" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="36,0,0,0"
