@@ -1734,6 +1734,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (_tapIndex < line.Words.Count)
         {
             line.Words[_tapIndex].IsTapTarget = false;
+            // The first word stays after the line before, as a nudge keeps it (TimingNudge):
+            // tapped earlier, the line went ahead of it and the save wrote the lyrics out of order.
+            var i = ReviewLines.IndexOf(line);
+            if (_tapIndex == 0 && i > 0 && now < ReviewLines[i - 1].Start + TimingNudge.Gap)
+                now = ReviewLines[i - 1].Start + TimingNudge.Gap;
             line.TapWord(_tapIndex, now);
             _tapIndex++;
             if (_tapIndex < line.Words.Count)

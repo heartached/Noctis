@@ -157,6 +157,22 @@ public class LyricsStudioPreviewPlaybackTests : IDisposable
         Assert.Equal(before, line.Words.Select(w => w.Start));
     }
 
+    [AvaloniaFact]
+    public async Task Tap_BeforeThePreviousLine_KeepsTheLinesInOrder()
+    {
+        var song = SongWithLrc("song");
+        var (studio, player, _) = Studio(song);
+        await studio.StartTapCommand.ExecuteAsync(studio.ReviewLines[1]);
+
+        // Scrubbed back past the line before (0:05): the first word's tap may not take this
+        // line ahead of it, as a nudge never does, or the save wrote the lyrics out of order.
+        player.Position = TimeSpan.FromSeconds(4);
+        studio.TapCommand.Execute(null);
+
+        Assert.Equal(TimeSpan.FromSeconds(5) + TimingNudge.Gap, studio.ReviewLines[1].Start);
+        Assert.StartsWith("[00:05.00]First line here", studio.BuildReviewText());
+    }
+
     private sealed class NoEngine : ILyricsStudioEngine
     {
         public bool HasFfmpeg => true;
