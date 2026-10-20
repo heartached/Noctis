@@ -1039,6 +1039,44 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(1, svc.DownloadedCount);
     }
 
+    /// <summary>
+    /// Sign out with Also Remove Downloads off: the desktop songs leave the library (the confirm
+    /// card says so) and their files stay for the next sign-in. The song lists still offered the
+    /// Downloaded filter (copies were kept), and it could only empty the list: no song in the
+    /// library was downloaded any more. Offered while signed in, or while a listed song is.
+    /// </summary>
+    [Fact]
+    public async Task SignOutKeepingDownloads_TheSongListsNoLongerOfferAnAlwaysEmptyDownloadedFilter()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+        var player = new FakeAudioPlayer();
+        var nowPlaying = new NowPlayingViewModel(player, _phoneLibrary, _phonePersistence, new FakeHistoryLog(), marshal: a => a());
+        var shell = new ShellViewModel(
+            new LibraryViewModel(_phoneLibrary, _phonePersistence, new MobileFixtures.NoPicker(), new FakeHistoryLog(), marshal: a => a()),
+            nowPlaying,
+            new LyricsPageViewModel(player, nowPlaying, new FakeTrackFiles(), _phonePersistence, work => Task.FromResult(work())))
+        {
+            Account = svc,
+            Marshal = a => a(),
+        };
+        await shell.Library.InitializeAsync();
+        var songs = new SongListPageViewModel(shell, "Songs", () => shell.Library.Songs);
+        Assert.True(songs.CanFilterDownloaded);
+        songs.OnlyDownloaded = true;
+        Assert.Equal(1, songs.SongCount);
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+        songs.Refresh();
+
+        Assert.Equal(1, svc.DownloadedCount);       // the file is kept for the next sign-in
+        Assert.Equal(0, songs.TotalCount);           // the desktop's songs left the library
+        Assert.False(songs.CanFilterDownloaded);
+        Assert.False(songs.OnlyDownloaded);          // a filter that is gone does not stay on
+    }
+
     // ── Sign-in and TLS pinning ──────────────────────────────────────────
 
     [Fact]
