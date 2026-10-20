@@ -305,7 +305,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
+        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -680,7 +680,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites));
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { OffersFavouritesFilter = false });
 
     [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Recently Added", Library.RecentlyAdded));
 

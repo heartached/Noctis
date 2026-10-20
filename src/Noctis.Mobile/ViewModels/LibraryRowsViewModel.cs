@@ -165,7 +165,7 @@ public sealed partial class LibraryRowsViewModel : ObservableObject
             case LibraryRowKind.Favorites: Shell.OpenFavouritesCommand.Execute(null); break;
             case LibraryRowKind.Downloaded:
                 if (Shell.Account is { } account)
-                    Shell.Navigate(new SongListPageViewModel(Shell, "Downloaded", () => Shell.Library.Songs.Where(account.IsDownloaded)));
+                    Shell.Navigate(new SongListPageViewModel(Shell, "Downloaded", () => Shell.Library.Songs.Where(account.IsDownloaded)) { OffersDownloadedFilter = false });
                 break;
         }
     }

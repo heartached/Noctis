@@ -132,6 +132,24 @@ public class MobileLibraryPagesTests
         Assert.Equal(new[] { "Alpha", "Beta" }, page.Songs.Select(t => t.Title));
     }
 
+    /// <summary>The Favorites list's filter menu offered Favorites (a no-op there); with nothing
+    /// else to offer (no computer) its filter button goes. Other lists keep it.</summary>
+    [Fact]
+    public void FavoritesList_DoesNotOfferTheFavoritesFilter()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Alpha", favourite: true) });
+
+        rig.Shell.FavoritesRoot.ShowFilterMenuCommand.Execute(null);
+        Assert.DoesNotContain(rig.Shell.OptionsMenu?.Items ?? Array.Empty<OptionsMenuItem>(), i => i.Label == "Favorites");
+        Assert.False(rig.Shell.FavoritesRoot.HasFilters);
+
+        rig.Shell.OpenSongsCommand.Execute(null);
+        var songs = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        Assert.True(songs.HasFilters);
+        songs.ShowFilterMenuCommand.Execute(null);
+        Assert.Contains(rig.Shell.OptionsMenu!.Items, i => i.Label == "Favorites");
+    }
+
     [Fact]
     public void SongList_TapPlaysFromThatRow_AndShuffleAllShuffles()
     {
