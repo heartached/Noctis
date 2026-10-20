@@ -133,6 +133,31 @@ public class WhisperDtwTimingTests
     }
 
     [Fact]
+    public void SpaceOnlyToken_StartsTheNextWord()
+    {
+        // Japanese (CRUSH, 10-19): the space between two phrases is a token of its own, and the
+        // phrase after it has no leading space. The two phrases came out as one word, and as the
+        // segment's text then had a word more, its broken characters were not mended either.
+        var tokens = new[]
+        {
+            new WhisperTranscriber.TokenView("\uFFFD", 790, 800, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 800, 810, 0.9f),
+            new WhisperTranscriber.TokenView("の", 810, 830, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 830, 840, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 840, 850, 0.9f),
+            new WhisperTranscriber.TokenView(" ", 850, 860, 0.9f),
+            new WhisperTranscriber.TokenView("重", 900, 920, 0.9f),
+            new WhisperTranscriber.TokenView("なる", 920, 960, 0.9f),
+            new WhisperTranscriber.TokenView("ey", 960, 980, 0.9f),
+            new WhisperTranscriber.TokenView("es", 980, 1000, 0.9f),
+        };
+        var words = WhisperTranscriber.WordsFromTokens(tokens, TimeSpan.FromSeconds(7.9), TimeSpan.FromSeconds(10.5), "瞳の奥 重なるeyes");
+
+        Assert.Equal(new[] { "瞳の奥", "重なるeyes" }, words.Select(w => w.Text));
+        Assert.Equal(Cs(900), words[1].Start);
+    }
+
+    [Fact]
     public void BrokenPieces_StayAsHeard_WhenTheSegmentTextDoesNotLineUp()
     {
         var tokens = new[]

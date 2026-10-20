@@ -364,12 +364,16 @@ public sealed class WhisperTranscriber
     internal static List<RecognizedWord> WordsFromTokens(IEnumerable<TokenView> tokens, TimeSpan segStart, TimeSpan segEnd, string? segmentText)
     {
         var words = new List<(string Text, long Start, long End, float Prob, int Count)>();
+        // The previous token ended in a space: Japanese gives the space between two phrases a token
+        // of its own and the next phrase no leading space, so the two came out as one word.
+        var afterSpace = false;
         foreach (var t in tokens)
         {
             var text = t.Text;
             if (text.Length == 0) continue;
             if (IsSpecialToken(text)) continue;
-            var startsWord = text[0] == ' ' || words.Count == 0;
+            var startsWord = text[0] == ' ' || words.Count == 0 || afterSpace;
+            afterSpace = char.IsWhiteSpace(text[^1]);
             var body = text.Trim();
             if (body.Length == 0) continue;
             if (startsWord || IsPunctuationOnly(body) == false && words.Count == 0)
