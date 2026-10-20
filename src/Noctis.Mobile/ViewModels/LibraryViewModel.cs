@@ -362,8 +362,16 @@ public sealed partial class LibraryViewModel : ObservableObject
             // Even after a failed load: otherwise an empty library would show no connect card
             // and so no way to add music.
             IsLoaded = true;
+            if (_scanWhenLoaded)
+            {
+                _scanWhenLoaded = false;
+                _ = ScanAsync();
+            }
         }
     }
+
+    /// <summary>A scan asked for before the library loaded (<see cref="ScanAsync"/>), run once it has.</summary>
+    private bool _scanWhenLoaded;
 
     [RelayCommand] private void ToggleShelfLayout() => IsShelfGrid = !IsShelfGrid;
 
@@ -515,6 +523,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     private async Task ScanAsync(bool evenWithoutFolders = false)
     {
         _scanWithoutFolders |= evenWithoutFolders;
+        // At a cold start the folders (Rescan, Add Folder) show before the library has loaded.
+        // A scan then started from an empty library while the load filled it: every song was
+        // re-read as new (no favourites, plays, Date Added) and the two raced to publish.
+        if (!IsLoaded)
+        {
+            _scanWhenLoaded = true;
+            return;
+        }
         if (IsScanning)
         {
             _scanAgain = true;
