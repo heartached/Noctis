@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -1143,6 +1143,34 @@
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
     <value>オフにすると、直接再生しない限り、明示的な曲をスキップします。</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDevice" xml:space="preserve">
+    <value>出力デバイス</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve">
+    <value>Noctis の音声の出力先。排他モードでは選択したデバイスを直接開くため、ビットパーフェクト出力は Windows の既定ではなくこの設定に従います。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve">
+    <value>システムの既定</value>
+    <comment>Output Device picker: follow-the-Windows-default entry</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve">
+    <value>既定</value>
+    <comment>Suffix marking the current Windows default endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve">
+    <value>選択したデバイス</value>
+    <comment>Output Device picker: disconnected pinned endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve">
+    <value>未接続</value>
+    <comment>Suffix for a disconnected endpoint in the picker</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
+    <value>選択したデバイスは現在接続されていません。再接続されるまで、再生はシステムの既定の出力に切り替わります。</value>
+    <comment>Shown under Output Device when the pin is missing</comment>
   </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
     <value>排他モード</value>

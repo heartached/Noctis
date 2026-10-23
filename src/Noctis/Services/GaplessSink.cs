@@ -37,6 +37,11 @@ public sealed class GaplessSink : IDisposable
     private readonly object _gate = new();
     private IWavePlayer _out; // WasapiOut, or NullWavePlayer in silent test mode
     private string? _deviceId; // endpoint the current output was opened against
+    private MMDevice? _outDevice; // endpoint owned by _out (NAudio never disposes a supplied device)
+    // Settings → Output Device pin; null/empty = follow the Windows default. The
+    // watch and every rebuild resolve against this, so a pinned stream ignores
+    // default-device changes until the pin is cleared or the endpoint disappears.
+    private volatile string? _pinnedDeviceId;
     private readonly WaveFileWriter? _tap; // NOCTIS_ENGINE_TAP diagnostic capture
     private readonly ISampleProvider _renderSource;
     private readonly MuteGateProvider _muteGate;
@@ -97,11 +102,11 @@ public sealed class GaplessSink : IDisposable
                 $"heldMs={Stopwatch.GetElapsedTime(Interlocked.Read(ref _rebuildHoldStart)).TotalMilliseconds:0}");
     }
 
-    public static GaplessSink? TryCreate()
+    public static GaplessSink? TryCreate(string? deviceId = null)
     {
         try
         {
-            return new GaplessSink();
+            return new GaplessSink(deviceId);
         }
         catch (Exception ex)
         {
@@ -110,16 +115,19 @@ public sealed class GaplessSink : IDisposable
         }
     }
 
-    private GaplessSink()
+    private GaplessSink(string? pinnedDeviceId)
     {
         var openStart = Stopwatch.GetTimestamp();
         WaveFormat mix;
         if (OperatingSystem.IsWindows())
         {
-            using var enumerator = new MMDeviceEnumerator();
-            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            mix = device.AudioClient.MixFormat;
-            _deviceId = device.ID;
+            _pinnedDeviceId = NormalizePin(pinnedDeviceId);
+            var device = ResolveDesiredDevice(out var id) ?? throw new InvalidOperationException("no render endpoint available");
+            using (device)
+            {
+                mix = device.AudioClient.MixFormat;
+                _deviceId = id;
+            }
         }
         else
         {
@@ -180,7 +188,7 @@ public sealed class GaplessSink : IDisposable
         // boosts the render thread on first read (see StallProbe).
         _probe = new StallProbe(renderSource);
         _renderSource = _probe;
-        _out = CreateOutput();
+        (_out, _outDevice, _) = CreateOutput();
         // Render immediately: the provider always returns full buffers (silence
         // when idle), so the stream never stops between tracks — the property
         // true gapless depends on. Only a long idle parks it (see CheckIdle).
@@ -194,7 +202,7 @@ public sealed class GaplessSink : IDisposable
         // Never let the callback throw: an unhandled Timer exception kills the process.
         _deviceWatch = new Timer(_ =>
         {
-            try { CheckDefaultDevice(); } catch { /* next tick retries */ }
+            try { CheckDesiredDevice(); } catch { /* next tick retries */ }
             try { CheckIdle(); } catch { /* next tick retries */ }
         }, null, DeviceCheckIntervalMs, DeviceCheckIntervalMs);
     }
@@ -295,35 +303,118 @@ public sealed class GaplessSink : IDisposable
             Task.Run(RebuildLoop);
     }
 
-    /// <summary>Channels in the default device's mix format, or 2 when it cannot be read.</summary>
-    private static int DeviceMixChannels()
+    /// <summary>Settings → Output Device changed: re-pins the endpoint and rebuilds the
+    /// output on it (the same machinery a default-device change rides). Null/empty
+    /// follows the Windows default again. No-op when the pin already matches.</summary>
+    public void SetDevice(string? deviceId)
     {
-        if (!OperatingSystem.IsWindows()) return 2;
+        if (_disposed || !OperatingSystem.IsWindows()) return;
+        var pin = NormalizePin(deviceId);
+        if (pin == _pinnedDeviceId) return;
+        _pinnedDeviceId = pin;
+        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DevicePinned",
+            pin == null ? "follow default" : pin);
+        if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
+            Task.Run(RebuildLoop);
+    }
+
+    private static string? NormalizePin(string? deviceId) =>
+        string.IsNullOrEmpty(deviceId) ? null : deviceId;
+
+    /// <summary>
+    /// The endpoint to render to: the pinned device (Settings → Output Device) while it
+    /// still exists, otherwise the Windows default. Null (id null too) when neither
+    /// resolves — callers retry on their own schedules.
+    /// </summary>
+    private MMDevice? ResolveDesiredDevice(out string? id)
+    {
+        id = null;
+        if (!OperatingSystem.IsWindows()) return null;
         try
         {
             using var enumerator = new MMDeviceEnumerator();
-            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            return device.AudioClient.MixFormat.Channels;
+            var pin = _pinnedDeviceId;
+            if (pin != null)
+            {
+                try
+                {
+                    var pinned = enumerator.GetDevice(pin);
+                    id = pin;
+                    return pinned;
+                }
+                catch { /* pin gone → default below */ }
+            }
+            var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            id = def.ID;
+            return def;
         }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Id-only resolution for the watch tick: the pinned device's id while it
+    /// exists, else the default's. Null when nothing resolves — a MISSING pin reads as
+    /// null so the watch stays quiet (that stream dies on its own and the rebuild falls
+    /// back to the default endpoint) instead of thrashing.</summary>
+    private string? ResolveDesiredDeviceId()
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            var pin = _pinnedDeviceId;
+            if (pin != null)
+            {
+                using var pinned = enumerator.GetDevice(pin);
+                return pin;
+            }
+            using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            return def.ID;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Channels in a device's mix format, or 2 when it cannot be read.</summary>
+    private static int MixChannelsOf(MMDevice device)
+    {
+        try { return device.AudioClient.MixFormat.Channels; }
         catch { return 2; }
     }
 
-    private IWavePlayer CreateOutput()
+    private (IWavePlayer Output, MMDevice? Device, string? DeviceId) CreateOutput()
     {
         // Silent test mode (NOCTIS_AOUT=dummy): the same chain, pulled in real time by a
         // player with no device behind it (see NullWavePlayer).
-        IWavePlayer wasapiOut = NullWavePlayer.SilentMode
-            ? new NullWavePlayer()
-            : OperatingSystem.IsWindows()
-                ? new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: OutputLatencyMs)
-                : new PulseSimpleWavePlayer(OutputLatencyMs);
+        MMDevice? device = null;
+        string? id = null;
+        IWavePlayer wasapiOut;
+        if (NullWavePlayer.SilentMode)
+        {
+            wasapiOut = new NullWavePlayer();
+        }
+        else if (OperatingSystem.IsWindows())
+        {
+            device = ResolveDesiredDevice(out id)
+                     ?? throw new InvalidOperationException("no render endpoint available");
+            wasapiOut = new WasapiOut(device, AudioClientShareMode.Shared, useEventSync: true, latency: OutputLatencyMs);
+        }
+        else
+        {
+            wasapiOut = new PulseSimpleWavePlayer(OutputLatencyMs);
+        }
         try
         {
             ISampleProvider render = _renderSource;
             var mode = UpmixMode;
             if (mode != Services.UpmixMode.Off)
             {
-                var deviceChannels = DeviceMixChannels();
+                // device == null on the silent/Linux paths: stereo either way.
+                var deviceChannels = device != null ? MixChannelsOf(device) : 2;
                 if (deviceChannels > Channels)
                 {
                     // Shared mode takes IEEE float at the mix format's channel count natively,
@@ -337,10 +428,11 @@ public sealed class GaplessSink : IDisposable
         catch
         {
             try { wasapiOut.Dispose(); } catch { }
+            try { device?.Dispose(); } catch { }
             throw;
         }
         wasapiOut.PlaybackStopped += OnPlaybackStopped;
-        return wasapiOut;
+        return (wasapiOut, device, id);
     }
 
     // The render thread died. With an exception the endpoint is gone (unplug,
@@ -384,14 +476,17 @@ public sealed class GaplessSink : IDisposable
     private string DescribeFormats(WaveFormat mix) =>
         $"mix={mix.SampleRate}Hz/{mix.Channels}ch/{mix.Encoding}, engine={SampleRate}Hz/{Channels}ch";
 
-    private string DefaultDeviceFormats()
+    /// <summary>The desired endpoint's mix format against the fixed engine format. NAudio
+    /// resamples when they differ, so a device stuck at mono or a low rate shows up in the
+    /// device lines.</summary>
+    private string DesiredDeviceFormats()
     {
         if (!OperatingSystem.IsWindows())
             return $"mix=server, engine={SampleRate}Hz/{Channels}ch";
         try
         {
-            using var enumerator = new MMDeviceEnumerator();
-            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            using var device = ResolveDesiredDevice(out _);
+            if (device == null) return $"mix=?, engine={SampleRate}Hz/{Channels}ch";
             using var client = device.AudioClient; // a fresh IAudioClient per access
             return DescribeFormats(client.MixFormat);
         }
@@ -401,33 +496,33 @@ public sealed class GaplessSink : IDisposable
         }
     }
 
-    // Default render endpoint moved while our stream is still alive on the old
-    // one (device switch in Windows with the old device still present). WASAPI
-    // streams never migrate on their own; VLC's native mmdevice aout follows
-    // the default, so the engine must too.
-    private void CheckDefaultDevice()
+    // Desired render endpoint moved while our stream is still alive on another one
+    // (the Windows default changed with the old device still present, or the user
+    // re-pinned the sink from Settings). WASAPI streams never migrate on their own;
+    // VLC's native mmdevice aout follows the default, so the engine must follow the
+    // desired endpoint — pinned when set, default otherwise.
+    private void CheckDesiredDevice()
     {
         // Silent test mode has no device to follow; on Linux the sound server moves the
         // stream to a new default sink itself.
         if (_disposed || NullWavePlayer.SilentMode || !OperatingSystem.IsWindows() ||
             Volatile.Read(ref _rebuilding) == 1) return;
-        string currentId;
+        string? desiredId;
         try
         {
-            using var enumerator = new MMDeviceEnumerator();
-            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            currentId = device.ID;
+            desiredId = ResolveDesiredDeviceId();
         }
         catch
         {
             return; // no endpoint right now — the PlaybackStopped path owns recovery
         }
+        if (desiredId == null) return;
         string? boundId;
         lock (_gate) boundId = _deviceId;
-        if (boundId == null || currentId == boundId) return;
+        if (boundId == null || desiredId == boundId) return;
         // Guarded: the format read is COM work that would otherwise run with logging off.
         if (DebugLogger.IsEnabled)
-            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged", DefaultDeviceFormats());
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged", DesiredDeviceFormats());
         if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
             Task.Run(RebuildLoop);
     }
@@ -437,30 +532,21 @@ public sealed class GaplessSink : IDisposable
         try
         {
             IWavePlayer oldOut;
-            lock (_gate) oldOut = _out;
+            MMDevice? oldDevice;
+            lock (_gate) { oldOut = _out; oldDevice = _outDevice; _outDevice = null; }
             oldOut.PlaybackStopped -= OnPlaybackStopped;
             try { oldOut.Stop(); } catch { }
             try { oldOut.Dispose(); } catch { }
+            try { oldDevice?.Dispose(); } catch { }
 
             var attempt = 0;
             while (!_disposed)
             {
                 attempt++;
-                IWavePlayer? newOut = null;
+                (IWavePlayer newOut, MMDevice? newDevice, string? id) = (null!, null, null);
                 try
                 {
-                    newOut = CreateOutput();
-                    string? id = null;
-                    if (OperatingSystem.IsWindows())
-                    {
-                        try
-                        {
-                            using var enumerator = new MMDeviceEnumerator();
-                            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-                            id = device.ID;
-                        }
-                        catch { /* watch just compares against null → no false trigger */ }
-                    }
+                    (newOut, newDevice, id) = CreateOutput();
                     // New render thread: re-apply priority + MMCSS on first read.
                     _probe.RearmBoost();
                     // The new session opens at its own level, not the user's: render silence
@@ -479,9 +565,11 @@ public sealed class GaplessSink : IDisposable
                             newOut.PlaybackStopped -= OnPlaybackStopped;
                             try { newOut.Stop(); } catch { }
                             try { newOut.Dispose(); } catch { }
+                            try { newDevice?.Dispose(); } catch { }
                             return;
                         }
                         _out = newOut;
+                        _outDevice = newDevice;
                         _deviceId = id;
                         // The new output is subscribed and started per _desiredPlaying;
                         // if the player is still idle, the next watch tick parks it again.
@@ -492,7 +580,7 @@ public sealed class GaplessSink : IDisposable
                     // that must not widen the fresh session's 100% window.
                     if (DebugLogger.IsEnabled)
                         DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkRebuilt",
-                            $"attempt={attempt}, playing={_desiredPlaying}, {DefaultDeviceFormats()}");
+                            $"attempt={attempt}, playing={_desiredPlaying}, {DesiredDeviceFormats()}");
                     return;
                 }
                 catch (Exception ex)
@@ -611,10 +699,12 @@ public sealed class GaplessSink : IDisposable
         lock (_parkGate) // no idle park/wake in flight on the output being torn down
         {
             IWavePlayer current;
-            lock (_gate) current = _out;
+            MMDevice? device;
+            lock (_gate) { current = _out; device = _outDevice; _outDevice = null; }
             current.PlaybackStopped -= OnPlaybackStopped;
             try { current.Stop(); } catch { }
             try { current.Dispose(); } catch { }
+            try { device?.Dispose(); } catch { }
         }
         try { _tap?.Dispose(); } catch { }
     }

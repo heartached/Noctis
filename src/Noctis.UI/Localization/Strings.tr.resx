@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -329,6 +329,13 @@
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Müstehcen İçerik</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Kapalıyken, doğrudan çalmadığın sürece müstehcen şarkılar atlanır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDevice" xml:space="preserve"><value>Çıkış Aygıtı</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Noctis'in sesi çaldığı yer. Özel mod seçili aygıtı doğrudan açar, bu yüzden bit-perfect çıkışı Windows varsayılanı yerine bu ayarı izler.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>Sistem Varsayılanı</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>varsayılan</value><comment>Suffix marking the current Windows default endpoint</comment></data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Seçili aygıt</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>bağlı değil</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>Seçili aygıt şu anda bağlı değil. Yeniden bağlanana kadar çalma, sistem varsayılanını kullanır.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Özel Mod</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Windows karıştırıcısını atlayan bit-perfect çıkış. Diğer uygulamalar susar ve geçişler kapanır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Tempo ve Ton Analizi</value><comment>Text in SettingsView.axaml</comment></data>

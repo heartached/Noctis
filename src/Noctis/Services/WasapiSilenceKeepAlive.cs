@@ -66,17 +66,21 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
     private long _lastActivityTicks;
     private volatile bool _disposed;
     private volatile bool _suspended;
+    // Settings → Output Device pin; null = warm the Windows default. The stream
+    // follows it so the endpoint Noctis actually plays to is the warm one.
+    private volatile string? _pinnedDeviceId;
 
-    public static WasapiSilenceKeepAlive? TryStart()
+    public static WasapiSilenceKeepAlive? TryStart(string? deviceId = null)
     {
         if (!OperatingSystem.IsWindows()) return null;
         if (Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE") == "0") return null;
-        try { return new WasapiSilenceKeepAlive(); }
+        try { return new WasapiSilenceKeepAlive(deviceId); }
         catch { return null; }
     }
 
-    private WasapiSilenceKeepAlive()
+    private WasapiSilenceKeepAlive(string? deviceId)
     {
+        _pinnedDeviceId = string.IsNullOrEmpty(deviceId) ? null : deviceId;
         _idleStopMs = int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE_IDLE_MS"), out var ms) && ms >= 0
             ? ms : DefaultIdleStopMs;
         Volatile.Write(ref _lastActivityTicks, Environment.TickCount64);
@@ -111,6 +115,16 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
         if (!suspended) NotifyActivity();
     }
 
+    /// <summary>Settings → Output Device changed: warm that endpoint instead (null/empty
+    /// = the Windows default). Wakes the loop so even a parked stream re-evaluates right
+    /// away; a running stream tears down and recreates on the mismatch check.</summary>
+    public void SetDevice(string? deviceId)
+    {
+        if (_disposed) return;
+        _pinnedDeviceId = string.IsNullOrEmpty(deviceId) ? null : deviceId;
+        NotifyActivity();
+    }
+
     private void Run()
     {
         while (!_disposed)
@@ -137,8 +151,8 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
             try
             {
                 enumerator = (IMMDeviceEnumerator)CoreAudioComInterop.CreateMMDeviceEnumerator();
-                Check(enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device));
-                var deviceId = GetDeviceId(device);
+                if (!TryResolveDesired(enumerator, out device, out var deviceId))
+                    throw new InvalidOperationException("no render endpoint for the keep-alive stream");
 
                 var clientIid = typeof(IAudioClient).GUID;
                 Check(device.Activate(ref clientIid, CLSCTX_ALL, IntPtr.Zero, out var clientObj));
@@ -211,7 +225,7 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                         if (now - lastDeviceCheck >= DeviceCheckIntervalMs)
                         {
                             lastDeviceCheck = now;
-                            if (DefaultDeviceChanged(enumerator, deviceId))
+                            if (DesiredEndpointChanged(enumerator, deviceId))
                             {
                                 DebugLogger.Info(DebugLogger.Category.Playback, "KeepAlive.DeviceChanged");
                                 break; // tear down and recreate on the new default device
@@ -231,7 +245,7 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                             Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
                             continue;
 
-                        if (DefaultDeviceChanged(enumerator, deviceId))
+                        if (DesiredEndpointChanged(enumerator, deviceId))
                             break; // default moved while parked — recreate there
 
                         Check(client.Start());
@@ -287,14 +301,47 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
         finally { Marshal.FreeCoTaskMem(ptr); }
     }
 
-    private static bool DefaultDeviceChanged(IMMDeviceEnumerator enumerator, string? currentId)
+    /// <summary>
+    /// The endpoint this stream should warm: the pinned device (Settings → Output
+    /// Device) while it exists, else the Windows default — the pin's stream dying on
+    /// unplug just falls back to warming the default. False when neither resolves.
+    /// </summary>
+    private bool TryResolveDesired(IMMDeviceEnumerator enumerator, out IMMDevice device, out string deviceId)
+    {
+        var pin = _pinnedDeviceId;
+        if (pin != null && enumerator.GetDevice(pin, out var pinned) >= 0 && pinned != null)
+        {
+            device = pinned;
+            deviceId = pin;
+            return true;
+        }
+        if (enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out var def) >= 0 && def != null)
+        {
+            var id = GetDeviceId(def);
+            if (id != null)
+            {
+                device = def;
+                deviceId = id;
+                return true;
+            }
+            TryRelease(def);
+        }
+        device = null!;
+        deviceId = "";
+        return false;
+    }
+
+    // True when the endpoint this stream should warm is no longer the one it is on:
+    // the pin changed, the pinned device went away, or (unpinned) the Windows default
+    // moved. False on enumeration hiccups — never churn the stream over those.
+    private bool DesiredEndpointChanged(IMMDeviceEnumerator enumerator, string? currentId)
     {
         if (currentId == null) return false;
         try
         {
-            if (enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out var device) < 0 || device == null)
+            if (!TryResolveDesired(enumerator, out var device, out var desired))
                 return false;
-            try { return !string.Equals(GetDeviceId(device), currentId, StringComparison.Ordinal); }
+            try { return !string.Equals(desired, currentId, StringComparison.Ordinal); }
             finally { TryRelease(device); }
         }
         catch
@@ -357,7 +404,7 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
     {
         [PreserveSig] int EnumAudioEndpoints();
         [PreserveSig] int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, out IMMDevice ppDevice);
-        [PreserveSig] int GetDevice();
+        [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string pwstrId, out IMMDevice ppDevice);
         [PreserveSig] int RegisterEndpointNotificationCallback();
         [PreserveSig] int UnregisterEndpointNotificationCallback();
     }

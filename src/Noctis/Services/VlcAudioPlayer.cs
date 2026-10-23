@@ -226,6 +226,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private volatile bool _exclusiveModeEnabled;
     private volatile WasapiGainOutput? _exclusiveOut;
     private readonly object _exclusiveSinkLock = new();
+    // Settings → Output → Output Device (Windows): the MMDevice endpoint id every
+    // output path plays to — the exclusive sink, its shared fallback, the gapless
+    // engine, VLC's own mmdevice aout, the keep-warm stream and the session-volume
+    // resolver. Null = follow the Windows default. Set at construction from
+    // OutputDeviceAtLaunch; changed at runtime via SetOutputDevice.
+    private volatile string? _outputDeviceId;
     // Output mode the players are currently WIRED for (set by
     // RebuildOutputModeLocked). Lets queued SetExclusiveMode workers coalesce:
     // each executes against the latest desired mode and no-ops when the players
@@ -575,6 +581,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // mmdevice is Windows-only.
         if (OperatingSystem.IsWindows())
         {
+            // Settings → Output → Output Device: the endpoint VLC's own aout opens on.
+            // An instance-level arg (inherited by every aout open) is the only reliable
+            // way to pin it from launch; runtime changes ride SetOutputDevice instead.
+            _outputDeviceId = NormalizeOutputDeviceId(OutputDeviceAtLaunch);
+            if (_outputDeviceId != null)
+                vlcArgs.Add($"--mmdevice-audio-device={_outputDeviceId}");
             // Diagnostic override: NOCTIS_AOUT lets us A/B the Windows audio
             // output module on real hardware without recompiling. On Bluetooth
             // (AirPods etc.) mmdevice's WASAPI clock can spiral into a permanent
@@ -644,6 +656,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
+        ApplyOutputDeviceTo(_player);
+        ApplyOutputDeviceTo(_standbyPlayer);
 
         // Experimental: route audio through a custom WASAPI sink that applies
         // volume as a per-sample interpolated gain (click-free at any drag speed).
@@ -656,7 +670,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (OperatingSystem.IsWindows() &&
             Environment.GetEnvironmentVariable("NOCTIS_WASAPI") == "1")
         {
-            wasapi = WasapiGainOutput.TryCreate();
+            wasapi = WasapiGainOutput.TryCreate(_outputDeviceId);
             if (wasapi != null)
             {
                 _audioPlayCb = AudioPlay;
@@ -706,6 +720,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             : WindowsSessionVolume.TryCreate();
         if (_sessionVolume != null)
         {
+            if (_sessionVolume is WindowsSessionVolume wsv)
+                wsv.SetDevice(_outputDeviceId);
             try { _player.Volume = 100; } catch { }
             try { _standbyPlayer.Volume = 100; } catch { }
         }
@@ -728,7 +744,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                          Environment.GetEnvironmentVariable("NOCTIS_GAPLESS_ENGINE") != "0";
         if (_gaplessEngine)
         {
-            _gaplessSink = GaplessSink.TryCreate();
+            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId);
             if (_gaplessSink == null)
             {
                 _gaplessEngine = false;
@@ -800,7 +816,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // Resume() never uncorks against a suspended sink (GitHub #70).
         _keepAlive = NullWavePlayer.SilentMode ? null
             : OperatingSystem.IsWindows()
-                ? WasapiSilenceKeepAlive.TryStart()
+                ? WasapiSilenceKeepAlive.TryStart(_outputDeviceId)
                 : VlcSilenceKeepAlive.TryStart(_libVlc, () => _isPaused);
         if (NullWavePlayer.SilentMode)
         {
@@ -1697,9 +1713,18 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
     public bool ExclusiveModeActive => _exclusiveOut is { IsExclusive: true };
 
-    /// <summary>Settings → Audio → Headphone surround as saved when Noctis started. Program.Main
+    /// <summary>
+    /// Settings → Audio → Headphone surround as saved when Noctis started. Program.Main
     /// sets it before the player is built (see <see cref="StereoModeArg"/>).</summary>
     public static bool HeadphoneSurroundAtLaunch { get; set; }
+
+    /// <summary>
+    /// Settings → Output → Output Device as saved when Noctis started (MMDevice
+    /// endpoint id, empty/null = Windows default). Program.Main sets it before the
+    /// player is built: the LibVLC instance arg and every sink the constructor opens
+    /// need it up front. Runtime changes go through <see cref="SetOutputDevice"/>.
+    /// </summary>
+    public static string? OutputDeviceAtLaunch { get; set; }
 
     /// <inheritdoc />
     public bool HeadphoneSurroundActive { get; }
@@ -1724,18 +1749,21 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     {
         get
         {
+            // The pinned device (Settings → Output Device), when one is set and alive.
+            var device = AudioOutputDeviceCatalog.NameOf(_outputDeviceId);
+            var suffix = string.IsNullOrEmpty(device) ? "" : $" — {device}";
             if (_exclusiveModeEnabled && _exclusiveOut is { } sink)
             {
                 return sink.IsExclusive
-                    ? $"WASAPI Exclusive — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
-                    : $"WASAPI Shared — {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
+                    ? $"WASAPI Exclusive{suffix} — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
+                    : $"WASAPI Shared{suffix} — {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
             }
             if (_exclusiveModeEnabled)
                 return "WASAPI Exclusive (engages on play)";
             if (_wasapiOut != null)
-                return $"WASAPI Shared — {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
+                return $"WASAPI Shared{suffix} — {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
             if (OperatingSystem.IsWindows())
-                return "WASAPI Shared (system mixer)";
+                return $"WASAPI Shared{suffix} (system mixer)";
             if (OperatingSystem.IsMacOS())
                 return "CoreAudio (shared)";
             return "System output (shared)";
@@ -1788,6 +1816,98 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _playbackLock.Release();
             }
         });
+    }
+
+    /// <summary>
+    /// Pin every output path to the given MMDevice endpoint id (Settings → Output →
+    /// Output Device). Null/empty follows the Windows default again. The gapless
+    /// engine's sink and the keep-warm stream retarget themselves; the session-volume
+    /// resolver re-pins; the exclusive sink and VLC's own aout move via a queued
+    /// rebuild (the SetExclusiveMode machinery — callback players cannot re-target
+    /// their stream, they are torn down and the track resumes on the new endpoint).
+    /// No-op on non-Windows.
+    /// </summary>
+    public void SetOutputDevice(string? deviceId)
+    {
+        if (_disposed) return;
+        if (!OperatingSystem.IsWindows()) deviceId = null;
+        deviceId = NormalizeOutputDeviceId(deviceId);
+        if (string.Equals(deviceId, _outputDeviceId, StringComparison.Ordinal)) return;
+        _outputDeviceId = deviceId;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+            $"outputDevice={(deviceId == null ? "default" : deviceId)}");
+
+        // Self-retargeting sinks.
+        _gaplessSink?.SetDevice(deviceId);
+        _keepAlive?.SetDevice(deviceId);
+        if (_sessionVolume is WindowsSessionVolume wsv)
+            wsv.SetDevice(deviceId);
+
+        if (_outputModeExclusiveBuilt)
+        {
+            // Callback players hold the (exclusive or shared-fallback) sink; drop it so
+            // the rebuild reopens on the new endpoint, then resume the track there.
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { _playbackLock.Wait(); }
+                catch (ObjectDisposedException) { return; }
+                try
+                {
+                    if (_disposed || !_outputModeExclusiveBuilt) return;
+                    lock (_exclusiveSinkLock)
+                    {
+                        try { _exclusiveOut?.Dispose(); } catch { }
+                        _exclusiveOut = null;
+                    }
+                    RebuildOutputModeLocked(_exclusiveModeEnabled);
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "Audio.DeviceSwitchFailed", ex.Message);
+                }
+                finally
+                {
+                    _playbackLock.Release();
+                }
+            });
+        }
+        else
+        {
+            // Classic path: a live aout moves immediately, a future one inherits the
+            // module var set below (fresh players get it in RebuildOutputModeLocked).
+            ApplyOutputDeviceTo(_player);
+            ApplyOutputDeviceTo(_standbyPlayer);
+        }
+    }
+
+    private static string? NormalizeOutputDeviceId(string? deviceId) =>
+        string.IsNullOrEmpty(deviceId) ? null : deviceId.Trim();
+
+    /// <summary>
+    /// Pins a MediaPlayer to the selected output device. The module-name call stores
+    /// <c>mmdevice-audio-device</c> on the player (inherited by every aout it opens —
+    /// VLC 3.x's mmdevice reads it at output start and falls back to the default
+    /// endpoint when the id no longer resolves); the module-less call moves a LIVE
+    /// aout straight away. Both take "" as the explicit "default device" marker.
+    /// Called on every player creation (ctor, RebuildOutputModeLocked) and on device
+    /// changes; each call is harmless when the pin already matches.
+    /// </summary>
+    private void ApplyOutputDeviceTo(MediaPlayer player)
+    {
+        if (!OperatingSystem.IsWindows() || NullWavePlayer.SilentMode) return;
+        var id = _outputDeviceId ?? "";
+        try
+        {
+            player.SetOutputDevice(id, "mmdevice"); // every future aout open on this player
+            player.SetOutputDevice(id);             // a live aout, right now
+        }
+        catch (Exception ex)
+        {
+            // The aout API exists since VLC 2.2; failures here are inert (default
+            // device) — never block playback over the pin.
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Audio.OutputDevicePinFailed",
+                $"{ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1866,6 +1986,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
+        // The exclusive-mode callbacks are wired below on the fresh players; the
+        // device pin applies to both modes, classic mmdevice included.
+        ApplyOutputDeviceTo(_player);
+        ApplyOutputDeviceTo(_standbyPlayer);
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
         _standbyPlayer.EndReached += OnEndReached;
@@ -1968,12 +2092,13 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             lock (_exclusiveSinkLock)
             {
                 // Reuse the open device stream when the format matches; otherwise
-                // close it (rate change, or a shared fallback that can retry
-                // exclusive now that the device may be free).
+                // close it (rate change, a device re-pin from Settings, or a shared
+                // fallback that can retry exclusive now that the device may be free).
                 if (_exclusiveOut != null &&
                     (!_exclusiveOut.IsExclusive ||
                      _exclusiveOut.SampleRate != rate ||
-                     _exclusiveOut.Channels != channels))
+                     _exclusiveOut.Channels != channels ||
+                     !string.Equals(_exclusiveOut.DeviceId, _outputDeviceId, StringComparison.Ordinal)))
                 {
                     _exclusiveOut.Dispose();
                     _exclusiveOut = null;
@@ -1981,14 +2106,14 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
                 if (_exclusiveOut == null)
                 {
-                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, out var reason);
+                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, _outputDeviceId, out var reason);
                     if (sink != null)
                     {
                         notice = $"Exclusive output active — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
                     }
                     else
                     {
-                        sink = WasapiGainOutput.TryCreate();
+                        sink = WasapiGainOutput.TryCreate(_outputDeviceId);
                         // Read as an error before: it said what failed but not that
                         // playback is fine, nor that the next track retries exclusive
                         // (the reuse check above drops a shared fallback sink).

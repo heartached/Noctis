@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -1143,6 +1143,34 @@
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
     <value>Désactivé, saute les chansons explicites à moins que vous ne les écoutiez directement.</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDevice" xml:space="preserve">
+    <value>Périphérique de sortie</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve">
+    <value>Là où Noctis lit le son. Le mode exclusif ouvre directement le périphérique sélectionné : la sortie bit-perfect suit ce réglage au lieu du périphérique par défaut de Windows.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve">
+    <value>Sortie système par défaut</value>
+    <comment>Output Device picker: follow-the-Windows-default entry</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve">
+    <value>par défaut</value>
+    <comment>Suffix marking the current Windows default endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve">
+    <value>Périphérique sélectionné</value>
+    <comment>Output Device picker: disconnected pinned endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve">
+    <value>non connecté</value>
+    <comment>Suffix for a disconnected endpoint in the picker</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
+    <value>Le périphérique sélectionné n'est pas connecté pour le moment. La lecture passe par la sortie système par défaut jusqu'à son retour.</value>
+    <comment>Shown under Output Device when the pin is missing</comment>
   </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
     <value>Mode exclusif</value>

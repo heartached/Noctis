@@ -101,10 +101,14 @@ internal class Program
             // resolve and delays first paint. DI serializes singleton creation,
             // so the UI-thread resolve either finds it ready or waits exactly as
             // it does today — the instance is never built twice.
-            // Headphone surround is a LibVLC instance option, so it has to be known
-            // before the player exists — ahead of the settings load.
+            // Headphone surround is a LibVLC instance option, and the output device
+            // pins both the LibVLC instance arg and every sink the player opens, so
+            // both have to be known before the player exists — ahead of the settings
+            // load.
             VlcAudioPlayer.HeadphoneSurroundAtLaunch = PersistenceService.ReadBoolSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.HeadphoneSurround));
+            VlcAudioPlayer.OutputDeviceAtLaunch = PersistenceService.ReadStringSettingAtLaunch(
+                AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.AudioOutputDeviceId));
             _ = Task.Run(() =>
             {
                 try { provider.GetRequiredService<IAudioPlayer>(); }

@@ -50,6 +50,11 @@ public partial class SettingsView : UserControl
         SettingsSearchBox.KeyDown += OnSearchBoxKeyDown;
         DataContextChanged += OnSettingsDataContextChanged;
 
+        // Output Device picker: re-enumerate the endpoints as the dropdown opens, so a
+        // just-plugged DAC (or a default-device change) shows up without leaving Settings.
+        OutputDeviceCombo.DropDownOpened += (_, _) =>
+            _trackedViewModel?.RefreshOutputDevicesCommand.Execute(null);
+
         // Pre-amp pill slider: the visible track/fill/thumb are drawn on a Canvas and
         // positioned from code-behind. The real Slider is transparent and only handles
         // pointer input (drag + double-press-to-reset), mirroring the metadata volume slider.

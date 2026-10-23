@@ -244,6 +244,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Windows only: WASAPI exclusive-mode output for bit-perfect playback.</summary>
     public bool ExclusiveAudioEnabled { get; set; }
 
+    /// <summary>Windows only: MMDevice endpoint id Noctis plays to (Settings → Output →
+    /// Output Device). Empty = follow the Windows default. Exclusive Mode opens this
+    /// endpoint directly, so bit-perfect output follows the in-app selection instead of
+    /// breaking when the system default changes.</summary>
+    public string AudioOutputDeviceId { get; set; } = "";
+
     /// <summary>Gapless playback: natural track changes hand off to a pre-decoded
     /// standby player instead of an audible stop/start. On by default.</summary>
     public bool GaplessPlaybackEnabled { get; set; } = true;

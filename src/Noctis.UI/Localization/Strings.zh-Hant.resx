@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -1143,6 +1143,34 @@
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
     <value>除非您直接播放，否則將關閉直播歌曲。</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDevice" xml:space="preserve">
+    <value>輸出裝置</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve">
+    <value>Noctis 播放聲音的位置。獨佔模式會直接開啟所選裝置，因此位元完美輸出跟隨此設定，而非 Windows 預設裝置。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve">
+    <value>系統預設</value>
+    <comment>Output Device picker: follow-the-Windows-default entry</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve">
+    <value>預設</value>
+    <comment>Suffix marking the current Windows default endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve">
+    <value>已選裝置</value>
+    <comment>Output Device picker: disconnected pinned endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve">
+    <value>未連接</value>
+    <comment>Suffix for a disconnected endpoint in the picker</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
+    <value>所選裝置目前未連接。在它重新連接之前，播放將使用系統預設裝置。</value>
+    <comment>Shown under Output Device when the pin is missing</comment>
   </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
     <value>獨佔模式</value>

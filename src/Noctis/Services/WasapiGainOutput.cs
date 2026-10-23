@@ -51,7 +51,7 @@ internal sealed class WasapiGainOutput : IDisposable
     // AUDCLNT_E_DEVICE_IN_USE: another client holds the endpoint exclusively.
     private const int HrDeviceInUse = unchecked((int)0x8889000A);
 
-    // Render format. Shared mode matches the default device's mix format (sample
+    // Render format. Shared mode matches the target device's mix format (sample
     // rate) so WASAPI accepts it without a format-unsupported failure; exclusive
     // mode uses the source rate of the track being started. LibVLC is told this
     // exact rate/channels and downmixes/resamples to it if needed.
@@ -60,10 +60,16 @@ internal sealed class WasapiGainOutput : IDisposable
     public bool IsExclusive { get; }
     /// <summary>Bit depth handed to the device (16/24 PCM or 32 float).</summary>
     public int BitsPerSample { get; }
+    /// <summary>The MMDevice endpoint id this sink was opened against. Null when it
+    /// follows the Windows default device.</summary>
+    public string? DeviceId { get; }
 
     private readonly BufferedWaveProvider _buffer;
     private readonly GainSampleProvider _gain;
     private readonly WasapiOut _out;
+    // The endpoint WasapiOut renders to. NAudio does NOT dispose a caller-supplied
+    // MMDevice (its Dispose only releases the audio client), so the sink owns it.
+    private readonly MMDevice _device;
     private volatile bool _disposed;
     private long _bytesWritten;
     private int _writeCount;
@@ -99,25 +105,34 @@ internal sealed class WasapiGainOutput : IDisposable
         };
     }
 
-    public static WasapiGainOutput? TryCreate()
+    public static WasapiGainOutput? TryCreate(string? deviceId = null)
     {
         if (!OperatingSystem.IsWindows()) return null;
         // Silent test mode (NOCTIS_AOUT=dummy) opens no device: callers take their fallbacks.
         if (NullWavePlayer.SilentMode) return null;
-        try { return new WasapiGainOutput(); }
+        try { return new WasapiGainOutput(deviceId); }
         catch (Exception ex)
         {
-            Diag($"TryCreate FAILED: {ex.GetType().Name}: {ex.Message}");
+            Diag($"TryCreate FAILED (device={deviceId ?? "default"}): {ex.GetType().Name}: {ex.Message}");
+            // A pinned endpoint that no longer exists must not kill the graceful
+            // fallback: retry once on the Windows default device.
+            if (!string.IsNullOrEmpty(deviceId))
+            {
+                try { return new WasapiGainOutput(null); }
+                catch { }
+            }
             return null;
         }
     }
 
     /// <summary>
-    /// Open the default render device in WASAPI exclusive mode at the given
-    /// source rate. Returns null with a human-readable reason on failure
-    /// (device held exclusively elsewhere, rate/format not supported, ...).
+    /// Open a render device in WASAPI exclusive mode at the given source rate — the
+    /// endpoint named by <paramref name="deviceId"/>, or the Windows default when
+    /// null/empty. Returns null with a human-readable reason on failure (device held
+    /// exclusively elsewhere, rate/format not supported, selected device gone, ...).
     /// </summary>
-    public static WasapiGainOutput? TryCreateExclusive(int sampleRate, int channels, out string? failureReason)
+    public static WasapiGainOutput? TryCreateExclusive(int sampleRate, int channels,
+        string? deviceId, out string? failureReason)
     {
         failureReason = null;
         if (!OperatingSystem.IsWindows())
@@ -130,7 +145,15 @@ internal sealed class WasapiGainOutput : IDisposable
             failureReason = "silent test mode (NOCTIS_AOUT=dummy)";
             return null;
         }
-        try { return new WasapiGainOutput(sampleRate, channels); }
+        if (!string.IsNullOrEmpty(deviceId) && !AudioOutputDeviceCatalog.Exists(deviceId))
+        {
+            // The pinned endpoint is gone (DAC unplugged, device disabled). The caller
+            // falls back to the shared sink, which itself falls back to the default
+            // endpoint — say which device was asked for.
+            failureReason = "the selected output device is not connected";
+            return null;
+        }
+        try { return new WasapiGainOutput(sampleRate, channels, deviceId); }
         catch (Exception ex)
         {
             failureReason = (ex as System.Runtime.InteropServices.COMException)?.HResult == HrDeviceInUse
@@ -141,15 +164,28 @@ internal sealed class WasapiGainOutput : IDisposable
         }
     }
 
-    private WasapiGainOutput()
+    private WasapiGainOutput(string? deviceId)
     {
-        Diag("=== WasapiGainOutput init (shared) ===");
+        Diag($"=== WasapiGainOutput init (shared, device={(deviceId ?? "default")}) ===");
 
         int rate = 48000, channels = 2;
+        MMDevice device;
         try
         {
-            using var enumerator = new MMDeviceEnumerator();
-            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            var enumerator = new MMDeviceEnumerator();
+            device = ResolveTarget(enumerator, deviceId);
+            // The enumerator is only needed for the lookup; NAudio devices stay valid
+            // after it goes away.
+            enumerator.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Diag($"device resolve failed: {ex.Message}");
+            throw;
+        }
+
+        try
+        {
             var mix = device.AudioClient.MixFormat;
             Diag($"device mix format: {mix.Encoding} {mix.SampleRate}Hz {mix.Channels}ch {mix.BitsPerSample}bit");
             // Shared mode converts to the mix rate itself; LibVLC can't deliver above AmemRate.Max.
@@ -165,9 +201,11 @@ internal sealed class WasapiGainOutput : IDisposable
         Channels = channels;
         IsExclusive = false;
         BitsPerSample = 32;
+        DeviceId = string.IsNullOrEmpty(deviceId) ? null : deviceId;
 
         (_buffer, _gain) = CreateInputChain(SampleRate, Channels);
-        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
+        _device = device;
+        _out = new WasapiOut(device, AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         // Post-gain beat tap for the flowing-artwork lyrics background (see BeatMeter).
         _out.Init(new BeatTapProvider(_gain, 50));
         HookPlaybackStopped();
@@ -175,9 +213,14 @@ internal sealed class WasapiGainOutput : IDisposable
         Diag($"input S16N {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
     }
 
-    private WasapiGainOutput(int sampleRate, int channels)
+    private WasapiGainOutput(int sampleRate, int channels, string? deviceId)
     {
-        Diag($"=== WasapiGainOutput init (exclusive, {sampleRate}Hz {channels}ch) ===");
+        Diag($"=== WasapiGainOutput init (exclusive, {sampleRate}Hz {channels}ch, device={(deviceId ?? "default")}) ===");
+
+        var enumerator = new MMDeviceEnumerator();
+        _device = ResolveTarget(enumerator, deviceId);
+        enumerator.Dispose();
+        DeviceId = string.IsNullOrEmpty(deviceId) ? null : deviceId;
 
         SampleRate = sampleRate;
         Channels = channels;
@@ -201,7 +244,7 @@ internal sealed class WasapiGainOutput : IDisposable
                 _ => new SampleToWaveProvider(tapped),
             };
 
-            var attempt = new WasapiOut(AudioClientShareMode.Exclusive, useEventSync: true, latency: 100);
+            var attempt = new WasapiOut(_device, AudioClientShareMode.Exclusive, useEventSync: true, latency: 100);
             try
             {
                 attempt.Init(rendered);
@@ -223,8 +266,17 @@ internal sealed class WasapiGainOutput : IDisposable
             }
         }
 
+        try { _device.Dispose(); } catch { }
         throw lastError ?? new InvalidOperationException("exclusive WASAPI init failed");
     }
+
+    /// <summary>The endpoint to open: the pinned device id, or the Windows default.
+    /// Throws when the pinned endpoint no longer exists (the caller decides whether
+    /// that is fatal or falls back to the default).</summary>
+    private static MMDevice ResolveTarget(MMDeviceEnumerator enumerator, string? deviceId) =>
+        string.IsNullOrEmpty(deviceId)
+            ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
+            : enumerator.GetDevice(deviceId);
 
     private static (BufferedWaveProvider buffer, GainSampleProvider gain) CreateInputChain(int sampleRate, int channels)
     {
@@ -355,6 +407,8 @@ internal sealed class WasapiGainOutput : IDisposable
         _disposed = true;
         try { _out.Stop(); } catch { }
         try { _out.Dispose(); } catch { }
+        // WasapiOut never disposes a caller-supplied MMDevice — the sink owns it.
+        try { _device.Dispose(); } catch { }
     }
 
     // ── Diagnostics ─────────────────────────────────────────────────

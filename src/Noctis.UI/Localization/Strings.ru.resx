@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -415,6 +415,13 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="MiniPlayer.Played" xml:space="preserve"><value>Прослушано</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Ненормативный контент</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Если выключено, песни с ненормативной лексикой пропускаются, если вы не включаете их сами.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDevice" xml:space="preserve"><value>Устройство вывода</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Куда выводит звук Noctis. Монопольный режим открывает выбранное устройство напрямую, поэтому бит-в-бит вывод следует этой настройке, а не устройству Windows по умолчанию.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>Системное устройство по умолчанию</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>по умолчанию</value><comment>Suffix marking the current Windows default endpoint</comment></data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Выбранное устройство</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>не подключено</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>Выбранное устройство сейчас не подключено. Пока оно не вернётся, воспроизведение идёт на системное устройство по умолчанию.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Монопольный режим</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Бит-в-бит вывод в обход микшера Windows. Звук других приложений отключается, переходы выключены.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Анализ темпа и тональности</value><comment>Text in SettingsView.axaml</comment></data>

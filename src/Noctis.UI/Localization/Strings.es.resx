@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -1143,6 +1143,34 @@
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
     <value>Off salta canciones explícitas a menos que las reproducidas directamente.</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDevice" xml:space="preserve">
+    <value>Dispositivo de salida</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve">
+    <value>Dónde se reproduce el sonido de Noctis. El modo exclusivo abre el dispositivo seleccionado directamente, por lo que la salida bit-perfect sigue este ajuste en lugar del predeterminado de Windows.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve">
+    <value>Predeterminado del sistema</value>
+    <comment>Output Device picker: follow-the-Windows-default entry</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve">
+    <value>predeterminado</value>
+    <comment>Suffix marking the current Windows default endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve">
+    <value>Dispositivo seleccionado</value>
+    <comment>Output Device picker: disconnected pinned endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve">
+    <value>no conectado</value>
+    <comment>Suffix for a disconnected endpoint in the picker</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
+    <value>El dispositivo seleccionado no está conectado ahora mismo. La reproducción usa el predeterminado del sistema hasta que vuelva.</value>
+    <comment>Shown under Output Device when the pin is missing</comment>
   </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
     <value>Modo exclusivo</value>

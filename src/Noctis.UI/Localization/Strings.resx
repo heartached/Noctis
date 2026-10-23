@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -415,6 +415,13 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="MiniPlayer.Played" xml:space="preserve"><value>Played</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Off skips explicit songs unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDevice" xml:space="preserve"><value>Output Device</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Where Noctis plays. Exclusive Mode opens the selected device directly, so bit-perfect output follows this setting instead of the Windows default.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>System Default</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>default</value><comment>Suffix marking the current Windows default endpoint</comment></data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Selected device</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>not connected</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>The selected device is not connected right now. Playback uses the system default until it returns.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect output that bypasses the Windows mixer. Other apps go silent and transitions are off.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Analyze Tempo &amp; Key</value><comment>Text in SettingsView.axaml</comment></data>

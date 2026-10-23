@@ -67,6 +67,15 @@ public interface IAudioPlayer : IDisposable
     /// </summary>
     void SetExclusiveMode(bool enabled);
 
+    /// <summary>
+    /// Windows only: plays to the given MMDevice endpoint id instead of the Windows
+    /// default (Settings → Output → Output Device). Empty/null = follow the system
+    /// default. Applies to every output path (exclusive sink, gapless engine, VLC's
+    /// own mmdevice output); a device change while playing moves audio to the new
+    /// endpoint. No-op on other platforms.
+    /// </summary>
+    void SetOutputDevice(string? deviceId) { }
+
     /// <summary>True while audio is actually flowing through an exclusive-mode device stream.</summary>
     bool ExclusiveModeActive { get; }
 

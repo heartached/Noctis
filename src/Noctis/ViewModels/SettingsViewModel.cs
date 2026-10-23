@@ -995,6 +995,9 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
         DiscordStatusDisplayOptions = BuildDiscordStatusDisplayOptions();
         OnPropertyChanged(nameof(SelectedDiscordStatusDisplayOption));
+        // Endpoint list is live, but its labels (default marker, disconnected row)
+        // are localized — rebuild it with the same selection.
+        RebuildOutputDeviceOptions(_selectedOutputDeviceId);
     }
 
     public VisualizerStyle LyricsVisualizerStyleMode => VisualizerStyles.Parse(LyricsVisualizerStyle);
@@ -2078,6 +2081,99 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
     [ObservableProperty] private bool _writeAnalysisToTags;
 
+    // ── Output device (Windows WASAPI) ──
+
+    public bool IsOutputDeviceSupported => OperatingSystem.IsWindows();
+
+    /// <summary>One row of the Output Device picker: the MMDevice endpoint id (""
+    /// follows the Windows default) plus the display label.</summary>
+    public sealed record OutputDeviceOption(string Id, string Label, bool IsMissing)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<OutputDeviceOption> OutputDeviceOptions
+    {
+        get => _outputDeviceOptions;
+        private set => SetProperty(ref _outputDeviceOptions, value);
+    }
+    private IReadOnlyList<OutputDeviceOption> _outputDeviceOptions = new List<OutputDeviceOption>();
+
+    /// <summary>The pinned endpoint id ("" = follow the Windows default). The picker's
+    /// selection derives from it against the current option list, so item rebuilds
+    /// (device plugged/unplugged, language switch) never lose it.</summary>
+    private string _selectedOutputDeviceId = "";
+
+    public OutputDeviceOption? SelectedOutputDevice
+    {
+        get => OutputDeviceOptions.FirstOrDefault(o => o.Id == _selectedOutputDeviceId)
+               ?? OutputDeviceOptions.FirstOrDefault(o => o.Id.Length == 0);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep state.
+            if (value is null || _selectedOutputDeviceId == value.Id) return;
+            _selectedOutputDeviceId = value.Id;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(OutputDeviceMissing));
+            // Empty means "system default" — passed as null down the player API.
+            _audioPlayer?.SetOutputDevice(IsOutputDeviceSupported && value.Id.Length > 0 ? value.Id : null);
+            _player?.RefreshSignalPath();
+            if (_settingsLoaded) _ = SaveAsync();
+        }
+    }
+
+    /// <summary>True when the pinned endpoint is not connected right now — playback
+    /// falls back to the system default until it returns.</summary>
+    public bool OutputDeviceMissing =>
+        IsOutputDeviceSupported && SelectedOutputDevice is { Id.Length: > 0, IsMissing: true };
+
+    // Friendly names of endpoints seen this session, so a disconnected pick keeps its
+    // name in the list instead of collapsing into a raw endpoint id.
+    private readonly Dictionary<string, string> _outputDeviceNames = new(StringComparer.Ordinal);
+
+    /// <summary>Re-enumerates the endpoints (also runs when the picker's dropdown opens,
+    /// so a just-plugged DAC shows up without leaving Settings).</summary>
+    [RelayCommand]
+    private void RefreshOutputDevices() => RebuildOutputDeviceOptions(_selectedOutputDeviceId);
+
+    internal void RebuildOutputDeviceOptions(string selectedId)
+    {
+        var devices = AudioOutputDeviceCatalog.Enumerate();
+        foreach (var d in devices)
+            _outputDeviceNames[d.Id] = d.Name;
+        OutputDeviceOptions = BuildOutputDeviceOptions(devices, selectedId,
+            _outputDeviceNames.GetValueOrDefault(selectedId));
+        _selectedOutputDeviceId = selectedId;
+        OnPropertyChanged(nameof(SelectedOutputDevice));
+        OnPropertyChanged(nameof(OutputDeviceMissing));
+    }
+
+    /// <summary>Pure option-list builder: "System Default" first, then the endpoints
+    /// (the Windows default marked), and the pinned-but-disconnected endpoint kept as a
+    /// "(not connected)" row so the user sees why audio falls back. Testable without
+    /// COM (empty device list on non-Windows).</summary>
+    internal static IReadOnlyList<OutputDeviceOption> BuildOutputDeviceOptions(
+        IReadOnlyList<Services.AudioOutputDevice> devices, string selectedId, string? knownMissingName)
+    {
+        var options = new List<OutputDeviceOption>
+        {
+            new("", Loc.T("Settings.OutputDeviceDefault"), IsMissing: false),
+        };
+        foreach (var d in devices)
+            options.Add(new OutputDeviceOption(d.Id,
+                d.IsDefault
+                    ? $"{d.Name} ({Loc.T("Settings.OutputDeviceDefaultMarker")})"
+                    : d.Name,
+                IsMissing: false));
+        if (!string.IsNullOrEmpty(selectedId) && devices.All(d => d.Id != selectedId))
+        {
+            var name = knownMissingName ?? Loc.T("Settings.OutputDeviceMissingEntry");
+            options.Add(new OutputDeviceOption(selectedId,
+                $"{name} ({Loc.T("Settings.OutputDeviceDisconnected")})", IsMissing: true));
+        }
+        return options;
+    }
+
     // ── Exclusive mode (Windows WASAPI) ──
 
     public bool IsExclusiveAudioSupported => OperatingSystem.IsWindows();
@@ -2946,6 +3042,9 @@ public partial class SettingsViewModel : ViewModelBase
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
+            // The pin was already applied at player construction (Program.cs reads it
+            // before the player exists); this only builds the picker's option list.
+            RebuildOutputDeviceOptions(IsOutputDeviceSupported ? _settings.AudioOutputDeviceId : "");
             NetEaseEnabled = _settings.NetEaseEnabled;
             MusixmatchEnabled = _settings.MusixmatchEnabled;
             KugouEnabled = _settings.KugouEnabled;
@@ -3417,6 +3516,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
+        _settings.AudioOutputDeviceId = IsOutputDeviceSupported ? _selectedOutputDeviceId : "";
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.MusixmatchEnabled = MusixmatchEnabled;
         _settings.KugouEnabled = KugouEnabled;
@@ -3582,6 +3682,9 @@ public partial class SettingsViewModel : ViewModelBase
         _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
         ApplyAutoMixToPlayer();
         _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
+        // Before SetExclusiveMode: the exclusive rebuild must open the pinned endpoint.
+        _audioPlayer?.SetOutputDevice(
+            IsOutputDeviceSupported && _selectedOutputDeviceId.Length > 0 ? _selectedOutputDeviceId : null);
         _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
         _audioPlayer?.SetUpmixMode(UpmixMode);
         _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
@@ -7320,6 +7423,7 @@ public partial class SettingsViewModel : ViewModelBase
             SongTransitionBeatMatch = true;
             SoundCheckEnabled = false;
             ExclusiveAudioEnabled = false;
+            SelectedOutputDevice = OutputDeviceOptions.FirstOrDefault(o => o.Id.Length == 0);
             GaplessPlaybackEnabled = true;
             // Read from defaultSettings, not literals: these drifted from AppSettings the
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     English UI strings — the fallback every other language falls back to.
@@ -1143,6 +1143,34 @@
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
     <value>خارج تخطي الأغاني الصريحة ما لم تقم بتشغيلها مباشرة.</value>
     <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDevice" xml:space="preserve">
+    <value>جهاز الإخراج</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve">
+    <value>حيث يشغّل Noctis الصوت. يفتح الوضع الحصري الجهاز المحدد مباشرة، لذا يتبع إخراج bit-perfect هذا الإعداد بدلاً من الإعداد الافتراضي في Windows.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve">
+    <value>افتراضي النظام</value>
+    <comment>Output Device picker: follow-the-Windows-default entry</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve">
+    <value>افتراضي</value>
+    <comment>Suffix marking the current Windows default endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve">
+    <value>الجهاز المحدد</value>
+    <comment>Output Device picker: disconnected pinned endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve">
+    <value>غير متصل</value>
+    <comment>Suffix for a disconnected endpoint in the picker</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
+    <value>الجهاز المحدد غير متصل حالياً. سيستخدم التشغيل الجهاز الافتراضي للنظام حتى يعود.</value>
+    <comment>Shown under Output Device when the pin is missing</comment>
   </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
     <value>الوضع الحصري</value>
