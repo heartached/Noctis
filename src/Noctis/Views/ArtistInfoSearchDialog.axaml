@@ -20,8 +20,12 @@
         <Style Selector="Button.ai-search">
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
+        <!-- Right padding = the scrollbar's lane (Styles.axaml ScrollBar:vertical 14 + 2 margin),
+             as Find online's ms-results: the bar overlays the scroll content, so without it
+             the bar sat on top of the cards (owner 10-24). -->
         <Style Selector="ListBox.ai-results">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0,0,16,0" />
         </Style>
         <Style Selector="ListBox.ai-results ListBoxItem">
             <Setter Property="Padding" Value="0" />
@@ -43,9 +47,17 @@
         <Style Selector="ListBox.ai-results ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
+        <!-- The card's own fill (the pill-well tone) rather than the pill-well class: that style
+             is loaded by the host, nearer the card, so its Background would beat the hover
+             below. Hover lifts the card to the fields' pointer-over tone, as Find Duplicates'
+             cards do (#1C -> #26 white: the track lists' #0A hover on top of the card). -->
         <Style Selector="Border.ai-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
             <Setter Property="BorderThickness" Value="1.5" />
             <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem:pointerover Border.ai-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
         <Style Selector="ListBoxItem:selected Border.ai-row">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
@@ -105,7 +117,7 @@
                  SelectedItem="{Binding SelectedResult}">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:ArtistInfoSearchRow">
-                    <Border Classes="pill-well ai-row" CornerRadius="16" Padding="10,8">
+                    <Border Classes="ai-row" CornerRadius="16" Padding="10,8">
                         <Grid ColumnDefinitions="48,12,*">
                             <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" ClipToBounds="True"
                                     Background="{DynamicResource SystemControlForegroundBaseLowBrush}">
