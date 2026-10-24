@@ -6788,6 +6788,14 @@
     <value>앨범 {0}개</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
   </data>
+  <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
+    <value>앨범 1개</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
+    <value>팬 1명</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
+  </data>
   <data name="ArtistInfoSearch.Current" xml:space="preserve">
     <value>현재</value>
     <comment>Badge on the row the artist is pinned to</comment>

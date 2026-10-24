@@ -2865,6 +2865,14 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
     <value>{0} albums</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
   </data>
+  <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
+    <value>1 album</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
+    <value>1 fan</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
+  </data>
   <data name="ArtistInfoSearch.Current" xml:space="preserve">
     <value>Current</value>
     <comment>Badge on the row the artist is pinned to</comment>

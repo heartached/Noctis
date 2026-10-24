@@ -75,7 +75,7 @@ public partial class ArtistInfoSearchViewModel : ViewModelBase
         {
             var hits = await _search(query, cts.Token);
             if (cts.IsCancellationRequested) return;
-            foreach (var hit in hits)
+            foreach (var hit in OrderForPicker(hits, query))
                 Results.Add(new ArtistInfoSearchRow(hit, hit.Id == CurrentId));
             SelectedResult = Results.FirstOrDefault(r => r.IsCurrent);
             StatusText = Results.Count == 0 ? Loc.T("ArtistInfoSearch.NothingFound") : string.Empty;
@@ -93,6 +93,22 @@ public partial class ArtistInfoSearchViewModel : ViewModelBase
         {
             if (ReferenceEquals(_searchCts, cts)) IsSearching = false;
         }
+    }
+
+    /// <summary>
+    /// Deezer's list as the picker shows it: accounts with exactly the asked name first, most
+    /// fans first, then everyone else in Deezer's own order. Deezer ranks by its own relevance,
+    /// not by fans: for "Michael Jackson" (measured 10-24) a 226-fan, 1-album namesake came
+    /// first, the real artist (13,220,407 fans, 38 albums) second and "TK" third. The
+    /// automatic lookup ranks the same way (<see cref="DeezerArtistPhotos.FindAsync"/>).
+    /// </summary>
+    public static IReadOnlyList<DeezerArtistPhotos.SearchHit> OrderForPicker(
+        IReadOnlyList<DeezerArtistPhotos.SearchHit> hits, string query)
+    {
+        // RankMatch 0 = same name, 1 = same name without spaces; OrderBy is stable, so the
+        // rest keep Deezer's order.
+        int Tier(DeezerArtistPhotos.SearchHit h) => Math.Min(DeezerArtistPhotos.RankMatch(h.Name, query), 2);
+        return hits.OrderBy(Tier).ThenByDescending(h => Tier(h) < 2 ? h.Fans : 0).ToList();
     }
 
     private async Task LoadThumbnailAsync(ArtistInfoSearchRow row, CancellationToken ct)
@@ -167,10 +183,14 @@ public sealed partial class ArtistInfoSearchRow : ObservableObject
         get
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;
-            var fans = Loc.T("ArtistDetail.FansCount", Hit.Fans.ToString("N0", culture));
-            return Hit.Albums > 0
-                ? fans + " · " + Loc.T("ArtistInfoSearch.AlbumsCount", Hit.Albums.ToString("N0", culture))
-                : fans;
+            var fans = Hit.Fans == 1
+                ? Loc.T("ArtistInfoSearch.OneFan")
+                : Loc.T("ArtistDetail.FansCount", Hit.Fans.ToString("N0", culture));
+            if (Hit.Albums <= 0)
+                return fans;
+            return fans + " · " + (Hit.Albums == 1
+                ? Loc.T("ArtistInfoSearch.OneAlbum")
+                : Loc.T("ArtistInfoSearch.AlbumsCount", Hit.Albums.ToString("N0", culture)));
         }
     }
 
