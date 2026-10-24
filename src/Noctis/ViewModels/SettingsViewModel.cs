@@ -2849,6 +2849,8 @@ public partial class SettingsViewModel : ViewModelBase
             CustomAccentHex = ActiveAccentHex;
             AccentFollowsArtwork = _settings.AccentFollowsArtwork;
             AccentTrackLinks = _settings.AccentTrackLinks;
+            AppIcon = AppIconService.Normalize(_settings.AppIcon);
+            AppIconService.Apply(AppIcon); // also when it equals the field default (no change event)
             try
             {
                 _suppressPickerSync = true;
@@ -3339,6 +3341,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AccentPresetName = ActiveAccentName;
         _settings.AccentFollowsArtwork = AccentFollowsArtwork;
         _settings.AccentTrackLinks = AccentTrackLinks;
+        _settings.AppIcon = AppIconService.Normalize(AppIcon);
 
         _settings.ScanOnStartup = ScanOnStartup;
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
@@ -7288,6 +7291,7 @@ public partial class SettingsViewModel : ViewModelBase
             CustomAccentHex = ActiveAccentHex;
             AccentFollowsArtwork = defaultSettings.AccentFollowsArtwork;
             AccentTrackLinks = defaultSettings.AccentTrackLinks;
+            AppIcon = AppIconService.Normalize(defaultSettings.AppIcon);
             try
             {
                 _suppressPickerSync = true;

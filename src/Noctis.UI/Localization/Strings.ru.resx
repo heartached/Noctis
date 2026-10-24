@@ -2885,4 +2885,16 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Repeat.AllTip" xml:space="preserve"><value>Повтор всех: очередь по кругу</value><comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment></data>
   <data name="Repeat.OneTip" xml:space="preserve"><value>Повтор одной: эта песня по кругу</value><comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment></data>
   <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Показать прослушанные песни</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
+  <data name="Settings.AppIcon" xml:space="preserve"><value>Значок приложения</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
+  <data name="Settings.AppIconDesc" xml:space="preserve"><value>Сразу меняет значок в заголовке окна, на панели задач и в трее. Ярлык на рабочем столе и .exe сохраняют классический значок.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Классический</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve"><value>Румянец</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve"><value>Небо</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve"><value>Закат</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve"><value>Фиалка</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve"><value>Аврора</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Полночь</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Graphite" xml:space="preserve"><value>Графит</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Рубин</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Neon" xml:space="preserve"><value>Неон</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
 </root>

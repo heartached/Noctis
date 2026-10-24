@@ -1128,8 +1128,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         try
         {
-            var iconUri = new Uri("avares://Noctis.UI/Assets/Icons/Noctis.ico");
-            var icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(iconUri));
+            // Settings › Appearance › App Icon picks the tray icon too; classic if it can't load.
+            var icon = AppIconService.CurrentIcon
+                ?? new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://Noctis.UI/Assets/Icons/Noctis.ico")));
 
             var menu = new NativeMenu();
 
@@ -1171,6 +1172,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             };
             _trayIcon.Clicked += (_, _) => ShowFromTray();
             TrayIcon.SetIcons(Application.Current!, new TrayIcons { _trayIcon });
+            _appIconChangedHandler = (_, _) =>
+            {
+                if (_trayIcon != null && AppIconService.CurrentIcon is { } next)
+                    _trayIcon.Icon = next;
+            };
+            AppIconService.Changed += _appIconChangedHandler;
 
             // Keep the tooltip and the play/pause label current. Both were set once and
             // never updated, so hovering the tray icon of a player deliberately running
@@ -1207,6 +1214,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     }
 
     private System.ComponentModel.PropertyChangedEventHandler? _trayStateHandler;
+    private EventHandler? _appIconChangedHandler;
 
     /// <summary>
     /// Whether hiding into the tray leaves a way back. A TrayIcon object alone does not: on
@@ -1362,6 +1370,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _trayHost = null;
         _macNowPlaying?.Dispose();
         _macNowPlaying = null;
+        if (_appIconChangedHandler != null)
+        {
+            AppIconService.Changed -= _appIconChangedHandler;
+            _appIconChangedHandler = null;
+        }
         if (_trayIcon != null)
         {
             _trayIcon.IsVisible = false;

@@ -2119,6 +2119,46 @@
                     </WrapPanel>
                 </StackPanel>
             </Border>
+            <!-- App Icon: the window/taskbar/tray icon, swapped live (AppIconService). Each
+                 tile shows the real rendered icon; the active one takes the theme tiles'
+                 accent outline. The exe/shortcut icon is baked in and stays classic. -->
+            <Border x:Name="AppIconCard" Classes="setting-card" Padding="22,12">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AppIcon}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AppIconDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl x:Name="AppIconList" ItemsSource="{Binding AppIconOptions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AppIconOption">
+                                <Button Classes="theme-btn"
+                                        AutomationProperties.Name="{Binding Name}"
+                                        Classes.active="{Binding IsSelected}"
+                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SetAppIconCommand}"
+                                        CommandParameter="{Binding Id}"
+                                        Margin="0,0,10,10">
+                                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                        <!-- 48 DIP from a 96 px render: an exact 2:1 step at 100 %
+                                             and 1:1 at 200 %, so the preview stays crisp. -->
+                                        <Image Source="{Binding Preview}" Width="48" Height="48"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="12"
+                                                   HorizontalAlignment="Center"
+                                                   MaxWidth="90" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-card">
                 <StackPanel Spacing="16">
 

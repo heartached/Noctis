@@ -175,6 +175,9 @@ public partial class App : Application
             // against a null DataContext and log a binding warning at each startup.
             // Same total work between the surrounding marks — bindings now resolve in a
             // single pass instead of erroring first and re-resolving.
+            // Every window that opens gets the icon chosen in Settings › Appearance › App Icon
+            // (the settings load applies the stored one; until then the XAML classic shows).
+            Noctis.Services.AppIconService.Attach();
             var mainWindow = new MainWindow(mainVm);
             Noctis.Services.StartupTrace.Mark("main-window-constructed");
 

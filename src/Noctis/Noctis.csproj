@@ -154,6 +154,10 @@
     <!-- Shared assets (themes, styles, icons, fonts) live in Noctis.UI; only the
          exe icon stays here for ApplicationIcon and the installer. -->
     <AvaloniaResource Include="Controls\EqVisualizer.axaml" />
+    <!-- Settings › Appearance › App Icon: desktop-only window/tray icons + previews
+         (scripts/app-icons/generate_app_icons.py). Kept out of Noctis.UI so the phone
+         builds don't carry them. -->
+    <AvaloniaResource Include="Assets\AppIcons\*.ico;Assets\AppIcons\*.png" />
   </ItemGroup>
 
 </Project>
