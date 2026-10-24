@@ -6812,4 +6812,52 @@
     <value>顯示已播放的歌曲</value>
     <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
   </data>
+  <data name="Settings.AppIcon" xml:space="preserve">
+    <value>應用程式圖示</value>
+    <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
+  </data>
+  <data name="Settings.AppIconDesc" xml:space="preserve">
+    <value>立即變更標題列、工作列和系統匣中的圖示。桌面捷徑和 .exe 仍使用經典圖示。</value>
+    <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
+  </data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve">
+    <value>經典</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve">
+    <value>腮紅</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve">
+    <value>天空</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve">
+    <value>日落</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve">
+    <value>紫羅蘭</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve">
+    <value>極光</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve">
+    <value>午夜</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Graphite" xml:space="preserve">
+    <value>石墨</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve">
+    <value>紅寶石</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Neon" xml:space="preserve">
+    <value>霓虹</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
 </root>

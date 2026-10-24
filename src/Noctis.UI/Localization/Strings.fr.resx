@@ -6812,4 +6812,52 @@
     <value>Afficher les morceaux écoutés</value>
     <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
   </data>
+  <data name="Settings.AppIcon" xml:space="preserve">
+    <value>Icône de l'app</value>
+    <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
+  </data>
+  <data name="Settings.AppIconDesc" xml:space="preserve">
+    <value>Change immédiatement l'icône de la barre de titre, de la barre des tâches et de la zone de notification. Le raccourci du bureau et le .exe gardent l'icône classique.</value>
+    <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
+  </data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve">
+    <value>Classique</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve">
+    <value>Rose poudré</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve">
+    <value>Ciel</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve">
+    <value>Couchant</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve">
+    <value>Violet</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve">
+    <value>Aurore</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve">
+    <value>Minuit</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Graphite" xml:space="preserve">
+    <value>Graphite</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve">
+    <value>Rubis</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Neon" xml:space="preserve">
+    <value>Néon</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
 </root>

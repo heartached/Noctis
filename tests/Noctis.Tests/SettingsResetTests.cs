@@ -65,6 +65,7 @@ public class SettingsResetTests : IDisposable
             CommunityPluginsEnabled = false,
             AccentFollowsArtwork = true,
             AccentTrackLinks = false,
+            AppIcon = "neon",
             UpmixMode = "Surround",
             HeadphoneSurround = true,
             Shortcuts = new Dictionary<string, string> { [nameof(ShortcutAction.PlayPause)] = "P" },
@@ -101,6 +102,7 @@ public class SettingsResetTests : IDisposable
         await vm.LoadAsync();
         Assert.True(vm.AccentFollowsArtwork);
         Assert.False(vm.AccentTrackLinks);
+        Assert.Equal("neon", vm.AppIcon);
         Assert.False(vm.ShortcutService.IsDefault(ShortcutAction.PlayPause));
         Assert.True(vm.HasLyricsBackgroundOverride("track:1"));
         Assert.Equal("Surround", audio.UpmixMode);
@@ -115,6 +117,7 @@ public class SettingsResetTests : IDisposable
         Assert.False(vm.HasLyricsBackgroundOverride("track:1"));
         Assert.Equal("Off", audio.UpmixMode);
         Assert.False(vm.HeadphoneSurround);
+        Assert.Equal("classic", vm.AppIcon);
 
         // Any toggle, or the unconditional save when the window closes.
         await vm.SaveAsync();

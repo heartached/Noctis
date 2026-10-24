@@ -6812,4 +6812,52 @@
     <value>再生済みの曲を表示</value>
     <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
   </data>
+  <data name="Settings.AppIcon" xml:space="preserve">
+    <value>アプリアイコン</value>
+    <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
+  </data>
+  <data name="Settings.AppIconDesc" xml:space="preserve">
+    <value>タイトルバー、タスクバー、通知領域のアイコンをすぐに変更します。デスクトップのショートカットと .exe はクラシックのアイコンのままです。</value>
+    <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
+  </data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve">
+    <value>クラシック</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve">
+    <value>ブラッシュ</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve">
+    <value>スカイ</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve">
+    <value>サンセット</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve">
+    <value>バイオレット</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve">
+    <value>オーロラ</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve">
+    <value>ミッドナイト</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Graphite" xml:space="preserve">
+    <value>グラファイト</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve">
+    <value>ルビー</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Neon" xml:space="preserve">
+    <value>ネオン</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
 </root>
