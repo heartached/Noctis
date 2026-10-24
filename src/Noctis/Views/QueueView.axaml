@@ -150,7 +150,7 @@
                             Background="Transparent" BorderThickness="0" Padding="0"
                             Width="27" Height="23"
                             Cursor="Hand" VerticalAlignment="Center"
-                            ToolTip.Tip="{loc:T Queue.RepeatTip}">
+                            ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel Width="27" Height="23">
                             <Border CornerRadius="6"
                                     Background="{DynamicResource AccentColorBrush}"

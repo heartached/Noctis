@@ -1840,4 +1840,20 @@
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Şarkılar'a git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Albümler'e git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Sanatçılar'a git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>Tekrar: Kapalı</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>Tümünü tekrarla: sıra döngüde çalar</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>Birini tekrarla: bu şarkı döngüde çalar</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>Çalınan şarkıları göster</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
 </root>

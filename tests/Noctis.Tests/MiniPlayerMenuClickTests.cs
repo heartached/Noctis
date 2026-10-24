@@ -217,7 +217,7 @@ public class MiniPlayerMenuClickTests
             // Every form's transport row is in the tree (only one is visible at a time),
             // so this covers Bar, Card, LargeIcon, Lyrics and the Pill / Sleeve designs at once.
             var repeatButtons = win.GetVisualDescendants().OfType<Button>()
-                .Where(b => ToolTip.GetTip(b) as string == "Repeat")
+                .Where(b => ToolTip.GetTip(b) as string == vm.Player.RepeatModeTip) // GitHub #144: names the mode
                 .ToList();
             Assert.Equal(6, repeatButtons.Count);
             Assert.All(repeatButtons, b => Assert.NotNull(b.Command));

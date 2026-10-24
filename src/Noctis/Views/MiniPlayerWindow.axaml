@@ -993,7 +993,7 @@
                         </Viewbox>
                     </Button>
                     <Button Classes="mini-transport glass-circle" Width="34" Height="34"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel>
                             <Viewbox Width="18" Height="18"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1195,7 +1195,7 @@
                     <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
                             Command="{Binding Player.CycleRepeatCommand}"
-                            ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                            ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1448,7 +1448,7 @@
                     </StackPanel>
                     <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1710,7 +1710,7 @@
                             </Viewbox>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="30" Height="30"
-                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                             <Panel>
                                 <Viewbox Width="16" Height="16"
                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -2183,7 +2183,7 @@
                             </StackPanel>
                             <Button Grid.Column="2" x:Name="PillRepeatButton" Classes="mini-transport" Width="26" Height="26"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                                 <Panel>
                                     <Viewbox Width="15" Height="15"
                                              IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -2367,7 +2367,7 @@
                             </StackPanel>
                             <Button Grid.Column="2" x:Name="SleeveRepeatButton" Classes="mini-transport" Width="30" Height="30"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                                 <Panel>
                                     <Viewbox Width="17" Height="17"
                                              IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">

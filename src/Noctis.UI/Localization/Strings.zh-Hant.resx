@@ -6724,4 +6724,20 @@
     <value>前往演出者</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>重複：關</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>全部重複：循環播放佇列</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>單曲重複：循環播放這首歌</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>顯示已播放的歌曲</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
 </root>

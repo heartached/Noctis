@@ -6724,4 +6724,20 @@
     <value>アーティストへ移動</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>リピート：オフ</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>全曲リピート：キューを繰り返し再生</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>1曲リピート：この曲を繰り返し再生</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>再生済みの曲を表示</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
 </root>

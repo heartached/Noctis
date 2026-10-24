@@ -6724,4 +6724,20 @@
     <value>Ir a Artistas</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>Repetir: desactivado</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>Repetir todo: la cola se repite</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>Repetir una: esta canción se repite</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>Mostrar canciones reproducidas</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
 </root>

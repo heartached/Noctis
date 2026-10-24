@@ -2822,4 +2822,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Перейти к песням</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Перейти к альбомам</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Перейти к исполнителям</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="Repeat.OffTip" xml:space="preserve"><value>Повтор: выкл.</value><comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment></data>
+  <data name="Repeat.AllTip" xml:space="preserve"><value>Повтор всех: очередь по кругу</value><comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment></data>
+  <data name="Repeat.OneTip" xml:space="preserve"><value>Повтор одной: эта песня по кругу</value><comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment></data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Показать прослушанные песни</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
 </root>

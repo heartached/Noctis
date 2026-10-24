@@ -6724,4 +6724,20 @@
     <value>الانتقال إلى الفنانين</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>التكرار: إيقاف</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>تكرار الكل: تتكرر قائمة الانتظار</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>تكرار أغنية: تتكرر هذه الأغنية</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>إظهار الأغاني المشغّلة</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
 </root>

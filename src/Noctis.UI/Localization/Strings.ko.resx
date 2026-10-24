@@ -6724,4 +6724,20 @@
     <value>아티스트로 이동</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>반복: 끔</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>전체 반복: 대기열 반복 재생</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>한 곡 반복: 이 곡 반복 재생</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>재생한 곡 보기</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
 </root>
