@@ -1890,6 +1890,7 @@
   <data name="ArtistInfoSearch.Use" xml:space="preserve">
     <value>Bu Sanatçıyı Kullan</value>
     <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
   <data name="Repeat.OffTip" xml:space="preserve">
     <value>Tekrar: Kapalı</value>
     <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
