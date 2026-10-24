@@ -102,6 +102,9 @@ public partial class App : Application
         // Every ComboBox drop-down eases open (fade + glide), matching the Settings folds.
         Noctis.Helpers.ComboBoxDropDownAnimator.Install();
 
+        // A scrollbar's track stays shown while its thumb is dragged, even off the bar.
+        Noctis.Helpers.ScrollBarThumbDrag.Install();
+
         // Icon-only buttons are named by their tooltip for screen readers / UI Automation.
         Noctis.Helpers.AccessibleNames.Install();
 
