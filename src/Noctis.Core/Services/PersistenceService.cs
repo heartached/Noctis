@@ -167,6 +167,30 @@ public class PersistenceService : IPersistenceService
         }
     }
 
+    /// <summary>
+    /// One string setting straight from <c>settings.json</c> — the string counterpart of
+    /// <see cref="ReadBoolSettingAtLaunch"/>. Missing file, missing key or a damaged file
+    /// reads as empty.
+    /// </summary>
+    public static string ReadStringSettingAtLaunch(string dataDirectory, string propertyName)
+    {
+        try
+        {
+            var path = Path.Combine(dataDirectory, "settings.json");
+            if (!File.Exists(path)) return "";
+            using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty(JsonNamingPolicy.CamelCase.ConvertName(propertyName), out var value) &&
+                   value.ValueKind == JsonValueKind.String
+                ? value.GetString() ?? ""
+                : "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
     private string SettingsBackupPath => SettingsPath + ".bak";
 
     // settings.json has several writers that each load it, change a field or two of their own

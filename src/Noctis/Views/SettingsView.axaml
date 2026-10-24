@@ -3744,6 +3744,31 @@
             <Border Classes="setting-card group-card">
             <StackPanel>
             <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.OutputDevice}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.OutputDeviceDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox x:Name="OutputDeviceCombo"
+                                  Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.OutputDevice}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding OutputDeviceOptions}"
+                                  SelectedItem="{Binding SelectedOutputDevice}"
+                                  MinWidth="260"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding OutputDeviceMissing}" Lift="6">
+                        <TextBlock Text="{loc:T Settings.OutputDeviceMissingHint}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
+            <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.ExclusiveMode}" FontSize="15" FontWeight="SemiBold"/>
