@@ -27,6 +27,7 @@ public partial class LyricShareDialog : Window
         LineItems.AddHandler(TappedEvent, OnLineTapped);
         LineItems.AddHandler(DoubleTappedEvent, OnLineDoubleTapped);
         LineItems.AddHandler(KeyDownEvent, OnEditKeyDown);
+        LineItems.AddHandler(KeyDownEvent, OnLineKeyDown);
         LineItems.AddHandler(LostFocusEvent, OnEditLostFocus);
     }
 
@@ -79,6 +80,11 @@ public partial class LyricShareDialog : Window
         if (IsInEditBox(e.Source) || LineOf(e.Source) is not { } line || Vm is not { } vm)
             return;
         e.Handled = true;
+        StartEdit(vm, line);
+    }
+
+    private void StartEdit(LyricShareViewModel vm, SelectableLyricLine line)
+    {
         vm.BeginEdit(line);
         Dispatcher.UIThread.Post(() =>
         {
@@ -92,20 +98,57 @@ public partial class LyricShareDialog : Window
         }, DispatcherPriority.Loaded);
     }
 
+    /// <summary>The focusable row (Panel.sl-line) of line <paramref name="index"/>.</summary>
+    private Panel? RowAt(int index)
+        => LineItems.ContainerFromIndex(index) is { } container
+            ? container.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Classes.Contains("sl-line"))
+            : null;
+
+    /// <summary>
+    /// Keyboard access to the lines (they were mouse-only: no row could take focus, so Tab
+    /// skipped the list and nothing could be picked or edited without a pointer).
+    /// Space/Enter pick or drop the focused line, F2 edits it, Up/Down/Home/End move along.
+    /// </summary>
+    private void OnLineKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Handled || IsInEditBox(e.Source) || e.Source is not Panel row || !row.Classes.Contains("sl-line")
+            || LineOf(row) is not { } line || Vm is not { } vm)
+            return;
+        var index = vm.Lines.IndexOf(line);
+        int target;
+        switch (e.Key)
+        {
+            case Key.Space:
+            case Key.Enter:
+                vm.ToggleLine(line);
+                e.Handled = true;
+                return;
+            case Key.F2:
+                StartEdit(vm, line);
+                e.Handled = true;
+                return;
+            case Key.Up: target = index - 1; break;
+            case Key.Down: target = index + 1; break;
+            case Key.Home: target = 0; break;
+            case Key.End: target = vm.Lines.Count - 1; break;
+            default: return;
+        }
+        e.Handled = true;
+        if (target < 0 || target >= vm.Lines.Count || target == index) return;
+        LineItems.ContainerFromIndex(target)?.BringIntoView();
+        RowAt(target)?.Focus(NavigationMethod.Directional);
+    }
+
     /// <summary>Enter keeps the edit, Esc puts the line back (and does not close the dialog).</summary>
     private void OnEditKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Source is not TextBox box || LineOf(box) is not { IsEditing: true } line) return;
-        if (e.Key == Key.Enter)
-        {
-            line.EndEdit(keep: true);
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Escape)
-        {
-            line.EndEdit(keep: false);
-            e.Handled = true;
-        }
+        if (e.Key is not (Key.Enter or Key.Escape)) return;
+        line.EndEdit(keep: e.Key == Key.Enter);
+        e.Handled = true;
+        // The box hides; give the focus back to its row so the keyboard is not stranded.
+        if (Vm is { } vm && RowAt(vm.Lines.IndexOf(line)) is { } row)
+            row.Focus(NavigationMethod.Directional);
     }
 
     private void OnEditLostFocus(object? sender, RoutedEventArgs e)

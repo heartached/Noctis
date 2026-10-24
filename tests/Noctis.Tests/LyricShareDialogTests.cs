@@ -930,6 +930,62 @@ public class LyricShareDialogTests
         finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
     }
 
+    /// <summary>
+    /// Bug: the Lines list was mouse-only. Its rows were plain Panels that could not take
+    /// focus, so Tab went from Clear straight past the list and no line could be picked or
+    /// edited from the keyboard. Tab now lands on a row; Up/Down move, Space/Enter pick,
+    /// F2 edits and Enter hands the focus back to the row.
+    /// </summary>
+    [AvaloniaFact]
+    public void Lines_CanBePickedAndEdited_FromTheKeyboard()
+    {
+        EnsureAppStyles();
+        var vm = new LyricShareViewModel(Song(), new[] { "alpha", "beta", "gamma", "delta", "epsilon" }, 0);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var host = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<Noctis.Controls.PillDialogHost>().Single();
+            Assert.True(PumpUntil(() => host.Card is { Opacity: > 0.999 }), "open animation never settled");
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[4]); // keeps Clear enabled, the Tab stop before the list
+            PumpUntil(() => false, 30);
+            var clear = Named<Button>(win, "ClearButton");
+            Assert.True(clear.Focus(NavigationMethod.Tab));
+            SelectableLyricLine? Focused() => (win.FocusManager?.GetFocusedElement() as Control)?.DataContext as SelectableLyricLine;
+
+            win.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.True(Focused() == vm.Lines[0], $"Tab after Clear went to {win.FocusManager?.GetFocusedElement()}");
+
+            win.KeyPressQwerty(PhysicalKey.ArrowDown, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.Same(vm.Lines[1], Focused());
+            win.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.True(vm.Lines[1].IsSelected, "Space did not pick the focused line");
+            win.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            Assert.False(vm.Lines[1].IsSelected, "Enter did not drop the focused line");
+
+            win.KeyPressQwerty(PhysicalKey.F2, RawInputModifiers.None);
+            Assert.True(vm.Lines[1].IsEditing, "F2 did not edit the focused line");
+            Assert.True(PumpUntil(() => win.FocusManager?.GetFocusedElement() is TextBox), "the edit box never took focus");
+            win.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.False(vm.Lines[1].IsEditing);
+            Assert.Same(vm.Lines[1], Focused());
+
+            win.KeyPressQwerty(PhysicalKey.End, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.Same(vm.Lines[4], Focused());
+
+            // One Tab stop for the whole list: the next Tab leaves it.
+            win.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.Null(Focused());
+        }
+        finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+    }
+
     /// <summary>Esc during Save Video stops the export (status Cancelled, no cut-off file) and
     /// keeps the dialog; the next Esc closes it.</summary>
     [AvaloniaFact]
