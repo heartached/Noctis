@@ -429,7 +429,7 @@ public class QueueIssue134Tests
         Assert.True(wrapper > 0 && pinned - wrapper < 200);
 
         // Clear Played: the header chip and the played rows' menu.
-        Assert.Contains("Content=\"{loc:T Queue.ClearPlayed}\"", xaml);
+        Assert.Contains("ToolTip.Tip=\"{loc:T Queue.ClearPlayed}\"", xaml); // icon chip since the History/Repeat chips
         Assert.Contains("IsEnabled=\"{Binding Player.HasPlayedQueueRows}\"", xaml);
         Assert.Contains("Classes=\"queue-menu-clear-played\"", xaml);
         Assert.Contains("vm.Player.ClearPlayed()", code);

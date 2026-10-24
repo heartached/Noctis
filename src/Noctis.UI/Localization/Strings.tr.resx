@@ -1890,5 +1890,20 @@
   <data name="ArtistInfoSearch.Use" xml:space="preserve">
     <value>Bu Sanatçıyı Kullan</value>
     <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>Tekrar: Kapalı</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>Tümünü tekrarla: sıra döngüde çalar</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>Birini tekrarla: bu şarkı döngüde çalar</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>Çalınan şarkıları göster</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
   </data>
 </root>

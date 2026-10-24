@@ -6795,5 +6795,20 @@
   <data name="ArtistInfoSearch.Use" xml:space="preserve">
     <value>Utiliser cet artiste</value>
     <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>Répéter : désactivé</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>Tout répéter : la file d'attente tourne en boucle</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>Répéter un titre : ce morceau tourne en boucle</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>Afficher les morceaux écoutés</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
   </data>
 </root>

@@ -837,7 +837,7 @@
                          Buttons → Repeat). -->
                     <Button Classes="pill-btn transport-btn"
                             Command="{Binding CycleRepeatCommand}"
-                            ToolTip.Tip="{loc:T PlaybackBar.RepeatTip}"
+                            ToolTip.Tip="{Binding RepeatModeTip}"
                             IsVisible="{Binding IslandShowRepeat}"
                             Width="34" Height="34">
                         <Panel Width="34" Height="34">

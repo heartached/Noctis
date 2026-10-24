@@ -131,7 +131,7 @@ public class MiniPlayerDesignTogglesTests
             Assert.Same(rig.Player.CycleRepeatCommand, repeat.Command);
             string? NameOf(Control c) => ControlAutomationPeer.CreatePeerForElement(c).GetName();
             Assert.Equal(Loc.T("MiniPlayer.ShuffleTip"), NameOf(shuffle));
-            Assert.Equal(Loc.T("MiniPlayer.RepeatTip"), NameOf(repeat));
+            Assert.Equal(rig.Player.RepeatModeTip, NameOf(repeat)); // GitHub #144: names the mode
 
             // The lit glyph is the accent one, as on the classic card.
             IBrush? Lit(Button b) => b.GetVisualDescendants().OfType<Viewbox>().Single(v => v.IsVisible)

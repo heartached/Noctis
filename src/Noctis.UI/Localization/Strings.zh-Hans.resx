@@ -6795,5 +6795,20 @@
   <data name="ArtistInfoSearch.Use" xml:space="preserve">
     <value>使用此艺人</value>
     <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>重复：关</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>全部重复：循环播放队列</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>单曲重复：循环播放这首歌</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>显示已播放的歌曲</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
   </data>
 </root>

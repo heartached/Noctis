@@ -304,7 +304,18 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _durationText = "0:00";
     [ObservableProperty] private string _remainingTimeText = "0:00";
     [ObservableProperty] private bool _isShuffleEnabled;
-    [ObservableProperty] private RepeatMode _repeatMode = RepeatMode.Off;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RepeatModeTip))]
+    private RepeatMode _repeatMode = RepeatMode.Off;
+
+    /// <summary>GitHub #144: the Repeat buttons' tooltip names the mode and what it does (it
+    /// read just "Repeat" in all three states, so Repeat One / All were easy to miss).</summary>
+    public string RepeatModeTip => Localization.Loc.T(RepeatMode switch
+    {
+        RepeatMode.All => "Repeat.AllTip",
+        RepeatMode.One => "Repeat.OneTip",
+        _ => "Repeat.OffTip",
+    });
     [ObservableProperty] private bool _isQueuePopupOpen;
     [ObservableProperty] private bool _autoMixEnabled;
     [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = AutoMixTransitionMode.Off;
@@ -320,6 +331,17 @@ public partial class PlayerViewModel : ViewModelBase
     /// panel and the mini player list what played above Now Playing, and the last song stays
     /// loaded when the queue runs out, so Previous still has somewhere to go. Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
+
+    /// <summary>Discord (Luwi): the Queue panel's History chip, a shortcut to Keep Played Songs
+    /// so what just played shows above Now Playing without a trip to Settings. Goes through
+    /// Settings when attached, which saves it and pushes it back here.</summary>
+    [RelayCommand]
+    private void ToggleShowPlayedInQueue()
+    {
+        var on = !KeepPlayedInQueue;
+        if (_settings != null) _settings.KeepPlayedInQueue = on;
+        else KeepPlayedInQueue = on;
+    }
 
     partial void OnKeepPlayedInQueueChanged(bool value)
     {
