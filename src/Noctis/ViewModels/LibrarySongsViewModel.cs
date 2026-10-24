@@ -309,11 +309,27 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void PlayFromHere(Track track)
     {
-        var tracks = FilteredTracks.ToList();
+        var tracks = PlayContext(track);
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
 
         _player.PlayFromRow(tracks, index);
+    }
+
+    /// <summary>
+    /// The list a played row continues with. A search narrows what is shown, not what plays
+    /// next (Discord, HypnoTized 10-24: search "through the", 1 result, "Nothing up next"):
+    /// with a search applied the row plays in the whole list, in the current sort, with the
+    /// favorites/quality narrowing kept, as Apple Music and Spotify do.
+    /// </summary>
+    private List<Track> PlayContext(Track track)
+    {
+        if (!HasActiveFilter)
+            return FilteredTracks.ToList();
+
+        var all = BuildFilteredAndSortedTracks(
+            _allTracks, string.Empty, SortColumn, SortAscending, ShowOnlyFavorites, QualityFilter);
+        return all.Contains(track) ? all : FilteredTracks.ToList();
     }
 
     [RelayCommand]

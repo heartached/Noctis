@@ -746,7 +746,8 @@
                 <Border Background="{Binding WindowTintBrush}"
                         IsVisible="{Binding IsWindowTinted}"
                         IsHitTestVisible="False" />
-                <ContentControl Content="{Binding CurrentView}"
+                <ContentControl x:Name="PageHost"
+                                Content="{Binding CurrentView}"
                                 Classes="page-host"
                                 RenderTransformOrigin="50%,50%">
                     <ContentControl.Transitions>

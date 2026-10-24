@@ -1,0 +1,139 @@
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Noctis.Models;
+using Noctis.ViewModels;
+using Xunit;
+
+namespace Noctis.Tests;
+
+/// <summary>
+/// Discord (HypnoTized, 10-24): Songs page, search "through the", 1 result, play it, and the
+/// Queue said "Nothing up next": the row's queue was built from the search results only. A
+/// song played out of a search now continues with the whole list (current sort, the
+/// favorites/quality narrowing kept) after it, as Apple Music / Spotify do.
+/// </summary>
+public class SongsSearchPlayContextTests
+{
+    private static (LibrarySongsViewModel vm, PlayerViewModel player, FakeLibraryService lib) CreateVm()
+    {
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var sidebar = new SidebarViewModel(persistence, lib);
+        var vm = new LibrarySongsViewModel(lib, player, sidebar, persistence);
+        return (vm, player, lib);
+    }
+
+    private static Track Trk(string title, bool favorite = false) => new()
+    {
+        Id = Guid.NewGuid(),
+        Title = title,
+        Artist = "Artist",
+        FilePath = TestPaths.Primary("t", $"{Guid.NewGuid():N}.mp3"),
+        Duration = TimeSpan.FromMinutes(3),
+        IsFavorite = favorite,
+    };
+
+    private static async Task PumpUntil(Func<bool> condition, int budgetMs = 5000)
+    {
+        var deadline = Environment.TickCount64 + budgetMs;
+        while (Environment.TickCount64 < deadline && !condition())
+        {
+            Dispatcher.UIThread.RunJobs();
+            await Task.Delay(5);
+        }
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    private static async Task<LibrarySongsViewModel> Loaded(
+        (LibrarySongsViewModel vm, PlayerViewModel player, FakeLibraryService lib) s, params Track[] tracks)
+    {
+        s.lib.TrackList.AddRange(tracks);
+        s.vm.SortCommand.Execute("Title"); // Title ascending
+        s.vm.IsActive = true;
+        await PumpUntil(() => s.vm.FilteredTracks.Count == tracks.Length);
+        return s.vm;
+    }
+
+    [AvaloniaFact]
+    public async Task PlayingASearchResult_ContinuesWithTheFullListAfterIt()
+    {
+        var s = CreateVm();
+        var vm = await Loaded(s, Trk("Delta"), Trk("Alpha"), Trk("Through The Fire"), Trk("Zulu"), Trk("Charlie"));
+
+        vm.ApplyFilter("through the");
+        await PumpUntil(() => vm.FilteredTracks.Count == 1);
+        var hit = Assert.Single(vm.FilteredTracks);
+
+        vm.PlayFromHereCommand.Execute(hit);
+
+        Assert.Same(hit, s.player.CurrentTrack);
+        Assert.Equal(new[] { "Zulu" }, s.player.UpNext.Select(t => t.Title));
+    }
+
+    [AvaloniaFact]
+    public async Task NoSearch_KeepsPlayingTheShownList()
+    {
+        var s = CreateVm();
+        var vm = await Loaded(s, Trk("Charlie"), Trk("Alpha"), Trk("Bravo"));
+
+        vm.PlayFromHereCommand.Execute(vm.FilteredTracks[1]); // Bravo
+
+        Assert.Equal("Bravo", s.player.CurrentTrack?.Title);
+        Assert.Equal(new[] { "Charlie" }, s.player.UpNext.Select(t => t.Title));
+    }
+
+    [AvaloniaFact]
+    public async Task SearchContext_KeepsTheFavoritesNarrowing()
+    {
+        var s = CreateVm();
+        var vm = await Loaded(s, Trk("Alpha", favorite: true), Trk("Bravo"), Trk("Charlie", favorite: true), Trk("Delta", favorite: true));
+        vm.SetShowOnlyFavoritesCommand.Execute(null);
+        vm.ApplyFilter("alpha");
+        await PumpUntil(() => vm.FilteredTracks.Count == 1);
+
+        vm.PlayFromHereCommand.Execute(vm.FilteredTracks[0]);
+
+        Assert.Equal("Alpha", s.player.CurrentTrack?.Title);
+        Assert.Equal(new[] { "Charlie", "Delta" }, s.player.UpNext.Select(t => t.Title));
+    }
+
+    [AvaloniaFact]
+    public async Task SearchPlay_WithShuffleOn_ShufflesTheFullList()
+    {
+        var s = CreateVm();
+        var vm = await Loaded(s, Trk("Alpha"), Trk("Bravo"), Trk("Charlie"), Trk("Delta"), Trk("Through"));
+        s.player.PlayShuffled(vm.FilteredTracks.ToList()); // Shuffle on
+        Assert.True(s.player.IsShuffleEnabled);
+
+        vm.ApplyFilter("through");
+        await PumpUntil(() => vm.FilteredTracks.Count == 1);
+        vm.PlayFromHereCommand.Execute(vm.FilteredTracks[0]);
+
+        Assert.True(s.player.IsShuffleEnabled);
+        Assert.Equal("Through", s.player.CurrentTrack?.Title);
+        Assert.Equal(4, s.player.UpNext.Count);
+        Assert.DoesNotContain(s.player.UpNext, t => t.Title == "Through");
+    }
+
+    [AvaloniaFact]
+    public async Task Playlist_PlayingASearchResult_ContinuesWithThePlaylistAfterIt()
+    {
+        var s = CreateVm();
+        var tracks = new[] { Trk("One"), Trk("Through The Fire"), Trk("Three"), Trk("Four") };
+        s.lib.TrackList.AddRange(tracks);
+        var sidebar = new SidebarViewModel(new TestPersistenceService(), s.lib);
+        var playlist = new Playlist { Name = "P", TrackIds = tracks.Select(t => t.Id).ToList() };
+        sidebar.Playlists.Add(playlist);
+        var vm = new PlaylistViewModel(playlist, s.player, s.lib, new TestPersistenceService(), sidebar);
+        await PumpUntil(() => vm.Tracks.Count == 4);
+
+        vm.ApplyFilter("through the");
+        await PumpUntil(() => vm.Tracks.Count == 1);
+        vm.PlayFromCommand.Execute(vm.Tracks[0]);
+
+        Assert.Equal("Through The Fire", s.player.CurrentTrack?.Title);
+        Assert.Equal(new[] { "Three", "Four" }, s.player.UpNext.Select(t => t.Title));
+    }
+}
