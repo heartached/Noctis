@@ -554,4 +554,63 @@ public class QueueIssue134Tests
             main.Close();
         }
     }
+
+    /// <summary>The number on the row at the top of the list's viewport.</summary>
+    private static string TopRowNumber(ListBox list)
+    {
+        var scroller = list.GetVisualDescendants().OfType<ScrollViewer>().First();
+        var top = list.GetRealizedContainers()
+            .Select(c => (c, y: c.TranslatePoint(new Avalonia.Point(0, 0), scroller)!.Value.Y))
+            .Where(x => x.y + x.c.Bounds.Height / 2 >= 0)
+            .OrderBy(x => x.y)
+            .First().c;
+        return top.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "QueueRowNumber").Text ?? "";
+    }
+
+    [AvaloniaFact]
+    public void QueuePanel_KeepPlayedOff_ListReturnsToUpNextsFirstRow()
+    {
+        // Live 10-24: History chip off with 35 played songs above Now Playing — the list
+        // kept the offset that held the playing row near the top and opened on Up Next #36.
+        var (vm, player) = CreateVm();
+        vm.ReplaceQueueAndPlay(Enumerable.Range(0, 80).Select(i => Trk("t" + i)).ToArray(), 0);
+        End(player, 35);
+        var (window, list, _, main) = MountDrawer(vm);
+        try
+        {
+            Assert.True(QueuePanelRows.ScrollRowNearTop(list, vm.QueueCurrentRow));
+            Pump(window);
+            var scroller = list.GetVisualDescendants().OfType<ScrollViewer>().First();
+            Assert.True(scroller.Offset.Y > 0);
+
+            vm.ToggleShowPlayedInQueueCommand.Execute(null); // off: the rows are Up Next only
+            Pump(window);
+            QueuePanelRows.StampRealized(list, vm);
+            Pump(window);
+            Assert.Equal(-1, vm.QueueCurrentRow);
+            Assert.NotEqual("1", TopRowNumber(list)); // the stale offset (what the panel did)
+
+            Assert.True(QueuePanelRows.ScrollToTop(list));
+            Pump(window);
+            QueuePanelRows.StampRealized(list, vm);
+            Pump(window);
+            Assert.Equal(0, scroller.Offset.Y);
+            Assert.Equal("1", TopRowNumber(list));
+        }
+        finally
+        {
+            window.Close();
+            main.Close();
+        }
+    }
+
+    [Fact]
+    public void QueuePanel_KeepPlayedOff_ScrollsToTopFromTheToggleAndOnOpen()
+    {
+        var code = RepoFile("src", "Noctis", "Views", "MainWindow.axaml.cs");
+        // Both the History chip and Settings → Playback land in KeepPlayedInQueue, so one hook covers them.
+        Assert.Contains("e.PropertyName == nameof(PlayerViewModel.KeepPlayedInQueue) && !vm.Player.KeepPlayedInQueue", code);
+        Assert.Contains("_queueScrollToTopPending = true;", code);
+        Assert.Contains("_queueScrollToTopPending && QueuePanelRows.ScrollToTop(listBox)", code);
+    }
 }
