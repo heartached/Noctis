@@ -148,7 +148,7 @@ public class ArtistImageService
             await Task.Delay(RequestPacingMs, ct).ConfigureAwait(false);
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(DownloadTimeout);
-            var match = await FindDeezerArtistAsync(artistName.Trim(), timeoutCts.Token).ConfigureAwait(false);
+            var match = await FindDeezerArtistAsync(artistName.Trim(), artistId, timeoutCts.Token).ConfigureAwait(false);
             if (match == null) return cached;
             WriteFanCount(artistId, match.Fans);
             return match.Fans;
@@ -454,7 +454,7 @@ public class ArtistImageService
         timeoutCts.CancelAfter(DownloadTimeout);
         var token = timeoutCts.Token;
 
-        var match = await FindDeezerArtistAsync(artistName, token).ConfigureAwait(false);
+        var match = await FindDeezerArtistAsync(artistName, artistId, token).ConfigureAwait(false);
         if (match == null)
             return false;
         WriteFanCount(artistId, match.Fans);
@@ -527,7 +527,7 @@ public class ArtistImageService
         using var timeoutCts = new CancellationTokenSource(DownloadTimeout);
         var token = timeoutCts.Token;
 
-        var match = await FindDeezerArtistAsync(artistName, token).ConfigureAwait(false);
+        var match = await FindDeezerArtistAsync(artistName, artistId, token).ConfigureAwait(false);
         if (match == null)
             return false; // service outage / no match: keep what we have, retry next sweep
         WriteFanCount(artistId, match.Fans);
@@ -615,10 +615,98 @@ public class ArtistImageService
     /// <summary>
     /// Searches Deezer for the artist (<see cref="DeezerArtistPhotos.FindAsync"/>: the full name,
     /// then the primary artist; same-name accounts ranked by fans and verified against the
-    /// library's own titles) and returns the chosen account's photo URL and fan count.
+    /// library's own titles) and returns the chosen account's photo URL and fan count. An artist
+    /// the user pinned to a Deezer account (GitHub #141) is asked by that account's id instead.
     /// </summary>
-    private async Task<DeezerArtistPhotos.Match?> FindDeezerArtistAsync(string artistName, CancellationToken ct = default)
-        => (await _deezer.FindAsync(artistName, () => LibraryTitleKeys(artistName), ct).ConfigureAwait(false)).Match;
+    private async Task<DeezerArtistPhotos.Match?> FindDeezerArtistAsync(string artistName, Guid artistId, CancellationToken ct = default)
+        => (GetPinnedDeezerId(artistId) is { } pinned
+            ? await _deezer.GetArtistAsync(pinned, ct).ConfigureAwait(false)
+            : await _deezer.FindAsync(artistName, () => LibraryTitleKeys(artistName), ct).ConfigureAwait(false)).Match;
+
+    // ── Manual pick (GitHub #141: "Search Artist Info" on the artist page) ──
+
+    /// <summary>Sidecar naming the Deezer account the user picked for the artist: the portrait,
+    /// its refresh and the fan count then come from that account, never the name search.</summary>
+    private string GetPinMarkerPath(Guid artistId)
+        => Path.Combine(_artistArtworkDir, $"{artistId}.deezer");
+
+    /// <summary>The Deezer account the user picked for the artist, or null (automatic).</summary>
+    public long? GetPinnedDeezerId(Guid artistId)
+    {
+        try
+        {
+            var path = GetPinMarkerPath(artistId);
+            if (!File.Exists(path)) return null;
+            return long.TryParse(File.ReadAllText(path).Trim(), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var id) && id > 0 ? id : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Deezer's own list for a manual search (see <see cref="DeezerArtistPhotos.SearchAsync"/>).</summary>
+    public async Task<IReadOnlyList<DeezerArtistPhotos.SearchHit>> SearchArtistsAsync(string query, CancellationToken ct = default)
+    {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(DownloadTimeout);
+        return await _deezer.SearchAsync(query, timeoutCts.Token).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Pins the artist to the Deezer account the user picked and swaps its photo in (a custom or
+    /// removed portrait is handed back to the service, as with Find Picture Online). An account
+    /// with no photo leaves no portrait rather than the wrong one. Returns the cached path, or
+    /// null when there is no photo; the pin stands either way.
+    /// </summary>
+    public async Task<string?> PinDeezerArtistAsync(Artist artist, DeezerArtistPhotos.SearchHit pick, CancellationToken ct = default)
+    {
+        var cachedPath = GetCachedImagePath(artist.Id);
+        File.WriteAllText(GetPinMarkerPath(artist.Id), pick.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        TryDelete(GetRemovedMarkerPath(artist.Id));
+        TryDelete(GetCustomMarkerPath(artist.Id));
+        WriteFanCount(artist.Id, pick.Fans);
+
+        try
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(DownloadTimeout);
+            var download = pick.ImageUrl is { } url
+                ? await DownloadImageBytesAsync(url, timeoutCts.Token).ConfigureAwait(false)
+                : new DeezerArtistPhotos.ImageDownload(null, true);
+            if (download.Bytes is { } imageData)
+            {
+                await WriteImageAtomicAsync(cachedPath, imageData, timeoutCts.Token).ConfigureAwait(false);
+                WriteSourceMarker(artist.Id, pick.ImageUrl!);
+                ArtworkCache.Invalidate(cachedPath);
+                artist.ImagePath = cachedPath;
+                return cachedPath;
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ArtistImage] Pinned photo download failed for '{artist.Name}': {ex.Message}");
+            return File.Exists(cachedPath) ? cachedPath : null;
+        }
+
+        // The picked account has no photo: the previous (wrong) one goes.
+        TryDelete(cachedPath);
+        TryDelete(GetSourceMarkerPath(artist.Id));
+        ArtworkCache.Invalidate(cachedPath);
+        artist.ImagePath = null;
+        return null;
+    }
+
+    /// <summary>Back to automatic: drops the pin and looks the artist up by name again.
+    /// Returns the cached path, or null when the name search finds nothing.</summary>
+    public Task<string?> ClearDeezerPinAsync(Artist artist)
+    {
+        TryDelete(GetPinMarkerPath(artist.Id));
+        TryDelete(GetFanCountPath(artist.Id));
+        return RefetchImageAsync(artist);
+    }
 
     /// <summary>Normalised titles of the library tracks credited to the artist.</summary>
     private HashSet<string> LibraryTitleKeys(string artistName)

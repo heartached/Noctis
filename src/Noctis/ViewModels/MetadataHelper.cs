@@ -132,6 +132,10 @@ public static class MetadataHelper
     public static Task OpenLyricsSearchDialog(LyricsSearchViewModel vm) =>
         ShowDialogOwned(new LyricsSearchDialog(vm));
 
+    /// <summary>Search Artist Info (GitHub #141): pick the artist page's Deezer account.</summary>
+    public static Task OpenArtistInfoSearchDialog(ArtistInfoSearchViewModel vm) =>
+        ShowDialogOwned(new ArtistInfoSearchDialog(vm));
+
     /// <summary>Lyrics Studio: time existing lyrics or transcribe, review, then save.</summary>
     public static async Task OpenLyricsStudio(IReadOnlyList<Track> tracks)
     {

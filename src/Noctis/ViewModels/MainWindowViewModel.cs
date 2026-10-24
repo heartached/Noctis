@@ -171,6 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// The album page's tint while "Tint Whole Window" is on and a tinted album page is
     /// shown (Discord 1v1ctus): MainWindow paints it behind the sidebar and player islands.
+    /// The lyrics page lends its own background colour the same way (GitHub #142).
     /// Null otherwise, which leaves the theme's own window background.
     /// </summary>
     [ObservableProperty]
@@ -179,29 +180,40 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool IsWindowTinted => WindowTintBrush != null;
 
-    private AlbumDetailViewModel? _tintSourcePage;
+    private ViewModelBase? _tintSourcePage;
 
     /// <summary>The window tint for <paramref name="view"/>: its page colour when it is a
-    /// tinted album page and the option is on, else null. Internal for tests.</summary>
+    /// tinted album page or the lyrics page (#142) and the option is on, else null.
+    /// Internal for tests.</summary>
     internal static IBrush? WindowTintFor(bool wholeWindow, ViewModelBase? view) =>
-        wholeWindow && view is AlbumDetailViewModel { HasTint: true } album ? album.BackgroundBrush : null;
+        !wholeWindow ? null : view switch
+        {
+            AlbumDetailViewModel { HasTint: true } album => album.BackgroundBrush,
+            LyricsViewModel lyrics => lyrics.PageTintBrush,
+            _ => null
+        };
+
+    /// <summary>"Tint Whole Window" sits under Album Page Colour in Settings and is hidden
+    /// while that is off, so both must be on (an album page has no tint without it).</summary>
+    private bool WholeWindowTintOn => Settings.AlbumPageTintWholeWindow && Settings.AlbumPageTintEnabled;
 
     private void UpdateWindowTint()
     {
-        var album = CurrentView as AlbumDetailViewModel;
-        if (!ReferenceEquals(album, _tintSourcePage))
+        var page = CurrentView is AlbumDetailViewModel or LyricsViewModel ? CurrentView : null;
+        if (!ReferenceEquals(page, _tintSourcePage))
         {
             if (_tintSourcePage != null) _tintSourcePage.PropertyChanged -= OnTintSourcePageChanged;
-            _tintSourcePage = album;
-            if (album != null) album.PropertyChanged += OnTintSourcePageChanged;
+            _tintSourcePage = page;
+            if (page != null) page.PropertyChanged += OnTintSourcePageChanged;
         }
-        WindowTintBrush = WindowTintFor(Settings.AlbumPageTintWholeWindow, CurrentView);
+        WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
     }
 
     private void OnTintSourcePageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(AlbumDetailViewModel.BackgroundBrush) or nameof(AlbumDetailViewModel.HasTint))
-            WindowTintBrush = WindowTintFor(Settings.AlbumPageTintWholeWindow, CurrentView);
+        if (e.PropertyName is nameof(AlbumDetailViewModel.BackgroundBrush) or nameof(AlbumDetailViewModel.HasTint)
+            or nameof(LyricsViewModel.PageTintBrush))
+            WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
     }
 
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
@@ -749,7 +761,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (e.PropertyName == nameof(SettingsViewModel.CoverFlowLayout))
                 _coverFlowVm.Layout = Settings.CoverFlowLayoutMode;
-            else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintWholeWindow))
+            else if (e.PropertyName is nameof(SettingsViewModel.AlbumPageTintWholeWindow)
+                     or nameof(SettingsViewModel.AlbumPageTintEnabled))
                 UpdateWindowTint();
         };
 
