@@ -1471,6 +1471,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // keep it in sight as songs change and when the panel opens.
             if (e.PropertyName is nameof(PlayerViewModel.CurrentTrack) or nameof(PlayerViewModel.KeepPlayedInQueue))
             {
+                // Turning it off drops the played rows and the playing row from the top of the
+                // list; the offset that kept the playing row in sight would now land deep in
+                // Up Next (it opened on #36 instead of #1), so go back to the top.
+                if (e.PropertyName == nameof(PlayerViewModel.KeepPlayedInQueue) && !vm.Player.KeepPlayedInQueue)
+                    _queueScrollToTopPending = true;
                 ScheduleQueueScrollToCurrent();
                 return;
             }
@@ -1493,6 +1498,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     }
 
     private bool _queueScrollToCurrentPending;
+    /// <summary>Keep Played Songs went off: the list returns to the top when it is next in sight.</summary>
+    private bool _queueScrollToTopPending;
 
     /// <summary>GitHub #134: once the rows settle, scroll the open queue list so the playing
     /// row is second from the top. Not while a row is dragged or a band is drawn.</summary>
@@ -1504,10 +1511,16 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         {
             _queueScrollToCurrentPending = false;
             if (DataContext is not MainWindowViewModel { Player: { IsQueuePopupOpen: true } player }
-                || player.QueueCurrentRow < 0
                 || _queueDragActive || _queueBandActive || QueueLiquid is { IsSettling: true }
                 || this.FindControl<ListBox>("QueuePopupListBox") is not { } listBox)
                 return;
+            if (player.QueueCurrentRow < 0)
+            {
+                if (_queueScrollToTopPending && QueuePanelRows.ScrollToTop(listBox))
+                    _queueScrollToTopPending = false;
+                return;
+            }
+            _queueScrollToTopPending = false;
             QueuePanelRows.ScrollRowNearTop(listBox, player.QueueCurrentRow);
         }, DispatcherPriority.Background);
     }

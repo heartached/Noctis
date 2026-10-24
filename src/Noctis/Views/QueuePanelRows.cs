@@ -54,6 +54,20 @@ internal static class QueuePanelRows
         return true;
     }
 
+    /// <summary>Scrolls <paramref name="listBox"/> back to its first row (Keep Played Songs
+    /// turned off: the rows above Up Next are gone, so the old offset points into Up Next).
+    /// Returns false when the list has no scroller yet.</summary>
+    public static bool ScrollToTop(ListBox listBox)
+    {
+        if (listBox.FindDescendantOfType<ScrollViewer>() is not { } scroller) return false;
+        if (scroller.Offset.Y > 0)
+        {
+            scroller.Offset = scroller.Offset.WithY(0);
+            listBox.UpdateLayout();
+        }
+        return true;
+    }
+
     /// <summary>Scrolls <paramref name="listBox"/> so <paramref name="row"/> sits second from
     /// the top (one played row stays in sight above the playing one), or as close as the
     /// list's ends allow. Returns false when the row could not be laid out.</summary>
