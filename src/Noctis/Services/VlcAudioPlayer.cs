@@ -584,8 +584,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // Settings → Output → Output Device: the endpoint VLC's own aout opens on.
             // An instance-level arg (inherited by every aout open) is the only reliable
             // way to pin it from launch; runtime changes ride SetOutputDevice instead.
+            // Only a connected pin: VLC's mmdevice opens an unplugged endpoint by id
+            // (GetDevice succeeds for it) and then fails to start instead of falling
+            // back to the default.
             _outputDeviceId = NormalizeOutputDeviceId(OutputDeviceAtLaunch);
-            if (_outputDeviceId != null)
+            if (_outputDeviceId != null && AudioOutputDeviceCatalog.Exists(_outputDeviceId))
                 vlcArgs.Add($"--mmdevice-audio-device={_outputDeviceId}");
             // Diagnostic override: NOCTIS_AOUT lets us A/B the Windows audio
             // output module on real hardware without recompiling. On Bluetooth
@@ -1754,6 +1757,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             var suffix = string.IsNullOrEmpty(device) ? "" : $" — {device}";
             if (_exclusiveModeEnabled && _exclusiveOut is { } sink)
             {
+                // Name the endpoint the sink actually opened (a missing pin falls back
+                // to the default, DeviceId null).
+                if (sink.DeviceId == null) suffix = "";
                 return sink.IsExclusive
                     ? $"WASAPI Exclusive{suffix} — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
                     : $"WASAPI Shared{suffix} — {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
@@ -1895,7 +1901,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private void ApplyOutputDeviceTo(MediaPlayer player)
     {
         if (!OperatingSystem.IsWindows() || NullWavePlayer.SilentMode) return;
-        var id = _outputDeviceId ?? "";
+        // A disconnected pin plays to the default ("") rather than to a dead endpoint.
+        var pin = _outputDeviceId;
+        var id = pin != null && AudioOutputDeviceCatalog.Exists(pin) ? pin : "";
         try
         {
             player.SetOutputDevice(id, "mmdevice"); // every future aout open on this player
@@ -2089,6 +2097,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             string? notice = null;
             int sinkRate, sinkChannels;
 
+            // The endpoint to open: the pinned device while it is connected, else the
+            // Windows default (an unplugged pin still gets exclusive output there, and
+            // the next track moves back once it returns).
+            var pin = _outputDeviceId;
+            var target = AudioOutputDeviceCatalog.Exists(pin) ? pin : null;
+
             lock (_exclusiveSinkLock)
             {
                 // Reuse the open device stream when the format matches; otherwise
@@ -2098,7 +2112,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     (!_exclusiveOut.IsExclusive ||
                      _exclusiveOut.SampleRate != rate ||
                      _exclusiveOut.Channels != channels ||
-                     !string.Equals(_exclusiveOut.DeviceId, _outputDeviceId, StringComparison.Ordinal)))
+                     !string.Equals(_exclusiveOut.DeviceId, target, StringComparison.Ordinal)))
                 {
                     _exclusiveOut.Dispose();
                     _exclusiveOut = null;
@@ -2106,14 +2120,14 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
                 if (_exclusiveOut == null)
                 {
-                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, _outputDeviceId, out var reason);
+                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out var reason);
                     if (sink != null)
                     {
                         notice = $"Exclusive output active — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
                     }
                     else
                     {
-                        sink = WasapiGainOutput.TryCreate(_outputDeviceId);
+                        sink = WasapiGainOutput.TryCreate(target);
                         // Read as an error before: it said what failed but not that
                         // playback is fine, nor that the next track retries exclusive
                         // (the reuse check above drops a shared fallback sink).

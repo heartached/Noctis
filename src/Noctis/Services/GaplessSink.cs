@@ -334,15 +334,13 @@ public sealed class GaplessSink : IDisposable
         {
             using var enumerator = new MMDeviceEnumerator();
             var pin = _pinnedDeviceId;
-            if (pin != null)
+            // Unplugged/disabled pins resolve too (GetDevice succeeds), so only an
+            // ACTIVE pin counts; anything else falls back to the default below.
+            var pinned = AudioOutputDeviceCatalog.TryGetActive(enumerator, pin);
+            if (pinned != null)
             {
-                try
-                {
-                    var pinned = enumerator.GetDevice(pin);
-                    id = pin;
-                    return pinned;
-                }
-                catch { /* pin gone → default below */ }
+                id = pin;
+                return pinned;
             }
             var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             id = def.ID;
@@ -355,9 +353,8 @@ public sealed class GaplessSink : IDisposable
     }
 
     /// <summary>Id-only resolution for the watch tick: the pinned device's id while it
-    /// exists, else the default's. Null when nothing resolves — a MISSING pin reads as
-    /// null so the watch stays quiet (that stream dies on its own and the rebuild falls
-    /// back to the default endpoint) instead of thrashing.</summary>
+    /// is active, else the default's. An unplugged pin therefore moves the stream to the
+    /// default, and a replugged one moves it back. Null when nothing resolves.</summary>
     private string? ResolveDesiredDeviceId()
     {
         if (!OperatingSystem.IsWindows()) return null;
@@ -365,10 +362,9 @@ public sealed class GaplessSink : IDisposable
         {
             using var enumerator = new MMDeviceEnumerator();
             var pin = _pinnedDeviceId;
-            if (pin != null)
+            using (var pinned = AudioOutputDeviceCatalog.TryGetActive(enumerator, pin))
             {
-                using var pinned = enumerator.GetDevice(pin);
-                return pin;
+                if (pinned != null) return pin;
             }
             using var def = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             return def.ID;

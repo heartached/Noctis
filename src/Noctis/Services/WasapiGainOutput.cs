@@ -276,7 +276,9 @@ internal sealed class WasapiGainOutput : IDisposable
     private static MMDevice ResolveTarget(MMDeviceEnumerator enumerator, string? deviceId) =>
         string.IsNullOrEmpty(deviceId)
             ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
-            : enumerator.GetDevice(deviceId);
+            // GetDevice also returns unplugged/disabled endpoints; reject those here.
+            : AudioOutputDeviceCatalog.TryGetActive(enumerator, deviceId)
+              ?? throw new InvalidOperationException("the selected output device is not connected");
 
     private static (BufferedWaveProvider buffer, GainSampleProvider gain) CreateInputChain(int sampleRate, int channels)
     {

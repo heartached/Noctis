@@ -311,9 +311,15 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
         var pin = _pinnedDeviceId;
         if (pin != null && enumerator.GetDevice(pin, out var pinned) >= 0 && pinned != null)
         {
-            device = pinned;
-            deviceId = pin;
-            return true;
+            // GetDevice succeeds for unplugged/disabled endpoints too; only an active
+            // pin is warmable, anything else falls back to the default below.
+            if (pinned.GetState(out var state) >= 0 && state == DeviceStateActive)
+            {
+                device = pinned;
+                deviceId = pin;
+                return true;
+            }
+            TryRelease(pinned);
         }
         if (enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out var def) >= 0 && def != null)
         {
@@ -417,8 +423,10 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
             [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface);
         [PreserveSig] int OpenPropertyStore();
         [PreserveSig] int GetId(out IntPtr ppstrId);
-        [PreserveSig] int GetState();
+        [PreserveSig] int GetState(out uint pdwState);
     }
+
+    private const uint DeviceStateActive = 0x1; // DEVICE_STATE_ACTIVE
 
     [ComImport, Guid("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2"),
      InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

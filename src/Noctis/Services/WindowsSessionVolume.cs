@@ -155,7 +155,14 @@ internal sealed class WindowsSessionVolume : IOutputLevel
             IMMDevice? device = null;
             var pin = _deviceId;
             if (pin != null && _enumerator.GetDevice(pin, out var pinned) >= 0 && pinned != null)
-                device = pinned;
+            {
+                // GetDevice succeeds for unplugged/disabled endpoints too; our audio has
+                // fallen back to the default then, so the volume must look there.
+                if (pinned.GetState(out var state) >= 0 && state == DeviceStateActive)
+                    device = pinned;
+                else
+                    TryRelease(pinned);
+            }
             if (device == null &&
                 (_enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eConsole, out device) < 0 || device == null))
                 return;
@@ -329,8 +336,10 @@ internal sealed class WindowsSessionVolume : IOutputLevel
             [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface);
         [PreserveSig] int OpenPropertyStore();
         [PreserveSig] int GetId();
-        [PreserveSig] int GetState();
+        [PreserveSig] int GetState(out uint pdwState);
     }
+
+    private const uint DeviceStateActive = 0x1; // DEVICE_STATE_ACTIVE
 
     [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"),
      InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

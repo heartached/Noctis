@@ -68,7 +68,10 @@ internal static class AudioOutputDeviceCatalog
 
     /// <summary>True when <paramref name="deviceId"/> names a currently-active render
     /// endpoint. False for null/empty (that's the default-device sentinel) and on
-    /// failure — callers treat "not found" as "fall back to the default device".</summary>
+    /// failure — callers treat "not found" as "fall back to the default device".
+    /// GetDevice alone is not enough: it succeeds for unplugged, disabled and
+    /// not-present endpoints too (only Activate fails, AUDCLNT_E_DEVICE_INVALIDATED),
+    /// so the state is what tells an unplugged DAC apart.</summary>
     public static bool Exists(string? deviceId)
     {
         if (string.IsNullOrEmpty(deviceId) || !IsSupported) return false;
@@ -76,7 +79,7 @@ internal static class AudioOutputDeviceCatalog
         {
             using var enumerator = new MMDeviceEnumerator();
             using var device = enumerator.GetDevice(deviceId);
-            return true;
+            return device.State == DeviceState.Active;
         }
         catch
         {
@@ -84,15 +87,33 @@ internal static class AudioOutputDeviceCatalog
         }
     }
 
+    /// <summary>The active endpoint for <paramref name="deviceId"/>, or null when the id
+    /// is empty, unknown, or the device is unplugged/disabled. The caller owns the
+    /// returned device.</summary>
+    public static MMDevice? TryGetActive(MMDeviceEnumerator enumerator, string? deviceId)
+    {
+        if (string.IsNullOrEmpty(deviceId) || !IsSupported) return null;
+        MMDevice? device = null;
+        try
+        {
+            device = enumerator.GetDevice(deviceId);
+            if (device.State == DeviceState.Active) return device;
+        }
+        catch { }
+        try { device?.Dispose(); } catch { }
+        return null;
+    }
+
     /// <summary>Friendly name of one endpoint, or null when it cannot be resolved
-    /// (missing device, non-Windows). Used for the signal-path description.</summary>
+    /// (missing or unplugged device, non-Windows). Used for the signal-path description.</summary>
     public static string? NameOf(string? deviceId)
     {
         if (string.IsNullOrEmpty(deviceId) || !IsSupported) return null;
         try
         {
             using var enumerator = new MMDeviceEnumerator();
-            using var device = enumerator.GetDevice(deviceId);
+            using var device = TryGetActive(enumerator, deviceId);
+            if (device == null) return null;
             return string.IsNullOrWhiteSpace(device.FriendlyName)
                 ? device.DeviceFriendlyName
                 : device.FriendlyName;
