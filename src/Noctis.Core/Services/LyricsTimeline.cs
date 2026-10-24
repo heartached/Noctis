@@ -109,7 +109,11 @@ public sealed class LyricsTimeline
     public void Reset()
     {
         if (ActiveLine is { } l) l.IsActive = false;
-        foreach (var line in _activeLines) line.IsActive = false;
+        foreach (var line in _activeLines)
+        {
+            line.IsActive = false;
+            line.InterludeProgress = double.NaN;
+        }
         ClearLead();
         ClearMotion();
         _activeLines.Clear();
@@ -130,6 +134,23 @@ public sealed class LyricsTimeline
         for (int i = 0; i < activeIndices.Count && best > 0; i++)
             best = Math.Min(best, Math.Abs(index - activeIndices[i]));
         return best;
+    }
+
+    /// <summary>
+    /// How long line <paramref name="index"/> stays the scroll target: its start to the next
+    /// synced line's start, in ms (the tempo the line glide adapts to). NaN when either start
+    /// is unknown or the order is not forward.
+    /// </summary>
+    public static double HoldMs(IReadOnlyList<LyricLine> lines, int index)
+    {
+        if (index < 0 || index >= lines.Count || lines[index].Timestamp is not { } start) return double.NaN;
+        for (int i = index + 1; i < lines.Count; i++)
+        {
+            if (lines[i].Timestamp is not { } next) continue;
+            var ms = (next - start).TotalMilliseconds;
+            return ms > 0 ? ms : double.NaN;
+        }
+        return double.NaN;
     }
 
     /// <summary>Rewind the cursor to the start without touching the active line; the next
@@ -233,32 +254,54 @@ public sealed class LyricsTimeline
     /// <summary>
     /// The line the LIST should be glided to — <see cref="ActiveIndex"/>, or the next line
     /// up to <paramref name="scrollLead"/> early. Measured on Apple Music: the list sets off
-    /// toward the next line well before its first word, so the line has arrived when the
-    /// voice starts; a glide that only begins with the line's activation is still moving
-    /// while the first word sweeps. Only the scroll position leads — activation and the
-    /// sweep stay on the word lookahead, for the reason <see cref="Update"/> gives.
+    /// toward the next line well before its first word (within ~0-180 ms of the outgoing
+    /// line's last word, and ~0.7 s ahead of the next line when the gap is longer), so the
+    /// line has arrived when the voice starts. Only the scroll position leads — activation
+    /// and the sweep stay on the word lookahead, for the reason <see cref="Update"/> gives.
     ///
     /// Never before every lit line's sung end: the line being sung never scrolls away
     /// from the anchor. Only a word-timed next line leads (a plain line's activation
-    /// already carries its glide lead), and only a word-timed active line, whose sung end
-    /// is known. Pure function of <paramref name="position"/> and the current state, so a
-    /// seek resolves on the same tick as <see cref="Update"/>.
+    /// already carries its glide lead), and only out of a word-timed active line, whose
+    /// sung end is known, or out of the "..." intro / interlude dots. Pure function of
+    /// <paramref name="position"/> and the current state, so a seek resolves on the same
+    /// tick as <see cref="Update"/>.
+    ///
+    /// Overlapping voices: while an earlier line is still being sung over the newest one
+    /// (a duet, <see cref="ActiveIndices"/>), the list holds on the earliest lit line and
+    /// moves once it finishes — Apple Music keeps a still-sung line at the anchor rather
+    /// than scrolling it up toward the top edge the moment the next voice comes in. Up to
+    /// <see cref="OverlapHoldMaxLines"/> lines back; further than that the newest line wins.
     /// </summary>
     public int ScrollIndex(TimeSpan position, TimeSpan scrollLead)
     {
         var active = ActiveIndex;
-        if (active < 0 || active + 1 >= _lines.Count || ActiveLine is not { HasWords: true }) return active;
+        if (active < 0) return active;
+        if (_activeIndices.Count > 1)
+        {
+            var first = _activeIndices[0];
+            return active - first <= OverlapHoldMaxLines ? first : active;
+        }
+        if (active + 1 >= _lines.Count || ActiveLine is not ({ HasWords: true } or { IsIntroPlaceholder: true })) return active;
         var next = _lines[active + 1];
         if (next.Timestamp is not { } nextStart || !next.HasWords) return active;
 
         var leadStart = nextStart - scrollLead;
         foreach (var lit in _activeLines)
         {
-            if (SungEnd(lit) is not { } end) return active;
+            if (SungEnd(lit) is not { } end)
+            {
+                // The dots have no sung end: they lead out on the lead alone.
+                if (lit.IsIntroPlaceholder) continue;
+                return active;
+            }
             if (end > leadStart) leadStart = end;
         }
         return position + _wordLookahead >= leadStart ? active + 1 : active;
     }
+
+    /// <summary>How many lines above the newest started line the list may hold on a line
+    /// that is still being sung (see <see cref="ScrollIndex"/>).</summary>
+    public const int OverlapHoldMaxLines = 2;
 
     /// <summary>
     /// <see cref="ScrollIndex"/>, applied to the lines: while the list leads into the next
@@ -272,7 +315,7 @@ public sealed class LyricsTimeline
     public int Lead(TimeSpan position, TimeSpan scrollLead)
     {
         var index = ScrollIndex(position, scrollLead);
-        var lead = index >= 0 && index != ActiveIndex && index < _lines.Count ? _lines[index] : null;
+        var lead = index > ActiveIndex && index < _lines.Count ? _lines[index] : null;
         if (ReferenceEquals(lead, _leadLine)) return index;
         if (lead != null)
         {
@@ -370,7 +413,7 @@ public sealed class LyricsTimeline
 
     /// <summary>The latest end any layer of the line knows (line end, last word ends,
     /// background and romanization ends); null when none is known.</summary>
-    private static TimeSpan? SungEnd(LyricLine line)
+    internal static TimeSpan? SungEnd(LyricLine line)
     {
         TimeSpan? end = line.EndTimestamp;
         static TimeSpan? Later(TimeSpan? a, TimeSpan? b) => a is null ? b : b is null ? a : (a > b ? a : b);
@@ -391,6 +434,7 @@ public sealed class LyricsTimeline
     private void Deactivate(LyricLine line, TimeSpan position)
     {
         line.IsActive = false;
+        if (!double.IsNaN(line.InterludeProgress)) line.InterludeProgress = double.NaN;
         HandOffEmphasis(line.Words);
         HandOffEmphasis(line.BackgroundWords);
         HandOffEmphasis(line.TransliterationWords);
@@ -413,8 +457,35 @@ public sealed class LyricsTimeline
         // Settling words first: a word the active set drives again ends on its value.
         DriveFloatTail(position + _wordLookahead);
         for (int i = 0; i < _activeLines.Count; i++)
-            UpdateLineWords(_activeLines[i], _activeIndices[i], position);
+        {
+            var line = _activeLines[i];
+            if (line.IsIntroPlaceholder)
+                DriveInterlude(line, _activeIndices[i], position);
+            else
+                UpdateLineWords(line, _activeIndices[i], position);
+        }
         DriveEmphasisTail(position + _wordLookahead);
+    }
+
+    /// <summary>
+    /// Sets <see cref="LyricLine.InterludeProgress"/> on an active dots placeholder: how far
+    /// the audible position is from its start to the next synced line's start (0..1). The
+    /// raw position, not the word lookahead: the last dot fills as the voice comes back.
+    /// </summary>
+    private void DriveInterlude(LyricLine line, int index, TimeSpan position)
+    {
+        var p = InterludeProgressAt(line.Timestamp, NextSyncedLineStart(index), position);
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        if (line.InterludeProgress != p) line.InterludeProgress = p;
+    }
+
+    /// <summary>Progress through a gap from <paramref name="start"/> to
+    /// <paramref name="end"/> at <paramref name="position"/>, clamped to 0..1; 0 when the
+    /// gap is unknown or empty.</summary>
+    public static double InterludeProgressAt(TimeSpan? start, TimeSpan? end, TimeSpan position)
+    {
+        if (start is not { } s || end is not { } e || e <= s) return 0;
+        return Math.Clamp((position - s).TotalMilliseconds / (e - s).TotalMilliseconds, 0, 1);
     }
 
     /// <summary>

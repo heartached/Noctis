@@ -64,8 +64,22 @@ public partial class LyricLine : ObservableObject
     [ObservableProperty]
     private double _blurRadius;
 
-    /// <summary>Whether this line is the intro placeholder ("...").</summary>
+    /// <summary>Whether this line is a "..." dots placeholder: the intro before the first
+    /// lyric, or an instrumental interlude (<see cref="IsInterlude"/>).</summary>
     public bool IsIntroPlaceholder { get; set; }
+
+    /// <summary>A placeholder inserted into a long instrumental gap mid-song
+    /// (LrcParser.InsertInterludePlaceholders); <see cref="IsIntroPlaceholder"/> is set too,
+    /// so every consumer that skips the intro dots skips these.</summary>
+    public bool IsInterlude { get; set; }
+
+    /// <summary>
+    /// How far through its gap an active dots placeholder is, 0..1 (its start to the next
+    /// line's start); NaN while it is not active. The dots fill one after another with it
+    /// (LyricsTimeline drives it every frame).
+    /// </summary>
+    [ObservableProperty]
+    private double _interludeProgress = double.NaN;
 
     /// <summary>Duet voice for this line (Apple Music duet layout). Views bind through the LyricVoice* converters.</summary>
     public LyricVoice Voice { get; set; }

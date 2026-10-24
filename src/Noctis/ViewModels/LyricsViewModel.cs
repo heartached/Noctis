@@ -312,10 +312,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private int _activeLineIndex = -1;
 
-    /// <summary>The line the lyric list glides to: <see cref="ActiveLineIndex"/>, or the next
-    /// line up to <see cref="Helpers.LineMotion.NinetyTravelMs"/> early (LyricsTimeline.ScrollIndex)
-    /// so the list has arrived when its first word starts. The views scroll on this; the
-    /// highlight and sweep stay on ActiveLineIndex.</summary>
+    /// <summary>The line the lyric list glides to: <see cref="ActiveLineIndex"/>, the next
+    /// line up to <see cref="Helpers.LineMotion.ScrollLeadMs"/> early so the list has landed
+    /// when its first word starts, or an earlier line still being sung over it (duets) —
+    /// LyricsTimeline.ScrollIndex. The views scroll on this; the highlight and sweep stay
+    /// on ActiveLineIndex.</summary>
     [ObservableProperty]
     private int _scrollLineIndex = -1;
 
@@ -2660,7 +2661,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             HasSyncedLyricsAvailable = _hasSyncedLyrics;
 
             if (_hasSyncedLyrics)
+            {
                 LrcParser.InsertIntroPlaceholderIfNeeded(parsedLines);
+                LrcParser.InsertInterludePlaceholders(parsedLines);
+            }
 
             List<LyricLine> synced = parsedLines;
             FillLyricCollections(
@@ -3318,6 +3322,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             else
             {
                 LrcParser.InsertIntroPlaceholderIfNeeded(probe.Lines);
+                LrcParser.InsertInterludePlaceholders(probe.Lines);
             }
 
             List<LyricLine> synced = probe.Lines;
@@ -3431,7 +3436,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (_hasSyncedLyrics) _localSyncedForSave = syncedSource;
 
             if (_hasSyncedLyrics)
+            {
                 LrcParser.InsertIntroPlaceholderIfNeeded(parsedLines);
+                LrcParser.InsertInterludePlaceholders(parsedLines);
+            }
 
             syncedLines = parsedLines;
             fillUnsynced = () => PopulateUnsyncedLines(parsedLines);
@@ -3508,8 +3516,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var batch = new List<LyricLine>(sourceLyrics.Count);
         foreach (var line in sourceLyrics)
         {
-            // Skip intro placeholder "..."
-            if (line.Timestamp == TimeSpan.Zero && line.Text == "...") continue;
+            // Skip the "..." intro / interlude placeholders
+            if (line.IsIntroPlaceholder || line.Timestamp == TimeSpan.Zero && line.Text == "...") continue;
             // The romanization / translation layers (TTML, or LRC lines sharing a timestamp —
             // GitHub #116) are the user's text too; the Plain tab renders them as static rows.
             batch.Add(new LyricLine
@@ -3816,7 +3824,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         UpdateWordClockSubscription();
     }
 
-    private static readonly TimeSpan ScrollLead = TimeSpan.FromMilliseconds(Helpers.LineMotion.NinetyTravelMs);
+    private static readonly TimeSpan ScrollLead = TimeSpan.FromMilliseconds(Helpers.LineMotion.ScrollLeadMs);
 
     /// <summary>
     /// Continuous playback clock for the sweep and line engine. The raw position
@@ -3929,7 +3937,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // still needs frames, even when the new line is plain text.
         if (_timeline.HasEmphasisInFlight) return true;
         foreach (var line in _timeline.ActiveLines)
-            if (line.HasWords || line.HasBackgroundWords || line.HasTransliterationWords)
+            if (line.HasWords || line.HasBackgroundWords || line.HasTransliterationWords
+                || line.IsIntroPlaceholder)   // the dots fill with the gap's progress
                 return true;
         return false;
     }

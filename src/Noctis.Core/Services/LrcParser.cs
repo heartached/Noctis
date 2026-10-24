@@ -46,6 +46,53 @@ public static partial class LrcParser
     }
 
     /// <summary>
+    /// Shortest instrumental gap (from the sung end of everything before it to the next
+    /// line's start) that gets a dots row. Long enough that a breath between phrases never
+    /// does (slow songs measured 4-5 s start-to-start with ~1 s of silence), short enough
+    /// for a real instrumental break.
+    /// </summary>
+    public static readonly TimeSpan InterludeMinGap = TimeSpan.FromSeconds(6);
+
+    /// <summary>The dots appear this long after the last line's sung end, so that line's
+    /// final word finishes its sweep before the dots take the focus (a line without words
+    /// activates <c>80 ms + half the line glide</c> early, see LyricsTimeline).</summary>
+    public static readonly TimeSpan InterludeDelay = TimeSpan.FromMilliseconds(350);
+
+    /// <summary>
+    /// Inserts a "..." placeholder (<see cref="LyricLine.IsInterlude"/>) into every gap of at
+    /// least <see cref="InterludeMinGap"/> between the known sung end of the lines so far and
+    /// the next synced line, as Apple Music and Joy Tunes show dots through an instrumental
+    /// break. Only where an end is known (word-timed, ELRC end tags, TTML): a plain LRC line
+    /// has only a start, so a long gap could just be a long sung line. Idempotent.
+    /// </summary>
+    public static void InsertInterludePlaceholders(List<LyricLine> lines)
+    {
+        TimeSpan? sungEnd = null;
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            if (line.IsIntroPlaceholder || line.Timestamp is not { } start) continue;
+            if (sungEnd is { } end && start - end >= InterludeMinGap
+                && !(i > 0 && lines[i - 1].IsInterlude))
+            {
+                lines.Insert(i, new LyricLine
+                {
+                    Timestamp = end + InterludeDelay,
+                    Text = "...",
+                    IsIntroPlaceholder = true,
+                    IsInterlude = true,
+                });
+                i++;
+            }
+            // Lines are sorted by start, not end: an earlier, longer line can still be
+            // singing over this one, so the gap counts from the latest end so far. A line
+            // with no known end leaves the gap unknown until a line with one comes along.
+            var lineEnd = LyricsTimeline.SungEnd(line);
+            sungEnd = lineEnd is { } e ? (sungEnd is { } prev && prev > e ? prev : e) : null;
+        }
+    }
+
+    /// <summary>
     /// Splits a long lyric line into balanced halves at the word boundary closest to the midpoint.
     /// Recursively applies to each half if still too long. Produces clean, cinematic two-line wraps.
     /// </summary>

@@ -20,6 +20,7 @@
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
         <conv:OpacityFloorConverter x:Key="OpacityFloor"/>
+        <conv:InterludeDotOpacityConverter x:Key="InterludeDot"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
 
         <!-- Duet layout (ELRC v1:/v2:/v3: voice markers) — panel copy of the lyrics
@@ -408,8 +409,9 @@
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
 
-                                    <!-- Intro dots. Left margin mirrors the lyrics page: first dot
-                                         sits over the first letter of the lyric (scaled to panel font). -->
+                                    <!-- Intro / interlude dots. Left margin mirrors the lyrics page: first
+                                         dot sits over the first letter of the lyric (scaled to panel font).
+                                         The dots fill one after another with the gap (as on the page). -->
                                     <StackPanel Orientation="Horizontal"
                                                 Spacing="5"
                                                 Classes="panel-intro-dots"
@@ -419,9 +421,12 @@
                                                 Margin="6,5,0,5"
                                                 Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                 IsVisible="{Binding IsIntroPlaceholder}">
-                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
-                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
-                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
+                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"
+                                                 Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=0}"/>
+                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"
+                                                 Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=1}"/>
+                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"
+                                                 Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=2}"/>
                                     </StackPanel>
                                 </Panel>
 

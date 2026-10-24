@@ -21,6 +21,7 @@
         <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
         <conv:MetadataLineConverter x:Key="MetadataLine"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
+        <conv:InterludeDotOpacityConverter x:Key="InterludeDot"/>
 
         <!-- Duet layout (ELRC v1:/v2:/v3: voice markers): voice 2 lines anchor right,
              group lines center. Same keys exist in LyricsPanelView — keep in sync. -->
@@ -1117,69 +1118,53 @@
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
-                                        <!-- Intro dots. Left margin centers the first dot over the
-                                             first letter of the lyric below. Each dot breathes on a
-                                             sine wave (Alternate keeps it continuous, no hold-and-snap);
-                                             FillMode=Backward holds the dim keyframe through the stagger
-                                             delay so dots 2/3 don't pop from full opacity. -->
+                                        <!-- Intro / interlude dots. Left margin centers the first dot over
+                                             the first letter of the lyric below. The dots fill one after
+                                             another with the gap's progress (LyricLine.InterludeProgress,
+                                             a per-frame value: plain bindings, no transitions), and while
+                                             the row is the active line it breathes slowly in scale (Joy
+                                             Tunes measured 0.78-1.0 on a ~4.25 s period; gentler here).
+                                             Inactive, every dot is full and the row dims as a line. -->
                                         <StackPanel Orientation="Horizontal"
                                                     Spacing="8"
                                                     HorizontalAlignment="Left"
                                                     VerticalAlignment="Center"
                                                     Margin="10,8,0,8"
+                                                    Classes="interlude-dots"
                                                     Opacity="{Binding LineOpacity}"
                                                     IsVisible="{Binding IsIntroPlaceholder}"
-                                                    Classes.active="{Binding IsActive}">
+                                                    Classes.active="{Binding IsActive}"
+                                                    RenderTransformOrigin="0%,50%">
+                                            <StackPanel.RenderTransform>
+                                                <ScaleTransform/>
+                                            </StackPanel.RenderTransform>
                                             <StackPanel.Transitions>
                                                 <Transitions>
                                                     <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
                                                 </Transitions>
                                             </StackPanel.Transitions>
-                                            <Ellipse x:Name="IntroDot1" Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
-                                                <Ellipse.Styles>
-                                                    <Style Selector="StackPanel.active Ellipse#IntroDot1">
-                                                        <Style.Animations>
-                                                            <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" FillMode="Backward" Easing="SineEaseInOut">
-                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
-                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
-                                                            </Animation>
-                                                        </Style.Animations>
-                                                    </Style>
-                                                    <Style Selector="StackPanel:not(.active) Ellipse#IntroDot1">
-                                                        <Setter Property="Opacity" Value="1.0"/>
-                                                    </Style>
-                                                </Ellipse.Styles>
-                                            </Ellipse>
-                                            <Ellipse x:Name="IntroDot2" Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
-                                                <Ellipse.Styles>
-                                                    <Style Selector="StackPanel.active Ellipse#IntroDot2">
-                                                        <Style.Animations>
-                                                            <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" FillMode="Backward" Easing="SineEaseInOut" Delay="0:0:0.3">
-                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
-                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
-                                                            </Animation>
-                                                        </Style.Animations>
-                                                    </Style>
-                                                    <Style Selector="StackPanel:not(.active) Ellipse#IntroDot2">
-                                                        <Setter Property="Opacity" Value="1.0"/>
-                                                    </Style>
-                                                </Ellipse.Styles>
-                                            </Ellipse>
-                                            <Ellipse x:Name="IntroDot3" Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
-                                                <Ellipse.Styles>
-                                                    <Style Selector="StackPanel.active Ellipse#IntroDot3">
-                                                        <Style.Animations>
-                                                            <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" FillMode="Backward" Easing="SineEaseInOut" Delay="0:0:0.6">
-                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
-                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
-                                                            </Animation>
-                                                        </Style.Animations>
-                                                    </Style>
-                                                    <Style Selector="StackPanel:not(.active) Ellipse#IntroDot3">
-                                                        <Setter Property="Opacity" Value="1.0"/>
-                                                    </Style>
-                                                </Ellipse.Styles>
-                                            </Ellipse>
+                                            <StackPanel.Styles>
+                                                <Style Selector="StackPanel.interlude-dots.active">
+                                                    <Style.Animations>
+                                                        <Animation Duration="0:0:2.1" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                                                            <KeyFrame Cue="0%">
+                                                                <Setter Property="ScaleTransform.ScaleX" Value="1.0"/>
+                                                                <Setter Property="ScaleTransform.ScaleY" Value="1.0"/>
+                                                            </KeyFrame>
+                                                            <KeyFrame Cue="100%">
+                                                                <Setter Property="ScaleTransform.ScaleX" Value="0.88"/>
+                                                                <Setter Property="ScaleTransform.ScaleY" Value="0.88"/>
+                                                            </KeyFrame>
+                                                        </Animation>
+                                                    </Style.Animations>
+                                                </Style>
+                                            </StackPanel.Styles>
+                                            <Ellipse Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"
+                                                     Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=0}"/>
+                                            <Ellipse Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"
+                                                     Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=1}"/>
+                                            <Ellipse Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"
+                                                     Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=2}"/>
                                         </StackPanel>
                                     </Panel>
 
