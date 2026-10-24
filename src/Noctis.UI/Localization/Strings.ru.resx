@@ -2865,6 +2865,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
     <value>Альбомов: {0}</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
   </data>
+  <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
+    <value>1 альбом</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
+    <value>1 поклонник</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
+  </data>
   <data name="ArtistInfoSearch.Current" xml:space="preserve">
     <value>Текущий</value>
     <comment>Badge on the row the artist is pinned to</comment>
