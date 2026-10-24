@@ -894,22 +894,34 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void RefreshLyricsForegrounds()
     {
-        if (IsColorModeArtwork && _averageArtworkColor is Color avg)
+        UpdateForegroundsForBackground(PageTintBrush);
+        OnPropertyChanged(nameof(PageTintBrush));
+    }
+
+    /// <summary>The colour the page visibly shows: the scrimmed blurred artwork's average in
+    /// artwork mode, else the solid/gradient background. "Tint Whole Window" paints it
+    /// around the sidebar and player islands while this page is open (GitHub #142).</summary>
+    public IBrush PageTintBrush
+    {
+        get
         {
-            // Scrim is pure black at ArtworkScrimAlpha opacity, so the visible color is
-            // a straight linear interpolation of avg toward black.
-            double k = 1.0 - ArtworkScrimAlpha;
-            var visible = Color.FromRgb(
-                (byte)Math.Clamp(avg.R * k, 0, 255),
-                (byte)Math.Clamp(avg.G * k, 0, 255),
-                (byte)Math.Clamp(avg.B * k, 0, 255));
-            UpdateForegroundsForBackground(new SolidColorBrush(visible));
-        }
-        else
-        {
-            UpdateForegroundsForBackground(FullBackgroundBrush);
+            if (IsColorModeArtwork && _averageArtworkColor is Color avg)
+            {
+                // Scrim is pure black at ArtworkScrimAlpha opacity, so the visible color is
+                // a straight linear interpolation of avg toward black.
+                double k = 1.0 - ArtworkScrimAlpha;
+                return new SolidColorBrush(Color.FromRgb(
+                    (byte)Math.Clamp(avg.R * k, 0, 255),
+                    (byte)Math.Clamp(avg.G * k, 0, 255),
+                    (byte)Math.Clamp(avg.B * k, 0, 255)));
+            }
+            return FullBackgroundBrush;
         }
     }
+
+    partial void OnFullBackgroundBrushChanged(IBrush value) => OnPropertyChanged(nameof(PageTintBrush));
+
+    partial void OnIsColorModeArtworkChanged(bool value) => OnPropertyChanged(nameof(PageTintBrush));
 
     [RelayCommand]
     private void ResumeAutoFollow()
