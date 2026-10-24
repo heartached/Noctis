@@ -128,16 +128,24 @@
             </Style.Animations>
         </Style>
 
-        <!-- The report's scrollbar stays out of sight until the report is hovered. -->
-        <Style Selector="ScrollViewer.wr-report /template/ ScrollBar:vertical">
+        <!-- The report's scrollbar stays out of sight until the report is hovered. The thumb
+             fades, not the whole bar, so a held thumb stays shown when the drag drifts off
+             the report (:pointerover follows the pointer even while the thumb has it
+             captured; same fix as Share lyrics' line list, owner 10-24). The RenderTransform
+             transition repeats the app-wide thumb style's, which this setter replaces. -->
+        <Style Selector="ScrollViewer.wr-report /template/ ScrollBar:vertical /template/ Thumb">
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="ScrollViewer.wr-report:pointerover /template/ ScrollBar:vertical">
+        <Style Selector="ScrollViewer.wr-report:pointerover /template/ ScrollBar:vertical /template/ Thumb">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ScrollViewer.wr-report /template/ ScrollBar:vertical /template/ Thumb:pressed">
             <Setter Property="Opacity" Value="1" />
         </Style>
     </Window.Styles>

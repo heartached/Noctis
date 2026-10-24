@@ -600,6 +600,12 @@
     <Style Selector="ScrollBar:vertical:pointerover /template/ Rectangle#TrackRect">
         <Setter Property="Opacity" Value="1"/>
     </Style>
+    <!-- …and for the whole of a thumb drag, like the thumb (Thumb:pressed above): :pointerover
+         follows the pointer even while the thumb holds it, so drifting sideways off the bar
+         mid-drag hid the track (owner 10-24). thumb-dragging: Helpers/ScrollBarThumbDrag. -->
+    <Style Selector="ScrollBar:vertical.thumb-dragging /template/ Rectangle#TrackRect">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
 
     <!-- Remove the up/down arrow line buttons. -->
     <Style Selector="ScrollBar:vertical /template/ RepeatButton#PART_LineUpButton">
