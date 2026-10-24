@@ -2829,4 +2829,48 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Перейти к песням</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Перейти к альбомам</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Перейти к исполнителям</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="ArtistDetail.SearchArtistInfo" xml:space="preserve">
+    <value>Найти данные об исполнителе</value>
+    <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
+  </data>
+  <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
+    <value>Автоматические данные об исполнителе</value>
+    <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Title" xml:space="preserve">
+    <value>Найти данные об исполнителе</value>
+    <comment>ArtistInfoSearchDialog.axaml title</comment>
+  </data>
+  <data name="ArtistInfoSearch.Subtitle" xml:space="preserve">
+    <value>Выберите нужного исполнителя. Фото, поклонники и раздел «Об исполнителе» следуют вашему выбору.</value>
+    <comment>ArtistInfoSearchDialog.axaml subtitle</comment>
+  </data>
+  <data name="ArtistInfoSearch.Searching" xml:space="preserve">
+    <value>Поиск…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.NothingFound" xml:space="preserve">
+    <value>Исполнители не найдены.</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.Failed" xml:space="preserve">
+    <value>Ошибка поиска: {0}</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml; {0} = error message</comment>
+  </data>
+  <data name="ArtistInfoSearch.Applying" xml:space="preserve">
+    <value>Сохранение…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
+  </data>
+  <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
+    <value>Альбомов: {0}</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+  </data>
+  <data name="ArtistInfoSearch.Current" xml:space="preserve">
+    <value>Текущий</value>
+    <comment>Badge on the row the artist is pinned to</comment>
+  </data>
+  <data name="ArtistInfoSearch.Use" xml:space="preserve">
+    <value>Выбрать</value>
+    <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
 </root>

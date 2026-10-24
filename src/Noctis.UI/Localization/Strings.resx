@@ -2829,4 +2829,48 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Go to Songs</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Go to Albums</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Go to Artists</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="ArtistDetail.SearchArtistInfo" xml:space="preserve">
+    <value>Search Artist Info</value>
+    <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
+  </data>
+  <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
+    <value>Use Automatic Artist Info</value>
+    <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Title" xml:space="preserve">
+    <value>Search Artist Info</value>
+    <comment>ArtistInfoSearchDialog.axaml title</comment>
+  </data>
+  <data name="ArtistInfoSearch.Subtitle" xml:space="preserve">
+    <value>Pick the right artist. The picture, fans and About follow your pick.</value>
+    <comment>ArtistInfoSearchDialog.axaml subtitle</comment>
+  </data>
+  <data name="ArtistInfoSearch.Searching" xml:space="preserve">
+    <value>Searching…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.NothingFound" xml:space="preserve">
+    <value>No artists found.</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.Failed" xml:space="preserve">
+    <value>Search failed: {0}</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml; {0} = error message</comment>
+  </data>
+  <data name="ArtistInfoSearch.Applying" xml:space="preserve">
+    <value>Saving…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
+  </data>
+  <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
+    <value>{0} albums</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+  </data>
+  <data name="ArtistInfoSearch.Current" xml:space="preserve">
+    <value>Current</value>
+    <comment>Badge on the row the artist is pinned to</comment>
+  </data>
+  <data name="ArtistInfoSearch.Use" xml:space="preserve">
+    <value>Use Artist</value>
+    <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
 </root>

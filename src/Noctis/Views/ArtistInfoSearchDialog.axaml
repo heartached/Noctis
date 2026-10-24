@@ -1,0 +1,167 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:helpers="using:Noctis.Helpers"
+        x:Class="Noctis.Views.ArtistInfoSearchDialog"
+        x:DataType="vm:ArtistInfoSearchViewModel"
+        Title="{loc:T ArtistInfoSearch.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <!-- Same look as Search Lyrics: search pill, filled row cards with the accent ring on
+             the selected one (the ListBoxItem itself stays clear). -->
+        <Style Selector="Button.ai-search">
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ai-results">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem" x:DataType="vm:ArtistInfoSearchRow">
+            <Setter Property="AutomationProperties.Name" Value="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ai-results ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.ai-row">
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.ai-row">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="TextBlock.ai-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+    </Window.Styles>
+
+    <!-- GitHub #141: the pill pop-up shared by Search Lyrics and the Metadata editor
+         (PillDialogHost draws the blurred app behind and animates every close path). -->
+    <controls:PillDialogHost>
+
+    <Grid x:Name="CardContent" Width="560" Height="580" RowDefinitions="Auto,Auto,*,Auto">
+
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <controls:LineIcon Data="{StaticResource MenuLineSearch}" Width="22" Height="22" Opacity="0.6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T ArtistInfoSearch.Title}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T ArtistInfoSearch.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Query row (Enter searches too). -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,10,Auto" Margin="28,18,28,14">
+            <TextBox Grid.Column="0" Classes="pill-field" Text="{Binding Query}"
+                     PlaceholderText="{loc:T LyricsSearch.ArtistWatermark}"
+                     AutomationProperties.Name="{loc:T LyricsSearch.ArtistWatermark}" />
+            <Button Grid.Column="2"
+                    Classes="pill-secondary ai-search"
+                    BorderThickness="1.5"
+                    Padding="16,0"
+                    FontSize="12.5"
+                    IsDefault="True"
+                    Command="{Binding SearchCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12"
+                              Foreground="{DynamicResource AccentColorBrush}" />
+                    <TextBlock Text="{loc:T LyricsSearch.Search}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- One card per Deezer account: round photo, name (+ Current), fans · albums. -->
+        <ListBox Grid.Row="2" Classes="ai-results" Margin="28,0,28,18"
+                 ItemsSource="{Binding Results}"
+                 SelectedItem="{Binding SelectedResult}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ArtistInfoSearchRow">
+                    <Border Classes="pill-well ai-row" CornerRadius="16" Padding="10,8">
+                        <Grid ColumnDefinitions="48,12,*">
+                            <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" ClipToBounds="True"
+                                    Background="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                                <Panel>
+                                    <controls:LineIcon Data="{StaticResource MenuLineArtist}" Width="18" Height="18" Opacity="0.5"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       IsVisible="{Binding !HasThumbnail}" />
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                           IsVisible="{Binding HasThumbnail}" />
+                                </Panel>
+                            </Border>
+                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <Border CornerRadius="999" Padding="7,1"
+                                            Background="{DynamicResource AccentColorBrush}"
+                                            IsVisible="{Binding IsCurrent}" VerticalAlignment="Center">
+                                        <TextBlock Text="{loc:T ArtistInfoSearch.Current}" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentForegroundBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding Detail}" FontSize="11.5" Opacity="0.65"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Border Grid.Row="3"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            Margin="0,0,16,0">
+                    <ProgressBar IsIndeterminate="True" Width="48" MinWidth="0" Height="4" CornerRadius="2"
+                                 IsVisible="{Binding IsSearching}" VerticalAlignment="Center" />
+                    <TextBlock Classes="ai-status" Text="{Binding StatusText}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T Metadata.Cancel}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T ArtistInfoSearch.Use}"
+                        Command="{Binding ApplyCommand}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
+</Window>

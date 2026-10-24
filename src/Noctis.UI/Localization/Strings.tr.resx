@@ -1847,4 +1847,48 @@
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Şarkılar'a git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Albümler'e git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Sanatçılar'a git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="ArtistDetail.SearchArtistInfo" xml:space="preserve">
+    <value>Sanatçı Bilgisi Ara</value>
+    <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
+  </data>
+  <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
+    <value>Otomatik Sanatçı Bilgisini Kullan</value>
+    <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Title" xml:space="preserve">
+    <value>Sanatçı Bilgisi Ara</value>
+    <comment>ArtistInfoSearchDialog.axaml title</comment>
+  </data>
+  <data name="ArtistInfoSearch.Subtitle" xml:space="preserve">
+    <value>Doğru sanatçıyı seçin. Resim, hayranlar ve Hakkında seçiminizi izler.</value>
+    <comment>ArtistInfoSearchDialog.axaml subtitle</comment>
+  </data>
+  <data name="ArtistInfoSearch.Searching" xml:space="preserve">
+    <value>Aranıyor…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.NothingFound" xml:space="preserve">
+    <value>Sanatçı bulunamadı.</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.Failed" xml:space="preserve">
+    <value>Arama başarısız: {0}</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml; {0} = error message</comment>
+  </data>
+  <data name="ArtistInfoSearch.Applying" xml:space="preserve">
+    <value>Kaydediliyor…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
+  </data>
+  <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
+    <value>{0} albüm</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+  </data>
+  <data name="ArtistInfoSearch.Current" xml:space="preserve">
+    <value>Geçerli</value>
+    <comment>Badge on the row the artist is pinned to</comment>
+  </data>
+  <data name="ArtistInfoSearch.Use" xml:space="preserve">
+    <value>Bu Sanatçıyı Kullan</value>
+    <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
 </root>

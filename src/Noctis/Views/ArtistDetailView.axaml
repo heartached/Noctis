@@ -877,6 +877,19 @@
                                                 <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <!-- GitHub #141: pick the right artist when the automatic lookup found a
+                                             same-name stranger (photo, fans and About follow the pick). -->
+                                        <MenuItem Header="{loc:T ArtistDetail.SearchArtistInfo}" Click="OnSearchArtistInfoClick">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineArtist}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T ArtistDetail.UseAutomaticArtistInfo}" Click="OnResetArtistInfoClick"
+                                                  IsVisible="{Binding HasArtistInfoPick}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineClose}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
