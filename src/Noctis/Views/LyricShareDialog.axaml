@@ -130,16 +130,25 @@
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <!-- A stray white glyph (the Fluent scrollbar's line-up arrow) showed at the top of
-             the line list at rest: the bar stays hidden until the list is hovered. -->
-        <Style Selector="ScrollViewer.sl-lines /template/ ScrollBar:vertical">
+             the line list at rest: the bar stays hidden until the list is hovered.
+             The thumb is what fades, not the whole bar, so a held thumb stays: :pointerover
+             follows the pointer even while the thumb has it captured, and dragging the thumb
+             sideways off the list (onto the card) faded the bar out mid-drag (owner 10-24).
+             The RenderTransform transition repeats the app-wide thumb style's, which this
+             Transitions setter replaces. -->
+        <Style Selector="ScrollViewer.sl-lines /template/ ScrollBar:vertical /template/ Thumb">
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="ScrollViewer.sl-lines:pointerover /template/ ScrollBar:vertical">
+        <Style Selector="ScrollViewer.sl-lines:pointerover /template/ ScrollBar:vertical /template/ Thumb">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ScrollViewer.sl-lines /template/ ScrollBar:vertical /template/ Thumb:pressed">
             <Setter Property="Opacity" Value="1" />
         </Style>
 

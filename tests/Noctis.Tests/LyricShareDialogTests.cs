@@ -871,6 +871,65 @@ public class LyricShareDialogTests
         finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
     }
 
+    /// <summary>
+    /// Owner 10-24: "when I hold down and move the scrollable bar to the side it disappears".
+    /// The Lines list's bar is only shown while the list is hovered; dragging the thumb and
+    /// drifting sideways off the list (into the gap or over the card preview) faded it out
+    /// mid-drag. While the thumb is held the bar stays shown and keeps scrolling, as an OS
+    /// scrollbar does; it fades once the button is released away from the list.
+    /// </summary>
+    [AvaloniaFact]
+    public void DraggingTheLinesThumb_Sideways_KeepsTheBarShown()
+    {
+        EnsureAppStyles();
+        Noctis.Helpers.ScrollBarThumbDrag.Install(); // as App does
+        var vm = new LyricShareViewModel(Song(), Enumerable.Range(0, 40).Select(i => $"lyric line number {i}").ToList(), 0);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var host = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<Noctis.Controls.PillDialogHost>().Single();
+            Assert.True(PumpUntil(() => host.Card is { Opacity: > 0.999 }), "open animation never settled");
+            var scroller = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<ScrollViewer>()
+                .Single(s => s.Classes.Contains("sl-lines"));
+            var bar = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(scroller).OfType<Avalonia.Controls.Primitives.ScrollBar>()
+                .Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.True(PumpUntil(() => bar.IsVisible && scroller.Extent.Height > scroller.Viewport.Height), "the list does not scroll");
+            var thumb = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(bar).OfType<Avalonia.Controls.Primitives.Thumb>().Single();
+            Assert.True(PumpUntil(() => thumb.Bounds.Height > 0));
+
+            // What is drawn: the bar and its thumb (either may carry the fade).
+            double Shown() => bar.Opacity * thumb.Opacity;
+            Assert.True(PumpUntil(() => Shown() < 0.001), $"the bar shows at rest ({Shown():0.00})");
+            var grab = thumb.TranslatePoint(new Point(thumb.Bounds.Width / 2, thumb.Bounds.Height / 2), win)!.Value;
+            win.MouseMove(grab);
+            Assert.True(PumpUntil(() => Shown() > 0.999), $"the bar never showed on hover ({Shown():0.00})");
+            win.MouseDown(grab, MouseButton.Left);
+
+            // Drift right off the list, over the card preview, and down: still dragging.
+            var preview = Named<Border>(win, "PreviewWell");
+            var off = new Point(preview.TranslatePoint(default, win)!.Value.X + 60, grab.Y + 120);
+            var listTopLeft = scroller.TranslatePoint(default, win)!.Value;
+            Assert.False(new Rect(listTopLeft, scroller.Bounds.Size).Contains(off), "the drift point is still inside the list");
+            win.MouseMove(off, RawInputModifiers.LeftMouseButton);
+            PumpUntil(() => false, 300);
+            Assert.True(Shown() > 0.999, $"the bar faded mid-drag ({Shown():0.00}, list :pointerover {scroller.IsPointerOver})");
+            Assert.True(scroller.Offset.Y > 0, "the drag stopped scrolling once the pointer left the bar");
+            // The track (app-wide style: shown while the bar is hovered) stays for the drag too.
+            var track = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(bar).OfType<Avalonia.Controls.Shapes.Rectangle>()
+                .Single(r => r.Name == "TrackRect");
+            Assert.True(PumpUntil(() => track.Opacity > 0.999), $"the track faded mid-drag ({track.Opacity:0.00})");
+
+            // Released away from the list: it fades as before.
+            win.MouseUp(off, MouseButton.Left);
+            win.MouseMove(new Point(off.X + 1, off.Y));
+            Assert.True(PumpUntil(() => Shown() < 0.001), $"the bar stayed after release ({Shown():0.00})");
+            Assert.True(PumpUntil(() => track.Opacity < 0.001), $"the track stayed after release ({track.Opacity:0.00})");
+            Assert.DoesNotContain(Noctis.Helpers.ScrollBarThumbDrag.DraggingClass, bar.Classes);
+        }
+        finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+    }
+
     /// <summary>Esc during Save Video stops the export (status Cancelled, no cut-off file) and
     /// keeps the dialog; the next Esc closes it.</summary>
     [AvaloniaFact]
