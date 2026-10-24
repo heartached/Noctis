@@ -255,6 +255,21 @@ public partial class LrcRedLyricsService : ILrcRedLyricsService
         if (_modelSynced.TryGetValue(isrc, out var known))
             return known;
 
+        try
+        {
+            return await RunModelSyncAsync(isrc, ct);
+        }
+        catch (LrcRedSyncException ex)
+        {
+            // The session log ("Copy Logs"): DebugLogger's Lyrics lines never reach it, so a
+            // report of the page's "lrc.red: …" error carried no trace of the request.
+            DebugLog.Write("Lyrics", $"{ex.Message} | isrc={isrc}{(ex.InnerException is { } inner ? $" | {inner.GetType().Name}: {inner.Message}" : "")}");
+            throw;
+        }
+    }
+
+    private async Task<LrcLibResult> RunModelSyncAsync(string isrc, CancellationToken ct)
+    {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(ModelSyncTimeout);
         string body;
