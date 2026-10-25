@@ -65,6 +65,38 @@ public class ShareCardRendererTests
         Assert.Equal(new[] { "abcde", "fghij" }, lines);
     }
 
+    /// <summary>
+    /// Bug: the hard break of an oversized word went char by char (UTF-16), so it could cut
+    /// an emoji's surrogate pair or split a Thai consonant from its vowel / tone marks
+    /// (Thai has no spaces, so every long Thai line takes this path): the card drew a tofu
+    /// box, or the mark on a dotted circle at the start of the next row.
+    /// </summary>
+    [Theory]
+    [InlineData("\U0001F600\U0001F600\U0001F600", 30f)]   // three emoji
+    [InlineData("ที่นี่", 20f)]   // Thai "here", two clusters
+    public void WrapText_HardBreak_KeepsCharactersWhole(string word, float maxWidth)
+    {
+        var rows = ShareCardRenderer.WrapText(word, maxWidth, Measure);
+        Assert.Equal(word, string.Concat(rows));
+        Assert.True(rows.Count > 1);
+        // Every cut falls on a text-element (grapheme) boundary.
+        var boundaries = new HashSet<int>(System.Globalization.StringInfo.ParseCombiningCharacters(word));
+        int at = 0;
+        foreach (var row in rows.Take(rows.Count - 1))
+            Assert.Contains(at += row.Length, boundaries);
+    }
+
+    /// <summary>Bug (same cause): Ellipsize cut the title/artist mid surrogate pair, drawing
+    /// half an emoji (a tofu box) before the "…".</summary>
+    [Fact]
+    public void Ellipsize_DoesNotCutASurrogatePair()
+    {
+        var cut = ShareCardRenderer.Ellipsize("ab\U0001F600cd", 40f, Measure);
+        Assert.EndsWith("…", cut);
+        Assert.Equal(cut.Length, System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(cut)).Length);
+        Assert.DoesNotContain('�', System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(cut)));
+    }
+
     [Fact]
     public void WrapText_EmptyInput_ReturnsNoLines()
     {

@@ -1497,10 +1497,13 @@ public static class ShareCardRenderer
                 continue;
             }
 
-            // Hard-break an oversized word character by character.
+            // Hard-break an oversized word character by character — by text element, so an
+            // emoji's surrogate pair or a Thai vowel/tone mark never ends up split across rows.
             var piece = "";
-            foreach (var ch in word)
+            var elements = StringInfo.GetTextElementEnumerator(word);
+            while (elements.MoveNext())
             {
+                var ch = elements.GetTextElement();
                 if (piece.Length > 0 && measureWidth(piece + ch) > maxWidth)
                 {
                     result.Add(piece);
@@ -1572,9 +1575,11 @@ public static class ShareCardRenderer
     {
         if (measureWidth(text) <= maxWidth)
             return text;
-        for (int len = text.Length - 1; len > 0; len--)
+        // Cut on text-element boundaries only: half a surrogate pair draws as a tofu box.
+        var starts = StringInfo.ParseCombiningCharacters(text);
+        for (int e = starts.Length - 1; e > 0; e--)
         {
-            var candidate = text[..len].TrimEnd() + "…";
+            var candidate = text[..starts[e]].TrimEnd() + "…";
             if (measureWidth(candidate) <= maxWidth)
                 return candidate;
         }
