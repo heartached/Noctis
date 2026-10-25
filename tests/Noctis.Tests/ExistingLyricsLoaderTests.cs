@@ -104,7 +104,7 @@ public class ExistingLyricsLoaderTests : IDisposable
     {
         // Lyrics a tagger copied from a file with its BOM: the lyrics page shows the first line,
         // and the Studio dropped it (its stamp no longer started the line), so a save lost it.
-        const string text = "﻿[00:01.00]First line\n[00:02.00]Second line";
+        const string text = "\uFEFF[00:01.00]First line\n[00:02.00]Second line";
         var track = new Track { Title = "Song", SyncedLyrics = text };
 
         var lines = ExistingLyricsLoader.Load(track)!.Lines;

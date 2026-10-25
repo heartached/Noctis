@@ -86,7 +86,7 @@ public static partial class ExistingLyricsLoader
         return Comparable(EmbeddedLyrics.ReadFile(path).TimedText) == Comparable(timed);
 
         static string Comparable(string text) =>
-            text.TrimStart('﻿').Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
+            text.TrimStart('\uFEFF').Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
     }
 
     /// <summary>
