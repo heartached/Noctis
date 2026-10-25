@@ -373,6 +373,32 @@ public class LyricShareDialogTests
         finally { vm.Detach(); }
     }
 
+    /// <summary>
+    /// Bug: the startup sweep meant for clip leftovers only enumerated directories, but the
+    /// still clip's frame is a file (noctis-clip-{guid}.png in the temp root). A crash or kill
+    /// mid-export left that multi-MB PNG behind for good.
+    /// </summary>
+    [Fact]
+    public void StartupSweep_RemovesAStaleClipFrame()
+    {
+        var stale = Path.Combine(Path.GetTempPath(), $"noctis-clip-{Guid.NewGuid():N}.png");
+        var fresh = Path.Combine(Path.GetTempPath(), $"noctis-clip-{Guid.NewGuid():N}.png");
+        File.WriteAllText(stale, "frame");
+        File.WriteAllText(fresh, "frame");
+        File.SetCreationTimeUtc(stale, DateTime.UtcNow.AddDays(-1));
+        try
+        {
+            Noctis.Helpers.PngExportHelper.SweepStaleTempDirs();
+            Assert.False(File.Exists(stale), "a day-old clip frame survived the sweep");
+            Assert.True(File.Exists(fresh), "a clip frame in use was swept");
+        }
+        finally
+        {
+            try { File.Delete(stale); } catch { }
+            try { File.Delete(fresh); } catch { }
+        }
+    }
+
     private static bool StartsWithPartial(string path)
     {
         try { return File.ReadAllText(path).StartsWith("partial"); }

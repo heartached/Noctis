@@ -115,6 +115,18 @@ public static class PngExportHelper
                     catch { /* in use or not ours — leave it */ }
                 }
             }
+
+            // The still clip's frame is a file in the temp root, not a directory
+            // (ShareClipRenderer.RenderAsync: noctis-clip-{guid}.png).
+            foreach (var file in Directory.EnumerateFiles(root, "noctis-clip-*.png"))
+            {
+                try
+                {
+                    if (File.GetCreationTimeUtc(file) < cutoff)
+                        File.Delete(file);
+                }
+                catch { /* in use or not ours — leave it */ }
+            }
         }
         catch { /* sweeping is best effort */ }
     }
