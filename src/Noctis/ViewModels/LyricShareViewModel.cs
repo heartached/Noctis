@@ -338,6 +338,25 @@ public partial class LyricShareViewModel : ViewModelBase
     public event Action? AnimatedFrameRendered;
 
     private ShareCardRenderer.KaraokeCardAnimator? _animator;
+
+    /// <summary>Karaoke animators installed so far (tests: the flow card is built once, not
+    /// per line).</summary>
+    internal int AnimatorBuilds { get; private set; }
+
+    /// <summary>The live karaoke animator (tests).</summary>
+    internal ShareCardRenderer.KaraokeCardAnimator? Animator => _animator;
+
+    /// <summary>
+    /// Follow playback with the karaoke card on word-timed lyrics: the card is the whole song
+    /// scrolling like the lyrics page (<see cref="ShareCardRenderer.KaraokeCardAnimator"/>'s
+    /// flow mode), in the preview and in Save Video. Off: the picked lines, laid out as ever.
+    /// </summary>
+    internal bool IsFlowMode =>
+        SyncEnabled && SyncAvailable && KaraokeEnabled && Lines.Any(l => l.Words is { Count: > 0 });
+
+    /// <summary>The flow card's lines: every timed line with text, in song order.</summary>
+    private List<SelectableLyricLine> FlowLines() =>
+        Lines.Where(l => l.Timestamp.HasValue && !string.IsNullOrWhiteSpace(l.Text)).ToList();
     private WriteableBitmap? _animBitmap;
     private DispatcherTimer? _animTimer;
     private double _animLastT = double.NaN;
@@ -539,9 +558,9 @@ public partial class LyricShareViewModel : ViewModelBase
             OnPropertyChanged(nameof(CardOptionsSummary));
             RefreshPreview();
         }
-        else if (e.PropertyName == nameof(SelectableLyricLine.Text) && line.IsSelected)
+        else if (e.PropertyName == nameof(SelectableLyricLine.Text) && (line.IsSelected || IsFlowMode))
         {
-            // Editing a selected line changes what the card shows.
+            // Editing a selected line changes what the card shows (the flow card shows them all).
             RaiseSelectionChanged();
             RefreshPreview();
         }
@@ -627,12 +646,16 @@ public partial class LyricShareViewModel : ViewModelBase
         RaiseSelectionChanged();
         OnPropertyChanged(nameof(KaraokeAvailable));
         OnPropertyChanged(nameof(CardOptionsSummary));
-        RefreshPreview();
+        // The flow card already holds the whole song and scrolls on its own: a line change
+        // is not a new card (rebuilding it per line re-fitted the text and restarted every fade).
+        if (!IsFlowMode)
+            RefreshPreview();
     }
 
     partial void OnSyncEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
+        RefreshPreview();   // in or out of the scrolling flow card
         if (value && _player != null)
         {
             _currentSyncIndex = -1;
@@ -813,9 +836,13 @@ public partial class LyricShareViewModel : ViewModelBase
         }
 
         var spec = BuildSpec(selected);
+        bool flow = IsFlowMode;
         bool animate = KaraokeEnabled && _player != null
-            && selectedLines.Any(l => l.Words is { Count: > 0 });
-        var karaoke = animate ? BuildKaraokeLines(selectedLines) : null;
+            && (flow || selectedLines.Any(l => l.Words is { Count: > 0 }));
+        // Flow: the animator draws the whole song; the still under it stays the pick.
+        var animSource = flow ? FlowLines() : selectedLines;
+        var animSpec = flow ? BuildSpec(animSource.Select(l => l.Text).ToList()) : spec;
+        var karaoke = animate ? BuildKaraokeLines(animSource) : null;
 
         _previewRendering = true;
         // Captured here: the worker must not be the first to read Dispatcher.UIThread
@@ -844,7 +871,7 @@ public partial class LyricShareViewModel : ViewModelBase
                     bitmap = preview;
                 }
                 if (karaoke != null)
-                    animator = new ShareCardRenderer.KaraokeCardAnimator(spec, karaoke, PreviewAnimatorScale, _previewArt);
+                    animator = new ShareCardRenderer.KaraokeCardAnimator(animSpec, karaoke, PreviewAnimatorScale, _previewArt, flow);
             }
             catch (Exception ex)
             {
@@ -891,6 +918,7 @@ public partial class LyricShareViewModel : ViewModelBase
 
         _animator?.Dispose();
         _animator = animator;
+        AnimatorBuilds++;
         _animLastT = double.NaN;
 
         if (_animBitmap == null
@@ -1124,8 +1152,11 @@ public partial class LyricShareViewModel : ViewModelBase
             var spec = BuildSpec(selected.Select(l => l.Text).ToList());
             var timing = GetClipTiming();
             string error;
+            // Follow playback: the clip scrolls the whole song over the clip's window, as
+            // the preview does.
+            bool flow = IsFlowMode;
 
-            if (!(KaraokeEnabled && KaraokeAvailable))
+            if (!flow && !(KaraokeEnabled && KaraokeAvailable))
             {
                 // Base-resolution still: the clip is 1080p-bound, so the 2× supersampled
                 // export card would only quadruple the encode cost.
@@ -1135,7 +1166,9 @@ public partial class LyricShareViewModel : ViewModelBase
             else
             {
                 // Karaoke path: per-frame word sweep → JPEG sequence → ffmpeg mux.
-                var karaoke = BuildKaraokeLines(selected);
+                var source = flow ? FlowLines() : selected;
+                var frameSpec = flow ? BuildSpec(source.Select(l => l.Text).ToList()) : spec;
+                var karaoke = BuildKaraokeLines(source);
                 var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
                 Directory.CreateDirectory(frameDir);
                 try
@@ -1156,9 +1189,9 @@ public partial class LyricShareViewModel : ViewModelBase
                     });
 
                     await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                        spec, karaoke, timing, KaraokeFps, frameDir,
+                        frameSpec, karaoke, timing, KaraokeFps, frameDir,
                         (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
-                        token), token);
+                        token, flow), token);
 
                     StatusText = L("ShareLyrics.Encoding");
                     var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
