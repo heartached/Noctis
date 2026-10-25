@@ -32,6 +32,7 @@ public sealed class KaraokeFlow
     private readonly LyricLine?[] _lines;      // per card line; null = unsynced (always lit)
     private readonly int[] _timelineIndex;     // card line → index in _synced, or -1
     private readonly List<LyricLine> _synced = new();
+    private readonly List<int> _cardLineOf = new(); // index in _synced → card line
     private readonly LyricsTimeline _timeline;
     private readonly double[] _focusFrom, _focusTo, _focusStart;
     private double _lastT = double.NaN;
@@ -67,6 +68,7 @@ public sealed class KaraokeFlow
             _lines[i] = line;
             _timelineIndex[i] = _synced.Count;
             _synced.Add(line);
+            _cardLineOf.Add(i);
         }
         // The card's times already carry the page's 80 ms word lookahead (the caller adds
         // it), so the timeline runs without one; plain lines lead by half the line glide,
@@ -77,6 +79,18 @@ public sealed class KaraokeFlow
     /// <summary>Card line <paramref name="line"/>'s engine line (its <see cref="LyricLine.Words"/>
     /// carry the frame's Progress/Lift/EmphasisMs), or null when it is unsynced.</summary>
     public LyricLine? Line(int line) => line >= 0 && line < _lines.Length ? _lines[line] : null;
+
+    /// <summary>The card line the page's list would be on after the last <see cref="Advance"/>
+    /// (its <c>LyricsTimeline.Lead</c>): the line being sung, or the next one while the list
+    /// leads into it. Before the first line, the first synced line; -1 without synced lines.</summary>
+    public int ScrollLine { get; private set; } = -1;
+
+    /// <summary>How long card line <paramref name="line"/> stays the scroll target (its start
+    /// to the next synced line's start, ms; NaN when unknown) — the glide's tempo.</summary>
+    public double HoldMs(int line) =>
+        line >= 0 && line < _timelineIndex.Length && _timelineIndex[line] >= 0
+            ? LyricsTimeline.HoldMs(_synced, _timelineIndex[line])
+            : double.NaN;
 
     /// <summary>Moves every line and word to track time <paramref name="tSeconds"/>.</summary>
     public void Advance(double tSeconds)
@@ -100,6 +114,7 @@ public sealed class KaraokeFlow
             scroll = 0;
             leading = true;
         }
+        ScrollLine = _cardLineOf.Count == 0 ? -1 : _cardLineOf[Math.Clamp(scroll, 0, _cardLineOf.Count - 1)];
         for (int i = 0; i < _lines.Length; i++)
         {
             var ti = _timelineIndex[i];
