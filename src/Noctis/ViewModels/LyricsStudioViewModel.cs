@@ -1684,11 +1684,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private ReviewLine? _tapLine;
     private int _tapIndex;
     private bool _tapBlocked; // the last tap landed while a music video's audio played
+    private bool _tapOffSong; // the last tap landed while this song was not the one playing
 
     public bool IsTapping => TapLine is not null;
     public string TapHint => TapLine is { } line
         ? (_tapBlocked
             ? "Tapping is off while the music video's audio plays · click the line's time to hear the song file"
+            : _tapOffSong
+            ? "Tapping needs this song playing · click the line's time to play it"
             : _tapIndex < line.Words.Count
             ? $"Tap for “{line.Words[_tapIndex].Text}” ({_tapIndex + 1} of {line.Words.Count}) · Space or the Tap button · Esc cancels"
             : "Tap once more where the line ends")
@@ -1718,7 +1721,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (TapLine is not { } line || _player is null) return;
         // Words are timed against the song file; a music video's audio runs on the clip's clock.
         _tapBlocked = _player.IsPlayingMusicVideoAudio;
-        if (_tapBlocked)
+        // The player's clock is this song's only while it plays it: once the song ended (stopped,
+        // at 0:00) or another one started, a tap stamped that clock on the word — 0:00 took a
+        // late line ahead of every line before it, and a save wrote the lyrics out of order.
+        _tapOffSong = _player.CurrentTrack?.Id != Selected?.Track.Id || _player.State == PlaybackState.Stopped;
+        if (_tapBlocked || _tapOffSong)
         {
             OnPropertyChanged(nameof(TapHint));
             return;
@@ -1727,6 +1734,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (_tapIndex < line.Words.Count)
         {
             line.Words[_tapIndex].IsTapTarget = false;
+            // The first word stays after the line before, as a nudge keeps it (TimingNudge):
+            // tapped earlier, the line went ahead of it and the save wrote the lyrics out of order.
+            var i = ReviewLines.IndexOf(line);
+            if (_tapIndex == 0 && i > 0 && now < ReviewLines[i - 1].Start + TimingNudge.Gap)
+                now = ReviewLines[i - 1].Start + TimingNudge.Gap;
             line.TapWord(_tapIndex, now);
             _tapIndex++;
             if (_tapIndex < line.Words.Count)
@@ -1747,6 +1759,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (TapLine is { } line)
             foreach (var w in line.Words) w.IsTapTarget = false;
         _tapBlocked = false;
+        _tapOffSong = false;
         TapLine = null;
         _tapIndex = 0;
     }

@@ -74,6 +74,26 @@ public class LyricsStudioLanguageTests
     }
 
     [Fact]
+    public void JapaneseSongWithEnglishLines_IsJapanese()
+    {
+        // Japanese is written without spaces: a whole phrase is one "word" when split on spaces,
+        // so a J-pop song's English hooks outnumbered it and the song was transcribed as English
+        // (benchmark 10-19, a word-synced J-pop song: 38 of 83 lines unanchored).
+        var g = LyricsLanguage.FromLines(new[]
+        {
+            "明日は駅で友達に会います",
+            "雨が降る前に家へ帰ろう",
+            "We start the meeting at nine and we stay until the end",
+            "Please send me the report today before you go home",
+            "窓の外に小さな猫がいる",
+            "Call me when you get there baby I will wait for you",
+        });
+
+        Assert.Equal("ja", g.Code);
+        Assert.True(g.Confident);
+    }
+
+    [Fact]
     public void BilingualLatinSong_LeavesTheChoiceToTheAudio_BetweenTheCloseOnes()
     {
         var g = LyricsLanguage.FromLines(new[]
