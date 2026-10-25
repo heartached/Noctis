@@ -14,6 +14,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
+using Noctis.Services;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -46,7 +47,9 @@ public partial class LyricsPanelView : UserControl
     // the first unstaggered one on every multi-line scroll) — lyrics rendered on top
     // of each other mid-glide. 16px stays under both views' inter-line gaps.
     private const double MaxCascadeLagStepPx = 16;
-    private List<(Control Control, double DelayMs)>? _cascadeLines;
+    private HashSet<Control>? _cascadeLines;
+    // The glide in flight (or last run): a new line change hands its velocities on.
+    private LineGlide? _glide;
 
     /// <summary>True while this panel is counted in the VM's visible-surface tally.</summary>
     private bool _countedAsVisible;
@@ -370,7 +373,10 @@ public partial class LyricsPanelView : UserControl
         if (!force && index == _lastScrolledIndex) return;
         _lastScrolledIndex = index;
 
-        CancelScrollAnimation();
+        // Keep a glide in flight: the new one starts from what is on screen, velocities
+        // included (see the page's ScrollToActiveLine). Early returns cancel properly.
+        _scrollAnimationGeneration++;
+        var started = false;
 
         // Start on the same frame as the line's own transitions — see the page's
         // ScrollToActiveLine for why the old 10ms settle timer read as a hesitation.
@@ -381,86 +387,98 @@ public partial class LyricsPanelView : UserControl
 
             var current = PanelScrollViewer.Offset.Y;
             var diff = target - current;
-            if (Math.Abs(diff) < 2)
+            if (Math.Abs(diff) < 2 && _glide == null)
             {
                 PanelScrollViewer.Offset = new Vector(0, target);
                 return;
             }
 
-            var distance = Math.Abs(diff);
-            var durationMs = (int)Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
-            AnimateScroll(current, target, durationMs, GetLinesPanel(), index);
+            var hold = _vm != null ? LyricsTimeline.HoldMs(_vm.LyricLines, index) : double.NaN;
+            AnimateScroll(current, target, LineMotion.ForHold(hold), GetLinesPanel(), index);
+            started = true;
         }
         catch { }
+        finally
+        {
+            if (!started) CancelScrollAnimation();
+        }
     }
 
     // Frame-clock animation via TopLevel.RequestAnimationFrame: vsync-locked, unlike a
     // 16ms DispatcherTimer that beats against the compositor's ~16.7ms frame interval.
-    // Mirrors the lyrics page's AnimateScroll: smootherstep base glide with a per-line
-    // stagger below the active line (transient translate that relaxes to zero), so the
-    // stack settles top-down instead of moving as one rigid slab.
-    private void AnimateScroll(double from, double to, int durationMs,
+    // Mirrors the lyrics page's AnimateScroll: one LineGlide for the offset and every
+    // line, a per-line stagger below the active line (transient translate that relaxes to
+    // zero) so the stack settles top-down, and a glide in flight hands over its velocities.
+    private void AnimateScroll(double from, double to, LineSpring spring,
         Panel? linesPanel = null, int activeIndex = -1)
     {
-        CancelScrollAnimation();
+        _scrollAnimationGeneration++;
         _isProgrammaticScroll = true;
 
         var delta = to - from;
-        var cascade = new List<(Control Control, double DelayMs)>();
-        if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8)
-        {
-            // Every line below the active one takes part; only the DELAY is capped.
-            // Cutting the list at CascadeMaxLines left the first excluded line static
-            // while the last included one lagged a full line height onto it — visible
-            // as overlapping lyrics on every multi-line scroll in the panel, whose tall
-            // viewport keeps that boundary on screen. Capped-delay lines share one lag,
-            // so they glide as a coherent block with no seam.
-            for (int i = activeIndex + 1; i < linesPanel.Children.Count; i++)
-            {
-                cascade.Add((linesPanel.Children[i],
-                    Math.Min(i - activeIndex, CascadeMaxLines) * CascadeDelayPerLineMs));
-            }
-        }
-        _cascadeLines = cascade.Count > 0 ? cascade : null;
-
+        // Every line below the active one takes part; only the DELAY is capped.
+        // Cutting the list at CascadeMaxLines left the first excluded line static
+        // while the last included one lagged a full line height onto it — visible
+        // as overlapping lyrics on every multi-line scroll in the panel, whose tall
+        // viewport keeps that boundary on screen. Capped-delay lines share one lag,
+        // so they glide as a coherent block with no seam.
+        var cascade = linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8;
+        var lines = linesPanel?.Children;
+        var lineCount = lines?.Count ?? 0;
+        var glide = LineGlide.Begin(_glide, NowMs(), from, to, spring, lineCount, activeIndex,
+            cascade ? CascadeDelayPerLineMs : 0, CascadeMaxLines,
+            i => lines![i].RenderTransform is TranslateTransform tt ? tt.Y : 0);
+        _glide = glide;
+        var touched = _cascadeLines ??= new HashSet<Control>();
         var generation = _scrollAnimationGeneration;
-        var stopwatch = Stopwatch.StartNew();
-        var totalMs = (double)durationMs;
-        var maxDelayMs = cascade.Count > 0 ? cascade[^1].DelayMs : 0;
 
         void Frame(TimeSpan _)
         {
             // Superseded or cancelled: the canceller already reset flags/transforms.
             if (generation != _scrollAnimationGeneration) return;
 
-            var elapsed = stopwatch.Elapsed.TotalMilliseconds;
-            var t = Math.Min(1.0, elapsed / totalMs);
-            // Shared line-motion curve: same as the line's scale transition (see the page).
-            var eased = LineMotion.Ease(t);
-            PanelScrollViewer.Offset = new Vector(0, from + delta * eased);
+            var now = NowMs();
+            PanelScrollViewer.Offset = new Vector(0, glide.Offset(now));
 
-            // Stagger: each cascade line is displaced by the gap between the base ease
-            // and its own delayed ease — positive while catching up, zero when settled.
-            // Chained clamp: on large scroll deltas the raw stagger between neighbours
-            // exceeds the inter-line gap, so bound each line's lag to its predecessor's
-            // (the list is in top-to-bottom order) — lines can never cross.
-            var prevLag = 0.0;
-            foreach (var (control, delayMs) in cascade)
+            // Each line is displaced by the gap between the offset and its own course.
+            // Chained clamp below the active line: on large scroll deltas the raw stagger
+            // between neighbours exceeds the inter-line gap, so bound each line's lag to
+            // its predecessor's (the list is in top-to-bottom order) — lines never cross.
+            if (lines != null)
             {
-                var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
-                var lag = LineMotion.CascadeStep(
-                    delta * (eased - LineMotion.Ease(tLine)), prevLag, MaxCascadeLagStepPx);
-                prevLag = lag;
-                if (control.RenderTransform is TranslateTransform tt)
-                    tt.Y = lag;
-                else
-                    control.RenderTransform = new TranslateTransform(0, lag);
+                var prevLag = 0.0;
+                var n = Math.Min(lineCount, lines.Count);
+                for (var i = 0; i < n; i++)
+                {
+                    var lag = glide.LineLag(i, now);
+                    if (i > activeIndex)
+                    {
+                        lag = LineMotion.CascadeStep(lag, prevLag, MaxCascadeLagStepPx);
+                        prevLag = lag;
+                    }
+                    var control = lines[i];
+                    if (control.RenderTransform is TranslateTransform tt)
+                    {
+                        // ReSharper disable once CompareOfFloatsByEqualityOperator
+                        if (tt.Y != lag)
+                        {
+                            tt.Y = lag;
+                            touched.Add(control);
+                        }
+                    }
+                    else if (Math.Abs(lag) > 0.01)
+                    {
+                        control.RenderTransform = new TranslateTransform(0, lag);
+                        touched.Add(control);
+                    }
+                }
             }
 
-            if (t >= 1.0 && elapsed >= totalMs + maxDelayMs)
+            if (glide.IsDone(now))
             {
                 PanelScrollViewer.Offset = new Vector(0, to);
                 ClearCascadeTransforms();
+                _glide = null;
                 _isProgrammaticScroll = false;
                 return;
             }
@@ -470,6 +488,8 @@ public partial class LyricsPanelView : UserControl
 
         RequestScrollFrame(Frame, to);
     }
+
+    private static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
     // Schedules the next animation frame; if the panel left the visual tree mid-animation
     // (no TopLevel → no frame callbacks), snaps to the target so the offset never strands.
@@ -490,13 +510,14 @@ public partial class LyricsPanelView : UserControl
     {
         _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
+        _glide = null;
         ClearCascadeTransforms();
     }
 
     private void ClearCascadeTransforms()
     {
         if (_cascadeLines == null) return;
-        foreach (var (control, _) in _cascadeLines)
+        foreach (var control in _cascadeLines)
         {
             if (control.RenderTransform is TranslateTransform tt)
                 tt.Y = 0;
