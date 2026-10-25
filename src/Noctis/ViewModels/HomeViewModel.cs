@@ -708,6 +708,24 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void PlayRediscovered(Track track) => PlayFromRow(RediscoveredTracks, track);
 
+    /// <summary>The Play / Pause over a history pill's art (as on the chart rows): pauses or
+    /// resumes the track that is already on, otherwise plays it from its row.</summary>
+    [RelayCommand]
+    private void TogglePlayTimeRotation(Track? track) => TogglePlayFromRow(TimeRotationTracks, track);
+
+    [RelayCommand]
+    private void TogglePlayHeavyRotation(Track? track) => TogglePlayFromRow(HeavyRotationTracks, track);
+
+    [RelayCommand]
+    private void TogglePlayRediscovered(Track? track) => TogglePlayFromRow(RediscoveredTracks, track);
+
+    private void TogglePlayFromRow(BulkObservableCollection<Track> row, Track? track)
+    {
+        if (track is null) return;
+        if (track.IsNowPlaying) { _player.PlayPauseCommand.Execute(null); return; }
+        PlayFromRow(row, track);
+    }
+
     private void PlayFromRow(BulkObservableCollection<Track> row, Track track)
     {
         var tracks = row.ToList();
