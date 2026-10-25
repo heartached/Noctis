@@ -1134,4 +1134,43 @@ public class LyricShareDialogTests
             }
         });
     }
+
+    // ── Karaoke timing ──
+
+    /// <summary>
+    /// Bug: a line's last word with no end time swept until the next *picked* line began, or
+    /// for 2 s when it was the last pick, instead of until the next lyric line, capped at 2 s
+    /// as on the lyrics page (KaraokeSweep.ResolveOpenLastWordEnd). Picking lines 0 and 2 here
+    /// stretched "two" from 11 s to 30 s, over line 1 (sung at 11.5 s); picking line 0 alone
+    /// ran it to 13 s, past line 1's start.
+    /// </summary>
+    [AvaloniaFact]
+    public void OpenLastWord_EndsAtTheNextLyricLine_CappedLikeTheLyricsPage()
+    {
+        var lines = new[] { "one two", "three", "four five", "six" };
+        var stamps = new TimeSpan?[] { TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(11.5), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(34) };
+        IReadOnlyList<WordTiming> Words(params (string Text, double Start)[] w)
+            => w.Select(x => new WordTiming { Text = x.Text, Start = TimeSpan.FromSeconds(x.Start) }).ToList();
+        var words = new IReadOnlyList<WordTiming>?[]
+        {
+            Words(("one", 10), ("two", 11)), Words(("three", 11.5)), Words(("four", 30), ("five", 31)), Words(("six", 34)),
+        };
+        var vm = new LyricShareViewModel(Song(), lines, stamps, null, words);
+        try
+        {
+            double LastEnd(int cardLine) => vm.CardKaraoke[cardLine].Words![^1].EndSeconds;
+
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[0]);
+            Assert.Equal(11.5, LastEnd(0), 3);
+
+            vm.ToggleLine(vm.Lines[2]);
+            Assert.Equal(11.5, LastEnd(0), 3);
+
+            // "five" at 31 s, next line at 34 s: the page's 2 s cap, not the 3 s gap.
+            vm.ToggleLine(vm.Lines[3]);
+            Assert.Equal(33, LastEnd(1), 3);
+        }
+        finally { vm.Detach(); }
+    }
 }
