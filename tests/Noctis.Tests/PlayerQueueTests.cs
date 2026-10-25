@@ -157,6 +157,33 @@ public class PlayerQueueTests
     }
 
     [Fact]
+    public void RepeatAll_StartedMidPlaylist_WrapsToTheFirstTrackEveryPass()
+    {
+        // Discord 10-25: playlist of 8 started at song 6. The first wrap went back to song 6
+        // (the cycle was rotated to start there), only the second reached song 1.
+        var (vm, _) = CreateVm();
+        var tracks = Enumerable.Range(1, 8).Select(i => Trk($"s{i}")).ToList();
+        vm.ReplaceQueueAndPlay(tracks, 5);
+        vm.RepeatMode = RepeatMode.All;
+
+        Assert.Equal(tracks.Select(t => t.Id), WrapRepeatAll(vm));
+        Assert.Equal(tracks.Select(t => t.Id), WrapRepeatAll(vm));
+    }
+
+    [Fact]
+    public void RepeatAll_StartedMidPlaylist_QueuedSongFollowsTheLastTrack()
+    {
+        var (vm, _) = CreateVm();
+        var (a, b, c, x) = (Trk("a"), Trk("b"), Trk("c"), Trk("x"));
+        vm.ReplaceQueueAndPlay(new[] { a, b, c }, 1); // b, then c
+        vm.RepeatMode = RepeatMode.All;
+
+        vm.AddToQueue(x, announce: false); // c x
+
+        Assert.Equal(new[] { a.Id, b.Id, c.Id, x.Id }, WrapRepeatAll(vm));
+    }
+
+    [Fact]
     public void RepeatAll_AfterClearQueue_WrapReplaysOnlyWhatIsLeft()
     {
         var (vm, _) = CreateVm();

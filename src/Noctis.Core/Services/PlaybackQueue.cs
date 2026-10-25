@@ -77,7 +77,8 @@ public sealed class PlaybackQueue
 
         _originalOrder.Clear();
         IsShuffleEnabled = false;
-        _repeatCycle = tracks.Skip(startIndex).Concat(tracks.Take(startIndex)).ToList();
+        // List order, so Repeat All wraps to the first track (not to the one picked mid-list).
+        _repeatCycle = tracks.ToList();
 
         _upNext.Clear();
         for (int i = startIndex + 1; i < tracks.Count; i++)

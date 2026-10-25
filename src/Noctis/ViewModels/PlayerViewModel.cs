@@ -1694,12 +1694,12 @@ public partial class PlayerViewModel : ViewModelBase
         _parkedExplicit.Clear(); // parked explicit tracks belonged to the old queue
         IsShuffleEnabled = unshuffled != null;
 
-        // Record the full cycle for Repeat All, starting at the track being played so a
-        // wrap replays the queue in the order the user actually started it. A shuffled start
-        // records the list's own order instead: the wrap reshuffles it while Shuffle is on and
-        // plays it in order once Shuffle is off (the shuffled one lacks the held-out tracks).
-        _repeatCycleTracks = unshuffled?.ToList()
-            ?? tracks.Skip(startIndex).Concat(tracks.Take(startIndex)).ToList();
+        // Record the full cycle for Repeat All in the list's own order, so a playlist started
+        // mid-way wraps to its first track. It was rotated to start at the picked track: the
+        // first wrap went back to that track and only later passes reached the songs above it
+        // (Discord 10-25). A shuffled start records the unshuffled list: the wrap reshuffles it
+        // while Shuffle is on and plays it in order once Shuffle is off.
+        _repeatCycleTracks = (unshuffled ?? tracks).ToList();
 
         // GitHub #74: the tracks BEFORE the start point are what Previous should step back
         // through (playlist started at track 5 → Previous plays track 4), not the last
