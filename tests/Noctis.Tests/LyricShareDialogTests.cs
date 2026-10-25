@@ -947,6 +947,33 @@ public class LyricShareDialogTests
         }
     }
 
+    /// <summary>The four option drop-downs read as their labels: UIA named all four "" (10-25),
+    /// so a screen reader couldn't tell Layout from Format, Text or Background.</summary>
+    [AvaloniaFact]
+    public void OptionDropDowns_ReadAsTheirLabels()
+    {
+        EnsureAppStyles();
+        var vm = new LyricShareViewModel(Song(), new[] { "alpha", "beta" }, 0);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var names = new[] { "LayoutBox", "FormatBox", "TextColorBox", "BackgroundBox" }
+                .Select(n => Avalonia.Automation.AutomationProperties.GetName(Named<ComboBox>(win, n)))
+                .ToList();
+            Assert.Equal(new[]
+            {
+                Noctis.Localization.Loc.T("LyricShare.Layout"), Noctis.Localization.Loc.T("LyricShare.Format"),
+                Noctis.Localization.Loc.T("LyricShare.Text"), Noctis.Localization.Loc.T("LyricShare.Background"),
+            }, names);
+            Assert.All(names, n => Assert.False(string.IsNullOrWhiteSpace(n)));
+        }
+        finally
+        {
+            if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
+        }
+    }
+
     /// <summary>Esc in a line's edit box puts the text back and keeps the dialog open.</summary>
     [AvaloniaFact]
     public void EscapeWhileEditing_RestoresTheLine_AndKeepsTheDialog()

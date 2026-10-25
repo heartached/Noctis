@@ -355,6 +355,7 @@
             <StackPanel Grid.Column="0" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Layout}" />
                 <ComboBox x:Name="LayoutBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Layout}"
                           SelectedIndex="{Binding LayoutIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T LyricShare.Card}" ToolTip.Tip="{loc:T LyricShare.RoundedCardArtworkHeaderTip}" />
                     <ComboBoxItem Content="{loc:T LyricShare.Poster}" ToolTip.Tip="{loc:T LyricShare.BigCenteredArtworkCenteredTip}" />
@@ -363,6 +364,7 @@
             <StackPanel Grid.Column="2" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Format}" />
                 <ComboBox x:Name="FormatBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Format}"
                           SelectedIndex="{Binding FormatIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T ShareLyrics.Square}" />
                     <ComboBoxItem Content="{loc:T ShareLyrics.Story}" />
@@ -371,6 +373,7 @@
             <StackPanel Grid.Column="4" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Text}" />
                 <ComboBox x:Name="TextColorBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Text}"
                           SelectedIndex="{Binding TextColorIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T LyricShare.Auto}" />
                     <ComboBoxItem Content="{loc:T LyricShare.White}" />
@@ -380,6 +383,7 @@
             <StackPanel Grid.Column="6" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Background}" />
                 <ComboBox x:Name="BackgroundBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Background}"
                           ItemsSource="{Binding BackgroundChoices}"
                           SelectedItem="{Binding SelectedBackground, Mode=TwoWay}"
                           ToolTip.Tip="{loc:T LyricShare.CardBackgroundBlurredArtworkTip}"
