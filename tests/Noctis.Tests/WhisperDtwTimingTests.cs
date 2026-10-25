@@ -111,6 +111,87 @@ public class WhisperDtwTimingTests
         Assert.Equal(250, spans[0].EndCs);
     }
 
+    [Fact]
+    public void CharacterSplitOverTwoTokens_TakesItsTextFromTheSegment()
+    {
+        // Whisper.net decodes each token on its own: a Hangul syllable whose UTF-8 bytes the
+        // tokenizer split comes out as U+FFFD pieces (benchmark 10-19, LOVE DIVE: 34 of 185
+        // heard words). The segment's text is decoded whole.
+        var tokens = new[]
+        {
+            new WhisperTranscriber.TokenView(" \uFFFD", 100, 120, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD서와서", 120, 180, 0.9f),
+            new WhisperTranscriber.TokenView(" 좋\uFFFD\uFFFD", 190, 230, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 230, 240, 0.9f),
+            new WhisperTranscriber.TokenView(" love", 250, 290, 0.9f),
+        };
+        var words = WhisperTranscriber.WordsFromTokens(tokens, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), " 따서와서 좋아 love");
+
+        Assert.Equal(new[] { "따서와서", "좋아", "love" }, words.Select(w => w.Text));
+        Assert.Equal(Cs(100), words[0].Start); // times stay the tokens'
+        Assert.Equal(Cs(240), words[1].End);
+    }
+
+    [Fact]
+    public void SpaceOnlyToken_StartsTheNextWord()
+    {
+        // Japanese (CRUSH, 10-19): the space between two phrases is a token of its own, and the
+        // phrase after it has no leading space. The two phrases came out as one word, and as the
+        // segment's text then had a word more, its broken characters were not mended either.
+        var tokens = new[]
+        {
+            new WhisperTranscriber.TokenView("\uFFFD", 790, 800, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 800, 810, 0.9f),
+            new WhisperTranscriber.TokenView("の", 810, 830, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 830, 840, 0.9f),
+            new WhisperTranscriber.TokenView("\uFFFD", 840, 850, 0.9f),
+            new WhisperTranscriber.TokenView(" ", 850, 860, 0.9f),
+            new WhisperTranscriber.TokenView("重", 900, 920, 0.9f),
+            new WhisperTranscriber.TokenView("なる", 920, 960, 0.9f),
+            new WhisperTranscriber.TokenView("ey", 960, 980, 0.9f),
+            new WhisperTranscriber.TokenView("es", 980, 1000, 0.9f),
+        };
+        var words = WhisperTranscriber.WordsFromTokens(tokens, TimeSpan.FromSeconds(7.9), TimeSpan.FromSeconds(10.5), "瞳の奥 重なるeyes");
+
+        Assert.Equal(new[] { "瞳の奥", "重なるeyes" }, words.Select(w => w.Text));
+        Assert.Equal(Cs(900), words[1].Start);
+    }
+
+    [Fact]
+    public void BrokenPieces_StayAsHeard_WhenTheSegmentTextDoesNotLineUp()
+    {
+        var tokens = new[]
+        {
+            new WhisperTranscriber.TokenView(" \uFFFD서", 100, 120, 0.9f),
+            new WhisperTranscriber.TokenView(" love", 130, 180, 0.9f),
+        };
+        // A word count that differs, and a known letter that is not in the segment's word.
+        Assert.Equal("\uFFFD서", WhisperTranscriber.WordsFromTokens(tokens, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), " 따서 love you")[0].Text);
+        Assert.Equal("\uFFFD서", WhisperTranscriber.WordsFromTokens(tokens, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), " 따와 love")[0].Text);
+    }
+
+    [Fact]
+    public void BracketedSegment_TheAudioDoesNotHold_IsADescriptionOfTheMusic_NotLyrics()
+    {
+        // "(Instrumental)" over an intro (benchmark 10-19, 8 of 11 transcripts): DTW finds no place
+        // for it inside its segment, so it used to be spread over 0:00–0:03 as the draft's first line.
+        var lost = new[]
+        {
+            new WhisperTranscriber.TokenView(" (", 900, 920, 0.6f),
+            new WhisperTranscriber.TokenView("Instrumental", 920, 960, 0.6f),
+            new WhisperTranscriber.TokenView(")", 960, 970, 0.6f),
+        };
+        Assert.Empty(WhisperTranscriber.WordsFromTokens(lost, TimeSpan.Zero, TimeSpan.FromSeconds(3.4), " (Instrumental)"));
+
+        // Not wholly in brackets, or placed by DTW (a backing vocal): kept as before.
+        var sung = new[] { new WhisperTranscriber.TokenView(" (Ooh)", 900, 960, 0.6f), new WhisperTranscriber.TokenView(" yeah", 960, 990, 0.6f) };
+        Assert.Equal(new[] { "(Ooh)", "yeah" }, WhisperTranscriber.WordsFromTokens(sung, TimeSpan.Zero, TimeSpan.FromSeconds(3.4), " (Ooh) yeah").Select(w => w.Text));
+        var twoGroups = new[] { new WhisperTranscriber.TokenView(" (Ooh)", 900, 960, 0.6f), new WhisperTranscriber.TokenView(" (yeah)", 960, 990, 0.6f) };
+        Assert.Equal(2, WhisperTranscriber.WordsFromTokens(twoGroups, TimeSpan.Zero, TimeSpan.FromSeconds(3.4), " (Ooh) (yeah)").Count);
+        var placed = new[] { new WhisperTranscriber.TokenView(" (Ooh)", 100, 160, 0.9f) };
+        Assert.Equal(Cs(100), Assert.Single(WhisperTranscriber.WordsFromTokens(placed, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), " (Ooh)")).Start);
+    }
+
     private const int Sr = PcmDecoder16k.SampleRate;
     private const int Window = 30 * Sr;
 

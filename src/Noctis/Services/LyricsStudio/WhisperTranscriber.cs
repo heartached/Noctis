@@ -4,7 +4,8 @@ using Whisper.net.LibraryLoader;
 
 namespace Noctis.Services.LyricsStudio;
 
-public sealed record Transcript(IReadOnlyList<RecognizedWord> Words, string Language);
+/// <param name="SegmentStarts">Index into <paramref name="Words"/> of each Whisper segment's first word, in order.</param>
+public sealed record Transcript(IReadOnlyList<RecognizedWord> Words, string Language, IReadOnlyList<int>? SegmentStarts = null);
 
 /// <summary>The speech engine's native library would not load on this PC (no build for its CPU,
 /// a missing system library); the model file is not at fault.</summary>
@@ -96,6 +97,7 @@ public sealed class WhisperTranscriber
 
             var lines = string.IsNullOrWhiteSpace(prompt) ? null : prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var words = new List<RecognizedWord>();
+            var segmentStarts = new List<int>();
             var detected = language ?? "auto";
             // Async disposal: Whisper.net refuses a synchronous Dispose while a decode is in
             // flight ("Cannot dispose while processing, please use DisposeAsync instead"),
@@ -134,9 +136,11 @@ public sealed class WhisperTranscriber
                     await foreach (var segment in processor.ProcessAsync(pcm16k, ct).ConfigureAwait(false))
                     {
                         if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
+                        var first = words.Count;
                         words.AddRange(WordsFromSegment(segment));
+                        if (words.Count > first) segmentStarts.Add(first);
                     }
-                    return new Transcript(words, detected);
+                    return new Transcript(words, detected, segmentStarts);
                 }
 
                 // whisper.cpp (up to its current master) only hands DTW-timed segments to the
@@ -162,7 +166,9 @@ public sealed class WhisperTranscriber
                     await foreach (var segment in processor.ProcessAsync(new ReadOnlyMemory<float>(pcm16k, seek, span), ct).ConfigureAwait(false))
                     {
                         if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
+                        var first = words.Count;
                         words.AddRange(WordsFromDtwSegment(segment, offset, _dtwShiftCs, ref previousEndCs));
+                        if (words.Count > first) segmentStarts.Add(first);
                         last = segment;
                     }
                     // One language per song, as a single whisper.cpp run detects it once.
@@ -186,7 +192,7 @@ public sealed class WhisperTranscriber
             {
                 if (processor is not null) await processor.DisposeAsync().ConfigureAwait(false);
             }
-            return new Transcript(words, detected);
+            return new Transcript(words, detected, segmentStarts);
         }
 
         public void Dispose() => _factory.Dispose();
@@ -358,12 +364,16 @@ public sealed class WhisperTranscriber
     internal static List<RecognizedWord> WordsFromTokens(IEnumerable<TokenView> tokens, TimeSpan segStart, TimeSpan segEnd, string? segmentText)
     {
         var words = new List<(string Text, long Start, long End, float Prob, int Count)>();
+        // The previous token ended in a space: Japanese gives the space between two phrases a token
+        // of its own and the next phrase no leading space, so the two came out as one word.
+        var afterSpace = false;
         foreach (var t in tokens)
         {
             var text = t.Text;
             if (text.Length == 0) continue;
             if (IsSpecialToken(text)) continue;
-            var startsWord = text[0] == ' ' || words.Count == 0;
+            var startsWord = text[0] == ' ' || words.Count == 0 || afterSpace;
+            afterSpace = char.IsWhiteSpace(text[^1]);
             var body = text.Trim();
             if (body.Length == 0) continue;
             if (startsWord || IsPunctuationOnly(body) == false && words.Count == 0)
@@ -385,6 +395,19 @@ public sealed class WhisperTranscriber
             return Spread(pieces, segStart, segEnd, 0.5f);
         }
 
+        // Whisper.net decodes each token on its own, so a character whose UTF-8 bytes the tokenizer
+        // split over two tokens comes out as U+FFFD pieces (Korean, Japanese, Chinese; benchmark
+        // 10-19: 34 of LOVE DIVE's 185 heard words). The segment's text is decoded whole: a broken
+        // word takes its text from the segment's word at the same place, when the two line up.
+        if (words.Any(w => w.Text.Contains(Broken)) && segmentText is not null)
+        {
+            var whole = segmentText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (whole.Length == words.Count)
+                for (var i = 0; i < words.Count; i++)
+                    if (words[i].Text.Contains(Broken) && FitsBroken(words[i].Text, whole[i]))
+                        words[i] = words[i] with { Text = whole[i] };
+        }
+
         var result = new List<RecognizedWord>(words.Count);
         var tolerance = TimeSpan.FromSeconds(1.5);
         var sane = true;
@@ -397,8 +420,23 @@ public sealed class WhisperTranscriber
             result.Add(new RecognizedWord(w.Text, s, e, w.Prob / Math.Max(1, w.Count)));
         }
         if (!sane)
+        {
+            // A segment wholly in brackets that the audio does not hold is Whisper describing the
+            // music, not lyrics: "(Instrumental)", "(MÚSICA)", "(Gritos y aplausos)" over an intro
+            // were the first line of 8 of 11 transcripts (benchmark 10-19). Dropped: corpus WER
+            // 0.353 → 0.346, no song worse; Align's line starts against the transcript unchanged.
+            if (IsBracketed(segmentText ?? string.Join(' ', words.Select(w => w.Text))))
+                return new List<RecognizedWord>();
             return Spread(words.Select(w => w.Text).ToArray(), segStart, segEnd, (float)words.Average(w => w.Prob / Math.Max(1, w.Count)));
+        }
         return result;
+    }
+
+    /// <summary>One bracketed group and nothing else: "(…)" or "[…]".</summary>
+    private static bool IsBracketed(string text)
+    {
+        var t = text.Trim();
+        return t.Length > 2 && t[0] is '(' or '[' && t.IndexOfAny(new[] { ')', ']' }) == t.Length - 1;
     }
 
     private static List<RecognizedWord> Spread(string[] pieces, TimeSpan start, TimeSpan end, float probability)
@@ -413,4 +451,20 @@ public sealed class WhisperTranscriber
     }
 
     private static bool IsPunctuationOnly(string s) => s.All(c => char.IsPunctuation(c) || char.IsSymbol(c));
+
+    /// <summary>What a token's partial UTF-8 bytes decode to.</summary>
+    private const char Broken = '\uFFFD';
+
+    /// <summary>Whether <paramref name="whole"/> reads as <paramref name="broken"/> with each run of U+FFFD standing for one or more characters.</summary>
+    private static bool FitsBroken(string broken, string whole)
+    {
+        var pattern = new System.Text.StringBuilder("^");
+        for (var i = 0; i < broken.Length; i++)
+        {
+            if (broken[i] != Broken) { pattern.Append(System.Text.RegularExpressions.Regex.Escape(broken[i].ToString())); continue; }
+            while (i + 1 < broken.Length && broken[i + 1] == Broken) i++;
+            pattern.Append(".+?");
+        }
+        return System.Text.RegularExpressions.Regex.IsMatch(whole, pattern.Append('$').ToString(), System.Text.RegularExpressions.RegexOptions.Singleline);
+    }
 }

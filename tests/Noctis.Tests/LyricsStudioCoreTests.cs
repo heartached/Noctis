@@ -161,6 +161,39 @@ public class LyricsStudioCoreTests
     }
 
     [Fact]
+    public void TranscriptLines_WithWhisperSegments_BreakWhereEachSegmentStarts()
+    {
+        // Sung back to back (no pause), three of Lullaby's segments: three lyric lines. Without them
+        // only the question mark broke the run, gluing the first two.
+        var words = new List<RecognizedWord>();
+        var t = 0.0;
+        foreach (var w in "Say, baby, say, baby What you doin'? Where you at?".Split(' ')) { words.Add(W(w, t)); t += 0.35; }
+
+        var lines = TranscriptLines.Group(words, segmentStarts: new[] { 0, 4, 7 });
+
+        Assert.Equal(new[] { "Say, baby, say, baby", "What you doin'?", "Where you at?" }, lines.Select(l => l.Text));
+        Assert.Equal(new[] { "Say, baby, say, baby What you doin'?", "Where you at?" }, TranscriptLines.Group(words).Select(l => l.Text));
+    }
+
+    [Fact]
+    public void TranscriptLines_WithWhisperSegments_SplitOnlyAMuchLongerLineOrPause()
+    {
+        var words = new List<RecognizedWord>();
+        var t = 0.0;
+        for (var i = 0; i < 20; i++) { words.Add(W($"a{i}", t)); t += 0.3; }   // one 20-word segment
+        t += 1.5;                                                             // a breath: not a new line
+        for (var i = 0; i < 3; i++) { words.Add(W($"b{i}", t)); t += 0.3; }
+        t += 2.5;                                                             // a long rest: a new line
+        for (var i = 0; i < 3; i++) { words.Add(W($"c{i}", t)); t += 0.3; }
+
+        var lines = TranscriptLines.Group(words, segmentStarts: new[] { 0 });
+
+        Assert.Equal(new[] { 16, 7, 3 }, lines.Select(l => l.Words.Count));
+        Assert.StartsWith("a16", lines[1].Text);
+        Assert.Equal("c0 c1 c2", lines[2].Text);
+    }
+
+    [Fact]
     public void Builders_ProduceLrc_AndElrcThatTheParserReads()
     {
         var line = new AlignedLine("Hello world", S(5.41), S(6.4),
