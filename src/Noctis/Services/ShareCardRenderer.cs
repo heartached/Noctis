@@ -179,49 +179,16 @@ public static class ShareCardRenderer
     /// Poster layout centers each row, the Panel layout left-aligns them all.</summary>
     private sealed record CardChrome(
         SKColor Fg, float[] RowX, float FirstBaseline,
-        List<(string Text, int Line)> Wrapped, float LyricSize, float LineHeight,
-        SKRect? FlowArea = null, float LineGap = 0f);
-
-    // ── Flow mode: the karaoke card following playback ──────────────────
-    // The whole song is one list that glides up like the lyrics page (KaraokeScroll), drawn
-    // in a fixed lyric area at a fixed size: no re-fit per line, no box resize.
-
-    /// <summary>Flow-mode lyric size: about what <see cref="FitLyrics"/> lands on for a
-    /// typical four-line pick (most lines wrapping once) in each layout and format.</summary>
-    private static float FlowLyricSize(LyricCardSpec spec) => (spec.Layout, spec.Format) switch
-    {
-        (ShareCardLayout.Poster, ShareCardFormat.Story) => 64f,
-        (ShareCardLayout.Poster, _) => 42f,
-        (_, ShareCardFormat.Story) => 72f,
-        _ => 54f,
-    };
-
-    /// <summary>Gap between two lyric lines in flow mode, in em: the page's 10 px line margin
-    /// on each side at its 46 px font (20 / 46). Wrapped rows of one line stay tight.</summary>
-    private const float FlowLineGapEm = 20f / 46f;
-
-    /// <summary>Where the scroll line's middle sits in the flow lyric area: the page's anchor
-    /// (0.32 of the viewport, LyricsView.PageAnchorRatio), so the line before shows above.</summary>
-    internal const double FlowAnchorRatio = 0.32;
-
-    /// <summary>Height over which rows fade out at the flow area's top and bottom, in em.</summary>
-    private const float FlowEdgeFadeEm = 0.6f;
-
-    /// <summary>The Poster flow area's height in one-row lines, both formats: at the 0.32
-    /// anchor, four left the line before half above the area on Square; five show it whole
-    /// (Square's artwork gives way, 380 to ~268 px). The Panel area is the lyric space of
-    /// the full-height box.</summary>
-    private const int FlowPosterRows = 5;
+        List<(string Text, int Line)> Wrapped, float LyricSize, float LineHeight);
 
     /// <summary>
     /// Draws the full card EXCEPT the lyric rows (background, frosted/solid box, header,
     /// wordmark) and returns the lyric-block geometry. Shared by the still card and the
-    /// karaoke frame loop so the two always agree pixel-for-pixel. <paramref name="flow"/>
-    /// lays the card out for the scrolling karaoke card (see <see cref="CardChrome.FlowArea"/>).
+    /// karaoke frame loop so the two always agree pixel-for-pixel.
     /// </summary>
     private static CardChrome DrawCardBase(
         SKCanvas canvas, LyricCardSpec spec, int w, int h, SKBitmap? art,
-        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace, bool flow = false)
+        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
     {
         bool artworkBlur = spec.Background == ShareBackground.Artwork && art != null;
 
@@ -265,9 +232,9 @@ public static class ShareCardRenderer
 
         return spec.Layout == ShareCardLayout.Poster
             ? DrawPosterContent(canvas, spec, w, h, art, artworkBlur, fg, fgSubtle, badgeLetter,
-                boldFace, regularFace, lyricFace, flow)
+                boldFace, regularFace, lyricFace)
             : DrawPanelContent(canvas, spec, w, h, art, artworkBlur, darkText, fg, fgSubtle, badgeLetter,
-                boldFace, regularFace, lyricFace, flow);
+                boldFace, regularFace, lyricFace);
     }
 
     /// <summary>
@@ -278,7 +245,7 @@ public static class ShareCardRenderer
     private static CardChrome DrawPanelContent(
         SKCanvas canvas, LyricCardSpec spec, int w, int h, SKBitmap? art,
         bool artworkBlur, bool darkText, SKColor fg, SKColor fgSubtle, SKColor badgeLetter,
-        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace, bool flow)
+        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
     {
         const float headerPad = 26f, headerArt = 148f, headerTextGap = 30f;
         float headerPanelH = headerArt + 2 * headerPad;
@@ -301,12 +268,9 @@ public static class ShareCardRenderer
         float boxContentW = w - 2 * marginX - 2 * pad;
         float fixedH = headerPanelH + LyricGapTop + LyricGapBottom + FooterHeight;
         float maxBoxH = h - marginTop - marginBottom;
-        var fit = flow
-            ? FitFlowLyrics(spec, boxContentW, lyricFace)
-            : FitLyrics(spec, boxContentW, maxBoxH - 2 * pad - fixedH, lyricFace);
+        var fit = FitLyrics(spec, boxContentW, maxBoxH - 2 * pad - fixedH, lyricFace);
         float contentH = fixedH + fit.wrapped.Count * fit.lineHeight;
-        // Flow: the box keeps its full height for the whole song instead of hugging the rows.
-        float boxH = flow ? maxBoxH : Math.Min(contentH + 2 * pad, maxBoxH);
+        float boxH = Math.Min(contentH + 2 * pad, maxBoxH);
         float boxTop = marginTop + (maxBoxH - boxH) / 2f;
         var boxRect = new SKRect(marginX, boxTop, w - marginX, boxTop + boxH);
 
@@ -364,14 +328,6 @@ public static class ShareCardRenderer
         float lyTop = headRect.Bottom + LyricGapTop;
         float lyBottom = footerTop - LyricGapBottom;
         float avail = Math.Max(0f, lyBottom - lyTop);
-        if (flow)
-        {
-            var flowRowX = new float[fit.wrapped.Count];
-            Array.Fill(flowRowX, headRect.Left);
-            return new CardChrome(fg, flowRowX, lyTop + fit.lyricSize * 0.80f, fit.wrapped, fit.lyricSize,
-                fit.lineHeight, new SKRect(headRect.Left, lyTop, headRect.Right, lyTop + avail),
-                fit.lyricSize * FlowLineGapEm);
-        }
 
         var (wrapped, lyricSize, lineHeight, _) = FitLyrics(spec, boxContentW, avail, lyricFace);
         float blockH = wrapped.Count * lineHeight;
@@ -389,7 +345,7 @@ public static class ShareCardRenderer
     private static CardChrome DrawPosterContent(
         SKCanvas canvas, LyricCardSpec spec, int w, int h, SKBitmap? art,
         bool artworkBlur, SKColor fg, SKColor fgSubtle, SKColor badgeLetter,
-        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace, bool flow)
+        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
     {
         const float gapArtTitle = 54f, gapTitleArtist = 16f, gapArtistLyrics = 62f, gapLyricsFooter = 64f;
         const float titleSize = 50f, artistSize = 32f;
@@ -413,32 +369,16 @@ public static class ShareCardRenderer
 
         float FixedH(float a) => a + gapArtTitle + titleSize + gapTitleArtist + artistSize
                                  + gapArtistLyrics + gapLyricsFooter + FooterHeight;
-        (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight, int naturalRows) fit;
-        float lyricsH;
-        if (flow)
+        var fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace, ComfortLyricSize);
+        float overflow = FixedH(artSize) + fit.naturalRows * fit.lineHeight - safeH;
+        if (overflow > 0)
         {
-            // Flow: a fixed area of FlowPosterRows one-row lines; the artwork gives way to it.
-            fit = FitFlowLyrics(spec, contentW, lyricFace);
-            int rows = FlowPosterRows;
-            lyricsH = rows * fit.lineHeight + (rows - 1) * fit.lyricSize * FlowLineGapEm;
-            float flowOverflow = FixedH(artSize) + lyricsH - safeH;
-            if (flowOverflow > 0)
-                artSize = Math.Max(240f, artSize - flowOverflow);
+            // Long selections at the minimum lyric size: give the artwork's pixels to the
+            // lyrics instead of letting the block run out of the safe band.
+            artSize = Math.Max(240f, artSize - overflow);
+            fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace);
         }
-        else
-        {
-            fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace, ComfortLyricSize);
-            float overflow = FixedH(artSize) + fit.naturalRows * fit.lineHeight - safeH;
-            if (overflow > 0)
-            {
-                // Long selections at the minimum lyric size: give the artwork's pixels to the
-                // lyrics instead of letting the block run out of the safe band.
-                artSize = Math.Max(240f, artSize - overflow);
-                fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace);
-            }
-            lyricsH = fit.wrapped.Count * fit.lineHeight;
-        }
-        float blockH = FixedH(artSize) + lyricsH;
+        float blockH = FixedH(artSize) + fit.wrapped.Count * fit.lineHeight;
         float top = Math.Max(marginTop, marginTop + (safeH - blockH) / 2f);
 
         // ── Artwork hero: soft drop shadow, rounded tile, hairline edge ──
@@ -486,7 +426,7 @@ public static class ShareCardRenderer
             rowX[i] = (w - MeasureTextFallback(lyricMeasure, wrapped[i].Text)) / 2f;
 
         // ── Centered wordmark under the lyric block ─────────────────────
-        float footerTop = lyTop + lyricsH + gapLyricsFooter;
+        float footerTop = lyTop + wrapped.Count * lineHeight + gapLyricsFooter;
         using (var wordmarkPaint = TextPaint(boldFace, 38, fg))
         {
             float textW = MeasureTextFallback(wordmarkPaint, "Noctis");
@@ -494,10 +434,7 @@ public static class ShareCardRenderer
             DrawWordmark(canvas, boldFace, fg, (w - wordmarkW) / 2f, footerTop);
         }
 
-        return flow
-            ? new CardChrome(fg, rowX, firstBaseline, wrapped, lyricSize, lineHeight,
-                new SKRect(contentInset, lyTop, w - contentInset, lyTop + lyricsH), lyricSize * FlowLineGapEm)
-            : new CardChrome(fg, rowX, firstBaseline, wrapped, lyricSize, lineHeight);
+        return new CardChrome(fg, rowX, firstBaseline, wrapped, lyricSize, lineHeight);
     }
 
     /// <summary>Draws the album artwork (or a placeholder tone) as a rounded tile with a
@@ -541,13 +478,11 @@ public static class ShareCardRenderer
     /// <paramref name="frameDir"/>; <paramref name="karaoke"/> is parallel to
     /// <see cref="LyricCardSpec.Lines"/>. Lines whose rendered rows can't be mapped back
     /// to their word tokens degrade to a whole-line highlight. CPU-only — call off the
-    /// UI thread. <paramref name="flow"/>: the scrolling card of Follow playback (the whole
-    /// song in <paramref name="spec"/>, see <see cref="KaraokeCardAnimator"/>).
+    /// UI thread.
     /// </summary>
     public static void RenderKaraokeFrames(
         LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, ShareClipTiming timing,
-        int fps, string frameDir, Action<int, int>? progress = null, CancellationToken ct = default,
-        bool flow = false)
+        int fps, string frameDir, Action<int, int>? progress = null, CancellationToken ct = default)
     {
         int w = CanvasWidth;
         int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
@@ -561,15 +496,14 @@ public static class ShareCardRenderer
         using var lyricFace = ResolveTypeface(
             spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
 
-        var chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, lyricFace, flow);
+        var chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, lyricFace);
         using var baseImage = surface.Snapshot();   // chrome only, no lyric rows
 
         using var paint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg);
         // Row → word-token ranges and glyph positions, resolved once (null range = degrade
         // that line to a line highlight).
         var rows = LayoutKaraokeRows(chrome, karaoke, paint, spec.Layout);
-        var motion = new KaraokeFlow(karaoke);
-        var scroll = chrome.FlowArea != null ? CreateFlowScroll(chrome, rows, motion, karaoke.Count) : null;
+        var flow = new KaraokeFlow(karaoke);
         using var glowBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, chrome.LyricSize * KaraokeGlowRadiusEm * 0.5f);
 
         int total = Math.Max(1, (int)Math.Ceiling(fps * timing.DurationSeconds));
@@ -582,8 +516,8 @@ public static class ShareCardRenderer
             double t = timing.StartSeconds + (double)frame / fps + 0.08;
 
             canvas.DrawImage(baseImage, 0, 0);
-            motion.Advance(t);
-            DrawLyricRows(canvas, chrome, rows, motion, scroll, paint, glowBlur, t);
+            flow.Advance(t);
+            DrawKaraokeRows(canvas, chrome, rows, flow, paint, glowBlur, t);
 
             // JPEG, not PNG: encoding is the per-frame bottleneck, and at 60 fps the
             // sequence would otherwise take minutes and gigabytes. The video encode is
@@ -605,12 +539,6 @@ public static class ShareCardRenderer
     /// BGRA framebuffer (an Avalonia WriteableBitmap). Same drawing code as the exported
     /// clip, so the preview is exactly what Save Video produces. Not thread-safe — build
     /// off the UI thread if desired, then render from one thread at a time.
-    ///
-    /// Flow mode (Follow playback): <paramref name="spec"/> carries the whole song and the
-    /// card is a list like the lyrics page — a fixed lyric area at a fixed size, the line the
-    /// page would be on gliding to the page's anchor (<see cref="KaraokeScroll"/>), rows
-    /// clipped to the area and faded out at its edges. Built once per song and options; line
-    /// changes only move the scroll.
     /// </summary>
     public sealed class KaraokeCardAnimator : IDisposable
     {
@@ -619,7 +547,6 @@ public static class ShareCardRenderer
         private readonly CardChrome _chrome;
         private readonly KaraokeRow[] _rows;
         private readonly KaraokeFlow _flow;
-        private readonly KaraokeScroll? _scroll;
         private readonly SKTypeface _lyricFace;
         private readonly SKPaint _paint;
         private readonly SKMaskFilter _glowBlur;
@@ -628,38 +555,9 @@ public static class ShareCardRenderer
         public int PixelWidth { get; }
         public int PixelHeight { get; }
 
-        /// <summary>True for the scrolling Follow-playback card.</summary>
-        public bool IsFlow => _scroll != null;
-
-        /// <summary>Lyric font size (card space) — fixed for the animator's life (tests).</summary>
-        internal float LyricSize => _chrome.LyricSize;
-
-        /// <summary>The flow lyric area (card space); null for the still layout (tests).</summary>
-        internal SKRect? FlowArea => _chrome.FlowArea;
-
-        /// <summary>Each row's top in the lyric list, before scrolling (tests).</summary>
-        internal IReadOnlyList<float> RowTops => _rows.Select(r => r.Top).ToArray();
-
-        /// <summary>Each row's card line (tests).</summary>
-        internal IReadOnlyList<int> RowLines => _rows.Select(r => r.Line).ToArray();
-
-        /// <summary>One row's height, without the gap between lines (card space; tests).</summary>
-        internal float LineHeight => _chrome.LineHeight;
-
-        /// <summary>Flow scroll offset of the last frame (card space; tests).</summary>
-        internal double ScrollOffset { get; private set; }
-
-        /// <summary>The scroll's state (tests); null for the still layout.</summary>
-        internal KaraokeScroll? Scroll => _scroll;
-
-        /// <summary>The line motion (tests).</summary>
-        internal KaraokeFlow Flow => _flow;
-
         /// <param name="art">The cover from <see cref="LoadCardArtwork"/> when the caller keeps
         /// one (not disposed here); null decodes <see cref="LyricCardSpec.ArtworkPath"/>.</param>
-        /// <param name="flow">The scrolling Follow-playback card (see the class summary).</param>
-        public KaraokeCardAnimator(LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, float scale, SKBitmap? art = null,
-            bool flow = false)
+        public KaraokeCardAnimator(LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, float scale, SKBitmap? art = null)
         {
             _scale = scale;
             int w = CanvasWidth;
@@ -680,15 +578,13 @@ public static class ShareCardRenderer
 
             canvas.Save();
             canvas.Scale(scale);
-            _chrome = DrawCardBase(canvas, spec, w, h, art ?? loaded, boldFace, regularFace, _lyricFace, flow);
+            _chrome = DrawCardBase(canvas, spec, w, h, art ?? loaded, boldFace, regularFace, _lyricFace);
             canvas.Restore();
             _baseImage = _surface.Snapshot();
 
             _paint = TextPaint(_lyricFace, _chrome.LyricSize, _chrome.Fg);
             _rows = LayoutKaraokeRows(_chrome, karaoke, _paint, spec.Layout);
             _flow = new KaraokeFlow(karaoke);
-            if (_chrome.FlowArea != null)
-                _scroll = CreateFlowScroll(_chrome, _rows, _flow, karaoke.Count);
             _glowBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, _chrome.LyricSize * KaraokeGlowRadiusEm * 0.5f);
         }
 
@@ -702,7 +598,7 @@ public static class ShareCardRenderer
             canvas.Save();
             canvas.Scale(_scale);
             _flow.Advance(tSeconds);
-            ScrollOffset = DrawLyricRows(canvas, _chrome, _rows, _flow, _scroll, _paint, _glowBlur, tSeconds);
+            DrawKaraokeRows(canvas, _chrome, _rows, _flow, _paint, _glowBlur, tSeconds);
             canvas.Restore();
             _surface.ReadPixels(
                 new SKImageInfo(PixelWidth, PixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul),
@@ -744,24 +640,19 @@ public static class ShareCardRenderer
 
     /// <summary>One wrapped lyric row of a karaoke card, measured once: its tokens, where
     /// each starts (from the row's left edge) and how wide its glyphs are, and which of its
-    /// source line's words they are (null Range = no word mapping, line highlight). Top is
-    /// the row's offset from the first row (rows of one line tight, <see cref="CardChrome.LineGap"/>
-    /// between lines).</summary>
+    /// source line's words they are (null Range = no word mapping, line highlight).</summary>
     private sealed record KaraokeRow(
         string Text, int Line, float X, float Width, (int Start, int Count)? Range,
-        string[] Tokens, float[] TokenX, float[] TokenWidth, float ScaleOriginX, float Top);
+        string[] Tokens, float[] TokenX, float[] TokenWidth, float ScaleOriginX);
 
     private static KaraokeRow[] LayoutKaraokeRows(CardChrome chrome, IReadOnlyList<KaraokeLine> karaoke, SKPaint paint,
         ShareCardLayout layout)
     {
         var ranges = MapKaraokeRows(chrome.Wrapped, karaoke);
         var rows = new KaraokeRow[chrome.Wrapped.Count];
-        float top = 0;
         for (int r = 0; r < rows.Length; r++)
         {
             var (text, line) = chrome.Wrapped[r];
-            if (r > 0)
-                top += chrome.LineHeight + (line != chrome.Wrapped[r - 1].Line ? chrome.LineGap : 0f);
             var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var xs = new float[tokens.Length];
             var ws = new float[tokens.Length];
@@ -774,73 +665,9 @@ public static class ShareCardRenderer
             // The page scales a line about its left edge; the Poster layout centers its rows,
             // so there about the row's middle — the row stays put either way.
             var originX = layout == ShareCardLayout.Poster ? chrome.RowX[r] + width / 2f : chrome.RowX[r];
-            rows[r] = new KaraokeRow(text, line, chrome.RowX[r], width, ranges[r], tokens, xs, ws, originX, top);
+            rows[r] = new KaraokeRow(text, line, chrome.RowX[r], width, ranges[r], tokens, xs, ws, originX);
         }
         return rows;
-    }
-
-    /// <summary>The flow card's scroll: per line, the offset that puts the line's middle on
-    /// the anchor (<see cref="FlowAnchorRatio"/> of the area). A line with no rows (its text
-    /// sanitizes to nothing) keeps the line before's target, so the list holds still.</summary>
-    private static KaraokeScroll CreateFlowScroll(CardChrome chrome, KaraokeRow[] rows, KaraokeFlow flow, int lineCount)
-    {
-        var area = chrome.FlowArea!.Value;
-        var targets = new double[lineCount];
-        var first = new float[lineCount];
-        var last = new float[lineCount];
-        Array.Fill(first, float.NaN);
-        foreach (var row in rows)
-        {
-            if (row.Line < 0 || row.Line >= lineCount) continue;
-            if (float.IsNaN(first[row.Line])) first[row.Line] = row.Top;
-            last[row.Line] = row.Top + chrome.LineHeight;
-        }
-        double previous = 0;
-        for (int i = 0; i < lineCount; i++)
-        {
-            targets[i] = float.IsNaN(first[i])
-                ? previous
-                : (first[i] + last[i]) / 2.0 - area.Height * FlowAnchorRatio;
-            previous = targets[i];
-        }
-        return new KaraokeScroll(targets, flow.HoldMs);
-    }
-
-    /// <summary>
-    /// The lyric rows at time <paramref name="t"/>: as laid out on the still card, or, for the
-    /// flow card (<paramref name="scroll"/> set), scrolled to the line the page is on, clipped
-    /// to the lyric area and faded out over <see cref="FlowEdgeFadeEm"/> at its top and
-    /// bottom. Returns the scroll offset drawn (0 for the still layout).
-    /// </summary>
-    private static double DrawLyricRows(
-        SKCanvas canvas, CardChrome chrome, KaraokeRow[] rows, KaraokeFlow flow, KaraokeScroll? scroll,
-        SKPaint paint, SKMaskFilter glowBlur, double t)
-    {
-        if (scroll == null || chrome.FlowArea is not { } area)
-        {
-            DrawKaraokeRows(canvas, chrome, rows, flow, paint, glowBlur, t);
-            return 0;
-        }
-
-        var offset = scroll.Offset(flow.ScrollLine, t);
-        // Full card width: the focus scale and the held-note glow may spill sideways; only
-        // the top and bottom are the list's edges.
-        var bounds = new SKRect(0, area.Top, CanvasWidth, area.Bottom);
-        canvas.Save();
-        canvas.ClipRect(bounds);
-        canvas.SaveLayer(bounds, null);
-        DrawKaraokeRows(canvas, chrome, rows, flow, paint, glowBlur, t, (float)offset);
-
-        var fade = Math.Min(chrome.LyricSize * FlowEdgeFadeEm, area.Height / 4f) / area.Height;
-        using var ramp = SKShader.CreateLinearGradient(
-            new SKPoint(0, area.Top), new SKPoint(0, area.Bottom),
-            new[] { SKColors.Transparent, SKColors.Black, SKColors.Black, SKColors.Transparent },
-            new[] { 0f, fade, 1f - fade, 1f }, SKShaderTileMode.Clamp);
-        using (var mask = new SKPaint { BlendMode = SKBlendMode.DstIn, Shader = ramp })
-            canvas.DrawRect(bounds, mask);
-        canvas.Restore();   // the layer, faded
-        canvas.Restore();   // the clip
-        return offset;
     }
 
     /// <summary>
@@ -857,19 +684,14 @@ public static class ShareCardRenderer
     /// </summary>
     private static void DrawKaraokeRows(
         SKCanvas canvas, CardChrome chrome, KaraokeRow[] rows, KaraokeFlow flow,
-        SKPaint paint, SKMaskFilter glowBlur, double t, float scrollY = 0f)
+        SKPaint paint, SKMaskFilter glowBlur, double t)
     {
         float size = chrome.LyricSize;
+        float baseline = chrome.FirstBaseline;
         var fg = chrome.Fg;
-        for (int r = 0; r < rows.Length; r++)
+        for (int r = 0; r < rows.Length; r++, baseline += chrome.LineHeight)
         {
             var row = rows[r];
-            float baseline = chrome.FirstBaseline + row.Top - scrollY;
-            // Flow: only the rows inside the area (a song is far longer than it shows);
-            // an em of slack for the sung-word float and the glow.
-            if (chrome.FlowArea is { } area
-                && (baseline + size < area.Top || baseline - 2 * size > area.Bottom))
-                continue;
             var lineOpacity = (float)flow.LineOpacity(row.Line, t);
             var focus = (float)flow.FocusAt(row.Line, t);
             var scale = (float)flow.LineScale(row.Line, t);
@@ -1010,18 +832,6 @@ public static class ShareCardRenderer
             wrapped[^1] = (marked, lastLine);
         }
         return (wrapped, lyricSize, lineHeight, naturalRows);
-    }
-
-    /// <summary>Flow mode's fit: every line wrapped at <see cref="FlowLyricSize"/>, nothing
-    /// shrunk or cut — the area scrolls instead.</summary>
-    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight, int naturalRows) FitFlowLyrics(
-        LyricCardSpec spec, float contentW, SKTypeface lyricFace)
-    {
-        float lyricSize = FlowLyricSize(spec);
-        using var lyricPaint = TextPaint(lyricFace, lyricSize, SKColors.White);
-        var wrapped = WrapAll(spec.Lines.Select(SanitizeForRender).ToList(), contentW,
-            s => MeasureTextFallback(lyricPaint, s));
-        return (wrapped, lyricSize, lyricSize * 1.30f, wrapped.Count);
     }
 
     private const int VibrantCacheMax = 300;
