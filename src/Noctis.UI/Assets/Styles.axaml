@@ -435,6 +435,18 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <!-- The drop-down list keeps its rows and scrollbar inside its rounded shape (owner 10-24,
+         Share lyrics > Background: scrolled to the end, the bar ran past the list's rounded
+         bottom corner and the last row showed in the corner). Fluent's PopupBorder has no
+         padding and no clip, so its ScrollViewer filled the rounded border edge to edge. A
+         Border's ClipToBounds clips to its rounded inner shape; the bar is inset from the top
+         and bottom like the metadata editor's well-scroll, clear of the corners (up to the
+         pill-field's 18 px radius; the inset sits below the app-wide ScrollBar:vertical style,
+         which would otherwise win). -->
+    <Style Selector="ComboBox /template/ Border#PopupBorder">
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+
     <Style Selector="ComboBox /template/ ContentPresenter">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="0,1,0,0" />
@@ -533,6 +545,10 @@
     <Style Selector="ScrollBar:vertical">
         <Setter Property="Width" Value="14"/>
         <Setter Property="Margin" Value="2,0,0,0"/>
+    </Style>
+    <!-- A ComboBox list's bar clears the list's rounded corners (see Border#PopupBorder above). -->
+    <Style Selector="ComboBox /template/ Border#PopupBorder ScrollViewer /template/ ScrollBar:vertical">
+        <Setter Property="Margin" Value="2,10,0,10" />
     </Style>
 
     <!-- Vertical scrollbar thumb (rounded pill). Apple-Music style: idle = thin + dim,
