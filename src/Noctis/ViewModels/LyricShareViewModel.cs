@@ -1105,8 +1105,10 @@ public partial class LyricShareViewModel : ViewModelBase
     /// Both paths (still card, karaoke frames) run under one cancellation source, so Esc and
     /// closing the dialog (<see cref="CancelExport"/>, <see cref="Detach"/>) stop either. The
     /// still path used to get no token at all: closing mid-export left ffmpeg writing the clip
-    /// behind a closed dialog. A clip this run created and did not finish (cancelled or
-    /// failed) is deleted; a file the user chose to replace in the picker is not ours to remove.
+    /// behind a closed dialog. ffmpeg writes a work file in the temp folder that replaces
+    /// <paramref name="outputPath"/> only once the clip is complete: written in place, -y
+    /// truncated the file the user picked to replace, so a cancel or a failure left a cut-off
+    /// clip where it had been. An unfinished work file is deleted.
     /// </summary>
     public async Task<string> ExportClipAsync(string outputPath)
     {
@@ -1123,7 +1125,7 @@ public partial class LyricShareViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _exportCts = cts;
         var token = cts.Token;
-        bool existedBefore = File.Exists(outputPath);
+        var workPath = Path.Combine(Path.GetTempPath(), $"noctis-clip-{Guid.NewGuid():N}.mp4");
         bool ok = false;
 
         IsRendering = true;
@@ -1142,7 +1144,7 @@ public partial class LyricShareViewModel : ViewModelBase
                 // Base-resolution still: the clip is 1080p-bound, so the 2× supersampled
                 // export card would only quadruple the encode cost.
                 var still = await Task.Run(() => ShareCardRenderer.RenderLyricCardStyled(spec), token);
-                (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, outputPath, timing, token);
+                (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, workPath, timing, token);
             }
             else
             {
@@ -1175,7 +1177,7 @@ public partial class LyricShareViewModel : ViewModelBase
                     StatusText = L("ShareLyrics.Encoding");
                     var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
                     (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                        ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing, token);
+                        ffmpeg, pattern, KaraokeFps, _track.FilePath, workPath, timing, token);
                 }
                 finally
                 {
@@ -1190,7 +1192,10 @@ public partial class LyricShareViewModel : ViewModelBase
                 ok = false;
                 return L("ShareLyrics.Cancelled");
             }
-            return ok ? L("ShareLyrics.Saved") : L("ShareLyrics.ClipFailed", error);
+            if (!ok)
+                return L("ShareLyrics.ClipFailed", error);
+            await Task.Run(() => File.Move(workPath, outputPath, overwrite: true));
+            return L("ShareLyrics.Saved");
         }
         catch (OperationCanceledException)
         {
@@ -1203,8 +1208,8 @@ public partial class LyricShareViewModel : ViewModelBase
         }
         finally
         {
-            if (!ok && !existedBefore)
-                await DeletePartialAsync(outputPath);
+            // Moved into place on success; whatever is left is unfinished.
+            await DeletePartialAsync(workPath);
             if (ReferenceEquals(_exportCts, cts)) _exportCts = null;
             cts.Dispose();
             IsRendering = false;

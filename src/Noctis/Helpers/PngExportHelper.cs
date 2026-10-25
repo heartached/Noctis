@@ -116,9 +116,10 @@ public static class PngExportHelper
                 }
             }
 
-            // The still clip's frame is a file in the temp root, not a directory
-            // (ShareClipRenderer.RenderAsync: noctis-clip-{guid}.png).
-            foreach (var file in Directory.EnumerateFiles(root, "noctis-clip-*.png"))
+            // The still clip's frame and the clip's work file are files in the temp root, not
+            // directories (ShareClipRenderer.RenderAsync: noctis-clip-{guid}.png;
+            // LyricShareViewModel.ExportClipAsync: noctis-clip-{guid}.mp4).
+            foreach (var file in Directory.EnumerateFiles(root, "noctis-clip-*"))
             {
                 try
                 {

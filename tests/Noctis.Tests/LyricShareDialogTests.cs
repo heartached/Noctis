@@ -272,13 +272,16 @@ public class LyricShareDialogTests
             Assert.True(PumpUntil(() => vm.Preview != null), "preview never rendered");
 
             var output = Path.Combine(dir, "clip.mp4");
+            var before = WorkClips();
+            string? work = null;
             var export = vm.ExportClipAsync(output);
-            Assert.True(PumpUntil(() => File.Exists(output), 10000), "ffmpeg stand-in never started");
+            Assert.True(PumpUntil(() => (work = NewWorkClip(before)) != null, 10000), "ffmpeg stand-in never started");
 
             vm.Detach(); // what closing the dialog does
 
             Assert.True(PumpUntil(() => export.IsCompleted, 8000), "the export kept running after the dialog closed");
             Assert.False(File.Exists(output), "the cut-off clip was left behind");
+            Assert.False(File.Exists(work), "the unfinished work file was left behind");
             Assert.False(vm.IsRendering);
         }
         finally
@@ -398,6 +401,61 @@ public class LyricShareDialogTests
             try { File.Delete(fresh); } catch { }
         }
     }
+
+    /// <summary>A finished clip replaces the file picked to replace, and no work file stays.</summary>
+    [AvaloniaFact]
+    public void FinishedExport_ReplacesTheChosenFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-share-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var previous = App.Services;
+        try
+        {
+            string ffmpeg;
+            if (OperatingSystem.IsWindows())
+            {
+                ffmpeg = Path.Combine(dir, "ffmpeg.cmd");
+                File.WriteAllText(ffmpeg,
+                    "@echo off\r\nset \"last=\"\r\n:loop\r\nif \"%~1\"==\"\" goto done\r\nset \"last=%~1\"\r\nshift\r\ngoto loop\r\n" +
+                    ":done\r\n>\"%last%\" echo new clip\r\n");
+            }
+            else
+            {
+                ffmpeg = Path.Combine(dir, "ffmpeg");
+                File.WriteAllText(ffmpeg, "#!/bin/sh\nfor a; do last=\"$a\"; done\necho new clip > \"$last\"\n");
+                File.SetUnixFileMode(ffmpeg, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            App.Services = new FfmpegOnly(ffmpeg);
+            var audio = Path.Combine(dir, "song.flac");
+            File.WriteAllText(audio, "audio");
+            var output = Path.Combine(dir, "existing.mp4");
+            File.WriteAllText(output, "old clip");
+            var vm = new LyricShareViewModel(Song(filePath: audio), new[] { "one" }, 0);
+            try
+            {
+                var before = WorkClips();
+                var export = vm.ExportClipAsync(output);
+                Assert.True(PumpUntil(() => export.IsCompleted, 10000));
+                Assert.Equal(Localization.Loc.T("ShareLyrics.Saved"), export.Result);
+                Assert.Equal("new clip", File.ReadAllText(output).Trim());
+                Assert.Null(NewWorkClip(before));
+            }
+            finally { vm.Detach(); }
+        }
+        finally
+        {
+            App.Services = previous;
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    /// <summary>The clip's work files (ffmpeg's output while it runs) in the temp folder.</summary>
+    private static HashSet<string> WorkClips() =>
+        new(Directory.EnumerateFiles(Path.GetTempPath(), "noctis-clip-*.mp4"), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>A work file that was not there <paramref name="before"/>: this run's.</summary>
+    private static string? NewWorkClip(HashSet<string> before) =>
+        Directory.EnumerateFiles(Path.GetTempPath(), "noctis-clip-*.mp4").FirstOrDefault(f => !before.Contains(f));
 
     private static bool StartsWithPartial(string path)
     {
@@ -1057,14 +1115,17 @@ public class LyricShareDialogTests
             {
                 Assert.True(PumpUntil(() => vm.CanExportVideo));
                 var output = Path.Combine(dir, "clip.mp4");
+                var before = WorkClips();
+                string? work = null;
                 var export = vm.ExportClipAsync(output);
-                Assert.True(PumpUntil(() => File.Exists(output), 10000), "ffmpeg stand-in never started");
+                Assert.True(PumpUntil(() => (work = NewWorkClip(before)) != null, 10000), "ffmpeg stand-in never started");
                 Assert.False(Named<Button>(win, "SaveVideoButton").IsEffectivelyEnabled);
 
                 win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
                 Assert.True(PumpUntil(() => export.IsCompleted, 8000), "Esc did not stop the export");
                 Assert.Equal(Localization.Loc.T("ShareLyrics.Cancelled"), export.Result);
                 Assert.False(File.Exists(output));
+                Assert.False(File.Exists(work));
                 Assert.Equal(0, closed);
 
                 win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
@@ -1097,12 +1158,18 @@ public class LyricShareDialogTests
             var vm = new LyricShareViewModel(Song(filePath: audio), new[] { "one" }, 0);
             try
             {
+                var before = WorkClips();
+                string? work = null;
                 var export = vm.ExportClipAsync(output);
-                Assert.True(PumpUntil(() => vm.IsRendering && StartsWithPartial(output), 10000), "ffmpeg stand-in never started");
+                Assert.True(PumpUntil(() => vm.IsRendering && (work = NewWorkClip(before)) != null && StartsWithPartial(work), 10000),
+                    "ffmpeg stand-in never started");
                 vm.CancelExport();
                 Assert.True(PumpUntil(() => export.IsCompleted, 8000));
                 Assert.Equal(Localization.Loc.T("ShareLyrics.Cancelled"), export.Result);
                 Assert.True(File.Exists(output), "a file that was there before the run was deleted");
+                // Bug: ffmpeg wrote straight to the chosen path (-y truncates it at open), so a
+                // cancelled or failed replace left the cut-off clip where the old one was.
+                Assert.Equal("old clip", File.ReadAllText(output).Trim());
             }
             finally { vm.Detach(); }
         }
