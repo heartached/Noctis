@@ -9,8 +9,8 @@ namespace Noctis.Services;
 /// sweep (one soft front per line, lead-in/trail-out at rests), the sung-word float and the
 /// held-note clock are the page's, frame for frame. On top, each line focuses as the page's
 /// list would bring it to the anchor — <see cref="LineMotion.ScrollLeadMs"/> ahead of a
-/// word-timed line once the line before has finished — with the page's transitions: opacity
-/// over 0.5 s cubic in-out, scale 0.96 → 1 on the shared line-motion curve over 1 s.
+/// word-timed line once the line before has finished — with the page's opacity transition
+/// (0.5 s cubic in-out). The card draws no line motion (owner 10-25): no scale, no float.
 ///
 /// Stateful like the page (the timeline walks a cursor and plays word settles out), so feed
 /// it times in playback order; a jump back re-resolves as a seek does on the page.
@@ -22,9 +22,6 @@ public sealed class KaraokeFlow
 
     /// <summary>Opacity of unsung words on the focused line (the page's word base 0.45).</summary>
     public const double UnsungOpacity = 0.45;
-
-    /// <summary>Scale of a line that is not the focus (the page's resting scale(0.96)).</summary>
-    public const double InactiveScale = 0.96;
 
     /// <summary>Line opacity transition (the page's DoubleTransition, 0.5 s cubic in-out).</summary>
     public const double FocusFadeSeconds = 0.5;
@@ -140,15 +137,4 @@ public sealed class KaraokeFlow
     /// <summary>Line opacity at <paramref name="tSeconds"/> (after <see cref="Advance"/>).</summary>
     public double LineOpacity(int line, double tSeconds) =>
         InactiveOpacity + (1 - InactiveOpacity) * FocusAt(line, tSeconds);
-
-    /// <summary>Line scale at <paramref name="tSeconds"/>: the page's scale(0.96) → 1 on the
-    /// line-motion curve over <see cref="LineMotion.DurationMs"/>.</summary>
-    public double LineScale(int line, double tSeconds)
-    {
-        var p = Math.Clamp((tSeconds - _focusStart[line]) * 1000 / LineMotion.DurationMs, 0, 1);
-        var from = _focusFrom[line];
-        var to = _focusTo[line];
-        var f = from + (to - from) * LineMotion.Ease(p);
-        return InactiveScale + (1 - InactiveScale) * f;
-    }
 }

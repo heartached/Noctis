@@ -164,8 +164,6 @@ public class LyricsInterludeAndShareFlowTests
         Assert.Equal(1, flow.FocusAt(1, 13.9), 6);
         Assert.Equal(0, flow.FocusAt(0, 13.9), 6);
         Assert.Equal(KaraokeFlow.InactiveOpacity, flow.LineOpacity(0, 13.9), 6);
-        Assert.Equal(KaraokeFlow.InactiveScale, flow.LineScale(0, 14.5), 3);
-        Assert.Equal(1, flow.LineScale(1, 14.5), 3);
     }
 
     [Fact]
@@ -295,6 +293,53 @@ public class LyricsInterludeAndShareFlowTests
             var lyricBands = bands.OrderByDescending(b => b.From).Skip(1).Take(2).OrderBy(b => b.From).ToList();
             Assert.True(lyricBands[0].Max > lyricBands[1].Max + 40,
                 $"focused row max {lyricBands[0].Max} vs inactive row max {lyricBands[1].Max}");
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
+    /// <summary>Owner 10-25: the card keeps only the word-sync sweep — no line scale, no word
+    /// float. The lyric text covers exactly the same pixel rows before line 0 is reached and
+    /// while its first word is sung (it used to grow 0.96 → 1 and float the sung word up).</summary>
+    [Fact]
+    public void Card_lyrics_never_move_only_the_sweep_changes()
+    {
+        var spec = new LyricCardSpec
+        {
+            Title = "Title",
+            Artist = "Artist",
+            Lines = new[] { "Hold me", "closer now" },
+            Background = ShareBackground.Solid,
+            SolidColorHex = "#101010",
+            TextColor = ShareTextColor.White,
+        };
+        // Full size: the old motion (0.055 em float, 0.96 → 1 scale) is sub-pixel at 0.5.
+        using var animator = new ShareCardRenderer.KaraokeCardAnimator(spec, CardLines(), 1f);
+        var w = animator.PixelWidth;
+        var h = animator.PixelHeight;
+        var pixels = new byte[w * h * 4];
+        var handle = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try
+        {
+            // Rows holding text: more bright pixels than the card's 1.5 px side borders give a row.
+            bool[] InkRows() => Enumerable.Range(0, h).Select(y =>
+            {
+                var bright = 0;
+                for (var x = 0; x < w; x++)
+                    if (pixels[(y * w + x) * 4 + 1] > 60) bright++;
+                return bright > 6;
+            }).ToArray();
+
+            animator.RenderFrame(9.0, handle.AddrOfPinnedObject(), w * 4);
+            var before = InkRows();
+            for (var t = 9.0; t <= 11.5; t += 1 / 30.0)
+                animator.RenderFrame(t, handle.AddrOfPinnedObject(), w * 4);
+            var during = InkRows();
+
+            var moved = Enumerable.Range(0, h).Where(y => before[y] != during[y]).ToList();
+            Assert.True(moved.Count == 0, $"lyric ink moved on rows {string.Join(",", moved.Take(12))}");
         }
         finally
         {

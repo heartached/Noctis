@@ -502,7 +502,7 @@ public static class ShareCardRenderer
         using var paint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg);
         // Row → word-token ranges and glyph positions, resolved once (null range = degrade
         // that line to a line highlight).
-        var rows = LayoutKaraokeRows(chrome, karaoke, paint, spec.Layout);
+        var rows = LayoutKaraokeRows(chrome, karaoke, paint);
         var flow = new KaraokeFlow(karaoke);
         using var glowBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, chrome.LyricSize * KaraokeGlowRadiusEm * 0.5f);
 
@@ -583,7 +583,7 @@ public static class ShareCardRenderer
             _baseImage = _surface.Snapshot();
 
             _paint = TextPaint(_lyricFace, _chrome.LyricSize, _chrome.Fg);
-            _rows = LayoutKaraokeRows(_chrome, karaoke, _paint, spec.Layout);
+            _rows = LayoutKaraokeRows(_chrome, karaoke, _paint);
             _flow = new KaraokeFlow(karaoke);
             _glowBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, _chrome.LyricSize * KaraokeGlowRadiusEm * 0.5f);
         }
@@ -643,10 +643,9 @@ public static class ShareCardRenderer
     /// source line's words they are (null Range = no word mapping, line highlight).</summary>
     private sealed record KaraokeRow(
         string Text, int Line, float X, float Width, (int Start, int Count)? Range,
-        string[] Tokens, float[] TokenX, float[] TokenWidth, float ScaleOriginX);
+        string[] Tokens, float[] TokenX, float[] TokenWidth);
 
-    private static KaraokeRow[] LayoutKaraokeRows(CardChrome chrome, IReadOnlyList<KaraokeLine> karaoke, SKPaint paint,
-        ShareCardLayout layout)
+    private static KaraokeRow[] LayoutKaraokeRows(CardChrome chrome, IReadOnlyList<KaraokeLine> karaoke, SKPaint paint)
     {
         var ranges = MapKaraokeRows(chrome.Wrapped, karaoke);
         var rows = new KaraokeRow[chrome.Wrapped.Count];
@@ -662,23 +661,19 @@ public static class ShareCardRenderer
                 ws[k] = MeasureTextFallback(paint, tokens[k]);
             }
             var width = MeasureTextFallback(paint, text);
-            // The page scales a line about its left edge; the Poster layout centers its rows,
-            // so there about the row's middle — the row stays put either way.
-            var originX = layout == ShareCardLayout.Poster ? chrome.RowX[r] + width / 2f : chrome.RowX[r];
-            rows[r] = new KaraokeRow(text, line, chrome.RowX[r], width, ranges[r], tokens, xs, ws, originX);
+            rows[r] = new KaraokeRow(text, line, chrome.RowX[r], width, ranges[r], tokens, xs, ws);
         }
         return rows;
     }
 
     /// <summary>
-    /// Paints the lyric block at time <paramref name="t"/> with the lyrics page's motion
-    /// (<see cref="KaraokeFlow"/>, advanced to <paramref name="t"/> by the caller): the
-    /// focused line at full opacity and scale, the others at the inactive level and the
-    /// page's scale(0.96), easing between; on the focused line unsung words at the page's
-    /// 0.45 and the sung part lit through the same soft band the page draws
-    /// (<see cref="KaraokeBand"/>: 0.3 em half-width, one front per line, lead-in/trail-out
-    /// at rests); sung words float up by <see cref="WordFloat.LiftEm"/>; held notes glow
-    /// beneath the text on the page's clock. Rows without word mapping light as a line.
+    /// Paints the lyric block at time <paramref name="t"/> (<see cref="KaraokeFlow"/>, advanced
+    /// to <paramref name="t"/> by the caller): the focused line at full opacity, the others at
+    /// the inactive level; on the focused line unsung words at the page's 0.45 and the sung
+    /// part lit through the same soft band the page draws (<see cref="KaraokeBand"/>: 0.3 em
+    /// half-width, one front per line, lead-in/trail-out at rests); held notes glow beneath
+    /// the text on the page's clock. Rows without word mapping light as a line. Nothing moves:
+    /// no line scale, no word float (owner 10-25: the card keeps only the word-sync sweep).
     /// Painted as foreground gradients, never OpacityMask (see
     /// ProgressToSweepForegroundConverter: mask layers clipped/boxed the glow on the page).
     /// </summary>
@@ -694,11 +689,7 @@ public static class ShareCardRenderer
             var row = rows[r];
             var lineOpacity = (float)flow.LineOpacity(row.Line, t);
             var focus = (float)flow.FocusAt(row.Line, t);
-            var scale = (float)flow.LineScale(row.Line, t);
             var line = flow.Line(row.Line);
-
-            canvas.Save();
-            canvas.Scale(scale, scale, row.ScaleOriginX, baseline - size * 0.35f);
 
             if (row.Range is not { } range || line?.Words is not { } words)
             {
@@ -707,7 +698,6 @@ public static class ShareCardRenderer
                 paint.Shader = null;
                 paint.Color = fg.WithAlpha(ToAlpha(fg, lineOpacity));
                 DrawTextFallback(canvas, row.Text, row.X, baseline, paint);
-                canvas.Restore();
                 continue;
             }
 
@@ -722,7 +712,7 @@ public static class ShareCardRenderer
                 var word = words[range.Start + k];
                 float x = row.X + row.TokenX[k];
                 float w = row.TokenWidth[k];
-                float y = baseline - (float)(Math.Clamp(word.Lift, 0, 1) * WordFloat.LiftEm * size);
+                float y = baseline;
 
                 // Held-note glow under the text (page: word-cell.emphasis word-glow).
                 if (word.IsEmphasis)
@@ -768,7 +758,6 @@ public static class ShareCardRenderer
                     shader.Dispose();
                 }
             }
-            canvas.Restore();
         }
         paint.Color = fg;
 
