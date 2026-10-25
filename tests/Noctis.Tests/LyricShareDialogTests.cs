@@ -468,6 +468,28 @@ public class LyricShareDialogTests
         finally { vm.Detach(); }
     }
 
+    /// <summary>
+    /// Bug: double-clicking a ninth line opened its edit box although the 8-line cap refused
+    /// to pick it. Every keystroke then changed a line that is not on the card, so the edit
+    /// silently never showed. With the cap reached the line stays as it is, and the footer
+    /// says why.
+    /// </summary>
+    [AvaloniaFact]
+    public void EditingANinthLine_IsRefused_LikePickingIt()
+    {
+        var vm = new LyricShareViewModel(Song(), Enumerable.Range(0, 12).Select(i => $"line {i}").ToList(), 0);
+        try
+        {
+            for (int i = 0; i < 8; i++)
+                if (!vm.Lines[i].IsSelected) vm.ToggleLine(vm.Lines[i]);
+            vm.BeginEdit(vm.Lines[9]);
+            Assert.False(vm.Lines[9].IsSelected);
+            Assert.False(vm.Lines[9].IsEditing, "an edit box opened for a line the card cannot take");
+            Assert.Equal(Localization.Loc.T("ShareLyrics.UpToLines", LyricShareViewModel.MaxLines), vm.StatusText);
+        }
+        finally { vm.Detach(); }
+    }
+
     /// <summary>Owner 10-12: picked neighbours read as one block in the list. Each picked line
     /// knows whether the line above / below is picked too, through taps, Clear and playback
     /// sync, and its row carries that as join-up / join-down.</summary>

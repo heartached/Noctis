@@ -277,8 +277,10 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         foreach (var other in Lines)
             if (!ReferenceEquals(other, line)) other.EndEdit(keep: true);
-        // An edited line is one meant for the card.
+        // An edited line is one meant for the card. When the 8-line cap refuses it, no edit
+        // box: the typing would change a line the card does not show.
         if (!line.IsSelected) line.IsSelected = true;
+        if (!line.IsSelected) return;
         line.BeginEdit();
     }
 
