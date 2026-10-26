@@ -408,6 +408,9 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>The Studio's live preview pane beside the review is open (10-14).</summary>
     public bool LyricsStudioLivePreview { get; set; } = true;
 
+    /// <summary>Experimental: run the speech model on the graphics card (Vulkan) where this build carries it. Off by default.</summary>
+    public bool LyricsStudioUseGpu { get; set; }
+
     // ── Songs page optional columns ──
     // All six were the original set, chosen from the column-header dropdown.
     public bool ShowArtworkColumn { get; set; } = true;

@@ -100,6 +100,136 @@ public class LyricsStudioRealRunProbeTests
         Assert.Equal(1, final.Overall);
     }
 
+    /// <summary>
+    /// The model stays loaded for a while after a run (l2-speed 10-19: loads measured 1-100 s on
+    /// this PC, the slow ones from a busy hard disk), so the next Start reuses it; then it is freed.
+    /// </summary>
+    [Fact]
+    public async Task Probe_RealModel_IsKeptForTheNextRun_ThenFreed()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model)) return;
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.FromSeconds(1) };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+        Assert.True(engine.Models.IsInstalled(), "hard link failed: is the temp dir on the model's drive?");
+
+        var clock = Stopwatch.StartNew();
+        using (engine.OpenSession(WhisperModelSize.Medium)) { }
+        var firstLoad = clock.Elapsed;
+        Assert.True(engine.HasLoadedModel);
+
+        clock.Restart();
+        using (engine.OpenSession(WhisperModelSize.Medium)) { }
+        var reopen = clock.Elapsed;
+        _out.WriteLine($"first load {firstLoad.TotalSeconds:0.00}s, reopen {reopen.TotalMilliseconds:0}ms");
+        Assert.True(reopen < TimeSpan.FromMilliseconds(250), $"reopen took {reopen.TotalMilliseconds:0} ms");
+
+        // Idle past the keep time: freed.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (engine.HasLoadedModel && DateTime.UtcNow < deadline) await Task.Delay(100);
+        Assert.False(engine.HasLoadedModel);
+    }
+
+    /// <summary>
+    /// Starts racing the idle timer (a keep time of a few ms): every run gets a usable model, none is
+    /// freed under a run, and once idle the memory goes back to where it was before the first load.
+    /// </summary>
+    [Fact]
+    public async Task Probe_RealModel_IdleTimerRacingStarts_NeverFreesUnderARun_AndGivesTheMemoryBack()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model)) return;
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.FromMilliseconds(3) };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+
+        static long Private() { using var p = Process.GetCurrentProcess(); p.Refresh(); return p.PrivateMemorySize64; }
+        var before = Private();
+        var rng = new Random(7);
+        long peak = 0;
+        for (var i = 0; i < 12; i++)
+        {
+            using (engine.OpenSession(WhisperModelSize.Medium))
+            {
+                // Two overlapping runs, as the dialog and the sidebar page can hold one each.
+                var second = engine.OpenSession(WhisperModelSize.Medium);
+                await Task.Delay(rng.Next(0, 6));
+                Assert.True(engine.HasLoadedModel, $"freed under a run (round {i})");
+                peak = Math.Max(peak, Private());
+                second.Dispose();
+                await Task.Delay(rng.Next(0, 6));
+                Assert.True(engine.HasLoadedModel, $"freed while the first run still held it (round {i})");
+            }
+            await Task.Delay(rng.Next(0, 6));
+        }
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (engine.HasLoadedModel && DateTime.UtcNow < deadline) await Task.Delay(20);
+        Assert.False(engine.HasLoadedModel);
+        var after = Private();
+        _out.WriteLine($"private MB: before {before >> 20}, loaded peak {peak >> 20}, after free {after >> 20}");
+        Assert.True(peak - before > 500L << 20, "the model never looked loaded");
+        Assert.True(after - before < 200L << 20, $"memory not given back: {(after - before) >> 20} MB above the start");
+    }
+
+    [Fact]
+    public void Probe_RealModel_KeepZero_FreesAtOnce()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model)) return;
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.Zero };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+
+        var handle = engine.OpenSession(WhisperModelSize.Medium);
+        Assert.True(engine.HasLoadedModel);
+        handle.Dispose();
+        handle.Dispose(); // a second dispose is harmless
+        Assert.False(engine.HasLoadedModel);
+    }
+
+    /// <summary>
+    /// Opt-in GPU prototype check (a build made with -p:LyricsGpu=true, NOCTIS_STUDIO_REALRUN_GPU=1, a
+    /// free GPU): the engine runs a song on the Vulkan build and leaves no crash marker behind.
+    /// </summary>
+    [Fact]
+    public async Task Probe_RealModel_OnTheGpu_RunsAndCleansUp()
+    {
+        var model = Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_MODEL");
+        if (string.IsNullOrWhiteSpace(model) || !File.Exists(model) || Environment.GetEnvironmentVariable("NOCTIS_STUDIO_REALRUN_GPU") != "1") return;
+        Assert.True(WhisperGpu.Available, "this test build has no Vulkan runtime (build with -p:LyricsGpu=true)");
+        var ffmpeg = new AudioConverterService(() => string.Empty, new MetadataService());
+        var ffmpegPath = ffmpeg.GetFfmpegPath();
+        if (ffmpegPath is null) return;
+        using var persistence = new TestPersistenceService();
+        var engine = new LyricsStudioEngine(ffmpeg, new NoLrcLib(), persistence) { KeepModelLoaded = TimeSpan.Zero };
+        Directory.CreateDirectory(engine.Models.Directory);
+        Run("cmd.exe", $"/c mklink /H \"{engine.Models.ModelPath}\" \"{model}\"");
+        var audio = Path.Combine(persistence.DataDirectory, "tone.flac");
+        Run(ffmpegPath, $"-hide_banner -loglevel error -f lavfi -i \"sine=frequency=220:duration=40\" -ar 44100 \"{audio}\"");
+        var track = new Track { Title = "tone", Artist = "probe", FilePath = audio, Duration = TimeSpan.FromSeconds(40) };
+
+        WhisperGpu.Requested = true;
+        var clock = Stopwatch.StartNew();
+        using (engine.OpenSession(WhisperModelSize.Medium))
+        {
+            var options = new LyricsStudioOptions(WhisperModelSize.Medium, "en", AllowOnlineLyrics: false,
+                SourceLines: new[] { "probe line one", "probe line two" }, AllowTranscription: false);
+            var result = await engine.ProcessAsync(track, options, null, CancellationToken.None);
+            Assert.Equal(2, result.Lines.Count);
+        }
+        _out.WriteLine($"native={WhisperGpu.Loaded} blocked={WhisperGpu.BlockedReason ?? "-"} total={clock.Elapsed.TotalSeconds:0.0}s");
+        Assert.Null(WhisperGpu.BlockedReason);
+        Assert.True(WhisperGpu.UsingVulkan, $"loaded {WhisperGpu.Loaded}");
+        Assert.False(File.Exists(Path.Combine(engine.Models.Directory, "gpu-session.marker")), "crash marker left behind after a clean run");
+    }
+
     private static void Run(string file, string args)
     {
         var psi = new ProcessStartInfo(file, args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };

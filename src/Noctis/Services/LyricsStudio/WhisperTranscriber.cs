@@ -42,12 +42,25 @@ public sealed class WhisperTranscriber
         public Session(string modelPath, WhisperAlignmentHeadsPreset alignmentHeads = WhisperAlignmentHeadsPreset.None)
         {
             ModelPath = modelPath;
+            WhisperGpu.ConfigureBeforeFirstLoad();
             EnsureNativeEngine();
             _dtw = alignmentHeads != WhisperAlignmentHeadsPreset.None;
             _dtwShiftCs = DtwShiftCs(alignmentHeads);
-            _factory = _dtw
-                ? WhisperFactory.FromPath(modelPath, new WhisperFactoryOptions { UseDtwTimeStamps = true, HeadsPreset = alignmentHeads })
-                : WhisperFactory.FromPath(modelPath);
+            // UseGpu stays at Whisper.net's default (true): only the Vulkan build (Windows/Linux, opt-in)
+            // and the macOS arm64 build (Metal, as before) have a GPU backend to use.
+            var options = _dtw ? new WhisperFactoryOptions { UseDtwTimeStamps = true, HeadsPreset = alignmentHeads } : new WhisperFactoryOptions();
+            using var gpuWork = WhisperGpu.BeginGpuWork();
+            try
+            {
+                _factory = WhisperFactory.FromPath(modelPath, options);
+            }
+            catch (Exception ex) when (WhisperGpu.UsingVulkan && options.UseGpu)
+            {
+                // A managed failure on the card (the model does not fit, …): the same build on the CPU.
+                DebugLogger.Warn(DebugLogger.Category.Lyrics, "Whisper.GpuFailed", $"{ex.GetType().Name}: {ex.Message} — loading on the CPU");
+                options.UseGpu = false;
+                _factory = WhisperFactory.FromPath(modelPath, options);
+            }
         }
 
         /// <param name="language">A Whisper language code, or null / "auto" to pick one: the known lyrics' own
@@ -67,6 +80,10 @@ public sealed class WhisperTranscriber
             var progressShown = 0.0;
             var detectLanguage = string.IsNullOrWhiteSpace(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase);
             string? lang = detectLanguage ? null : language!.Trim().ToLowerInvariant();
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            var languageWindows = 0;
+            // A native abort on the card mid-song ends Noctis; the marker tells the next start (WhisperGpu).
+            using var gpuWork = WhisperGpu.BeginGpuWork();
 
             WhisperProcessor Build()
             {
@@ -79,7 +96,7 @@ public sealed class WhisperTranscriber
                     // off gave the best line starts on every one (median 0.26–0.54 s vs 0.74–33 s).
                     // whisper.cpp also ignores any initial prompt when this is 0.
                     .WithMaxLastTextTokens(0)
-                    .WithThreads(Math.Clamp(Environment.ProcessorCount - 1, 1, 8))
+                    .WithThreads(Threads)
                     .WithProgressHandler(p =>
                     {
                         reportedPercent = p;
@@ -118,7 +135,7 @@ public sealed class WhisperTranscriber
                     else
                     {
                         processor = Build();
-                        lang = VoteLanguage(processor, pcm16k, LanguageVotes, guess.Candidates, ct) ?? guess.Code;
+                        lang = VoteLanguage(processor, pcm16k, LanguageVotes, guess.Candidates, ct, out languageWindows) ?? guess.Code;
                         if (lang is not null) processor.ChangeLanguage(lang);
                     }
                     if (lang is not null)
@@ -153,10 +170,12 @@ public sealed class WhisperTranscriber
                 // is repeated or reordered at a boundary. Passing the whole song with WithOffset/
                 // WithDuration instead (identical scaling) measured no better and 55% slower.
                 var resumes = 0;
+                var decoded = 0;
                 var maxResumes = 2 + pcm16k.Length / WindowSamples;
                 // Like whisper.cpp: stop when less than a second is left.
                 while (seek + PcmDecoder16k.SampleRate < pcm16k.Length)
                 {
+                    decoded++;
                     span = Math.Min(WindowSamples, pcm16k.Length - seek);
                     windows = 0;
                     reportedPercent = 0;
@@ -187,6 +206,11 @@ public sealed class WhisperTranscriber
                     }
                     seek += step;
                 }
+                // Session-log record of where a song's time went (users report "slow"; this says why).
+                var seconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
+                var audio = pcm16k.Length / (double)PcmDecoder16k.SampleRate;
+                DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.Listened",
+                    $"audio={audio:0}s windows={decoded} resumed={resumes} languageWindows={languageWindows} seconds={seconds:0.0} rtf={seconds / Math.Max(1, audio):0.00} threads={Threads} runtime={RuntimeOptions.LoadedLibrary}");
             }
             finally
             {
@@ -222,24 +246,81 @@ public sealed class WhisperTranscriber
     /// <summary>Language detection windows when the lyrics leave the language open (or there are none).</summary>
     private const int LanguageVotes = 3;
 
+    /// <summary>Threads whisper.cpp computes with: <see cref="ThreadsFor"/> this PC.</summary>
+    internal static int Threads { get; } = ThreadsFor(Environment.ProcessorCount, CpuTopology.PerformanceCores);
+
+    /// <summary>
+    /// Logical CPUs − 1, as before, but capped at the number of full-speed cores
+    /// (<see cref="CpuTopology"/>, at most 16) instead of a flat 8, so CPUs with more than 8 cores
+    /// use them. Measured on a Ryzen 9 5900X (12 cores / 24 threads) with the CPU to itself, words
+    /// identical for every thread count: 12 threads took 0.84× the time of 8 per 30 s window (10-20),
+    /// and a whole song 0.875× (align) / 0.86× (transcribe) on 12 test songs (10-25). Fewer threads
+    /// than the old rule on small CPUs was measured slower (4-core/8-thread emulation: 4 threads
+    /// 1.07× the time of 7), so CPUs with up to 8 cores keep the old count.
+    /// </summary>
+    internal static int ThreadsFor(int logicalCpus, int? performanceCores)
+    {
+        var cap = Math.Max(8, Math.Min(performanceCores ?? 0, 16));
+        return Math.Clamp(logicalCpus - 1, 1, cap);
+    }
+
     /// <summary>
     /// Whisper's language detection on <paramref name="count"/> 30 s windows spread over the
     /// song (the middle, not the intro), probabilities summed per language: one window can be
     /// an intro sample, a spoken skit or a hook in another language. Restricted to
     /// <paramref name="candidates"/> when the lyrics narrowed the choice.
     /// </summary>
-    private static string? VoteLanguage(WhisperProcessor processor, float[] pcm, int count, IReadOnlyList<string> candidates, CancellationToken ct)
+    private static string? VoteLanguage(WhisperProcessor processor, float[] pcm, int count, IReadOnlyList<string> candidates, CancellationToken ct, out int asked)
+    {
+        var cands = candidates.ToArray();
+        var windows = LanguageWindows(pcm.Length, Math.Max(1, count)).ToList();
+        var n = 0;
+        var winner = Vote(windows.Count, i =>
+        {
+            n++;
+            return processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, windows[i].From, windows[i].Length), cands);
+        }, ct);
+        asked = n;
+        return winner;
+    }
+
+    /// <summary>
+    /// The vote itself: <paramref name="detect"/> names window i's language and its probability;
+    /// the language with the highest sum wins (ties by code). Each window is a full encoder pass
+    /// (seconds on a CPU), so the vote stops as soon as the windows left could not change the
+    /// winner (<see cref="VoteSettled"/>): the result is the one all windows would give.
+    /// </summary>
+    internal static string? Vote(int windowCount, Func<int, (string? Code, float P)> detect, CancellationToken ct)
     {
         var votes = new Dictionary<string, double>(StringComparer.Ordinal);
-        var cands = candidates.ToArray();
-        foreach (var (from, length) in LanguageWindows(pcm.Length, Math.Max(1, count)))
+        for (var i = 0; i < windowCount; i++)
         {
             ct.ThrowIfCancellationRequested();
-            var (code, p) = processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, from, length), cands);
-            if (string.IsNullOrWhiteSpace(code)) continue;
-            votes[code] = votes.GetValueOrDefault(code) + Math.Max(0, p);
+            var (code, p) = detect(i);
+            if (!string.IsNullOrWhiteSpace(code))
+                votes[code] = votes.GetValueOrDefault(code) + Math.Clamp(p, 0f, 1f);
+            if (VoteSettled(votes, windowCount - i - 1)) break;
         }
         return votes.Count == 0 ? null : votes.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).First().Key;
+    }
+
+    /// <summary>
+    /// True when <paramref name="windowsLeft"/> more windows cannot change the vote's winner: each
+    /// adds at most 1 to one language, so the leader is safe once it is more than that ahead of
+    /// every other language (one with no vote yet included). Strictly ahead, so no tie can reorder it.
+    /// </summary>
+    internal static bool VoteSettled(IReadOnlyDictionary<string, double> votes, int windowsLeft)
+    {
+        if (windowsLeft <= 0) return true;
+        if (votes.Count == 0) return false;
+        var leader = double.MinValue;
+        var second = 0.0;
+        foreach (var v in votes.Values)
+        {
+            if (v > leader) { second = Math.Max(second, leader); leader = v; }
+            else second = Math.Max(second, v);
+        }
+        return leader - second > windowsLeft;
     }
 
     /// <summary>Where the language windows go: centred at 1/(n+1) … n/(n+1) of the song, 30 s long (shorter songs: the whole song).</summary>

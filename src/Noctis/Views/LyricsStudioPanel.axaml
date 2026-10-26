@@ -528,6 +528,11 @@
                                               ToolTip.Tip="{loc:T LyricsStudioSettings.SaveTtmlHint}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding TranscribeOnly}" Content="{loc:T LyricsStudio.TranscribeOnly}"
                                               ToolTip.Tip="{loc:T LyricsStudio.TranscribeOnlyTip}" />
+                                    <!-- Experimental GPU (Vulkan): only in builds made with -p:LyricsGpu=true. -->
+                                    <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding UseGpu}" Content="{loc:T LyricsStudio.UseGpu}"
+                                              ToolTip.Tip="{loc:T LyricsStudio.UseGpuTip}" IsVisible="{Binding GpuOptionVisible}" />
+                                    <TextBlock Text="{Binding GpuOptionNote}" FontSize="11" Opacity="0.6" TextWrapping="Wrap" MaxWidth="320" Margin="28,-6,0,0"
+                                               IsVisible="{Binding GpuOptionNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 </StackPanel>
                             </Border>
                         </Flyout>
