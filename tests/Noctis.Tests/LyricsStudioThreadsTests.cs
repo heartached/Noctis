@@ -6,7 +6,7 @@ namespace Noctis.Tests;
 /// <summary>
 /// How many threads the speech model computes with (l2-speed 10-20): logical CPUs − 1 as before,
 /// capped at the full-speed core count (at most 16) instead of a flat 8. On a 12-core Ryzen,
-/// 12 threads took 0.82-0.84× the time of 8 with identical words; fewer threads than the old rule
+/// 12 threads took 0.84-0.875× the time of 8 with identical words; fewer threads than the old rule
 /// on a 4-core/8-thread emulation was slower, so small CPUs keep the old count.
 /// </summary>
 public class LyricsStudioThreadsTests

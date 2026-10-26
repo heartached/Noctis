@@ -246,10 +246,11 @@ public sealed class WhisperTranscriber
     /// <summary>
     /// Logical CPUs − 1, as before, but capped at the number of full-speed cores
     /// (<see cref="CpuTopology"/>, at most 16) instead of a flat 8, so CPUs with more than 8 cores
-    /// use them. Measured 10-20 on a Ryzen 9 5900X (12 cores / 24 threads), interleaved, words
-    /// identical for every thread count: 12 threads took 0.82-0.84× the time of 8 (median). Fewer
-    /// threads than the old rule on small CPUs was measured slower (4-core/8-thread emulation:
-    /// 4 threads 1.42× the time of 7), so CPUs with up to 8 cores keep the old count.
+    /// use them. Measured on a Ryzen 9 5900X (12 cores / 24 threads) with the CPU to itself, words
+    /// identical for every thread count: 12 threads took 0.84× the time of 8 per 30 s window (10-20),
+    /// and a whole song 0.875× (align) / 0.86× (transcribe) on 12 test songs (10-25). Fewer threads
+    /// than the old rule on small CPUs was measured slower (4-core/8-thread emulation: 4 threads
+    /// 1.07× the time of 7), so CPUs with up to 8 cores keep the old count.
     /// </summary>
     internal static int ThreadsFor(int logicalCpus, int? performanceCores)
     {
