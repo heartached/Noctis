@@ -1713,8 +1713,8 @@
              scale transform, so it is never inside the card's opacity layer. Off, it paints
              the same AppMainBackground the card used to. -->
         <controls:GlassPanel Name="SettingsGlass"
-                             Width="1000" MaxHeight="720" Margin="0,24"
-                             HorizontalAlignment="Center"
+                             MaxWidth="1000" MaxHeight="720" Margin="24,24"
+                             HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch"
                              CornerRadius="22"
                              Background="{DynamicResource AppMainBackground}"
@@ -1742,14 +1742,17 @@
         </controls:GlassPanel>
         <!-- Stretch + MaxHeight: the card is always min(720, window − margin) tall, whatever
              page is open. With VerticalAlignment=Center it sized to its content, so short
-             pages (Plugins, Statistics) visibly shrank the whole dialog. -->
+             pages (Plugins, Statistics) visibly shrank the whole dialog.
+             Stretch + MaxWidth the same way across (GitHub #145): a fixed 1000 px card ran off
+             both sides of anything narrower — the 780 px minimum window, or a 1560 px window at
+             200% Interface Size — cutting off the close button (UiScaleTests). -->
         <Border Name="SettingsCard"
-                Width="1000" MaxHeight="720" Margin="0,24"
+                MaxWidth="1000" MaxHeight="720" Margin="24,24"
                 Opacity="0"
                 BorderBrush="#22FFFFFF"
                 BorderThickness="1"
                 CornerRadius="22"
-                HorizontalAlignment="Center"
+                HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 RenderTransformOrigin="50%,50%"
                 RenderTransform="scale(0.96)"
