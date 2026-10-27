@@ -304,6 +304,8 @@ public class MetadataService : IMetadataService
         var duration = props.Duration;
         if (localPath != null && NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, IsLosslessFormat(codec ?? string.Empty, ext)))
             TryPopulateAudioMetricsWithFfprobe(localPath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
+        if (localPath != null)
+            ApplyCountedMp3Length(localPath, ext, ref bitrate, ref duration);
 
         // Preserve all credited performers so featured artists show in track rows.
         var artist = FirstNonEmpty(JoinTagValues(tag.Performers), tag.FirstPerformer, tag.FirstAlbumArtist, "Unknown Artist");
@@ -1002,6 +1004,7 @@ public class MetadataService : IMetadataService
             var duration = props.Duration;
             if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, isLossless))
                 TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
+            ApplyCountedMp3Length(filePath, ext, ref bitrate, ref duration);
 
             return new AudioFileInfo
             {
@@ -1260,6 +1263,17 @@ public class MetadataService : IMetadataService
 
         var estimated = (int)Math.Round((fileSize * 8d) / duration.TotalSeconds / 1000d);
         return estimated > 0 ? estimated : 0;
+    }
+
+    // A VBR MP3 with no Xing/VBRI header: TagLib's length is a first-frame bitrate guess
+    // (a 65-minute file read as 14:37), so count the frames instead (see Mp3FrameScan).
+    private static void ApplyCountedMp3Length(string path, string ext, ref int bitrate, ref TimeSpan duration)
+    {
+        if (ext == ".mp3" && Mp3FrameScan.TryMeasureHeaderlessVbr(path, out var counted, out var countedKbps))
+        {
+            duration = counted;
+            bitrate = countedKbps;
+        }
     }
 
     private static bool NeedsFfprobeFallback(int sampleRate, int bitsPerSample, int bitrate, TimeSpan duration, bool isLossless)

@@ -347,6 +347,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // the true duration — otherwise lyrics/UI stop updating early.
     private long _lastKnownLengthMs;
 
+    // Counted lengths of VBR MP3s with no Xing/VBRI header, by path (0 = not such a file).
+    // VLC's length for one is a bitrate guess (a 65-minute file read as 62:27), and every
+    // seek is clamped to it, so the last minutes were out of reach (see CurrentLengthMs).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long FileBytes, long LengthMs)> _countedMp3Lengths =
+        new(StringComparer.OrdinalIgnoreCase);
+
     // Track paused state ourselves because VLC's MediaPlayer
     // does not expose a reliable IsPaused property.
     private volatile bool _isPaused;
@@ -859,7 +865,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         get
         {
             if (_disposed) return TimeSpan.Zero;
-            var len = _player.Length;
+            var len = CurrentLengthMs();
             if (_gaplessEngine)
             {
                 // The ring knows more than VLC's length estimate (see EngineReportedLengthMs).
@@ -2797,6 +2803,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (!isRemote)
                     ApplyReadAhead(media);
                 mp3TailTrimFrames = ApplyMp3Demux(media, normalizedPath, startPositionMs);
+                CountMp3Length(normalizedPath);
                 // Off the engine the playback-speed button is LibVLC's rate; only
                 // media opened with time-stretch keep their pitch at ≠ 1×.
                 if (!_gaplessEngine)
@@ -3444,6 +3451,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (pendingMs > 0)
                 _currentMedia.AddOption(FormattableString.Invariant($":start-time={pendingMs / 1000.0:0.###}"));
             var mp3TailTrimFrames = isPathless ? 0 : ApplyMp3Demux(_currentMedia, filePath, pendingMs);
+            if (!isPathless) CountMp3Length(filePath);
 
             // Exclusive mode: open/reuse the device sink at this track's source
             // rate and pin the output format before the aout starts.
@@ -3550,7 +3558,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                     {
                         var dur = TimeSpan.FromMilliseconds(len);
@@ -3749,7 +3757,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                         DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
                 }
@@ -3928,7 +3936,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                         DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
                 }
@@ -4077,7 +4085,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                         DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
                 }
@@ -4187,7 +4195,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_player.State != VLCState.Playing)
                     break;
 
-                var len = _player.Length;
+                var len = CurrentLengthMs();
                 if (len <= 0)
                     len = Interlocked.Read(ref _lastKnownLengthMs);
                 var time = _player.Time;
@@ -4668,6 +4676,47 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// delivered audio past the claimed length the end is at least that far plus a lead, and once
     /// the input hit EOF the delivered length IS the length. A plausible estimate is left alone.
     /// </summary>
+    /// <summary>
+    /// The current input's length: VLC's, unless the file is a headerless VBR MP3 whose frames
+    /// were counted (see <see cref="CountMp3Length"/>). 0 stays 0: callers read it as "ended or
+    /// not open yet".
+    /// </summary>
+    private long CurrentLengthMs()
+    {
+        var len = _player.Length;
+        if (len <= 0) return len;
+        return _currentMediaPath is { } path && _countedMp3Lengths.TryGetValue(path, out var counted) && counted.LengthMs > 0
+            ? counted.LengthMs
+            : len;
+    }
+
+    /// <summary>
+    /// Counts the frames of a local MP3 off the calling thread (a long file is read end to end)
+    /// and, if it is a headerless VBR file still playing, re-reports its true length.
+    /// </summary>
+    private void CountMp3Length(string path)
+    {
+        if (IsPathlessMedia(path) ||
+            !string.Equals(Path.GetExtension(path), ".mp3", StringComparison.OrdinalIgnoreCase))
+            return;
+        long bytes;
+        try { bytes = new FileInfo(path).Length; } catch { return; }
+        if (_countedMp3Lengths.TryGetValue(path, out var known) && known.FileBytes == bytes)
+            return;
+        _ = Task.Run(() =>
+        {
+            var lengthMs = Mp3FrameScan.TryMeasureHeaderlessVbr(path, out var counted, out _)
+                ? (long)counted.TotalMilliseconds
+                : 0;
+            _countedMp3Lengths[path] = (bytes, lengthMs);
+            if (lengthMs <= 0) return;
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.CountedLength",
+                $"path={LogName(path)}, lengthMs={lengthMs}, vlcLengthMs={(_disposed ? -1 : _player.Length)}");
+            if (!_disposed && string.Equals(_currentMediaPath, path, StringComparison.OrdinalIgnoreCase))
+                DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(lengthMs));
+        });
+    }
+
     internal static long EngineReportedLengthMs(long vlcLengthMs, bool inputEnded, long deliveredMs)
     {
         if (deliveredMs <= 0)
@@ -5303,12 +5352,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         CancelSkipCts();
         CancelPreparedNext();
         ResetEndReachedPending();
-        // Engine: the seek's flush callback re-bases the active segment's
-        // position from this value (the flush itself clears the stale ring).
-        if (_gaplessEngine)
-            Interlocked.Exchange(
-                ref _enginePendingBaseMs[EngineSlotOf(_player)],
-                (long)position.TotalMilliseconds);
 
         // After a track ends (or is stopped) the audio output is torn down and
         // _player.Length reports 0, so the in-place seek below early-returns and the
@@ -5320,7 +5363,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if ((state == VLCState.Ended || state == VLCState.Stopped) &&
             !string.IsNullOrEmpty(_currentMediaPath))
         {
-            var endedLen = _player.Length;
+            var endedLen = CurrentLengthMs();
             if (endedLen <= 0) endedLen = Interlocked.Read(ref _lastKnownLengthMs);
             long restartMs = -1;
             if (endedLen > 0)
@@ -5340,7 +5383,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             return;
         }
 
-        var len = _player.Length;
+        var len = CurrentLengthMs();
         if (len <= 0)
         {
             DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
@@ -5355,6 +5398,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         var maxSeekMs = len - Math.Min(EndSeekGuardMs, len / 20);
         var clampedMs = (long)Math.Clamp(position.TotalMilliseconds, 0, maxSeekMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Request", $"targetMs={clampedMs}, playerState={_player.State}");
+        // Engine: the seek's flush callback re-bases the active segment's position from
+        // this value (the flush itself clears the stale ring). The clamped target, which is
+        // where VLC goes: the requested one put the clock ahead of the audio by the clamp
+        // (a 64:30 seek on a file VLC thought 62:27 long showed 64:34 over 62:31 audio).
+        if (_gaplessEngine)
+            Interlocked.Exchange(ref _enginePendingBaseMs[EngineSlotOf(_player)], clampedMs);
 
         // Restart-instead-of-seek for the start region. An in-place backward seek
         // to the beginning desyncs LibVLC's mmdevice output clock on files with
@@ -5483,7 +5532,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             var knownLenMs = Interlocked.Read(ref _lastKnownLengthMs);
             if (knownLenMs <= 0)
             {
-                try { knownLenMs = _player.Length; } catch { /* transitional state */ }
+                try { knownLenMs = CurrentLengthMs(); } catch { /* transitional state */ }
             }
             if (knownLenMs <= 0 || knownLenMs >= 500)
             {
@@ -5505,7 +5554,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // captured during normal playback.
         try
         {
-            var len = _player.Length;
+            var len = CurrentLengthMs();
             if (len <= 0)
                 len = Interlocked.Read(ref _lastKnownLengthMs);
             // Engine: the audible tail is still rendering — report the honest
@@ -5643,7 +5692,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 }
                 else
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len <= 0)
                         len = Interlocked.Read(ref _lastKnownLengthMs);
                     if (len > 0)
@@ -5718,7 +5767,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // _player.Length is reliable while playing but can return 0
                 // after EndReached. Capturing it here ensures the grace
                 // handler always has a valid fallback.
-                var len = _player.Length;
+                var len = CurrentLengthMs();
                 if (len > 0)
                     Interlocked.Exchange(ref _lastKnownLengthMs, len);
 
@@ -5815,7 +5864,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     if (_disposed || _currentMedia == null)
                         break;
 
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len <= 0)
                     {
                         DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
