@@ -409,15 +409,7 @@ public partial class SettingsViewModel : ViewModelBase
         ListenBrainzError = "";
         ClearTransientServerError();
 
-        // Play counts change during the session without a LibraryUpdated event,
-        // so recompute stats whenever the Statistics tab is opened.
-        if (value == TabStatistics)
-        {
-            RefreshLibraryStats();
-            // TotalPlaylists has no other writer, so without this the Statistics tab
-            // reported "0 playlists" to every user who had any.
-            _ = RefreshPlaylistCountAsync();
-        }
+        RefreshTabData(value);
 
         // The GitHub release list is otherwise fetched only when Developer Mode
         // flips on (once at startup for users who keep it enabled), so a release
@@ -430,6 +422,40 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void SelectSettingsTab(string tab) => SelectedSettingsTab = tab;
+
+    /// <summary>Settings opened: refresh what the tab it opens on shows (see <see cref="RefreshTabData"/>).</summary>
+    public void RefreshShownTabData() => RefreshTabData(SelectedSettingsTab);
+
+    /// <summary>
+    /// Refreshes the figures <paramref name="tab"/> shows that change while Settings is
+    /// closed. Every open used to recompute all of them whatever the tab: the whole
+    /// play log folded over the library, playlists.json and settings.json re-read and
+    /// re-parsed, the artwork cache walked — ~14.5 MB of garbage per open on a 2,000-song
+    /// library with 20,000 plays (SettingsOpenCostTests), and every collection it set off
+    /// paused the audio thread too (GitHub #139). Now each tab pays on being shown.
+    /// </summary>
+    private void RefreshTabData(string tab)
+    {
+        // Play counts change during the session without a LibraryUpdated event.
+        if (tab == TabStatistics)
+        {
+            RefreshLibraryStats();
+            // TotalPlaylists has no other writer, so without this the Statistics tab
+            // reported "0 playlists" to every user who had any.
+            _ = RefreshPlaylistCountAsync();
+        }
+        // Snoozes expire and Remove ("Keep Files") happens outside Settings; both lists
+        // used to ride on the open's stats pass.
+        else if (tab == TabLibrary)
+        {
+            RefreshSnoozedTracks();
+            _ = RefreshRemovedTracksAsync();
+        }
+        else if (tab == TabAdvanced)
+        {
+            _ = RefreshStorageInfoAsync();
+        }
+    }
 
     // ── Profile ──
     [ObservableProperty] private string _profileName = string.Empty;

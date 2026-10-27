@@ -33,6 +33,7 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+        DeferTabPages();
 
         if (EqSavePresetButton.Flyout is Flyout eqPresetFlyout)
         {
@@ -126,6 +127,9 @@ public partial class SettingsView : UserControl
     private SettingsSearchIndex EnsureSearchIndex()
     {
         if (_searchIndex is not null) return _searchIndex;
+        // The index reads every card's text and visibility, which needs each page bound.
+        foreach (var (tab, _) in TabPanels)
+            RealizeTabPage(tab, animate: false);
         var panels = new List<(string Tab, Control Panel)>();
         foreach (var (tab, name) in TabPanels)
         {
@@ -133,6 +137,65 @@ public partial class SettingsView : UserControl
                 panels.Add((tab, panel));
         }
         return _searchIndex = SettingsSearchIndex.Build(panels);
+    }
+
+    // ── Lazy tab pages (GitHub #139) ──
+
+    // All thirteen pages used to join the tree on the first open, though only one shows:
+    // styling ~2,100 controls allocated ~35 MB at once (headless Release harness,
+    // SettingsOpenCostTests), and the gen1/gen2 collections that followed paused every
+    // thread, the audio render thread included — an audible skip on Linux. The pages are
+    // still built here (x:Name fields, the code-behind wiring), but each one stays out of
+    // the tree until its tab is first shown, and then stays in.
+    private Panel? _tabHost;
+    private readonly List<Control> _tabHostOrder = new();
+    private readonly Dictionary<string, Control> _deferredTabPages = new();
+
+    /// <summary>Test hook: the pages still waiting for their first visit.</summary>
+    internal IReadOnlyCollection<string> DeferredTabsForTests => _deferredTabPages.Keys;
+
+    private void DeferTabPages()
+    {
+        foreach (var (tab, name) in TabPanels)
+        {
+            if (this.FindControl<Control>(name) is not { Parent: Panel host } page) continue;
+            if (_tabHost is null)
+            {
+                _tabHost = host;
+                _tabHostOrder.AddRange(host.Children);
+            }
+            if (!ReferenceEquals(host, _tabHost)) continue;
+            host.Children.Remove(page);
+            _deferredTabPages[tab] = page;
+        }
+    }
+
+    /// <summary>
+    /// Puts <paramref name="tab"/>'s page back in its original slot. With
+    /// <paramref name="animate"/> it enters from the tab-page hidden state (faded, 6 px
+    /// down) so the first visit glides in like every later one.
+    /// </summary>
+    private void RealizeTabPage(string tab, bool animate)
+    {
+        if (_tabHost is null || !_deferredTabPages.Remove(tab, out var page)) return;
+
+        var order = _tabHostOrder.IndexOf(page);
+        var index = _tabHost.Children.Count(c => _tabHostOrder.IndexOf(c) < order);
+        if (animate)
+        {
+            page.Opacity = 0;
+            page.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translateY(6px)");
+        }
+        _tabHost.Children.Insert(index, page);
+        if (animate)
+        {
+            // Released once the tab-page style (and its transitions) is on the page.
+            Dispatcher.UIThread.Post(() =>
+            {
+                page.ClearValue(OpacityProperty);
+                page.ClearValue(RenderTransformProperty);
+            }, DispatcherPriority.Loaded);
+        }
     }
 
     /// <summary>Focus the rail's search box (Ctrl+F while the modal is open).</summary>
@@ -351,7 +414,10 @@ public partial class SettingsView : UserControl
         _trackedViewModel = DataContext as SettingsViewModel;
 
         if (_trackedViewModel != null)
+        {
             _trackedViewModel.PropertyChanged += OnSettingsViewModelPropertyChanged;
+            RealizeTabPage(_trackedViewModel.SelectedSettingsTab, animate: false);
+        }
     }
 
     private void OnSettingsViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -362,6 +428,8 @@ public partial class SettingsView : UserControl
             // already switched tabs), so landing there is just a scroll to the top.
             case nameof(SettingsViewModel.MediaFoldersScrollRequest):
             case nameof(SettingsViewModel.SelectedSettingsTab):
+                if (_trackedViewModel is { } selected)
+                    RealizeTabPage(selected.SelectedSettingsTab, animate: true);
                 ScrollToTop();
                 Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
                 break;

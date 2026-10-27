@@ -48,13 +48,10 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenSettings()
     {
-        // Open immediately so the click feels instant. Everything the Statistics tab
-        // needs — the whole-library stats pass, the playlist count and the artwork
-        // directory walk — runs off the UI thread so none of it blocks the click.
+        // Open immediately so the click feels instant. Only the tab it opens on refreshes
+        // its figures (off the UI thread); the others do when they're shown.
         IsSettingsModalOpen = true;
-        _ = Settings.RefreshLibraryStatsAsync();
-        _ = Settings.RefreshPlaylistCountAsync();
-        _ = Settings.RefreshStorageInfoAsync();
+        Settings.RefreshShownTabData();
     }
 
     /// <summary>Closes the Settings modal popup.</summary>
@@ -2434,12 +2431,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private SettingsViewModel RefreshAndReturnSettings()
     {
-        Settings.RefreshLibraryStats();
-        // Off the UI thread, for the same reason OpenSettings does it: the storage
-        // figures need a recursive walk of the artwork cache (a stat per file, memoized
-        // for only 5s), and running that inline stalled the navigation it was reacting
-        // to — reported as Settings "lagging and getting stuck" on switch (issue #31).
-        _ = Settings.RefreshStorageInfoAsync();
+        // Same as OpenSettings: only the shown tab's figures, off the UI thread (the
+        // storage walk inline stalled this navigation, issue #31).
+        Settings.RefreshShownTabData();
         return Settings;
     }
 
