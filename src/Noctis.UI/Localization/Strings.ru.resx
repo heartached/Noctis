@@ -382,7 +382,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>Насколько размыто приложение за всплывающими окнами (например, редактором метаданных) и за настройками. Сдвиньте до упора влево, чтобы выключить.</value><comment>Settings slider description (Background Blur)</comment></data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Выкл.</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
   <data name="Settings.UiScale" xml:space="preserve"><value>Размер интерфейса</value><comment>Settings heading (Appearance): scale of the whole interface, GitHub #145</comment></data>
-  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Увеличивает или уменьшает весь текст, кнопки, списки и значки во всех окнах. Если окно слишком мало для выбранного размера, интерфейс увеличивается лишь настолько, насколько помещается.</value><comment>Settings description (Interface Size)</comment></data>
+  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Увеличивает или уменьшает текст, кнопки и значки.</value><comment>Settings description (Interface Size)</comment></data>
   <data name="Settings.UiScalePercent" xml:space="preserve"><value>{0}%</value><comment>Interface Size choice; {0} = percent of the normal size (SettingsViewModel)</comment></data>
   <data name="Settings.UiScaleDefault" xml:space="preserve"><value>{0}% (по умолчанию)</value><comment>Interface Size choice for the normal size; {0} = 100 (SettingsViewModel)</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Непрозрачность мини-плеера</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2896,6 +2896,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AppIcon" xml:space="preserve"><value>Значок приложения</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
   <data name="Settings.AppIconDesc" xml:space="preserve"><value>Сразу меняет значок в заголовке окна, на панели задач и в трее. Ярлык на рабочем столе и .exe сохраняют классический значок.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Классический</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Тёмный</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Blush" xml:space="preserve"><value>Румянец</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Sky" xml:space="preserve"><value>Небо</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Sunset" xml:space="preserve"><value>Закат</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>

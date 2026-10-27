@@ -382,7 +382,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>How blurred the app looks behind pop-ups like the metadata editor and behind Settings. Slide all the way left to turn it off.</value><comment>Settings slider description (Background Blur)</comment></data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Off</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
   <data name="Settings.UiScale" xml:space="preserve"><value>Interface Size</value><comment>Settings heading (Appearance): scale of the whole interface, GitHub #145</comment></data>
-  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Makes all text, buttons, lists and icons larger or smaller in every window. In a window too small for the chosen size, the interface grows only as far as the window allows.</value><comment>Settings description (Interface Size)</comment></data>
+  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Makes text, buttons and icons larger or smaller.</value><comment>Settings description (Interface Size)</comment></data>
   <data name="Settings.UiScalePercent" xml:space="preserve"><value>{0}%</value><comment>Interface Size choice; {0} = percent of the normal size (SettingsViewModel)</comment></data>
   <data name="Settings.UiScaleDefault" xml:space="preserve"><value>{0}% (default)</value><comment>Interface Size choice for the normal size; {0} = 100 (SettingsViewModel)</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2896,6 +2896,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.AppIcon" xml:space="preserve"><value>App Icon</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
   <data name="Settings.AppIconDesc" xml:space="preserve"><value>Changes the icon in the title bar, taskbar and tray right away. The desktop shortcut and the .exe keep the classic icon.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Classic</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Dark</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Blush" xml:space="preserve"><value>Blush</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Sky" xml:space="preserve"><value>Sky</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Sunset" xml:space="preserve"><value>Sunset</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>

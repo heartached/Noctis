@@ -23,7 +23,7 @@ public static class AppIconService
     /// <summary>Ids in display order; each has Assets/AppIcons/&lt;id&gt;.ico and .png.</summary>
     public static IReadOnlyList<string> Ids { get; } = new[]
     {
-        "classic", "blush", "sky", "sunset", "violet", "aurora",
+        "classic", "dark", "blush", "sky", "sunset", "violet", "aurora",
         "midnight", "graphite", "ruby", "neon",
     };
 

@@ -124,8 +124,9 @@ public class AppIconTests : IDisposable
         Assert.Equal("classic", AppIconService.Normalize(""));
         Assert.Equal("classic", AppIconService.Normalize("rainbow"));
         Assert.Equal("neon", AppIconService.Normalize(" Neon "));
-        Assert.Equal(10, AppIconService.Ids.Count);
+        Assert.Equal(11, AppIconService.Ids.Count);
         Assert.Equal("classic", AppIconService.Ids[0]);
+        Assert.Equal("dark", AppIconService.Ids[1]); // the tile next to Classic
         Assert.Equal("classic", new AppSettings().AppIcon);
     }
 
@@ -221,7 +222,7 @@ public class AppIconTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task AppearanceTab_ShowsTenRealIconTiles_AndATapSwapsTheWindowIcon()
+    public async Task AppearanceTab_ShowsElevenRealIconTiles_AndATapSwapsTheWindowIcon()
     {
         AppIconService.Attach();
         var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistory());
@@ -235,12 +236,13 @@ public class AppIconTests : IDisposable
             Pump(150);
             var list = view.GetVisualDescendants().OfType<ItemsControl>().Single(c => c.Name == "AppIconList");
             var tiles = list.GetVisualDescendants().OfType<Button>().ToList();
-            Assert.Equal(10, tiles.Count);
+            Assert.Equal(11, tiles.Count);
             Assert.All(tiles, t => Assert.NotNull(t.GetVisualDescendants().OfType<Image>().Single().Source));
             Assert.Single(tiles, t => t.Classes.Contains("active"));
             Assert.Equal("Classic", Avalonia.Automation.AutomationProperties.GetName(tiles[0]));
+            Assert.Equal("Dark", Avalonia.Automation.AutomationProperties.GetName(tiles[1]));
 
-            var violet = tiles[4];
+            var violet = tiles[5];
             violet.Command!.Execute(violet.CommandParameter);
             Pump(50);
             Assert.Equal("violet", vm.AppIcon);

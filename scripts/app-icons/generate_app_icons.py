@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates Noctis's app icons: the classic red disc plus nine gradient/frosted variants.
+"""Generates Noctis's app icons: the classic red disc plus ten gradient/frosted variants.
 
 Every output size is rendered on its own from the vector-ish description below (analytic
 disc, analytic gradients, the note glyph taken from the 2000 px source logo) at a ~2048 px
@@ -103,6 +103,11 @@ def smoothstep(e0, e1, x):
 # rim:    top inner highlight strength, bottom inner shade strength
 VARIANTS = [
     dict(id="classic", name="Classic", flat=CLASSIC_RED),
+    # Classic inverted: the red note on a near-black disc, like a system dark-mode icon.
+    dict(id="dark", name="Dark", dark=True,
+         bg=(100, [(0.0, "#2A2A2E"), (1.0, "#0E0E10")]),
+         note=dict(stops=[(0.0, "#F2606F"), (1.0, "#E23E52")], top=1.0, bottom=1.0, white_edge=0.0),
+         glow=("#E74856", 0.18), shadow=("#000000", 0.35), rim=(0.14, 0.0)),
     dict(id="blush", name="Blush",
          bg=(120, [(0.0, "#FFFFFF"), (0.55, "#FFF1F3"), (1.0, "#F8C9D2")]),
          blobs=[(0.78, 0.86, 0.55, "#F3A6B6", 0.45)],
