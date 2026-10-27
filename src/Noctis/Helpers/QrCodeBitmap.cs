@@ -18,28 +18,14 @@ public static class QrCodeBitmap
     {
         try
         {
-            var qr = QrCode.EncodeText(text, QrCode.Ecc.Medium);
-            var sizePx = (qr.Size + 2 * QuietZoneModules) * pixelsPerModule;
+            var pixels = RenderPixels(text, pixelsPerModule, out var sizePx);
             var bitmap = new WriteableBitmap(
                 new PixelSize(sizePx, sizePx), new Vector(96, 96),
                 PixelFormat.Bgra8888, AlphaFormat.Premul);
 
             using var fb = bitmap.Lock();
-            var row = new int[sizePx];
             for (int y = 0; y < sizePx; y++)
-            {
-                // GetModule returns false (light) outside the code, which paints
-                // the quiet zone without special-casing it.
-                var moduleY = y / pixelsPerModule - QuietZoneModules;
-                for (int x = 0; x < sizePx; x++)
-                {
-                    var moduleX = x / pixelsPerModule - QuietZoneModules;
-                    row[x] = qr.GetModule(moduleX, moduleY)
-                        ? unchecked((int)0xFF000000)
-                        : unchecked((int)0xFFFFFFFF);
-                }
-                Marshal.Copy(row, 0, fb.Address + y * fb.RowBytes, sizePx);
-            }
+                Marshal.Copy(pixels, y * sizePx, fb.Address + y * fb.RowBytes, sizePx);
             return bitmap;
         }
         catch (Exception ex)
@@ -47,5 +33,29 @@ public static class QrCodeBitmap
             DebugLogger.Error(DebugLogger.Category.Error, "QrCode.RenderFailed", ex.Message);
             return null;
         }
+    }
+
+    /// <summary>The code's BGRA pixels, row-major, <paramref name="sizePx"/> square. Pure;
+    /// internal for tests (the headless test platform's bitmap hands out a fresh buffer on
+    /// every Lock, so pixels read back from the bitmap there are whatever the heap held).</summary>
+    internal static int[] RenderPixels(string text, int pixelsPerModule, out int sizePx)
+    {
+        var qr = QrCode.EncodeText(text, QrCode.Ecc.Medium);
+        sizePx = (qr.Size + 2 * QuietZoneModules) * pixelsPerModule;
+        var pixels = new int[sizePx * sizePx];
+        for (int y = 0; y < sizePx; y++)
+        {
+            // GetModule returns false (light) outside the code, which paints
+            // the quiet zone without special-casing it.
+            var moduleY = y / pixelsPerModule - QuietZoneModules;
+            for (int x = 0; x < sizePx; x++)
+            {
+                var moduleX = x / pixelsPerModule - QuietZoneModules;
+                pixels[y * sizePx + x] = qr.GetModule(moduleX, moduleY)
+                    ? unchecked((int)0xFF000000)
+                    : unchecked((int)0xFFFFFFFF);
+            }
+        }
+        return pixels;
     }
 }
