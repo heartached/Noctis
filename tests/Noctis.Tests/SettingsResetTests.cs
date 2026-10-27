@@ -65,7 +65,7 @@ public class SettingsResetTests : IDisposable
             CommunityPluginsEnabled = false,
             AccentFollowsArtwork = true,
             AccentTrackLinks = false,
-            AppIcon = "neon",
+            AppIcon = "ruby",
             UpmixMode = "Surround",
             HeadphoneSurround = true,
             Shortcuts = new Dictionary<string, string> { [nameof(ShortcutAction.PlayPause)] = "P" },
@@ -102,7 +102,7 @@ public class SettingsResetTests : IDisposable
         await vm.LoadAsync();
         Assert.True(vm.AccentFollowsArtwork);
         Assert.False(vm.AccentTrackLinks);
-        Assert.Equal("neon", vm.AppIcon);
+        Assert.Equal("ruby", vm.AppIcon);
         Assert.False(vm.ShortcutService.IsDefault(ShortcutAction.PlayPause));
         Assert.True(vm.HasLyricsBackgroundOverride("track:1"));
         Assert.Equal("Surround", audio.UpmixMode);

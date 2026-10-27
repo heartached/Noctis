@@ -2173,7 +2173,7 @@
 
                     <!-- Preset grid + custom-picker tile -->
                     <StackPanel Spacing="8">
-                        <StackPanel>
+                        <Grid>
                             <!-- Preset swatches -->
                             <ItemsControl ItemsSource="{Binding AccentSwatches}">
                                 <ItemsControl.ItemsPanel>
@@ -2210,8 +2210,12 @@
                             </ItemsControl>
 
                             <!-- Custom-color tile: rainbow ring + plus, opens reusable HSV/hex picker.
-                                 Same 44px cell as a swatch so it reads as the next slot in the grid. -->
-                            <Panel Width="44" Height="44" HorizontalAlignment="Left" Margin="0,0,4,4">
+                                 It takes the 12th cell of the last swatch row (App.AccentPresets holds
+                                 12n-1 colours, guarded by a test), on a grid with the same 12 columns,
+                                 so it reads as the next slot instead of starting a row of its own. -->
+                            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*,*,*,*,*">
+                            <Panel Grid.Column="11" Width="44" Height="44"
+                                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,4,4">
                                 <controls:ColorPickerFlyout Hex="{Binding CustomAccentHex, Mode=TwoWay}"
                                                             SwatchSize="44"
                                                             HorizontalAlignment="Center"
@@ -2252,7 +2256,8 @@
                                     </controls:ColorPickerFlyout.SwatchContent>
                                 </controls:ColorPickerFlyout>
                             </Panel>
-                        </StackPanel>
+                            </Grid>
+                        </Grid>
                     </StackPanel>
 
                     <!-- Accent follows album art (Discord, aaron 09-15) -->

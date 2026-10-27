@@ -13,44 +13,13 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <!-- Full-window dimmed overlay that captures all input; code-behind fades it
-         in on open and back out before closing (unified dialog pattern). -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-27: blurred like every other pop-up. PillDialogHost draws the blurred,
+         dimmed app behind, the rounded card with its shadow, and plays the open/close
+         animation (Save, the X, Esc and Alt+F4 all animate out once). The result rides on
+         Result, never on Close(result), so the deferred close loses nothing. -->
+    <controls:PillDialogHost>
 
-        <!-- Centered dialog card -->
-        <Border x:Name="DialogCard"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="760" Height="520"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-
+        <Border Width="760" Height="520">
             <Border.Styles>
                 <!-- Dark/Light pills: absolute set via SetBaseModeCommand; the active
                      pill fills with the accent. -->
@@ -84,26 +53,8 @@
                     <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
                     <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
                 </Style>
-                <!-- Pill outline shared with Settings: 1.5px translucent mid-grey, layout-rounded.
-                     The Fluent templates restyle the border on hover/focus/press, so the template
-                     parts are pinned too. -->
-                <Style Selector="TextBox">
-                    <Setter Property="BorderBrush" Value="#99A0A0A8"/>
-                    <Setter Property="BorderThickness" Value="1.5"/>
-                    <Setter Property="UseLayoutRounding" Value="True"/>
-                </Style>
-                <Style Selector="TextBox /template/ Border#PART_BorderElement">
-                    <Setter Property="BorderBrush" Value="#99A0A0A8"/>
-                    <Setter Property="BorderThickness" Value="1.5"/>
-                    <Setter Property="UseLayoutRounding" Value="True"/>
-                </Style>
-                <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-                    <Setter Property="BorderBrush" Value="#99A0A0A8"/>
-                </Style>
-                <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus-within /template/ Border#PART_BorderElement">
-                    <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
-                    <Setter Property="BorderThickness" Value="1.5"/>
-                </Style>
+                <!-- The name field is the pop-ups' filled pill-field (PillDialog.axaml), as the
+                     Metadata editor's fields: no outline at rest, accent ring on focus. -->
                 <Style Selector="Button.pill-outline">
                     <Setter Property="BorderBrush" Value="#99A0A0A8"/>
                     <Setter Property="BorderThickness" Value="1.5"/>
@@ -187,10 +138,9 @@
                         <StackPanel Spacing="5">
                             <TextBlock Text="{loc:T ThemeEditor.Name}" FontSize="13" FontWeight="SemiBold"/>
                             <TextBox x:Name="NameTextBox"
+                                     Classes="pill-field"
                                      Text="{Binding Name, Mode=TwoWay}"
-                                     Watermark="{loc:T ThemeEditor.MyTheme}"
-                                     CornerRadius="999"
-                                     Padding="14,8"/>
+                                     Watermark="{loc:T ThemeEditor.MyTheme}"/>
                             <TextBlock Text="{loc:T ThemeEditor.ThemeNameAlreadyExists}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AccentColorBrush}"
@@ -395,5 +345,5 @@
                 </Grid>
             </DockPanel>
         </Border>
-    </Border>
+    </controls:PillDialogHost>
 </Window>
