@@ -160,7 +160,7 @@ public sealed class GaplessSink : IDisposable
         // Beat pulse for the flowing-artwork lyrics background: tapped post-mute so a
         // muted player shows a still backdrop, stamped with this sink's output depth
         // so the visual beat lands when the audible one does.
-        renderSource = new BeatTapProvider(renderSource, OutputLatencyMs);
+        renderSource = new BeatTapProvider(renderSource, RequestedOutputLatencyMs);
         // The user's volume where no OS session carries it (Linux, see LevelControl).
         // After the beat tap, like the Windows session level, so the visuals do not
         // follow the slider. A pass-through at level 1, which Windows never leaves.
@@ -186,7 +186,7 @@ public sealed class GaplessSink : IDisposable
         // audible in the air but invisible to any PCM tap. Logging inter-read
         // gaps turns those into session-log lines with timestamps. It also
         // boosts the render thread on first read (see StallProbe).
-        _probe = new StallProbe(renderSource);
+        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs));
         _renderSource = _probe;
         (_out, _outDevice, _) = CreateOutput();
         // Render immediately: the provider always returns full buffers (silence
@@ -218,6 +218,24 @@ public sealed class GaplessSink : IDisposable
     public const int OutputLatencyMs = 100;
 
     /// <summary>
+    /// Requested pulse stream latency on Linux (GitHub #139 follow-up: "skips a beat"). The
+    /// pulse server does not hold all of it as buffer: pa_simple connects with
+    /// ADJUST_LATENCY, and PipeWire's pulse server then keeps only (tlength - 2·minreq)/2 +
+    /// 2·minreq queued, so 100 ms bought a 60 ms buffer (granted tlength 21168 bytes) in front
+    /// of a 21 ms graph quantum. Harness on PipeWire 1.0.5: render stalls of 50-60 ms already
+    /// cut out (repeated 50 ms stalls: 3 cuts in 10; real blocking GCs of 75-82 ms: 21 ms
+    /// cuts), the size of the user's GC and scheduler stalls (27-73 ms). At 200 ms (the
+    /// GStreamer pulsesink default) the server keeps 110 ms: ten 80 ms stalls in a row
+    /// played without a cut. The lyrics clock follows the server-reported latency.
+    /// </summary>
+    internal const int LinuxOutputLatencyMs = 200;
+
+    // The buffer depth the current platform's output is opened with (silent test mode
+    // keeps the WASAPI figure).
+    private static int RequestedOutputLatencyMs =>
+        !OperatingSystem.IsWindows() && !NullWavePlayer.SilentMode ? LinuxOutputLatencyMs : OutputLatencyMs;
+
+    /// <summary>
     /// Engine rate on Linux, where no device mix format is read. CD rate, the rate of nearly
     /// every MP3 and CD rip: LibVLC resamples each input on its own, so at any other rate
     /// every track boundary carried a resampler restart (harness: a 7-sample step at each
@@ -235,9 +253,19 @@ public sealed class GaplessSink : IDisposable
         {
             IWavePlayer current;
             lock (_gate) current = _out;
-            return current is PulseSimpleWavePlayer { LatencyMs: { } ms } ? ms : OutputLatencyMs;
+            return current is PulseSimpleWavePlayer { LatencyMs: { } ms } ? ms : RequestedOutputLatencyMs;
         }
     }
+
+    /// <summary>
+    /// Read gap the stall probe logs, for an output of <paramref name="latencyMs"/>: 25 ms on
+    /// the 100 ms WASAPI stream (2+ missed 10 ms periods). The 200 ms pulse stream runs its
+    /// PipeWire graph at a 2048-frame quantum (harness: node.latency 90 ms, quantum 2048 at
+    /// 48 kHz), and the blocking write waits up to one quantum, 46 ms at 44.1 kHz, every
+    /// cycle; 60 ms stays above that and well inside the 110 ms the server holds. Pure;
+    /// internal for tests.
+    /// </summary>
+    internal static int StallThresholdMs(int latencyMs) => latencyMs > OutputLatencyMs ? 60 : 25;
 
     private static string OutputName =>
         NullWavePlayer.SilentMode ? "null" : OperatingSystem.IsWindows() ? "wasapi" : "pulse";
@@ -401,7 +429,7 @@ public sealed class GaplessSink : IDisposable
         }
         else
         {
-            wasapiOut = new PulseSimpleWavePlayer(OutputLatencyMs);
+            wasapiOut = new PulseSimpleWavePlayer(LinuxOutputLatencyMs);
         }
         try
         {
@@ -832,15 +860,17 @@ public sealed class GaplessSink : IDisposable
         private static extern IntPtr AvSetMmThreadCharacteristics(string taskName, ref uint taskIndex);
 
         private readonly ISampleProvider _inner;
+        private readonly int _thresholdMs;
         private long _lastReadTick;
         private TimeSpan _lastGcPause;
         private int _lastGen0, _lastGen1, _lastGen2;
         private bool _boosted;
         public WaveFormat WaveFormat => _inner.WaveFormat;
 
-        public StallProbe(ISampleProvider inner)
+        public StallProbe(ISampleProvider inner, int thresholdMs)
         {
             _inner = inner;
+            _thresholdMs = thresholdMs;
         }
 
         // The boost latches per render thread; a rebuilt WasapiOut spins up a
@@ -874,8 +904,9 @@ public sealed class GaplessSink : IDisposable
 
             // Stopwatch, not TickCount64: the 15.6ms system tick cannot resolve a
             // ~10ms read cadence (a "47ms" gap was a 3-tick quantization artifact).
-            // 25ms threshold: 2+ missed engine periods — the priority-inversion
-            // stalls behind the buzz are 31-47ms and were invisible at 120ms.
+            // 25ms threshold on WASAPI: 2+ missed engine periods — the priority-inversion
+            // stalls behind the buzz are 31-47ms and were invisible at 120ms. The pulse
+            // output's own cadence is a graph quantum (see StallThresholdMs).
             var now = Stopwatch.GetTimestamp();
             var last = _lastReadTick;
             _lastReadTick = now;
@@ -889,7 +920,7 @@ public sealed class GaplessSink : IDisposable
             var gcPause = GC.GetTotalPauseDuration();
             int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1), gen2 = GC.CollectionCount(2);
             var gapMs = (now - last) * 1000.0 / Stopwatch.Frequency;
-            if (last != 0 && gapMs > 25)
+            if (last != 0 && gapMs > _thresholdMs)
             {
                 // Logged off this thread: with Developer Mode on the line goes through
                 // DebugLog's lock into CrashJournal's AutoFlush file write, and that time

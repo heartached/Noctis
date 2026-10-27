@@ -207,8 +207,10 @@ internal sealed class PulseSimpleWavePlayer : IWavePlayer
 
     /// <summary>
     /// Server-side buffer for a stream of <paramref name="latencyMs"/>: the target length
-    /// is the latency, refilled a period at a time; the server picks the rest. Pure;
-    /// internal for tests.
+    /// is the latency, refilled a period at a time; the server picks the rest. pa_simple
+    /// connects with ADJUST_LATENCY, so the target is the whole latency, sink included, and
+    /// the server holds only part of it as buffer (see GaplessSink.LinuxOutputLatencyMs).
+    /// Pure; internal for tests.
     /// </summary>
     internal static BufferAttr BufferAttrFor(int sampleRate, int blockAlign, int latencyMs) => new()
     {
