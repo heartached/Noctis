@@ -17,6 +17,27 @@ public class VlcLogBridgeTests
         Assert.Equal(expected, VlcAudioPlayer.IsBenignVlcLogLine(module, message));
     }
 
+    // GitHub #139: under the splice engine VLC's drift correction can only run for the
+    // keep-alive's silent pulse stream (amem has no time_get), so its lines are labelled.
+    [Theory]
+    [InlineData(true, "main", "playback too late (60855): up-sampling", true)]
+    [InlineData(true, "main", "playback too early (-40158): down-sampling", true)]
+    [InlineData(true, "main", "playback way too late (200557): flushing buffers", true)]
+    [InlineData(true, "main", "playback way too early (-199206): playing silence", true)]
+    [InlineData(true, "main", "timing screwed (drift: 151280 us): stopping resampling", true)]
+    [InlineData(true, "pulse", "starting late (-40876 us)", true)]
+    [InlineData(true, "vlcpulse", "stream connection failure: No such entity", true)]
+    [InlineData(true, "main", "buffer too late (-80000 us): dropped", false)] // checked before time_get: hits amem too
+    [InlineData(true, "avformat", "playback too late (60855): up-sampling", false)]
+    [InlineData(true, null, null, false)]
+    [InlineData(false, "main", "playback too late (60855): up-sampling", false)] // classic path: the music's own output
+    [InlineData(false, "pulse", "starting late (-40876 us)", false)]
+    public void IsKeepAliveOutputLine_OnlyOutputClockLines_OnlyUnderTheEngine(
+        bool engineWithVlcKeepAlive, string? module, string? message, bool expected)
+    {
+        Assert.Equal(expected, VlcAudioPlayer.IsKeepAliveOutputLine(engineWithVlcKeepAlive, module, message));
+    }
+
     [Theory]
     [InlineData("Warning pulse: starting late (-1270511 us)", "Warning pulse: starting late (-# us)")]
     [InlineData("Warning main: playback way too late (993212): flushing buffers", "Warning main: playback way too late (#): flushing buffers")]

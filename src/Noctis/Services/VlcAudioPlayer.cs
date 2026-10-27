@@ -6215,10 +6215,39 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     internal static bool IsBenignVlcLogLine(string? module, string? message)
         => module == "imem" && message == "Invalid get/release function pointers";
 
+    /// <summary>
+    /// Whether a VLC line can only have come from the Linux keep-alive's silent stream
+    /// (<see cref="VlcSilenceKeepAlive"/>) when the splice engine renders the music.
+    /// The engine's players output through amem, which has no time_get (amem.c), so
+    /// VLC's drift correction (aout_DecSynchronize: "playback too late … up-sampling",
+    /// "playback way too early … playing silence", "timing screwed") returns before it
+    /// says or does anything for them; the keep-alive is the only player left on a real
+    /// output (pulse). GitHub #139: those lines in a report of skips read as the music
+    /// being resampled or flushed, but the harness (WSL, pulse null sink, process
+    /// freezes, pauses, GC storms, CPU burn) showed them only with the keep-alive on,
+    /// and the engine's delivered audio phase-continuous throughout. "buffer too late …
+    /// dropped" is checked before the output is asked anything and does hit amem, so it
+    /// is not one of them. Pure; internal for tests.
+    /// </summary>
+    internal static bool IsKeepAliveOutputLine(bool engineWithVlcKeepAlive, string? module, string? message)
+    {
+        if (!engineWithVlcKeepAlive || message == null)
+            return false;
+        if (module is "pulse" or "vlcpulse")
+            return true;
+        return module == "main" &&
+               (message.StartsWith("playback too late", StringComparison.Ordinal) ||
+                message.StartsWith("playback too early", StringComparison.Ordinal) ||
+                message.StartsWith("playback way too", StringComparison.Ordinal) ||
+                message.StartsWith("timing screwed", StringComparison.Ordinal));
+    }
+
     private void OnVlcLogForBridge(object? sender, LogEventArgs e)
     {
         if (IsBenignVlcLogLine(e.Module, e.Message)) return;
-        var msg = $"{e.Level} {e.Module}: {e.Message}";
+        var msg = IsKeepAliveOutputLine(_gaplessEngine && _keepAlive is VlcSilenceKeepAlive, e.Module, e.Message)
+            ? $"{e.Level} {e.Module} (keep-alive): {e.Message}"
+            : $"{e.Level} {e.Module}: {e.Message}";
         var now = Stopwatch.GetTimestamp();
 
         // Runs on the VLC thread that emitted the line, so everything under this lock
