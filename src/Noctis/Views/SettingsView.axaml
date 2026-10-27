@@ -2283,6 +2283,33 @@
                 </StackPanel>
             </Border>
 
+            <!-- GitHub #145: the whole interface larger or smaller, live, in every window
+                 (UiScale). A picker, not a slider: each step re-lays out the whole app,
+                 the slider under the pointer included. -->
+            <Border Classes="setting-card group-card" Margin="0,14,0,0">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.UiScale}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.UiScaleHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="UiScaleCombo"
+                              AutomationProperties.Name="{loc:T Settings.UiScale}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding UiScaleOptions}"
+                              SelectedItem="{Binding SelectedUiScaleOption}"
+                              MinWidth="180"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
+            </StackPanel>
+            </Border>
+
             <Border Classes="setting-card group-card" Margin="0,14,0,10">
             <StackPanel>
             <Border Classes="setting-row" IsVisible="{Binding IsLiquidGlassSupported}">

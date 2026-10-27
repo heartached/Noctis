@@ -191,6 +191,30 @@ public class PersistenceService : IPersistenceService
         }
     }
 
+    /// <summary>
+    /// One integer setting straight from <c>settings.json</c>, for the few the UI needs before
+    /// its first window is built (the interface size). Missing file, missing key, a
+    /// non-integer or a damaged file read as <paramref name="fallback"/>.
+    /// </summary>
+    public static int ReadIntSettingAtLaunch(string dataDirectory, string propertyName, int fallback)
+    {
+        try
+        {
+            var path = Path.Combine(dataDirectory, "settings.json");
+            if (!File.Exists(path)) return fallback;
+            using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty(JsonNamingPolicy.CamelCase.ConvertName(propertyName), out var value) &&
+                   value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)
+                ? number
+                : fallback;
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
     private string SettingsBackupPath => SettingsPath + ".bak";
 
     // settings.json has several writers that each load it, change a field or two of their own

@@ -538,6 +538,18 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Below this the slider reads Off and no blur is drawn (the thumb at the far left).</summary>
     public const double BackgroundBlurOffBelow = 0.005;
 
+    /// <summary>Interface Size (GitHub #145): the whole UI drawn at this percent of normal, on
+    /// every platform (the OS text-size settings never reach the app). One of
+    /// <see cref="UiScaleChoices"/>; 100 = unchanged.</summary>
+    public int UiScalePercent { get; set; } = 100;
+
+    /// <summary>The Settings picker's choices for <see cref="UiScalePercent"/>.</summary>
+    public static IReadOnlyList<int> UiScaleChoices { get; } = new[] { 90, 100, 110, 125, 150, 175, 200 };
+
+    /// <summary>The nearest of <see cref="UiScaleChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapUiScale(int percent) =>
+        UiScaleChoices.MinBy(c => Math.Abs((long)c - percent));
+
     /// <summary>Opacity of the white track box (song info card) inside the playback bar
     /// (0 = no box, 1 = solid white). Default 0.07 is the reference LCD's soft lift.</summary>
     public double PlaybackBarTrackBoxOpacity { get; set; } = 0.07;
@@ -1047,6 +1059,7 @@ public class AppSettings : IJsonOnDeserializing
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
+        UiScalePercent = SnapUiScale(UiScalePercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         BackgroundBlurAmount = double.IsFinite(BackgroundBlurAmount)
             ? Math.Clamp(BackgroundBlurAmount, 0, 1)

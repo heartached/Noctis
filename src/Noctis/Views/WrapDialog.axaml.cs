@@ -40,8 +40,9 @@ public partial class WrapDialog : Window
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ClientSizeProperty)
-            FitToWindow(ClientSize);
+        // Interface Size (GitHub #145) changes the room the card has without a resize.
+        if (change.Property == ClientSizeProperty || change.Property == Helpers.UiScale.AppliedProperty)
+            FitToWindow(Helpers.UiScale.ContentSize(this));
     }
 
     /// <summary>The card at its designed size, or smaller to fit a small window (the report

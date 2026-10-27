@@ -109,6 +109,11 @@ internal class Program
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.HeadphoneSurround));
             VlcAudioPlayer.OutputDeviceAtLaunch = PersistenceService.ReadStringSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.AudioOutputDeviceId));
+            // The interface size (GitHub #145) before the main window is built, so it opens at
+            // its size instead of jumping there when the settings load lands.
+            Noctis.Helpers.UiScale.SetFactor(Noctis.Models.AppSettings.SnapUiScale(
+                PersistenceService.ReadIntSettingAtLaunch(AppPaths.DataRoot,
+                    nameof(Noctis.Models.AppSettings.UiScalePercent), 100)) / 100.0);
             _ = Task.Run(() =>
             {
                 try { provider.GetRequiredService<IAudioPlayer>(); }

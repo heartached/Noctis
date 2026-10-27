@@ -37,6 +37,8 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        // Interface Size (GitHub #145): every window gets its scale host from here on.
+        Noctis.Helpers.UiScale.Install();
 
         // Cache heavy views so they aren't recreated on every navigation.
         // Views with complex templates (virtualized lists, context menus)

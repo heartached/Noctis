@@ -838,6 +838,41 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Settings ▸ Appearance ▸ Interface Size (GitHub #145), in percent; applied live
+    /// to every window through UiScale.</summary>
+    [ObservableProperty] private int _uiScalePercent = 100;
+
+    /// <summary>One row of the Interface Size picker.</summary>
+    public sealed record UiScaleOption(int Percent, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<UiScaleOption> UiScaleOptions
+    {
+        get => _uiScaleOptions;
+        private set => SetProperty(ref _uiScaleOptions, value);
+    }
+    private IReadOnlyList<UiScaleOption> _uiScaleOptions = BuildUiScaleOptions();
+
+    private static IReadOnlyList<UiScaleOption> BuildUiScaleOptions() =>
+        AppSettings.UiScaleChoices
+            .Select(p => new UiScaleOption(p, p == 100
+                ? Loc.T("Settings.UiScaleDefault", p)
+                : Loc.T("Settings.UiScalePercent", p)))
+            .ToList();
+
+    public UiScaleOption? SelectedUiScaleOption
+    {
+        get => UiScaleOptions.FirstOrDefault(o => o.Percent == UiScalePercent);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            UiScalePercent = value.Percent;
+        }
+    }
+
     /// <summary>GitHub #71: drops import into the library (default) or play/queue in place.</summary>
     [ObservableProperty] private bool _importDroppedMedia = true;
 
@@ -1015,6 +1050,8 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshFlowingStyleOptions();
         PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
+        UiScaleOptions = BuildUiScaleOptions();
+        OnPropertyChanged(nameof(SelectedUiScaleOption));
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
@@ -3029,6 +3066,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             BackgroundBlurAmount = Math.Clamp(_settings.BackgroundBlurAmount, 0, 1);
             Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(BackgroundBlurAmount);
+            UiScalePercent = AppSettings.SnapUiScale(_settings.UiScalePercent);
             PlaybackBarTrackBoxOpacity = Math.Clamp(_settings.PlaybackBarTrackBoxOpacity, 0, 1);
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
@@ -3512,6 +3550,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeShowHeavyRotation = HomeShowHeavyRotation;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.BackgroundBlurAmount = Math.Clamp(BackgroundBlurAmount, 0, 1);
+        _settings.UiScalePercent = AppSettings.SnapUiScale(UiScalePercent);
         _settings.PlaybackBarTrackBoxOpacity = Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1);
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
@@ -4443,6 +4482,20 @@ public partial class SettingsViewModel : ViewModelBase
         // Slider-driven: only the fade length moved (see OnCrossfadeDurationChanged).
         _audioPlayer?.SetPlayPauseFade(PlayPauseFadeEnabled, (int)Math.Round(PlayPauseFadeMs));
         if (_settingsLoaded) QueueSettingsSave();
+    }
+
+    partial void OnUiScalePercentChanged(int value)
+    {
+        var snapped = AppSettings.SnapUiScale(value);
+        if (snapped != value)
+        {
+            UiScalePercent = snapped;
+            return;
+        }
+        OnPropertyChanged(nameof(SelectedUiScaleOption));
+        // Live: every open window re-lays out at the new size (and so does the next one).
+        Noctis.Helpers.UiScale.SetFactor(value / 100.0);
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
     partial void OnPlayCountThresholdPercentChanged(int value)
@@ -7413,6 +7466,7 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
             BackgroundBlurAmount = defaultSettings.BackgroundBlurAmount;
+            UiScalePercent = defaultSettings.UiScalePercent;
             PlaybackBarTrackBoxOpacity = defaultSettings.PlaybackBarTrackBoxOpacity;
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
             MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;

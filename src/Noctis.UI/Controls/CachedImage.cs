@@ -4,6 +4,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.Services;
 
 namespace Noctis.Controls;
@@ -162,7 +163,7 @@ public class CachedImage : Image
     {
         var fast = FastDownscale && Source is Bitmap bitmap
             && IsMildDownscale(Bounds.Size, bitmap.Size, bitmap.PixelSize, Stretch, StretchDirection,
-                (VisualRoot as TopLevel)?.RenderScaling ?? 1.0);
+                UiScale.DeviceScaling(this));
         if (fast)
         {
             if (_configuredInterpolation != null) return;
@@ -234,6 +235,7 @@ public class CachedImage : Image
         base.OnAttachedToVisualTree(e);
         _attached = true;
         ArtworkCache.Invalidated += OnArtworkInvalidated;
+        UiScale.Changed += OnUiScaleChanged;
         if (PixelExact)
         {
             // A Viewbox rescales without re-arranging what is inside it: watch it directly.
@@ -248,6 +250,7 @@ public class CachedImage : Image
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ArtworkCache.Invalidated -= OnArtworkInvalidated;
+        UiScale.Changed -= OnUiScaleChanged;
         _attached = false;
         _exactResizeTimer?.Stop();
         if (_viewbox != null)
@@ -261,6 +264,10 @@ public class CachedImage : Image
         SetSource(null);
         base.OnDetachedFromVisualTree(e);
     }
+
+    // A new Interface Size leaves a fixed-size slot's arrange alone (same rect), so the decode
+    // would keep its old pixel size: re-arrange, and ArrangeOverride sees the new scaling.
+    private void OnUiScaleChanged(object? sender, EventArgs e) => InvalidateArrange();
 
     /// <summary>Width of the slot the control was last arranged into, in logical px.</summary>
     private double _slotWidth;
@@ -279,8 +286,9 @@ public class CachedImage : Image
         var width = double.IsNaN(finalSize.Width) || double.IsInfinity(finalSize.Width) ? 0 : finalSize.Width;
         var height = double.IsNaN(finalSize.Height) || double.IsInfinity(finalSize.Height) ? 0 : finalSize.Height;
         // The scaling counts too: a window moved to a monitor with another one re-arranges
-        // at the same logical size and needs a decode of another pixel size.
-        var scaling = (VisualRoot as TopLevel)?.RenderScaling ?? 1.0;
+        // at the same logical size and needs a decode of another pixel size. So does the
+        // Interface Size (GitHub #145): at 150% the same slot covers 1.5× the pixels.
+        var scaling = UiScale.DeviceScaling(this);
         var changed = width != _slotWidth || height != _slotHeight || scaling != _arrangedScaling;
         _slotWidth = width;
         _slotHeight = height;
@@ -359,7 +367,7 @@ public class CachedImage : Image
     {
         var cap = ArtworkCache.NormalizeDecodeWidth(DecodeWidth);
         if (_slotWidth <= 0) return cap;
-        var scale = (VisualRoot as TopLevel)?.RenderScaling ?? 1.0;
+        var scale = UiScale.DeviceScaling(this);
         if (PixelExact)
             return ExactDecodeWidth(new Size(_slotWidth, _slotHeight), scale * ViewboxScale(), Stretch);
         var device = (int)Math.Ceiling(_slotWidth * scale);

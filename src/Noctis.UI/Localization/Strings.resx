@@ -381,6 +381,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Background Blur</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
   <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>How blurred the app looks behind pop-ups like the metadata editor and behind Settings. Slide all the way left to turn it off.</value><comment>Settings slider description (Background Blur)</comment></data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Off</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
+  <data name="Settings.UiScale" xml:space="preserve"><value>Interface Size</value><comment>Settings heading (Appearance): scale of the whole interface, GitHub #145</comment></data>
+  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Makes all text, buttons, lists and icons larger or smaller in every window. In a window too small for the chosen size, the interface grows only as far as the window allows.</value><comment>Settings description (Interface Size)</comment></data>
+  <data name="Settings.UiScalePercent" xml:space="preserve"><value>{0}%</value><comment>Interface Size choice; {0} = percent of the normal size (SettingsViewModel)</comment></data>
+  <data name="Settings.UiScaleDefault" xml:space="preserve"><value>{0}% (default)</value><comment>Interface Size choice for the normal size; {0} = 100 (SettingsViewModel)</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How solid the mini player's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>

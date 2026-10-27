@@ -13,11 +13,17 @@
         MinWidth="160" MinHeight="140"
         MaxWidth="960" MaxHeight="840"
         CanResize="True"
+        helpers:UiScale.Exclude="True"
         Topmost="True"
         WindowDecorations="None"
         Background="Transparent"
         WindowStartupLocation="Manual">
 
+    <!-- Interface Size (GitHub #145) leaves this window at 100% (UiScale.Exclude): its code
+         sizes the WINDOW from its content's own sizes — each design's canonical size, the
+         form picked from ClientSize, the queue/lyrics drawer animating Window.Height, the
+         rounded window region cut from control bounds — all in the same DIPs. A scaled
+         content layer would put those two unit systems apart. -->
     <Window.Resources>
         <!-- Lossless waveform mark. Hoisted to a resource now that two forms (Card and
              Large icon) draw the quality badge — kept local to this window rather than

@@ -381,6 +381,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Размытие фона</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
   <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>Насколько размыто приложение за всплывающими окнами (например, редактором метаданных) и за настройками. Сдвиньте до упора влево, чтобы выключить.</value><comment>Settings slider description (Background Blur)</comment></data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Выкл.</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
+  <data name="Settings.UiScale" xml:space="preserve"><value>Размер интерфейса</value><comment>Settings heading (Appearance): scale of the whole interface, GitHub #145</comment></data>
+  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Увеличивает или уменьшает весь текст, кнопки, списки и значки во всех окнах. Если окно слишком мало для выбранного размера, интерфейс увеличивается лишь настолько, насколько помещается.</value><comment>Settings description (Interface Size)</comment></data>
+  <data name="Settings.UiScalePercent" xml:space="preserve"><value>{0}%</value><comment>Interface Size choice; {0} = percent of the normal size (SettingsViewModel)</comment></data>
+  <data name="Settings.UiScaleDefault" xml:space="preserve"><value>{0}% (по умолчанию)</value><comment>Interface Size choice for the normal size; {0} = 100 (SettingsViewModel)</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Непрозрачность мини-плеера</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>Насколько плотным выглядит фон мини-плеера.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Матовый фон</value><comment>Text in SettingsView.axaml</comment></data>

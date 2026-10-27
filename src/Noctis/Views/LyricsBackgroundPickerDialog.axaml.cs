@@ -78,7 +78,8 @@ public partial class LyricsBackgroundPickerDialog : Window
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ClientSizeProperty) FitCard();
+        // Interface Size (GitHub #145) changes the room the card has without a resize.
+        if (change.Property == ClientSizeProperty || change.Property == Helpers.UiScale.AppliedProperty) FitCard();
     }
 
     /// <summary>A fixed card height, so the card does not jump while a search fills or empties
@@ -88,7 +89,7 @@ public partial class LyricsBackgroundPickerDialog : Window
     {
         // ClientSize already changes inside InitializeComponent, before the field is set.
         if (CardRoot is not { } card) return;
-        var room = ClientSize.Height - CardInset;
+        var room = Helpers.UiScale.ContentSize(this).Height - CardInset;
         card.Height = room > 0 ? Math.Clamp(room, MinCardHeight, PreferredCardHeight) : PreferredCardHeight;
     }
 
