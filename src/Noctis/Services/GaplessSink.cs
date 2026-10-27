@@ -149,23 +149,12 @@ public sealed class GaplessSink : IDisposable
         _idle = new IdleWatch(_idleStopMs, SampleRate * Channels * StartThresholdMs / 1000, Environment.TickCount64);
         // NOCTIS_ENGINE_TAP=1 (or =<path>): capture exactly what the engine
         // renders to a WAV so glitches can be inspected sample-by-sample
-        // instead of by ear. Diagnostic only — never breaks rendering.
+        // instead of by ear. Diagnostic only — never breaks rendering. It wraps the
+        // provider, ahead of the chain below: it used to replace the finished chain
+        // with a tap on the bare provider, so with the tap on, mute and the Linux
+        // volume did nothing (harness 10-27: a muted, volume-10 sine stayed at full
+        // level on the pulse null sink).
         ISampleProvider renderSource = Provider;
-        // Mute lives HERE, after the staged ring, not in LibVLC: VLC's mute is software
-        // gain on the blocks it hands us, so with seconds staged ahead it was heard ~2 s
-        // late (and unmute ~2 s late again, the ring being full of zeros by then). The
-        // gate ramps over a few ms and is a pure pass-through when open.
-        _muteGate = new MuteGateProvider(renderSource);
-        renderSource = _muteGate;
-        // Beat pulse for the flowing-artwork lyrics background: tapped post-mute so a
-        // muted player shows a still backdrop, stamped with this sink's output depth
-        // so the visual beat lands when the audible one does.
-        renderSource = new BeatTapProvider(renderSource, RequestedOutputLatencyMs);
-        // The user's volume where no OS session carries it (Linux, see LevelControl).
-        // After the beat tap, like the Windows session level, so the visuals do not
-        // follow the slider. A pass-through at level 1, which Windows never leaves.
-        _level = new OutputLevelProvider(renderSource);
-        renderSource = _level;
         var tap = Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP");
         if (!string.IsNullOrEmpty(tap))
         {
@@ -181,6 +170,21 @@ public sealed class GaplessSink : IDisposable
                 DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.TapFailed", ex.Message);
             }
         }
+        // Mute lives HERE, after the staged ring, not in LibVLC: VLC's mute is software
+        // gain on the blocks it hands us, so with seconds staged ahead it was heard ~2 s
+        // late (and unmute ~2 s late again, the ring being full of zeros by then). The
+        // gate ramps over a few ms and is a pure pass-through when open.
+        _muteGate = new MuteGateProvider(renderSource);
+        renderSource = _muteGate;
+        // Beat pulse for the flowing-artwork lyrics background: tapped post-mute so a
+        // muted player shows a still backdrop, stamped with this sink's output depth
+        // so the visual beat lands when the audible one does.
+        renderSource = new BeatTapProvider(renderSource, RequestedOutputLatencyMs);
+        // The user's volume where no OS session carries it (Linux, see LevelControl).
+        // After the beat tap, like the Windows session level, so the visuals do not
+        // follow the slider. A pass-through at level 1, which Windows never leaves.
+        _level = new OutputLevelProvider(renderSource);
+        renderSource = _level;
         // Always-on stall probe: the render thread is MANAGED — a scheduler
         // stall freezes it, the device buffer underruns, and the glitch is
         // audible in the air but invisible to any PCM tap. Logging inter-read
