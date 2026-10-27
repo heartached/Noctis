@@ -6864,8 +6864,4 @@
     <value>红宝石</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
-  <data name="Settings.AppIcon.Neon" xml:space="preserve">
-    <value>霓虹</value>
-    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
-  </data>
 </root>

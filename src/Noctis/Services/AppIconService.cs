@@ -24,7 +24,7 @@ public static class AppIconService
     public static IReadOnlyList<string> Ids { get; } = new[]
     {
         "classic", "dark", "blush", "sky", "sunset", "violet", "aurora",
-        "midnight", "graphite", "ruby", "neon",
+        "midnight", "graphite", "ruby",
     };
 
     private static readonly Dictionary<string, WindowIcon> s_cache = new(StringComparer.Ordinal);

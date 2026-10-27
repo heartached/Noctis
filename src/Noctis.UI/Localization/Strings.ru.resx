@@ -2905,5 +2905,4 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Полночь</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Graphite" xml:space="preserve"><value>Графит</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Рубин</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
-  <data name="Settings.AppIcon.Neon" xml:space="preserve"><value>Неон</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
 </root>

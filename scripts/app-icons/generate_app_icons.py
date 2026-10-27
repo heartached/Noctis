@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates Noctis's app icons: the classic red disc plus ten gradient/frosted variants.
+"""Generates Noctis's app icons: the classic red disc plus nine gradient/frosted variants.
 
 Every output size is rendered on its own from the vector-ish description below (analytic
 disc, analytic gradients, the note glyph taken from the 2000 px source logo) at a ~2048 px
@@ -148,11 +148,6 @@ VARIANTS = [
          blobs=[(0.2, 0.12, 0.45, "#FF6F7F", 0.40)],
          note=dict(stops=[(0.0, "#FFFFFF"), (1.0, "#FFE6EA")], top=1.0, bottom=0.9, white_edge=0.3),
          glow=("#FF5A6E", 0.30), shadow=("#1A0006", 0.40), rim=(0.25, 0.0)),
-    dict(id="neon", name="Neon", dark=True,
-         bg=(110, [(0.0, "#1C0F3A"), (1.0, "#08040F")]),
-         blobs=[(0.5, 0.55, 0.5, "#9B3CFF", 0.60), (0.85, 0.15, 0.35, "#FF4FD8", 0.30)],
-         note=dict(stops=[(0.0, "#FFFFFF"), (1.0, "#F1E4FF")], top=1.0, bottom=0.9, white_edge=0.3),
-         glow=("#C26BFF", 0.70), shadow=("#000000", 0.30), rim=(0.16, 0.0)),
 ]
 
 

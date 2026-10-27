@@ -491,6 +491,18 @@ public partial class App : Application
         new AccentPreset("Sand",       "#D8B384"),
         new AccentPreset("Slate",      "#5B6C8F"),
         new AccentPreset("Silver",     "#B8BCC4"),
+        // Row 4 — pastels, deep tones and a neutral; the custom picker completes the row
+        new AccentPreset("Peach",      "#FFB59A"),
+        new AccentPreset("Mauve",      "#9C6B98"),
+        new AccentPreset("Plum",       "#6E2C68"),
+        new AccentPreset("Periwinkle", "#7C8CF8"),
+        new AccentPreset("Ocean",      "#136F8C"),
+        new AccentPreset("Mint",       "#8FE3C4"),
+        new AccentPreset("Sage",       "#95AB86"),
+        new AccentPreset("Forest",     "#22714A"),
+        new AccentPreset("Chartreuse", "#C5DC3B"),
+        new AccentPreset("Bronze",     "#A8743F"),
+        new AccentPreset("Ash",        "#8E9196"),
     };
 
     private ResourceDictionary? _activeAccentOverlay;
