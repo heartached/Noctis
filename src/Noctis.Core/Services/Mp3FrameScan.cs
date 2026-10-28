@@ -81,9 +81,13 @@ internal static class Mp3FrameScan
         if (!vbr) return false;
 
         // Walk every frame. A gap (junk, a damaged frame) resyncs on the next valid pair of
-        // headers; an ID3v1/APE tag at the end ends the walk.
-        long samples = 0, audioBytes = 0;
-        var sampleRate = firstFrame.SampleRate;
+        // headers; an ID3v1/APE tag at the end ends the walk. The pair sets the format counted
+        // from there on, so a file joined from recordings of different sample rates counts
+        // every part: matching only the first frame's format stopped the count at the join
+        // and the player clamped every seek there.
+        double seconds = 0;
+        long audioBytes = 0;
+        var current = firstFrame;
         var block = new byte[WalkBlockBytes + 4096];
         var blockStart = audioStart;
         var filled = 0;
@@ -101,15 +105,18 @@ internal static class Mp3FrameScan
                 filled = keep + stream.ReadAtLeast(block.AsSpan(keep), block.Length - keep, throwOnEndOfStream: false);
                 if (filled < 4) break;
             }
-            if (TryReadHeader(block.AsSpan(pos, filled - pos), out var frame) && frame.SampleRate == sampleRate &&
-                frame.Version == firstFrame.Version && blockStart + pos + frame.Length <= length)
+            var whole = TryReadHeader(block.AsSpan(pos, filled - pos), out var frame) &&
+                        blockStart + pos + frame.Length <= length;
+            if (whole && frame.SampleRate == current.SampleRate && frame.Version == current.Version)
             {
-                samples += frame.Samples;
+                seconds += (double)frame.Samples / frame.SampleRate;
                 audioBytes += frame.Length;
                 pos += frame.Length;
                 continue;
             }
-            var next = FindFrame(block, pos + 1, filled - pos - 1, out _, firstFrame);
+            // A whole frame of another format starts a new part if the next header confirms it
+            // (FindFrame then returns pos itself); anything else is searched past.
+            var next = FindFrame(block.AsSpan(0, filled), whole ? pos : pos + 1, filled - pos - 1, out var found);
             if (next < 0)
             {
                 if (filled < block.Length) break; // the end of the file
@@ -117,11 +124,11 @@ internal static class Mp3FrameScan
                 pos = Math.Max(pos + 1, filled - 2048);
                 continue;
             }
+            current = found;
             pos = next;
         }
 
-        if (samples <= 0 || sampleRate <= 0) return false;
-        var seconds = (double)samples / sampleRate;
+        if (seconds <= 0) return false;
         duration = TimeSpan.FromSeconds(seconds);
         averageKbps = (int)Math.Round(audioBytes * 8d / seconds / 1000d);
         return true;

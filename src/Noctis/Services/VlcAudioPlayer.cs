@@ -294,6 +294,27 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private int _devBridgeRingNext;
     private long _devBridgeLastContextTicks;
 
+    // ── Decoder wedge watch (always on; see DecoderWedgeDetector) ──
+    // Only Error lines reach the handler at the default verbosity, so it costs nothing
+    // while playback is healthy.
+    private readonly object _decoderWedgeLock = new();
+    private readonly DecoderWedgeDetector _decoderWedge = new();
+    private string? _decoderWedgePath;
+    private int _decoderWedgeAttempts;
+    private long _decoderWedgeLastMs;
+    // Files that wedged mpg123 this session: opened on FFmpeg's MP3 decoder from then on,
+    // which resyncs over damaged data instead of failing every frame after it.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _avcodecMp3Paths =
+        new(StringComparer.FromComparison(Helpers.PathComparison.Comparison));
+    // After a storm, act only once the audible position stands still while the errors keep
+    // coming: the line names no player (the standby one may be preparing a file), and the
+    // engine ring still plays out what was decoded before the damage. Harness: ~4 s of
+    // buffered audio after the first error; a check after a fixed 600 ms saw it advancing.
+    private const int DecoderWedgePollMs = 250;
+    private const int DecoderWedgeWatchMs = 10_000;
+    private long _decoderWedgeLastLineMs;
+    private int _decoderWedgeWatching;
+
     // Serializes Play/Stop operations so rapid track switching
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
     private readonly SemaphoreSlim _playbackLock = new(1, 1);
@@ -646,6 +667,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             _libVlc.SetAppId("com.heartached.noctis", "1.0", "noctis");
         }
         catch { /* cosmetic only — never block playback on naming */ }
+
+        try { _libVlc.Log += OnVlcLogForDecoderWedge; }
+        catch { /* recovery is best-effort; never block playback on it */ }
 
         if (vlcDiag)
         {
@@ -2803,6 +2827,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (!isRemote)
                     ApplyReadAhead(media);
                 mp3TailTrimFrames = ApplyMp3Demux(media, normalizedPath, startPositionMs);
+                ApplyMp3DecoderFallback(media, normalizedPath);
                 CountMp3Length(normalizedPath);
                 // Off the engine the playback-speed button is LibVLC's rate; only
                 // media opened with time-stretch keep their pitch at ≠ 1×.
@@ -3451,6 +3476,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (pendingMs > 0)
                 _currentMedia.AddOption(FormattableString.Invariant($":start-time={pendingMs / 1000.0:0.###}"));
             var mp3TailTrimFrames = isPathless ? 0 : ApplyMp3Demux(_currentMedia, filePath, pendingMs);
+            ApplyMp3DecoderFallback(_currentMedia, filePath);
             if (!isPathless) CountMp3Length(filePath);
 
             // Exclusive mode: open/reuse the device sink at this track's source
@@ -4784,6 +4810,144 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.GaplessOpen",
             $"path={LogName(path)}, demux=avformat, startMs={startMs}, tailTrimFrames={frames}");
         return frames;
+    }
+
+    /// <summary>
+    /// A file that wedged LibVLC's mpg123 decoder this session (see DecoderWedgeDetector)
+    /// opens on FFmpeg's MP3 decoder instead, which skips damaged bytes and plays on
+    /// (harness: the junk file plays straight through on it). ",any" keeps a libvlc
+    /// without the avcodec plugin (plain Linux installs) playing on mpg123.
+    /// </summary>
+    private void ApplyMp3DecoderFallback(Media media, string path)
+    {
+        if (string.IsNullOrEmpty(path) || !_avcodecMp3Paths.ContainsKey(path)) return;
+        media.AddOption(":codec=avcodec,any");
+        DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DecoderFallback", $"path={LogName(path)}, codec=avcodec");
+    }
+
+    internal enum DecoderWedgeAction { ReopenOnAvcodec, SkipAhead, GiveUp }
+
+    /// <summary>
+    /// What to do about the <paramref name="attempt"/>th wedge on one file (attempts reset
+    /// after a minute without one). First reopen at the stuck position on FFmpeg's decoder,
+    /// losing nothing; if it wedges again anyway (no avcodec plugin), seek past the damage,
+    /// a little further each time, since a seek flushes the decoder; after that, give up on
+    /// the file so the queue moves on instead of sitting silent. Pure; internal for tests.
+    /// </summary>
+    internal static DecoderWedgeAction ChooseDecoderWedgeAction(bool alreadyOnAvcodec, int attempt)
+        => attempt >= 4 ? DecoderWedgeAction.GiveUp
+            : alreadyOnAvcodec ? DecoderWedgeAction.SkipAhead
+            : DecoderWedgeAction.ReopenOnAvcodec;
+
+    /// <summary>How far past the stuck position the <paramref name="attempt"/>th skip lands. Pure.</summary>
+    internal static long DecoderWedgeSkipMs(int attempt) => 1000L * Math.Max(1, attempt);
+
+    // VLC thread: count only, never call into libvlc here.
+    private void OnVlcLogForDecoderWedge(object? sender, LogEventArgs e)
+    {
+        try
+        {
+            if (_disposed || e.Level != LogLevel.Error || !DecoderWedgeDetector.IsWedgeLine(e.Module, e.Message))
+                return;
+            int errors;
+            var now = Environment.TickCount64;
+            Volatile.Write(ref _decoderWedgeLastLineMs, now);
+            lock (_decoderWedgeLock)
+            {
+                if (!_decoderWedge.Accept(now)) return;
+                errors = _decoderWedge.LastStormErrors;
+            }
+            // One watcher at a time; a storm that outlives it is reported again.
+            if (Interlocked.CompareExchange(ref _decoderWedgeWatching, 1, 0) != 0) return;
+            var sessionId = CurrentSessionId;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { RecoverFromDecoderWedge(sessionId, errors); }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "Decoder.WedgeRecovery.Threw", ex.Message);
+                }
+                finally { Volatile.Write(ref _decoderWedgeWatching, 0); }
+            });
+        }
+        catch { /* an exception into native code kills the process */ }
+    }
+
+    private void RecoverFromDecoderWedge(long sessionId, int errors)
+    {
+        var started = Environment.TickCount64;
+        var prev = HeardPositionMs();
+        long atMs;
+        while (true)
+        {
+            Thread.Sleep(DecoderWedgePollMs);
+            if (_disposed || sessionId != CurrentSessionId || _isPaused) return;
+            var cur = HeardPositionMs();
+            var now0 = Environment.TickCount64;
+            if (now0 - Volatile.Read(ref _decoderWedgeLastLineMs) > 1000)
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
+                    $"errors={errors}, reason=stormEnded, positionMs={cur}");
+                return;
+            }
+            if (cur - prev < DecoderWedgePollMs / 5)
+            {
+                atMs = cur;
+                break;
+            }
+            prev = cur;
+            if (now0 - started > DecoderWedgeWatchMs)
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
+                    $"errors={errors}, reason=positionAdvancing, positionMs={cur}");
+                return;
+            }
+        }
+        var path = _currentMediaPath;
+        if (string.IsNullOrEmpty(path)) return;
+
+        int attempt;
+        var now = Environment.TickCount64;
+        lock (_decoderWedgeLock)
+        {
+            if (!string.Equals(_decoderWedgePath, path, StringComparison.Ordinal) || now - _decoderWedgeLastMs > 60_000)
+            {
+                _decoderWedgePath = path;
+                _decoderWedgeAttempts = 0;
+            }
+            attempt = ++_decoderWedgeAttempts;
+            _decoderWedgeLastMs = now;
+        }
+        var action = ChooseDecoderWedgeAction(_avcodecMp3Paths.ContainsKey(path), attempt);
+        var at = TimeSpan.FromMilliseconds(atMs);
+        var summary = $"decoder=mpg123, errors={errors}, atMs={atMs}, attempt={attempt}, action={action}, path={LogName(path)}";
+        DebugLogger.Warn(DebugLogger.Category.Playback, "Decoder.Wedged", summary);
+        // The session log too: this is the line a user's Copy Logs has to show.
+        DebugLog.Write("Audio", $"MP3 decoder stuck on damaged data at {at:h\\:mm\\:ss} ({errors} errors); {action switch
+        {
+            DecoderWedgeAction.ReopenOnAvcodec => "reopening the file there on the FFmpeg decoder",
+            DecoderWedgeAction.SkipAhead => $"skipping {DecoderWedgeSkipMs(attempt) / 1000} s ahead",
+            _ => "giving up on this track",
+        }} — {LogName(path)}");
+
+        switch (action)
+        {
+            case DecoderWedgeAction.ReopenOnAvcodec:
+                _avcodecMp3Paths.TryAdd(path, 0);
+                // The Seek.Restart mechanism: a fresh open at the position.
+                lock (_seekGate) { _latestSeekMs = -1; }
+                _positionTimer.Stop();
+                Interlocked.Exchange(ref _pendingSeekMs, atMs > 0 ? atMs : -1);
+                _restartPausedRequest = false;
+                Play(path, _currentFallbackPath);
+                break;
+            case DecoderWedgeAction.SkipAhead:
+                Seek(TimeSpan.FromMilliseconds(atMs + DecoderWedgeSkipMs(attempt)));
+                break;
+            default:
+                PlaybackError?.Invoke(this, $"The MP3 decoder kept failing on damaged data at {at:h\\:mm\\:ss}.");
+                break;
+        }
     }
 
     /// <summary>
@@ -6133,6 +6297,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             _equalizer = null;
         }
         DebugLog.VlcBridgeChanged -= OnVlcBridgeChanged;
+        try { _libVlc.Log -= OnVlcLogForDecoderWedge; } catch { }
         lock (_devBridgeLock)
         {
             if (_devBridgeAttached)

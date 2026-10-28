@@ -69,6 +69,20 @@ public class VlcLogBridgeTests
     }
 
     [Fact]
+    public void ASummaryWrittenLongAfterItsWindow_SaysHowOldTheLineIs()
+    {
+        // Discord 10-28: four seeks in 6 s, the fourth DEMUX_SET_TIME held back; the next
+        // VLC line came 31 min later and carried the summary with it.
+        var c = new VlcLogCollapser();
+        for (var i = 0; i < 4; i++)
+            c.Accept($"Warning avcodec: DEMUX_SET_TIME: {1672268000 + i}", i * 2000);
+
+        var late = c.Accept("Error mpg123: mpg123_decode_frame error: A generic mpg123 error.", 6000 + 1_873_000);
+        Assert.NotNull(late);
+        Assert.Equal("×1 more like this in 6 s, last one 31 min 13 s ago: Warning avcodec: DEMUX_SET_TIME: 1672268003", late![0]);
+    }
+
+    [Fact]
     public void AnotherShape_IsNeverHeldBackByAStorm()
     {
         var c = new VlcLogCollapser();

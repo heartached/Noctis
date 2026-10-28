@@ -99,13 +99,28 @@ internal sealed class VlcLogCollapser
             if (run.Suppressed > 0)
             {
                 var spanSec = Math.Max(1, (run.LastSuppressedMs - run.WindowStartMs + 999) / 1000);
-                (output ??= new()).Add($"×{run.Suppressed} more like this in {spanSec} s: {run.LastSuppressed}");
+                // A summary is only written when the next line arrives, which can be long
+                // after the window closed, and the log stamps it with that later time. Say
+                // how old the held-back line is, or it reads as happening now (Discord
+                // 10-28: a seek's "DEMUX_SET_TIME" summary landed 31 min late, beside an
+                // unrelated decoder error, and looked like a stale seek firing).
+                var agoMs = nowMs - run.LastSuppressedMs;
+                var ago = agoMs > WindowMs ? $", last one {FormatAgo(agoMs)} ago" : "";
+                (output ??= new()).Add($"×{run.Suppressed} more like this in {spanSec} s{ago}: {run.LastSuppressed}");
             }
             _expired.Add(shape);
         }
         foreach (var shape in _expired) _runs.Remove(shape);
         _expired.Clear();
         return output;
+    }
+
+    private static string FormatAgo(long ms)
+    {
+        var s = ms / 1000;
+        if (s < 60) return $"{s} s";
+        if (s < 3600) return $"{s / 60} min {s % 60} s";
+        return $"{s / 3600} h {s / 60 % 60} min";
     }
 
     private static List<string> Append(List<string>? output, string line)
