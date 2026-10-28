@@ -1,0 +1,212 @@
+name: Plugin submission
+
+# Community plugin submissions (.github/ISSUE_TEMPLATE/3-plugin-submission.yml).
+#
+#   check:   on every open / edit of a plugin-submission issue, download the release zip and
+#            check it with tools/Noctis.PluginCheck (the app's own plugin rules), then post or
+#            update one report comment.
+#   approve: when a maintainer applies the "approved" label, check again from scratch and open a
+#            pull request adding the entry to plugins/index.json. Merging that PR lists the plugin.
+#
+# Security: issue text, the zip and everything in it are untrusted. Issue text reaches the
+# steps only through env vars and files, never ${{ }} inside a script; the plugin's code is never
+# run (assemblies are read as metadata); and the jobs that touch the zip have a read-only token.
+# The jobs that write (comment, branch, PR) never run the checker, they only move its output.
+
+on:
+  issues:
+    types: [opened, edited, reopened, labeled]
+
+permissions: {}
+
+concurrency:
+  group: plugin-submission-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: >-
+      github.event.issue.state == 'open'
+      && contains(github.event.issue.labels.*.name, 'plugin-submission')
+      && (github.event.action != 'labeled' || github.event.label.name == 'plugin-submission')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build the checker
+        run: dotnet build tools/Noctis.PluginCheck/Noctis.PluginCheck.csproj -c Release
+
+      - name: Check the submission
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          GITHUB_TOKEN: ${{ github.token }} # read-only; API rate limits only
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          printf '%s' "$ISSUE_BODY" > "$RUNNER_TEMP/body.md"
+          dotnet run --project tools/Noctis.PluginCheck/Noctis.PluginCheck.csproj -c Release --no-build -- \
+            check --form "$RUNNER_TEMP/body.md" --index plugins/index.json --report "$RUNNER_TEMP/out/report.md"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: plugin-check-report
+          path: ${{ runner.temp }}/out/report.md
+          retention-days: 7
+
+  comment:
+    needs: check
+    if: always() && needs.check.result != 'skipped' && needs.check.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        continue-on-error: true
+        with:
+          name: plugin-check-report
+          path: ${{ runner.temp }}/out
+
+      - name: Post or update the report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          report="$RUNNER_TEMP/out/report.md"
+          if [ ! -s "$report" ]; then
+            mkdir -p "$RUNNER_TEMP/out"
+            printf '%s\n%s\n\n%s\n' '<!-- noctis-plugin-check -->' '## Plugin check' \
+              "The automatic check couldn't finish ([log]($RUN_URL)). A maintainer will take a look." > "$report"
+          fi
+          id=$(gh api "repos/$REPO/issues/$ISSUE/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- noctis-plugin-check -->"))) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F "body=@$report" > /dev/null
+          else
+            gh api "repos/$REPO/issues/$ISSUE/comments" -F "body=@$report" > /dev/null
+          fi
+
+  approve-prepare:
+    if: >-
+      github.event.action == 'labeled' && github.event.label.name == 'approved'
+      && github.event.issue.state == 'open'
+      && contains(github.event.issue.labels.*.name, 'plugin-submission')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      # Labels need triage access already; this also refuses anyone below write access.
+      - name: Check who approved
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SENDER: ${{ github.event.sender.login }}
+        run: |
+          perm=$(gh api "repos/$REPO/collaborators/$SENDER/permission" --jq .permission)
+          case "$perm" in
+            admin|maintain|write) echo "Approved by $SENDER ($perm)." ;;
+            *) echo "::error::$SENDER has '$perm' access; approval needs write access."; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build the checker
+        run: dotnet build tools/Noctis.PluginCheck/Noctis.PluginCheck.csproj -c Release
+
+      # Checks everything again from the current issue text and a fresh download: the earlier
+      # report is not trusted. Exits non-zero (no PR) when anything blocks listing.
+      - name: Check again and write the entry
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          printf '%s' "$ISSUE_BODY" > "$RUNNER_TEMP/body.md"
+          cp plugins/index.json "$RUNNER_TEMP/out/index.json"
+          dotnet run --project tools/Noctis.PluginCheck/Noctis.PluginCheck.csproj -c Release --no-build -- \
+            check --form "$RUNNER_TEMP/body.md" --index "$RUNNER_TEMP/out/index.json" --report "$RUNNER_TEMP/out/report.md" \
+            --apply --issue "$ISSUE" --pr-title "$RUNNER_TEMP/out/pr-title.txt" --pr-body "$RUNNER_TEMP/out/pr-body.md"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: plugin-approval
+          path: ${{ runner.temp }}/out/
+          retention-days: 7
+
+  approve-pr:
+    needs: approve-prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: plugin-approval
+          path: ${{ runner.temp }}/approval
+
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          a="$RUNNER_TEMP/approval"
+          jq -e '.schema == 1 and (.plugins | type == "array")' "$a/index.json" > /dev/null
+          cp "$a/index.json" plugins/index.json
+          branch="plugin-submission/$ISSUE"
+          git checkout -B "$branch"
+          git add plugins/index.json
+          if git diff --cached --quiet; then
+            echo "plugins/index.json already has this entry."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -F "$a/pr-title.txt"
+          git push --force origin "$branch"
+          pr=$(gh pr list -R "$GITHUB_REPOSITORY" --head "$branch" --state open --json url --jq '.[0].url')
+          if [ -z "$pr" ]; then
+            pr=$(gh pr create -R "$GITHUB_REPOSITORY" --base "$BASE" --head "$branch" --title "$(cat "$a/pr-title.txt")" --body-file "$a/pr-body.md")
+          fi
+          gh issue comment "$ISSUE" -R "$GITHUB_REPOSITORY" --body "Approved. Pull request: $pr"
+          gh issue edit "$ISSUE" -R "$GITHUB_REPOSITORY" --remove-label needs-review || true
+
+  approve-failed:
+    needs: approve-prepare
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Say why there is no pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue comment "$ISSUE" -R "$GITHUB_REPOSITORY" --body "The \`approved\` label was applied, but the check found problems again or couldn't run ([log]($RUN_URL)), so no pull request was opened. The label was removed; fix what the report lists, then apply it again."
+          gh issue edit "$ISSUE" -R "$GITHUB_REPOSITORY" --remove-label approved || true
