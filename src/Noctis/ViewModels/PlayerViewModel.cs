@@ -2746,6 +2746,16 @@ public partial class PlayerViewModel : ViewModelBase
     {
         track.PlayCount++;
         track.LastPlayed = DateTime.UtcNow;
+        // The queue can hold a pre-reload copy (a rescan of a changed file builds a new Track,
+        // LibraryService.CopyMutableTrackState). Count on the library's own too: the journal
+        // writes the library instance, so the play was lost, and library views never saw it.
+        var libraryTrack = track.IsExternal ? null : _library.GetTrackById(track.Id);
+        if (libraryTrack != null && !ReferenceEquals(libraryTrack, track))
+        {
+            libraryTrack.PlayCount++;
+            libraryTrack.LastPlayed = track.LastPlayed;
+            track = libraryTrack;
+        }
         MarkPlayStateDirty(track);
         _playHistory?.RecordPlay(track);
         PlayCounted?.Invoke(this, track);

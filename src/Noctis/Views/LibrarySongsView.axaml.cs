@@ -26,6 +26,11 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     // ctrl-selected class onto a different track when the user scrolls or
     // tabs back to the page. See MultiSelectHelper's "Data-tracked variants".
     private readonly HashSet<Track> _selectedTracks = new();
+    private DateTime _lastScrollUtc;
+
+    /// <summary>Rows selected or a scroll in the last moment: the list must hold still.</summary>
+    private bool IsUserBusy() =>
+        _selectedTracks.Count > 0 || DateTime.UtcNow - _lastScrollUtc < TimeSpan.FromSeconds(1.5);
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
@@ -43,6 +48,11 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         TrackList.AddHandler(PointerPressedEvent, OnTrackPointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a row.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
+        // A Plays re-rank waits while the user scrolls (see LibrarySongsViewModel.IsUserBusy).
+        TrackList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, e) =>
+        {
+            if (e.OffsetDelta.Y != 0) _lastScrollUtc = DateTime.UtcNow;
+        });
 
         // Attach context menu to every ListBoxItem so right-click works across the full row
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
@@ -226,13 +236,17 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null)
+        {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
+            _vm.IsUserBusy = null;
+        }
 
         _vm = DataContext as LibrarySongsViewModel;
         if (_vm != null)
         {
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
             _scrollResetFilterKey = _vm.FilterKey;
+            _vm.IsUserBusy = IsUserBusy;
         }
 
         // Reset shared menu so it picks up new VM commands
