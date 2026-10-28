@@ -190,16 +190,20 @@
             <TextBlock Classes="group-caption" Text="While Listening" />
             <Border Name="ListeningCard" Classes="group-card">
                 <StackPanel>
-                    <ToggleButton Name="SendPlaysSwitch" Classes="switch-row" AutomationProperties.Name="Send Plays"
-                                  IsChecked="{Binding SendPlays}" IsEnabled="{Binding PhoneControlsEnabled}">
-                        <TextBlock Classes="row-label" Text="Send Plays" />
-                    </ToggleButton>
-                    <Border Classes="row-separator plain" />
-                    <ToggleButton Name="NowPlayingSwitch" Classes="switch-row" AutomationProperties.Name="Show Now Playing"
-                                  IsChecked="{Binding ShowNowPlaying}" IsEnabled="{Binding PhoneControlsEnabled}">
-                        <TextBlock Classes="row-label" Text="Show Now Playing" />
-                    </ToggleButton>
-                    <Border Classes="row-separator plain" />
+                    <!-- The phone's own sending: only From This Phone has any (Through Computer, the
+                         computer sends and the phone has nothing for these to stop). -->
+                    <StackPanel Name="PhoneControls" IsVisible="{Binding PhoneControlsEnabled}">
+                        <ToggleButton Name="SendPlaysSwitch" Classes="switch-row" AutomationProperties.Name="Send Plays"
+                                      IsChecked="{Binding SendPlays}">
+                            <TextBlock Classes="row-label" Text="Send Plays" />
+                        </ToggleButton>
+                        <Border Classes="row-separator plain" />
+                        <ToggleButton Name="NowPlayingSwitch" Classes="switch-row" AutomationProperties.Name="Show Now Playing"
+                                      IsChecked="{Binding ShowNowPlaying}">
+                            <TextBlock Classes="row-label" Text="Show Now Playing" />
+                        </ToggleButton>
+                        <Border Classes="row-separator plain" />
+                    </StackPanel>
                     <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
                         <TextBlock Classes="row-label" Text="Waiting to Send" />
                         <TextBlock Name="WaitingLabel" Grid.Column="1" Classes="row-value" Text="{Binding WaitingText}" />

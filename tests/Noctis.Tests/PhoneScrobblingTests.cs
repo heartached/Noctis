@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using Noctis.Helpers;
+using Noctis.Mobile.Services.Account;
 using Noctis.Mobile.Services.Scrobbling;
 using Noctis.Mobile.ViewModels;
 using Noctis.Models;
@@ -144,6 +145,24 @@ public sealed class PhoneScrobblingTests : IDisposable
         Assert.Equal(1, s.PendingCount);
         for (var i = 0; i < 30; i++) { _time.Advance(TimeSpan.FromSeconds(1)); s.Tick(true); }
         Assert.Equal(1, s.PendingCount);              // played on: still the one play
+    }
+
+    [Fact]
+    public async Task EveryPlay_GetsOneVerdict_ForTheComputer_ByTheRouteWhenItCounted()
+    {
+        // The account recorded each play when it started; this says who sends it, if anyone.
+        var s = await Connected(fromPhone: false);
+        var verdicts = new List<(string Title, PlayScrobble Verdict)>();
+        s.PlayDecided += (t, v) => verdicts.Add((t.Title, v));
+
+        Play(s, Song("Counted"), 101);                                     // Through Computer: the computer sends it
+        Play(s, Song("Skipped"), 20);                                      // skipped: decided when the next starts
+        await s.SetFromPhoneAsync(true);
+        Play(s, Song("Mine"), 101);                                        // From This Phone: sent here, never by the computer
+        for (var i = 0; i < 30; i++) { _time.Advance(TimeSpan.FromSeconds(1)); s.Tick(true); }
+
+        Assert.Equal(new[] { ("Counted", PlayScrobble.Computer), ("Skipped", PlayScrobble.No), ("Mine", PlayScrobble.Phone) }, verdicts);
+        Assert.Equal(1, s.PendingCount);                                   // only "Mine" is queued on the phone
     }
 
     [Fact]
@@ -469,6 +488,52 @@ public sealed class PhoneScrobblingTests : IDisposable
         Assert.Equal("Last.fm", vm.Summary);
         for (var i = 0; i < 40 && !(await NewPersistence().LoadSettingsAsync()).MobileScrobbleFromPhone; i++) await Task.Delay(50);   // the save is queued behind the tap
         Assert.True((await NewPersistence().LoadSettingsAsync()).MobileScrobbleFromPhone);
+    }
+
+    [AvaloniaFact]
+    public async Task Page_ThroughComputer_ShowsTheComputersServices_AndHidesThePhonesSwitches()
+    {
+        // Live: Through Computer showed Send Plays and Show Now Playing switched on, which do nothing there.
+        var rig = MobileFixtures.MakeRig();
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        var scrobbler = await Connected(fromPhone: false, lastFm: false);
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Scrobbler = scrobbler, Account = account, Marshal = a => a(),
+        };
+        var vm = new ScrobblingSettingsViewModel(shell);
+
+        // A computer that has not said (older, or not synced yet): no guess.
+        Assert.Equal("On Computer", vm.LastFmStatus);
+        Assert.Equal("Computer", vm.Summary);
+        Assert.Contains("up-to-date Noctis", vm.RouteFootnote);
+
+        account.ComputerScrobbling = new ComputerScrobbling(LastFm: true, ListenBrainz: false);
+        account.RaiseStateChanged();
+        Assert.Equal("Connected", vm.LastFmStatus);
+        Assert.True(vm.LastFmConnected);
+        Assert.Equal("On your computer", vm.LastFmSubtitle);
+        Assert.Equal("Not Connected", vm.ListenBrainzStatus);
+        Assert.Equal("Set up on your computer", vm.ListenBrainzSubtitle);
+        Assert.Equal("Last.fm", vm.Summary);
+        Assert.Contains("sends the ones that count on", vm.RouteFootnote);
+
+        shell.SetShareHistoryWithComputer(false);
+        Assert.Contains("Share with Computer is off", vm.RouteFootnote);
+        shell.SetShareHistoryWithComputer(true);
+
+        var pane = new Noctis.Mobile.Views.ScrobblingPane { DataContext = vm };
+        MobileFixtures.EnsurePhonePalette();
+        var window = new Avalonia.Controls.Window { Width = 412, Height = 1400, Content = pane };
+        window.Show();
+        window.UpdateLayout();
+        Assert.False(MobileFixtures.Named<Avalonia.Controls.StackPanel>(pane, "PhoneControls").IsVisible);
+        Assert.True(MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "WaitingLabel").IsEffectivelyVisible);
+        vm.SelectFromPhoneCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.True(MobileFixtures.Named<Avalonia.Controls.StackPanel>(pane, "PhoneControls").IsVisible);
+        Assert.Equal("Off", vm.Summary);                                   // the phone itself is connected to nothing
+        window.Close();
     }
 
     [AvaloniaFact]

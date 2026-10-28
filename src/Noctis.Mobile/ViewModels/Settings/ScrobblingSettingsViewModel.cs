@@ -1,17 +1,19 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Mobile.Services.Account;
 using Noctis.Mobile.Services.Scrobbling;
 
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>
 /// Settings → Scrobbling. Two routes: Through Computer (the phone's plays reach the computer on the
-/// next sync, as today) and From This Phone (the phone counts and sends them itself,
-/// <see cref="PhoneScrobbler"/>). A play goes one way only, chosen when it counts, so switching
-/// the route never sends a queued play twice or loses one. In Through Computer mode the computer's own
-/// Last.fm / ListenBrainz sign-in is not something the account sync exposes, so the rows say
-/// "Set up on your computer" instead of guessing.
+/// next sync, and the computer sends the ones that counted on to its own Last.fm / ListenBrainz) and
+/// From This Phone (the phone counts and sends them itself, <see cref="PhoneScrobbler"/>). A play goes
+/// one way only, chosen when it counts, so switching the route never sends a queued play twice or
+/// loses one. In Through Computer mode the rows show the computer's services as its last sync told
+/// (<see cref="INoctisAccountService.ComputerScrobbling"/>); a computer that does not say (an older
+/// one, or before the first sync) gets "On Computer", not a guess.
 /// </summary>
 public sealed partial class ScrobblingSettingsViewModel : ObservableObject
 {
@@ -27,13 +29,15 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
         _scrobbler = shell.Scrobbler;
         _scrobbler.Changed += (_, _) => shell.Marshal(Refresh);
         if (shell.Account != null) shell.Account.StateChanged += (_, _) => shell.Marshal(Refresh);
+        shell.HistoryPrefsChanged += (_, _) => shell.Marshal(Refresh);   // Share with Computer
         Refresh();
     }
 
     /// <summary>Raised with the Last.fm approval page; the view opens it in the browser.</summary>
     public event Action<string>? OpenUrlRequested;
 
-    /// <summary>"Last.fm", "ListenBrainz", "Last.fm + ListenBrainz" or "Off": what the phone itself sends to.</summary>
+    /// <summary>"Last.fm", "ListenBrainz", "Last.fm + ListenBrainz" or "Off": where the plays end up,
+    /// from the phone or through the computer; "Computer" when the computer has not said.</summary>
     public string Summary { get; private set; } = "Off";
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsThroughComputer), nameof(RouteFootnote), nameof(LastFmSubtitle), nameof(ListenBrainzSubtitle),
@@ -48,27 +52,45 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
     public bool IsThroughComputer => !IsFromPhone;
     public bool HasStatusMessage => StatusMessage.Length > 0;
 
-    /// <summary>The Send Plays / Show Now Playing switches act on the phone's own sending only.</summary>
+    /// <summary>The Send Plays / Show Now Playing switches act on the phone's own sending only: they
+    /// show in From This Phone mode alone (Through Computer, the phone sends nothing for them to stop).</summary>
     public bool PhoneControlsEnabled => IsFromPhone;
+
+    /// <summary>The computer's services as its last sync said; null when it has not said.</summary>
+    private ComputerScrobbling? Computer => _shell.Account is { IsSignedIn: true } account ? account.ComputerScrobbling : null;
 
     public string RouteFootnote => IsFromPhone
         ? "The phone counts your plays and sends them to Last.fm and ListenBrainz itself. Nothing is sent twice."
-        : "Plays go to your computer when the phone syncs. Nothing is sent twice.";
+        : _shell.Account is not { IsSignedIn: true }
+            ? "Sign in to your computer in Account, and plays go to it when the phone syncs."
+        : !_shell.ShareHistoryWithComputer
+            ? "Share with Computer is off in Listening History, so plays stay on this phone."
+        : Computer is not { } c
+            ? "Plays go to your computer when the phone syncs. An up-to-date Noctis there sends them on to Last.fm and ListenBrainz."
+        : !c.LastFm && !c.ListenBrainz
+            ? "Plays go to your computer when the phone syncs. Connect Last.fm or ListenBrainz there to send them on."
+            : "Plays go to your computer when the phone syncs, and it sends the ones that count on. Songs only on this phone stay here. Nothing is sent twice.";
 
-    public bool LastFmConnected => IsFromPhone && _scrobbler.LastFmConnected;
-    public bool ListenBrainzConnected => IsFromPhone && _scrobbler.ListenBrainzConnected;
+    public bool LastFmConnected => IsFromPhone ? _scrobbler.LastFmConnected : Computer?.LastFm == true;
+    public bool ListenBrainzConnected => IsFromPhone ? _scrobbler.ListenBrainzConnected : Computer?.ListenBrainz == true;
 
-    public string LastFmStatus => IsFromPhone ? (LastFmConnected ? "Connected" : "Not Connected") : "On Computer";
-    public string ListenBrainzStatus => IsFromPhone ? (ListenBrainzConnected ? "Connected" : "Not Connected") : "On Computer";
+    public string LastFmStatus => Status(LastFmConnected);
+    public string ListenBrainzStatus => Status(ListenBrainzConnected);
 
-    public string LastFmSubtitle => !IsFromPhone ? "Set up on your computer"
+    private string Status(bool connected) => IsFromPhone || Computer != null
+        ? (connected ? "Connected" : "Not Connected")
+        : "On Computer";
+
+    public string LastFmSubtitle => !IsFromPhone ? ComputerSubtitle(LastFmConnected)
         : !_scrobbler.LastFmConnected ? "Share what you listen to"
         : _lastFmPlays is { } n ? $"{_scrobbler.LastFmUser} · {n.ToString("N0", CultureInfo.CurrentCulture)} scrobbles"
         : _scrobbler.LastFmUser;
 
-    public string ListenBrainzSubtitle => !IsFromPhone ? "Set up on your computer"
+    public string ListenBrainzSubtitle => !IsFromPhone ? ComputerSubtitle(ListenBrainzConnected)
         : _scrobbler.ListenBrainzConnected ? _scrobbler.ListenBrainzUser
         : "Open, free listening stats";
+
+    private static string ComputerSubtitle(bool connected) => connected ? "On your computer" : "Set up on your computer";
 
     public string Footnote => "A play counts after half the song or 4 minutes. Plays made offline wait here until the next sync.";
 
@@ -104,9 +126,11 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
         var waiting = _scrobbler.PendingCount + (_shell.Account?.PendingPlayCount ?? 0);
         WaitingText = waiting == 1 ? "1 play" : $"{waiting} plays";
         var parts = new List<string>(2);
-        if (_scrobbler.FromPhone && _scrobbler.LastFmConnected) parts.Add("Last.fm");
-        if (_scrobbler.FromPhone && _scrobbler.ListenBrainzConnected) parts.Add("ListenBrainz");
-        var summary = parts.Count == 0 ? "Off" : string.Join(" + ", parts);
+        if (LastFmConnected) parts.Add("Last.fm");
+        if (ListenBrainzConnected) parts.Add("ListenBrainz");
+        // Through Computer, a signed-in computer that has not said where it sends them: "Computer".
+        var unknown = !_scrobbler.FromPhone && Computer == null && _shell.Account is { IsSignedIn: true } && _shell.ShareHistoryWithComputer;
+        var summary = parts.Count > 0 ? string.Join(" + ", parts) : unknown ? "Computer" : "Off";
         if (summary != Summary)
         {
             Summary = summary;
