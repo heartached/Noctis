@@ -114,6 +114,10 @@ public class PluginsPageLayoutTests : IDisposable
             Assert.NotEmpty(vm.OfficialPlugins);
 
             Assert.Same(vm.RefreshOfficialPluginsCommand, view.FindControl<Button>("RefreshOfficialPluginsButton")!.Command);
+            Assert.Same(vm.SubmitPluginCommand, view.FindControl<Button>("SubmitPluginButton")!.Command);
+            // Each official row credits its author ("by Noctis" for Mixxx).
+            Assert.Contains(view.FindControl<ItemsControl>("OfficialPluginsList")!.GetLogicalDescendants().OfType<TextBlock>(),
+                t => t.Text == Loc.T("Plugins.Get.By", "Noctis") && t.IsVisible);
             Assert.Same(vm.InstallPluginFromFileCommand, view.FindControl<Button>("InstallPluginFromFileButton")!.Command);
             Assert.Same(vm.ReloadPluginsCommand, view.FindControl<Button>("ReloadPluginsButton")!.Command);
             Assert.Equal(Loc.T("Plugins.Reload"), ToolTip.GetTip(view.FindControl<Button>("ReloadPluginsButton")!));

@@ -2270,6 +2270,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Get.Mismatch" xml:space="preserve"><value>Загруженный файл не совпал с официальным списком, поэтому он не установлен.</value></data>
   <data name="Plugins.Get.NotAllowed" xml:space="preserve"><value>Эта ссылка для загрузки не разрешена, поэтому ничего не установлено.</value></data>
   <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>Загруженный файл — не {0} {1}, поэтому он не установлен.</value></data>
+  <data name="Plugins.Get.By" xml:space="preserve"><value>автор: {0}</value></data>
+  <data name="Plugins.Submit" xml:space="preserve"><value>Предложить плагин</value></data>
+  <data name="Plugins.SubmitTip" xml:space="preserve"><value>Сделали плагин? Отправьте его на проверку через GitHub. После одобрения он появится здесь с указанием вашего авторства.</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Сервер Noctis</value></data>

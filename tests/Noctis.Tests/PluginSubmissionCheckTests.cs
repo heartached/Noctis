@@ -96,6 +96,16 @@ public class PluginSubmissionCheckTests : IDisposable
         Assert.Contains("labels: [\"plugin-submission\", \"needs-review\"]", yml);
     }
 
+    /// <summary>Settings → Plugins → Submit a Plugin opens this form, prefilled by field id.</summary>
+    [Fact]
+    public void SubmitAPlugin_OpensTheFormWithTheTitleAndThisVersionFilledIn()
+    {
+        var url = Noctis.ViewModels.SettingsViewModel.PluginSubmissionUrl(new Version(1, 6, 4, 0));
+        Assert.Equal("https://github.com/heartached/Noctis/issues/new?template=3-plugin-submission.yml&title=%5BPlugin%5D%20&min-app-version=1.6.4", url);
+        Assert.True(File.Exists(PluginSandbox.RepoFile(".github/ISSUE_TEMPLATE/3-plugin-submission.yml")));
+        Assert.Contains("id: " + SubmissionForm.MinAppVersion.Id + "\n", File.ReadAllText(PluginSandbox.RepoFile(".github/ISSUE_TEMPLATE/3-plugin-submission.yml")).ReplaceLineEndings("\n"));
+    }
+
     [Fact]
     public void Form_ReadsAnswers_NoResponseIsEmpty_AndTickedBoxes()
     {

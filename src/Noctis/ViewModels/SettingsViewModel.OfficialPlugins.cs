@@ -43,6 +43,17 @@ public partial class SettingsViewModel
         if (!_officialPluginsFetched) _ = LoadOfficialPluginsAsync();
     }
 
+    /// <summary>GitHub's new-issue page for the plugin submission form
+    /// (.github/ISSUE_TEMPLATE/3-plugin-submission.yml), with the title and the minimum Noctis
+    /// version (this one) filled in: issue forms take a field's id as a query parameter.</summary>
+    internal static string PluginSubmissionUrl(Version appVersion)
+        => "https://github.com/heartached/Noctis/issues/new?template=3-plugin-submission.yml"
+           + "&title=" + Uri.EscapeDataString("[Plugin] ")
+           + "&min-app-version=" + Uri.EscapeDataString($"{appVersion.Major}.{appVersion.Minor}.{Math.Max(0, appVersion.Build)}");
+
+    [RelayCommand]
+    private void SubmitPlugin() => PlatformHelper.OpenUrl(PluginSubmissionUrl(Services.UpdateService.CurrentVersion));
+
     [RelayCommand]
     private async Task RefreshOfficialPlugins()
     {
@@ -187,6 +198,9 @@ public sealed partial class OfficialPluginItem : ObservableObject
     public string Version => Installed?.Version ?? Entry.Version;
     public string Description => Entry.Description;
     public bool HasDescription => Description.Length > 0;
+    /// <summary>"by &lt;author&gt;": the list's credit, which for a community plugin is its submitter's.</summary>
+    public string AuthorLine => Loc.T("Plugins.Get.By", Entry.Author);
+    public bool HasAuthor => Entry.Author.Length > 0;
 
     /// <summary>The installed copy, or null: its switch, settings and Remove show on this row.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsInstalled), nameof(ShowButton), nameof(Version))]

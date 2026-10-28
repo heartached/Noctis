@@ -2270,6 +2270,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Get.Mismatch" xml:space="preserve"><value>The download didn't match the official list, so it wasn't installed.</value></data>
   <data name="Plugins.Get.NotAllowed" xml:space="preserve"><value>This download link isn't allowed, so nothing was installed.</value></data>
   <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>The download isn't {0} {1}, so it wasn't installed.</value></data>
+  <data name="Plugins.Get.By" xml:space="preserve"><value>by {0}</value></data>
+  <data name="Plugins.Submit" xml:space="preserve"><value>Submit a Plugin</value></data>
+  <data name="Plugins.SubmitTip" xml:space="preserve"><value>Made a plugin? Submit it on GitHub for review. Once approved, it shows up here with you credited.</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Noctis Server</value></data>
