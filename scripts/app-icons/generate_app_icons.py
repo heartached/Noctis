@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates Noctis's app icons: the classic red disc plus nine gradient/frosted variants.
+"""Generates Noctis's app icons: the classic red disc plus ten gradient/frosted variants.
 
 Every output size is rendered on its own from the vector-ish description below (analytic
 disc, analytic gradients, the note glyph taken from the 2000 px source logo) at a ~2048 px
@@ -13,7 +13,7 @@ Outputs (paths relative to the repo root):
   src/Noctis/Assets/Icons/Noctis.ico       classic icon (exe, installer)
   src/Noctis.UI/Assets/Icons/Noctis.ico    classic icon (window/tray fallback)
   artifacts/app-icons/<id>-1024.png        1024 px masters (not committed)
-  artifacts/app-icons/icon-sheet.png       contact sheet of all ten
+  artifacts/app-icons/icon-sheet.png       contact sheet of all eleven
 
 Requires Pillow and numpy.  Run:  python scripts/app-icons/generate_app_icons.py
 """
@@ -101,9 +101,17 @@ def smoothstep(e0, e1, x):
 # blobs:  soft radial colour glows (cx, cy, radius, '#hex', strength), unit coords over the disc
 # note:   note colour stops along y (top->bottom), opacity top/bottom (frost), glow colour
 # rim:    top inner highlight strength, bottom inner shade strength
+# edge:   optional hairline just inside the disc's rim ('#hex', strength, width in target px),
+#         so a near-white disc keeps its outline on a light taskbar or title bar
 VARIANTS = [
     dict(id="classic", name="Classic", flat=CLASSIC_RED),
     # Classic inverted: the red note on a near-black disc, like a system dark-mode icon.
+    # Classic inverted the other way: the red note on a near-white disc (light twin of Dark).
+    # The grey hairline + cool bottom shade keep the disc visible on light taskbars.
+    dict(id="light", name="Light",
+         bg=(100, [(0.0, "#FFFFFF"), (0.6, "#F6F6F8"), (1.0, "#E3E3E8")]),
+         note=dict(stops=[(0.0, "#EE5664"), (1.0, "#E03E50")], top=1.0, bottom=1.0, white_edge=0.0),
+         shadow=("#9A2A3C", 0.18), rim=(0.55, 0.06), edge=("#6E6E78", 0.30, 1.0)),
     dict(id="dark", name="Dark", dark=True,
          bg=(100, [(0.0, "#2A2A2E"), (1.0, "#0E0E10")]),
          note=dict(stops=[(0.0, "#F2606F"), (1.0, "#E23E52")], top=1.0, bottom=1.0, white_edge=0.0),
@@ -285,6 +293,12 @@ def render(v: dict, size: int) -> Image.Image:
             rim_px = max(1, int(0.006 * d))
             lip = np.clip(note - shift_down(note, rim_px), 0, 1) * nv["white_edge"] * fx
             col = col * (1 - lip[..., None]) + lip[..., None]
+
+        if "edge" in v:
+            ec, es, ew = v["edge"]
+            # ~1 target pixel wide at every size: at 16 px it is the whole outline.
+            ring = np.clip((dist - (r - ew * ss)) / ss, 0, 1) * es
+            col = col * (1 - ring[..., None]) + hexrgb(ec) * ring[..., None]
 
     # box-filter down to the target size; colour is premultiplied by disc coverage
     def down(x):
