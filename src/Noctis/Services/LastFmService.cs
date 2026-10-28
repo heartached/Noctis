@@ -11,7 +11,7 @@ public class LastFmService : ILastFmService
 {
     // Last.fm API credentials — register at https://www.last.fm/api/account/create
     private const string ApiKey = LastFmApi.ApiKey;
-    private const string ApiSecret = "ebf114b9e7d31e24c493bc55dac2184e";
+    private const string ApiSecret = LastFmApi.ApiSecret;
     private const string ApiBase = LastFmApi.ApiBase;
     private const string AuthBase = "https://www.last.fm/api/auth/";
 

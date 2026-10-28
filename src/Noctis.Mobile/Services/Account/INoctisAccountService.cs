@@ -139,6 +139,9 @@ public interface INoctisAccountService
     /// <summary>Queue a finished play of a desktop song (sent as a scrobble on the next sync).</summary>
     void RecordPlay(Track track, DateTime playedUtc);
 
+    /// <summary>Plays queued for the computer that the next sync has not sent yet.</summary>
+    int PendingPlayCount => 0;
+
     /// <summary>One of the computer's playlists (synced, not made on the phone).</summary>
     bool IsSyncedPlaylist(Guid playlistId) => false;
 

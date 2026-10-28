@@ -148,6 +148,17 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Phone, Settings › Background › Strength: how strong the colour wash is, 0.2-1.</summary>
     public double MobileBackgroundStrength { get; set; } = 0.6;
 
+    /// <summary>Phone scrobbling route: false = through the computer (plays queue for it on sync),
+    /// true = the phone sends plays to Last.fm / ListenBrainz itself. A play goes one way only,
+    /// decided when it is counted.</summary>
+    public bool MobileScrobbleFromPhone { get; set; } = false;
+
+    /// <summary>Phone, From This Phone: send plays to the connected services.</summary>
+    public bool MobileScrobbleSendPlays { get; set; } = true;
+
+    /// <summary>Phone, From This Phone: tell the connected services what is playing now.</summary>
+    public bool MobileScrobbleNowPlaying { get; set; } = true;
+
     /// <summary>User-defined custom themes selectable from the Themes row.</summary>
     public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
 

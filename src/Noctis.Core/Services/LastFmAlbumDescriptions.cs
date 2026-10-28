@@ -10,6 +10,7 @@ namespace Noctis.Services;
 internal static class LastFmApi
 {
     internal const string ApiKey = "7b625c5a18197cf284aabf8b66505156";
+    internal const string ApiSecret = "ebf114b9e7d31e24c493bc55dac2184e";
     internal const string ApiBase = "https://ws.audioscrobbler.com/2.0/";
 }
 

@@ -521,6 +521,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.PendingSeekMs = fromPosition is { } p && p > TimeSpan.Zero ? (long)p.TotalMilliseconds : -1;
         _player.Play(track.FilePath);
         IsPlaying = true;
+        TrackStarted?.Invoke(this, track);
         SyncUpNext();
         PrepareUpcoming();
         SaveStateNow();
@@ -583,6 +584,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         if (_seeking && playing && ++_seekIdleTicks > SeekWatchdogTicks) EndSeek();
         if (!_seeking) Position = position;
         IsPlaying = playing;
+        PlaybackTick?.Invoke(this, playing);
         // Only a tick that arrives while actually playing AND past the start proves the stream
         // is healthy. The Android player reports Playing from Play() on and polls 00:00 while
         // it is still connecting, so "Playing" alone cleared the streak between every two
@@ -612,6 +614,12 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// <summary>Raised once a started track's play is in the log (see <see cref="StartTrack"/>);
     /// the shell refreshes the Library Shelf and the Home rows from the log on it.</summary>
     public event EventHandler? PlayRecorded;
+
+    /// <summary>A track was started (the scrobbler restarts its play clock).</summary>
+    public event EventHandler<Track>? TrackStarted;
+
+    /// <summary>Every position tick, with whether audio is moving (the scrobbler's played-time clock).</summary>
+    public event EventHandler<bool>? PlaybackTick;
 
     private void RecordStartedPlay()
     {
