@@ -507,6 +507,18 @@ internal sealed partial class NoctisServerClient : IDisposable
         return PostFormAsync("scrobble", form, signingIn: false, withKey: true, ct);
     }
 
+    /// <summary>savePlayQueue (form POST): the queue in order (id=, repeated), the playing song
+    /// (current=) and its place (position=, ms). A computer too old to know the call answers with an
+    /// error, which the caller ignores.</summary>
+    public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct)
+    {
+        var form = new List<KeyValuePair<string, string>>();
+        foreach (var id in share.Ids) form.Add(new("id", NoctisRemoteIds.ToServerTrackId(id)));
+        form.Add(new("current", NoctisRemoteIds.ToServerTrackId(share.Current)));
+        form.Add(new("position", Math.Max(0, share.PositionMs).ToString(CultureInfo.InvariantCulture)));
+        return PostFormAsync("savePlayQueue", form, signingIn: false, withKey: true, ct);
+    }
+
     // ── The phone's songs → the computer ─────────────────────────────────
 
     /// <summary>Songs per noctisHasTracks call: the server takes up to 300, but the form must also

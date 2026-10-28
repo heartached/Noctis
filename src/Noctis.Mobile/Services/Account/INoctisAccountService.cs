@@ -137,6 +137,11 @@ public interface INoctisAccountService
     /// <summary>Queue a finished play of a desktop song (sent as a scrobble on the next sync).</summary>
     void RecordPlay(Track track, DateTime playedUtc);
 
+    /// <summary>"Pick Up on Computer": tells the computer the queue and place the phone is at (the
+    /// Subsonic savePlayQueue call). Throws when the computer is unreachable or too old to know it;
+    /// does nothing signed out.</summary>
+    Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default) => Task.CompletedTask;
+
     /// <summary>One of the computer's playlists (synced, not made on the phone).</summary>
     bool IsSyncedPlaylist(Guid playlistId) => false;
 
