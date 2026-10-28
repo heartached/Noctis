@@ -84,6 +84,43 @@ public class Mp3FrameScanTests : IDisposable
         Assert.Equal(frames * 1152 / 44100.0, length.TotalSeconds, 2);
     }
 
+    // MPEG-2 Layer III, 22.05 kHz, stereo (the Discord 10-28 file): 576 samples a frame.
+    // Index 8 = 64 kbps, 10 = 96 kbps.
+    private static void WriteMpeg2Frame(Stream s, int bitrateIndex)
+    {
+        var kbps = new[] { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160 }[bitrateIndex];
+        var frame = new byte[72000 * kbps / 22050];
+        frame[0] = 0xFF;
+        frame[1] = 0xF3;
+        frame[2] = (byte)(bitrateIndex << 4);
+        frame[3] = 0x40;
+        s.Write(frame);
+    }
+
+    [Fact]
+    public void Mpeg2_22kHz_CountsFramesOf576Samples()
+    {
+        var ms = new MemoryStream();
+        for (var i = 0; i < 3000; i++) WriteMpeg2Frame(ms, i % 3 == 0 ? 10 : 8);
+        ms.Position = 0;
+        Assert.True(Mp3FrameScan.TryMeasureHeaderlessVbr(ms, out var length, out _));
+        Assert.Equal(3000 * 576 / 22050.0, length.TotalSeconds, 3);
+    }
+
+    [Fact]
+    public void AFormatChangeMidFile_CountsBothParts()
+    {
+        // Two recordings joined: 22.05 kHz MPEG-2, then 44.1 kHz MPEG-1. Counting only frames
+        // shaped like the first stopped at the join and the player clamped every seek there
+        // (harness 10-28: a seek to 42:58 went to 31:12 on a joined 61-minute file).
+        var ms = new MemoryStream();
+        for (var i = 0; i < 1500; i++) WriteMpeg2Frame(ms, i % 3 == 0 ? 10 : 8);
+        for (var i = 0; i < 1500; i++) WriteFrame(ms, i % 3 == 0 ? 11 : 9);
+        ms.Position = 0;
+        Assert.True(Mp3FrameScan.TryMeasureHeaderlessVbr(ms, out var length, out _));
+        Assert.Equal(1500 * 576 / 22050.0 + 1500 * 1152 / 44100.0, length.TotalSeconds, 3);
+    }
+
     [Theory]
     [InlineData("Xing")]
     [InlineData("Info")]
