@@ -28,25 +28,27 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.2** (Noctis 1.5.9 and later; 1.1 since 1.5.3):
+API **1.3** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
 | Now playing | Current track, play/pause state, position, change events | — (`playback.read`, implicit) |
 | Audio taps | Live beat pulse and spectrum of what is playing | — |
 | Visual layers | A control drawn behind the lyrics (offered as a style in Settings' Flowing background picker) | — |
+| Views | A page of your own, opened from Settings → Plugins ("Open &lt;name&gt;") in its own window (1.3) | — |
+| Album page | Show an album's page in the main window (1.3) | — |
 | Scrobble hook | Called when a track counts as listened (half its length or 4 minutes) | — (`playback.read`) |
 | Settings | Settings you declare in plugin.json, drawn by Noctis in Settings → Plugins | — |
 | Storage | A private data folder that survives updates | — |
-| Playback control | Play, pause, next, previous, seek | `playback.control` |
+| Playback control | Play, pause, next, previous, seek; since 1.3 play a list of library tracks | `playback.control` |
 | Library | Read-only search over the library, or all of it (copies, never live objects) | `library.read` |
 | BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
 | Track menu | Entries in the track context menu | `menu.commands` |
 | Notices | A short message in the app's notice pill | `notifications` |
 
-Not available (yet): writing other library fields or file tags, the queue, new pages or sidebar
-entries, and the mobile apps (Android does not load plugins).
+Not available (yet): writing other library fields or file tags, editing the queue (1.3 can only
+replace it), sidebar entries, and the mobile apps (Android does not load plugins).
 
 Themes, lyrics-page presets and translations do not need code at all: ship them as a
 [content pack](#content-packs) (`"type": "content"`), plain JSON that installs without the
@@ -121,6 +123,9 @@ samples live in the repository:
   library search and a notice, a lyrics provider stub, a scrobble hook, and declared settings.
 - `plugins/Noctis.Plugins.Kawarp` — a Skia-shader visual layer (Noctis also ships Kawarp built in;
   this copy stays as a realistic visual-layer example).
+- `plugins/Noctis.Plugins.AlbumTown` — *Album Town* (API 1.3): a view of its own where your albums
+  live as little creatures in a plaza. Uses `RegisterView`, `Library.GetAll()` with the 1.3 track
+  fields, `PlayTracks` and `ShowAlbum`.
 - `plugins/Noctis.Plugins.Mixxx` — *Mixxx* (API 1.2): imports the BPM and key the Mixxx DJ app
   analysed, reading its `mixxxdb.sqlite` read-only with the app's SQLite, matching tracks by file
   path, and writing through `host.TrackAnalysis`.
@@ -191,7 +196,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `void Log(string)` | 1.0 | | Writes to the Noctis debug log, prefixed with the plugin name. |
 | `void RegisterVisualLayer(IVisualLayerProvider)` | 1.0 | | A lyrics-page background layer. |
 | `string PluginDirectory` | 1.1 | | The folder the plugin was loaded from. Assemblies are loaded from memory, so `Assembly.Location` is empty: use this for bundled files. |
-| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`. Safe from any thread. |
+| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped). Safe from any thread. |
 | `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track. |
 | `IPluginSettings Settings` | 1.1 | | Declared settings (see above). |
 | `void Notify(string)` | 1.1 | `notifications` | A notice pill for ~4 s. At most one per second per plugin; long text is cut at 200 characters. |
@@ -200,12 +205,39 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `IDisposable RegisterTrackCommand(string label, string? icon, Func<TrackInfo, Task>)` | 1.1 | `menu.commands` | Async variant. |
 | `IDisposable OnTrackScrobbled(Action<TrackInfo, DateTimeOffset>)` | 1.1 | | Fires when a track counts as listened (Last.fm rule), with its start time, whether or not a scrobbling service is connected. |
 | `ITrackAnalysisWriter TrackAnalysis` | 1.2 | `library.write.analysis` | Sets BPM and key of library tracks; see below. |
+| `IDisposable RegisterView(IPluginViewProvider)` | 1.3 | | A view of your own; see [Views](#views). |
+| `bool OpenView(IPluginViewProvider)` | 1.3 | | Opens a view you registered (from a menu command, say). False when it is not registered or the plugin stopped. |
+| `bool ShowAlbum(string albumId)` | 1.3 | | Shows the album's page (`TrackInfo.AlbumId`) in the main window and brings it forward. False for an unknown album. |
 
 Using a hook without declaring its permission throws `PluginPermissionException`.
 
 `TrackInfo` is an immutable copy of a library track: `Id`, `Title`, `Artist`, `Album`,
 `AlbumArtist`, `Duration`, `Year`, `Genre`, `TrackNumber`, `FilePath`, `IsFavorite`,
-`PlayCount`, `Rating`, and since 1.2 `Bpm` (0 = unknown) and `MusicalKey` (empty = unknown).
+`PlayCount`, `Rating`, since 1.2 `Bpm` (0 = unknown) and `MusicalKey` (empty = unknown), and since
+1.3 `AlbumId` (the album as Noctis groups it; empty = unknown), `ArtworkPath` (the cover image Noctis
+shows for the track, or null; read it, never write it), `ReleaseType` (`"Album"`, `"Single"`, `"EP"`,
+`"Compilation"`, `"Live"`, `"Remix"`, `"Soundtrack"`, `"Other"`), `DateAdded` and `LastPlayed` (null = never).
+
+### Views
+
+```csharp
+public interface IPluginViewProvider
+{
+    string Name { get; }      // window title, and the button: "Open <Name>"
+    Control CreateView();     // called each time the user opens it
+}
+```
+
+API 1.3. For plugins that are a place of their own rather than an add-on to an existing page
+(a game, a dashboard, a visualizer). Register it in `Initialize`; Settings → Plugins then shows an
+**Open &lt;Name&gt;** button on your plugin's card, and Noctis shows your control in a window of its
+own (one per view: opening it again brings that window forward).
+
+- `CreateView` runs on the UI thread, guarded like every callback: a throw or a `null` control
+  marks the plugin Failed.
+- The window closes when the plugin stops (switched off, removed, reloaded) or you dispose the
+  registration. The control is then detached, so stop timers in `DetachedFromVisualTree`.
+- Keep it cheap: draw only while the control is attached, visible and its window is not minimized.
 
 ### Lyrics providers
 

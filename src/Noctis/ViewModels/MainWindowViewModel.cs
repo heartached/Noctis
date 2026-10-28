@@ -441,6 +441,20 @@ public partial class MainWindowViewModel : ViewModelBase
         if (App.Services?.GetService<System.Net.Http.HttpClient>() is { } pluginHttp)
             Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
+        // API 1.3: plugin views open in a window of their own; ShowAlbum opens the album page here.
+        Plugins.ViewPresenter = Views.PluginViewWindow.Present;
+        Plugins.AlbumOpener = albumId =>
+        {
+            if (_library.GetAlbumById(albumId) is not { } album) return false;
+            OpenAlbumDetail(album);
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
+            {
+                if (window.WindowState == Avalonia.Controls.WindowState.Minimized) window.WindowState = Avalonia.Controls.WindowState.Normal;
+                if (!window.IsVisible) window.Show();
+                window.Activate();
+            }
+            return true;
+        };
         TrackContextMenuBuilder.ArtistPhotoSource = name => HomeViewModel.CachedArtistPhoto(name, _library, _artistImageService);
         Plugins.NotificationRequested += (_, notice) =>
             TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, $"{notice.PluginName}: {notice.Message}", TimeSpan.FromSeconds(4));

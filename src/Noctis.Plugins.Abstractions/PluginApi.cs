@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.2"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.3"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 2;
+    public const int Minor = 3;
 
-    /// <summary>"1.2": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.3": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 
@@ -73,6 +73,24 @@ public sealed record TrackInfo(
     /// <summary>API 1.2. Musical key as Noctis stores it ("A minor", "8A", whatever the tags
     /// said); empty = unknown.</summary>
     public string MusicalKey { get; init; } = "";
+
+    /// <summary>API 1.3. The album this track belongs to, as Noctis groups it (the id
+    /// <see cref="IPluginHost.ShowAlbum"/> takes); empty = unknown.</summary>
+    public string AlbumId { get; init; } = "";
+
+    /// <summary>API 1.3. Path of the cover image Noctis shows for this track (its album's cover,
+    /// or its own when it differs), or null when it has none. Read-only: never write to it.</summary>
+    public string? ArtworkPath { get; init; }
+
+    /// <summary>API 1.3. Release type of the track's album: "Album", "Single", "EP",
+    /// "Compilation", "Live", "Remix", "Soundtrack" or "Other".</summary>
+    public string ReleaseType { get; init; } = "Album";
+
+    /// <summary>API 1.3. When the track was added to the library.</summary>
+    public DateTimeOffset? DateAdded { get; init; }
+
+    /// <summary>API 1.3. When the track was last played, or null for never.</summary>
+    public DateTimeOffset? LastPlayed { get; init; }
 }
 
 /// <summary>Transport control ("playback.control"). Calls from any thread are marshalled to the UI thread.</summary>
@@ -85,6 +103,11 @@ public interface IPlaybackControl
     void Previous();
     /// <summary>Seeks within the current track (clamped to its length).</summary>
     void Seek(TimeSpan position);
+
+    /// <summary>API 1.3. Replaces the queue with these library tracks (<see cref="TrackInfo.Id"/>,
+    /// in this order) and plays from <paramref name="startIndex"/>. Unknown ids are skipped.</summary>
+    void PlayTracks(IReadOnlyList<string> trackIds, int startIndex = 0)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.3. Set minAppVersion in plugin.json.");
 }
 
 /// <summary>Read-only library access ("library.read"). Returns copies, never live objects.</summary>

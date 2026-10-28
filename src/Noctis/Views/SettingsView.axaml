@@ -114,6 +114,24 @@
                                        Margin="0,0,0,10"/>
                         </controls:CollapsibleContent>
                         <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- API 1.3: the plugin's own views ("Open Album Town"). -->
+                            <ItemsControl ItemsSource="{Binding Views}" IsVisible="{Binding HasViews}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="plugins:PluginViewEntry">
+                                        <Button Classes="pill-action accent-pill" Padding="12,6" CornerRadius="999" Cursor="Hand"
+                                                AutomationProperties.Name="{Binding OpenText}"
+                                                Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginViewCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="{Binding OpenText}" FontSize="12"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <Button Classes="pill-action" Padding="12,6" CornerRadius="999" Cursor="Hand"
                                     AutomationProperties.Name="{loc:T Plugins.OpenPluginFolder}"
                                     Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginDirectoryCommand}"

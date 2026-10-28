@@ -128,6 +128,10 @@ public sealed partial class LoadedPlugin : ObservableObject
 
     /// <summary>Controls for the settings declared in plugin.json.</summary>
     public ObservableCollection<PluginSettingItem> SettingItems { get; } = new();
+
+    /// <summary>API 1.3: views the running plugin registered ("Open &lt;Name&gt;" buttons).</summary>
+    public ObservableCollection<PluginViewEntry> Views { get; } = new();
+    public bool HasViews => Views.Count > 0;
     public bool HasSettings => SettingItems.Count > 0;
 
     /// <summary>Where <see cref="IPluginHost.DataDirectory"/> points: &lt;data&gt;/plugin-data/&lt;id&gt;.</summary>
@@ -146,6 +150,29 @@ public sealed partial class LoadedPlugin : ObservableObject
     internal DateTime LastNotice = DateTime.MinValue;
 
     public bool IsRunning => Instance is not null;
+
+    internal void AddView(PluginViewEntry view)
+    {
+        Views.Add(view);
+        OnPropertyChanged(nameof(HasViews));
+    }
+
+    internal void RemoveView(PluginViewEntry view)
+    {
+        if (!Views.Remove(view)) return;
+        OnPropertyChanged(nameof(HasViews));
+        view.Withdraw();
+    }
+
+    /// <summary>Drops every view (the plugin stopped); open windows of them close.</summary>
+    internal void ClearViews()
+    {
+        if (Views.Count == 0) return;
+        var views = Views.ToList();
+        Views.Clear();
+        OnPropertyChanged(nameof(HasViews));
+        foreach (var v in views) v.Withdraw();
+    }
 
     partial void OnErrorChanged(string value) => OnPropertyChanged(nameof(HasError));
     partial void OnStatusChanged(string value)
@@ -388,6 +415,50 @@ public sealed class PluginTrackCommand
     public void Execute(Track track) => _owner.RunTrackCommand(this, track);
 }
 
+/// <summary>API 1.3: a view a plugin registered, as Settings and the view window see it.</summary>
+public sealed class PluginViewEntry
+{
+    private readonly PluginHost _owner;
+    internal readonly LoadedPlugin Plugin;
+    internal readonly IPluginViewProvider Provider;
+
+    internal PluginViewEntry(PluginHost owner, LoadedPlugin plugin, IPluginViewProvider provider, string name)
+    {
+        _owner = owner;
+        Plugin = plugin;
+        Provider = provider;
+        Name = name;
+    }
+
+    /// <summary>Window title.</summary>
+    public string Name { get; }
+    public string PluginName => Plugin.Name;
+    /// <summary>"Open Album Town".</summary>
+    public string OpenText => string.Format(CultureInfo.CurrentCulture, Loc.T("Plugins.OpenView"), Name);
+
+    /// <summary>True once the plugin stopped or disposed the registration.</summary>
+    public bool IsWithdrawn { get; private set; }
+
+    /// <summary>Raised (UI thread) when the view goes away: its window should close.</summary>
+    public event EventHandler? Withdrawn;
+
+    /// <summary>Set by the open window: brings it forward. While set, opening the view again
+    /// reuses that window instead of creating the plugin's control a second time.</summary>
+    public Func<bool>? Reactivate { get; set; }
+
+    /// <summary>Creates the control and hands it to the window presenter.</summary>
+    public bool Open() => _owner.OpenView(this);
+
+    internal void Withdraw()
+    {
+        if (IsWithdrawn) return;
+        IsWithdrawn = true;
+        var handler = Withdrawn;
+        Withdrawn = null;
+        handler?.Invoke(this, EventArgs.Empty);
+    }
+}
+
 /// <summary>A message a plugin asked to show.</summary>
 public sealed record PluginNotice(string PluginName, string Message);
 
@@ -481,6 +552,42 @@ public sealed class PluginHost
 
     /// <summary>A plugin asked to show a message ("notifications").</summary>
     public event EventHandler<PluginNotice>? NotificationRequested;
+
+    /// <summary>API 1.3: shows a plugin view's control (the app opens a window). Set by the app;
+    /// null (tests, headless) = views cannot be shown and <see cref="OpenView"/> returns false.</summary>
+    public Func<PluginViewEntry, Avalonia.Controls.Control, bool>? ViewPresenter { get; set; }
+
+    /// <summary>API 1.3: opens an album page in the main window (<see cref="IPluginHost.ShowAlbum"/>).
+    /// Set by the app; null = false.</summary>
+    public Func<Guid, bool>? AlbumOpener { get; set; }
+
+    /// <summary>Views of every running plugin, in load order.</summary>
+    public IReadOnlyList<PluginViewEntry> Views
+        => Plugins.Where(p => p.Instance is not null).SelectMany(p => p.Views).ToList();
+
+    /// <summary>
+    /// Opens a registered view: the plugin's <see cref="IPluginViewProvider.CreateView"/> runs
+    /// guarded (a throw or a null control fails the plugin like any other callback), then the
+    /// presenter shows it. False when the view is gone, the plugin stopped, or nothing can show it.
+    /// </summary>
+    public bool OpenView(PluginViewEntry view)
+    {
+        if (view.IsWithdrawn || view.Plugin.Instance is null || ViewPresenter is not { } present) return false;
+        if (view.Reactivate is { } reactivate && reactivate()) return true;
+        Avalonia.Controls.Control? control = null;
+        if (!Guard(view.Plugin, $"view '{view.Name}'", () => control = view.Provider.CreateView())) return false;
+        if (control is null)
+        {
+            Fault(view.Plugin, $"view '{view.Name}': CreateView returned null.");
+            return false;
+        }
+        try { return present(view, control); }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"{view.Plugin.Id}: showing view '{view.Name}' failed: {ex.Message}");
+            return false;
+        }
+    }
 
     // ── Discovery and lifecycle ──
 
@@ -892,6 +999,7 @@ public sealed class PluginHost
             plugin.Adapter = null;
             plugin.Instance = null;
             plugin.VisualLayers.Clear();
+            plugin.ClearViews();
             plugin.Extensions = "";
             plugin.Status = PluginStatus.Failed;
             plugin.Error = message;
@@ -929,6 +1037,7 @@ public sealed class PluginHost
         plugin.Adapter = null;
         plugin.Instance = null;
         plugin.VisualLayers.Clear();
+        plugin.ClearViews();
         plugin.Extensions = "";
         TryUnloadContext(plugin);
     }
@@ -976,6 +1085,7 @@ public sealed class PluginHost
     {
         var parts = new List<string>();
         parts.AddRange(plugin.VisualLayers.Select(v => v.Name));
+        parts.AddRange(plugin.Views.Select(v => "View: " + v.Name));
         if (plugin.Adapter is { } a)
         {
             parts.AddRange(a.LyricsSources.Select(l => "Lyrics: " + l.Name));
@@ -1040,6 +1150,11 @@ public sealed class PluginHost
     {
         Bpm = t.Bpm,
         MusicalKey = t.MusicalKey ?? "",
+        AlbumId = t.AlbumId == Guid.Empty ? "" : t.AlbumId.ToString("D"),
+        ArtworkPath = string.IsNullOrEmpty(t.AlbumArtworkPath) ? null : t.AlbumArtworkPath,
+        ReleaseType = t.ReleaseType.ToString(),
+        DateAdded = t.DateAdded == default ? null : new DateTimeOffset(DateTime.SpecifyKind(t.DateAdded, DateTimeKind.Utc)),
+        LastPlayed = t.LastPlayed is { } lp ? new DateTimeOffset(DateTime.SpecifyKind(lp, DateTimeKind.Utc)) : null,
     };
 
     // ── Settings declared in plugin.json ──
@@ -1319,6 +1434,37 @@ public sealed class PluginHost
             if (_plugin.Instance is not null) _owner.VisualLayersChanged?.Invoke(_owner, EventArgs.Empty);
         }
 
+        public IDisposable RegisterView(IPluginViewProvider provider)
+        {
+            ArgumentNullException.ThrowIfNull(provider);
+            if (_disposed) return Registration.None;
+            string name;
+            try { name = string.IsNullOrWhiteSpace(provider.Name) ? _plugin.Name : provider.Name.Trim(); }
+            catch { name = _plugin.Name; }
+            var view = new PluginViewEntry(_owner, _plugin, provider, name);
+            _plugin.AddView(view);
+            _owner.UpdateExtensions(_plugin);
+            return new Registration(() =>
+            {
+                void Drop() { _plugin.RemoveView(view); _owner.UpdateExtensions(_plugin); }
+                if (Dispatcher.UIThread.CheckAccess()) Drop();
+                else Dispatcher.UIThread.Post(Drop);
+            });
+        }
+
+        public bool OpenView(IPluginViewProvider provider)
+        {
+            if (_disposed || provider is null) return false;
+            var view = _plugin.Views.FirstOrDefault(v => ReferenceEquals(v.Provider, provider));
+            return view is not null && _owner.OpenView(view);
+        }
+
+        public bool ShowAlbum(string albumId)
+        {
+            if (_disposed || !Guid.TryParse(albumId, out var id) || _owner.AlbumOpener is not { } open) return false;
+            return open(id);
+        }
+
         public void Notify(string message)
         {
             Require(PluginPermissions.Notifications);
@@ -1423,6 +1569,24 @@ public sealed class PluginHost
         public void Next() => OnUi(p => p.NextCommand.Execute(null));
         public void Previous() => OnUi(p => p.PreviousCommand.Execute(null));
         public void Seek(TimeSpan position) => OnUi(p => p.SeekTo(position));
+
+        public void PlayTracks(IReadOnlyList<string> trackIds, int startIndex = 0)
+        {
+            if (_disposed || trackIds is null || _library is not { } library) return;
+            var ids = trackIds.ToArray();
+            OnUi(p =>
+            {
+                var tracks = new List<Track>(ids.Length);
+                var start = 0;
+                for (var i = 0; i < ids.Length; i++)
+                {
+                    if (!Guid.TryParse(ids[i], out var id) || library.GetTrackById(id) is not { } t) continue;
+                    if (i <= startIndex) start = tracks.Count;
+                    tracks.Add(t);
+                }
+                if (tracks.Count > 0) p.ReplaceQueueAndPlay(tracks, Math.Clamp(start, 0, tracks.Count - 1));
+            });
+        }
 
         private void OnUi(Action<PlayerViewModel> action)
         {

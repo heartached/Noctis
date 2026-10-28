@@ -1,0 +1,21 @@
+{
+  "id": "dev.noctis.plugins.albumtown",
+  "name": "Album Town",
+  "version": "1.0.0",
+  "author": "Noctis, idea by Jafezy JD",
+  "description": "Your albums become little square creatures that wander a plaza, chat about what they have in common and live in apartments that grow with every album. Idea by Jafezy JD.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.AlbumTown.dll",
+  "apiVersion": "1.3",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["library.read", "playback.control"],
+  "settings": [
+    { "key": "crowdSize", "label": "Albums in the plaza", "type": "number", "default": 40, "min": 24, "max": 60,
+      "description": "How many albums come to the plaza at once. Fewer is lighter on older computers." },
+    { "key": "showNames", "label": "Show album names", "type": "bool", "default": false,
+      "description": "Off: a name shows when you point at a creature." },
+    { "key": "chatty", "label": "Let them talk", "type": "bool", "default": true }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown"
+}
