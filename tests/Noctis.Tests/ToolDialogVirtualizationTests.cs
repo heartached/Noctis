@@ -103,7 +103,7 @@ public class ToolDialogVirtualizationTests
         var groups = Tracks().Select(t => new DuplicateGroup(new[] { t, t }, t.Id)).ToList();
         var vm = new DuplicateFinderViewModel(new StubDuplicates(groups));
         Assert.Equal(RowCount, vm.Groups.Count); // the stub scan completed synchronously
-        AssertVirtualized(RealizedRows(new DuplicateFinderDialog(vm), vm.Groups));
+        AssertVirtualized(RealizedRows(new DuplicateFinderDialog(vm), vm.Entries));
     }
 
     [AvaloniaFact]

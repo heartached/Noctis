@@ -402,6 +402,149 @@ public class DuplicateFinderDialogTests
         });
     }
 
+    /// <summary>The owner's library shape: 529 groups, 794 copies to delete (most groups two
+    /// copies, some three or four), long paths, a mix of formats. Fake paths only.</summary>
+    private static List<DuplicateGroup> BigResult()
+    {
+        var groups = new List<DuplicateGroup>();
+        for (var i = 0; i < 529; i++)
+        {
+            var n = i % 4 == 1 ? 3 : i % 9 == 4 ? 4 : i % 5 == 2 ? 3 : 2;
+            var copies = new List<Track>();
+            for (var c = 0; c < n; c++)
+            {
+                var t = c == 0
+                    ? Copy($@"C:\Users\me\Music\Artist {i % 40}\Album {i % 70} (Deluxe Edition)\{i % 20:00} Track {i}.flac", "FLAC", 900 + i, c == 0 && i % 3 == 0 ? 96000 : 44100, i % 3 == 0 ? 24 : 16, 30_000_000 + i)
+                    : Copy($@"D:\Old Library\Downloads\Copy {c}\Track {i}.mp3", "MPEG Layer 3", 320, 44100, 0, 8_000_000 + c);
+                t.Title = $"Track number {i}";
+                t.Artist = $"Artist {i % 40}";
+                copies.Add(t);
+            }
+            groups.Add(new DuplicateGroup(copies, copies[0].Id));
+        }
+        return groups;
+    }
+
+    /// <summary>Real Skia only: the big list at its top and its end, saved as PNGs under
+    /// %TEMP%\NoctisShots for a look at the headers and copy cards.</summary>
+    [AvaloniaFact]
+    public void Probe_SavesTheBigList()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        EnsureAppStyles();
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NoctisShots");
+        System.IO.Directory.CreateDirectory(dir);
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var (vm, win, host) = Open(BigResult());
+            try
+            {
+                Assert.True(PumpUntil(() => CardSettledOpen(host)));
+                var sv = GroupList(win);
+                PumpUntil(() => false, 150);
+                win.CaptureRenderedFrame()!.Save(System.IO.Path.Combine(dir, "duplicates-big-top.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                for (var i = 0; i < 5; i++) { sv.Offset = new Vector(0, sv.Extent.Height); PumpUntil(() => false, 30); }
+                PumpUntil(() => false, 150);
+                win.CaptureRenderedFrame()!.Save(System.IO.Path.Combine(dir, "duplicates-big-end.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                _o.WriteLine(dir);
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+        });
+    }
+
+    private static ScrollViewer GroupList(Window win) =>
+        win.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.IsEffectivelyVisible && s.Content is ItemsControl);
+
+    /// <summary>
+    /// Owner 10-27: with 529 groups ("Delete 794") dragging the scrollbar thumb made the list
+    /// stumble. One item per group (2-4 copies tall) let the virtualizing panel estimate the
+    /// rows it had not built from the 3-4 it had: over a sweep the extent took 84 values
+    /// between 85,842 and 128,042 px and the offset snapped back up to 9,800 px from where
+    /// the thumb was put. One flat list of equal rows keeps the extent fixed, so every thumb
+    /// position is exactly honoured.
+    /// </summary>
+    [AvaloniaFact]
+    public void BigList_ThumbSweep_KeepsTheExtent_AndLandsWhereTheThumbIs()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open(BigResult());
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            Assert.Equal(529, vm.Groups.Count);
+            Assert.Equal(vm.Groups.Count + vm.Groups.Sum(g => g.Rows.Count), vm.Entries.Count);
+            var sv = GroupList(win);
+            var panel = sv.GetVisualDescendants().OfType<VirtualizingStackPanel>().Single();
+            var extent = sv.Extent.Height;
+            Assert.True(extent > 100_000, $"extent {extent}");
+            // The invariant behind it: headers and copies are one row height.
+            Assert.Single(panel.Children.Select(c => c.Bounds.Height).Distinct());
+
+            const int steps = 120;
+            var maxRealized = 0;
+            for (var i = 0; i <= steps; i++)
+            {
+                // Out of order too: a drag that turns back must land just as exactly.
+                var f = i % 7 == 3 ? 1 - (double)i / steps : (double)i / steps;
+                var want = (extent - sv.Viewport.Height) * f;
+                sv.Offset = new Vector(0, want);
+                Dispatcher.UIThread.RunJobs();
+                win.UpdateLayout();
+                Assert.Equal(extent, sv.Extent.Height, 3);
+                Assert.Equal(want, sv.Offset.Y, 3);
+                maxRealized = Math.Max(maxRealized, panel.Children.Count);
+            }
+            // Only the rows in and near the viewport are ever built.
+            Assert.InRange(maxRealized, 1, 30);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    /// <summary>A real thumb drag from the top to past the bottom: the list follows it and ends
+    /// on the last copy of the last group, with the thumb at the end of its track.</summary>
+    [AvaloniaFact]
+    public void BigList_DraggingTheThumbToTheBottom_EndsOnTheLastGroup()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open(BigResult());
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var sv = GroupList(win);
+            var bar = sv.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>()
+                .Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+            var barMid = bar.TranslatePoint(new Point(bar.Bounds.Width / 2, bar.Bounds.Height / 2), win)!.Value;
+            win.MouseMove(barMid); // the auto-hide bar expands under the pointer
+            PumpUntil(() => false, 300);
+            var thumb = bar.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().Single(t => t.IsEffectivelyVisible);
+            var start = thumb.TranslatePoint(new Point(thumb.Bounds.Width / 2, thumb.Bounds.Height / 2), win)!.Value;
+            var bottom = bar.TranslatePoint(new Point(bar.Bounds.Width / 2, bar.Bounds.Height + 40), win)!.Value;
+            var extent = sv.Extent.Height;
+
+            win.MouseDown(start, MouseButton.Left);
+            var last = -1.0;
+            for (var i = 1; i <= 40; i++)
+            {
+                win.MouseMove(new Point(start.X, start.Y + (bottom.Y - start.Y) * i / 40), RawInputModifiers.LeftMouseButton);
+                Dispatcher.UIThread.RunJobs();
+                win.UpdateLayout();
+                Assert.Equal(extent, sv.Extent.Height, 3);
+                Assert.True(sv.Offset.Y >= last, $"step {i}: the list went back up ({last} -> {sv.Offset.Y})");
+                last = sv.Offset.Y;
+            }
+            win.MouseUp(bottom, MouseButton.Left);
+            PumpUntil(() => false, 100);
+
+            Assert.Equal(sv.Extent.Height - sv.Viewport.Height, sv.Offset.Y, 1);
+            var lastRow = vm.Groups[^1].Rows[^1];
+            var card = sv.GetVisualDescendants().OfType<ToggleButton>().Single(t => ReferenceEquals(t.DataContext, lastRow));
+            var cardBottom = card.TranslatePoint(new Point(0, card.Bounds.Height), sv)!.Value.Y;
+            Assert.InRange(cardBottom, sv.Viewport.Height - 60, sv.Bounds.Height);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
     private sealed class StubDuplicates(IReadOnlyList<DuplicateGroup> groups) : IDuplicateFinderService
     {
         public Task<IReadOnlyList<DuplicateGroup>> FindAsync(int durationToleranceSeconds = DuplicateMatcher.DefaultDurationToleranceSeconds,
