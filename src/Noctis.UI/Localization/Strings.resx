@@ -177,7 +177,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Pause Video With Playback</value><comment>Appearance toggle title</comment></data>
   <data name="Settings.PauseVideoWithPlaybackDesc" xml:space="preserve"><value>Freeze the background video while the song is paused.</value><comment>Appearance toggle description</comment></data>
   <data name="AlbumDetail.LyricsBackgroundVideo" xml:space="preserve"><value>Lyrics Background Video</value><comment>Album page menu</comment></data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Choose video for this album…</value><comment>Album page menu</comment></data>
+  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Choose video for this album</value><comment>Album page menu</comment></data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve"><value>Use default video</value><comment>Album page menu</comment></data>
   <data name="Settings.StarGitHub" xml:space="preserve"><value>Star on GitHub</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinDiscord" xml:space="preserve"><value>Join Discord</value><comment>Text in SettingsView.axaml</comment></data>

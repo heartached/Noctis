@@ -413,7 +413,7 @@
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>Choisissez une vidéo pour cet album…</value>
+    <value>Choisissez une vidéo pour cet album</value>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">

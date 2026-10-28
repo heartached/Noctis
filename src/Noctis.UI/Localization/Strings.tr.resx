@@ -134,7 +134,7 @@
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Videoyu Oynatmayla Birlikte Duraklat</value><comment>Appearance toggle title</comment></data>
   <data name="Settings.PauseVideoWithPlaybackDesc" xml:space="preserve"><value>Şarkı duraklatıldığında arka plan videosunu dondur.</value><comment>Appearance toggle description</comment></data>
   <data name="AlbumDetail.LyricsBackgroundVideo" xml:space="preserve"><value>Söz Arka Plan Videosu</value><comment>Album page menu</comment></data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Bu albüm için video seç…</value><comment>Album page menu</comment></data>
+  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Bu albüm için video seç</value><comment>Album page menu</comment></data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve"><value>Varsayılan videoyu kullan</value><comment>Album page menu</comment></data>
   <data name="Settings.StarGitHub" xml:space="preserve"><value>GitHub'da Yıldızla</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinDiscord" xml:space="preserve"><value>Discord'a Katıl</value><comment>Text in SettingsView.axaml</comment></data>

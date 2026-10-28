@@ -132,7 +132,7 @@ public sealed class AlbumContextMenuBuilder
         // clip still wins). Static commands; see Helpers.LyricsBackgroundOverrides.
         LyricsBackground = new MenuItem { Header = "Lyrics Background Video" };
         LyricsBackground.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
-        LyricsBackgroundChoose = new MenuItem { Header = "Choose video for this album…", Command = LyricsBackgroundOverrides.ChooseForAlbumCommand };
+        LyricsBackgroundChoose = new MenuItem { Header = "Choose video for this album", Command = LyricsBackgroundOverrides.ChooseForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundChoose);
         LyricsBackgroundClear = new MenuItem { Header = "Use default video", Command = LyricsBackgroundOverrides.ClearForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);

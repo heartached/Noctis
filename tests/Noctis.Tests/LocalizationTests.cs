@@ -193,6 +193,7 @@ public class LocalizationTests
     [Theory]
     [InlineData("Menu.LyricsStudio")]
     [InlineData("Menu.ChooseSongVideo")]
+    [InlineData("AlbumDetail.ChooseAlbumVideo")]
     public void SongMenuLyricsRows_HaveNoTrailingEllipsis(string key)
     {
         var dir = Path.Combine(FindRepoRoot(), "src", "Noctis.UI", "Localization");

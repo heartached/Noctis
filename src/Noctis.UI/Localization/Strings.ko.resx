@@ -413,7 +413,7 @@
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>이 앨범의 영상 선택…</value>
+    <value>이 앨범의 영상 선택</value>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">

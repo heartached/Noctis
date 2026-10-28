@@ -413,7 +413,7 @@
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>选择此相册的视频…</value>
+    <value>选择此相册的视频</value>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">

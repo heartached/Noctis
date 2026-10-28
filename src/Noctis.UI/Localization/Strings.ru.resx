@@ -177,7 +177,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Ставить видео на паузу вместе с музыкой</value><comment>Appearance toggle title</comment></data>
   <data name="Settings.PauseVideoWithPlaybackDesc" xml:space="preserve"><value>Фоновое видео замирает, пока песня на паузе.</value><comment>Appearance toggle description</comment></data>
   <data name="AlbumDetail.LyricsBackgroundVideo" xml:space="preserve"><value>Фоновое видео для текста</value><comment>Album page menu</comment></data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Выбрать видео для этого альбома…</value><comment>Album page menu</comment></data>
+  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Выбрать видео для этого альбома</value><comment>Album page menu</comment></data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve"><value>Видео по умолчанию</value><comment>Album page menu</comment></data>
   <data name="Settings.StarGitHub" xml:space="preserve"><value>Звезда на GitHub</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinDiscord" xml:space="preserve"><value>Присоединиться к Discord</value><comment>Text in SettingsView.axaml</comment></data>
