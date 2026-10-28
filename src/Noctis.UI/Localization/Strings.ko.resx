@@ -6856,10 +6856,6 @@
     <value>미드나잇</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
-  <data name="Settings.AppIcon.Graphite" xml:space="preserve">
-    <value>그래파이트</value>
-    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
-  </data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve">
     <value>루비</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>

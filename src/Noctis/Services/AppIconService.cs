@@ -27,7 +27,7 @@ public static class AppIconService
     public static IReadOnlyList<string> Ids { get; } = new[]
     {
         "classic", "light", "dark", "blush", "sky", "sunset", "violet", "aurora",
-        "midnight", "graphite", "ruby",
+        "midnight", "ruby",
     };
 
     private static readonly Dictionary<string, WindowIcon> s_cache = new(StringComparer.Ordinal);
@@ -44,6 +44,8 @@ public static class AppIconService
     {
         if (string.IsNullOrWhiteSpace(id)) return DefaultId;
         var trimmed = id.Trim();
+        // Graphite was removed: its users get Dark, the closest icon, rather than Classic.
+        if (string.Equals(trimmed, "graphite", StringComparison.OrdinalIgnoreCase)) return "dark";
         return Ids.FirstOrDefault(x => string.Equals(x, trimmed, StringComparison.OrdinalIgnoreCase)) ?? DefaultId;
     }
 

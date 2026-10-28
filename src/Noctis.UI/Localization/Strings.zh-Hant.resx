@@ -6856,10 +6856,6 @@
     <value>午夜</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
-  <data name="Settings.AppIcon.Graphite" xml:space="preserve">
-    <value>石墨</value>
-    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
-  </data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve">
     <value>紅寶石</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>

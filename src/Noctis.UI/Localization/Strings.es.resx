@@ -6856,10 +6856,6 @@
     <value>Medianoche</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
-  <data name="Settings.AppIcon.Graphite" xml:space="preserve">
-    <value>Grafito</value>
-    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
-  </data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve">
     <value>Rubí</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
