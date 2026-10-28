@@ -19,6 +19,8 @@ deciding whether to install one.
 - [Building and packaging](#building-and-packaging)
 - [Installing, updating, removing](#installing-updating-removing)
 - [Official plugins (Get plugins)](#official-plugins-get-plugins)
+- [Submitting a plugin](#submitting-a-plugin)
+- [Reviewing a submission](#reviewing-a-submission)
 - [Publishing plan](#publishing-plan)
 - [Versioning and deprecation policy](#versioning-and-deprecation-policy)
 - [Legacy plugins (API 1.0, no plugin.json)](#legacy-plugins-api-10-no-pluginjson)
@@ -372,8 +374,9 @@ hello-1.0.0.zip
 
 ## Official plugins (Get plugins)
 
-Settings → Plugins starts with **Get plugins**: the plugins the Noctis project publishes itself,
-one row each with a single button:
+Settings → Plugins starts with **Get plugins**: the plugins the Noctis project publishes itself
+and community plugins it has reviewed ([Submitting a plugin](#submitting-a-plugin)), one row each
+with the author's credit ("by …") and a single button:
 
 | Button | When |
 |---|---|
@@ -412,6 +415,8 @@ one row each with a single button:
   release tag is `plugin-<short name>-v<version>`.
 - An entry with a missing or bad field is skipped (and logged), never the whole list; a file
   with another `schema` is ignored.
+- A community entry has `homepage` = its source repository and may add `authorUrl`, an https
+  link for the credit (the app ignores fields it doesn't know).
 
 **Where the app reads it**: `https://raw.githubusercontent.com/heartached/Noctis/main/plugins/index.json`,
 when the Plugins page is opened (once per session) and when you press the refresh button, never
@@ -441,12 +446,104 @@ dotnet run --project src/Noctis/Noctis.csproj -p:Version=1.5.9
 **Publishing an official plugin** (build zip → SHA-256 → release tag → update `index.json` →
 push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING.md).
 
+## Submitting a plugin
+
+Made a plugin? Submit it for the list in **Get plugins**. Someone from the Noctis team reviews it
+and, once it's approved, it shows up in every copy of Noctis with you credited as the author.
+
+1. **Put the source on GitHub**, in a public repository with a licence file. Reviews read the
+   source, so closed-source or obfuscated plugins can't be listed.
+2. **Publish a GitHub release** of that repository with the plugin `.zip` attached (the same zip
+   you'd use for Install from file, see [Building and packaging](#building-and-packaging)). Its
+   `plugin.json` needs `id`, `name`, `version`, `minAppVersion` and, for a .NET plugin, `apiVersion`.
+   Declare `network` if the plugin ever goes online.
+3. **Get the zip's SHA-256**: `(Get-FileHash file.zip -Algorithm SHA256).Hash.ToLower()` on
+   Windows, `shasum -a 256 file.zip` on macOS and Linux.
+4. **Fill in the form**: in Noctis, Settings → Plugins → **Submit a Plugin**, or
+   [open it on GitHub](https://github.com/heartached/Noctis/issues/new?template=3-plugin-submission.yml).
+   It asks for the name, id, version, a one-line description, your credit, the source and
+   release links, the SHA-256, the licence, and what the plugin does with the internet and files.
+
+Within a few minutes a bot comments with a report: it downloads your zip and checks it with the
+same code Noctis uses to install plugins (it never runs your plugin). **Problems** must be fixed
+before the plugin can be listed; **red flags** (a bundled program or script, native code,
+starting other programs, loading code at run time, the registry) aren't refusals, but explain
+them in a comment. Edit the issue to re-run the check, for example after a new release.
+
+**Updating a listed plugin**: publish a new release with a higher version and submit the form
+again with the new link and SHA-256, from the same repository. Approved updates show as
+**Update** in Get plugins; your users' data and settings are kept.
+
+What gets refused: telemetry or ads, anything that downloads copyrighted music or gets around
+DRM, collecting tokens or passwords, hidden behaviour, and code nobody can read.
+
+## Reviewing a submission
+
+Every "Plugin submission" issue gets one report comment from
+[`.github/workflows/plugin-submission.yml`](../.github/workflows/plugin-submission.yml), updated
+each time the issue is edited. The automatic part
+([`tools/Noctis.PluginCheck`](../tools/Noctis.PluginCheck)) downloads the zip (GitHub release
+assets only, 100 MB at most), checks its SHA-256 and size against the form and GitHub's own
+digest, runs `PluginInstaller.Inspect` and `PluginCatalog.Parse` on it (what Install from file
+and Get plugins run), compares plugin.json with the form, and lists what the code references,
+read as metadata only. The bottom of the comment is the `plugins/index.json` entry.
+
+The manual part is yours. Before applying the label, check that:
+
+- [ ] the source repository builds the released zip (build the release tag yourself; a zip
+      made with `samples/PluginPackage.targets` on the same OS and .NET SDK has the same
+      SHA-256, otherwise compare the file list and DLL sizes);
+- [ ] what it does with the internet and files matches the form and plugin.json's permissions:
+      read the code behind every "network" and "files" use;
+- [ ] there's no telemetry, ads, miners, token or password collection, copyrighted downloads or
+      DRM workarounds;
+- [ ] every red flag in the report has a good reason (a native library it really needs, …);
+- [ ] the licence lets people use it, and the name and description are plain and accurate;
+- [ ] it works: Install from file in a dev build, switch it on, use it, switch it off, remove it.
+
+Then **apply the `approved` label**. The workflow checks everything again from scratch (the
+earlier comment isn't trusted), and opens a pull request `plugin-submission/<issue>` that adds or
+updates the entry in `plugins/index.json`, crediting the submitter in `author`. **Merging the PR
+lists the plugin**; the PR closes the issue. If the second check finds a problem, there's no PR:
+the label comes off and the issue says why. Only people with write access can approve.
+
+To reject, say why in a comment and close the issue. To de-list a plugin later, remove its entry
+from `plugins/index.json`; installed copies stay. The app's built-in copy of the list is updated
+by the next app release.
+
+Run the check by hand (offline, against a local zip):
+
+```powershell
+dotnet run --project tools/Noctis.PluginCheck -c Release -- check --form body.md --zip plugin.zip --index plugins/index.json --offline
+```
+
+`body.md` is the issue's text (Edit → copy). Drop `--offline` (and `--zip`) to also download the
+zip and ask the GitHub API, as the workflow does.
+
+**One-time setup on GitHub**: create the labels `plugin-submission`, `needs-review` and
+`approved` (the form only applies labels that exist), and under Settings → Actions → General →
+Workflow permissions, tick **Allow GitHub Actions to create and approve pull requests**. A PR
+opened by the workflow doesn't start the Build workflow by itself (GitHub's rule for its own
+token); the push to `main` after merging does.
+
+### Discord announcement
+
+Text to pin in the Discord's plugins channel:
+
+> **Made a Noctis plugin? Get it into the app.**
+> Submit it for the official list in Settings → Plugins → Get plugins, credited to you:
+> https://github.com/heartached/Noctis/issues/new?template=3-plugin-submission.yml
+> (or in Noctis: Settings → Plugins → Submit a Plugin).
+> You need the source on GitHub and the plugin zip on a GitHub release. A bot checks the zip
+> within minutes, then the team reviews it. Guide: https://github.com/heartached/Noctis/blob/main/docs/PLUGINS.md#submitting-a-plugin
+
 ## Publishing plan
 
 Phase 1 shipped the loader, manifest, permissions, restricted mode and install-from-file.
 Noctis 1.5.9 adds [Get plugins](#official-plugins-get-plugins) for the official plugins
-(`plugins/index.json`, SHA-256 checked on download). There is no directory of community plugins
-yet; share those zips through GitHub releases.
+(`plugins/index.json`, SHA-256 checked on download). Community plugins join the same list
+through a reviewed [submission](#submitting-a-plugin): an issue form, an automatic check of the
+zip, and a pull request once a maintainer approves it.
 
 Planned for phase 2, modelled on Flow Launcher and Obsidian:
 
