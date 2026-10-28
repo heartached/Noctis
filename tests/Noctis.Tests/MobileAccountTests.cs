@@ -585,11 +585,11 @@ public class MobileAccountTests
 
         await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
         Assert.Equal("John Doe", settings.AccountTitle);
-        Assert.Equal("Studio PC · not synced yet", settings.AccountSubtitle);
-        Assert.Equal("Playlists, favourites and plays stay in step with your computer.", settings.AccountFootnote);
+        Assert.Equal("Studio PC · Not synced yet", settings.AccountSubtitle);
+        Assert.Equal("Playlists, favorites and plays stay in step with your computer.", settings.AccountFootnote);
         account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
         account.RaiseStateChanged();
-        Assert.Equal("Studio PC · synced 5 min ago", settings.AccountSubtitle);
+        Assert.Equal("Studio PC · Synced 5 min ago", settings.AccountSubtitle);
         Assert.Equal("JD", settings.AccountInitials);
         Assert.True(settings.ShowAccountInitials);
         Assert.False(settings.HasAccountAvatar);
@@ -991,15 +991,47 @@ public class MobileAccountTests
         Assert.Equal(string.Empty, page.DownloadText);                     // not "Downloads finished" over none
     }
 
-    [Theory]
-    [InlineData(20, "just now")]
-    [InlineData(5 * 60, "5 min ago")]
-    [InlineData(3 * 3600 + 120, "3 h ago")]
-    public void LastSync_IsWordedAsTheDesktopWordsIt(int secondsAgo, string expected)
+    /// <summary>Settings' profile card said "Synced 5 min ago" for as long as the sheet stayed
+    /// open: the page's minute ticker re-reads it (RefreshSyncTime) against the clock.</summary>
+    [Fact]
+    public async Task SettingsProfileCard_SyncTime_RefreshesWhileOpen()
     {
-        var now = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc);
-        Assert.Equal(expected, AccountPageViewModel.Ago(now.AddSeconds(-secondsAgo), now));
-        Assert.StartsWith("on ", AccountPageViewModel.Ago(now.AddDays(-2), now));
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount();
+        await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
+        var now = DateTime.UtcNow;
+        account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
+        var clock = now;
+        var settings = new SettingsPageViewModel(ShellWith(rig, account)) { UtcNow = () => clock };
+        Assert.Equal("Studio PC · Synced 5 min ago", settings.AccountSubtitle);
+
+        var raised = false;
+        settings.PropertyChanged += (_, e) => raised |= e.PropertyName == nameof(SettingsPageViewModel.AccountSubtitle);
+        clock = now.AddMinutes(2);
+        settings.RefreshSyncTime();
+        Assert.True(raised);
+        Assert.Equal("Studio PC · Synced 7 min ago", settings.AccountSubtitle);
+    }
+
+    /// <summary>The Account page and Settings' profile card say the last sync in the same words
+    /// (they read "Synced 3 h ago" and "synced 3 hr ago", "on 10/9/2026 2:05 PM" and "synced 2 Oct").</summary>
+    [Fact]
+    public async Task LastSync_IsWordedAlike_OnTheAccountPageAndTheProfileCard()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount();
+        await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
+        var shell = ShellWith(rig, account);
+        var now = DateTime.UtcNow;
+        var settings = new SettingsPageViewModel(shell) { UtcNow = () => now };
+        var page = OpenAccount(shell);
+        Assert.Equal("Not synced yet", page.LastSyncText);
+        Assert.Equal("Studio PC · Not synced yet", settings.AccountSubtitle);
+
+        account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
+        account.RaiseStateChanged();
+        Assert.Equal("Synced 5 min ago", page.LastSyncText);
+        Assert.Equal($"Studio PC · {page.LastSyncText}", settings.AccountSubtitle);
     }
 
     [Fact]

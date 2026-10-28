@@ -922,14 +922,14 @@ public class MobileSettingsTests
     public void SyncedText_ReadsAsRelativeTime()
     {
         var now = new DateTime(2026, 10, 13, 15, 0, 0, DateTimeKind.Local).ToUniversalTime();
-        Assert.Equal("not synced yet", SettingsPageViewModel.SyncedText(null, now));
-        Assert.Equal("synced just now", SettingsPageViewModel.SyncedText(now.AddSeconds(-20), now));
-        Assert.Equal("synced 5 min ago", SettingsPageViewModel.SyncedText(now.AddMinutes(-5), now));
-        Assert.Equal("synced 3 hr ago", SettingsPageViewModel.SyncedText(now.AddHours(-3), now));
-        Assert.Equal("synced yesterday", SettingsPageViewModel.SyncedText(now.AddHours(-24), now));
-        Assert.Equal("synced 4 days ago", SettingsPageViewModel.SyncedText(now.AddDays(-4), now));
-        Assert.StartsWith("synced ", SettingsPageViewModel.SyncedText(now.AddDays(-30), now));
-        Assert.DoesNotContain("ago", SettingsPageViewModel.SyncedText(now.AddDays(-30), now));
+        Assert.Equal("Not synced yet", AccountPageViewModel.SyncedText(null, now));
+        Assert.Equal("Synced just now", AccountPageViewModel.SyncedText(now.AddSeconds(-20), now));
+        Assert.Equal("Synced 5 min ago", AccountPageViewModel.SyncedText(now.AddMinutes(-5), now));
+        Assert.Equal("Synced 3 hr ago", AccountPageViewModel.SyncedText(now.AddHours(-3), now));
+        Assert.Equal("Synced yesterday", AccountPageViewModel.SyncedText(now.AddHours(-24), now));
+        Assert.Equal("Synced 4 days ago", AccountPageViewModel.SyncedText(now.AddDays(-4), now));
+        Assert.StartsWith("Synced ", AccountPageViewModel.SyncedText(now.AddDays(-30), now));
+        Assert.DoesNotContain("ago", AccountPageViewModel.SyncedText(now.AddDays(-30), now));
     }
 
     /// <summary>The hairline under the header shows only once the page has scrolled under it.</summary>

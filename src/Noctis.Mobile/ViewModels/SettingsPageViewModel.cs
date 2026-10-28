@@ -114,7 +114,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public ShellViewModel Shell { get; }
     public override string Title => Loc.T("Nav.Settings");
 
-    /// <summary>The clock behind the profile card's "synced 5 min ago"; tests pin it.</summary>
+    /// <summary>The clock behind the profile card's "Synced 5 min ago"; tests pin it.</summary>
     internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
 
     public IReadOnlyList<string> Appearances => MobileTheme.Appearances;
@@ -329,12 +329,16 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>The card's grey line: the computer and when it last synced, or what signing in brings.</summary>
     public string AccountSubtitle => IsSignedIn
-        ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · {SyncedText(Shell.Account!.Account!.LastSyncUtc, UtcNow())}"
+        ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · {AccountPageViewModel.SyncedText(Shell.Account!.Account!.LastSyncUtc, UtcNow())}"
         : "Sync your library with Noctis on your PC";
+
+    /// <summary>"Synced 5 min ago" goes stale while the sheet stays open: the page re-reads it
+    /// once a minute (SettingsPage's ticker, stopped when the page leaves).</summary>
+    public void RefreshSyncTime() => OnPropertyChanged(nameof(AccountSubtitle));
 
     /// <summary>The grey line under the card: what syncing does.</summary>
     public string AccountFootnote => IsSignedIn
-        ? "Playlists, favourites and plays stay in step with your computer."
+        ? "Playlists, favorites and plays stay in step with your computer."
         : "Your computer's songs and playlists on this phone, to stream or download.";
 
     /// <summary>The desktop's profile picture (a cached local file), or null.</summary>
@@ -347,22 +351,6 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public bool ShowAccountInitials => !HasAccountAvatar && AccountInitials.Length > 0;
     public bool ShowAccountGlyph => !HasAccountAvatar && AccountInitials.Length == 0;
-
-    /// <summary>"synced just now", "synced 5 min ago", "synced 3 hr ago", "synced yesterday",
-    /// "synced 4 days ago", "synced 2 Oct"; "not synced yet" before the first sync.</summary>
-    internal static string SyncedText(DateTime? syncedUtc, DateTime nowUtc)
-    {
-        if (syncedUtc is not { } synced) return "not synced yet";
-        var ago = nowUtc - synced;
-        if (ago < TimeSpan.FromMinutes(1)) return "synced just now";
-        if (ago < TimeSpan.FromHours(1)) return $"synced {(int)ago.TotalMinutes} min ago";
-        var day = synced.ToLocalTime().Date;
-        var today = nowUtc.ToLocalTime().Date;
-        if (day == today) return $"synced {(int)ago.TotalHours} hr ago";
-        if (day == today.AddDays(-1)) return "synced yesterday";
-        if (day > today.AddDays(-7)) return $"synced {(today - day).Days} days ago";
-        return $"synced {day:d MMM}";
-    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsDarkThemes), nameof(DarkStyleFootnote), nameof(AppearanceValue),

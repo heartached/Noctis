@@ -167,7 +167,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     public bool ShowInitials => !HasAvatar && Initials.Length > 0;
     public bool ShowPersonGlyph => !HasAvatar && Initials.Length == 0;
 
-    /// <summary>"Synced 5 min ago" (the desktop's own wording for a phone's last sync).</summary>
+    /// <summary>"Synced 5 min ago" (<see cref="SyncedText"/>, as Settings' profile card says it).</summary>
     [ObservableProperty] private string _lastSyncText = string.Empty;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSync), nameof(ShowSyncAction))]
@@ -614,7 +614,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     /// <summary>"Synced 5 min ago" goes stale while the page stays open: the page re-reads it
     /// once a minute (AccountPage's ticker), as the desktop's phone list does.</summary>
     public void RefreshSyncTime() =>
-        LastSyncText = _account.Account?.LastSyncUtc is { } synced ? $"Synced {Ago(synced, DateTime.UtcNow)}" : "Not synced yet";
+        LastSyncText = SyncedText(_account.Account?.LastSyncUtc, DateTime.UtcNow);
 
     private void RefreshDownloads()
     {
@@ -781,15 +781,21 @@ public sealed partial class AccountPageViewModel : MobilePage
     internal static string FormatBytes(long bytes) =>
         bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.0} GB" : $"{bytes / (double)(1L << 20):0} MB";
 
-    /// <summary>"just now", "5 min ago", "3 h ago", else "on 10/9/2026 2:05 PM": the desktop's
-    /// wording for a phone's last sync (SettingsViewModel.Ago), so both sides read alike.</summary>
-    internal static string Ago(DateTime utc, DateTime nowUtc)
+    /// <summary>The phone's one wording for the last sync, on this page and Settings' profile
+    /// card alike: "Synced just now", "Synced 5 min ago", "Synced 3 hr ago", "Synced yesterday",
+    /// "Synced 4 days ago", "Synced 2 Oct"; "Not synced yet" before the first sync.</summary>
+    internal static string SyncedText(DateTime? syncedUtc, DateTime nowUtc)
     {
-        var ago = nowUtc - utc;
-        if (ago < TimeSpan.FromMinutes(1)) return "just now";
-        if (ago < TimeSpan.FromHours(1)) return $"{(int)ago.TotalMinutes} min ago";
-        if (ago < TimeSpan.FromDays(1)) return $"{(int)ago.TotalHours} h ago";
-        return $"on {utc.ToLocalTime():g}";
+        if (syncedUtc is not { } synced) return "Not synced yet";
+        var ago = nowUtc - synced;
+        if (ago < TimeSpan.FromMinutes(1)) return "Synced just now";
+        if (ago < TimeSpan.FromHours(1)) return $"Synced {(int)ago.TotalMinutes} min ago";
+        var day = synced.ToLocalTime().Date;
+        var today = nowUtc.ToLocalTime().Date;
+        if (day == today) return $"Synced {(int)ago.TotalHours} hr ago";
+        if (day == today.AddDays(-1)) return "Synced yesterday";
+        if (day > today.AddDays(-7)) return $"Synced {(today - day).Days} days ago";
+        return $"Synced {day:d MMM}";
     }
 
     private static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";

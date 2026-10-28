@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Noctis.Mobile.ViewModels;
 
 namespace Noctis.Mobile.Views;
@@ -10,11 +11,13 @@ namespace Noctis.Mobile.Views;
 /// Appearance, Lyrics) share one area. A pushed page slides in from the right while the top
 /// level drifts a little left and fades, and Back reverses it: the app's push (Motion), with a
 /// fade rather than a shade because the two panes are see-through over one backdrop. The
-/// header's hairline shows once the page showing has scrolled under it.
+/// header's hairline shows once the page showing has scrolled under it. The profile card's
+/// "Synced 5 min ago" is re-read once a minute while the page shows, as the Account page's is.
 /// </summary>
 public partial class SettingsPage : UserControl
 {
     private SettingsPageViewModel? _vm;
+    private DispatcherTimer? _ticker;
 
     public SettingsPage()
     {
@@ -31,6 +34,20 @@ public partial class SettingsPage : UserControl
         _vm = DataContext as SettingsPageViewModel;
         if (_vm != null) _vm.PropertyChanged += OnViewModelChanged;
         PlacePanes(animate: false);
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _ticker ??= new DispatcherTimer(TimeSpan.FromMinutes(1), DispatcherPriority.Background,
+            (_, _) => (DataContext as SettingsPageViewModel)?.RefreshSyncTime());
+        _ticker.Start();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _ticker?.Stop();
+        base.OnDetachedFromVisualTree(e);
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
