@@ -51,6 +51,7 @@ public sealed class PhoneScrobbler
     private Settings _cfg = new();
     private Track? _track;
     private bool _counted;
+    private bool _loaded;
     private string? _lastFmToken;
     private Timer? _timer;
 
@@ -86,11 +87,15 @@ public sealed class PhoneScrobbler
 
     // ── Settings (only this class's own fields are written) ──
 
+    /// <summary>Loads the saved settings unless they already are (the shell and a test may both ask).</summary>
+    public Task EnsureLoadedAsync() => _loaded ? Task.CompletedTask : LoadAsync();
+
     /// <summary>Reads the saved settings; call once at start and after anything else may have changed them.</summary>
     public async Task LoadAsync()
     {
         var s = await _persistence.LoadSettingsAsync().ConfigureAwait(false);
         _cfg = FromSettings(s);
+        _loaded = true;
         RaiseChanged();
         if (AutoFlush && PendingCount > 0) ScheduleFlush(TimeSpan.FromSeconds(5));
     }

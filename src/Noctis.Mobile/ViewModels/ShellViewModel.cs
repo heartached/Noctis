@@ -78,7 +78,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlaybackTick += (_, playing) => scrobbler.Tick(playing);
         // A pause the engine reports without a position tick still stops the played-time clock.
         Player.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) scrobbler.Tick(Player.IsPlaying); };
-        _ = scrobbler.LoadAsync();
+        _ = scrobbler.EnsureLoadedAsync();
     }
 
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
