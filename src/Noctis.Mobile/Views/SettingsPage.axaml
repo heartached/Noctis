@@ -545,7 +545,7 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </Grid>
                                     </Button>
-                                    <StackPanel Name="PickUpGroup" IsVisible="{Binding Shell.HasAccount}">
+                                    <StackPanel Name="PickUpGroup" IsVisible="{Binding ShowPickUp}">
                                         <Border Classes="row-separator chipped" />
                                         <ToggleButton Name="PickUpSwitch" Classes="switch-row" IsChecked="{Binding History.PickUpOnComputer}"
                                                       AutomationProperties.Name="Pick Up on Computer, Your queue and spot follow you">
@@ -561,7 +561,7 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock Name="PickUpFootnoteLabel" Classes="group-footnote" Text="{Binding PickUpFootnote}"
-                                       IsVisible="{Binding Shell.HasAccount}" />
+                                       IsVisible="{Binding ShowPickUp}" />
                         </StackPanel>
 
                         <!-- Help: Report a Problem and Noctis Website leave the app; Export Logs saves the log. -->

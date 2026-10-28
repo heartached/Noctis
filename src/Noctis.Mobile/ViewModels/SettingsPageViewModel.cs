@@ -358,6 +358,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string ScrobblingRowName => Named("Scrobbling", Scrobbling.Summary);
     public string HistoryRowName => Named("Listening History", History.Summary);
 
+    /// <summary>Pick Up on Computer and its footnote: only while signed in (the queue goes to the
+    /// account's computer; signed out there is none, though the account service is there).</summary>
+    public bool ShowPickUp => IsSignedIn;
+
     /// <summary>Under Pick Up on Computer: what the switch does, naming the computer.</summary>
     public string PickUpFootnote => $"When you open Noctis on {(IsSignedIn ? AccountPageViewModel.ServerLabel(Shell.Account!.Account!) : "your computer")}, it offers to carry on from the song you were playing here.";
 
@@ -854,7 +858,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.Marshal(() =>
         {
             foreach (var name in new[] { nameof(AccountRowText), nameof(AccountRowName), nameof(AccountTitle), nameof(AccountSubtitle),
-                         nameof(ShowSyncedDot), nameof(PickUpFootnote), nameof(AccountAvatarPath), nameof(HasAccountAvatar), nameof(AccountInitials),
+                         nameof(ShowSyncedDot), nameof(PickUpFootnote), nameof(ShowPickUp), nameof(AccountAvatarPath), nameof(HasAccountAvatar), nameof(AccountInitials),
                          nameof(ShowAccountInitials), nameof(ShowAccountGlyph) })
                 OnPropertyChanged(name);
         });

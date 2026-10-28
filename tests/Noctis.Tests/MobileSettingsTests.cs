@@ -1173,6 +1173,37 @@ public class MobileSettingsTests
         }
     }
 
+    /// <summary>Live: signed out (the account service there, no account) the switch still showed.</summary>
+    [AvaloniaFact]
+    public async Task PickUpOnComputer_IsHiddenWhileSignedOut_AndShowsOnSignIn()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new MobileAccountTests.FakeAccount();
+        var shell = ShellWithAccount(rig, account);
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)shell.CurrentPage!;
+            await vm.Loaded;
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+            Assert.True(shell.HasAccount);
+            Assert.False(MobileFixtures.Named<StackPanel>(page, "PickUpGroup").IsVisible);
+            Assert.False(MobileFixtures.Named<TextBlock>(page, "PickUpFootnoteLabel").IsVisible);
+
+            account.Account = MobileAccountTests.FakeAccount.SignedInAs();
+            account.RaiseStateChanged();
+            window.UpdateLayout();
+            Assert.True(MobileFixtures.Named<StackPanel>(page, "PickUpGroup").IsVisible);
+            Assert.True(MobileFixtures.Named<TextBlock>(page, "PickUpFootnoteLabel").IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     /// <summary>The header's small title is invisible on the top level until the large one has
     /// scrolled away; a pushed page names itself at once.</summary>
     [AvaloniaFact]
