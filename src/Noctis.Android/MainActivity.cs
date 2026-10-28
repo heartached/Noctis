@@ -117,6 +117,7 @@ public class MainActivity : AvaloniaMainActivity
         base.OnResume();
         // Another app, or the notification shade, may have moved the volume while we were away.
         AndroidApp.Current?.OnVolumeKey();
+        AndroidApp.Current?.OnForegrounded();
     }
 
     public override void OnWindowFocusChanged(bool hasFocus)
