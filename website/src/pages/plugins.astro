@@ -111,11 +111,11 @@ const faqs = [
   },
   {
     q: 'Where do I find plugins?',
-    a: 'There is no in-app directory yet. Plugins are shared as zips, for example on GitHub releases, and on the Noctis Discord. A public plugin index is planned.',
+    a: 'In Settings → Plugins → Official Plugins: plugins the Noctis team has reviewed, with an Install button each. Other plugins are shared as zips, for example on GitHub releases and on the Noctis Discord.',
   },
   {
     q: 'Do I need to know how to code?',
-    a: 'Not for content packs, which are JSON files, or for the Local API, which works from any language that can make an HTTP request. Code plugins are written in C#.',
+    a: 'Not for content packs, which are JSON files, or for the Local API, which works from any language that can make an HTTP request. Code plugins are written in C#, and the Make a plugin guide (noctisapp.cc/plugins/make) starts you from a working sample.',
   },
   {
     q: 'Will a plugin break after a Noctis update?',
@@ -443,6 +443,10 @@ const quickstart = [
               A code plugin is a .NET class library targeting <code>net10.0</code> plus a <code>plugin.json</code>.
               It builds against the plugin kit, <code>Noctis.Plugins.Abstractions</code>, API version 1.1.
             </p>
+            <p>
+              Never made one? <a href={links.pluginGuide}>Make a plugin</a> is a beginner guide: what you need, five
+              steps from the sample to a working plugin, and how to submit it.
+            </p>
 
             <h3 class="doc__h3">Quick start</h3>
             {quickstart.map((q) => (
@@ -510,12 +514,14 @@ const quickstart = [
 
             <h3 class="doc__h3">Submit your plugin</h3>
             <p>
-              Made something? Submit it for the list in Settings → Plugins → Get plugins, credited to you. Put the
+              Made something? Submit it for the list in Settings → Plugins → Official Plugins, credited to you. Put the
               source in a public GitHub repository, attach the plugin <code>.zip</code> to a GitHub release, then fill
-              in the submission form (also in the app: Settings → Plugins → Submit a Plugin). A bot checks the zip
-              without running it, then the Noctis team reads the source and tries the plugin before listing it.
+              in the submission form (also in the app: Settings → Plugins → Make your own plugin → Submit a Plugin). A
+              bot checks the zip without running it, then the Noctis team reads the source and tries the plugin before
+              listing it. New to this? The <a href={links.pluginGuide}>step-by-step guide</a> walks you through it.
             </p>
             <p class="doc__links">
+              <a class="link-arrow" href={links.pluginGuide}>Make a plugin: the beginner guide</a>
               <a class="link-arrow" href={links.pluginSubmit} target="_blank" rel="noopener">Open the submission form</a>
               <a class="link-arrow" href={links.pluginSubmitDocs} target="_blank" rel="noopener">What the review checks</a>
             </p>

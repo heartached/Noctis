@@ -42,6 +42,10 @@ export const links = {
   /** The plugin submission issue form (.github/ISSUE_TEMPLATE/3-plugin-submission.yml) and its guide. */
   pluginSubmit: `https://github.com/${REPO}/issues/new?template=3-plugin-submission.yml`,
   pluginSubmitDocs: `https://github.com/${REPO}/blob/main/docs/PLUGINS.md#submitting-a-plugin`,
+  /** The beginner guide on this site (src/pages/plugins/make.astro). The app's Settings, Plugins,
+      Make your own plugin, Read the Guide button opens it as https://noctisapp.cc/plugins/make
+      (SettingsViewModel.PluginGuideUrl): keep the two in step. */
+  pluginGuide: '/plugins/make',
   localApiDocs: `https://github.com/${REPO}/blob/main/docs/LOCAL-API.md`,
   samples: `https://github.com/${REPO}/tree/main/samples`,
   crowdin: 'https://crowdin.com/project/noctis',

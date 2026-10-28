@@ -450,6 +450,8 @@ push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING
 
 Made a plugin? Submit it for the list in **Get plugins**. Someone from the Noctis team reviews it
 and, once it's approved, it shows up in every copy of Noctis with you credited as the author.
+New to plugins? The beginner guide, [Make a plugin](https://noctisapp.cc/plugins/make) (also
+Settings → Plugins → Make your own plugin → *Read the Guide*), goes from the sample to a submission.
 
 1. **Put the source on GitHub**, in a public repository with a licence file. Reviews read the
    source, so closed-source or obfuscated plugins can't be listed.
@@ -459,7 +461,7 @@ and, once it's approved, it shows up in every copy of Noctis with you credited a
    Declare `network` if the plugin ever goes online.
 3. **Get the zip's SHA-256**: `(Get-FileHash file.zip -Algorithm SHA256).Hash.ToLower()` on
    Windows, `shasum -a 256 file.zip` on macOS and Linux.
-4. **Fill in the form**: in Noctis, Settings → Plugins → **Submit a Plugin**, or
+4. **Fill in the form**: in Noctis, Settings → Plugins → Make your own plugin → **Submit a Plugin**, or
    [open it on GitHub](https://github.com/heartached/Noctis/issues/new?template=3-plugin-submission.yml).
    It asks for the name, id, version, a one-line description, your credit, the source and
    release links, the SHA-256, the licence, and what the plugin does with the internet and files.
