@@ -1426,7 +1426,9 @@ public partial class SettingsViewModel : ViewModelBase
                     profileName: () => ProfileName,
                     // Songs a phone sends go where dropped files go (Noctis Imports), then into the library.
                     uploadRoot: ct => App.Services?.GetService<MainWindowViewModel>()?.EnsureManagedImportRootAsync(ct)
-                                      ?? Task.FromResult<string?>(null));
+                                      ?? Task.FromResult<string?>(null),
+                    // A phone's "Pick Up on Computer" queue lands where the window offers it from.
+                    handoff: App.Services?.GetService<PhoneHandoffInbox>());
                 // Covers shrink to what the phone asks for (cached under server/covers); the
                 // desktop's server is for the home network, so other addresses get a 403.
                 var covers = new ServerCoverResizer(Path.Combine(ServerDataDirectory, "covers"));

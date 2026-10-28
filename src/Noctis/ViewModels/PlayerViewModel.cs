@@ -2191,7 +2191,38 @@ public partial class PlayerViewModel : ViewModelBase
         // GitHub #86: non-library tracks (dropped with "Import dropped files" off) are
         // unknown to the library, so they are re-read from their saved files.
         var external = await ResolveSavedExternalTracksAsync(state);
-        Track? Resolve(Guid id) => _library.GetTrackById(id) ?? external.GetValueOrDefault(id);
+        ApplyQueueState(state, id => _library.GetTrackById(id) ?? external.GetValueOrDefault(id));
+    }
+
+    /// <summary>
+    /// "Pick Up on Computer": makes the queue a phone sent this one, paused at its place (never
+    /// started). False, and nothing touched, when the song it was playing is not in the library.
+    /// Repeat, Shuffle and mute stay as they are here.
+    /// </summary>
+    public bool LoadPhoneHandoff(PhoneHandoff handoff)
+    {
+        var index = handoff.TrackIds.IndexOf(handoff.CurrentId);
+        if (index < 0 || _library.GetTrackById(handoff.CurrentId) == null) return false;
+        StopAndClear("phone handoff");
+        ApplyQueueState(new QueueState
+        {
+            CurrentTrackId = handoff.CurrentId,
+            PositionSeconds = handoff.PositionMs / 1000.0,
+            HistoryIds = handoff.TrackIds.Take(index).Reverse().ToList(),
+            UpNextIds = handoff.TrackIds.Skip(index + 1).ToList(),
+            RepeatMode = RepeatMode,
+            IsShuffleEnabled = IsShuffleEnabled,
+            IsMuted = IsMuted,
+        }, _library.GetTrackById);
+        SaveQueueStateInBackground();
+        return true;
+    }
+
+    /// <summary>Puts a saved queue in place: history, up next, the transport modes and the current
+    /// track, loaded paused. <paramref name="resolve"/> finds a track by id (null: gone, skipped).</summary>
+    private void ApplyQueueState(QueueState state, Func<Guid, Track?> resolve)
+    {
+        Track? Resolve(Guid id) => resolve(id);
 
         // Restore history
         var restoredHistory = new List<Track>();

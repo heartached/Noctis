@@ -373,6 +373,7 @@ internal class Program
         services.AddSingleton<IUnisonLyricsService, UnisonLyricsService>();
         services.AddSingleton<IYouTubeMusicLyricsService, YouTubeMusicLyricsService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
+        services.AddSingleton<PhoneHandoffInbox>();
         // Singleton so the startup archive pass and the Wrap dialog share one instance
         // (and one lock over wrap_archive.json).
         services.AddSingleton<IWrapArchiveService, WrapArchiveService>();

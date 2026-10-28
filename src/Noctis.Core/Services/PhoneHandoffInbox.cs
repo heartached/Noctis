@@ -16,6 +16,7 @@ public sealed class PhoneHandoffInbox
     private readonly string _path;
     private PhoneHandoff? _latest;
     private DateTime _handledUtc;
+    private DateTime _desktopPlaybackUtc;
 
     public PhoneHandoffInbox(string? directory = null)
     {
@@ -56,6 +57,20 @@ public sealed class PhoneHandoffInbox
         }
     }
 
+    /// <summary>When playback here last started, paused or stopped (the desktop window notes it), kept
+    /// across restarts: a phone state older than this has nothing to add.</summary>
+    public DateTime DesktopPlaybackUtc { get { lock (_lock) return _desktopPlaybackUtc; } }
+
+    public void NoteDesktopPlayback(DateTime utc)
+    {
+        lock (_lock)
+        {
+            if (utc <= _desktopPlaybackUtc) return;
+            _desktopPlaybackUtc = utc;
+            Persist();
+        }
+    }
+
     /// <summary>The user took the offer or dismissed it: it is not offered again.</summary>
     public void MarkHandled(PhoneHandoff handoff)
     {
@@ -75,6 +90,7 @@ public sealed class PhoneHandoffInbox
             var file = JsonSerializer.Deserialize<StoreFile>(stream);
             _latest = file?.Handoff;
             _handledUtc = file?.HandledUtc ?? default;
+            _desktopPlaybackUtc = file?.DesktopPlaybackUtc ?? default;
         }
         catch (Exception ex)
         {
@@ -90,7 +106,7 @@ public sealed class PhoneHandoffInbox
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             var tmp = _path + ".tmp";
             using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
-                JsonSerializer.Serialize(stream, new StoreFile { Handoff = _latest, HandledUtc = _handledUtc });
+                JsonSerializer.Serialize(stream, new StoreFile { Handoff = _latest, HandledUtc = _handledUtc, DesktopPlaybackUtc = _desktopPlaybackUtc });
             File.Move(tmp, _path, overwrite: true);
         }
         catch (Exception ex)
@@ -103,5 +119,6 @@ public sealed class PhoneHandoffInbox
     {
         public PhoneHandoff? Handoff { get; set; }
         public DateTime HandledUtc { get; set; }
+        public DateTime DesktopPlaybackUtc { get; set; }
     }
 }

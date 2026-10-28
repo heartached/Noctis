@@ -139,6 +139,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public PlayerViewModel Player { get; }
     /// <summary>"Added to Queue" / "Playing Next" pill above the island (owner 10-08).</summary>
     public QueueToastViewModel QueueToast { get; } = new();
+    /// <summary>"Continue from your phone" pill (Pick Up on Computer).</summary>
+    public HandoffPromptViewModel HandoffPrompt { get; } = new();
     public SettingsViewModel Settings { get; }
     public LyricsViewModel Lyrics => _lyricsVm;
 
@@ -354,6 +356,19 @@ public partial class MainWindowViewModel : ViewModelBase
         // Create long-lived ViewModels
         Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence), metadata);
         QueueToast.Attach(Player);
+        if (App.Services?.GetService<PhoneHandoffInbox>() is { } handoffInbox)
+        {
+            HandoffPrompt.Attach(handoffInbox, Player.LoadPhoneHandoff, id => library.GetTrackById(id)?.Title,
+                () => Player.State == PlaybackState.Playing);
+            var wasPlaying = false;
+            Player.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(PlayerViewModel.State)) return;
+                var playing = Player.State == PlaybackState.Playing;
+                if (playing || wasPlaying) HandoffPrompt.NotePlaybackHere();
+                wasPlaying = playing;
+            };
+        }
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
         Sidebar.TopBar = TopBar;
@@ -840,6 +855,7 @@ public partial class MainWindowViewModel : ViewModelBase
             try { await Player.RestoreQueueStateAsync(); }
             catch (Exception ex) { DebugLog.Write("Queue", $"Queue restore failed: {ex}"); }
         }
+        HandoffPrompt.Check();
 
         // Auto-scan if enabled
         if (Settings.GetSettings().ScanOnStartup && Settings.GetSettings().MusicFolders.Count > 0)

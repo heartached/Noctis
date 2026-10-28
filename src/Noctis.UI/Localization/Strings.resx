@@ -2765,6 +2765,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="QueueToast.PlayingNext" xml:space="preserve"><value>Playing Next</value><comment>Confirmation pill above the playback island after Play Next</comment></data>
   <data name="QueueToast.SongCount" xml:space="preserve"><value>{0} songs</value><comment>Confirmation pill detail line when several songs were queued; {0} = count</comment></data>
   <data name="QueueToast.OneSong" xml:space="preserve"><value>1 song</value><comment>Confirmation pill detail line for one untitled song</comment></data>
+  <data name="Handoff.Headline" xml:space="preserve"><value>Continue from your phone</value><comment>Pill when the desktop opens: the phone has a newer queue (Pick Up on Computer); the song title is under it</comment></data>
+  <data name="Handoff.Continue" xml:space="preserve"><value>Continue</value><comment>Button on the Continue from your phone pill: loads the phone's queue, paused</comment></data>
+  <data name="Handoff.Dismiss" xml:space="preserve"><value>Dismiss</value><comment>Screen-reader name of the close button on the Continue from your phone pill</comment></data>
   <data name="A11y.ScrollLeft" xml:space="preserve"><value>Scroll left</value><comment>Screen-reader name of the arrow that scrolls an album page tile row left</comment></data>
   <data name="A11y.ScrollRight" xml:space="preserve"><value>Scroll right</value><comment>Screen-reader name of the arrow that scrolls an album page tile row right</comment></data>
   <data name="Menu.FetchLyrics" xml:space="preserve"><value>Fetch &amp; Save Lyrics</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
