@@ -138,14 +138,6 @@ public class LyricsWellScrollbarTests
         return new Surface(card, sv);
     }
 
-    private static Surface PlainSurface(Window win)
-    {
-        var box = Live<TextBox>(win).Single(t => t.Classes.Contains("pill-area"));
-        var shape = Live<Border>(box).First(b => b.Name == "PART_BorderElement");
-        var sv = Live<ScrollViewer>(box).First(s => s.TemplatedParent == box);
-        return new Surface(shape, sv);
-    }
-
     private static ScrollBar VBar(ScrollViewer sv) =>
         sv.GetVisualDescendants().OfType<ScrollBar>()
           .Single(b => b.TemplatedParent == sv && b.Orientation == Orientation.Vertical);
@@ -247,9 +239,8 @@ public class LyricsWellScrollbarTests
             foreach (var bottom in new[] { false, true })
                 bad.AddRange(Check("Synced Lyrics (Raw)", SyncedRawSurface(win), bottom, null));
 
-            SelectTab(win, "Plain Lyrics");
-            foreach (var bottom in new[] { false, true })
-                bad.AddRange(Check("Plain Lyrics", PlainSurface(win), bottom, null));
+            // Plain Lyrics no longer scrolls inside its box: the page scrolls like Details
+            // (owner 10-27), pinned by MetadataWindowLyricsScrollTests.
 
             foreach (var b in bad) _o.WriteLine(b);
             Assert.True(bad.Count == 0, string.Join("\n", bad));
@@ -290,8 +281,6 @@ public class LyricsWellScrollbarTests
                 Live<ToggleButton>(win).Single(x => x.Name == "SyncedRawToggle").IsChecked = true;
                 PumpUntil(() => false, 300);
                 Shots("synced-raw", () => SyncedRawSurface(win));
-                SelectTab(win, "Plain Lyrics");
-                Shots("plain", () => PlainSurface(win));
             }
             finally { win.Close(); PumpUntil(() => !win.IsVisible); }
         });

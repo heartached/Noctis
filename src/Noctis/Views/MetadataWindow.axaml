@@ -789,17 +789,42 @@
                                           ItemsSource="{x:Static vm:MetadataViewModel.AdvisoryOptions}"
                                           SelectedItem="{Binding SelectedAdvisory}"
                                           HorizontalAlignment="Stretch">
+                                    <!-- "Explicit" carries the app's explicit "E" badge (the
+                                         title rows' compact one), in the list and the closed box
+                                         (owner 10-27). The item's name stays its string content,
+                                         "Explicit". Pinned by MetadataWindowLyricsScrollTests. -->
                                     <ComboBox.SelectionBoxItemTemplate>
                                          <DataTemplate>
-                                             <presenters:TextPresenter Text="{Binding}"
-                                                                       FontWeight="Normal"
-                                                                       VerticalAlignment="Center" />
+                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                 <presenters:TextPresenter Text="{Binding}"
+                                                                           FontWeight="Normal"
+                                                                           VerticalAlignment="Center" />
+                                                 <Border Classes="explicit-badge compact"
+                                                         Margin="6,0,0,0"
+                                                         IsVisible="{Binding Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Explicit}">
+                                                     <TextBlock Text="E"
+                                                                Classes="explicit-badge-text compact"
+                                                                FontSize="8"
+                                                                Opacity="0.9" />
+                                                 </Border>
+                                             </StackPanel>
                                          </DataTemplate>
                                     </ComboBox.SelectionBoxItemTemplate>
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
-                                            <presenters:TextPresenter Text="{Binding}"
-                                                                      FontWeight="Normal" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <presenters:TextPresenter Text="{Binding}"
+                                                                          FontWeight="Normal"
+                                                                          VerticalAlignment="Center" />
+                                                <Border Classes="explicit-badge compact"
+                                                        Margin="6,0,0,0"
+                                                        IsVisible="{Binding Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Explicit}">
+                                                    <TextBlock Text="E"
+                                                               Classes="explicit-badge-text compact"
+                                                               FontSize="8"
+                                                               Opacity="0.9" />
+                                                </Border>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
@@ -1523,65 +1548,81 @@
             <TabItem Header="{loc:T Metadata.PlainLyrics}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}"
                      Tag="{loc:T Metadata.GroupLyrics}"
                      Classes.changed="{Binding PlainLyricsChanged}">
-                <DockPanel Margin="24,16">
-                    <!-- Toolbar: title left, Enable switch right -->
-                    <Grid DockPanel.Dock="Top"
-                          ColumnDefinitions="Auto,*,Auto"
-                          Margin="0,0,0,12">
-                        <TextBlock Grid.Column="0"
-                                   Text="{loc:T Metadata.PlainLyrics}"
-                                   FontSize="14.5"
-                                   FontWeight="Bold"
-                                   VerticalAlignment="Center"
-                                   Margin="2,0,0,0" />
-                        <StackPanel Grid.Column="2"
-                                    Orientation="Horizontal"
-                                    Spacing="10"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Metadata.Enable}"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                            <controls:LottieToggle IsChecked="{Binding HasCustomLyrics}"
-                                                   AutomationProperties.Name="{loc:T Metadata.Enable}"
-                                                   VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Grid>
+                <!-- Scrolls as a page, like Details (owner 10-27: the bar sat inside the rounded
+                     box on its own track; "move it to the right just like Details"). The box
+                     grows with its text (its own ScrollViewer is Disabled) and this page bar runs
+                     down the pane's right edge. The Border's MinHeight is the viewport, so short
+                     lyrics still fill the page with the buttons at the bottom. Typing, Ctrl+End,
+                     PageDown and the wheel bring the caret into view through this ScrollViewer.
+                     Pinned by MetadataWindowLyricsScrollTests. -->
+                <ScrollViewer x:Name="PlainLyricsScroll"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <Border Padding="24,16"
+                            MinHeight="{Binding #PlainLyricsScroll.Viewport.Height}">
+                        <DockPanel>
+                            <!-- Toolbar: title left, Enable switch right -->
+                            <Grid DockPanel.Dock="Top"
+                                  ColumnDefinitions="Auto,*,Auto"
+                                  Margin="0,0,0,12">
+                                <TextBlock Grid.Column="0"
+                                           Text="{loc:T Metadata.PlainLyrics}"
+                                           FontSize="14.5"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Margin="2,0,0,0" />
+                                <StackPanel Grid.Column="2"
+                                            Orientation="Horizontal"
+                                            Spacing="10"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="{loc:T Metadata.Enable}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                    <controls:LottieToggle IsChecked="{Binding HasCustomLyrics}"
+                                                           AutomationProperties.Name="{loc:T Metadata.Enable}"
+                                                           VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
 
-                    <!-- Actions: bottom right -->
-                    <StackPanel DockPanel.Dock="Bottom"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Right"
-                                Spacing="10"
-                                Margin="0,12,0,0">
-                        <Button Content="{loc:T Metadata.ImportFile}"
-                                Command="{Binding ImportLyricsFileCommand}"
-                                CommandParameter="{Binding $self}"
-                                ToolTip.Tip="{loc:T Metadata.LoadTxtPlainLrcTip}"
-                                Padding="14,6"
-                                CornerRadius="999"
-                                FontWeight="SemiBold"
-                                FontSize="12"
-                                VerticalAlignment="Center"
-                                Cursor="Hand" />
-                        <Button Content="{loc:T Metadata.ShareLyrics}"
-                                Command="{Binding ShareLyricsCommand}"
-                                Padding="14,6"
-                                CornerRadius="999"
-                                FontWeight="SemiBold"
-                                FontSize="12"
-                                VerticalAlignment="Center"
-                                Cursor="Hand" />
-                    </StackPanel>
+                            <!-- Actions: bottom right -->
+                            <StackPanel DockPanel.Dock="Bottom"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        Spacing="10"
+                                        Margin="0,12,0,0">
+                                <Button Content="{loc:T Metadata.ImportFile}"
+                                        Command="{Binding ImportLyricsFileCommand}"
+                                        CommandParameter="{Binding $self}"
+                                        ToolTip.Tip="{loc:T Metadata.LoadTxtPlainLrcTip}"
+                                        Padding="14,6"
+                                        CornerRadius="999"
+                                        FontWeight="SemiBold"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand" />
+                                <Button Content="{loc:T Metadata.ShareLyrics}"
+                                        Command="{Binding ShareLyricsCommand}"
+                                        Padding="14,6"
+                                        CornerRadius="999"
+                                        FontWeight="SemiBold"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand" />
+                            </StackPanel>
 
-                    <TextBox Classes="pill-area"
-                             AutomationProperties.Name="{loc:T Metadata.PlainLyrics}"
-                             Text="{Binding Lyrics}"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             MinHeight="300"
-                             IsEnabled="{Binding HasCustomLyrics}" />
-                </DockPanel>
+                            <TextBox x:Name="PlainLyricsBox"
+                                     Classes="pill-area"
+                                     AutomationProperties.Name="{loc:T Metadata.PlainLyrics}"
+                                     Text="{Binding Lyrics}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="300"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     IsEnabled="{Binding HasCustomLyrics}" />
+                        </DockPanel>
+                    </Border>
+                </ScrollViewer>
             </TabItem>
 
             <!-- ═══════════ SYNCED LYRICS TAB ═══════════ -->
