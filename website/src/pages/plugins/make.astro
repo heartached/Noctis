@@ -1,0 +1,644 @@
+---
+import Base from '../../layouts/Base.astro';
+import Community from '../../components/Community.astro';
+import BrandIcon from '../../components/BrandIcon.astro';
+import { links } from '../../config/site';
+
+/**
+ * "Make a plugin": the beginner guide the app opens from Settings, Plugins, Make your own
+ * plugin, Read the Guide (SettingsViewModel.PluginGuideUrl). Plain words, five steps, and
+ * nothing that is not true of the repo:
+ *   - the sample is samples/Noctis.SamplePlugin; its csproj references the plugin kit by a
+ *     relative path (../../src/Noctis.Plugins.Abstractions) and imports
+ *     ../PluginPackage.targets, which writes bin/Release/<project>-<Version>.zip after a
+ *     Release build. That is why the copy stays inside samples/ and why the source is shared
+ *     as a fork: the kit is not on NuGet yet, and the review builds the source.
+ *   - plugin.json follows src/Noctis/Services/Plugins/PluginManifest.cs: id, name, version,
+ *     entry and apiVersion are required for a code plugin; type defaults to "dotnet".
+ *   - the code uses INoctisPlugin, IPluginHost.RegisterTrackCommand and IPluginHost.Notify
+ *     from src/Noctis.Plugins.Abstractions (API 1.2, Noctis 1.5.9 and newer).
+ *   - "What we check" is the review list in docs/PLUGINS.md, "Submitting a plugin".
+ * No dotnet new template exists, so the page never mentions one.
+ *
+ * No page script: copy buttons use the site-wide [data-copy] handler in src/scripts/site.ts.
+ */
+
+const needs = [
+  { name: 'The .NET 10 SDK', note: 'Free, for Windows, macOS and Linux.', href: 'https://dotnet.microsoft.com/download/dotnet/10.0' },
+  { name: 'A code editor', note: 'VS Code is free and works well.', href: 'https://code.visualstudio.com/' },
+  { name: 'A GitHub account', note: 'Free. You share your plugin there.', href: 'https://github.com/signup' },
+  { name: 'Noctis 1.6 or newer', note: 'To try your plugin before you share it.', href: links.releasesLatest },
+];
+
+/* Code samples live here rather than in the markup: Astro would read their braces as
+   expressions. */
+const code = {
+  clone: `git clone https://github.com/<your-name>/Noctis.git
+cd Noctis/samples`,
+  copy: `cp -r Noctis.SamplePlugin MyPlugin
+cd MyPlugin
+mv Noctis.SamplePlugin.csproj MyPlugin.csproj
+rm PulseRingPlugin.cs`,
+  manifest: `{
+  "id": "dev.yourname.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "Says hello from the track menu.",
+  "type": "dotnet",
+  "entry": "MyPlugin.dll",
+  "apiVersion": "1.2",
+  "minAppVersion": "1.6.0",
+  "permissions": ["menu.commands", "notifications"]
+}`,
+  cs: `using Noctis.Plugins;
+
+namespace MyPlugin;
+
+public sealed class HelloPlugin : INoctisPlugin
+{
+    private readonly List<IDisposable> _hooks = new();
+
+    public PluginInfo Info { get; } = new("dev.yourname.hello", "Hello", "1.0.0", "Your name", "Says hello from the track menu.");
+
+    public void Initialize(IPluginHost host)
+    {
+        // Adds "Say hello" to the menu you get when you right-click a song.
+        _hooks.Add(host.RegisterTrackCommand("Say hello", icon: null,
+            track => host.Notify($"Hello, {track.Artist}!")));
+    }
+
+    public void Shutdown()
+    {
+        foreach (var hook in _hooks) hook.Dispose();
+        _hooks.Clear();
+    }
+}`,
+  build: `dotnet build -c Release`,
+  shaWindows: `(Get-FileHash bin/Release/MyPlugin-1.0.0.zip -Algorithm SHA256).Hash.ToLower()`,
+  shaUnix: `shasum -a 256 bin/Release/MyPlugin-1.0.0.zip`,
+};
+
+const checks = [
+  'No viruses, malware or miners.',
+  'No hidden downloads, and nothing it does behind your back.',
+  'It does what it says, and asks only for the permissions it uses.',
+  'No pirated music, and nothing that gets around DRM.',
+  'No tracking, ads, or collecting passwords and tokens.',
+  'The source is public and readable, so we can build the zip ourselves.',
+];
+---
+
+<Base
+  title="Noctis - Make a plugin."
+  description="A beginner's guide to making a Noctis plugin: what you need, five steps from the sample to a working plugin, and how to submit it for the Official Plugins list."
+  path="/plugins/make"
+>
+  <section class="section mk" aria-labelledby="mk-title">
+    <div class="container mk__wrap">
+      <header class="mk__head">
+        <p class="eyebrow"><a href="/plugins">Plugins</a> · Guide</p>
+        <h1 class="display" id="mk-title">Make a <em>plugin</em>.</h1>
+        <p class="lede mk__lede">
+          You don’t need to be an expert. Start from our sample, change a few lines, try it in Noctis, then share it.
+          If it passes our review, it shows up in Official Plugins with your name on it.
+        </p>
+      </header>
+
+      {/* ---------------------------------------------------------------- */}
+      <section class="mk__sec" aria-labelledby="need">
+        <h2 class="mk__h" id="need">What you need</h2>
+        <ul class="needs" role="list">
+          {needs.map((n) => (
+            <li class="need">
+              <a class="need__name" href={n.href} target="_blank" rel="noopener">{n.name}</a>
+              <span class="need__note">{n.note}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="mk__note">
+          Plugins are written in C#. If you have never used it, that’s fine: the sample is short, and this guide
+          tells you exactly which lines to change.
+        </p>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <section class="mk__sec" aria-labelledby="steps">
+        <h2 class="mk__h" id="steps">Five steps</h2>
+
+        <ol class="steps" role="list">
+          <li class="step" id="step-1">
+            <span class="step__n mono" aria-hidden="true">1</span>
+            <div class="step__main">
+              <h3 class="step__title">Copy the sample</h3>
+              <p>
+                On <a href={links.repo} target="_blank" rel="noopener">github.com/heartached/Noctis</a>, press
+                <strong>Fork</strong> to get your own copy of Noctis, then download your fork. Replace
+                <code>&lt;your-name&gt;</code> with your GitHub name:
+              </p>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">Terminal</span>
+                  <button class="code__copy" type="button" data-copy={code.clone} aria-label="Copy the clone commands">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.clone}</code></pre>
+              </div>
+              <p>
+                The sample is <code>samples/Noctis.SamplePlugin</code>, called <strong>Pulse Ring</strong>: a ring
+                behind the lyrics that pulses with the beat. Its project is already set up to build a plugin and
+                pack it into a zip. Copy it to a new folder next to it (keep it inside <code>samples</code>, that is
+                where it finds the plugin kit), and swap the sample’s code for your own:
+              </p>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">Terminal</span>
+                  <button class="code__copy" type="button" data-copy={code.copy} aria-label="Copy the copy commands">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.copy}</code></pre>
+              </div>
+              <p class="mk__note">
+                On Windows these commands work in Git Bash. You can also copy and rename the folder and files in
+                File Explorer.
+              </p>
+            </div>
+          </li>
+
+          <li class="step" id="step-2">
+            <span class="step__n mono" aria-hidden="true">2</span>
+            <div class="step__main">
+              <h3 class="step__title">Edit plugin.json</h3>
+              <p>
+                <code>plugin.json</code> tells Noctis what your plugin is. Open it in <code>MyPlugin</code> and replace
+                everything with this:
+              </p>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">plugin.json</span>
+                  <button class="code__copy" type="button" data-copy={code.manifest} aria-label="Copy plugin.json">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.manifest}</code></pre>
+              </div>
+              <ul class="points" role="list">
+                <li>
+                  <strong>id</strong> never changes once you share the plugin. Use lowercase letters and numbers
+                  with dots between, like <code>dev.yourname.hello</code>.
+                </li>
+                <li><strong>name</strong> is what people see, 60 characters at most.</li>
+                <li>
+                  <strong>version</strong> looks like <code>1.0.0</code>. Raise it for every update, and keep
+                  <code>&lt;Version&gt;</code> in <code>MyPlugin.csproj</code> the same.
+                </li>
+                <li><strong>entry</strong> is your project’s name plus <code>.dll</code>.</li>
+                <li>
+                  <strong>permissions</strong> lists what your plugin asks to do. People see this list before they
+                  switch it on. This one adds a menu entry and shows a notice.
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="step" id="step-3">
+            <span class="step__n mono" aria-hidden="true">3</span>
+            <div class="step__main">
+              <h3 class="step__title">Write your code</h3>
+              <p>
+                Every plugin is one class that implements <code>INoctisPlugin</code>. Noctis calls
+                <code>Initialize</code> when the plugin is switched on, which is where you add your features, and
+                <code>Shutdown</code> when it’s switched off. Make a file called <code>HelloPlugin.cs</code> in
+                <code>MyPlugin</code>:
+              </p>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">HelloPlugin.cs</span>
+                  <button class="code__copy" type="button" data-copy={code.cs} aria-label="Copy HelloPlugin.cs">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.cs}</code></pre>
+              </div>
+              <p class="mk__note">
+                Keep the id, name, version and author the same as in <code>plugin.json</code>. Want something else
+                than a menu entry? Plugins can also follow what’s playing, draw behind the lyrics, add a lyrics
+                source and more: see <a href="/plugins#developers">what the API offers</a>.
+              </p>
+            </div>
+          </li>
+
+          <li class="step" id="step-4">
+            <span class="step__n mono" aria-hidden="true">4</span>
+            <div class="step__main">
+              <h3 class="step__title">Test it</h3>
+              <p>In the <code>MyPlugin</code> folder, build it:</p>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">Terminal</span>
+                  <button class="code__copy" type="button" data-copy={code.build} aria-label="Copy the build command">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.build}</code></pre>
+              </div>
+              <p>
+                The build makes the zip for you: <code>bin/Release/MyPlugin-1.0.0.zip</code>. Then, in Noctis:
+              </p>
+              <ol class="sub" role="list">
+                <li>Open <strong>Settings → Plugins</strong> and choose <strong>Install from file</strong>. Pick the zip.</li>
+                <li>Turn on <strong>Community plugins</strong> at the top of the page.</li>
+                <li>Switch your plugin on and approve what it asks for.</li>
+                <li>Right-click any song and choose <strong>Say hello</strong>.</li>
+              </ol>
+              <p class="mk__note">
+                Changed something? Raise the version in both places, build again and install the new zip. Noctis
+                offers to update the plugin and keeps its settings.
+              </p>
+            </div>
+          </li>
+
+          <li class="step" id="step-5">
+            <span class="step__n mono" aria-hidden="true">5</span>
+            <div class="step__main">
+              <h3 class="step__title">Share it</h3>
+              <ol class="sub" role="list">
+                <li>
+                  Push your <code>MyPlugin</code> folder to your fork on GitHub, and add a licence file (MIT is a
+                  common choice).
+                </li>
+                <li>
+                  On your fork, make a <strong>release</strong> (Releases → Draft a new release) and attach the zip.
+                </li>
+                <li>
+                  Get the zip’s SHA-256, a fingerprint the form asks for:
+                </li>
+              </ol>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">Windows (PowerShell)</span>
+                  <button class="code__copy" type="button" data-copy={code.shaWindows} aria-label="Copy the Windows SHA-256 command">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.shaWindows}</code></pre>
+              </div>
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">macOS and Linux</span>
+                  <button class="code__copy" type="button" data-copy={code.shaUnix} aria-label="Copy the macOS and Linux SHA-256 command">Copy</button>
+                </div>
+                <pre tabindex="0"><code>{code.shaUnix}</code></pre>
+              </div>
+              <p>
+                Then fill in the <strong>Submit a Plugin</strong> form. It’s also in Noctis: Settings → Plugins → Make
+                your own plugin → Submit a Plugin.
+              </p>
+              <p class="mk__links">
+                <a class="btn" href={links.pluginSubmit} target="_blank" rel="noopener">Submit a Plugin</a>
+              </p>
+              <p class="mk__note">
+                A bot checks your zip within a few minutes and comments on your submission. It never runs your
+                plugin. If it finds a problem, fix it, make a new release and edit the form.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <section class="mk__sec" aria-labelledby="checks">
+        <h2 class="mk__h" id="checks">What we check</h2>
+        <p>Someone from the Noctis team reads your code and tries your plugin before it’s listed. We look for:</p>
+        <ul class="points" role="list">
+          {checks.map((c) => <li>{c}</li>)}
+        </ul>
+        <p class="mk__note">
+          Approved plugins show up in Official Plugins in every copy of Noctis, credited to you. To update yours,
+          make a new release with a higher version and submit the form again.
+        </p>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <div class="cta">
+        <div class="cta__text">
+          <h2 class="cta__title">Ready for more?</h2>
+          <p>
+            The full developer docs cover every plugin.json field, the whole API, settings, lyrics sources, visual
+            layers and the review process.
+          </p>
+        </div>
+        <div class="cta__actions">
+          <a class="btn cta__gh" href={links.pluginDocs} target="_blank" rel="noopener">
+            <BrandIcon brand="github" />
+            Developer docs
+          </a>
+          <a class="btn btn--ghost" href={links.samples} target="_blank" rel="noopener">All samples</a>
+          <a class="btn btn--ghost" href={links.discord} target="_blank" rel="noopener">Ask on Discord</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <Community slot="footer" />
+</Base>
+
+<style>
+  .mk {
+    padding-bottom: var(--s-8);
+  }
+
+  .mk__wrap {
+    max-width: 48rem;
+  }
+
+  .mk__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-5);
+    text-align: center;
+    margin-bottom: var(--s-8);
+  }
+
+  .mk__head .eyebrow a {
+    color: inherit;
+  }
+
+  .mk__lede {
+    text-wrap: balance;
+  }
+
+  .mk__sec {
+    color: var(--ink-1);
+  }
+
+  .mk__sec + .mk__sec {
+    margin-top: var(--s-9);
+    padding-top: var(--s-8);
+    border-top: 1px solid var(--line);
+  }
+
+  .mk__sec > * + *,
+  .step__main > * + * {
+    margin-top: var(--s-5);
+  }
+
+  .mk strong {
+    color: var(--ink-0);
+    font-weight: 600;
+  }
+
+  .mk__sec a:not(.btn, .need__name) {
+    color: var(--accent-text);
+  }
+
+  .mk__h {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-2);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  .mk__note {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .mk__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+
+  .mk :not(pre) > code {
+    padding: 0.1em 0.4em;
+    border-radius: 6px;
+    background: var(--bg-2);
+    color: var(--ink-0);
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    overflow-wrap: anywhere;
+  }
+
+  /* --- What you need ------------------------------------------------------ */
+
+  .needs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .need {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding: var(--s-4) var(--s-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+  }
+
+  .need__name {
+    color: var(--ink-0);
+    font-weight: 600;
+    text-decoration-color: var(--accent-500);
+    text-underline-offset: 0.2em;
+  }
+
+  .need__name:hover {
+    color: var(--accent-text);
+  }
+
+  .need__note {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  /* --- Steps -------------------------------------------------------------- */
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-8);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--s-4);
+  }
+
+  .step__main {
+    min-width: 0;
+  }
+
+  .step__n {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-1);
+    color: var(--ink-0);
+    font-size: var(--step--1);
+  }
+
+  .step__title {
+    color: var(--ink-0);
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    padding-top: 0.2rem;
+  }
+
+  .sub {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding-inline-start: var(--s-5);
+  }
+
+  .sub li::marker {
+    color: var(--accent-text);
+  }
+
+  .points {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding-inline-start: var(--s-5);
+  }
+
+  .points li {
+    text-wrap: pretty;
+  }
+
+  .points li::marker {
+    color: var(--accent-text);
+  }
+
+  /* --- Code blocks: the plugins page's look ------------------------------- */
+
+  .code {
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+    overflow: hidden;
+  }
+
+  .code__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .code__file {
+    color: var(--ink-2);
+    font-size: var(--step--2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .code__copy {
+    flex: none;
+    min-height: 32px;
+    padding: 0 var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: var(--step--2);
+    font-weight: 500;
+    transition:
+      color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .code__copy:hover {
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 8%, transparent);
+  }
+
+  /* The site-wide copy handler sets [data-copied] for 1.4 s. */
+  .code__copy[data-copied] {
+    color: var(--ok);
+    border-color: var(--ok);
+  }
+
+  .code pre {
+    margin: 0;
+    padding: var(--s-4);
+    overflow-x: auto;
+    color: var(--ink-0);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    line-height: 1.65;
+    tab-size: 2;
+  }
+
+  /* --- Closing card ------------------------------------------------------- */
+
+  .cta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    margin-top: var(--s-9);
+    padding: var(--s-6);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+  }
+
+  .cta__title {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-2);
+  }
+
+  .cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+
+  .cta__gh {
+    --btn-bg: var(--ink-0);
+    --btn-fg: var(--bg-0);
+    --btn-bd: transparent;
+  }
+
+  .cta__gh:hover {
+    --btn-bg: color-mix(in srgb, var(--ink-0) 88%, var(--bg-0));
+  }
+
+  .cta__gh :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  @media (max-width: 560px) {
+    .needs {
+      grid-template-columns: 1fr;
+    }
+
+    .step {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--s-3);
+    }
+
+    .cta {
+      padding: var(--s-5);
+    }
+
+    .cta__actions .btn {
+      flex: 1 1 100%;
+    }
+  }
+</style>
