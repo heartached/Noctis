@@ -1,0 +1,212 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             x:Class="Noctis.Mobile.Views.ScrobblingPane"
+             x:DataType="vm:ScrobblingSettingsViewModel">
+
+    <!-- Settings → Scrobbling (content only: the sheet brings the header and Back). The route card
+         (This phone → Computer → Services, the lit node is where plays are sent from) with its
+         Through Computer / From This Phone switch, the two services, then the live switches.
+         Shared look: GroupedStyles.axaml. -->
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Noctis.Mobile/Views/GroupedStyles.axaml" />
+
+        <Style Selector="TextBlock.group-caption">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="Margin" Value="16,0,16,7" />
+        </Style>
+        <Style Selector="Border.row-separator.plain">
+            <Setter Property="Margin" Value="16,0" />
+        </Style>
+
+        <!-- The route diagram: a node is a disc with a small drawing, the lit one has the accent rim. -->
+        <Style Selector="Border.route-node">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="CornerRadius" Value="23" />
+            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.route-node.lit">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.route-line">
+            <Setter Property="Height" Value="2" />
+            <Setter Property="Margin" Value="6,0,6,18" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="TextBlock.route-label">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+        </Style>
+
+        <!-- The two-way switch: a rounded track, the chosen side raised. -->
+        <Style Selector="Button.seg">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="8,9" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.seg.on">
+            <Setter Property="Background" Value="{DynamicResource PhoneChromeBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.seg:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+
+        <!-- A service's mark and its status pill (green once connected). -->
+        <Style Selector="Border.svc-mark">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,14,0" />
+        </Style>
+        <Style Selector="Border.svc-mark TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.status-pill">
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+        </Style>
+        <Style Selector="Border.status-pill TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        </Style>
+        <Style Selector="Border.status-pill.on">
+            <Setter Property="Background" Value="#332EA043" />
+        </Style>
+        <Style Selector="Border.status-pill.on TextBlock">
+            <Setter Property="Foreground" Value="#3FB950" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Classes="grouped-content">
+        <StackPanel>
+            <Border Name="RouteCard" Classes="group-card">
+                <StackPanel Margin="16,18,16,16" Spacing="18">
+                    <Grid ColumnDefinitions="Auto,*,Auto,*,Auto">
+                        <StackPanel>
+                            <Border Name="PhoneNode" Classes="route-node" Classes.lit="{Binding IsFromPhone}">
+                                <Border Width="12" Height="20" CornerRadius="3" BorderThickness="1.6"
+                                        BorderBrush="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Classes="route-label" Text="This phone" />
+                        </StackPanel>
+                        <Border Grid.Column="1" Classes="route-line" />
+                        <StackPanel Grid.Column="2">
+                            <Border Name="ComputerNode" Classes="route-node" Classes.lit="{Binding IsThroughComputer}">
+                                <Border Width="22" Height="15" CornerRadius="3" BorderThickness="1.6"
+                                        BorderBrush="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Classes="route-label" Text="Computer" />
+                        </StackPanel>
+                        <Border Grid.Column="3" Classes="route-line" />
+                        <StackPanel Grid.Column="4">
+                            <Border Name="ServicesNode" Classes="route-node">
+                                <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Border Width="3" Height="10" CornerRadius="1.5" Background="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Bottom" />
+                                    <Border Width="3" Height="18" CornerRadius="1.5" Background="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Bottom" />
+                                    <Border Width="3" Height="13" CornerRadius="1.5" Background="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Bottom" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Classes="route-label" Text="Services" />
+                        </StackPanel>
+                    </Grid>
+                    <Border CornerRadius="14" Background="{DynamicResource PhoneSeparatorBrush}" Padding="3">
+                        <Grid ColumnDefinitions="*,*">
+                            <Button Name="ThroughComputerButton" Classes="seg" Classes.on="{Binding IsThroughComputer}"
+                                    Command="{Binding SelectThroughComputerCommand}" AutomationProperties.Name="Through Computer">
+                                <TextBlock Text="Through Computer" />
+                            </Button>
+                            <Button Name="FromPhoneButton" Grid.Column="1" Classes="seg" Classes.on="{Binding IsFromPhone}"
+                                    Command="{Binding SelectFromPhoneCommand}" AutomationProperties.Name="From This Phone">
+                                <TextBlock Text="From This Phone" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <TextBlock Name="RouteFootnoteLabel" Classes="group-footnote" Text="{Binding RouteFootnote}" />
+        </StackPanel>
+
+        <StackPanel>
+            <TextBlock Classes="group-caption" Text="Services" />
+            <Border Name="ServicesCard" Classes="group-card">
+                <StackPanel>
+                    <Button Name="LastFmRow" Classes="row" Command="{Binding LastFmTapCommand}" AutomationProperties.Name="Last.fm">
+                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto" Margin="16,10">
+                            <Border Classes="svc-mark" Background="#D51007"><TextBlock Text="last" /></Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Classes="row-label" Text="Last.fm" />
+                                <TextBlock Name="LastFmSubtitleLabel" Classes="row-sub" Text="{Binding LastFmSubtitle}" />
+                            </StackPanel>
+                            <Border Name="LastFmPill" Grid.Column="2" Classes="status-pill" Classes.on="{Binding LastFmConnected}">
+                                <TextBlock Name="LastFmStatusLabel" Text="{Binding LastFmStatus}" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                    <Border Classes="row-separator plain" />
+                    <Button Name="ListenBrainzRow" Classes="row" Command="{Binding ListenBrainzTapCommand}" AutomationProperties.Name="ListenBrainz">
+                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto" Margin="16,10">
+                            <Border Classes="svc-mark" Background="#353070"><TextBlock Text="LB" /></Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Classes="row-label" Text="ListenBrainz" />
+                                <TextBlock Name="ListenBrainzSubtitleLabel" Classes="row-sub" Text="{Binding ListenBrainzSubtitle}" />
+                            </StackPanel>
+                            <Border Name="ListenBrainzPill" Grid.Column="2" Classes="status-pill" Classes.on="{Binding ListenBrainzConnected}">
+                                <TextBlock Name="ListenBrainzStatusLabel" Text="{Binding ListenBrainzStatus}" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Border>
+            <TextBlock Name="StatusMessageLabel" Classes="group-footnote" Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" />
+        </StackPanel>
+
+        <StackPanel>
+            <TextBlock Classes="group-caption" Text="While Listening" />
+            <Border Name="ListeningCard" Classes="group-card">
+                <StackPanel>
+                    <ToggleButton Name="SendPlaysSwitch" Classes="switch-row" AutomationProperties.Name="Send Plays"
+                                  IsChecked="{Binding SendPlays}" IsEnabled="{Binding PhoneControlsEnabled}">
+                        <TextBlock Classes="row-label" Text="Send Plays" />
+                    </ToggleButton>
+                    <Border Classes="row-separator plain" />
+                    <ToggleButton Name="NowPlayingSwitch" Classes="switch-row" AutomationProperties.Name="Show Now Playing"
+                                  IsChecked="{Binding ShowNowPlaying}" IsEnabled="{Binding PhoneControlsEnabled}">
+                        <TextBlock Classes="row-label" Text="Show Now Playing" />
+                    </ToggleButton>
+                    <Border Classes="row-separator plain" />
+                    <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="row-label" Text="Waiting to Send" />
+                        <TextBlock Name="WaitingLabel" Grid.Column="1" Classes="row-value" Text="{Binding WaitingText}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <TextBlock Name="FootnoteLabel" Classes="group-footnote" Text="{Binding Footnote}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

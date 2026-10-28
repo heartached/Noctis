@@ -180,7 +180,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     /// <summary>Tests: unpushed favorite/rating edits and queued plays.</summary>
     internal int PendingTrackCount { get { lock (_gate) return _pending.Tracks.Count; } }
-    internal int PendingPlayCount { get { lock (_gate) return _pending.Plays.Count; } }
+    public int PendingPlayCount { get { lock (_gate) return _pending.Plays.Count; } }
 
     public string DeviceId => _deviceId;
     public string DeviceName { get; }

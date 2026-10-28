@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
+using Noctis.Mobile.Services.Scrobbling;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -51,6 +52,34 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>Re-themes the app for Settings (AndroidApp); null in tests unless injected.</summary>
     public IThemeHost? Theme { get; init; }
+
+    /// <summary>Scrobbling straight from the phone (Settings → Scrobbling): counts plays by the
+    /// desktop's rule and sends them to Last.fm / ListenBrainz. The host sets it; Settings makes
+    /// one on first use when it is missing (tests), and from then on it follows playback.
+    /// </summary>
+    public PhoneScrobbler Scrobbler
+    {
+        get
+        {
+            if (_scrobbler == null)
+            {
+                _scrobbler = new PhoneScrobbler(Library.Persistence, new HttpClient());
+                AttachScrobbler(_scrobbler);
+            }
+            return _scrobbler;
+        }
+        init { _scrobbler = value; AttachScrobbler(value); }
+    }
+    private PhoneScrobbler? _scrobbler;
+
+    private void AttachScrobbler(PhoneScrobbler scrobbler)
+    {
+        Player.TrackStarted += (_, track) => scrobbler.TrackStarted(track);
+        Player.PlaybackTick += (_, playing) => scrobbler.Tick(playing);
+        // A pause the engine reports without a position tick still stops the played-time clock.
+        Player.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) scrobbler.Tick(Player.IsPlaying); };
+        _ = scrobbler.LoadAsync();
+    }
 
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
     public ILogExporter? Logs { get; init; }

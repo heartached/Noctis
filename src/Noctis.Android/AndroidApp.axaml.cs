@@ -12,6 +12,7 @@ using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
+using Noctis.Mobile.Services.Scrobbling;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
 using Noctis.Services;
@@ -134,6 +135,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Logs = new AndroidLogExporter(context),
             VersionText = DescribeVersion(context),
             Account = account,
+            // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
+            Scrobbler = new PhoneScrobbler(persistence, new HttpClient()),
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
             // when an album page opens (Settings → About says so).
             AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
