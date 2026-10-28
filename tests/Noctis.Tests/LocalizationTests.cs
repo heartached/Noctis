@@ -186,6 +186,23 @@ public class LocalizationTests
         Assert.True(mismatched.Count == 0, "Placeholder mismatch: " + string.Join("; ", mismatched));
     }
 
+    /// <summary>
+    /// The song menu's Lyrics ▸ Open in Lyrics Studio and Lyrics Background Video ▸ Choose video
+    /// rows read without a trailing ellipsis (owner 10-27), in English and every translation.
+    /// </summary>
+    [Theory]
+    [InlineData("Menu.LyricsStudio")]
+    [InlineData("Menu.ChooseSongVideo")]
+    public void SongMenuLyricsRows_HaveNoTrailingEllipsis(string key)
+    {
+        var dir = Path.Combine(FindRepoRoot(), "src", "Noctis.UI", "Localization");
+        Assert.True(ReadValues(Path.Combine(dir, "Strings.resx")).ContainsKey(key), $"{key} missing from Strings.resx");
+        foreach (var file in Directory.GetFiles(dir, "Strings*.resx"))
+            if (ReadValues(file).TryGetValue(key, out var value))
+                Assert.False(value.TrimEnd().EndsWith('…') || value.TrimEnd().EndsWith("..."),
+                    $"{Path.GetFileName(file)} {key} = \"{value}\" ends in an ellipsis");
+    }
+
     private static Dictionary<string, string> ReadValues(string resxPath)
         => XDocument.Load(resxPath).Root!
             .Elements("data")

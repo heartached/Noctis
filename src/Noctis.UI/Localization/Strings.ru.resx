@@ -2768,8 +2768,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="A11y.ScrollLeft" xml:space="preserve"><value>Прокрутить влево</value><comment>Screen-reader name of the arrow that scrolls an album page tile row left</comment></data>
   <data name="A11y.ScrollRight" xml:space="preserve"><value>Прокрутить вправо</value><comment>Screen-reader name of the arrow that scrolls an album page tile row right</comment></data>
   <data name="Menu.FetchLyrics" xml:space="preserve"><value>Найти и сохранить текст</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
-  <data name="Menu.LyricsStudio" xml:space="preserve"><value>Открыть в Студии текстов…</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
-  <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Выбрать видео для этой песни…</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
+  <data name="Menu.LyricsStudio" xml:space="preserve"><value>Открыть в Студии текстов</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
+  <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Выбрать видео для этой песни</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
   <data name="Menu.StartRadio" xml:space="preserve"><value>Запустить радио</value><comment>v2 right-click menu row</comment></data>
   <data name="Menu.Snooze" xml:space="preserve"><value>Отложить на месяц</value><comment>v2 right-click menu row: hide the song from suggestions for a month</comment></data>
   <data name="Menu.Badge" xml:space="preserve"><value>Значок</value><comment>v2 right-click menu submenu (colored song badges)</comment></data>

@@ -229,7 +229,7 @@ public sealed class TrackContextMenuBuilder
         Lyrics.Items.Add(SearchLyrics);
         FetchLyrics = new MenuItem { Header = "Fetch & Save Lyrics", IsVisible = false };
         Lyrics.Items.Add(FetchLyrics);
-        LyricsStudio = new MenuItem { Header = "Open in Lyrics Studio…", IsVisible = false };
+        LyricsStudio = new MenuItem { Header = "Open in Lyrics Studio", IsVisible = false };
         Lyrics.Items.Add(LyricsStudio);
         RemoveLyrics = new MenuItem { Header = "Remove Lyrics", IsVisible = false };
         RemoveLyrics.Classes.Add("danger");
@@ -240,7 +240,7 @@ public sealed class TrackContextMenuBuilder
         // commands, so no per-view wiring; "Use default" shows only when the song has one).
         LyricsBackground = new MenuItem { Header = "Lyrics Background Video" };
         LyricsBackground.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
-        LyricsBackgroundChoose = new MenuItem { Header = "Choose video for this song…", Command = LyricsBackgroundOverrides.ChooseForTrackCommand };
+        LyricsBackgroundChoose = new MenuItem { Header = "Choose video for this song", Command = LyricsBackgroundOverrides.ChooseForTrackCommand };
         LyricsBackground.Items.Add(LyricsBackgroundChoose);
         LyricsBackgroundClear = new MenuItem { Header = "Use default video", Command = LyricsBackgroundOverrides.ClearForTrackCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
