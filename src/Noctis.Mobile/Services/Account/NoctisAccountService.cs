@@ -1126,6 +1126,15 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         SchedulePendingSave();
     }
 
+    public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default)
+    {
+        lock (_gate)
+        {
+            if (_account is null) return Task.CompletedTask;
+        }
+        return GetClient().SavePlayQueueAsync(share, ct);
+    }
+
     public bool IsSyncedPlaylist(Guid playlistId)
     {
         lock (_gate) return _account is not null && _sync.Playlists.ContainsKey(playlistId.ToString("N"));

@@ -225,6 +225,47 @@ public sealed class PlayHistoryService : IPlayHistoryService
         }
     }
 
+    public int PruneOlderThan(DateTime cutoffUtc)
+    {
+        lock (_lock)
+        {
+            EnsureLoaded();
+            // Events are logged in time order, so the old ones are a prefix.
+            var drop = 0;
+            while (drop < _count && _buffer![_start + drop].PlayedAtUtc < cutoffUtc) drop++;
+            if (drop == 0) return 0;
+            // Trims by moving the window, as Append does at the cap; older snapshots are untouched.
+            _start += drop;
+            _count -= drop;
+            RewriteAfterRemoval();
+            return drop;
+        }
+    }
+
+    public Task ClearAsync()
+    {
+        lock (_lock)
+        {
+            EnsureLoaded();
+            // A fresh buffer: a snapshot a reader still holds keeps the old array.
+            _buffer = new PlayHistoryEvent[Capacity(1)];
+            _start = 0;
+            _count = 0;
+            RewriteAfterRemoval();
+        }
+        return FlushAsync();
+    }
+
+    /// <summary>After events left the front: publish, and have the next save rewrite
+    /// play_history.json (and drop the tail) instead of appending to the old base. Under _lock.</summary>
+    private void RewriteAfterRemoval()
+    {
+        _baseAppended = _appended;
+        _baseDirtyVersion++;
+        PublishSnapshot();
+        ScheduleSave();
+    }
+
     public Task FlushAsync()
     {
         lock (_lock)

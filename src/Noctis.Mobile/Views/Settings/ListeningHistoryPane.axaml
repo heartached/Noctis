@@ -1,7 +1,154 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.ListeningHistoryPane"
              x:DataType="vm:ListeningHistoryViewModel">
-    <TextBlock Text="Listening History" Margin="16" />
+
+    <!-- Listening History, the content of a page pushed inside the Settings sheet (the sheet draws
+         the header and Back): this week's time and plays over seven day bars (today in the accent),
+         the last three songs with Show All, then Keep History, Share with Computer and Clear.
+         Everything is the phone's own play log. Shared look: GroupedStyles.axaml. -->
+
+    <UserControl.Styles>
+        <Style Selector="Border.row-separator.plain">
+            <Setter Property="Margin" Value="16,0" />
+        </Style>
+        <Style Selector="TextBlock.group-caption">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="Margin" Value="16,0,16,7" />
+        </Style>
+        <Style Selector="TextBlock.week-total">
+            <Setter Property="FontSize" Value="34" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Border.day-bar">
+            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="5,0" />
+        </Style>
+        <Style Selector="Border.day-bar.today">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="TextBlock.day-label">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+        <Style Selector="TextBlock.day-label.today">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="Border.history-art">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Classes="grouped-content">
+        <!-- This Week: the time and plays, then one bar per day. -->
+        <Border Name="WeekCard" Classes="group-card">
+            <StackPanel Margin="16,14,16,16">
+                <TextBlock Classes="row-value" Margin="0" FontWeight="SemiBold" Text="This Week" />
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                    <TextBlock Name="WeekTotalLabel" Classes="week-total" Text="{Binding WeekTotal}" />
+                    <TextBlock Name="WeekPlaysLabel" Classes="row-value" Margin="0,0,0,5" VerticalAlignment="Bottom"
+                               FontWeight="SemiBold" Text="{Binding WeekPlays}" />
+                </StackPanel>
+                <ItemsControl Name="DayBars" Margin="0,14,0,0" ItemsSource="{Binding Bars}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:HistoryBar">
+                            <StackPanel VerticalAlignment="Bottom" AutomationProperties.Name="{Binding Name}">
+                                <Border Classes="day-bar" Classes.today="{Binding IsToday}" Height="{Binding Height}" />
+                                <TextBlock Classes="day-label" Classes.today="{Binding IsToday}" Text="{Binding Label}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- Recently Played: the last three songs, then Show All. -->
+        <StackPanel Name="RecentSection">
+            <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="Recently Played" />
+            <Border Name="RecentCard" Classes="group-card">
+                <StackPanel>
+                    <ItemsControl Name="RecentList" ItemsSource="{Binding Recent}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:HistoryRow">
+                                <StackPanel>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Height="60" Margin="12,0,16,0">
+                                        <Border Classes="history-art" Width="44" Height="44">
+                                            <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Classes="row-title" Text="{Binding Track.Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Classes="row-sub" Margin="0" Text="{Binding Track.Artist}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Classes="row-value" FontSize="15" Text="{Binding When}" />
+                                    </Grid>
+                                    <Border Classes="row-separator plain" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid Name="NoRecentRow" Classes="setting-row" IsVisible="{Binding !HasRecent}">
+                        <TextBlock Classes="row-label" Foreground="{DynamicResource PhoneSecondaryTextBrush}" Text="Nothing Played Yet" />
+                    </Grid>
+                    <Button Name="ShowAllButton" Classes="row accent-row" Command="{Binding ShowAllCommand}"
+                            IsVisible="{Binding HasRecent}" AutomationProperties.Name="Show All">
+                        <Grid Classes="setting-row" ColumnDefinitions="*">
+                            <TextBlock Classes="row-label" Text="Show All" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- History: how long plays are kept, and whether the computer hears of them. -->
+        <StackPanel>
+            <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="History" />
+            <Border Classes="group-card">
+                <StackPanel>
+                    <Button Name="KeepRow" Classes="row" Command="{Binding ChooseKeepCommand}" AutomationProperties.Name="Keep History">
+                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                            <TextBlock Classes="row-label" Text="Keep History" />
+                            <TextBlock Grid.Column="1" Name="KeepValueLabel" Classes="row-value" HorizontalAlignment="Right" Text="{Binding KeepText}" />
+                        </Grid>
+                    </Button>
+                    <StackPanel IsVisible="{Binding HasAccount}">
+                        <Border Classes="row-separator plain" />
+                        <ToggleButton Name="ShareSwitch" Classes="switch-row" AutomationProperties.Name="Share with Computer"
+                                      IsChecked="{Binding ShareWithComputer}">
+                            <StackPanel VerticalAlignment="Center" Margin="0,8">
+                                <TextBlock Classes="row-label" Text="Share with Computer" />
+                                <TextBlock Classes="row-sub" Text="Counts and Recently Played match on both" />
+                            </StackPanel>
+                        </ToggleButton>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel>
+            <Border Classes="group-card">
+                <Button Name="ClearButton" Classes="row accent-row" Command="{Binding AskClearCommand}" AutomationProperties.Name="Clear Listening History">
+                    <Grid Classes="setting-row" ColumnDefinitions="*">
+                        <TextBlock Classes="row-label" Text="Clear Listening History…" />
+                    </Grid>
+                </Button>
+            </Border>
+            <TextBlock Classes="group-footnote" Text="Clears this phone's plays. Plays already sent to Last.fm stay there." />
+        </StackPanel>
+    </StackPanel>
 </UserControl>

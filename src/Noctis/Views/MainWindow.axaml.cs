@@ -302,6 +302,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
+        // Pick Up on Computer: the window coming to the front is when a newer phone queue is offered.
+        Activated += (_, _) => (DataContext as MainWindowViewModel)?.HandoffPrompt.Check();
 
         // Windows 10: Avalonia leaves the native caption white under the dark theme.
         // The handle exists from construction, so this lands before the first paint.

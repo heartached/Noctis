@@ -22,6 +22,15 @@ public sealed class LibraryServerAdapter : IServerLibrary
     private readonly Func<string?>? _avatarPath;
     private readonly Func<string?>? _profileName;
     private readonly Func<CancellationToken, Task<string?>>? _uploadRoot;
+    private readonly PhoneHandoffInbox _handoff;
+
+    public Task SavePlayQueueAsync(PhoneHandoff handoff)
+    {
+        _handoff.Save(handoff);
+        return Task.CompletedTask;
+    }
+
+    public PhoneHandoff? PlayQueue => _handoff.Latest;
 
     /// <param name="marshal">
     /// Runs a library mutation on the thread that owns the library. Null serialises
@@ -36,10 +45,16 @@ public sealed class LibraryServerAdapter : IServerLibrary
     /// created and added to the music folders on first use), run through <c>marshal</c> because it
     /// may touch the settings. Null (the headless host): phones cannot send songs.
     /// </param>
+    /// <param name="handoff">
+    /// Where a phone's "Pick Up on Computer" queue is kept; the desktop window reads the same
+    /// instance. Null: one under the data directory (no window to offer it, but getPlayQueue works).
+    /// </param>
     public LibraryServerAdapter(ILibraryService library, IPersistenceService persistence, IPlayHistoryService playHistory,
         Func<Task>? playlistsChanged = null, Func<Func<Task>, Task>? marshal = null, Func<string?>? avatarPath = null,
-        Func<string?>? profileName = null, Func<CancellationToken, Task<string?>>? uploadRoot = null)
+        Func<string?>? profileName = null, Func<CancellationToken, Task<string?>>? uploadRoot = null,
+        PhoneHandoffInbox? handoff = null)
     {
+        _handoff = handoff ?? new PhoneHandoffInbox(persistence.DataDirectory);
         _library = library;
         _persistence = persistence;
         _playHistory = playHistory;

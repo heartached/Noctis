@@ -128,6 +128,7 @@ public sealed partial class ShellViewModel : ObservableObject
             if (value == null) return;
             value.PlaylistsChanged += OnAccountPlaylistsChanged;
             value.StateChanged += OnAccountStateChanged;
+            value.SyncProgress += OnAccountSyncProgress;
             _profileAvatarPath = AccountAvatarPath();
             _downloadedCount = value.DownloadedCount;
         }
@@ -445,6 +446,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPlayerChangedForPickUp(e);
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
         {
             OnPropertyChanged(nameof(IsMiniBarVisible));
@@ -603,7 +605,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void RecordRemotePlay()
     {
-        // PlayRecorded fires only while the recorded track is still CurrentTrack.
+        // PlayRecorded fires only while the recorded track is still CurrentTrack. Share with
+        // Computer off keeps the play on the phone.
+        if (!ShareHistoryWithComputer) return;
         if (Account is not { } account || Player.CurrentTrack is not { } track) return;
         try
         {
@@ -1144,6 +1148,7 @@ public sealed partial class ShellViewModel : ObservableObject
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
         await Background.LoadAsync();
+        await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
         await Lyrics.InitializeAsync();

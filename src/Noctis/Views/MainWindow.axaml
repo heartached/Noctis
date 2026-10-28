@@ -1572,6 +1572,11 @@
                           Margin="0,0,0,80"
                           ZIndex="40" />
 
+    <!-- "Continue from your phone" (Pick Up on Computer): above the queue toast's spot. -->
+    <views:HandoffPromptView DataContext="{Binding HandoffPrompt}"
+                             Margin="0,0,0,132"
+                             ZIndex="41" />
+
     <!-- Bottom playback island (Apple Music-style glass pill). No clip: the island's glass
          must hear of repaints right beside the pill, which its blur reads (see GlassReach). -->
     <views:PlaybackBarView DataContext="{Binding Player}"
