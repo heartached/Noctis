@@ -39,6 +39,9 @@ export const links = {
       they describe, so they are versioned with it. */
   pluginDocs: `https://github.com/${REPO}/blob/main/docs/PLUGINS.md`,
   contentPackDocs: `https://github.com/${REPO}/blob/main/docs/PLUGINS.md#content-packs`,
+  /** The plugin submission issue form (.github/ISSUE_TEMPLATE/3-plugin-submission.yml) and its guide. */
+  pluginSubmit: `https://github.com/${REPO}/issues/new?template=3-plugin-submission.yml`,
+  pluginSubmitDocs: `https://github.com/${REPO}/blob/main/docs/PLUGINS.md#submitting-a-plugin`,
   localApiDocs: `https://github.com/${REPO}/blob/main/docs/LOCAL-API.md`,
   samples: `https://github.com/${REPO}/tree/main/samples`,
   crowdin: 'https://crowdin.com/project/noctis',
