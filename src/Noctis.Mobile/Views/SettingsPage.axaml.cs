@@ -7,8 +7,8 @@ using Noctis.Mobile.ViewModels;
 namespace Noctis.Mobile.Views;
 
 /// <summary>
-/// Settings' pages inside the sheet: the top level and the pushed page (Music Folders,
-/// Appearance, Lyrics) share one area. A pushed page slides in from the right while the top
+/// Settings' pages inside the sheet: the top level and the pushed page (Music Folders, Lyrics,
+/// Accent, Downloads...) share one area. A pushed page slides in from the right while the top
 /// level drifts a little left and fades, and Back reverses it: the app's push (Motion), with a
 /// fade rather than a shade because the two panes are see-through over one backdrop. The
 /// header's hairline shows once the page showing has scrolled under it. The profile card's
@@ -94,9 +94,16 @@ public partial class SettingsPage : UserControl
         SubScroll.IsVisible = sub;
     }
 
+    /// <summary>How far the top level scrolls before the large title is gone and the header's
+    /// small one shows in its place.</summary>
+    internal const double TitleCollapseOffset = 36;
+
     private void UpdateHairline()
     {
-        var showing = _vm?.IsSubPane == true ? SubScroll : MainScroll;
+        var sub = _vm?.IsSubPane == true;
+        var showing = sub ? SubScroll : MainScroll;
         HeaderHairline.Opacity = showing.Offset.Y > 0.5 ? 1 : 0;
+        // A pushed page names itself in the header at once; the top level's title waits for the large one to go.
+        SettingsTitle.Opacity = sub || MainScroll.Offset.Y > TitleCollapseOffset ? 1 : 0;
     }
 }

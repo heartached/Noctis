@@ -305,7 +305,7 @@
                                                         <StackPanel>
                                                             <Border Classes="np-gap" IsVisible="{Binding StartsGroup}" />
                                                             <Button Classes="row np-row np-option" Command="{Binding PickCommand}"
-                                                                    AutomationProperties.Name="{Binding Label}">
+                                                                    AutomationProperties.Name="{Binding AccessibleName}">
                                                                 <Grid ColumnDefinitions="48,*">
                                                                     <PathIcon Data="{DynamicResource PhCheck}" IsVisible="{Binding IsChecked}" />
                                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{Binding Label}" VerticalAlignment="Center" Margin="0,0,16,0" />

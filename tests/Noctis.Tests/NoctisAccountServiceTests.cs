@@ -465,6 +465,38 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(svc.IsSignedIn); // a full phone is not a reason to forget the account
     }
 
+    /// <summary>Settings → Downloads → Download on Wi-Fi Only (on by default): on mobile data a download
+    /// is refused before anything is fetched; on Wi-Fi, or with the setting off, it runs.</summary>
+    [Fact]
+    public async Task Downloads_AreRefusedOnMobileData_WhenWifiOnlyIsOn_AndRunOtherwise()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var onWifi = false;
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            IsOnWifi = () => onWifi,
+        };
+        await svc.SyncNowAsync(ct);
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAllAsync(ct));
+        Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
+        Assert.Equal(0, svc.DownloadedCount);
+        Assert.Empty(Directory.Exists(OfflineDir) ? Directory.GetFiles(OfflineDir) : Array.Empty<string>());
+        Assert.True(svc.IsSignedIn);
+
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = false);   // "Any Network"
+        await svc.DownloadAllAsync(ct);
+        Assert.True(svc.DownloadedCount > 0);
+
+        await svc.RemoveAllDownloadsAsync();
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = true);
+        onWifi = true;
+        await svc.DownloadAllAsync(ct);
+        Assert.True(svc.DownloadedCount > 0);
+    }
+
     [Fact]
     public async Task Covers_AreNotFetched_WhenThePhoneHasNoRoomLeft()
     {

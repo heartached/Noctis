@@ -85,7 +85,7 @@ public class MobileAppearanceTests
         {
             Assert.Null(vm.SelectedAccent);
             Assert.Equal("Scarlet", vm.AccentName);
-            Assert.Equal("Ink · Scarlet", vm.AppearanceValue);
+            Assert.Equal("Accent, Scarlet", vm.AccentRowName);
             var list = MobileFixtures.Named<ListBox>(page, "AccentList");
             Assert.Null(list.SelectedItem);
             Assert.All(list.GetVisualDescendants().OfType<Ellipse>().Where(e => e.Classes.Contains("swatch-ring")), r => Assert.Equal(0, r.Opacity));
@@ -93,7 +93,7 @@ public class MobileAppearanceTests
             // Another change re-applies the theme with the saved accent, not Crimson.
             vm.DarkTheme = "Smoke";
             Assert.Equal(("System", "Smoke", "#FF3B30"), host.Last);
-            Assert.Equal("Smoke · Scarlet", vm.AppearanceValue);
+            Assert.Equal("Accent, Scarlet", vm.AccentRowName);
         });
         var vm = (SettingsPageViewModel)rig.Shell.CurrentPage!;
         await vm.PendingSave;
@@ -103,7 +103,7 @@ public class MobileAppearanceTests
 
         // Picking one of the nine takes over.
         vm.SelectedAccent = SettingsPageViewModel.Accents.Single(a => a.Name == "Teal");
-        Assert.Equal("Smoke · Teal", vm.AppearanceValue);
+        Assert.Equal("Accent, Teal", vm.AccentRowName);
         await vm.PendingSave;
         Assert.Equal("Teal", (await rig.Persistence.LoadSettingsAsync()).AccentPresetName);
     }
@@ -330,7 +330,7 @@ public class MobileAppearanceTests
             rig.Shell.OpenSettingsCommand.Execute(null);
             var vm = (SettingsPageViewModel)rig.Shell.CurrentPage!;
             await vm.Loaded;
-            vm.OpenPaneCommand.Execute(SettingsPane.Appearance);
+            vm.OpenPaneCommand.Execute(SettingsPane.Accent);
             var sw = System.Diagnostics.Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 600)
             {

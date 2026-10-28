@@ -85,6 +85,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     private bool _isScanning;
     [ObservableProperty] private int _scanProgress;
 
+    /// <summary>When this run's last scan finished (local time); null until one has. Settings → Rescan Library says so.</summary>
+    [ObservableProperty] private DateTime? _lastScanLocal;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private bool _hasFolders;
@@ -617,6 +620,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             }
             while (_scanAgain);
             if (StatusText == "Scanning…") StatusText = string.Empty; // ScanAborted may have replaced it
+            if (HasFolders && !NeedsReconnect) LastScanLocal = DateTime.Now;
         }
         catch (Exception ex)
         {

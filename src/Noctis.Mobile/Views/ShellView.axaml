@@ -50,6 +50,7 @@
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/TabIcons.axaml" />
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/LibraryIcons.axaml" />
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/PhoneIcons.axaml" />
+                <ResourceInclude Source="avares://Noctis.Mobile/Views/SettingsIcons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <!-- Liquid Glass bar surfaces beyond the palette's (MobileTheme.BuildPalette: the

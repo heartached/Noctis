@@ -132,6 +132,10 @@ public class AppSettings : IJsonOnDeserializing
     /// deep shade of the cover's colour. Off, they keep the theme's plain pages. On by default.</summary>
     public bool MobileArtworkPageColors { get; set; } = true;
 
+    /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
+    /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
+    public bool MobileDownloadWifiOnly { get; set; } = true;
+
     /// <summary>User-defined custom themes selectable from the Themes row.</summary>
     public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
 
