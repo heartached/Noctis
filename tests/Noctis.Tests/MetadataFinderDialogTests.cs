@@ -67,6 +67,68 @@ public class MetadataFinderDialogTests
         }
     }
 
+    /// <summary>Fails each lookup the way the real service can: an HttpClient timeout (an
+    /// OperationCanceledException nobody asked for), an HTTP error, a dropped connection.</summary>
+    private sealed class FailingFinder : IMetadataFinderService
+    {
+        public Task<IReadOnlyList<TagSuggestion>> IdentifyAsync(Track track, CancellationToken ct = default) => track.Title switch
+        {
+            "timeout" => Task.FromException<IReadOnlyList<TagSuggestion>>(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout of 15 seconds elapsing.")),
+            "busy" => Task.FromException<IReadOnlyList<TagSuggestion>>(new System.Net.Http.HttpRequestException("HTTP 503", null, System.Net.HttpStatusCode.ServiceUnavailable)),
+            "offline" => Task.FromException<IReadOnlyList<TagSuggestion>>(new System.Net.Http.HttpRequestException("No such host is known.")),
+            _ => Task.FromResult<IReadOnlyList<TagSuggestion>>(new[] { new TagSuggestion("Fixed", "Artist", "Album", null, 0.9, "Deezer") }),
+        };
+    }
+
+    [AvaloniaFact]
+    public async Task IdentifyAll_NoMatch_EndsTheRowAndSaysSo()
+    {
+        // The owner's case: a synthetic tone titled "ref_full", no artist. Deezer and
+        // MusicBrainz both answer an empty list for it (checked live 10-27).
+        var finder = new SyncFinder { Answer = _ => null };
+        var vm = new MetadataFinderViewModel(new[] { T("ref_full", "Unknown Artist", "gh127") },
+            finder, new SearchPopupsShotsTests.OkTags(), new FakeLibraryService());
+
+        await vm.IdentifyAllCommand.ExecuteAsync(null);
+
+        Assert.Equal("No match", vm.Rows[0].Status);
+        Assert.Equal("Identified 0 of 1", vm.StatusMessage);
+        Assert.False(vm.IsBusy);
+        Assert.False(vm.HasSelection);
+    }
+
+    [AvaloniaFact]
+    public async Task IdentifyAll_FailedLookups_EndEachRow_AndTheRunGoesOn()
+    {
+        var vm = new MetadataFinderViewModel(
+            new[] { T("timeout", "", ""), T("busy", "", ""), T("offline", "", ""), T("ok", "", "") },
+            new FailingFinder(), new SearchPopupsShotsTests.OkTags(), new FakeLibraryService());
+
+        await vm.IdentifyAllCommand.ExecuteAsync(null);
+
+        // A timeout used to end the whole run as "Cancelled" with the row stuck on "Identifying…".
+        Assert.Equal(new[] { "Couldn't identify (timed out)", "Couldn't identify (HTTP 503)", "Couldn't identify (network error)", "Matched" },
+            vm.Rows.Select(r => r.Status));
+        Assert.Equal("Identified 1 of 4, 3 failed", vm.StatusMessage);
+        Assert.False(vm.IsBusy);
+        Assert.True(vm.HasSelection);
+    }
+
+    [AvaloniaFact]
+    public void IdentifyAll_ARowThatNeverAnswers_TimesOut_AndTheRunEnds()
+    {
+        var finder = new HangingFinder();
+        var vm = new MetadataFinderViewModel(new[] { T("a", "", ""), T("b", "", "") },
+            finder, new SearchPopupsShotsTests.OkTags(), new FakeLibraryService()) { RowTimeout = TimeSpan.FromMilliseconds(100) };
+
+        var run = vm.IdentifyAllCommand.ExecuteAsync(null);
+
+        Assert.True(PumpUntil(() => run.IsCompleted), "the run never ended");
+        Assert.Equal(new[] { "Couldn't identify (timed out)", "Couldn't identify (timed out)" }, vm.Rows.Select(r => r.Status));
+        Assert.Equal("Identified 0 of 2, 2 failed", vm.StatusMessage);
+        Assert.False(vm.IsBusy);
+    }
+
     private static bool PumpUntil(Func<bool> condition, int budgetMs = 3000)
     {
         var sw = Stopwatch.StartNew();
@@ -323,12 +385,16 @@ public class MetadataFinderDialogTests
             Assert.True(PumpUntil(() => CardSettledOpen(host)));
             var run = vm.IdentifyAllCommand.ExecuteAsync(null);
             Assert.True(PumpUntil(() => vm.IsBusy && finder.Seen.CanBeCanceled));
+            // The footer shows the run's progress, not the opening "3 tracks to identify".
+            Assert.Equal("Identifying 1 of 3…", vm.StatusMessage);
 
             win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
             Assert.True(finder.Seen.IsCancellationRequested);
             Assert.False(host.IsClosing, "Esc closed the dialog instead of stopping the run");
             Assert.True(PumpUntil(() => run.IsCompleted && !vm.IsBusy));
             Assert.Equal("Cancelled", vm.StatusMessage);
+            // The interrupted row goes back to waiting instead of "Identifying…" forever.
+            Assert.All(vm.Rows, r => Assert.Equal("Pending", r.Status));
 
             win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
             Assert.True(host.IsClosing);

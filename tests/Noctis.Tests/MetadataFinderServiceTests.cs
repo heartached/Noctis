@@ -57,18 +57,69 @@ public class MetadataFinderServiceTests
         Assert.Contains("( https://github.com/heartached/Noctis )", handler.MusicBrainzUserAgent);
     }
 
+    private static Track RefFull() => new() { Title = "ref_full", Artist = "Unknown Artist", Album = "gh127" };
+
+    [Fact]
+    public async Task NothingFound_ReturnsEmpty()
+    {
+        // What both services answer for the owner's synthetic "ref_full" tone (checked live 10-27).
+        var handler = new Handler(deezer: """{"data":[],"total":0}""", mb: """{"count":0,"offset":0,"recordings":[]}""");
+        var svc = new MetadataFinderService(new HttpClient(handler), () => new AppSettings(), new DeezerMetadataService(new HttpClient(handler)));
+
+        Assert.Empty(await svc.IdentifyAsync(RefFull()));
+        Assert.Contains(handler.Hosts, h => h == "musicbrainz.org");
+    }
+
+    [Fact]
+    public async Task DeezerTimeout_IsNotACancel_MusicBrainzStillAnswers()
+    {
+        // HttpClient's timeout throws TaskCanceledException; it used to be rethrown as the
+        // caller's cancel and ended the whole Find Metadata run as "Cancelled".
+        var handler = new Handler(deezer: "", mb: MbJson) { DeezerThrows = new TaskCanceledException("HttpClient.Timeout") };
+        var svc = new MetadataFinderService(new HttpClient(handler), () => new AppSettings(), new DeezerMetadataService(new HttpClient(handler)));
+
+        var hits = await svc.IdentifyAsync(Lucid());
+
+        Assert.Equal("Lucid Dreams", hits[0].Title);
+    }
+
+    [Fact]
+    public async Task NothingFound_BecauseMusicBrainzFailed_Throws()
+    {
+        var handler = new Handler(deezer: """{"data":[]}""", mb: "") { MbStatus = HttpStatusCode.BadGateway };
+        var svc = new MetadataFinderService(new HttpClient(handler), () => new AppSettings(), new DeezerMetadataService(new HttpClient(handler)));
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => svc.IdentifyAsync(RefFull()));
+        Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
+    }
+
+    [Fact]
+    public async Task CallersCancel_StillCancels()
+    {
+        var handler = new Handler(deezer: """{"data":[]}""", mb: MbJson);
+        var svc = new MetadataFinderService(new HttpClient(handler), () => new AppSettings(), new DeezerMetadataService(new HttpClient(handler)));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => svc.IdentifyAsync(Lucid(), cts.Token));
+    }
+
     private sealed class Handler(string deezer, string mb) : HttpMessageHandler
     {
         public List<string> Hosts { get; } = new();
         public string MusicBrainzUserAgent { get; private set; } = "";
+        public Exception? DeezerThrows { get; init; }
+        public HttpStatusCode MbStatus { get; init; } = HttpStatusCode.OK;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var host = request.RequestUri!.Host;
             lock (Hosts) Hosts.Add(host);
             if (host == "musicbrainz.org") MusicBrainzUserAgent = request.Headers.UserAgent.ToString();
+            if (host != "musicbrainz.org" && DeezerThrows is not null) return Task.FromException<HttpResponseMessage>(DeezerThrows);
             var body = host == "musicbrainz.org" ? mb : deezer;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+            var status = host == "musicbrainz.org" ? MbStatus : HttpStatusCode.OK;
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
         }
     }
 }

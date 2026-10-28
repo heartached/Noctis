@@ -29,7 +29,7 @@ public sealed class DeezerMetadataService
             var json = await SearchJsonWithAlbumFallbackAsync(artist, title, album, ct).ConfigureAwait(false);
             return json is null ? Array.Empty<TagSuggestion>() : DeezerApi.ParseSearch(json);
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch { return Array.Empty<TagSuggestion>(); }
     }
 
@@ -114,7 +114,7 @@ public sealed class DeezerMetadataService
                 Bpm: track.Bpm,
                 Isrc: track.Isrc);
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch { return null; }
     }
 

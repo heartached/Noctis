@@ -32,6 +32,11 @@ public partial class MetadataFinderViewModel : ViewModelBase
 
     public event EventHandler? Closed;
 
+    /// <summary>Longest one row may take before it is reported as timed out and the run moves
+    /// on (each request already has HttpClient's 15 s; a row is up to four of them). Internal
+    /// for tests (InternalsVisibleTo Noctis.Tests).</summary>
+    internal TimeSpan RowTimeout { get; set; } = TimeSpan.FromSeconds(60);
+
     public MetadataFinderViewModel(IReadOnlyList<Track> candidates, IMetadataFinderService finder,
         IMetadataService metadata, ILibraryService library)
     {
@@ -59,6 +64,8 @@ public partial class MetadataFinderViewModel : ViewModelBase
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
         var identified = 0;
+        var failed = 0;
+        MetaRow? current = null;
 
         try
         {
@@ -66,26 +73,59 @@ public partial class MetadataFinderViewModel : ViewModelBase
             // resumes there. Posting each result instead queued it behind the summary below,
             // so "Identified N of M" missed the last match — and every match when the finder
             // answered without yielding (a cached lookup): "Identified 0 of 4".
-            foreach (var row in Rows.ToList())
+            var rows = Rows.ToList();
+            for (var i = 0; i < rows.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                row.Status = L("MetadataFinder.Identifying");
+                current = rows[i];
+                current.Status = L("MetadataFinder.Identifying");
+                StatusMessage = L("MetadataFinder.Progress", i + 1, rows.Count);
 
-                var hits = await _finder.IdentifyAsync(row.Track, ct);
-                var best = hits.FirstOrDefault();
-
-                if (best is null)
+                // Every row ends in a final state. A failed or timed-out lookup used to escape
+                // the loop: an HttpClient timeout is an OperationCanceledException, so the run
+                // ended as "Cancelled" with the row stuck on "Identifying…" and the rest never
+                // tried; any other exception left the same row behind with no summary at all.
+                using var rowCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                rowCts.CancelAfter(RowTimeout);
+                IReadOnlyList<TagSuggestion> hits;
+                try
                 {
-                    row.Status = L("MetadataFinder.NoMatch");
+                    hits = await _finder.IdentifyAsync(current.Track, rowCts.Token);
+                }
+                catch (Exception ex) when (!ct.IsCancellationRequested)
+                {
+                    var reason = ex is OperationCanceledException or TimeoutException
+                        ? L("MetadataFinder.TimedOut")
+                        : ex is HttpRequestException { StatusCode: { } code }
+                            ? $"HTTP {(int)code}"
+                            : L("MetadataFinder.NetworkError");
+                    current.Status = L("MetadataFinder.Failed", reason);
+                    failed++;
+                    DebugLogger.Warn(DebugLogger.Category.Search, "MetadataFinder.IdentifyFailed",
+                        $"title={current.Track.Title} {ex.GetType().Name}: {ex.Message}");
                     continue;
                 }
-                row.ApplyProposal(best);
-                identified++;
+
+                var best = hits.FirstOrDefault();
+                if (best is null)
+                {
+                    current.Status = L("MetadataFinder.NoMatch");
+                    continue;
+                }
+                current.ApplyProposal(best);
+                if (current.HasProposal) identified++;
             }
-            StatusMessage = L("MetadataFinder.Identified", identified, Rows.Count);
+            current = null;
+            StatusMessage = failed > 0
+                ? L("MetadataFinder.IdentifiedFailed", identified, Rows.Count, failed)
+                : L("MetadataFinder.Identified", identified, Rows.Count);
+            DebugLogger.Info(DebugLogger.Category.Search, "MetadataFinder.IdentifyAll",
+                $"identified={identified} failed={failed} total={Rows.Count}");
         }
         catch (OperationCanceledException)
         {
+            // The row being looked up when Cancel was pressed goes back to waiting.
+            if (current is not null) current.Status = L("MetadataFinder.Pending");
             StatusMessage = L("MetadataFinder.Cancelled");
         }
         finally

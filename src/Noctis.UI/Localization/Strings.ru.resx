@@ -1381,6 +1381,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="MetadataFinder.NoMatch" xml:space="preserve"><value>Нет совпадений</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
   <data name="MetadataFinder.Applied" xml:space="preserve"><value>Применено</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
   <data name="MetadataFinder.WriteFailed" xml:space="preserve"><value>Ошибка записи</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): the file could not be written</comment></data>
+  <data name="MetadataFinder.Progress" xml:space="preserve"><value>Определение {0} из {1}…</value><comment>Find Metadata tool (MetadataFinderViewModel) while Identify all runs; {0} = current row, {1} = total</comment></data>
+  <data name="MetadataFinder.Failed" xml:space="preserve"><value>Не удалось определить ({0})</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): the lookup failed; {0} = reason</comment></data>
+  <data name="MetadataFinder.TimedOut" xml:space="preserve"><value>время ожидания истекло</value><comment>Find Metadata tool (MetadataFinderViewModel): failure reason in MetadataFinder.Failed</comment></data>
+  <data name="MetadataFinder.NetworkError" xml:space="preserve"><value>ошибка сети</value><comment>Find Metadata tool (MetadataFinderViewModel): failure reason in MetadataFinder.Failed</comment></data>
+  <data name="MetadataFinder.IdentifiedFailed" xml:space="preserve"><value>Определено {0} из {1}, с ошибкой: {2}</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = matched, {1} = total, {2} = failed lookups</comment></data>
 
   <!-- MetadataWindow.axaml (auto-migrated) -->
   <data name="Metadata.Metadata" xml:space="preserve"><value>Метаданные</value><comment>Title in MetadataWindow.axaml</comment></data>

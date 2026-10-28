@@ -90,14 +90,14 @@ public sealed class AutoMatchCoordinator
             var hits = await _finder.IdentifyAsync(track, ct).ConfigureAwait(false);
             return hits.FirstOrDefault();
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch { return null; }
     }
 
     private async Task<TagSuggestion?> TryEnrichAsync(string artist, string title, string album, TimeSpan? duration, CancellationToken ct)
     {
         try { return await _deezer.EnrichAsync(artist, title, album, duration, ct).ConfigureAwait(false); }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch { return null; }
     }
 }
