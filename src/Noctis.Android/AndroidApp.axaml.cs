@@ -130,6 +130,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             lyrics)
         {
             Outputs = new AndroidOutputSwitcher(context),
+            BatterySaver = new AndroidBatterySaver(context),
             Theme = this,
             Logs = new AndroidLogExporter(context),
             Links = new AndroidUrlLauncher(context),
@@ -283,6 +284,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             var settings = await persistence.LoadSettingsAsync();
             Loc.Instance.SetCulture(settings.Language);
             ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
+            // Settings › Background, before the first page paints rather than after the library loads.
+            _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
             _shell!.Library.ApplySettings(settings);
             // No SetGapless(settings.GaplessPlaybackEnabled): the phone is always gapless
@@ -310,12 +313,19 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// </summary>
     public void OnBackgrounded()
     {
+        if (_shell != null) _shell.Background.Suspended = true;   // Slow Motion stands still
         var save = _shell?.SaveStateAsync();
         // Matches NowPlayingViewModel.SaveStateNow: a background save that throws would
         // otherwise be an unobserved exception nobody ever sees.
         _ = save?.ContinueWith(
             t => DebugLog.Write("Queue", $"Background save failed: {t.Exception?.GetBaseException().Message}"),
             TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    /// <summary>MainActivity, on resume: Slow Motion drifts again.</summary>
+    public void OnForegrounded()
+    {
+        if (_shell != null) _shell.Background.Suspended = false;
     }
 
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes
@@ -340,6 +350,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
         DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
         _theme.Apply(this, resolved, accentHex);
+        _shell?.Background.Reassert();   // the theme rebuilt its palette: the background mesh goes back on top
         // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
         Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
     }

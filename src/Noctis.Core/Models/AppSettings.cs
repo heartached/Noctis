@@ -136,6 +136,18 @@ public class AppSettings : IJsonOnDeserializing
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;
 
+    /// <summary>Phone, Settings › Background: the page background. "Off" (the default, and what a
+    /// settings file without the field reads as) is the plain theme colour; "Artwork" a mesh of
+    /// the playing cover's colours; otherwise the id of a Neutral or Colour mesh ("ash", "ember").</summary>
+    public string MobileBackground { get; set; } = "Off";
+
+    /// <summary>Phone, Settings › Background › Slow Motion: the mesh's colours drift gently.
+    /// Off by default; it also stays still while Android's Battery Saver is on.</summary>
+    public bool MobileBackgroundMotion { get; set; }
+
+    /// <summary>Phone, Settings › Background › Strength: how strong the colour wash is, 0.2-1.</summary>
+    public double MobileBackgroundStrength { get; set; } = 0.6;
+
     /// <summary>User-defined custom themes selectable from the Themes row.</summary>
     public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
 

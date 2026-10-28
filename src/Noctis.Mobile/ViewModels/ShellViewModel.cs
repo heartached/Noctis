@@ -52,6 +52,10 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Re-themes the app for Settings (AndroidApp); null in tests unless injected.</summary>
     public IThemeHost? Theme { get; init; }
 
+    /// <summary>Whether Battery Saver is on (Android); Slow Motion in Settings › Background stands
+    /// still while it is. Null in tests unless injected.</summary>
+    public IBatterySaver? BatterySaver { get; init; }
+
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
     public ILogExporter? Logs { get; init; }
 
@@ -433,12 +437,20 @@ public sealed partial class ShellViewModel : ObservableObject
             _miniTint = TintFactory();
             _miniTint.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName is nameof(PageTint.TintColor)) UpdateMiniProgressBrushes();
+                if (e.PropertyName is nameof(PageTint.TintColor))
+                {
+                    UpdateMiniProgressBrushes();
+                    Background.Cover = _miniTint?.TintColor;   // the Now Playing background follows the cover
+                }
             };
             return _miniTint;
         }
     }
     private PageTint? _miniTint;
+
+    /// <summary>Settings › Background: the page background, its choice and its saved values.</summary>
+    public PhoneBackground Background => _background ??= new PhoneBackground(Library.Persistence, BatterySaver);
+    private PhoneBackground? _background;
 
     /// <summary>The elapsed fill: the cover's colour, soft, so the title stays readable on it.</summary>
     [ObservableProperty] private Avalonia.Media.IBrush _miniProgressFill = new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Avalonia.Media.Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
@@ -1102,6 +1114,7 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
+        await Background.LoadAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
         await Lyrics.InitializeAsync();
