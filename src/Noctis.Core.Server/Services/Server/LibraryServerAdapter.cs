@@ -23,6 +23,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
     private readonly Func<string?>? _profileName;
     private readonly Func<CancellationToken, Task<string?>>? _uploadRoot;
     private readonly PhoneHandoffInbox _handoff;
+    private readonly Func<Track, DateTime, Task>? _forwardScrobble;
+    private readonly Func<(bool LastFm, bool ListenBrainz)>? _scrobbleServices;
 
     public Task SavePlayQueueAsync(PhoneHandoff handoff)
     {
@@ -49,11 +51,20 @@ public sealed class LibraryServerAdapter : IServerLibrary
     /// Where a phone's "Pick Up on Computer" queue is kept; the desktop window reads the same
     /// instance. Null: one under the data directory (no window to offer it, but getPlayQueue works).
     /// </param>
+    /// <param name="forwardScrobble">
+    /// Sends a phone's play on to the host's Last.fm / ListenBrainz (the track, when it started),
+    /// applying the host's own scrobbling settings and exclusions. Called on the library's thread
+    /// and not awaited by the phone's request. Null (the headless host): phone plays are only counted.
+    /// </param>
+    /// <param name="scrobbleServices">Whether the host's Last.fm and ListenBrainz are on, for the phone.</param>
     public LibraryServerAdapter(ILibraryService library, IPersistenceService persistence, IPlayHistoryService playHistory,
         Func<Task>? playlistsChanged = null, Func<Func<Task>, Task>? marshal = null, Func<string?>? avatarPath = null,
         Func<string?>? profileName = null, Func<CancellationToken, Task<string?>>? uploadRoot = null,
-        PhoneHandoffInbox? handoff = null)
+        PhoneHandoffInbox? handoff = null, Func<Track, DateTime, Task>? forwardScrobble = null,
+        Func<(bool LastFm, bool ListenBrainz)>? scrobbleServices = null)
     {
+        _forwardScrobble = forwardScrobble;
+        _scrobbleServices = scrobbleServices;
         _handoff = handoff ?? new PhoneHandoffInbox(persistence.DataDirectory);
         _library = library;
         _persistence = persistence;
@@ -148,7 +159,11 @@ public sealed class LibraryServerAdapter : IServerLibrary
 
     public Task ScrobbleAsync(Guid trackId) => ScrobbleAsync(trackId, DateTime.UtcNow);
 
-    public Task ScrobbleAsync(Guid trackId, DateTime playedUtc)
+    public Task ScrobbleAsync(Guid trackId, DateTime playedUtc) => ScrobbleAsync(trackId, playedUtc, forward: false);
+
+    public (bool LastFm, bool ListenBrainz)? ScrobbleServices => _scrobbleServices?.Invoke();
+
+    public Task ScrobbleAsync(Guid trackId, DateTime playedUtc, bool forward)
         => Run(async () =>
         {
             // Same bookkeeping as PlayerViewModel when a track starts on the desktop.
@@ -157,9 +172,18 @@ public sealed class LibraryServerAdapter : IServerLibrary
             if (track.PlayCount < int.MaxValue) track.PlayCount++;
             // An offline play reported late must not move "last played" backwards.
             if (track.LastPlayed is null || playedUtc > track.LastPlayed) track.LastPlayed = playedUtc;
-            _playHistory.RecordPlay(track);
+            // At the phone's time, in its place: an offline play lands on the day it was played.
+            _playHistory.RecordPlay(track, playedUtc);
+            if (forward && _forwardScrobble is { } send) _ = Forward(send, track, playedUtc);
             await _library.SaveTrackUserStateAsync(new[] { track });
         });
+
+    /// <summary>The phone's sync does not wait on Last.fm; a failure is logged, never thrown at it.</summary>
+    private static async Task Forward(Func<Track, DateTime, Task> send, Track track, DateTime playedUtc)
+    {
+        try { await send(track, playedUtc).ConfigureAwait(false); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "Server", $"forwarding a phone play failed: {ex.Message}"); }
+    }
 
     public async Task<Playlist> CreatePlaylistAsync(string name, IReadOnlyList<Guid> trackIds)
     {

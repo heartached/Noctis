@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Noctis.Helpers;
+using Noctis.Mobile.Services.Account;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -25,9 +26,10 @@ internal sealed class QueuedPlay
 /// <see cref="ScrobblePlayClock"/>), queues it in <c>scrobble_queue.json</c> (survives restarts and being
 /// offline) and sends the queue to Last.fm / ListenBrainz in batches of 50, retrying with backoff.
 ///
-/// Exactly once: the route is chosen when a play counts. In Through Computer mode this class never
-/// sees the play (the account sync carries it); in From This Phone mode the play is queued here and
-/// nowhere else. A mode switch changes only the plays that come after it: what is queued stays queued
+/// Exactly once: the route is chosen when a play counts. In Through Computer mode this class sends
+/// nothing: the account sync carries the play, marked (<see cref="PlayDecided"/>) for the computer to
+/// send on; in From This Phone mode the play is queued here and nowhere else, and marked so the
+/// computer only counts it. A mode switch changes only the plays that come after it: what is queued stays queued
 /// and is sent once by whichever route took it, never again, never dropped. Per service, a play is
 /// removed from the queue only after that service answered for it.
 /// </summary>
@@ -214,9 +216,19 @@ public sealed class PhoneScrobbler
 
     // ── Playback ──
 
+    /// <summary>
+    /// Raised once per play with its scrobble verdict, for the account sync (which recorded the play
+    /// when it started): <see cref="PlayScrobble.Computer"/> when it counted in Through Computer mode,
+    /// so the computer sends it on; <see cref="PlayScrobble.Phone"/> when it counted in From This
+    /// Phone mode (this class owns it); <see cref="PlayScrobble.No"/> when the next song started
+    /// before it counted.
+    /// </summary>
+    public event Action<Track, PlayScrobble>? PlayDecided;
+
     /// <summary>A track started playing.</summary>
     public void TrackStarted(Track track)
     {
+        if (_track is { } previous && !_counted) PlayDecided?.Invoke(previous, PlayScrobble.No);
         _track = track;
         _counted = false;
         _clock.Start(UtcNow);
@@ -238,7 +250,9 @@ public sealed class PhoneScrobbler
         else _clock.Pause(now);
         if (_counted || !ScrobblePlayClock.ShouldScrobble(track.Duration, _clock.Played(now))) return;
         _counted = true;
-        // Through Computer: the account sync carries the play; this class sends nothing.
+        // Through Computer: the account sync carries the play and the computer sends it on; this
+        // class sends nothing. From This Phone: this class sends it (or Send Plays is off), never the computer.
+        PlayDecided?.Invoke(track, _cfg.FromPhone ? PlayScrobble.Phone : PlayScrobble.Computer);
         if (!_cfg.FromPhone || !_cfg.SendPlays) return;
         Enqueue(track, _clock.StartedAt);
     }

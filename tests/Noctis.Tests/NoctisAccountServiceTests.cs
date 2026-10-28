@@ -895,6 +895,46 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task StartedPlays_WaitForTheirVerdict_AndOnlyThroughComputerCountedOnesAreForwarded_Once()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Null(svc.ComputerScrobbling);                              // this computer does not say
+
+        // Through Computer, counted: held while it plays, then sent on by the computer, once.
+        svc.RecordStartedPlay(Phone(_t1), DateTime.UtcNow.AddMinutes(-9));
+        Assert.Equal(0, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).PlaysSent);
+        Assert.Equal(1, svc.PendingPlayCount);
+        svc.DecidePlay(Phone(_t1), PlayScrobble.Computer);
+        Assert.Equal(1, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).PlaysSent);
+        Assert.Equal(new[] { _t1.Id }, _desk.Forwarded);
+
+        // Skipped (the next song started before it counted), and sent by the phone itself: counted only.
+        svc.RecordStartedPlay(Phone(_t2), DateTime.UtcNow.AddMinutes(-6));
+        svc.RecordStartedPlay(Phone(_t3), DateTime.UtcNow.AddMinutes(-5));
+        svc.DecidePlay(Phone(_t3), PlayScrobble.Phone);
+        svc.DecidePlay(Phone(_t2), PlayScrobble.Computer);                // too late: already decided as skipped
+        Assert.Equal(2, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).PlaysSent);
+        Assert.Equal(new[] { _t1.Id }, _desk.Forwarded);
+        Assert.Equal(3, _desk.Scrobbled.Count);
+
+        // A play held when the app went away can no longer be decided: counted, never forwarded.
+        svc.RecordStartedPlay(Phone(_t1), DateTime.UtcNow.AddMinutes(-2));
+        var pendingFile = Path.Combine(AccountDir, "pending.json");
+        await Until(() => File.Exists(pendingFile) && File.ReadAllText(pendingFile).Contains("pending"));
+        var restarted = Restart();
+        restarted.DecidePlay(Phone(_t1), PlayScrobble.Computer);
+        Assert.Equal(1, (await restarted.SyncNowAsync(TestContext.Current.CancellationToken)).PlaysSent);
+        Assert.Equal(new[] { _t1.Id }, _desk.Forwarded);
+        Assert.Equal(4, _desk.Scrobbled.Count);
+
+        // The computer says where it sends them: the next sync keeps it.
+        _desk.ScrobbleServices = (true, false);
+        await restarted.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(new ComputerScrobbling(true, false), restarted.ComputerScrobbling);
+    }
+
+    [Fact]
     public async Task Plays_ReachTheDisk_EvenWhileSomethingIsReadingThePendingFile()
     {
         var svc = await SignedInAsync();
@@ -1329,6 +1369,16 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         {
             lock (Scrobbled) ScrobbleTimes.Add(playedUtc);
             return ScrobbleAsync(trackId);
+        }
+
+        /// <summary>Plays the desktop sent on to its Last.fm / ListenBrainz (noctisScrobble=computer).</summary>
+        public List<Guid> Forwarded { get; } = new();
+        public (bool LastFm, bool ListenBrainz)? ScrobbleServices { get; set; }
+
+        public Task ScrobbleAsync(Guid trackId, DateTime playedUtc, bool forward)
+        {
+            if (forward) lock (Scrobbled) Forwarded.Add(trackId);
+            return ScrobbleAsync(trackId, playedUtc);
         }
 
         public Task ScrobbleAsync(Guid trackId)

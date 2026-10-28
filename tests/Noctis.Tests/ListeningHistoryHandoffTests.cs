@@ -321,6 +321,28 @@ public class ListeningHistoryHandoffTests : IDisposable
     }
 
     [Fact]
+    public async Task WithTheScrobblerFollowingPlayback_ADesktopPlayWaitsForItsVerdict_AndASkipSaysNo()
+    {
+        var remote = RemoteSong("Remote");
+        var next = RemoteSong("Next");
+        using var rig = MobileFixtures.MakeRig(new[] { remote, next });
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        var scrobbler = new Noctis.Mobile.Services.Scrobbling.PhoneScrobbler(rig.Persistence, new System.Net.Http.HttpClient()) { AutoFlush = false };
+        await scrobbler.EnsureLoadedAsync();
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Account = account, Scrobbler = scrobbler, Marshal = a => a(), TintFactory = rig.Shell.TintFactory,
+        };
+
+        shell.Player.PlayTracks(new[] { remote, next }, 0);
+        rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(1));
+        Assert.Equal(new[] { remote }, account.Started);                    // held for its verdict
+        shell.Player.PlayTracks(new[] { next }, 0);                         // skipped after a second
+        Assert.Contains((remote, PlayScrobble.No), account.Decided);
+        Assert.DoesNotContain(account.Decided, d => d.Verdict != PlayScrobble.No);
+    }
+
+    [Fact]
     public async Task ChoiceMadeBeforeTheSavedOnesLoaded_IsKept_AndSaved()
     {
         using var rig = MobileFixtures.MakeRig(seed: p => p.UpdateSettingsAsync(s => s.MobileShareHistory = true));

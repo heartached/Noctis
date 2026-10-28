@@ -82,6 +82,12 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlaybackTick += (_, playing) => scrobbler.Tick(playing);
         // A pause the engine reports without a position tick still stops the played-time clock.
         Player.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) scrobbler.Tick(Player.IsPlaying); };
+        // The account recorded the play when it started; whether it counted, and who sends it, follows.
+        scrobbler.PlayDecided += (track, verdict) =>
+        {
+            try { Account?.DecidePlay(track, verdict); }
+            catch (Exception ex) { DebugLog.Write("Account", $"Marking a desktop play failed: {ex.Message}"); }
+        };
         _ = scrobbler.EnsureLoadedAsync();
     }
 
@@ -611,7 +617,12 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account is not { } account || Player.CurrentTrack is not { } track) return;
         try
         {
-            if (account.IsRemote(track)) account.RecordPlay(track, DateTime.UtcNow);
+            if (!account.IsRemote(track)) return;
+            // With the scrobbler following playback, the play waits for its verdict (Through
+            // Computer then has the computer send it on, once, only if it counted). Without one
+            // nothing would ever decide it: it is sent as a plain count.
+            if (_scrobbler != null) account.RecordStartedPlay(track, DateTime.UtcNow);
+            else account.RecordPlay(track, DateTime.UtcNow);
         }
         catch (Exception ex)
         {

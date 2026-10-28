@@ -60,6 +60,17 @@ public interface IServerLibrary : Sync.ISyncApplier
     /// <summary>Counts a play that happened at <paramref name="playedUtc"/> (already clamped to the past; a phone's offline play).</summary>
     Task ScrobbleAsync(Guid trackId, DateTime playedUtc) => ScrobbleAsync(trackId);
 
+    /// <summary>Counts the play as above and, when <paramref name="forward"/>, sends it on to the
+    /// host's own Last.fm / ListenBrainz (a phone in Through Computer mode whose play passed the
+    /// scrobble rule; the host's scrobbling settings and exclusions still decide). The default
+    /// only counts it: a host without scrobbling has nowhere to send it.</summary>
+    Task ScrobbleAsync(Guid trackId, DateTime playedUtc, bool forward) => ScrobbleAsync(trackId, playedUtc);
+
+    /// <summary>Whether the host sends plays to Last.fm and ListenBrainz (signed in and turned on),
+    /// for the phone's Scrobbling page (getNoctisSyncStatus). Null: the host does not forward phone
+    /// plays at all.</summary>
+    (bool LastFm, bool ListenBrainz)? ScrobbleServices => null;
+
     Task<Playlist> CreatePlaylistAsync(string name, IReadOnlyList<Guid> trackIds);
 
     /// <summary>Rename and/or add/remove tracks (indexes refer to the playlist before removal). False when the playlist is unknown.</summary>

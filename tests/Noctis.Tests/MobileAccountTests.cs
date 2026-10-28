@@ -32,6 +32,7 @@ public class MobileAccountTests
         public bool IsSyncing { get; set; }
         public bool WasSignedOutByComputer { get; set; }
         public string? AvatarPath { get; set; }
+        public ComputerScrobbling? ComputerScrobbling { get; set; }
 
         public event EventHandler? StateChanged;
 
@@ -108,6 +109,11 @@ public class MobileAccountTests
         }
 
         public void RecordPlay(Track track, DateTime playedUtc) => Plays.Add((track, playedUtc));
+        /// <summary>Plays recorded to wait for their verdict, and the verdicts given.</summary>
+        public List<Track> Started { get; } = new();
+        public List<(Track Track, PlayScrobble Verdict)> Decided { get; } = new();
+        public void RecordStartedPlay(Track track, DateTime playedUtc) { Started.Add(track); RecordPlay(track, playedUtc); }
+        public void DecidePlay(Track track, PlayScrobble verdict) => Decided.Add((track, verdict));
 
         public List<PlayQueueShare> SavedQueues { get; } = new();
         public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default)

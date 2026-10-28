@@ -1428,7 +1428,12 @@ public partial class SettingsViewModel : ViewModelBase
                     uploadRoot: ct => App.Services?.GetService<MainWindowViewModel>()?.EnsureManagedImportRootAsync(ct)
                                       ?? Task.FromResult<string?>(null),
                     // A phone's "Pick Up on Computer" queue lands where the window offers it from.
-                    handoff: App.Services?.GetService<PhoneHandoffInbox>());
+                    handoff: App.Services?.GetService<PhoneHandoffInbox>(),
+                    // A phone in Through Computer mode: its counted plays go on to this computer's
+                    // Last.fm / ListenBrainz, under this computer's settings and exclusions.
+                    forwardScrobble: (track, startedAt) => App.Services?.GetService<MainWindowViewModel>()?.ForwardPhoneScrobbleAsync(track, startedAt)
+                                                           ?? Task.CompletedTask,
+                    scrobbleServices: () => App.Services?.GetService<MainWindowViewModel>()?.PhoneScrobbleServices ?? (false, false));
                 // Covers shrink to what the phone asks for (cached under server/covers); the
                 // desktop's server is for the home network, so other addresses get a 403.
                 var covers = new ServerCoverResizer(Path.Combine(ServerDataDirectory, "covers"));

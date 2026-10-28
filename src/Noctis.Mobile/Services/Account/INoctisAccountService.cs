@@ -28,9 +28,43 @@ public sealed record NoctisAccount
     /// Refreshed on every sync.</summary>
     public string? DisplayName { get; init; }
     public DateTime? LastSyncUtc { get; init; }
+    /// <summary>Where the computer sends the phone's plays (getNoctisSyncStatus), refreshed on every
+    /// sync; null for a computer that does not say (too old to forward them) or before the first sync.</summary>
+    public ComputerScrobbling? ComputerScrobbling { get; init; }
 
     /// <summary>Never prints <see cref="DeviceKey"/> (a record's generated ToString would).</summary>
     public override string ToString() => $"NoctisAccount {{ UserName = {UserName}, ServerUrl = {ServerUrl}, DeviceName = {DeviceName} }}";
+}
+
+/// <summary>Whether the computer's Last.fm and ListenBrainz are signed in and on.</summary>
+public sealed record ComputerScrobbling(bool LastFm, bool ListenBrainz);
+
+/// <summary>
+/// A play's scrobble verdict, sent with it to the computer (noctisScrobble=). The phone records a
+/// play when it starts, before it knows whether it will count, so the verdict follows later.
+/// </summary>
+public enum PlayScrobble
+{
+    /// <summary>Passed the rule in Through Computer mode: the computer sends it on.</summary>
+    Computer,
+    /// <summary>Passed the rule in From This Phone mode: the phone sent it (or chose not to); never again.</summary>
+    Phone,
+    /// <summary>Did not pass the rule (skipped, too short): counted only.</summary>
+    No,
+}
+
+/// <summary>The words noctisScrobble= carries.</summary>
+public static class PlayScrobbleWire
+{
+    /// <summary>Held: the verdict is not in yet (never sent).</summary>
+    public const string Pending = "pending";
+
+    public static string Of(PlayScrobble verdict) => verdict switch
+    {
+        PlayScrobble.Computer => "computer",
+        PlayScrobble.Phone => "phone",
+        _ => "no",
+    };
 }
 
 /// <summary>Why a server call failed, for the UI to word.</summary>
@@ -138,6 +172,18 @@ public interface INoctisAccountService
 
     /// <summary>Queue a finished play of a desktop song (sent as a scrobble on the next sync).</summary>
     void RecordPlay(Track track, DateTime playedUtc);
+
+    /// <summary>Queue a play that has just started, held until <see cref="DecidePlay"/> says whether
+    /// it passed the scrobble rule (the computer sends on only those, in Through Computer mode).</summary>
+    void RecordStartedPlay(Track track, DateTime playedUtc) => RecordPlay(track, playedUtc);
+
+    /// <summary>The scrobble verdict for the latest play of <paramref name="track"/> still held by
+    /// <see cref="RecordStartedPlay"/>; it is sent with that verdict on the next sync.</summary>
+    void DecidePlay(Track track, PlayScrobble verdict) { }
+
+    /// <summary>Where the computer sends the phone's plays, as its last sync said; null when unknown
+    /// (not synced yet, or a computer too old to forward them).</summary>
+    ComputerScrobbling? ComputerScrobbling => null;
 
     /// <summary>Plays queued for the computer that the next sync has not sent yet.</summary>
     int PendingPlayCount => 0;

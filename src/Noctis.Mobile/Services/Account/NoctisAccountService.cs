@@ -173,6 +173,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         _account = _store.LoadAccount();
         _sync = _store.LoadSyncState();
         _pending = _store.LoadPending();
+        // A play the last run held for its verdict can no longer get one (the song's clock went
+        // with that run): counted only, never sent on to Last.fm.
+        for (var i = 0; i < _pending.Plays.Count; i++)
+            if (_pending.Plays[i].Scrobble == PlayScrobbleWire.Pending)
+                _pending.Plays[i] = _pending.Plays[i] with { Scrobble = PlayScrobbleWire.Of(PlayScrobble.No) };
         IndexDownloads();
         LoadCachedAvatar();
         stateRecorder?.Attach(this);
@@ -465,7 +470,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         // 6. The desktop's profile picture and name (best effort: never fail the sync).
         await RefreshAvatarAsync(ct).ConfigureAwait(false);
-        var (nameKnown, displayName, serverName) = await FetchDisplayNameAsync(client, ct).ConfigureAwait(false);
+        var (nameKnown, displayName, serverName, scrobbling) = await FetchDisplayNameAsync(client, ct).ConfigureAwait(false);
 
         NoctisAccount? updated;
         lock (_gate)
@@ -477,6 +482,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 {
                     LastSyncUtc = UtcNow,
                     DisplayName = nameKnown ? displayName : _account.DisplayName,
+                    // Where the computer sends the phone's plays: an answer without it is a computer
+                    // that sends them nowhere (an older one), so it clears too.
+                    ComputerScrobbling = nameKnown ? scrobbling : _account.ComputerScrobbling,
                     ServerName = serverName ?? _account.ServerName,
                 };
             if (updated is not null)
@@ -726,17 +734,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     /// <summary>The desktop's profile name for the header and the computer's name (getNoctisSyncStatus).
     /// Known = false when the ask failed (unreachable, a desktop without it): the names shown stay.</summary>
-    private static async Task<(bool Known, string? Name, string? ServerName)> FetchDisplayNameAsync(NoctisServerClient client, CancellationToken ct)
+    private static async Task<(bool Known, string? Name, string? ServerName, ComputerScrobbling? Scrobbling)> FetchDisplayNameAsync(NoctisServerClient client, CancellationToken ct)
     {
         try
         {
-            var (name, server) = await client.GetDisplayNameAsync(ct).ConfigureAwait(false);
-            return (true, name, server);
+            var (name, server, scrobbling) = await client.GetDisplayNameAsync(ct).ConfigureAwait(false);
+            return (true, name, server, scrobbling);
         }
         catch (NoctisServerException ex)
         {
             DebugLog.Write("Account", $"profile name not fetched: {ex.Kind}");
-            return (false, null, null);
+            return (false, null, null, null);
         }
     }
 
@@ -1091,7 +1099,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private async Task<int> SendPlaysAsync(NoctisServerClient client, CancellationToken ct)
     {
         List<PendingPlay> plays;
-        lock (_gate) plays = _pending.Plays.ToList();
+        // A play still waiting for its verdict (the song is playing) stays for a later sync.
+        lock (_gate) plays = _pending.Plays.Where(p => p.Scrobble != PlayScrobbleWire.Pending).ToList();
         if (plays.Count == 0) return 0;
         RaiseSyncProgress(NoctisSyncStage.Plays, 0, plays.Count);
         var nowMs = _time.GetUtcNow().ToUnixTimeMilliseconds();
@@ -1099,8 +1108,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         foreach (var batch in plays.Chunk(ScrobbleBatch))
         {
             var valid = batch
-                .Select(p => (Ok: NoctisRemoteIds.TryParseSyncId(p.Id, out var id), Id: id, Time: Math.Clamp(p.Time, 0, nowMs)))
-                .Where(p => p.Ok).Select(p => (p.Id, p.Time)).ToList();
+                .Select(p => (Ok: NoctisRemoteIds.TryParseSyncId(p.Id, out var id), Id: id, Time: Math.Clamp(p.Time, 0, nowMs), p.Scrobble))
+                .Where(p => p.Ok).Select(p => (p.Id, p.Time, p.Scrobble)).ToList();
             if (valid.Count > 0) await client.ScrobbleAsync(valid, ct).ConfigureAwait(false);
             var sentSet = new HashSet<PendingPlay>(batch, ReferenceEqualityComparer.Instance);
             lock (_gate) _pending.Plays.RemoveAll(p => sentSet.Contains(p));
@@ -1113,17 +1122,53 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     // ── Phone-side changes ───────────────────────────────────────────────
 
-    public void RecordPlay(Track track, DateTime playedUtc)
+    public void RecordPlay(Track track, DateTime playedUtc) => Record(track, playedUtc, null);
+
+    public void RecordStartedPlay(Track track, DateTime playedUtc) => Record(track, playedUtc, PlayScrobbleWire.Pending);
+
+    private void Record(Track track, DateTime playedUtc, string? scrobble)
     {
         if (!IsRemote(track)) return;
         var utc = playedUtc.Kind == DateTimeKind.Local ? playedUtc.ToUniversalTime() : DateTime.SpecifyKind(playedUtc, DateTimeKind.Utc);
         var ms = Math.Clamp(new DateTimeOffset(utc).ToUnixTimeMilliseconds(), 0, _time.GetUtcNow().ToUnixTimeMilliseconds());
         lock (_gate)
         {
-            _pending.Plays.Add(new PendingPlay(track.Id.ToString("N"), ms));
+            // One song plays at a time: a play still held when the next starts never counted.
+            if (scrobble == PlayScrobbleWire.Pending) DecideHeld(_ => true, PlayScrobble.No);
+            _pending.Plays.Add(new PendingPlay(track.Id.ToString("N"), ms, scrobble));
             if (_pending.Plays.Count > MaxQueuedPlays) _pending.Plays.RemoveRange(0, _pending.Plays.Count - MaxQueuedPlays);
         }
         SchedulePendingSave();
+    }
+
+    public void DecidePlay(Track track, PlayScrobble verdict)
+    {
+        if (!IsRemote(track)) return;
+        var id = track.Id.ToString("N");
+        bool decided;
+        lock (_gate) decided = DecideHeld(p => p.Id == id, verdict, latestOnly: true);
+        if (decided) SchedulePendingSave();
+    }
+
+    /// <summary>Gives held plays matching <paramref name="match"/> their verdict (the latest only, or
+    /// all of them). Under _gate.</summary>
+    private bool DecideHeld(Func<PendingPlay, bool> match, PlayScrobble verdict, bool latestOnly = false)
+    {
+        var any = false;
+        for (var i = _pending.Plays.Count - 1; i >= 0; i--)
+        {
+            var p = _pending.Plays[i];
+            if (p.Scrobble != PlayScrobbleWire.Pending || !match(p)) continue;
+            _pending.Plays[i] = p with { Scrobble = PlayScrobbleWire.Of(verdict) };
+            any = true;
+            if (latestOnly) break;
+        }
+        return any;
+    }
+
+    public ComputerScrobbling? ComputerScrobbling
+    {
+        get { lock (_gate) return _account?.ComputerScrobbling; }
     }
 
     public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default)

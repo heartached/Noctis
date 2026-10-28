@@ -3354,6 +3354,28 @@ public partial class MainWindowViewModel : ViewModelBase
         _scrobbleTrack = null;
     }
 
+    /// <summary>Whether a phone's plays go on to Last.fm and ListenBrainz from here (signed in and
+    /// turned on), for the phone's Scrobbling page.</summary>
+    public (bool LastFm, bool ListenBrainz) PhoneScrobbleServices =>
+        (_lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled, _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled);
+
+    /// <summary>
+    /// A play from a phone in Through Computer mode (the server's scrobble call): the phone already
+    /// applied the scrobble rule on its played time, and marks the plays it sent itself so they never
+    /// come here. This computer's own choices still decide: each service signed in and on, and its
+    /// "don't scrobble" songs, albums and artists. Sent with the phone's start time, as a desktop
+    /// play is. Plugins' OnTrackScrobbled is for this computer's own playback and is not raised.
+    /// </summary>
+    public Task ForwardPhoneScrobbleAsync(Track track, DateTime startedAtUtc)
+    {
+        if (Settings.IsScrobbleExcluded(track)) return Task.CompletedTask;
+        var (lastFmActive, listenBrainzActive) = PhoneScrobbleServices;
+        var pending = new List<Task>(2);
+        if (lastFmActive) pending.Add(_lastFm.ScrobbleAsync(track, startedAtUtc));
+        if (listenBrainzActive) pending.Add(_listenBrainz.ScrobbleAsync(track, startedAtUtc));
+        return pending.Count > 0 ? Task.WhenAll(pending) : Task.CompletedTask;
+    }
+
     /// <summary>In-flight scrobble posts from the most recent track transition.</summary>
     private Task _pendingScrobbles = Task.CompletedTask;
 

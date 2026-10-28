@@ -740,6 +740,12 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 // phone that played offline reports when. A retried batch (the reply was lost)
                 // repeats the same (device, id, time) and is counted once.
                 var times = p.All("time").ToList();
+                // Optional repeated noctisScrobble= (a Noctis phone), paired the same way: whether the
+                // play passed the scrobble rule and who sends it. Only "computer" goes on to this
+                // desktop's Last.fm / ListenBrainz; "phone" (the phone sent it itself), "no" (skipped)
+                // and an id without one (an older phone records a play when it starts, so it cannot
+                // tell a skip) are counted only. The retry guard above keeps the forward to once too.
+                var verdicts = p.All("noctisScrobble").ToList();
                 var now = DateTime.UtcNow;
                 var user = (ServerUser)ctx.Items["user"]!;
                 var who = ctx.Items["device"] is ServerDevice d ? $"{user.Name}/{d.DeviceId}" : user.Name;
@@ -748,7 +754,8 @@ public sealed partial class NoctisServer : IAsyncDisposable
                     if (Ids.TrackGuid(ids[i]) is not { } g) continue;
                     long? ms = i < times.Count && long.TryParse(times[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
                     if (ms is not null && !_recentScrobbles.Add($"{who}\n{g:N}\n{ms}")) continue;
-                    await _library.ScrobbleAsync(g, ScrobbleTime(ms, now)).ConfigureAwait(false);
+                    var forward = i < verdicts.Count && string.Equals(verdicts[i], "computer", StringComparison.Ordinal);
+                    await _library.ScrobbleAsync(g, ScrobbleTime(ms, now), forward).ConfigureAwait(false);
                 }
                 return new JsonObject();
             }
@@ -872,6 +879,10 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 };
                 // The phone reads it each sync (sync on or off), so a renamed profile reaches it.
                 if (DisplayName() is { } displayName) status["displayName"] = displayName;
+                // Where this computer sends a phone's plays (the phone's Scrobbling page). Absent: it
+                // sends them nowhere (a host without scrobbling, or an older desktop).
+                if (_library.ScrobbleServices is { } services)
+                    status["scrobbling"] = new JsonObject { ["lastFm"] = services.LastFm, ["listenBrainz"] = services.ListenBrainz };
                 return new JsonObject { ["noctisSync"] = status };
             }
             case "getnoctissyncchanges":
