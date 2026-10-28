@@ -2190,6 +2190,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Установить из файла</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Установка плагина Noctis (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Открыть папку</value></data>
+  <data name="Plugins.OpenView" xml:space="preserve"><value>Открыть {0}</value></data>
   <data name="Plugins.Remove" xml:space="preserve"><value>Удалить</value></data>
   <data name="Plugins.Permissions" xml:space="preserve"><value>Разрешения</value></data>
   <data name="Plugins.NoPermissionsShort" xml:space="preserve"><value>Только просмотр того, что играет</value></data>

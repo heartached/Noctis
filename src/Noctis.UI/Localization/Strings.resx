@@ -2190,6 +2190,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="Plugins.OpenView" xml:space="preserve"><value>Open {0}</value></data>
   <data name="Plugins.Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Plugins.Permissions" xml:space="preserve"><value>Permissions</value></data>
   <data name="Plugins.NoPermissionsShort" xml:space="preserve"><value>None beyond seeing what is playing</value></data>

@@ -28,7 +28,7 @@ public sealed record PluginInfo(string Id, string Name, string Version, string A
 
 /// <summary>
 /// What the host offers a plugin. Everything here is safe to call from the UI thread.
-/// Members added in API 1.1 and 1.2 have default bodies that throw <see cref="NotSupportedException"/>,
+/// Members added in API 1.1, 1.2 and 1.3 have default bodies that throw <see cref="NotSupportedException"/>,
 /// so code compiled against an older kit (and any older implementation of this interface) keeps working;
 /// Noctis itself implements all of them. Hooks marked with a permission throw
 /// <see cref="PluginPermissionException"/> unless plugin.json declares it.
@@ -105,6 +105,22 @@ public interface IPluginHost
     /// two values, only in Noctis's library, never in file tags).</summary>
     ITrackAnalysisWriter TrackAnalysis => throw Missing("1.2");
 
+    // ── API 1.3 ──
+
+    /// <summary>API 1.3: adds a view of the plugin's own (a whole page, not a layer). Settings →
+    /// Plugins shows an "Open" button for it on the plugin's card, and Noctis shows the control
+    /// in a window of its own. <see cref="IPluginViewProvider.CreateView"/> runs each time the
+    /// window opens; the window closes when the plugin stops or the registration is disposed.</summary>
+    IDisposable RegisterView(IPluginViewProvider provider) => throw Missing("1.3");
+
+    /// <summary>API 1.3: opens a view this plugin registered (for example from a menu command).
+    /// False when it is not registered (anymore) or the plugin stopped.</summary>
+    bool OpenView(IPluginViewProvider provider) => throw Missing("1.3");
+
+    /// <summary>API 1.3: shows an album's page in the main window and brings the window forward.
+    /// <paramref name="albumId"/> is <see cref="TrackInfo.AlbumId"/>. False for an unknown album.</summary>
+    bool ShowAlbum(string albumId) => throw Missing("1.3");
+
     private static NotSupportedException Missing(string api = "1.1")
         => new($"This Noctis build does not implement plugin API {api}. Set minAppVersion in plugin.json.");
 }
@@ -160,4 +176,18 @@ public interface IVisualLayerProvider
     string Name { get; }
 
     Control CreateLayer();
+}
+
+/// <summary>
+/// API 1.3: a view of the plugin's own, registered with <see cref="IPluginHost.RegisterView"/>.
+/// <see cref="CreateView"/> is called on the UI thread each time the user opens it; the control
+/// is detached when its window closes. Keep it cheap while hidden: stop timers when the control
+/// leaves the visual tree (DetachedFromVisualTree) or its window is minimized.
+/// </summary>
+public interface IPluginViewProvider
+{
+    /// <summary>Window title and button text ("Open &lt;Name&gt;").</summary>
+    string Name { get; }
+
+    Control CreateView();
 }
