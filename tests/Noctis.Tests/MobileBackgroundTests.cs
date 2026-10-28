@@ -12,6 +12,8 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
+using Noctis.Mobile.ViewModels;
+using Noctis.Mobile.Views;
 using Noctis.Models;
 using Xunit;
 

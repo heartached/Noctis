@@ -585,7 +585,7 @@ public class MobileAccountTests
 
         await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
         Assert.Equal("John Doe", settings.AccountTitle);
-        Assert.Equal("Studio PC · not synced yet", settings.AccountSubtitle);
+        Assert.Equal("Studio PC · Not synced yet", settings.AccountSubtitle);
         Assert.False(settings.ShowSyncedDot);
         account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
         account.RaiseStateChanged();
@@ -1005,14 +1005,14 @@ public class MobileAccountTests
         account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
         var clock = now;
         var settings = new SettingsPageViewModel(ShellWith(rig, account)) { UtcNow = () => clock };
-        Assert.Equal("Studio PC · Synced 5 min ago", settings.AccountSubtitle);
+        Assert.Equal("Signed in as John Doe · Studio PC, Synced 5 min ago", settings.AccountRowName);
 
         var raised = false;
-        settings.PropertyChanged += (_, e) => raised |= e.PropertyName == nameof(SettingsPageViewModel.AccountSubtitle);
+        settings.PropertyChanged += (_, e) => raised |= e.PropertyName == nameof(SettingsPageViewModel.AccountRowName);
         clock = now.AddMinutes(2);
         settings.RefreshSyncTime();
         Assert.True(raised);
-        Assert.Equal("Studio PC · Synced 7 min ago", settings.AccountSubtitle);
+        Assert.Equal("Signed in as John Doe · Studio PC, Synced 7 min ago", settings.AccountRowName);
     }
 
     /// <summary>The Account page and Settings' profile card say the last sync in the same words
@@ -1033,7 +1033,7 @@ public class MobileAccountTests
         account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
         account.RaiseStateChanged();
         Assert.Equal("Synced 5 min ago", page.LastSyncText);
-        Assert.Equal($"Studio PC · {page.LastSyncText}", settings.AccountSubtitle);
+        Assert.Equal($"Signed in as John Doe · Studio PC, {page.LastSyncText}", settings.AccountRowName);
     }
 
     [Fact]

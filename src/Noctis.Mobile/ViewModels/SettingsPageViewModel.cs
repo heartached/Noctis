@@ -376,9 +376,13 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The settings.json write of the Wi-Fi switch; tests await it.</summary>
     internal Task PendingWifiSave { get; private set; } = Task.CompletedTask;
 
+    // Set by a tap before the load read the file: the load then keeps it (as LoadCoreAsync does).
+    private bool _wifiSetBeforeLoad;
+
     partial void OnDownloadWifiOnlyChanged(bool value)
     {
         if (_loading) return;
+        _wifiSetBeforeLoad = true;
         PendingWifiSave = SaveWifiOnlyAsync(value);
     }
 
@@ -396,7 +400,18 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     private async Task LoadDownloadSettingsAsync()
     {
-        var settings = await Shell.Library.Persistence.LoadSettingsAsync();
+        Noctis.Models.AppSettings settings;
+        try
+        {
+            settings = await Shell.Library.Persistence.LoadSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            // As LoadCoreAsync: the switch keeps its default, and the page still loads.
+            DebugLog.Write("Settings", $"Load failed: {ex.Message}");
+            return;
+        }
+        if (_wifiSetBeforeLoad) return;
         _loading = true;
         try { DownloadWifiOnly = settings.MobileDownloadWifiOnly; }
         finally { _loading = false; }
@@ -548,7 +563,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// signing in brings; before the first sync, the computer and that it has not synced yet.</summary>
     public string AccountSubtitle => IsSignedIn
         ? Shell.Account!.Account!.LastSyncUtc is null
-            ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · not synced yet"
+            ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · Not synced yet"
             : $"Synced with {AccountPageViewModel.ServerLabel(Shell.Account!.Account!)}"
         : "Sync your library with Noctis on your PC";
 

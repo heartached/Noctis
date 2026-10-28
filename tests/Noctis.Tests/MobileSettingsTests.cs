@@ -574,13 +574,13 @@ public class MobileSettingsTests
             Assert.Equal("System", MobileFixtures.Named<TextBlock>(page, "ThemeValueLabel").Text);
             Assert.Equal("Crimson", MobileFixtures.Named<TextBlock>(page, "AccentValueLabel").Text);
             Assert.Equal("Plain", MobileFixtures.Named<TextBlock>(page, "PlayerBarValueLabel").Text);
-            Assert.Equal("Ash", MobileFixtures.Named<TextBlock>(page, "BackgroundValueLabel").Text);
+            Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "BackgroundValueLabel").Text);
             Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "ScrobblingValueLabel").Text);
             Assert.Equal("Translations, Romanization", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
             Assert.Equal("Theme, System", NameOf("ThemeRow"));
             Assert.Equal("Accent, Crimson", NameOf("AccentRow"));
             Assert.Equal("Player Bar, Plain", NameOf("PlayerBarRow"));
-            Assert.Equal("Background, Ash", NameOf("BackgroundRow"));
+            Assert.Equal("Background, Off", NameOf("BackgroundRow"));
             Assert.Equal("Scrobbling, Off", NameOf("ScrobblingRow"));
             Assert.Equal("Listening History", NameOf("HistoryRow"));               // no summary, no comma
             Assert.Equal("Lyrics, Translations, Romanization", NameOf("LyricsRow"));
@@ -1036,7 +1036,7 @@ public class MobileSettingsTests
             Assert.Equal("Wi-Fi Only", MobileFixtures.Named<TextBlock>(page, "DownloadsValueLabel").Text);
             Assert.Equal("Downloads, Wi-Fi Only", Avalonia.Automation.AutomationProperties.GetName(row));
             Assert.True(MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(page, "PickUpSwitch").IsEffectivelyVisible);
-            Assert.Equal("Studio PC · not synced yet", MobileFixtures.Named<TextBlock>(page, "AccountRowSub").Text);
+            Assert.Equal("Studio PC · Not synced yet", MobileFixtures.Named<TextBlock>(page, "AccountRowSub").Text);
 
             row.Command!.Execute(row.CommandParameter);
             Settle(window);
