@@ -9,10 +9,12 @@
         xmlns:views="using:Noctis.Mobile.Views">
 
     <!-- Page: the grouped grey as a sheet whose rounded top sits just under the status bar, the
-         window's own colour around it, as Apple's sheet rises over the app. (The shell clips a
+         window's own colour around it, as Apple's sheet rises over the app. Its own key: always
+         opaque (the grouped grey, or the Background mesh), while PhoneGroupedBackgroundBrush turns
+         to glass over a Background and let the app beneath show through the sheet. (The shell clips a
          page to its slot below the status bar, so the grey cannot reach up under it.) -->
     <Style Selector="Border.grouped-backdrop">
-        <Setter Property="Background" Value="{DynamicResource PhoneGroupedBackgroundBrush}" />
+        <Setter Property="Background" Value="{DynamicResource PhoneSheetBackgroundBrush}" />
         <Setter Property="CornerRadius" Value="30,30,0,0" />
         <Setter Property="Margin" Value="0,4,0,0" />
     </Style>

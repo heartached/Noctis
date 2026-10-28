@@ -252,7 +252,9 @@ public sealed class PhoneBackground : ObservableObject
     }
 
     /// <summary>The dictionary over the theme's: the page brush is the mesh, the surfaces on it
-    /// translucent. Built once. Dark stays near black and Light near white under the washes
+    /// translucent. A sheet's own page (Settings, Account: PhoneSheetBackgroundBrush) is the mesh
+    /// too, never the translucent grouped grey: that showed the app under the sheet through it.
+    /// Built once. Dark stays near black and Light near white under the washes
     /// (<see cref="BackgroundCatalog"/>), so the text on the glass keeps its contrast.</summary>
     private ResourceDictionary Layer()
     {
@@ -262,12 +264,14 @@ public sealed class PhoneBackground : ObservableObject
         _layer.ThemeDictionaries[ThemeVariant.Dark] = new ResourceDictionary
         {
             ["PhoneBackgroundBrush"] = _dark!.Brush,
+            ["PhoneSheetBackgroundBrush"] = _dark.Brush,
             ["PhoneGroupedBackgroundBrush"] = B("#B31C1C1E"),
             ["PhoneCardBrush"] = B("#E02C2C2E"),
         };
         _layer.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
         {
             ["PhoneBackgroundBrush"] = _light!.Brush,
+            ["PhoneSheetBackgroundBrush"] = _light.Brush,
             ["PhoneGroupedBackgroundBrush"] = B("#99FFFFFF"),
             ["PhoneCardBrush"] = B("#CCFFFFFF"),
         };

@@ -46,6 +46,7 @@ public sealed class MobileTheme
         {
             ["PhoneBackgroundBrush"] = B(page),
             ["PhoneGroupedBackgroundBrush"] = B(grouped),
+            ["PhoneSheetBackgroundBrush"] = B(grouped),
             ["PhoneCardBrush"] = B(card),
             ["PhoneSeparatorBrush"] = B(separator),
             ["PhoneFillBrush"] = B(fill),
@@ -61,6 +62,7 @@ public sealed class MobileTheme
         {
             ["PhoneBackgroundBrush"] = B("#FFFFFF"),
             ["PhoneGroupedBackgroundBrush"] = B("#F2F2F7"),
+            ["PhoneSheetBackgroundBrush"] = B("#F2F2F7"),
             ["PhoneCardBrush"] = B("#FFFFFF"),
             ["PhoneSeparatorBrush"] = B("#D8D8DC"),
             ["PhoneFillBrush"] = B("#1F767680"),

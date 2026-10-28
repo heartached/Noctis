@@ -110,8 +110,11 @@
         <Panel Name="AppLayer">
             <Panel Name="TabContent" Margin="{Binding TopSafePadding}">
                 <!-- The tab roots: the selected one shows while no page covers it; PageHost slides
-                     the layer under a pushed page and hides it once the page lands. -->
-                <Panel Name="RootLayer">
+                     the layer under a pushed page and hides it once the page lands. It wears the
+                     page brush itself, over the same slot as a pushed page's: with a Background
+                     mesh on, the roots and the page are one mesh, stretched alike, so nothing jumps
+                     as one slides over the other (the window's own copy spans the status bar too). -->
+                <Panel Name="RootLayer" Background="{DynamicResource PhoneBackgroundBrush}">
                     <views:HomePage DataContext="{Binding}" IsVisible="{Binding IsHomeSelected}" />
                     <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibrarySelected}" />
                     <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchSelected}" />

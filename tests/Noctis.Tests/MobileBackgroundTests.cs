@@ -146,6 +146,44 @@ public class MobileBackgroundTests
     }
 
     [AvaloniaFact]
+    public async Task WithABackground_TheSheetAndPagesStayOpaque_OnlyTheCardsAreGlass()
+    {
+        // Live: with Ash on, the Settings sheet showed Home (its title, tiles, the mini player)
+        // through it: the sheet painted itself with the grouped grey the layer turns to glass.
+        using var rig = MobileFixtures.MakeRig();
+        await rig.Shell.Background.LoadAsync();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenSettingsCommand.Execute(null);
+        await ((SettingsPageViewModel)rig.Shell.CurrentPage!).Loaded;
+        rig.Shell.Background.Choice = "ash";
+        MobileFixtures.Land(window);
+
+        var backdrop = MobileFixtures.Named<Border>(MobileFixtures.Find<SettingsPage>(view), "PageBackdrop");
+        AssertOpaque(backdrop.Background, "the sheet");
+        AssertOpaque(view.FindControl<Panel>("RootLayer")!.Background, "the tab roots");
+        foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })
+        {
+            AssertOpaque(backdrop.FindResource(variant, "PhoneSheetBackgroundBrush") as IBrush, $"{variant} sheet");
+            AssertOpaque(backdrop.FindResource(variant, "PhoneBackgroundBrush") as IBrush, $"{variant} page");
+            var card = (ISolidColorBrush)backdrop.FindResource(variant, "PhoneCardBrush")!;
+            Assert.True(card.Color.A < 255, $"{variant} cards are glass over the mesh");
+        }
+        rig.Shell.Background.Choice = "Off";
+        window.Close();
+
+        static void AssertOpaque(IBrush? brush, string what)
+        {
+            // The mesh: an opaque floor under its washes (its opacity flickers by 0.2 % to repaint).
+            var fill = brush is DrawingBrush mesh ? Floor(mesh) : brush;
+            Assert.True(fill is ISolidColorBrush { Color.A: 255 }, $"{what} is see-through: {fill}");
+            Assert.True(brush!.Opacity > 0.99, $"{what} is faded: {brush.Opacity}");
+        }
+    }
+
+    private static IBrush Floor(DrawingBrush mesh) =>
+        ((GeometryDrawing)((DrawingGroup)mesh.Drawing!).Children[0]).Brush!;
+
+    [AvaloniaFact]
     public async Task NowPlaying_FollowsTheCover()
     {
         using var rig = MobileFixtures.MakeRig();
