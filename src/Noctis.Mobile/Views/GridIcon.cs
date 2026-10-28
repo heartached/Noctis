@@ -23,9 +23,14 @@ public sealed class GridIcon : Control
     public static readonly StyledProperty<IBrush?> ForegroundProperty =
         TextElement.ForegroundProperty.AddOwner<GridIcon>();
 
+    /// <summary>Above 0 the glyph is a line drawing: Data is stroked (round caps and joins) at this
+    /// many grid units instead of filled. Settings' row glyphs, drawn as the mockup's 1.8 strokes.</summary>
+    public static readonly StyledProperty<double> StrokeThicknessProperty =
+        AvaloniaProperty.Register<GridIcon, double>(nameof(StrokeThickness));
+
     static GridIcon()
     {
-        AffectsRender<GridIcon>(DataProperty, ForegroundProperty);
+        AffectsRender<GridIcon>(DataProperty, ForegroundProperty, StrokeThicknessProperty);
         AffectsMeasure<GridIcon>(DataProperty);
     }
 
@@ -41,6 +46,12 @@ public sealed class GridIcon : Control
         set => SetValue(ForegroundProperty, value);
     }
 
+    public double StrokeThickness
+    {
+        get => GetValue(StrokeThicknessProperty);
+        set => SetValue(StrokeThicknessProperty, value);
+    }
+
     protected override Size MeasureOverride(Size availableSize) => new(
         double.IsNaN(Width) ? GridSize : Width,
         double.IsNaN(Height) ? GridSize : Height);
@@ -53,6 +64,11 @@ public sealed class GridIcon : Control
         var dx = (Bounds.Width - GridSize * scale) / 2;
         var dy = (Bounds.Height - GridSize * scale) / 2;
         using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(dx, dy)))
-            context.DrawGeometry(brush, null, data);
+        {
+            if (StrokeThickness > 0)
+                context.DrawGeometry(null, new Pen(brush, StrokeThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round), data);
+            else
+                context.DrawGeometry(brush, null, data);
+        }
     }
 }

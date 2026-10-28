@@ -55,6 +55,9 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
     public ILogExporter? Logs { get; init; }
 
+    /// <summary>Opens a web page for Settings → Help (Report a Problem, the website); null in tests unless injected.</summary>
+    public IUrlLauncher? Links { get; init; }
+
     /// <summary>The album page's description paragraph (Last.fm on Android); null in tests unless
     /// injected, and the paragraph then stays hidden.</summary>
     public IAlbumDescriptionSource? AlbumDescriptions { get; init; }

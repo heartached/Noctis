@@ -58,6 +58,9 @@ public sealed class OptionsMenuViewModel
         return Lined(items);
     }
 
+    /// <summary>Any short list of choices (Settings' Theme menu): the items as given, with the usual hairlines.</summary>
+    public static OptionsMenuViewModel ForItems(List<OptionsMenuItem> items) => Lined(items);
+
     /// <summary>A note with no choices: a heading, a detail line and a paragraph.</summary>
     public static OptionsMenuViewModel ForNote(string title, string? detail, string? note) =>
         new(Array.Empty<OptionsMenuItem>(), title, detail, note);
@@ -87,6 +90,9 @@ public sealed partial class OptionsMenuItem
 
     public string Label { get; }
     public bool IsChecked { get; }
+
+    /// <summary>What a screen reader says: the label, and that it is the choice in use.</summary>
+    public string AccessibleName => IsChecked ? $"{Label}, selected" : Label;
 
     /// <summary>The first row of a new group (Ascending, Show All): a band above it, no hairline.</summary>
     public bool StartsGroup { get; init; }

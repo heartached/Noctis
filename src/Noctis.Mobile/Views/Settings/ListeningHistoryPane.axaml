@@ -1,0 +1,7 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             x:Class="Noctis.Mobile.Views.ListeningHistoryPane"
+             x:DataType="vm:ListeningHistoryViewModel">
+    <TextBlock Text="Listening History" Margin="16" />
+</UserControl>

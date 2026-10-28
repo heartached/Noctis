@@ -586,10 +586,12 @@ public class MobileAccountTests
         await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
         Assert.Equal("John Doe", settings.AccountTitle);
         Assert.Equal("Studio PC · not synced yet", settings.AccountSubtitle);
-        Assert.Equal("Playlists, favourites and plays stay in step with your computer.", settings.AccountFootnote);
+        Assert.False(settings.ShowSyncedDot);
         account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
         account.RaiseStateChanged();
-        Assert.Equal("Studio PC · synced 5 min ago", settings.AccountSubtitle);
+        Assert.Equal("Synced with Studio PC", settings.AccountSubtitle);
+        Assert.True(settings.ShowSyncedDot);
+        Assert.Equal("Signed in as John Doe · Studio PC, synced 5 min ago", settings.AccountRowName);
         Assert.Equal("JD", settings.AccountInitials);
         Assert.True(settings.ShowAccountInitials);
         Assert.False(settings.HasAccountAvatar);

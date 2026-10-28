@@ -275,7 +275,7 @@ public class MobileThemeSweepTests
         ("AddedBanner", s => s.Player.Notice = "Added to Night Drive"),
         ("Settings", s => s.OpenSettingsCommand.Execute(null)),
         ("SettingsFolders", s => { s.OpenSettingsCommand.Execute(null); ((SettingsPageViewModel)s.CurrentPage!).Pane = SettingsPane.Folders; }),
-        ("SettingsAppearance", s => { s.OpenSettingsCommand.Execute(null); ((SettingsPageViewModel)s.CurrentPage!).Pane = SettingsPane.Appearance; }),
+        ("SettingsAccent", s => { s.OpenSettingsCommand.Execute(null); ((SettingsPageViewModel)s.CurrentPage!).Pane = SettingsPane.Accent; }),
         ("SettingsLyrics", s => { s.OpenSettingsCommand.Execute(null); ((SettingsPageViewModel)s.CurrentPage!).Pane = SettingsPane.Lyrics; }),
         ("Account", s => s.OpenAccountCommand.Execute(null)),
         ("Queue", s => { s.Player.PlayTracks(s.Library.Songs.ToList(), 0); s.OpenNowPlayingCommand.Execute(null); s.ToggleQueueCommand.Execute(null); }),

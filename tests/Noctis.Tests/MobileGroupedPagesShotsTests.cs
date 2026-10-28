@@ -89,7 +89,7 @@ public class MobileGroupedPagesShotsTests
                     Pump(300);
                     Save(window, Path.Combine(dir, $"settings-{name}.png"));
                     // The pages pushed inside the sheet, each once its slide has settled.
-                    foreach (var pane in new[] { SettingsPane.Folders, SettingsPane.Appearance, SettingsPane.Lyrics })
+                    foreach (var pane in new[] { SettingsPane.Folders, SettingsPane.Accent, SettingsPane.PlayerBar, SettingsPane.Downloads, SettingsPane.Lyrics, SettingsPane.WhatsNew, SettingsPane.Licenses })
                     {
                         settings.Pane = pane;
                         Pump(600);
