@@ -97,6 +97,11 @@ Source: `docs/PLUGINS.md`, `docs/LOCAL-API.md` and the plugin host in the app.
   Disabling or removing a plugin removes everything it registered.
 - Zip checks: plugin.json must parse, entry DLL present, at most 2000 files /
   256 MB, any path-escaping entry rejects the whole file.
+- Community submissions (`docs/PLUGINS.md` → Submitting a plugin): public GitHub
+  source + zip on a GitHub release + the "Plugin submission" issue form (also
+  Settings → Plugins → Submit a Plugin). A workflow checks the zip without
+  running it (tools/Noctis.PluginCheck); a maintainer reviews, applies
+  `approved`, and the plugin is listed in Get plugins with "by <author>".
 - Content packs: themes (Settings → Appearance → Themes, "by <pack>"), lyrics
   presets (Settings → Lyrics → Style presets → Apply, one-time copy), languages
   (Settings → General → Language, English fallback). On at install, no

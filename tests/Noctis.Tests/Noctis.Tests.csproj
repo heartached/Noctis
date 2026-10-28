@@ -40,5 +40,11 @@
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.Kawarp\Noctis.Plugins.Kawarp.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.Mixxx\Noctis.Plugins.Mixxx.csproj" />
   </ItemGroup>
+
+  <!-- The plugin submission checker's logic (PluginSubmissionCheckTests), compiled in rather than
+       referenced: tools/Noctis.PluginCheck is an exe, and only its Review folder is under test. -->
+  <ItemGroup>
+    <Compile Include="..\..\tools\Noctis.PluginCheck\Review\*.cs" Link="PluginCheck\%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>
 

@@ -6476,10 +6476,18 @@
 
             <!-- Official Plugins: the official list (plugins/index.json), fetched when this page opens.
                  An installed one is managed right on its row (switch, settings, Remove). -->
-            <Grid ColumnDefinitions="*,Auto" Margin="2,10,0,8">
+            <Grid ColumnDefinitions="*,Auto,Auto" Margin="2,10,0,8">
                 <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0" VerticalAlignment="Center"/>
+                <!-- Opens the plugin submission form on GitHub (docs/PLUGINS.md, "Submitting a plugin"). -->
+                <Button Grid.Column="1" x:Name="SubmitPluginButton" Classes="pill-action"
+                        AutomationProperties.Name="{loc:T Plugins.Submit}"
+                        ToolTip.Tip="{loc:T Plugins.SubmitTip}"
+                        Command="{Binding SubmitPluginCommand}"
+                        Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <TextBlock Text="{loc:T Plugins.Submit}" FontSize="12" FontWeight="SemiBold"/>
+                </Button>
                 <!-- Dims while the list loads. -->
-                <Button Grid.Column="1" x:Name="RefreshOfficialPluginsButton" Classes="icon-chip"
+                <Button Grid.Column="2" x:Name="RefreshOfficialPluginsButton" Classes="icon-chip"
                         ToolTip.Tip="{loc:T Plugins.Get.Refresh}"
                         Command="{Binding RefreshOfficialPluginsCommand}"
                         IsEnabled="{Binding !IsOfficialPluginsLoading}">
@@ -6518,6 +6526,9 @@
                                                     </Canvas>
                                                 </Viewbox>
                                             </WrapPanel>
+                                            <!-- Credit from the list ("by Noctis", or a community author). -->
+                                            <TextBlock Text="{Binding AuthorLine}" FontSize="11" Opacity="0.45"
+                                                       IsVisible="{Binding HasAuthor}"/>
                                             <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
                                                        IsVisible="{Binding HasDescription}"/>
                                             <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"

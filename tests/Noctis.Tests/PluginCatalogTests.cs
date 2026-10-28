@@ -287,7 +287,9 @@ public class PluginCatalogTests : IDisposable
             .Select(d => (Dir: d, Manifest: PluginManifest.TryLoad(d)!))
             .ToList();
 
-        foreach (var entry in catalog.Plugins)
+        // Only the team's own plugins live in plugins/; community ones (approved submissions,
+        // released from their authors' repos) are checked by tools/Noctis.PluginCheck instead.
+        foreach (var entry in catalog.Plugins.Where(e => e.Download.AbsoluteUri.StartsWith("https://github.com/heartached/Noctis/releases/", StringComparison.Ordinal)))
         {
             var match = manifests.Where(m => m.Manifest.Id == entry.Id).ToList();
             var (dir, m) = Assert.Single(match);
