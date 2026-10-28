@@ -189,5 +189,6 @@ public interface IPluginViewProvider
     /// <summary>Window title and button text ("Open &lt;Name&gt;").</summary>
     string Name { get; }
 
+    /// <summary>Builds the view (UI thread), each time its window opens.</summary>
     Control CreateView();
 }
