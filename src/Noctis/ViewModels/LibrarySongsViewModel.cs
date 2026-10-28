@@ -105,6 +105,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("SongsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // A counted play raises no LibraryUpdated (see HomeViewModel.OnPlayCounted): the row's
+        // Plays cell ticked up live but a Plays sort never re-ranked (Discord, Andre 10-28).
+        _player.PlayCounted += OnPlayCounted;
+        _player.TrackStarted += OnTrackStarted;
     }
 
     /// <summary>
@@ -121,7 +126,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _isActive = value;
             // Catch up on anything missed while hidden — covers back-navigation paths
             // that swap CurrentView without going through RefreshAndReturnSongs.
-            if (value) Refresh();
+            if (value)
+            {
+                Refresh();
+                FlushReRank();
+            }
         }
     }
 
@@ -489,10 +498,94 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _viewArtistAction?.Invoke(artistName);
     }
 
+    // ── Live Plays re-rank (Discord, Andre 10-28) ──
+    // Apple Music's way: the Plays cell counts up in place at once (Track.PlayCount is
+    // observable), and the row moves to its new rank once its song is over (the next one
+    // starts or is counted), so the playing row never jumps out from under the pointer.
+    // Only the counted rows move; the other rows keep their place, scroll and selection.
+    private readonly HashSet<Track> _reRankPending = new();
+    private DispatcherTimer? _reRankRetry;
+    private const int ReRankRetryMs = 2000;
+
+    /// <summary>Set by the view: true while the user is busy with the list (rows
+    /// Ctrl-selected, or scrolled a moment ago). A pending re-rank waits until it passes.</summary>
+    public Func<bool>? IsUserBusy { get; set; }
+
+    private void OnPlayCounted(object? sender, Track track)
+    {
+        if (SortColumn != "Plays") return;
+        _reRankPending.Add(track);
+        FlushReRank();
+    }
+
+    private void OnTrackStarted(object? sender, Track track) => FlushReRank();
+
+    /// <summary>Moves the counted rows whose song is no longer playing to their new rank.</summary>
+    private void FlushReRank()
+    {
+        _reRankRetry?.Stop();
+        if (_reRankPending.Count == 0) return;
+        // No other sort reads play counts, and switching to Plays sorts afresh anyway.
+        if (SortColumn != "Plays") { _reRankPending.Clear(); return; }
+
+        var current = _player.CurrentTrack;
+        if (!_reRankPending.Any(t => t != current)) return;
+        // Hidden: activation flushes. Busy: try again shortly.
+        if (!_isActive) return;
+        if (IsUserBusy?.Invoke() == true)
+        {
+            if (_reRankRetry == null)
+            {
+                _reRankRetry = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ReRankRetryMs) };
+                _reRankRetry.Tick += (_, _) => FlushReRank();
+            }
+            _reRankRetry.Start();
+            return;
+        }
+
+        var reRanked = _reRankPending.Where(t => t != current).ToList();
+        _reRankPending.RemoveWhere(t => t != current);
+        ApplyFilterAndSort(reRanked: reRanked);
+    }
+
+    /// <summary>
+    /// Moves just <paramref name="reRanked"/> to their place in <paramref name="sorted"/>.
+    /// False when the list differs in more than those rows: the caller replaces it whole.
+    /// </summary>
+    private bool TryMoveIntoPlace(List<Track> sorted, List<Track> reRanked)
+    {
+        if (sorted.Count != FilteredTracks.Count) return false;
+        var moves = new List<(Track Track, int To)>();
+        foreach (var t in reRanked)
+        {
+            var to = sorted.IndexOf(t);
+            if (to >= 0) moves.Add((t, to));
+        }
+
+        if (moves.Count == 1)
+        {
+            var from = FilteredTracks.IndexOf(moves[0].Track);
+            if (from < 0) return false;
+            if (from != moves[0].To) FilteredTracks.Move(from, moves[0].To);
+        }
+        else if (moves.Count > 1)
+        {
+            // Out first, then in by target index: what is left already matches the sorted
+            // list, so each insert lands exactly.
+            foreach (var (t, _) in moves)
+                if (!FilteredTracks.Remove(t)) return false;
+            foreach (var (t, to) in moves.OrderBy(m => m.To))
+                FilteredTracks.Insert(to, t);
+        }
+        return FilteredTracks.SequenceEqual(sorted);
+    }
+
     /// <summary>A library reload was requested and hasn't landed yet (see ApplyFilterAndSort).</summary>
     private bool _reloadPending;
 
-    private async void ApplyFilterAndSort(bool refreshFromLibrary = false)
+    /// <param name="reRanked">Rows whose sort key changed in place (a counted play): when the
+    /// result differs only in them they are moved, not the whole list replaced.</param>
+    private async void ApplyFilterAndSort(bool refreshFromLibrary = false, List<Track>? reRanked = null)
     {
         try
         {
@@ -544,6 +637,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 _reloadPending = false;
             }
 
+            if (reRanked != null && !refreshFromLibrary && TryMoveIntoPlace(result, reRanked))
+                return;
             FilteredTracks.ReplaceAll(result);
             UpdateSummaryText();
         }
@@ -665,6 +760,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _searchDebounce.Stop();
             _searchDebounce = null;
         }
+
+        _reRankRetry?.Stop();
+        _reRankRetry = null;
+        _player.PlayCounted -= OnPlayCounted;
+        _player.TrackStarted -= OnTrackStarted;
 
         // Unsubscribe from library events
         if (_libraryUpdatedHandler != null)
