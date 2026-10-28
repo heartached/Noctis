@@ -2272,7 +2272,21 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>Загруженный файл — не {0} {1}, поэтому он не установлен.</value></data>
   <data name="Plugins.Get.By" xml:space="preserve"><value>автор: {0}</value></data>
   <data name="Plugins.Submit" xml:space="preserve"><value>Предложить плагин</value></data>
-  <data name="Plugins.SubmitTip" xml:space="preserve"><value>Сделали плагин? Отправьте его на проверку через GitHub. После одобрения он появится здесь с указанием вашего авторства.</value></data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <data name="Plugins.Make.Title" xml:space="preserve"><value>Создайте свой плагин</value></data>
+  <data name="Plugins.Make.Line" xml:space="preserve"><value>Сделайте что-нибудь для Noctis и поделитесь этим. Если плагин пройдёт нашу проверку, он появится в официальных плагинах с вашим именем.</value></data>
+  <data name="Plugins.Make.Step1Title" xml:space="preserve"><value>Создайте</value></data>
+  <data name="Plugins.Make.Step1" xml:space="preserve"><value>Следуйте руководству. Нужны бесплатный .NET SDK и редактор кода.</value></data>
+  <data name="Plugins.Make.Step2Title" xml:space="preserve"><value>Отправьте</value></data>
+  <data name="Plugins.Make.Step2" xml:space="preserve"><value>Опубликуйте его на GitHub и пришлите нам ссылку через форму.</value></data>
+  <data name="Plugins.Make.Step3Title" xml:space="preserve"><value>Попадите в список</value></data>
+  <data name="Plugins.Make.Step3" xml:space="preserve"><value>Мы проверим, что он безопасен, и он появится здесь с вашим авторством.</value></data>
+  <data name="Plugins.Make.Guide" xml:space="preserve"><value>Читать руководство</value></data>
+
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
+  <data name="Integrations.More.Title" xml:space="preserve"><value>Другие интеграции</value></data>
+  <data name="Integrations.More.Line" xml:space="preserve"><value>Плагины могут добавлять в Noctis новые сервисы и функции.</value></data>
+  <data name="Integrations.More.Browse" xml:space="preserve"><value>Смотреть плагины</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Сервер Noctis</value></data>

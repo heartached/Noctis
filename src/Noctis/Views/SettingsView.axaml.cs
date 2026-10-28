@@ -92,6 +92,47 @@ public partial class SettingsView : UserControl
             eqCombo.DropDownOpened += OnEqPresetDropDownOpened;
             eqCombo.DropDownClosed += OnEqPresetDropDownClosed;
         }
+
+        // Plugins → Make your own plugin: three steps side by side, stacked on a narrow pane.
+        MakePluginSteps.SizeChanged += (_, e) => LayoutMakePluginSteps(e.NewSize.Width);
+        // Custom Category's Install from file + folder + reload: under the title when they don't fit beside it.
+        CustomPluginsHeader.SizeChanged += (_, e) => LayoutCustomPluginsHeader(e.NewSize.Width);
+    }
+
+    /// <summary>Room the Custom Category title keeps beside its buttons before they drop under it.</summary>
+    private const double CustomPluginsTitleRoom = 120;
+
+    private void LayoutCustomPluginsHeader(double width)
+    {
+        var stacked = width < CustomPluginsActions.DesiredSize.Width + CustomPluginsTitleRoom;
+        Grid.SetRow(CustomPluginsActions, stacked ? 1 : 0);
+        Grid.SetColumn(CustomPluginsActions, stacked ? 0 : 1);
+        Grid.SetColumnSpan(CustomPluginsActions, stacked ? 2 : 1);
+        CustomPluginsActions.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
+        CustomPluginsActions.Margin = stacked ? new Thickness(0, 8, 0, 0) : default;
+    }
+
+    /// <summary>Below this width the three Make your own plugin steps stack: side by side, each
+    /// column would wrap its one line into four or five.</summary>
+    internal const double MakePluginStepsStackWidth = 560;
+
+    private bool _makePluginStepsStacked;
+
+    private void LayoutMakePluginSteps(double width)
+    {
+        var stacked = width < MakePluginStepsStackWidth;
+        if (stacked == _makePluginStepsStacked) return;
+        _makePluginStepsStacked = stacked;
+        var grid = MakePluginSteps;
+        grid.ColumnDefinitions = new ColumnDefinitions(stacked ? "*" : "*,*,*");
+        grid.RowDefinitions = new RowDefinitions(stacked ? "Auto,Auto,Auto" : "Auto");
+        for (var i = 0; i < grid.Children.Count; i++)
+        {
+            var step = grid.Children[i];
+            Grid.SetColumn(step, stacked ? 0 : i);
+            Grid.SetRow(step, stacked ? i : 0);
+            step.Margin = i == 0 ? default : stacked ? new Thickness(0, 12, 0, 0) : new Thickness(16, 0, 0, 0);
+        }
     }
 
     // ── Settings search ──

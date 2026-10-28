@@ -54,6 +54,13 @@ public partial class SettingsViewModel
     [RelayCommand]
     private void SubmitPlugin() => PlatformHelper.OpenUrl(PluginSubmissionUrl(Services.UpdateService.CurrentVersion));
 
+    /// <summary>The beginner guide on the website (website/src/pages/plugins/make.astro):
+    /// what you need, five steps from the sample to a submission, and what the review checks.</summary>
+    internal const string PluginGuideUrl = "https://noctisapp.cc/plugins/make";
+
+    [RelayCommand]
+    private void OpenPluginGuide() => PlatformHelper.OpenUrl(PluginGuideUrl);
+
     [RelayCommand]
     private async Task RefreshOfficialPlugins()
     {

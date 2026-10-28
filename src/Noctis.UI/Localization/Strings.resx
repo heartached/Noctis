@@ -2272,7 +2272,21 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>The download isn't {0} {1}, so it wasn't installed.</value></data>
   <data name="Plugins.Get.By" xml:space="preserve"><value>by {0}</value></data>
   <data name="Plugins.Submit" xml:space="preserve"><value>Submit a Plugin</value></data>
-  <data name="Plugins.SubmitTip" xml:space="preserve"><value>Made a plugin? Submit it on GitHub for review. Once approved, it shows up here with you credited.</value></data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <data name="Plugins.Make.Title" xml:space="preserve"><value>Make your own plugin</value></data>
+  <data name="Plugins.Make.Line" xml:space="preserve"><value>Build something for Noctis and share it. If it passes our review, it shows up in Official Plugins with your name on it.</value></data>
+  <data name="Plugins.Make.Step1Title" xml:space="preserve"><value>Build it</value></data>
+  <data name="Plugins.Make.Step1" xml:space="preserve"><value>Follow the guide. You need the free .NET SDK and a code editor.</value></data>
+  <data name="Plugins.Make.Step2Title" xml:space="preserve"><value>Submit it</value></data>
+  <data name="Plugins.Make.Step2" xml:space="preserve"><value>Publish it on GitHub, then send us the link with the form.</value></data>
+  <data name="Plugins.Make.Step3Title" xml:space="preserve"><value>Get listed</value></data>
+  <data name="Plugins.Make.Step3" xml:space="preserve"><value>We check it's safe, then it appears here, credited to you.</value></data>
+  <data name="Plugins.Make.Guide" xml:space="preserve"><value>Read the Guide</value></data>
+
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
+  <data name="Integrations.More.Title" xml:space="preserve"><value>More integrations</value></data>
+  <data name="Integrations.More.Line" xml:space="preserve"><value>Plugins can add new services and features to Noctis.</value></data>
+  <data name="Integrations.More.Browse" xml:space="preserve"><value>Browse Plugins</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Noctis Server</value></data>

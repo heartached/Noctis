@@ -6454,6 +6454,23 @@
                     </Grid>
                 </StackPanel>
             </Border>
+
+            <!-- More integrations: the way to the Plugins page, where plugins add services and features. -->
+            <Border x:Name="MoreIntegrationsCard" Classes="setting-card" Margin="0,10,0,10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Integrations.More.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Integrations.More.Line}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" x:Name="BrowsePluginsButton" Classes="pill-action"
+                            AutomationProperties.Name="{loc:T Integrations.More.Browse}"
+                            Command="{Binding SelectSettingsTabCommand}"
+                            CommandParameter="{x:Static vm:SettingsViewModel.TabPlugins}"
+                            Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Integrations.More.Browse}" FontSize="12" FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
+            </Border>
             </StackPanel>
 
             <StackPanel x:Name="PluginsTabPanel" Classes="tab-page" IsVisible="{Binding IsPluginsTabVisible}" Spacing="4">
@@ -6476,18 +6493,10 @@
 
             <!-- Official Plugins: the official list (plugins/index.json), fetched when this page opens.
                  An installed one is managed right on its row (switch, settings, Remove). -->
-            <Grid ColumnDefinitions="*,Auto,Auto" Margin="2,10,0,8">
-                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0" VerticalAlignment="Center"/>
-                <!-- Opens the plugin submission form on GitHub (docs/PLUGINS.md, "Submitting a plugin"). -->
-                <Button Grid.Column="1" x:Name="SubmitPluginButton" Classes="pill-action"
-                        AutomationProperties.Name="{loc:T Plugins.Submit}"
-                        ToolTip.Tip="{loc:T Plugins.SubmitTip}"
-                        Command="{Binding SubmitPluginCommand}"
-                        Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,6,0">
-                    <TextBlock Text="{loc:T Plugins.Submit}" FontSize="12" FontWeight="SemiBold"/>
-                </Button>
-                <!-- Dims while the list loads. -->
-                <Button Grid.Column="2" x:Name="RefreshOfficialPluginsButton" Classes="icon-chip"
+            <Grid ColumnDefinitions="*,Auto" Margin="2,10,0,8">
+                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <!-- Dims while the list loads. (Submit a Plugin is on the Make your own plugin card below.) -->
+                <Button Grid.Column="1" x:Name="RefreshOfficialPluginsButton" Classes="icon-chip"
                         ToolTip.Tip="{loc:T Plugins.Get.Refresh}"
                         Command="{Binding RefreshOfficialPluginsCommand}"
                         IsEnabled="{Binding !IsOfficialPluginsLoading}">
@@ -6539,14 +6548,17 @@
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                                             <!-- Install / Update (accent), Cancel while downloading, or a disabled
                                                  Requires Noctis x / Not available on this OS. Once installed and
-                                                 current, the row's switch stands in for a plain "Installed". -->
+                                                 current, the row's switch stands in for a plain "Installed". Capped and
+                                                 wrapping: on a narrow pane "Requires Noctis 1.5.9" ran past the card's edge. -->
                                             <Button Classes.accent-pill="{Binding IsPrimary}" Classes.pill-action="{Binding !IsPrimary}"
                                                     Padding="14,7" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center"
+                                                    MaxWidth="180"
                                                     IsVisible="{Binding ShowButton}"
                                                     IsEnabled="{Binding CanClick}"
                                                     Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
                                                     CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding ButtonText}" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding ButtonText}" FontSize="12" FontWeight="SemiBold"
+                                                           TextWrapping="Wrap" TextAlignment="Center"/>
                                             </Button>
                                             <!-- The installed copy's own switch (same two-way path as Custom Category). -->
                                             <ContentControl Content="{Binding Installed}" IsVisible="{Binding IsInstalled}" VerticalAlignment="Center">
@@ -6572,16 +6584,19 @@
 
             <!-- Custom Category: plugins the user adds (Install from file, or a folder dropped in by
                  hand). Install from file is this section's action; the folder and reload are small
-                 icon buttons (the folder's path is in its tooltip). -->
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="2,10,0,8">
-                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.CustomTitle}" Margin="0" VerticalAlignment="Center"/>
-                <Button Grid.Column="2" x:Name="InstallPluginFromFileButton" Classes="pill-action"
+                 icon buttons (the folder's path is in its tooltip). On a narrow pane the buttons drop
+                 under the title (SettingsView.axaml.cs LayoutCustomPluginsHeader): side by side they
+                 ran past the card's right edge. -->
+            <Grid x:Name="CustomPluginsHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="2,10,0,8">
+                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.CustomTitle}" Margin="0,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <StackPanel x:Name="CustomPluginsActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="InstallPluginFromFileButton" Classes="pill-action"
                         AutomationProperties.Name="{loc:T Plugins.InstallFromFile}"
                         Command="{Binding InstallPluginFromFileCommand}"
                         Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,6,0">
                     <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="12" FontWeight="SemiBold"/>
                 </Button>
-                <Button Grid.Column="3" x:Name="OpenPluginsFolderButton" Classes="icon-chip" Margin="0,0,6,0"
+                <Button x:Name="OpenPluginsFolderButton" Classes="icon-chip" Margin="0,0,6,0"
                         ToolTip.Tip="{Binding PluginsFolderTip}" Command="{Binding OpenPluginsFolderCommand}">
                     <Viewbox Width="15" Height="15">
                         <Canvas Width="24" Height="24">
@@ -6590,7 +6605,7 @@
                         </Canvas>
                     </Viewbox>
                 </Button>
-                <Button Grid.Column="4" x:Name="ReloadPluginsButton" Classes="icon-chip"
+                <Button x:Name="ReloadPluginsButton" Classes="icon-chip"
                         ToolTip.Tip="{loc:T Plugins.Reload}" Command="{Binding ReloadPluginsCommand}">
                     <Viewbox Width="15" Height="15">
                         <Canvas Width="24" Height="24">
@@ -6599,6 +6614,7 @@
                         </Canvas>
                     </Viewbox>
                 </Button>
+                </StackPanel>
             </Grid>
             <Border x:Name="CustomPluginsCard" Classes="setting-card group-card">
                 <StackPanel>
@@ -6646,6 +6662,73 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Make your own plugin: the way in for people who want to build one. Three plain steps
+                 (a row; stacked when the pane is narrow, see SettingsView.axaml.cs LayoutMakePluginSteps),
+                 then the website guide and the submission form (docs/PLUGINS.md, "Submitting a plugin"). -->
+            <Border x:Name="MakePluginCard" Classes="setting-card" Margin="0,10,0,10">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Plugins.Make.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Plugins.Make.Line}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid x:Name="MakePluginSteps" ColumnDefinitions="*,*,*">
+                        <Grid.Styles>
+                            <Style Selector="Border.make-step-n">
+                                <Setter Property="Width" Value="22"/>
+                                <Setter Property="Height" Value="22"/>
+                                <Setter Property="CornerRadius" Value="999"/>
+                                <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                                <Setter Property="VerticalAlignment" Value="Top"/>
+                                <Setter Property="Margin" Value="0,0,10,0"/>
+                            </Style>
+                            <Style Selector="Border.make-step-n > TextBlock">
+                                <Setter Property="FontSize" Value="11"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </Grid.Styles>
+                        <Grid Grid.Column="0" ColumnDefinitions="Auto,*">
+                            <Border Classes="make-step-n"><TextBlock Text="1"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{loc:T Plugins.Make.Step1Title}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Plugins.Make.Step1}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Margin="16,0,0,0">
+                            <Border Classes="make-step-n"><TextBlock Text="2"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{loc:T Plugins.Make.Step2Title}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Plugins.Make.Step2}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="2" ColumnDefinitions="Auto,*" Margin="16,0,0,0">
+                            <Border Classes="make-step-n"><TextBlock Text="3"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{loc:T Plugins.Make.Step3Title}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Plugins.Make.Step3}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                    <!-- Guide first (read, then submit): the tab order follows. -->
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                        <Button x:Name="ReadPluginGuideButton" Classes="pill-action"
+                                AutomationProperties.Name="{loc:T Plugins.Make.Guide}"
+                                Command="{Binding OpenPluginGuideCommand}"
+                                Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Plugins.Make.Guide}" FontSize="12" FontWeight="SemiBold"/>
+                        </Button>
+                        <Button x:Name="SubmitPluginButton" Classes="accent-pill"
+                                AutomationProperties.Name="{loc:T Plugins.Submit}"
+                                Command="{Binding SubmitPluginCommand}"
+                                Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Plugins.Submit}" FontSize="12" FontWeight="SemiBold"/>
+                        </Button>
+                    </WrapPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
