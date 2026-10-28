@@ -385,10 +385,13 @@
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
                                                 <TextBlock Name="AccountRowLabel" Classes="profile-name" Text="{Binding AccountTitle}" />
-                                                <StackPanel Orientation="Horizontal">
+                                                <!-- A Grid, not a horizontal StackPanel: the line then has the column's
+                                                     width, so the signed-out invitation wraps short of the chevron. -->
+                                                <Grid ColumnDefinitions="Auto,*">
                                                     <Ellipse Name="SyncedDot" Classes="synced-dot" IsVisible="{Binding ShowSyncedDot}" />
-                                                    <TextBlock Name="AccountRowSub" Classes="profile-sub" Text="{Binding AccountSubtitle}" />
-                                                </StackPanel>
+                                                    <TextBlock Grid.Column="1" Name="AccountRowSub" Classes="profile-sub" Text="{Binding AccountSubtitle}"
+                                                               TextWrapping="Wrap" />
+                                                </Grid>
                                             </StackPanel>
                                             <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </Grid>
