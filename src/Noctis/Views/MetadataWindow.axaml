@@ -214,15 +214,6 @@
             <Setter Property="Opacity" Value="1" />
         </Style>
 
-        <!-- The lyrics panels (Border.pill-well, radius 20) clip to their rounded shape, and a
-             ScrollViewer's bar runs its full height at the right edge, so the bar's ends were
-             cut off by the panel's right-hand corners (owner 10-17). The panel's 10px top and
-             bottom padding plus this 10px keeps the bar a full corner radius clear of each
-             end, as SettingsScrollViewer does in its card. Pinned by LyricsWellScrollbarTests. -->
-        <Style Selector="ScrollViewer.well-scroll /template/ ScrollBar:vertical">
-            <Setter Property="Margin" Value="2,10,0,10" />
-        </Style>
-
         <!-- Tab nav: vertical sidebar list on the left, selected content on the right. -->
         <Style Selector="TabControl">
             <Setter Property="Template">

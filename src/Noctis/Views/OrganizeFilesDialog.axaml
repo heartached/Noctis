@@ -137,10 +137,13 @@
                         Command="{Binding PreviewCommand}" />
             </Grid>
 
-            <Border Grid.Row="1" Classes="pill-well" ClipToBounds="True" MinHeight="120">
-                <!-- Right padding is the overlay scrollbar's lane, so it never sits on a chip. -->
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="8,8,16,8">
+            <Border Grid.Row="1" Classes="pill-well" ClipToBounds="True" MinHeight="120" Padding="0,10">
+                <!-- Right padding is the overlay scrollbar's lane, so it never sits on a chip.
+                     well-scroll + the well's 10px top/bottom keep the bar and the scrolled rows
+                     clear of the rounded corners (PillDialog.axaml). -->
+                <ScrollViewer Classes="well-scroll"
+                              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                              Padding="8,0,16,0">
                     <ItemsControl ItemsSource="{Binding Rows}">
                         <!-- Virtualized: Rows holds one entry per local library track (skips
                              included), so a large library built every row on the UI thread. -->
