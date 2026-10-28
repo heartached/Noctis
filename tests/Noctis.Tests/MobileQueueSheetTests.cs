@@ -241,7 +241,8 @@ public class MobileQueueSheetTests
         var (rig, window, _, page, _) = OpenQueue();
         using var _rig = rig;
         Button B(string name) => MobileFixtures.Named<Button>(page, name);
-        PathIcon Glyph(string name) => B(name).GetVisualDescendants().OfType<PathIcon>().First(p => p.IsVisible);
+        // The transport's glyph is a TransportGlyph (Apple's press motion) in the same box.
+        Control Glyph(string name) => B(name).GetVisualDescendants().OfType<Control>().First(p => p is PathIcon or TransportGlyph && p.IsVisible);
         Border? Wash(string name) => B(name).GetVisualDescendants().OfType<Border>().SingleOrDefault(b => b.Classes.Contains("wash"));
         var all = new[] { "QueueListButton", "QueueRepeatButton", "QueuePreviousButton", "QueuePlayPauseButton", "QueueNextButton", "QueueShuffleButton", "QueueMoreButton" };
 

@@ -12,6 +12,7 @@ using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
+using Noctis.Controls;
 using Noctis.Models;
 using Noctis.Services;
 using Xunit;
@@ -121,7 +122,7 @@ public class MobileNowPlayingPageTests : IDisposable
         var transport = new[] { "PreviousButton", "PlayPauseButton", "NextButton" }
             .Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
         Assert.Single(transport.Select(b => b.TranslatePoint(default, page)!.Value.Y).Distinct());
-        double Glyph(Button b) => b.GetVisualDescendants().OfType<PathIcon>().First(i => i.IsVisible).Width;
+        double Glyph(Button b) => b.GetVisualDescendants().OfType<TransportGlyph>().Single().Width;
         Assert.True(Glyph(transport[1]) > Glyph(transport[0]) && Glyph(transport[0]) == Glyph(transport[2]));
         // The cover sits back while paused.
         var frame = MobileFixtures.Named<Border>(page, "ArtworkFrame");
@@ -160,9 +161,11 @@ public class MobileNowPlayingPageTests : IDisposable
             .Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
         Assert.Single(row.Select(b => Math.Round(b.TranslatePoint(new Point(0, b.Bounds.Height / 2), page)!.Value.Y, 1)).Distinct());
 
-        var skip = Glyph("PreviousButton").Bounds.Width;
-        Assert.Equal(skip, Glyph("NextButton").Bounds.Width);
-        Assert.Equal(skip * 20 / 18, Glyph("PlayPauseButton").Bounds.Width, 1.0);
+        // The transport draws Apple's press motion (TransportGlyph) in the same boxes.
+        TransportGlyph Transport(string button) => MobileFixtures.Named<Button>(page, button).GetVisualDescendants().OfType<TransportGlyph>().Single();
+        var skip = Transport("PreviousButton").Bounds.Width;
+        Assert.Equal(skip, Transport("NextButton").Bounds.Width);
+        Assert.Equal(skip * 20 / 18, Transport("PlayPauseButton").Bounds.Width, 1.0);
         window.Close();
     }
 

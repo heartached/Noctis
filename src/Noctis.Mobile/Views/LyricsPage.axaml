@@ -404,20 +404,17 @@
                         <TextBlock Grid.Column="1" Name="RemainingText" Classes="np-time" Text="{Binding Player.RemainingText}" HorizontalAlignment="Right" />
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,4">
-                        <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport"
+                        <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
                                 Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="Previous">
-                            <PathIcon Data="{DynamicResource PhRewindFill}" Width="38" Height="38" />
+                            <controls:TransportGlyph Kind="Previous" Width="38" Height="38" />
                         </Button>
-                        <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport"
+                        <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport tx"
                                 Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
-                            <Panel>
-                                <PathIcon Data="{DynamicResource PhPlayFill}" Width="40" Height="40" IsVisible="{Binding !Player.IsPlaying}" />
-                                <PathIcon Data="{DynamicResource PhPauseFill}" Width="40" Height="40" IsVisible="{Binding Player.IsPlaying}" />
-                            </Panel>
+                            <controls:TransportGlyph Kind="PlayPause" Width="40" Height="40" IsPlaying="{Binding Player.IsPlaying}" />
                         </Button>
-                        <Button Grid.Column="3" Name="NextButton" Classes="icon transport"
+                        <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
                                 Command="{Binding Player.NextCommand}" AutomationProperties.Name="Next">
-                            <PathIcon Data="{DynamicResource PhForwardFill}" Width="38" Height="38" />
+                            <controls:TransportGlyph Kind="Next" Width="38" Height="38" />
                         </Button>
                     </Grid>
                     <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">

@@ -468,15 +468,23 @@
     <Style Selector="Button.icon.mini">
         <Setter Property="Width" Value="44" />
     </Style>
-    <Style Selector="Button.icon.mini PathIcon">
+    <Style Selector="Button.icon.mini PathIcon, Button.icon.mini controls|TransportGlyph">
         <Setter Property="Width" Value="20.7" />
         <Setter Property="Height" Value="20.7" />
     </Style>
-    <Style Selector="Button.icon.mini PathIcon.forward">
+    <Style Selector="Button.icon.mini PathIcon.forward, Button.icon.mini controls|TransportGlyph.forward">
         <Setter Property="Width" Value="29.2" />
         <Setter Property="Height" Value="29.2" />
     </Style>
+    <!-- Play and Next draw one height, so they share one press circle. -->
+    <Style Selector="Button.icon.mini controls|TransportGlyph">
+        <Setter Property="HighlightSize" Value="36" />
+    </Style>
     <Style Selector="Button.icon.mini.unavailable PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="Opacity" Value="0.3" />
+    </Style>
+    <Style Selector="Button.icon.mini.unavailable controls|TransportGlyph">
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         <Setter Property="Opacity" Value="0.3" />
     </Style>
@@ -570,5 +578,12 @@
     </Style>
     <Style Selector="Button.row:pressed">
         <Setter Property="Opacity" Value="0.6" />
+    </Style>
+    <!-- Previous / Play-Pause / Next (tx): Apple Music's own press instead - a circle fades in
+         behind the glyph and the glyph dips and springs back (TransportGlyph) - so the button
+         itself neither dims nor shrinks. Declared after the press above so it wins. -->
+    <Style Selector="Button.icon.tx:pressed">
+        <Setter Property="Opacity" Value="1" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 </Styles>

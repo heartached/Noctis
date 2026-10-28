@@ -296,17 +296,14 @@
                                         </StackPanel>
                                     </Grid>
                                 </Button>
-                                <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini" Command="{Binding Player.TogglePlayPauseCommand}">
-                                    <Panel>
-                                        <PathIcon Name="MiniPlayGlyph" Data="{DynamicResource PhPlayFill}" IsVisible="{Binding !Player.IsPlaying}" />
-                                        <PathIcon Name="MiniPauseGlyph" Data="{DynamicResource PhPauseFill}" IsVisible="{Binding Player.IsPlaying}" />
-                                    </Panel>
+                                <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini tx" Command="{Binding Player.TogglePlayPauseCommand}">
+                                    <controls:TransportGlyph Name="MiniPlayGlyph" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
                                 </Button>
                                 <!-- Expanded only, like Apple's: the folded row has room for Play alone.
                                      Greyed when there is nothing to skip to. -->
-                                <Button Grid.Column="2" Name="MiniNextButton" Classes="icon mini" Classes.unavailable="{Binding !Player.HasNext}"
+                                <Button Grid.Column="2" Name="MiniNextButton" Classes="icon mini tx" Classes.unavailable="{Binding !Player.HasNext}"
                                         IsEnabled="{Binding Player.HasNext}" Command="{Binding Player.NextCommand}">
-                                    <PathIcon Name="MiniNextGlyph" Classes="forward" Data="{DynamicResource PhForwardFill}" />
+                                    <controls:TransportGlyph Name="MiniNextGlyph" Classes="forward" Kind="Next" />
                                 </Button>
                             </Grid>
                         </Panel>

@@ -205,12 +205,12 @@ public class MobileHomeTabTests
     public void MiniPlayer_PlayPauseAndForward_DrawOneHeight_On44dpTargets()
     {
         using var rig = PlayingRig(out var window, out var view);
-        var heights = new[] { ("MiniPlayGlyph", "PhPlayFill"), ("MiniPauseGlyph", "PhPauseFill"), ("MiniNextGlyph", "PhForwardFill") }
+        // One TransportGlyph draws Play and Pause (it morphs between them), another Next; they
+        // draw the phone's own geometries (TransportGlyphParityTests).
+        var heights = new[] { ("MiniPlayGlyph", "PhPlayFill"), ("MiniPlayGlyph", "PhPauseFill"), ("MiniNextGlyph", "PhForwardFill") }
             .Select(pair =>
             {
-                var icon = view.FindControl<PathIcon>(pair.Item1)!;
-                Assert.True(view.TryFindResource(pair.Item2, out var geometry));
-                Assert.Same(geometry, icon.Data);
+                var icon = view.FindControl<Noctis.Controls.TransportGlyph>(pair.Item1)!;
                 return GlyphHeight(PhoneIconData(pair.Item2)) * icon.Height / 24;
             }).ToArray();
         Assert.All(heights, h => Assert.Equal(15.5, h, 0.15));
