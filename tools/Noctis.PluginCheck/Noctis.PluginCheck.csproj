@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Checks a community plugin submission (the "Plugin submission" issue form) with the same code
+    the app uses: PluginInstaller.Inspect for the zip and its plugin.json, PluginCatalog.Parse for
+    the plugins/index.json entry. Run by .github/workflows/plugin-submission.yml; to run it by
+    hand, see docs/PLUGINS.md ("Reviewing a submission").
+
+    It never loads or runs plugin code: assemblies are read as metadata only.
+    The checks live in Review/ and are compiled into Noctis.Tests too (PluginSubmissionCheckTests).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Mirrors the app project's conditional TFM (see tests/Noctis.Tests). -->
+    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net10.0</TargetFramework>
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Noctis.PluginCheck</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis\Noctis.csproj" />
+  </ItemGroup>
+</Project>

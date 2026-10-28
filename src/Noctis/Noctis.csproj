@@ -47,6 +47,8 @@
   <!-- Expose internal services (e.g. the Core Audio COM interop) to the test project. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Noctis.Tests" />
+    <!-- The plugin submission check (tools/Noctis.PluginCheck) validates with the app's own plugin rules. -->
+    <InternalsVisibleTo Include="Noctis.PluginCheck" />
   </ItemGroup>
   <!-- Built-in Noctis server (Settings → Integrations): OpenSubsonic API over Kestrel.
        The shared framework is only loaded when the server is switched on. -->
