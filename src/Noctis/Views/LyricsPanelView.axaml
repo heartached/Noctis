@@ -387,11 +387,12 @@
                                                TextWrapping="Wrap"/>
 
                                     <!-- Word-level karaoke layer — same three-layer structure as
-                                         the lyrics page (glow / dimmed base / gradient sweep). -->
-                                    <ItemsControl ItemsSource="{Binding Words}"
+                                         the lyrics page (glow / dimmed base / gradient sweep), and the
+                                         same resting stand-in away from the sung line in long lyrics. -->
+                                    <ItemsControl ItemsSource="{Binding LiveWords}"
                                                   Classes="word-layer"
                                                   Classes.active="{Binding IsSweepFocused}"
-                                                  IsVisible="{Binding ShowWords}"
+                                                  IsVisible="{Binding ShowLiveWords}"
                                                   Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                   HorizontalAlignment="Left"
                                                   ClipToBounds="False"
@@ -408,6 +409,19 @@
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
+                                    <controls:KaraokeRestingWords Words="{Binding Words}"
+                                                                  IsVisible="{Binding ShowRestingWords}"
+                                                                  Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                                  Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                                                  ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"
+                                                                  HorizontalAlignment="Left"
+                                                                  MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                        <controls:KaraokeRestingWords.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                            </Transitions>
+                                        </controls:KaraokeRestingWords.Transitions>
+                                    </controls:KaraokeRestingWords>
 
                                     <!-- Intro / interlude dots. Left margin mirrors the lyrics page: first
                                          dot sits over the first letter of the lyric (scaled to panel font).

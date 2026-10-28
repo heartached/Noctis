@@ -643,6 +643,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
         _timeline = new LyricsTimeline(LyricLines, WordLookahead, LyricsLookahead);
+        // First handler on the collection, ahead of every view's: a long document's lines are
+        // set to rest before any view builds their word layers (see WordLayerWindowMinWords).
+        LyricLines.CollectionChanged += (_, _) => OnLyricLinesChangedForWordLayers();
         _player = player;
         _timeline.WordMotion = player.LyricsGlowAndLift;
         _lrcLib = lrcLib;
@@ -3977,11 +3980,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         if (activeIndex < 0)
         {
-            foreach (var line in LyricLines)
+            for (int i = 0; i < LyricLines.Count; i++)
             {
+                var line = LyricLines[i];
                 line.LineOpacity = 1.0;
                 line.IsClickable = true;
                 if (line.BlurRadius != 0.0) line.BlurRadius = 0.0;
+                if (_windowWordLayers) SetWordLayerLive(line, i <= WordLayerWindowLines);
             }
             return;
         }
@@ -4052,7 +4057,40 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var clickable = opacity > 0.0;
             if (line.IsClickable != clickable)
                 line.IsClickable = clickable;
+            if (_windowWordLayers)
+                SetWordLayerLive(line, absDist <= WordLayerWindowLines);
         }
+    }
+
+    // ── Word layers of very long lyrics (word-synced audiobooks, 10-28) ──
+    // A word cell is ~8 visuals and ~20 bindings. A song's few hundred words never notice;
+    // a 1.5 h audiobook chapter's 14,238 were 118,559 visuals and a 1.4 GB heap, built in a
+    // 14-17 s UI freeze (3.3 GB allocated, 195 gen-1 collections) whose GC pauses stopped the
+    // managed audio render thread: the sound came in 20-50 ms bursts every 250 ms until the
+    // page was built (Discord, nutf!xx). Past this many words only lines near the sung one
+    // keep the word layer; the rest are drawn at rest by KaraokeRestingWords, which lays them
+    // out identically, so moving the window moves nothing on screen.
+    internal const int WordLayerWindowMinWords = 2000;
+    // Lines either side of the lit ones that keep it: the line glided into ahead of time
+    // (IsLeading), and the one just sung while its float and held note settle.
+    internal const int WordLayerWindowLines = 2;
+    private bool _windowWordLayers;
+
+    private void OnLyricLinesChangedForWordLayers()
+    {
+        var words = 0;
+        foreach (var line in LyricLines)
+            words += line.Words?.Count ?? 0;
+        _windowWordLayers = words > WordLayerWindowMinWords;
+        var center = Math.Max(0, ActiveLineIndex);
+        for (int i = 0; i < LyricLines.Count; i++)
+            SetWordLayerLive(LyricLines[i], !_windowWordLayers || Math.Abs(i - center) <= WordLayerWindowLines);
+    }
+
+    private static void SetWordLayerLive(LyricLine line, bool live)
+    {
+        if (line.IsWordLayerLive != live)
+            line.IsWordLayerLive = live;
     }
 
     // The focus gate flips mid-line (fullscreen entered/left, or the Settings toggle),

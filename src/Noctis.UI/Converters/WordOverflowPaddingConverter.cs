@@ -25,9 +25,13 @@ public class WordOverflowPaddingConverter : IValueConverter
 {
     private const double RightPad = 24;
 
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        PaddingFor(value as WordTiming);
+
+    /// <summary>The cell padding for <paramref name="word"/> (also what <see cref="Controls.KaraokeRestingWords"/> lays out with).</summary>
+    public static Thickness PaddingFor(WordTiming? word)
     {
-        var lineFinal = value is WordTiming { IsLastInLine: true, Text: { Length: > 0 } text }
+        var lineFinal = word is { IsLastInLine: true, Text: { Length: > 0 } text }
                         && !char.IsWhiteSpace(text[^1]);
         return lineFinal ? new Thickness(0, 0, RightPad, 0) : default(Thickness);
     }

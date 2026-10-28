@@ -1097,11 +1097,13 @@
                                         <!-- Word-level karaoke layer. Rendered for word-timed lines whether active
                                              or not, so the wrap geometry never changes on activation (the old
                                              TextBlock swap re-wrapped the line mid-song). Inactive lines show the
-                                             base layer at full opacity — indistinguishable from plain line text. -->
-                                        <ItemsControl ItemsSource="{Binding Words}"
+                                             base layer at full opacity — indistinguishable from plain line text.
+                                             Very long lyrics build it only near the sung line; elsewhere the
+                                             resting control below draws the same words in the same places. -->
+                                        <ItemsControl ItemsSource="{Binding LiveWords}"
                                                       Classes="word-layer"
                                                       Classes.active="{Binding IsSweepFocused}"
-                                                      IsVisible="{Binding ShowWords}"
+                                                      IsVisible="{Binding ShowLiveWords}"
                                                       Opacity="{Binding LineOpacity}"
                                                       HorizontalAlignment="Left"
                                                       ClipToBounds="False"
@@ -1118,6 +1120,19 @@
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
+                                        <controls:KaraokeRestingWords Words="{Binding Words}"
+                                                                      IsVisible="{Binding ShowRestingWords}"
+                                                                      Opacity="{Binding LineOpacity}"
+                                                                      Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                                                      ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"
+                                                                      HorizontalAlignment="Left"
+                                                                      MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                            <controls:KaraokeRestingWords.Transitions>
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                </Transitions>
+                                            </controls:KaraokeRestingWords.Transitions>
+                                        </controls:KaraokeRestingWords>
                                         <!-- Intro / interlude dots. Left margin centers the first dot over
                                              the first letter of the lyric below. The dots fill one after
                                              another with the gap's progress (LyricLine.InterludeProgress,
