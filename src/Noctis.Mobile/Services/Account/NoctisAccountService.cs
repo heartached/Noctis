@@ -1253,11 +1253,18 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public int DownloadedCount => _downloaded.Count;
 
-    public Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+    /// <summary>Whether the phone is on an unmetered network (Wi-Fi). Null = unknown, which never blocks
+    /// a download. With Settings → Downloads → Wi-Fi only on, a download asked for on mobile data is refused.</summary>
+    public Func<bool>? IsOnWifi { get; init; }
+
+    public async Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
     {
         var ids = tracks.Where(IsRemote).Select(t => t.Id).Distinct().Where(id => !_downloaded.ContainsKey(id)).ToList();
+        if (ids.Count > 0 && IsOnWifi is { } onWifi && !onWifi()
+            && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly)
+            throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
         foreach (var id in ids) _withdrawn.TryRemove(id, out _);   // asked for again: no longer removed
-        return RunDownloadsAsync(ids, ct);
+        await RunDownloadsAsync(ids, ct).ConfigureAwait(false);
     }
 
     public Task DownloadAllAsync(CancellationToken ct = default) => DownloadAsync(_library.Tracks.ToList(), ct);

@@ -59,6 +59,8 @@ public enum NoctisErrorKind
     UnknownHost,
     /// <summary>The desktop answers but is too old to sign phones in (no noctisSignIn).</summary>
     Outdated,
+    /// <summary>Downloads are set to Wi-Fi only and the phone is on mobile data.</summary>
+    WifiRequired,
 }
 
 public sealed class NoctisServerException(NoctisErrorKind kind, string message, Exception? inner = null)

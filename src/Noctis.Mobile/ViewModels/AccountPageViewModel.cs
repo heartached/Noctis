@@ -669,6 +669,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         NoctisErrorKind.UnknownHost =>
             "No computer answers to that name. Type the address shown under Connect a phone, like 192.168.1.20.",
         NoctisErrorKind.Outdated => "Noctis on your computer is too old to connect a phone. Update it, then try again.",
+        NoctisErrorKind.WifiRequired => "Downloads are set to Wi-Fi only. Connect to Wi-Fi, or change this in Settings, Downloads.",
         _ => "Your computer couldn't finish that. Try again in a moment.",
     };
 

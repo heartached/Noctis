@@ -132,6 +132,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Outputs = new AndroidOutputSwitcher(context),
             Theme = this,
             Logs = new AndroidLogExporter(context),
+            Links = new AndroidUrlLauncher(context),
             VersionText = DescribeVersion(context),
             Account = account,
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
@@ -203,6 +204,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 stateRecorder: stateRecorder)
             {
                 LibraryReady = libraryReady,
+                // Settings → Downloads → Wi-Fi only: a download on mobile data is refused.
+                IsOnWifi = () => AndroidNetwork.IsUnmetered(context),
                 // No ALAC decoder, neither the phone's nor the bundled FFmpeg (a build without
                 // Libs/media3-decoder-ffmpeg): the desktop sends its ALAC songs as FLAC.
                 PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
