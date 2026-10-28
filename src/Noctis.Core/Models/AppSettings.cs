@@ -120,6 +120,18 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
     public double MobileLyricsTextScale { get; set; } = 1.0;
 
+    /// <summary>Phone, Settings › Listening History › Keep History: days of plays kept (older ones are
+    /// dropped when the app starts and when this changes). 0 keeps them forever.</summary>
+    public int MobileKeepHistoryDays { get; set; }
+
+    /// <summary>Phone, Settings › Listening History › Share with Computer: the plays of the computer's
+    /// songs are sent to it (as scrobbles, on the next sync). Off keeps them on the phone.</summary>
+    public bool MobileShareHistory { get; set; } = true;
+
+    /// <summary>Phone, Settings › Pick Up on Computer: the phone's queue and place are sent to the
+    /// computer, which offers to continue from them. Off by default.</summary>
+    public bool MobilePickUpOnComputer { get; set; }
+
     /// <summary>Phone, Settings › Appearance › Player Bar: the mini player's elapsed part filled in
     /// the cover's colour. Off (the default) leaves the capsule plain glass, as Apple's.</summary>
     public bool MobilePlayerBarProgressFill { get; set; }

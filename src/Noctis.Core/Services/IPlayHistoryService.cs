@@ -34,4 +34,14 @@ public interface IPlayHistoryService
     /// The default does nothing (test doubles).
     /// </summary>
     void RemapTrackIds(IReadOnlyDictionary<Guid, Guid> remap) { }
+
+    /// <summary>
+    /// Drops every event older than <paramref name="cutoffUtc"/> (the phone's Keep History).
+    /// Returns how many went. The default does nothing (test doubles).
+    /// </summary>
+    int PruneOlderThan(DateTime cutoffUtc) => 0;
+
+    /// <summary>Forgets every event (the phone's Clear Listening History) and writes the empty log.
+    /// The default does nothing (test doubles).</summary>
+    Task ClearAsync() => Task.CompletedTask;
 }

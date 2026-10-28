@@ -804,8 +804,38 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 return new JsonObject { [method.Equals("getalbuminfo", StringComparison.OrdinalIgnoreCase) ? "albumInfo" : "albumInfo2"] = new JsonObject() };
             case "getscanstatus":
                 return new JsonObject { ["scanStatus"] = new JsonObject { ["scanning"] = _library.IsScanning, ["count"] = snap.Tracks.Count } };
-            case "getplayqueue":
+            // ── Pick Up on Computer: the standard play-queue calls. A phone saves its queue (the inbox
+            // keeps it for the desktop's window to offer); getPlayQueue hands it back to any client. ──
+            case "saveplayqueue":
+            {
+                var ids = p.All("id").Select(Ids.TrackGuid).Where(g => g.HasValue).Select(g => g!.Value);
+                var current = Ids.TrackGuid(p.Get("current"));
+                long.TryParse(p.Get("position"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var position);
+                // noctisAgeMs (Noctis extension): how long ago the phone captured it, so its clock never matters.
+                long.TryParse(p.Get("noctisAgeMs"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var age);
+                var device = ctx.Items["device"] is ServerDevice d ? d.DeviceName : ((ServerUser)ctx.Items["user"]!).Name;
+                // An empty save leaves nothing to offer (Subsonic's clears the queue).
+                if (PhoneHandoff.FromWire(ids, current, position, age, DateTime.UtcNow, device) is { } handoff)
+                    await _library.SavePlayQueueAsync(handoff).ConfigureAwait(false);
                 return new JsonObject();
+            }
+            case "getplayqueue":
+            {
+                if (_library.PlayQueue is not { } queue) return new JsonObject();
+                var entries = queue.TrackIds.Select(view.TrackById).Where(t => t != null).Select(t => (JsonNode)view.SongObject(t!)).ToArray();
+                return new JsonObject
+                {
+                    ["playQueue"] = new JsonObject
+                    {
+                        ["current"] = Ids.TrackId(queue.CurrentId),
+                        ["position"] = queue.PositionMs,
+                        ["username"] = ((ServerUser)ctx.Items["user"]!).Name,
+                        ["changed"] = queue.SavedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                        ["changedBy"] = queue.DeviceName,
+                        ["entry"] = new JsonArray(entries),
+                    },
+                };
+            }
             case "getlyrics":
                 return new JsonObject { ["lyrics"] = new JsonObject() };
             // ── Noctis extension: a song's lyrics as the desktop has them (sidecars + stored text) ──
@@ -1118,6 +1148,7 @@ internal sealed class LibraryView
     public Artist? Artist(string id) => Ids.ArtistGuid(id) is { } g ? _s.Artists.FirstOrDefault(a => a.Id == g) : null;
     public Album? Album(string id) => Ids.AlbumGuid(id) is { } g && _albums.TryGetValue(g, out var a) ? a : null;
     public Playlist? Playlist(string id) => Ids.PlaylistGuid(id) is { } g ? _s.Playlists.FirstOrDefault(p => p.Id == g) : null;
+    public Track? TrackById(Guid id) => _tracks.TryGetValue(id, out var t) ? t : null;
 
     public IEnumerable<Album> AlbumsOf(Artist artist)
         => _s.Albums.Where(a => string.Equals(a.Artist, artist.Name, StringComparison.OrdinalIgnoreCase)

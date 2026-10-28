@@ -47,6 +47,13 @@ public interface IServerLibrary : Sync.ISyncApplier
     /// <summary>Stars/unstars tracks (albums and artists star every track they contain). Persists user state.</summary>
     Task SetStarredAsync(IReadOnlyList<Guid> trackIds, IReadOnlyList<Guid> albumIds, IReadOnlyList<Guid> artistIds, bool starred);
 
+    /// <summary>Keeps the queue a phone sent (savePlayQueue) for the desktop to offer ("Pick Up on
+    /// Computer"). The default drops it: a host without a window has nobody to offer it to.</summary>
+    Task SavePlayQueueAsync(PhoneHandoff handoff) => Task.CompletedTask;
+
+    /// <summary>The queue last saved by <see cref="SavePlayQueueAsync"/> (getPlayQueue), or null.</summary>
+    PhoneHandoff? PlayQueue => null;
+
     /// <summary>Counts a play (submission=true scrobble).</summary>
     Task ScrobbleAsync(Guid trackId);
 
