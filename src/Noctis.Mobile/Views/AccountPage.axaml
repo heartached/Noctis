@@ -335,7 +335,7 @@
             <Panel Grid.Row="0">
                 <Grid Classes="sheet-header account-header" ColumnDefinitions="*,Auto">
                     <TextBlock Name="AccountTitle" Classes="sheet-title" Text="{Binding Title}" />
-                    <Button Grid.Column="1" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="Close"
+                    <Button Grid.Column="1" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="Back to Settings"
                             Command="{Binding Shell.NavigateBackCommand}">
                         <views:GridIcon Data="{DynamicResource PhClose}" />
                     </Button>

@@ -1131,6 +1131,8 @@ public class MobileAccountTests
         Assert.True(MobileFixtures.Named<StackPanel>(page, "SignInForm").IsEffectivelyVisible);
         Assert.False(MobileFixtures.Named<StackPanel>(page, "SignedInPanel").IsEffectivelyVisible);
         Assert.Equal('•', MobileFixtures.Named<TextBox>(page, "PasswordBox").PasswordChar);
+        // It only goes back to Settings: the screen reader said "Close", as if it left the sheet.
+        Assert.Equal("Back to Settings", Avalonia.Automation.AutomationProperties.GetName(MobileFixtures.Named<Button>(page, "CloseButton")));
         window.Close();
     }
 
