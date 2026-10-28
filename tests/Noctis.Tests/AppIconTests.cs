@@ -23,7 +23,7 @@ using Xunit;
 namespace Noctis.Tests;
 
 /// <summary>
-/// Settings › Appearance › App Icon (owner 10-24): ten generated icons, picked live for the
+/// Settings › Appearance › App Icon (owner 10-24, Light 10-28): eleven generated icons, picked live for the
 /// window/taskbar/tray, persisted as AppSettings.AppIcon. Also guards the icon files themselves:
 /// every DPI frame Windows asks for (16/24/32 x 100-300 %) must be present at its exact size,
 /// otherwise the shell stretches a neighbouring frame and the taskbar icon goes soft.
@@ -124,9 +124,11 @@ public class AppIconTests : IDisposable
         Assert.Equal("classic", AppIconService.Normalize(""));
         Assert.Equal("classic", AppIconService.Normalize("rainbow"));
         Assert.Equal("ruby", AppIconService.Normalize(" Ruby "));
-        Assert.Equal(10, AppIconService.Ids.Count);
+        Assert.Equal(11, AppIconService.Ids.Count);
         Assert.Equal("classic", AppIconService.Ids[0]);
-        Assert.Equal("dark", AppIconService.Ids[1]); // the tile next to Classic
+        Assert.Equal("light", AppIconService.Ids[1]); // Classic's inverse, between Classic and Dark
+        Assert.Equal("dark", AppIconService.Ids[2]);
+        Assert.Equal("light", AppIconService.Normalize("Light"));
         Assert.Equal("classic", new AppSettings().AppIcon);
     }
 
@@ -221,8 +223,50 @@ public class AppIconTests : IDisposable
         Assert.Equal("classic", AppIconService.CurrentId);
     }
 
+    /// <summary>
+    /// Light (10-28) went in at index 1, between Classic and Dark. Settings store the id, so a
+    /// user who saved "dark" (index 1 before) or "ruby" keeps that icon; Light itself applies,
+    /// persists and comes back on reload.
+    /// </summary>
     [AvaloniaFact]
-    public async Task AppearanceTab_ShowsTenRealIconTiles_AndATapSwapsTheWindowIcon()
+    public async Task Light_AppliesPersistsAndReloads_AndOlderSavedIdsKeepTheirIcon()
+    {
+        var persistence = new PersistenceService(_root);
+        foreach (var saved in new[] { "dark", "ruby" })
+        {
+            var s = await persistence.LoadSettingsAsync();
+            s.AppIcon = saved;
+            await persistence.SaveSettingsAsync(s);
+            var older = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory());
+            await older.LoadAsync();
+            Assert.Equal(saved, older.AppIcon);
+            Assert.Equal(saved, AppIconService.CurrentId);
+            Assert.Equal(new[] { saved }, older.AppIconOptions.Where(o => o.IsSelected).Select(o => o.Id));
+        }
+
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory());
+        await vm.LoadAsync();
+        Assert.Equal("light", vm.AppIconOptions[1].Id);
+        Assert.Equal("Settings.AppIcon.Light", vm.AppIconOptions[1].NameKey);
+        vm.SetAppIconCommand.Execute("light");
+        Assert.Equal("light", vm.AppIcon);
+        Assert.Equal("light", AppIconService.CurrentId);
+        Assert.NotNull(AppIconService.Load("light"));
+        Assert.Same(AppIconService.Load("light"), AppIconService.CurrentIcon);
+        Assert.Equal(new[] { "light" }, vm.AppIconOptions.Where(o => o.IsSelected).Select(o => o.Id));
+        await vm.SaveAsync();
+        Assert.Equal("light", (await persistence.LoadSettingsAsync()).AppIcon);
+
+        AppIconService.Apply("classic");
+        var reloaded = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory());
+        await reloaded.LoadAsync();
+        Assert.Equal("light", reloaded.AppIcon);
+        Assert.Equal("light", AppIconService.CurrentId);
+        Assert.True(reloaded.AppIconOptions[1].IsSelected);
+    }
+
+    [AvaloniaFact]
+    public async Task AppearanceTab_ShowsElevenRealIconTiles_AndATapSwapsTheWindowIcon()
     {
         AppIconService.Attach();
         var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistory());
@@ -236,13 +280,21 @@ public class AppIconTests : IDisposable
             Pump(150);
             var list = view.GetVisualDescendants().OfType<ItemsControl>().Single(c => c.Name == "AppIconList");
             var tiles = list.GetVisualDescendants().OfType<Button>().ToList();
-            Assert.Equal(10, tiles.Count);
+            Assert.Equal(11, tiles.Count);
             Assert.All(tiles, t => Assert.NotNull(t.GetVisualDescendants().OfType<Image>().Single().Source));
             Assert.Single(tiles, t => t.Classes.Contains("active"));
             Assert.Equal("Classic", Avalonia.Automation.AutomationProperties.GetName(tiles[0]));
-            Assert.Equal("Dark", Avalonia.Automation.AutomationProperties.GetName(tiles[1]));
+            Assert.Equal("Light", Avalonia.Automation.AutomationProperties.GetName(tiles[1]));
+            Assert.Equal("Dark", Avalonia.Automation.AutomationProperties.GetName(tiles[2]));
 
-            var violet = tiles[5];
+            var light = tiles[1];
+            light.Command!.Execute(light.CommandParameter);
+            Pump(50);
+            Assert.Equal("light", vm.AppIcon);
+            Assert.True(light.Classes.Contains("active"));
+            Assert.Same(AppIconService.Load("light"), window.Icon);
+
+            var violet = tiles[6];
             violet.Command!.Execute(violet.CommandParameter);
             Pump(50);
             Assert.Equal("violet", vm.AppIcon);

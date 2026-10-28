@@ -20,10 +20,13 @@ public static class AppIconService
 {
     public const string DefaultId = "classic";
 
-    /// <summary>Ids in display order; each has Assets/AppIcons/&lt;id&gt;.ico and .png.</summary>
+    /// <summary>
+    /// Ids in display order; each has Assets/AppIcons/&lt;id&gt;.ico and .png. Settings stores
+    /// the id string, never the index, so inserting a tile never moves anyone's saved icon.
+    /// </summary>
     public static IReadOnlyList<string> Ids { get; } = new[]
     {
-        "classic", "dark", "blush", "sky", "sunset", "violet", "aurora",
+        "classic", "light", "dark", "blush", "sky", "sunset", "violet", "aurora",
         "midnight", "graphite", "ruby",
     };
 
