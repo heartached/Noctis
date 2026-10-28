@@ -54,7 +54,9 @@
         <!-- This Week: the time and plays, then one bar per day. -->
         <Border Name="WeekCard" Classes="group-card">
             <StackPanel Margin="16,14,16,16">
-                <TextBlock Classes="row-value" Margin="0" FontWeight="SemiBold" Text="This Week" />
+                <!-- Left, as the total under it: the sheet caps a row-value's width (220), which
+                     centred a stretched caption in the wide card. -->
+                <TextBlock Name="WeekCaption" Classes="row-value" Margin="0" HorizontalAlignment="Left" FontWeight="SemiBold" Text="This Week" />
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
                     <TextBlock Name="WeekTotalLabel" Classes="week-total" Text="{Binding WeekTotal}" />
                     <TextBlock Name="WeekPlaysLabel" Classes="row-value" Margin="0,0,0,5" VerticalAlignment="Bottom"
@@ -121,9 +123,10 @@
             <Border Classes="group-card">
                 <StackPanel>
                     <Button Name="KeepRow" Classes="row" Command="{Binding ChooseKeepCommand}" AutomationProperties.Name="Keep History">
-                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
                             <TextBlock Classes="row-label" Text="Keep History" />
                             <TextBlock Grid.Column="1" Name="KeepValueLabel" Classes="row-value" HorizontalAlignment="Right" Text="{Binding KeepText}" />
+                            <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
                         </Grid>
                     </Button>
                     <StackPanel IsVisible="{Binding HasAccount}">

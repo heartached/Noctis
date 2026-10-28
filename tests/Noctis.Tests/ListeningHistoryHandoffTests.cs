@@ -8,7 +8,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
 using Noctis.Mobile.ViewModels;
@@ -850,6 +852,27 @@ public class ListeningHistoryHandoffTests : IDisposable
         Assert.Equal("Forever", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "KeepValueLabel").Text);
         Assert.True(MobileFixtures.Named<Avalonia.Controls.Button>(pane, "ShowAllButton").IsVisible);
         Assert.False(MobileFixtures.Named<Avalonia.Controls.Grid>(pane, "NoRecentRow").IsVisible);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Pane_InTheSheet_TheWeekCaptionLinesUpWithTheTotal_AndKeepHistoryHasItsChooserGlyph()
+    {
+        // Live: inside the Settings sheet "This Week" sat indented, centred-ish, over "6 min".
+        using var rig = MobileFixtures.MakeRig();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenSettingsCommand.Execute(null);
+        var settings = (SettingsPageViewModel)rig.Shell.CurrentPage!;
+        await settings.Loaded;
+        settings.OpenPaneCommand.Execute(SettingsPane.History);
+        MobileFixtures.Land(window);
+
+        var pane = MobileFixtures.Find<ListeningHistoryPane>(view);
+        var card = MobileFixtures.Named<Avalonia.Controls.Border>(pane, "WeekCard");
+        double Left(string name) => MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, name).TranslatePoint(default, card)!.Value.X;
+        Assert.Equal(Left("WeekTotalLabel"), Left("WeekCaption"), 1);
+        var keepRow = MobileFixtures.Named<Avalonia.Controls.Button>(pane, "KeepRow");
+        Assert.Contains(keepRow.GetVisualDescendants().OfType<GridIcon>(), g => g.Classes.Contains("row-trailing"));
         window.Close();
     }
 
