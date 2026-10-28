@@ -272,6 +272,25 @@ public partial class LyricLine : ObservableObject
     /// </summary>
     public bool ShowWords => HasWords && !IsIntroPlaceholder;
 
+    /// <summary>
+    /// The word layer is built for this line (the default). Very long word-timed lyrics keep
+    /// it only near the sung line (LyricsViewModel); elsewhere the view draws the line at rest
+    /// with one control laid out the same way (KaraokeRestingWords), because a whole
+    /// audiobook of word cells froze the page and starved the audio (10-28).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LiveWords), nameof(ShowLiveWords), nameof(ShowRestingWords))]
+    private bool _isWordLayerLive = true;
+
+    /// <summary><see cref="Words"/> while the word layer is built, else null (no cells).</summary>
+    public IReadOnlyList<WordTiming>? LiveWords => IsWordLayerLive ? Words : null;
+
+    /// <summary>The view renders the per-word karaoke layer (<see cref="ShowWords"/>, built).</summary>
+    public bool ShowLiveWords => ShowWords && IsWordLayerLive;
+
+    /// <summary>The view renders the line's words at rest in one control instead.</summary>
+    public bool ShowRestingWords => ShowWords && !IsWordLayerLive;
+
     /// <summary>True when the view should render the normal line-level text (not intro, no word timings, not a bg-only line).</summary>
     public bool ShowLineText => !IsIntroPlaceholder && !HasWords && !IsBackgroundOnly;
 
