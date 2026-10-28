@@ -435,9 +435,22 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("AlbumsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // An artist's Songs section and the Most Played sort rank by plays, and a counted play
+        // raises no LibraryUpdated: re-rank once the song is over (FinishedPlays), like Songs.
+        _finishedPlays = new FinishedPlays(player, finished =>
+        {
+            var ranksByPlays = AlbumSortMode == "mostplayed" ||
+                (IsArtistFiltered && finished.Any(t => ContainsArtistToken(t.Artist, ArtistFilterName)));
+            if (!ranksByPlays) return true;
+            if (_isActive) RebuildFilteredRows(onlyIfChanged: true);
+            else _isDirty = true;
+            return true;
+        });
     }
 
     private EventHandler? _libraryUpdatedHandler;
+    private readonly FinishedPlays _finishedPlays;
 
     /// <summary>
     /// Set by MainWindowViewModel when Albums becomes (or stops being) the current view.
@@ -573,7 +586,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
-    private void RebuildFilteredRows(bool refreshFromLibrary = false)
+    /// <param name="onlyIfChanged">Leave the rows alone when the rebuild shows the same thing
+    /// (a re-rank after a counted play usually moves nothing).</param>
+    private void RebuildFilteredRows(bool refreshFromLibrary = false, bool onlyIfChanged = false)
     {
         // Capture state for the background task
         var generation = Interlocked.Increment(ref _rebuildGeneration);
@@ -608,6 +623,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                         return;
                     }
                     if (library != null) _allAlbums = albums;
+                    if (onlyIfChanged && SameRows(FilteredAlbumRows, rows)) return;
                     FilteredAlbumRows.ReplaceAll(rows);
                 });
             else if (library != null)
@@ -615,6 +631,24 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 _isDirty = true;
             }
         });
+    }
+
+    /// <summary>Same rows showing the same albums and ranked songs (rows are rebuilt per pass).</summary>
+    private static bool SameRows(IList<object> current, IList<object> next)
+    {
+        if (current.Count != next.Count) return false;
+        for (var i = 0; i < current.Count; i++)
+        {
+            var same = (current[i], next[i]) switch
+            {
+                (AlbumRow a, AlbumRow b) => a.Albums.SequenceEqual(b.Albums),
+                (ArtistSongsRow a, ArtistSongsRow b) => a.Songs.Select(s => s.Track).SequenceEqual(b.Songs.Select(s => s.Track)),
+                (ArtistSectionHeader a, ArtistSectionHeader b) => a.Title == b.Title,
+                _ => false,
+            };
+            if (!same) return false;
+        }
+        return true;
     }
 
     private List<object> BuildFilteredRows(
@@ -1470,6 +1504,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             _library.LibraryUpdated -= _libraryUpdatedHandler;
             _libraryUpdatedHandler = null;
         }
+        _finishedPlays.Dispose();
     }
 
     // Normalizes a value into a comparable search key: strips whitespace, punctuation

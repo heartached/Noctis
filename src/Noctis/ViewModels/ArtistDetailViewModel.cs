@@ -433,7 +433,16 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         // must follow the set, so re-derive the lists when favourites change anywhere.
         _favoritesChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplyLists);
         _library.FavoritesChanged += _favoritesChangedHandler;
+        // Top Songs and Most Played rank by plays, and a counted play raises no LibraryUpdated:
+        // re-rank once the song is over (FinishedPlays), like Songs sorted by Plays.
+        _finishedPlays = new FinishedPlays(player, finished =>
+        {
+            if (finished.Any(t => _allSongs.Any(s => s.Id == t.Id))) OnLibraryUpdated();
+            return true;
+        });
     }
+
+    private readonly FinishedPlays _finishedPlays;
 
     // ── Data ──
 
@@ -1260,6 +1269,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _songsGeneration++; // stops an in-flight Songs-tab slice fill
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;
+        _finishedPlays.Dispose();
     }
 }
 
