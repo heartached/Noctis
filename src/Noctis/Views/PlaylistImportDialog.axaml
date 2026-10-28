@@ -135,13 +135,20 @@
                             <KeyBinding Gesture="Enter" Command="{Binding ImportLinkCommand}" />
                         </TextBox.KeyBindings>
                     </TextBox>
-                    <Button Grid.Column="2" Classes="pill-primary" Width="40" Padding="0"
+                    <Button x:Name="ImportLinkButton" Grid.Column="2" Classes="pill-primary" Width="40" Padding="0"
                             Command="{Binding ImportLinkCommand}"
                             IsEnabled="{Binding CanImportLink}"
                             ToolTip.Tip="{loc:T Import.LinkButton}"
                             AutomationProperties.Name="{loc:T Import.LinkButton}">
-                        <PathIcon Data="{StaticResource ChevronRightIcon}" Width="12" Height="12"
-                                  Foreground="{DynamicResource AccentForegroundBrush}" />
+                        <!-- Owner 10-27: the arrow sat off-centre (1.5px left at 125%). A 12px
+                             PathIcon stretches the chevron's own 7.41-wide ink box and centres
+                             that fraction, so layout rounding pushed it off. Drawn unstretched in
+                             its whole 24-grid box instead: same 12px-tall chevron, the box lands on
+                             whole pixels, and the glyph keeps its designed slight lean toward the
+                             point (optical centre). -->
+                        <Path Data="{StaticResource ChevronRightIcon}" Width="24" Height="24" Stretch="None"
+                              Fill="{DynamicResource AccentForegroundBrush}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Button>
                     <Button x:Name="ChooseFileButton" Grid.Column="4" Classes="pill-secondary"
                             Content="{loc:T Import.ChooseFile}" Padding="18,0" />
