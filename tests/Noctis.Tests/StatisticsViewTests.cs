@@ -398,6 +398,127 @@ public class StatisticsViewTests
         _output.WriteLine(dir);
     }
 
+    /// <summary>Play History with skips on about one play in three, album names from one word to
+    /// a long Single title, and some songs without art, over ~60 days.</summary>
+    private static (FakeLibraryService Library, PlayHistoryEvent[] Events) MixedRecentPlays(string? artDir = null)
+    {
+        var library = new FakeLibraryService();
+        var albums = new[] { "Thriller", "Soy Peor (feat. J Balvin, Ozuna & Arcángel) [Remix] - Single", "It's 4AM",
+                             "LAS QUE NO IBAN A SALIR", "Juice WRLD (Unreleased)", "Una Velita - Single" };
+        for (var i = 0; i < 30; i++)
+        {
+            var art = i % 4 == 3 ? null : artDir == null ? $"C:/nonexistent/art/{i % albums.Length}.jpg" : Path.Combine(artDir, $"cover{i % 8}.png");
+            library.TrackList.Add(new Track
+            {
+                Title = i % 5 == 0 ? $"A rather long song title number {i} (feat. Someone) [Remix]" : $"Song {i}",
+                Artist = $"Artist {i % 7}", Album = albums[i % albums.Length], AlbumArtworkPath = art,
+                Duration = TimeSpan.FromMinutes(3),
+            });
+        }
+        var now = DateTime.UtcNow;
+        var events = Enumerable.Range(0, 600).Select(n =>
+        {
+            var t = library.TrackList[(n * 7) % library.TrackList.Count];
+            return StatisticsNumbersTests.Play(t.Id, t.Title, t.Artist, now.AddMinutes(-n * 137), skipped: n % 3 == 0);
+        }).Reverse().ToArray();
+        return (library, events);
+    }
+
+    /// <summary>Owner 10-27: the album column of Recent Plays started further left on rows with a
+    /// Skipped chip. The chip had its own Auto column, so its width came out of the two star
+    /// columns on those rows only. Every row must start its album at the same x, keep its art and
+    /// title, at any width and after scrolling far down.</summary>
+    [AvaloniaFact]
+    public void RecentPlays_AlbumColumn_LinesUp_AndEveryRowKeepsArtAndTitle()
+    {
+        EnsureAppStyles();
+        var (library, events) = MixedRecentPlays();
+        var vm = new StatisticsViewModel(library, new StatisticsNumbersTests.History(events));
+        foreach (var width in new[] { 1200, 1800, 2445 })
+        {
+            var view = new StatisticsView { DataContext = vm };
+            var window = new Window { Width = width, Height = 1000, Content = view };
+            window.Show();
+            StatisticsNumbersTests.Refresh(vm);
+            vm.IsHistoryTabSelected = true;
+            Pump();
+            var list = view.FindControl<ItemsControl>("HistoryList")!;
+            var scroller = list.GetVisualDescendants().OfType<ScrollViewer>().First();
+            foreach (var offset in new[] { 700.0, 3000, scroller.Extent.Height })
+            {
+                scroller.Offset = new Vector(0, offset);
+                Pump();
+                var rows = list.GetRealizedContainers().Where(c => c.DataContext is StatsPlayRow).ToList();
+                Assert.True(rows.Count > 5, $"{width}px @ {offset}: {rows.Count} rows");
+                var albumX = new HashSet<double>();
+                bool skipped = false, played = false;
+                foreach (var c in rows)
+                {
+                    var row = (StatsPlayRow)c.DataContext!;
+                    var blocks = c.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).ToList();
+                    var title = blocks.Single(t => t.Text == row.Title);
+                    var album = blocks.Single(t => t.Text == row.Album);
+                    var thumb = c.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("thumb"));
+                    Assert.True(thumb.IsEffectivelyVisible && thumb.Bounds.Width == 36, $"{width}px: no art on {row.Title}");
+                    Assert.True(title.Bounds.Width > 20, $"{width}px: title of {row.Title} is {title.Bounds.Width} wide");
+                    albumX.Add(Math.Round(album.TranslatePoint(new Point(0, 0), c)!.Value.X, 1));
+                    skipped |= row.Skipped;
+                    played |= !row.Skipped;
+                }
+                Assert.True(skipped && played, "the sample mixes skipped and played rows");
+                Assert.True(albumX.Count == 1, $"{width}px @ {offset}: album starts at {string.Join(", ", albumX)}");
+            }
+            vm.IsOverviewTabSelected = true;
+            window.Close();
+        }
+    }
+
+    /// <summary>Real Skia only (NOCTIS_TEST_SKIA=1): Recent Plays at three widths, top and far
+    /// down, saved to NOCTIS_STATS_SHOTS (or the temp folder) for a visual check.</summary>
+    [AvaloniaFact]
+    public void Probe_RendersRecentPlays()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        EnsureAppStyles();
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_STATS_SHOTS") is { Length: > 0 } d ? d : Path.Combine(Path.GetTempPath(), "noctis-statistics-shots");
+        Directory.CreateDirectory(dir);
+        var colors = new[] { "#C0392B", "#2D7DD2", "#3BB273", "#F2A33A", "#8E44AD", "#16A085", "#D35400", "#7F8C8D" };
+        for (var i = 0; i < colors.Length; i++)
+        {
+            var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(96, 96));
+            using (var ctx = bmp.CreateDrawingContext())
+                ctx.FillRectangle(new SolidColorBrush(Color.Parse(colors[i])), new Rect(0, 0, 96, 96));
+            bmp.Save(Path.Combine(dir, $"cover{i}.png"));
+        }
+        var (library, events) = MixedRecentPlays(dir);
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var vm = new StatisticsViewModel(library, new StatisticsNumbersTests.History(events));
+            foreach (var width in new[] { 1200, 1800, 2445 })
+            {
+                var view = new StatisticsView { DataContext = vm };
+                var window = new Window { Width = width, Height = 1000, Content = view, RequestedThemeVariant = ThemeVariant.Dark };
+                window.Show();
+                StatisticsNumbersTests.Refresh(vm);
+                vm.IsHistoryTabSelected = true;
+                Pump(20);
+                var scroller = view.FindControl<ItemsControl>("HistoryList")!.GetVisualDescendants().OfType<ScrollViewer>().First();
+                foreach (var (offset, name) in new[] { (700.0, "top"), (20000.0, "far") })
+                {
+                    scroller.Offset = new Vector(0, offset);
+                    Pump(20);
+                    Thread.Sleep(300);
+                    Pump(20);
+                    window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"recent-{width}-{name}.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                }
+                vm.IsOverviewTabSelected = true;
+                window.Close();
+            }
+        });
+        _output.WriteLine(dir);
+    }
+
     private sealed class CountingHandler : HttpMessageHandler
     {
         public int Requests;
