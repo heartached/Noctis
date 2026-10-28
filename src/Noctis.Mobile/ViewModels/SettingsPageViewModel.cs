@@ -93,6 +93,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private const string SignInTitle = "Sign in to your computer";
 
     private bool _loading;
+    // Set once the saved values were read (or the read failed): a change before it is kept
+    // and saved after the load instead of being overwritten by it.
+    private bool _loaded;
+    private SavedFields _setBeforeLoad;
     private string _accentHex = MobileTheme.DefaultAccent;
     // The saved accent's name when it is not one of the nine ("Scarlet", picked on an earlier
     // phone build or on the desktop): kept, shown and saved back as it was.
@@ -389,32 +393,57 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     private async Task LoadCoreAsync()
     {
-        var settings = await Shell.Library.Persistence.LoadSettingsAsync();
-        _loading = true;
+        Noctis.Models.AppSettings? settings = null;
         try
         {
-            Appearance = MobileTheme.Appearances.Contains(settings.MobileAppearance) ? settings.MobileAppearance : "System";
-            DarkTheme = MobileTheme.DarkThemes.Contains(settings.Theme) ? settings.Theme : "Ink";
-            _accentHex = string.IsNullOrWhiteSpace(settings.AccentColorHex) ? MobileTheme.DefaultAccent : settings.AccentColorHex;
-            _savedAccentName = settings.AccentPresetName;
-            AccentChanged();
-            SelectedAccent = Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase));
-            LyricsTextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+            settings = await Shell.Library.Persistence.LoadSettingsAsync();
         }
-        finally
+        catch (Exception ex)
         {
-            _loading = false;
+            // The page keeps its defaults, and later changes still save (each only its own field).
+            DebugLog.Write("Settings", $"Load failed: {ex.Message}");
         }
+        if (settings != null)
+        {
+            // A value changed while this load ran (OpenSettings does not await it) is kept.
+            var kept = _setBeforeLoad;
+            _loading = true;
+            try
+            {
+                if (!kept.HasFlag(SavedFields.Appearance))
+                    Appearance = MobileTheme.Appearances.Contains(settings.MobileAppearance) ? settings.MobileAppearance : "System";
+                if (!kept.HasFlag(SavedFields.DarkTheme))
+                    DarkTheme = MobileTheme.DarkThemes.Contains(settings.Theme) ? settings.Theme : "Ink";
+                if (!kept.HasFlag(SavedFields.Accent))
+                {
+                    _accentHex = string.IsNullOrWhiteSpace(settings.AccentColorHex) ? MobileTheme.DefaultAccent : settings.AccentColorHex;
+                    _savedAccentName = settings.AccentPresetName;
+                    AccentChanged();
+                    SelectedAccent = Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase));
+                }
+                if (!kept.HasFlag(SavedFields.TextScale))
+                    LyricsTextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+        _loaded = true;
+        if (_setBeforeLoad == SavedFields.None) return;
+        // The early change re-themed over the defaults: once more with the loaded rest.
+        if ((_setBeforeLoad & ~SavedFields.TextScale) != SavedFields.None) Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
+        QueueSave(_setBeforeLoad);
     }
 
-    partial void OnAppearanceChanged(string value) => ThemeChanged();
-    partial void OnDarkThemeChanged(string value) => ThemeChanged();
+    partial void OnAppearanceChanged(string value) => ThemeChanged(SavedFields.Appearance);
+    partial void OnDarkThemeChanged(string value) => ThemeChanged(SavedFields.DarkTheme);
 
     partial void OnSelectedAccentChanged(AccentSwatch? value)
     {
         if (value != null) _accentHex = value.Hex;
         AccentChanged();
-        ThemeChanged();
+        ThemeChanged(SavedFields.Accent);
     }
 
     private void AccentChanged()
@@ -429,6 +458,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         Shell.Lyrics.TextScale = value;
         if (_loading) return;
+        if (!_loaded)
+        {
+            _setBeforeLoad |= SavedFields.TextScale;
+            return;
+        }
         var generation = ++_textScaleSaveGeneration;
         PendingSave = SaveAfterSliderSettlesAsync(generation);
     }
@@ -437,36 +471,48 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         await Task.Delay(LyricsPageViewModel.SliderSaveDelay);
         if (generation != Volatile.Read(ref _textScaleSaveGeneration)) return;   // a later step saves
-        await QueueSave();
+        await QueueSave(SavedFields.TextScale);
     }
 
-    private void ThemeChanged()
+    private void ThemeChanged(SavedFields field)
     {
         if (_loading) return;
         Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
-        QueueSave();
+        if (!_loaded) _setBeforeLoad |= field;
+        else QueueSave(field);
     }
+
+    /// <summary>The settings.json fields a save writes: only those the user changed.</summary>
+    [Flags]
+    private enum SavedFields { None = 0, Appearance = 1, DarkTheme = 2, Accent = 4, TextScale = 8 }
 
     /// <summary>Saves one after another. Its own chain, not <see cref="PendingSave"/>: a slider's
     /// delayed save is PendingSave while it waits, and must not queue behind itself.</summary>
-    private Task QueueSave() =>
-        PendingSave = _saveChain = _saveChain.ContinueWith(_ => SaveAsync(), TaskScheduler.Default).Unwrap();
+    private Task QueueSave(SavedFields fields) =>
+        PendingSave = _saveChain = _saveChain.ContinueWith(_ => SaveAsync(fields), TaskScheduler.Default).Unwrap();
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(SavedFields fields)
     {
         try
         {
             // One update: a plain load-then-save let another phone save (a lyrics switch, a pin)
-            // land in between, and this stale copy undid it.
+            // land in between, and this stale copy undid it. Only the changed fields: writing all
+            // of them put "Ink" over a desktop-only theme ("Gray") when only the text size moved.
             await Shell.Library.Persistence.UpdateSettingsAsync(settings =>
             {
-                settings.MobileAppearance = Appearance;
-                settings.Theme = DarkTheme;
-                // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
-                settings.ThemeV2Migrated = true;
-                settings.AccentColorHex = _accentHex;
-                settings.AccentPresetName = AccentName;
-                settings.MobileLyricsTextScale = LyricsTextScale;
+                if (fields.HasFlag(SavedFields.Appearance)) settings.MobileAppearance = Appearance;
+                if (fields.HasFlag(SavedFields.DarkTheme))
+                {
+                    settings.Theme = DarkTheme;
+                    // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
+                    settings.ThemeV2Migrated = true;
+                }
+                if (fields.HasFlag(SavedFields.Accent))
+                {
+                    settings.AccentColorHex = _accentHex;
+                    settings.AccentPresetName = AccentName;
+                }
+                if (fields.HasFlag(SavedFields.TextScale)) settings.MobileLyricsTextScale = LyricsTextScale;
             });
             Interlocked.Increment(ref SaveCount);
         }
