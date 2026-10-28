@@ -28,6 +28,10 @@
             <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Opacity" Value="0.6" />
         </Style>
+        <!-- The Preview list's content sits over the well, its bar out in the right gutter. -->
+        <Style Selector="ScrollViewer.of-preview-scroll /template/ ScrollContentPresenter">
+            <Setter Property="Margin" Value="0,10,28,10" />
+        </Style>
         <!-- Files already where the pattern puts them recede; the ones that move stand out. -->
         <Style Selector="Border.of-row.in-place">
             <Setter Property="Opacity" Value="0.45" />
@@ -122,9 +126,15 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- 3. Preview: every planned move in one filled well. -->
-        <Grid Grid.Row="2" Margin="28,18,28,12" RowDefinitions="Auto,*">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+        <!-- 3. Preview: every planned move in one filled well. The list scrolls on its own
+             (pattern and destination stay put) but its bar runs down the dialog content's
+             right edge, outside the well, like the Metadata editor's Details page (owner
+             10-27: "just like Metadata > Details"). The ScrollViewer reaches into the 28px
+             right gutter; of-preview-scroll insets its content presenter to the well (and
+             10px top and bottom, so scrolled rows clip clear of the rounded corners) while
+             the bar keeps the gutter. Pinned by OrganizeFilesDialogTests. -->
+        <Grid Grid.Row="2" Margin="28,18,0,12" RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,28,8">
                 <TextBlock Grid.Column="0" Classes="of-label" Text="{loc:T OrganizeFiles.Preview}"
                            VerticalAlignment="Center" Margin="4,0,0,0" />
                 <Button Grid.Column="1"
@@ -137,13 +147,11 @@
                         Command="{Binding PreviewCommand}" />
             </Grid>
 
-            <Border Grid.Row="1" Classes="pill-well" ClipToBounds="True" MinHeight="120" Padding="0,10">
-                <!-- Right padding is the overlay scrollbar's lane, so it never sits on a chip.
-                     well-scroll + the well's 10px top/bottom keep the bar and the scrolled rows
-                     clear of the rounded corners (PillDialog.axaml). -->
-                <ScrollViewer Classes="well-scroll"
+            <Panel Grid.Row="1" MinHeight="120">
+                <Border x:Name="PreviewWell" Classes="pill-well" Margin="0,0,28,0" />
+                <ScrollViewer Classes="of-preview-scroll"
                               HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="8,0,16,0">
+                              Padding="8,0">
                     <ItemsControl ItemsSource="{Binding Rows}">
                         <!-- Virtualized: Rows holds one entry per local library track (skips
                              included), so a large library built every row on the UI thread. -->
@@ -175,7 +183,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-            </Border>
+            </Panel>
         </Grid>
 
         <!-- Footer: count on the left, Close / Apply on the right (the editor's Cancel / Save). -->

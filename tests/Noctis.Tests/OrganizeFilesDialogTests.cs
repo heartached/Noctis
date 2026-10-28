@@ -120,9 +120,9 @@ public class OrganizeFilesDialogTests
                 var undo = all.OfType<Button>().Single(b => b.Command == vm.UndoLastCommand);
                 Assert.False(undo.IsEffectivelyEnabled, "Undo enabled with nothing to undo");
 
-                // The preview sits in a filled well and its rows are realized.
+                // The preview sits over a filled well and its rows are realized.
                 var list = all.OfType<ItemsControl>().Single(ic => ReferenceEquals(ic.ItemsSource, vm.Rows));
-                Assert.Contains(list.GetVisualAncestors().OfType<Border>(), b => b.Classes.Contains("pill-well"));
+                Assert.Contains("pill-well", PreviewSurface(win, vm).well.Classes);
                 Assert.Equal(3, list.GetRealizedContainers().Count());
 
                 // Localized footer count.
@@ -160,14 +160,14 @@ public class OrganizeFilesDialogTests
         });
     }
 
-    /// <summary>Owner 10-27: the Preview list's scrollbar ran into the well's rounded corners
-    /// (thumb half outside the top-right curve at the top of the list, into the bottom-right
-    /// one at the end). The well (Border.pill-well, radius 20) clips to its rounded shape and
-    /// the bar spans the ScrollViewer's full height at its right edge, so its ends sat in the
-    /// corner squares. Pins that the track and thumb, and every visible row, stay inside the
-    /// rounded shape at the top and at the bottom of the list.</summary>
+    /// <summary>Owner 10-27: the Preview list's scrollbar first ran into the well's rounded
+    /// corners, then (inset) still sat inside the well on its own track; the owner wanted it
+    /// "just like Metadata > Details": down the dialog content's right edge, outside the well.
+    /// Pins, at the top and at the bottom of the list, that the bar lies wholly right of the
+    /// well and ends at the card's content edge, and that every visible row stays inside the
+    /// well's rounded shape.</summary>
     [AvaloniaFact]
-    public void Preview_ScrollbarAndRowsStayInsideTheRoundedWell()
+    public void Preview_ScrollbarSitsAtTheRightEdge_RowsStayInsideTheRoundedWell()
     {
         EnsureAppStyles();
         AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
@@ -252,12 +252,13 @@ public class OrganizeFilesDialogTests
         return (vm, win);
     }
 
-    /// <summary>The Preview well (the rounded shape that clips) and the ScrollViewer in it.</summary>
+    /// <summary>The Preview well (the rounded fill behind the rows) and the list's ScrollViewer
+    /// over it.</summary>
     private static (Border well, ScrollViewer sv) PreviewSurface(Window win, OrganizeFilesViewModel vm)
     {
         var list = win.GetVisualDescendants().OfType<ItemsControl>().Single(ic => ReferenceEquals(ic.ItemsSource, vm.Rows));
         var sv = list.GetVisualAncestors().OfType<ScrollViewer>().First();
-        var well = sv.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("pill-well"));
+        var well = win.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PreviewWell");
         return (well, sv);
     }
 
@@ -292,8 +293,8 @@ public class OrganizeFilesDialogTests
             && Corner(cr.BottomLeft, cr.BottomLeft, size.Height - cr.BottomLeft, true, false);
     }
 
-    /// <summary>Bar track + thumb, and every visible row clipped to the viewport, must stay
-    /// inside the well's rounded shape.</summary>
+    /// <summary>Bar track + thumb lie right of the well, ending at the card's content edge;
+    /// every visible row clipped to the viewport stays inside the well's rounded shape.</summary>
     private List<string> CheckPreview(Window win, OrganizeFilesViewModel vm, bool bottom)
     {
         var (well, sv) = PreviewSurface(win, vm);
@@ -314,8 +315,16 @@ public class OrganizeFilesDialogTests
         var barRect = RectIn(bar, well);
         var thumbRect = RectIn(thumb, well);
         _o.WriteLine($"{where}: well {well.Bounds.Size} r={well.CornerRadius}  track {barRect}  thumb {thumbRect}");
-        Inside("track", barRect);
-        Inside("thumb", thumbRect);
+        if (barRect.Left < well.Bounds.Width - 0.5)
+            bad.Add($"{where} track {barRect} overlaps the {well.Bounds.Size} well (should sit right of it)");
+        if (thumbRect.Left < well.Bounds.Width - 0.5 || thumbRect.Top < barRect.Top - 0.5 || thumbRect.Bottom > barRect.Bottom + 0.5)
+            bad.Add($"{where} thumb {thumbRect} is not on its track {barRect} right of the well");
+        // The bar's right edge is the dialog content's right edge (the card's).
+        var card = win.GetVisualDescendants().OfType<PillDialogHost>().Single().Card!;
+        var cardRect = RectIn(card, win);
+        var barInWin = RectIn(bar, win);
+        if (Math.Abs(barInWin.Right - cardRect.Right) > 0.5)
+            bad.Add($"{where} bar right edge {barInWin.Right} is not the card's right edge {cardRect.Right}");
         var presenter = sv.GetVisualDescendants().OfType<ScrollContentPresenter>().First(p => p.TemplatedParent == sv);
         var clip = RectIn(presenter, well);
         foreach (var row in sv.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("of-row") && b.IsEffectivelyVisible))
