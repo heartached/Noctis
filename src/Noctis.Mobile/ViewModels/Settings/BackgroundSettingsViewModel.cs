@@ -11,16 +11,25 @@ namespace Noctis.Mobile.ViewModels;
 /// <summary>One square in Settings › Background's grid: a mesh to pick, its name under it.</summary>
 public sealed partial class BackgroundSwatch : ObservableObject
 {
-    public BackgroundSwatch(string id, string name, IBrush brush)
+    internal BackgroundSwatch(BackgroundChoice choice, bool light)
     {
-        Id = id;
-        Name = name;
-        Brush = brush;
+        Choice = choice;
+        Id = choice.Id;
+        Name = choice.Name;
+        Paint(light);
     }
+
+    internal BackgroundChoice Choice { get; }
+    private readonly MeshBrush _mesh = new();
 
     public string Id { get; }
     public string Name { get; }
-    public IBrush Brush { get; }
+
+    /// <summary>The mesh at full strength (its own, so the page's drift never moves it).</summary>
+    public IBrush Brush => _mesh.Brush;
+
+    /// <summary>Recolours the same brush for Light or Dark (the theme can change under the pane).</summary>
+    internal void Paint(bool light) => _mesh.Set(BackgroundCatalog.For(Choice, light), 1);
 
     [ObservableProperty] private bool _isSelected;
 }
@@ -34,20 +43,42 @@ public sealed partial class BackgroundSwatch : ObservableObject
 public sealed partial class BackgroundSettingsViewModel : ObservableObject
 {
     private readonly ShellViewModel _shell;
-    private readonly bool _light;
+    private bool _light;
     private readonly List<BackgroundSwatch> _all = new();
+    private readonly MeshBrush _artwork = new();
 
     public BackgroundSettingsViewModel(ShellViewModel shell)
     {
         _shell = shell;
-        _light = Application.Current?.ActualThemeVariant == ThemeVariant.Light;
-        Neutrals = BackgroundCatalog.Neutrals.Select(Swatch).ToList();
-        Colours = BackgroundCatalog.Colours.Select(Swatch).ToList();
+        _light = IsLight();
+        Neutrals = BackgroundCatalog.Neutrals.Select(c => new BackgroundSwatch(c, _light)).ToList();
+        Colours = BackgroundCatalog.Colours.Select(c => new BackgroundSwatch(c, _light)).ToList();
         _all.AddRange(Neutrals);
         _all.AddRange(Colours);
-        ArtworkBrush = Paint(BackgroundCatalog.ForCover(shell.Background.Cover, _light));
+        _artwork.Set(BackgroundCatalog.ForCover(shell.Background.Cover, _light), 1);
         shell.Background.ChoiceChanged += OnChoiceChanged;
+        // Live: Settings opened in Light, Theme switched to Dark, and every swatch stayed pale.
+        if (Application.Current is { } app) app.ActualThemeVariantChanged += OnThemeChanged;
         SyncSelection();
+    }
+
+    private static bool IsLight() => Application.Current?.ActualThemeVariant == ThemeVariant.Light;
+
+    /// <summary>The sheet closed: stop following the choice and the theme.</summary>
+    internal void Detach()
+    {
+        _shell.Background.ChoiceChanged -= OnChoiceChanged;
+        if (Application.Current is { } app) app.ActualThemeVariantChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        var light = IsLight();
+        if (light == _light) return;
+        _light = light;
+        foreach (var swatch in _all) swatch.Paint(light);
+        _artwork.Set(BackgroundCatalog.ForCover(Background.Cover, light), 1);
+        OnPropertyChanged(nameof(SummarySwatch));
     }
 
     private PhoneBackground Background => _shell.Background;
@@ -59,7 +90,7 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
     public int ColourCount => Colours.Count;
 
     /// <summary>The Now Playing card's tile: the playing cover's mesh.</summary>
-    public IBrush ArtworkBrush { get; }
+    public IBrush ArtworkBrush => _artwork.Brush;
 
     /// <summary>The current choice's name: "Off", "Now Playing" or a swatch's name.</summary>
     public string Summary => Background.Summary;
@@ -114,9 +145,6 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void PickOff() => Background.Choice = PhoneBackground.Off;
-
-    private BackgroundSwatch Swatch(BackgroundChoice choice) =>
-        new(choice.Id, choice.Name, Paint(BackgroundCatalog.For(choice, _light)));
 
     /// <summary>A swatch's brush: the mesh at full strength (its own, so the page's drift never moves it).</summary>
     private static IBrush Paint(BackgroundCatalog.Palette palette)

@@ -275,6 +275,43 @@ public class MobileBackgroundTests
     }
 
     [AvaloniaFact]
+    public async Task Pane_Swatches_FollowTheTheme_WhenItChangesUnderThePane()
+    {
+        // Live: Settings opened in Light, Theme switched to Dark, then Background: every swatch
+        // and the Now Playing tile still wore the pale Light mesh on the dark page.
+        using var rig = MobileFixtures.MakeRig();
+        await rig.Shell.Background.LoadAsync();
+        var app = Application.Current!;
+        var before = app.RequestedThemeVariant;
+        try
+        {
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            var vm = new BackgroundSettingsViewModel(rig.Shell);
+            var ash = vm.Neutrals.First(s => s.Name == "Ash");
+            var brush = ash.Brush;
+            Assert.Equal(BackgroundCatalog.For(ash.Choice, true).Floor, ((ISolidColorBrush)Floor((DrawingBrush)brush)).Color);
+            var changed = new System.Collections.Generic.List<string?>();
+            vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+
+            Assert.Same(brush, ash.Brush);                        // the same brush, recoloured: bindings keep it
+            Assert.Equal(BackgroundCatalog.For(ash.Choice, false).Floor, ((ISolidColorBrush)Floor((DrawingBrush)brush)).Color);
+            Assert.Equal(BackgroundCatalog.ForCover(rig.Shell.Background.Cover, false).Floor,
+                ((ISolidColorBrush)Floor((DrawingBrush)vm.ArtworkBrush)).Color);
+            Assert.Contains(nameof(vm.SummarySwatch), changed);
+
+            vm.Detach();                                          // the sheet closed: no longer followed
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            Assert.Equal(BackgroundCatalog.For(ash.Choice, false).Floor, ((ISolidColorBrush)Floor((DrawingBrush)brush)).Color);
+        }
+        finally
+        {
+            app.RequestedThemeVariant = before;
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Pane_Renders_WithItsSwatches()
     {
         using var rig = MobileFixtures.MakeRig();

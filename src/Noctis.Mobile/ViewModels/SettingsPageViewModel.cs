@@ -870,6 +870,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.Lyrics.PropertyChanged -= OnLyricsChanged;
         Shell.PropertyChanged -= OnShellChanged;
         Background.PropertyChanged -= OnSubPageChanged;
+        Background.Detach();
         Scrobbling.PropertyChanged -= OnSubPageChanged;
         History.PropertyChanged -= OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
