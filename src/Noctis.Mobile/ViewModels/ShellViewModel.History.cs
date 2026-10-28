@@ -93,7 +93,7 @@ public sealed partial class ShellViewModel
         }, TaskScheduler.Default).Unwrap();
     }
 
-    private async Task LoadHistoryPrefsAsync()
+    internal async Task LoadHistoryPrefsAsync()
     {
         try
         {

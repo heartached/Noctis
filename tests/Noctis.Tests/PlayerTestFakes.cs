@@ -220,6 +220,8 @@ internal sealed class FakeHistoryLog : IPlayHistoryService
     public void RecordPlay(Track track) => Seed(track, DateTime.UtcNow);
     public void RecordSkip(Track track) { }
     public Task FlushAsync() => Task.CompletedTask;
+    public int PruneOlderThan(DateTime cutoffUtc) => EventList.RemoveAll(e => e.PlayedAtUtc < cutoffUtc);
+    public Task ClearAsync() { EventList.Clear(); return Task.CompletedTask; }
 
     public void Seed(Track track, DateTime playedAtUtc) => EventList.Add(new PlayHistoryEvent
     {

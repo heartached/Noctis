@@ -109,6 +109,13 @@ public class MobileAccountTests
 
         public void RecordPlay(Track track, DateTime playedUtc) => Plays.Add((track, playedUtc));
 
+        public List<PlayQueueShare> SavedQueues { get; } = new();
+        public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default)
+        {
+            SavedQueues.Add(share);
+            return Task.CompletedTask;
+        }
+
         public void RaiseSyncProgress(NoctisSyncProgress progress) => SyncProgress?.Invoke(this, progress);
 
         public bool IsRemote(Track track) => track.FilePath.StartsWith("noctis-remote://", StringComparison.Ordinal);
