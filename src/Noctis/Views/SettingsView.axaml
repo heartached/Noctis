@@ -4790,7 +4790,7 @@
                         <TextBlock Text="{loc:T Settings.FindDuplicateTracksRemove}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenDuplicateFinderCommand}"
-                            AutomationProperties.Name="{loc:T Settings.Find}"
+                            AutomationProperties.Name="{loc:T Settings.FindDuplicates}"
                             Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
                     </Button>
@@ -4804,7 +4804,7 @@
                         <TextBlock Text="{loc:T Settings.IdentifyPoorlyTaggedTracks}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenMetadataFinderCommand}"
-                            AutomationProperties.Name="{loc:T Settings.Find}"
+                            AutomationProperties.Name="{loc:T Settings.FindMetadata}"
                             Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
                     </Button>
