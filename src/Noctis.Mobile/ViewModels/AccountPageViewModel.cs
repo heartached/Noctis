@@ -637,6 +637,11 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     public override void OnClosed()
     {
+        // A sign-out or remove-downloads question does not outlive the page (DismissSheet does
+        // not close prompts).
+        IsConfirmingSignOut = false;
+        IsConfirmingRemoveDownloads = false;
+        DropQuestion();
         _account.StateChanged -= OnStateChanged;
         _account.SyncProgress -= OnSyncProgress;
         _account.DownloadProgress -= OnDownloadProgress;

@@ -1655,4 +1655,24 @@ public class MobileAccountTests
         Assert.Equal(0, account.RemoveAllCalls);
         Assert.IsType<AccountPageViewModel>(shell.CurrentPage);   // Back took the question, not the page
     }
+
+    /// <summary>The sheet dropped another way than Back (DismissSheet closes pages, not prompts):
+    /// a question asked by a page it closed goes with it, and nothing is removed.</summary>
+    [Fact]
+    public async Task DismissingTheSheet_TakesItsPagesQuestionsDown()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        shell.OpenSettingsCommand.Execute(null);
+        await ((SettingsPageViewModel)shell.CurrentPage!).Loaded;
+        var page = OpenAccount(shell);
+        page.AskSignOutCommand.Execute(null);
+        Assert.True(shell.IsPromptOpen);
+
+        Assert.True(shell.DismissSheet());
+        Assert.False(shell.IsPromptOpen);
+        Assert.False(page.IsConfirmingSignOut);
+        Assert.Empty(account.SignOuts);
+    }
 }

@@ -599,6 +599,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public override void OnClosed()
     {
+        // A Remove Folder question does not outlive the sheet (DismissSheet does not close prompts).
+        FolderToRemove = null;
+        DropQuestion();
         Shell.Library.Folders.CollectionChanged -= OnFoldersChanged;
         Shell.Library.PropertyChanged -= OnLibraryChanged;
         Shell.Lyrics.PropertyChanged -= OnLyricsChanged;
