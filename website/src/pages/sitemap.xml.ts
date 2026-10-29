@@ -16,6 +16,8 @@ const routes = Object.keys(modules)
       .replace(/^\.\//, '')
       .replace(/\.astro$/, '')
       .replace(/(^|\/)index$/, '')
+      // A paged route ("changelog/[...page]") is listed by its first page.
+      .replace(/\/\[\.\.\.\w+\]$/, '')
   )
   .filter((route) => !EXCLUDE.has(route))
   .map((route) => (route ? `/${route}` : '/'))
