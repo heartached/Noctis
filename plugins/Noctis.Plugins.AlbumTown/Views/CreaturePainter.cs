@@ -124,8 +124,8 @@ public sealed class CreaturePainter : IDisposable
         var liftL = Math.Max(0, sin) * lift;
         var liftR = Math.Max(0, -sin) * lift;
         var footY = ground - s * 0.07;
-        ctx.DrawEllipse(t.Limb, t.LimbPen, new Point(x - s * 0.2 + swing, footY - liftL), s * 0.1, s * 0.065);
-        ctx.DrawEllipse(t.Limb, t.LimbPen, new Point(x + s * 0.2 - swing, footY - liftR), s * 0.1, s * 0.065);
+        DrawLimb(ctx, foot: true, new Point(x - s * 0.2 + swing, footY - liftL));
+        DrawLimb(ctx, foot: true, new Point(x + s * 0.2 - swing, footY - liftR));
 
         // The tile. Squashes a little on the beat.
         var squash = c.State == CreatureState.Dance ? 1 - 0.07 * c.Pulse : 1;
@@ -146,6 +146,7 @@ public sealed class CreaturePainter : IDisposable
         var eyeDx = s * 0.17;
         var gx = Math.Clamp(c.Gaze.X, -1, 1) * s * 0.03;
         var gy = Math.Clamp(c.Gaze.Y, -1, 1) * s * 0.025;
+        EnsureLimbs();
         if (c.BlinkTimer < 0)
         {
             ctx.DrawLine(t.BlinkPen, new Point(x - eyeDx - s * 0.06, eyeY), new Point(x - eyeDx + s * 0.06, eyeY));
@@ -153,8 +154,12 @@ public sealed class CreaturePainter : IDisposable
         }
         else
         {
-            ctx.DrawEllipse(t.EyeWhite, t.EyePen, new Point(x - eyeDx, eyeY), s * 0.075, s * 0.09);
-            ctx.DrawEllipse(t.EyeWhite, t.EyePen, new Point(x + eyeDx, eyeY), s * 0.075, s * 0.09);
+            if (SpriteLimbs) DrawSprite(ctx, _eyes!, new Point(x, eyeY));
+            else
+            {
+                ctx.DrawEllipse(t.EyeWhite, t.EyePen, new Point(x - eyeDx, eyeY), s * 0.075, s * 0.09);
+                ctx.DrawEllipse(t.EyeWhite, t.EyePen, new Point(x + eyeDx, eyeY), s * 0.075, s * 0.09);
+            }
             ctx.DrawEllipse(t.Pupil, null, new Point(x - eyeDx + gx, eyeY + gy + s * 0.01), s * 0.038, s * 0.045);
             ctx.DrawEllipse(t.Pupil, null, new Point(x + eyeDx + gx, eyeY + gy + s * 0.01), s * 0.038, s * 0.045);
         }
@@ -182,10 +187,73 @@ public sealed class CreaturePainter : IDisposable
         {
             ry -= Math.Abs(Math.Sin(c.Age * 7)) * s * 0.07;
         }
-        ctx.DrawEllipse(t.Limb, t.LimbPen, new Point(lx, ly), s * 0.08, s * 0.08);
-        ctx.DrawEllipse(t.Limb, t.LimbPen, new Point(rx, ry), s * 0.08, s * 0.08);
+        DrawLimb(ctx, foot: false, new Point(lx, ly));
+        DrawLimb(ctx, foot: false, new Point(rx, ry));
 
         if (c.IsPlaying) DrawNotes(ctx, c, x, top);
+    }
+
+    // A hand and a foot, each a white ellipse with a hairline outline, made once per size, density
+    // and theme: a creature has four, and blitting them costs a fraction of rasterizing an
+    // antialiased filled and outlined ellipse every frame (the bulk of a creature's drawing).
+    // The two eye whites too, as one (filled and outlined); the pupils stay plain dots so they can
+    // look around. Each blit is one more image Avalonia records (it allocates a little for each),
+    // so a canvas that repaints everything every frame (the Apartments) keeps the plain ellipses.
+    private RenderTargetBitmap? _hand;
+    private RenderTargetBitmap? _foot;
+    private RenderTargetBitmap? _eyes;
+    private (double Size, double Scaling, TownTheme? Theme) _limbsFor;
+
+    /// <summary>Hands, feet and eye whites as cached bitmaps (true, the plaza) or drawn shapes.</summary>
+    public bool SpriteLimbs { get; set; } = true;
+
+    private void EnsureLimbs()
+    {
+        if (!SpriteLimbs || _limbsFor == (Size, Scaling, _theme)) return;
+        if (_hand is not null) Retire(_hand);
+        if (_foot is not null) Retire(_foot);
+        if (_eyes is not null) Retire(_eyes);
+        _hand = BuildEllipses(Size * 0.08, Size * 0.08, 0, _theme.Limb, _theme.LimbPen);
+        _foot = BuildEllipses(Size * 0.1, Size * 0.065, 0, _theme.Limb, _theme.LimbPen);
+        _eyes = BuildEllipses(Size * 0.075, Size * 0.09, Size * 0.17, _theme.EyeWhite, _theme.EyePen);
+        _limbsFor = (Size, Scaling, _theme);
+    }
+
+    private void DrawLimb(DrawingContext ctx, bool foot, Point center)
+    {
+        if (!SpriteLimbs)
+        {
+            var s = Size;
+            ctx.DrawEllipse(_theme.Limb, _theme.LimbPen, center, foot ? s * 0.1 : s * 0.08, foot ? s * 0.065 : s * 0.08);
+            return;
+        }
+        EnsureLimbs();
+        DrawSprite(ctx, foot ? _foot! : _hand!, center);
+    }
+
+    private void DrawSprite(DrawingContext ctx, RenderTargetBitmap bitmap, Point center)
+    {
+        var w = bitmap.PixelSize.Width / Scaling;
+        var h = bitmap.PixelSize.Height / Scaling;
+        ctx.DrawImage(bitmap, PixelSource(bitmap), new Rect(Snap(center.X - w / 2), Snap(center.Y - h / 2), w, h));
+        ImagesDrawn++;
+    }
+
+    /// <summary>One ellipse, or two <paramref name="dx"/> left and right of the centre.</summary>
+    private RenderTargetBitmap BuildEllipses(double rx, double ry, double dx, IBrush fill, IPen pen)
+    {
+        // Whole device pixels, odd sizes so the shape sits centred on a pixel.
+        var px = new PixelSize((int)Math.Ceiling((rx * 2 + dx * 2 + 2) * Scaling) | 1, (int)Math.Ceiling((ry * 2 + 2) * Scaling) | 1);
+        var bitmap = new RenderTargetBitmap(px, new Vector(96 * Scaling, 96 * Scaling));
+        using var ctx = bitmap.CreateDrawingContext();
+        var c = new Point(px.Width / Scaling / 2, px.Height / Scaling / 2);
+        if (dx == 0) ctx.DrawEllipse(fill, pen, c, rx, ry);
+        else
+        {
+            ctx.DrawEllipse(fill, pen, new Point(c.X - dx, c.Y), rx, ry);
+            ctx.DrawEllipse(fill, pen, new Point(c.X + dx, c.Y), rx, ry);
+        }
+        return bitmap;
     }
 
     /// <summary>Name tag under the feet: a small flat pill, kept inside <paramref name="bounds"/>.</summary>
@@ -202,6 +270,43 @@ public sealed class CreaturePainter : IDisposable
 
     private Rect PlaceName(Creature c, Label label, Rect bounds)
         => Inside(new Rect(c.Position.X - label.Width / 2, c.Position.Y + Size * 0.06, label.Width, label.Height), bounds);
+
+    // ── Labels drawn by their own visuals (the plaza moves them by transform) ──
+
+    /// <summary>Size of <paramref name="c"/>'s name tag (made now if the frame's budget allows), or null.</summary>
+    public Size? NameSize(Creature c)
+        => LabelFor(c.Album.Title, LabelKind.Name) is { } label ? new Size(label.Width, label.Height) : null;
+
+    /// <summary>Size of a bubble saying <paramref name="line"/> (made now if the budget allows), or null.</summary>
+    public Size? BubbleSize(string line)
+        => LabelFor(line, LabelKind.Bubble) is { } label ? new Size(label.Width, label.Height) : null;
+
+    /// <summary>Draws <paramref name="c"/>'s name tag with its top-left at <paramref name="at"/>.</summary>
+    public void DrawNameAt(DrawingContext ctx, Creature c, Point at)
+    {
+        if (LabelFor(c.Album.Title, LabelKind.Name) is { } label) DrawLabel(ctx, label, at.X, at.Y);
+    }
+
+    /// <summary>Draws a bubble saying <paramref name="line"/> with its top-left at <paramref name="at"/>.</summary>
+    public void DrawBubbleAt(DrawingContext ctx, string line, Point at)
+    {
+        if (LabelFor(line, LabelKind.Bubble) is { } label) DrawLabel(ctx, label, at.X, at.Y);
+    }
+
+    /// <summary>Where a bubble goes when it flips under the feet (below the name tag).</summary>
+    public double UnderFeet(Creature c) => c.Position.Y + Size * 0.06 + FontSize(LabelKind.Name) * 1.8 + 4;
+
+    /// <summary>Marks <paramref name="c"/>'s tile as in use this frame (its visual may not redraw for a
+    /// long while when it stands still, and an unused tile is freed after a few seconds).</summary>
+    public void Touch(Creature c)
+    {
+        if (_sprites.TryGetValue(c.Album.Key, out var sprite)) sprite.UsedFrame = _frame;
+    }
+
+    /// <summary>True when <paramref name="c"/>'s tile is built for the current size, density and theme
+    /// (its visual needs a redraw once it is).</summary>
+    public bool HasCurrentTile(Creature c)
+        => _sprites.TryGetValue(c.Album.Key, out var s) && !s.Stale && s.Size == Size && s.Scaling == Scaling;
 
     /// <summary>Speech bubble above the head: a flat rounded pill, kept inside <paramref name="bounds"/>.</summary>
     public void DrawBubble(DrawingContext ctx, Creature c, Rect bounds)
@@ -504,6 +609,11 @@ public sealed class CreaturePainter : IDisposable
         foreach (var l in _labels.Values) l.Bitmap.Dispose();
         _labels.Clear();
         while (_retired.Count > 0) _retired.Dequeue().Bitmap.Dispose();
+        _hand?.Dispose();
+        _foot?.Dispose();
+        _eyes?.Dispose();
+        _hand = _foot = _eyes = null;
+        _limbsFor = default;
     }
 
     /// <summary>A bubble's layout (tests): font, wrap width, lines the text needs, the text box

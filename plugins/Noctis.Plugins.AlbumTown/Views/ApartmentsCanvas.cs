@@ -83,8 +83,10 @@ public sealed class ApartmentsCanvas : Control
         _softCovers = softCovers;
         Grid = grid;
         Life = life;
-        AlbumPainter = new CreaturePainter(petCovers);
-        SongPainter = new CreaturePainter(petCovers);
+        // Plain shapes for hands, feet and eyes: this canvas repaints every frame, and each blit
+        // would be one more image Avalonia records.
+        AlbumPainter = new CreaturePainter(petCovers) { SpriteLimbs = false };
+        SongPainter = new CreaturePainter(petCovers) { SpriteLimbs = false };
         petCovers.CoverReady += (_, _) => Refresh();
         softCovers.CoverReady += (_, _) => Refresh();
         ClipToBounds = true;
@@ -265,19 +267,31 @@ public sealed class ApartmentsCanvas : Control
         {
             IsPaused = true;
             _lastFrame = null;
+            _gate.Reset();
             _idle.Start();
             return;
         }
         IsPaused = false;
-        var dt = _lastFrame is { } last ? (float)(time - last).TotalSeconds : 1 / 60f;
+        // The Motion setting's rate (15 fps while the window is not in front); a drag is always smooth.
+        var focused = TopLevel.GetTopLevel(this) is not Window w || w.IsActive;
+        var interval = IsDragging ? TimeSpan.FromSeconds(1.0 / 60) : Town.Motion.Interval(Motion, focused);
+        if (!_gate.Pass(_clock.Elapsed, interval, out var dt))
+        {
+            RequestFrame();
+            return;
+        }
         _lastFrame = time;
         _last = _clock.Elapsed;
         Step(dt);
         InvalidateVisual();
         // Nothing alive (no pets, no drag): stop asking for frames until something changes.
         if (IsAlive) RequestFrame();
-        else { IsPaused = true; _lastFrame = null; }
+        else { IsPaused = true; _lastFrame = null; _gate.Reset(); }
     }
+
+    /// <summary>The "Motion" setting: frames per second while pets live here.</summary>
+    public MotionMode Motion { get; set; } = MotionMode.Balanced;
+    private readonly FrameGate _gate = new();
 
     private void CheckIdle()
     {

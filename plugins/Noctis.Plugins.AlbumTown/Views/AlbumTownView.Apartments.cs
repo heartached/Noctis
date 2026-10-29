@@ -69,6 +69,7 @@ public sealed partial class AlbumTownView
             Beat = () => _host.TryReadBeat(out var p) ? p : null,
             ShowNames = _host.ShowNames,
             Describe = Describe,
+            Motion = Noctis.Plugins.AlbumTown.Town.Motion.Parse(_host.Motion),
         };
         _apartments.PetClicked += (_, pet) => ShowCard(pet.Album, null, PetNote(pet));
         _apartments.RoomMenuRequested += (_, room) => OpenRoomMenu(room);

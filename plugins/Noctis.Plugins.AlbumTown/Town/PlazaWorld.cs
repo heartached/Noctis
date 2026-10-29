@@ -79,6 +79,8 @@ public sealed class PlazaWorld
     public float Width { get; private set; }
     public float Height { get; private set; }
     public IReadOnlyList<Creature> Creatures => _creatures;
+    /// <summary>Bumped whenever the crowd changes (someone arrives or leaves).</summary>
+    public int Version { get; private set; }
     public bool Chatty { get; set; } = true;
     /// <summary>Pointer position in plaza coordinates, or null when it is outside.</summary>
     public Vector2? Cursor { get; set; }
@@ -145,6 +147,7 @@ public sealed class PlazaWorld
         }
         foreach (var c in _creatures)
             if (c.Partner is { } p && !_creatures.Contains(p)) EndTalk(c);
+        Version++;
     }
 
     /// <summary>Adds one resident (a called album) walking in from the nearest edge.</summary>
@@ -159,6 +162,7 @@ public sealed class PlazaWorld
         c.Target = spot;
         c.State = CreatureState.Wander;
         _creatures.Add(c);
+        Version++;
         return c;
     }
 
@@ -227,6 +231,60 @@ public sealed class PlazaWorld
     {
         var d = point - BodyCenter(c, s);
         return Math.Abs(d.X) <= s * 0.8f && d.Y >= -s * 0.75f && d.Y <= s * 0.95f;
+    }
+
+    /// <summary>
+    /// True when nothing in the plaza moves or speaks: everyone stands idle (no walk still easing
+    /// out, no bubble, no dancer, nobody fading in). Until <see cref="NextChangeIn"/> the picture
+    /// stays the same, so the canvas can stop drawing frames.
+    /// </summary>
+    public bool IsQuiet()
+    {
+        foreach (var c in _creatures)
+        {
+            if (c.State is not (CreatureState.Idle or CreatureState.LookAtCursor)) return false;
+            if (c.Stride > 0.001f || c.Bubble is not null || c.IsPlaying || c.Age < 0.5f) return false;
+        }
+        return true;
+    }
+
+    /// <summary>Seconds until a quiet plaza changes by itself (the first idle creature sets off).</summary>
+    public float NextChangeIn()
+    {
+        var next = float.MaxValue;
+        foreach (var c in _creatures)
+            if (c.State == CreatureState.Idle) next = Math.Min(next, Math.Max(0, c.StateTimer));
+        return next;
+    }
+
+    /// <summary>Time passed while the plaza slept (nothing moved): runs the clocks forward, so the
+    /// first creature sets off when it would have. Eyes stay open.</summary>
+    public void Advance(float seconds)
+    {
+        if (seconds <= 0) return;
+        foreach (var c in _creatures)
+        {
+            c.StateTimer -= seconds;
+            c.TalkCooldown -= seconds;
+            c.Age += seconds;
+            if (c.BlinkTimer < 0.2f) c.BlinkTimer = 0.2f + (float)_random.NextDouble() * 2;
+        }
+    }
+
+    /// <summary>Everyone stops where they are and stands idle for <paramref name="seconds"/>
+    /// (no chats, no bubbles; the dancer keeps dancing). Tests and the benchmark use it.</summary>
+    public void HoldStill(float seconds)
+    {
+        foreach (var c in _creatures)
+        {
+            EndTalk(c);
+            c.Bubble = null;
+            c.Stride = 0;
+            c.Target = c.Position;
+            c.State = c.IsPlaying ? CreatureState.Dance : CreatureState.Idle;
+            c.StateTimer = seconds;
+            if (c.Age < 0.5f) c.Age = 0.5f;
+        }
     }
 
     /// <summary>Click: the creature stops, waves and says hello.</summary>

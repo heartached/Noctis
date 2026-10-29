@@ -70,6 +70,7 @@ public sealed partial class AlbumTownView : UserControl
         {
             Beat = () => _host.TryReadBeat(out var p) ? p : null,
             ShowNames = host.ShowNames,
+            Motion = Noctis.Plugins.AlbumTown.Town.Motion.Parse(host.Motion),
         };
         world.Chatty = host.Chatty;
         _plaza.CreatureClicked += (_, c) => ShowCard(c.Album, c.Member.Reason);
@@ -377,7 +378,7 @@ public sealed partial class AlbumTownView : UserControl
         _cast = PlazaCast.Choose(_town, _host.CrowdSize, random, NowPlayingKey(), _called).ToList();
         _plaza.World.SetCast(_cast);
         _plaza.World.SetNowPlaying(NowPlayingKey(), _host.IsPlaying);
-        _plaza.InvalidateVisual();
+        _plaza.Wake();
         UpdateStatus();
     }
 
@@ -395,6 +396,7 @@ public sealed partial class AlbumTownView : UserControl
             _cast[at] = member;
             _plaza.World.SetCast(_cast);
             if (_plaza.World.Creatures.FirstOrDefault(c => c.Album.Key == album.Key) is { } here) _plaza.World.Wave(here);
+            _plaza.Wake();
             return;
         }
         if (_cast.Count >= Math.Clamp(_host.CrowdSize, PlazaCast.MinCrowd, PlazaCast.MaxCrowd))
@@ -410,6 +412,7 @@ public sealed partial class AlbumTownView : UserControl
         }
         _cast.Add(member);
         _plaza.World.Call(member);
+        _plaza.Wake();
         UpdateStatus();
     }
 
@@ -434,6 +437,7 @@ public sealed partial class AlbumTownView : UserControl
             _plaza.World.Call(member);
         }
         _plaza.World.SetNowPlaying(key, _host.IsPlaying);
+        _plaza.Wake();
         ApplyNowPlayingToApartments();
         UpdateStatus();
     }
@@ -444,9 +448,10 @@ public sealed partial class AlbumTownView : UserControl
         _plaza.World.Chatty = _host.Chatty;
         _apartments.ShowNames = _host.ShowNames;
         _life.Chatty = _host.Chatty;
+        _plaza.Motion = _apartments.Motion = Noctis.Plugins.AlbumTown.Town.Motion.Parse(_host.Motion);
         if (_cast.Count != Math.Clamp(_host.CrowdSize, PlazaCast.MinCrowd, Math.Min(PlazaCast.MaxCrowd, Math.Max(1, _town.Count))))
             Recast(fresh: false);
-        _plaza.InvalidateVisual();
+        _plaza.Wake();
     }
 
     private void ShowTab(bool plaza)

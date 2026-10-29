@@ -489,6 +489,169 @@ public class AlbumTownPluginTests
 
     private static void Click(Button b) => b.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
+    // ── 1.2: frame rate, sleeping, labels that keep out of each other's way ──
+
+    [Theory]
+    [InlineData("Smooth (60 fps)", true, 60)]
+    [InlineData("Balanced (30 fps)", true, 30)]
+    [InlineData("Battery saver (15 fps)", true, 15)]
+    [InlineData("anything else", true, 30)]
+    [InlineData(null, true, 30)]
+    [InlineData("Smooth (60 fps)", false, 15)] // the window is not in front
+    public void Motion_LetsThroughItsRate_OfThe60HzScreen(string? setting, bool focused, int expected)
+    {
+        var mode = Motion.Parse(setting);
+        var gate = new FrameGate();
+        var passed = 0;
+        var time = 0f;
+        for (var i = 0; i < 600; i++) // ten seconds of a 60 Hz screen, a little jitter
+        {
+            var at = TimeSpan.FromSeconds(i / 60.0 + (i % 3 - 1) * 0.0015);
+            if (gate.Pass(at, Motion.Interval(mode, focused), out var dt)) { passed++; time += dt; }
+        }
+        Assert.InRange(passed / 10.0, expected * 0.95, expected * 1.02);
+        // Time-based: the steps add up to the real time, so walking speed never changes.
+        Assert.InRange(time, 9.9f, 10.1f);
+    }
+
+    [AvaloniaFact]
+    public void Plaza_SleepsWhenNobodyMoves_AndWakesWithItsClocksRunOn()
+    {
+        var (view, _) = NewView(12);
+        var window = new Window { Content = view, Width = 1200, Height = 800 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var plaza = view.Plaza;
+        plaza.ManualFrames = true;
+        plaza.FocusOverride = true;
+        plaza.Motion = MotionMode.Smooth;
+        plaza.Wake();
+        plaza.OfferFrame();
+        Assert.False(plaza.IsAsleep); // the crowd just arrived: they walk and fade in
+
+        plaza.World.Chatty = false;
+        plaza.World.HoldStill(5);
+        Assert.True(plaza.World.IsQuiet());
+        Assert.InRange(plaza.World.NextChangeIn(), 4.9f, 5f);
+        Thread.Sleep(20);
+        plaza.OfferFrame();
+        Assert.True(plaza.IsAsleep);
+        var frames = plaza.Frames;
+        for (var i = 0; i < 5; i++) { Thread.Sleep(20); plaza.OfferFrame(); }
+        Assert.Equal(frames, plaza.Frames); // asleep: nothing stepped, nothing drawn
+
+        Thread.Sleep(50);
+        plaza.Wake(); // the pointer, the music, the crowd: anything that changes
+        Assert.False(plaza.IsAsleep);
+        Assert.All(plaza.World.Creatures, c => Assert.True(c.StateTimer < 5 - 0.05f)); // the sleep counted
+        Thread.Sleep(20);
+        plaza.OfferFrame();
+        Assert.Equal(frames + 1, plaza.Frames);
+
+        // Somebody moving (a click: it waves and wakes the plaza): no sleep.
+        plaza.World.Wave(plaza.World.Creatures[0]);
+        plaza.Wake();
+        Thread.Sleep(20);
+        plaza.OfferFrame();
+        Assert.False(plaza.IsAsleep);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void NameTagsAndBubbles_KeepOutOfEachOthersWay_WhenTheCrowdBunchesUp()
+    {
+        var (view, _) = NewView(16);
+        var window = new Window { Content = view, Width = 1400, Height = 900 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var plaza = view.Plaza;
+        plaza.Step(1 / 60f);
+        plaza.ShowNames = true;
+        var s = (float)plaza.Painter.Size;
+        var creatures = plaza.World.Creatures;
+        // A tight crowd in the middle, everyone saying hello at once.
+        for (var i = 0; i < creatures.Count; i++)
+        {
+            var c = creatures[i];
+            c.Position = new Vector2(500 + i % 4 * s * 1.15f, 350 + i / 4 * s * 1.25f);
+            plaza.World.Wave(c);
+        }
+        for (var i = 0; i < 40; i++) plaza.Sync(); // labels built over a few frames' budgets
+
+        var bubbles = new List<Rect>();
+        var names = new List<(Rect Rect, Creature Owner)>();
+        foreach (var c in creatures)
+        {
+            var (name, bubble) = plaza.LabelsOf(c);
+            if (bubble is { } b) bubbles.Add(b);
+            if (name is { } n) names.Add((n, c));
+        }
+        Assert.True(bubbles.Count >= 4, $"{bubbles.Count} bubbles shown");
+        // Tags that would sit on a neighbour in this crowd wait (they show on hover); the last row's show.
+        Assert.True(names.Count >= 2, $"{names.Count} tags shown");
+        var bounds = new Rect(plaza.Bounds.Size);
+        for (var i = 0; i < bubbles.Count; i++)
+        {
+            Assert.True(bounds.Contains(bubbles[i]));
+            for (var j = i + 1; j < bubbles.Count; j++)
+                Assert.False(bubbles[i].Intersects(bubbles[j]), $"bubbles {bubbles[i]} and {bubbles[j]} overlap");
+            foreach (var (n, _) in names) Assert.False(bubbles[i].Intersects(n), $"bubble {bubbles[i]} covers tag {n}");
+        }
+        foreach (var (n, owner) in names)
+        {
+            foreach (var (other, _) in names)
+                if (other != n) Assert.False(n.Intersects(other), $"tags {n} and {other} overlap");
+            foreach (var c in creatures)
+            {
+                if (ReferenceEquals(c, owner)) continue;
+                var body = new Rect(c.Position.X - s * 0.72, c.Position.Y - s * 1.42, s * 1.44, s * 1.5);
+                Assert.False(n.Intersects(body), $"{owner.Album.Title}'s tag {n} sits on {c.Album.Title}");
+            }
+        }
+
+        // The hovered one's tag always shows, even in a crowd.
+        var hovered = creatures[5];
+        plaza.World.Cursor = PlazaWorld.BodyCenter(hovered, s);
+        plaza.Step(1 / 60f);
+        plaza.Sync();
+        Assert.Same(hovered, plaza.Hovered);
+        Assert.NotNull(plaza.LabelsOf(hovered).Name);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Plaza_MovesOnlyWhatChanged_AndReportsIt()
+    {
+        var (view, _) = NewView(20);
+        var window = new Window { Content = view, Width = 1400, Height = 900 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var plaza = view.Plaza;
+        void Frame()
+        {
+            plaza.Step(1 / 30f);
+            plaza.Sync();
+            // The compositor draws what was invalidated (the tiles get built and drawn).
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+        }
+        for (var i = 0; i < 60; i++) Frame();
+        plaza.World.Chatty = false;
+        plaza.World.HoldStill(10);
+        for (var i = 0; i < 3; i++) Frame();
+        // Standing still: nothing moves, nothing is repainted (blinks aside).
+        Assert.True(plaza.RepaintCount <= 2, plaza.RepaintCount.ToString());
+        var walker = plaza.World.Creatures[3];
+        plaza.World.Wave(walker);
+        Frame();
+        Assert.Contains(Enumerable.Range(0, plaza.RepaintCount).Select(plaza.RepaintedAt), v => v is not null);
+        Assert.True(plaza.DirtyCount >= 1);
+        // The floor is never repainted for a creature: only small rectangles around it.
+        for (var i = 0; i < plaza.DirtyCount; i++)
+            Assert.True(plaza.DirtyAt(i).Width < plaza.Bounds.Width / 3, plaza.DirtyAt(i).ToString());
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Plaza_PausesWhileHiddenOrMinimized()
     {
@@ -737,19 +900,13 @@ public class AlbumTownPluginTests
         view.ShowCard(clicked.Album, clicked.Member.Reason);
         Dispatcher.UIThread.RunJobs();
 
-        using (var shot = new RenderTargetBitmap(new PixelSize(2560, 1440)))
-        {
-            shot.Render(window);
-            shot.Save(Path.Combine(dir, "preview.png"));
-        }
+        view.Plaza.Sync();
+        Capture(window, Path.Combine(dir, "preview.png"));
         view.ApplyTheme(TownTheme.Light);
         for (var i = 0; i < 20; i++) { view.Plaza.Step(1 / 60f); RenderFrame(view, tiny); }
         Dispatcher.UIThread.RunJobs();
-        using (var shot = new RenderTargetBitmap(new PixelSize(2560, 1440)))
-        {
-            shot.Render(window);
-            shot.Save(Path.Combine(dir, "preview-light.png"));
-        }
+        view.Plaza.Sync();
+        Capture(window, Path.Combine(dir, "preview-light.png"));
         view.ApplyTheme(TownTheme.Dark);
         view.HideCard();
         view.GetLogicalDescendants().OfType<Button>().Single(b => Avalonia.Automation.AutomationProperties.GetName(b) == "Apartments")
@@ -758,11 +915,7 @@ public class AlbumTownPluginTests
         foreach (var a in town) view.ResidentCovers.GetNow(a.ArtworkPath);
         view.ApartmentsView.InvalidateVisual();
         Dispatcher.UIThread.RunJobs();
-        using (var shot = new RenderTargetBitmap(new PixelSize(2560, 1440)))
-        {
-            shot.Render(window);
-            shot.Save(Path.Combine(dir, "preview-apartments.png"));
-        }
+        Capture(window, Path.Combine(dir, "preview-apartments.png"));
         window.Close();
         Assert.True(albums > 60);
     }
@@ -785,35 +938,47 @@ public class AlbumTownPluginTests
         {
             var plaza = view.Plaza;
             var recorder = new Recorder(plaza);
-            for (var i = 0; i < 120; i++) { plaza.Step(1 / 60f); recorder.Record(plaza); } // warm up (JIT, caches)
+            // What the compositor does each frame: record the visuals whose content changed.
+            void RecordChanged()
+            {
+                for (var r = 0; r < plaza.RepaintCount; r++) recorder.Record(plaza.RepaintedAt(r));
+            }
+            for (var i = 0; i < 120; i++) { plaza.Step(1 / 60f); plaza.Sync(); RecordChanged(); } // warm up (JIT, caches)
 
             const int frames = 600;
             var times = new double[frames];
             var gc0 = GC.CollectionCount(0); var gc1 = GC.CollectionCount(1); var gc2 = GC.CollectionCount(2);
-            var stepBytes = 0L; var renderBytes = 0L; var images = 0L;
+            var stepBytes = 0L; var syncBytes = 0L; var renderBytes = 0L; var images = 0L;
             for (var i = 0; i < frames; i++)
             {
                 var a0 = GC.GetAllocatedBytesForCurrentThread();
                 var t0 = Stopwatch.GetTimestamp();
                 plaza.Step(1 / 60f);
+                var aStep = GC.GetAllocatedBytesForCurrentThread();
+                plaza.Sync();
                 var a1 = GC.GetAllocatedBytesForCurrentThread();
-                recorder.Record(plaza);
+                syncBytes += a1 - aStep;
+                RecordChanged();
                 times[i] = Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
                 renderBytes += GC.GetAllocatedBytesForCurrentThread() - a1;
-                stepBytes += a1 - a0;
+                stepBytes += aStep - a0;
                 images += plaza.Painter.ImagesDrawn + 1; // + the floor
             }
             var gcs = (GC.CollectionCount(0) - gc0, GC.CollectionCount(1) - gc1, GC.CollectionCount(2) - gc2);
+            string[] sampled;
+            using (var listener = new AllocListener())
+            {
+                for (var i = 0; i < 3000; i++) { plaza.Step(1 / 60f); plaza.Sync(); RecordChanged(); }
+                sampled = listener.Types.OrderByDescending(k => k.Value).Select(k => $"{k.Value} x {k.Key}").ToArray();
+            }
+            File.WriteAllText(Path.Combine(dir, "plaza-alloc.txt"), string.Join("\n", sampled));
             Array.Sort(times);
             var mean = times.Average();
             var p95 = times[(int)(frames * 0.95)];
             var stepPer = stepBytes / (double)frames;
+            var syncPer = syncBytes / (double)frames;
             var renderPer = renderBytes / (double)frames;
-            // Avalonia itself allocates a little per DrawImage it records (measured here, on this
-            // Avalonia): the plugin's own share is what is left.
-            var perImage = AvaloniaBytesPerDrawImage(window);
             var imagesPer = images / (double)frames;
-            var own = stepPer + renderPer - imagesPer * perImage;
 
             var size = new PixelSize((int)plaza.Bounds.Width, (int)plaza.Bounds.Height);
             double raster;
@@ -826,20 +991,203 @@ public class AlbumTownPluginTests
             }
             var report = $"{plaza.World.Creatures.Count} creatures, plaza {size.Width}x{size.Height}, {frames} frames\n"
                 + $"UI thread (step + record): mean {mean:0.000} ms, p95 {p95:0.000} ms, max {times[^1]:0.000} ms\n"
-                + $"allocated per frame: step {stepPer:0} B, render {renderPer:0} B ({imagesPer:0} bitmaps x {perImage:0} B recorded by Avalonia; plugin's own {Math.Max(0, own):0} B)\n"
+                + $"allocated per frame: world {stepPer:0} B, moving the visuals {syncPer:0} B (Avalonia's property-change args), recording what changed {renderPer:0} B ({imagesPer:0} bitmaps)\n"
+                + $"allocation samples over 3000 frames: {string.Join("; ", sampled.Take(8))}\n"
                 + $"GCs over {frames} frames: gen0 {gcs.Item1}, gen1 {gcs.Item2}, gen2 {gcs.Item3}\n"
                 + $"full CPU raster (headless Skia, step + render into a bitmap): {raster:0.00} ms per frame\n";
             File.WriteAllText(Path.Combine(dir, "bench.txt"), report);
             Console.WriteLine(report);
 
             Assert.True(p95 < 4, report);
-            Assert.True(own < 256, report);
-            Assert.True(stepPer + renderPer < 16 * 1024, report);
+            Assert.True(stepPer < 64, report); // the world: nothing (a new chat's lines now and then)
+            Assert.True(stepPer + syncPer + renderPer < 80 * 1024, report);
             Assert.True(gcs.Item2 + gcs.Item3 == 0, report);
+            // Each changed visual's re-recording is Avalonia's own render data (~1.8 KB a visual): gen0
+            // garbage, never kept. Only Avalonia's own objects in the samples: never the plugin's types, closures or text layout.
+            Assert.DoesNotContain(sampled, x => x.Contains("AlbumTown") || x.Contains("DisplayClass") || x.Contains("FormattedText") || x.Contains("TextLayout"));
         }
         finally
         {
             window.Close();
+        }
+    }
+
+    /// <summary>
+    /// The owner's live measurement (1.1.1: ~61% of a core with the plaza open at 2560x1440,
+    /// maximized, 40 creatures) came from repainting the whole plaza 60 times a second. This runs
+    /// the plaza in real time (60 Hz screen frames, slept between) and does per frame what the app
+    /// does: step, move the visuals, record what changed, and rasterize with Skia on the CPU into a
+    /// 2560x1341 surface that persists between frames. The 1.1 way repaints everything every
+    /// frame; 1.2 repaints only the rectangles the frame dirtied (the plaza reports them), merged
+    /// to at most 8 like Avalonia's compositor. Headless Avalonia itself repaints the whole window
+    /// on every frame (measured: ~18 ms either way), so it cannot show this.
+    /// Numbers go to plaza-cpu.txt.
+    /// </summary>
+    [AvaloniaFact]
+    public void Plaza_AtBalanced_CostsAThirdOrLessOfThe60fpsFullRedraw()
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_TEST_SKIA") != "1")
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_ALBUMTOWN_PREVIEW") is { Length: > 0 } d ? d : Path.Combine(Path.GetTempPath(), "albumtown-preview");
+        Directory.CreateDirectory(dir);
+        var (view, window, host) = BigPlaza(dir, 2560, 1440, crowd: 40);
+        try
+        {
+            var plaza = view.Plaza;
+            plaza.FocusOverride = true;
+            plaza.ManualFrames = true; // the test offers the screen's frames (headless ones stop after a few)
+            var recorder = new Recorder(plaza);
+            Action<DrawingContext> all = plaza.RenderAll;
+            var surface = new RenderTargetBitmap(new PixelSize((int)plaza.Bounds.Width, (int)plaza.Bounds.Height));
+            var rects = new List<Rect>(256);
+
+            var parts = new double[3];
+            var one = new Rect[1];
+            double repaints = 0, dirtyRects = 0;
+            (double BusyMs, double Frames, double Pixels) Run(bool full, MotionMode mode, double seconds, bool sprites = true)
+            {
+                Array.Clear(parts);
+                repaints = dirtyRects = 0;
+                plaza.Painter.SpriteLimbs = sprites; // false: hands, feet and eyes drawn as shapes, as 1.1 did
+                plaza.ForceFullRedraw = full;
+                plaza.Motion = mode;
+                plaza.Wake();
+                var clock = Stopwatch.StartNew();
+                var busy = 0.0;
+                var pixels = 0.0;
+                var frames0 = plaza.Frames;
+                var tick = 0;
+                while (clock.Elapsed.TotalSeconds < seconds)
+                {
+                    var wait = TimeSpan.FromSeconds(++tick / 60.0) - clock.Elapsed;
+                    if (wait > TimeSpan.Zero) Thread.Sleep(wait);
+                    var before = plaza.Frames;
+                    var t0 = Stopwatch.GetTimestamp();
+                    plaza.OfferFrame();
+                    var t1 = Stopwatch.GetTimestamp();
+                    busy += Stopwatch.GetElapsedTime(t0, t1).TotalMilliseconds;
+                    parts[0] += Stopwatch.GetElapsedTime(t0, t1).TotalMilliseconds;
+                    if (plaza.Frames == before && !full) continue; // let pass: nothing to do
+
+                    if (full)
+                    {
+                        var t2 = Stopwatch.GetTimestamp();
+                        recorder.Record(all);
+                        using (var ctx = surface.CreateDrawingContext()) plaza.RenderAll(ctx);
+                        busy += Stopwatch.GetElapsedTime(t2).TotalMilliseconds;
+                        pixels += plaza.Bounds.Width * plaza.Bounds.Height;
+                        continue;
+                    }
+                    rects.Clear();
+                    for (var i = 0; i < plaza.DirtyCount; i++) rects.Add(plaza.DirtyAt(i).Intersect(new Rect(plaza.Bounds.Size)));
+                    MergeDirty(rects, 8);
+                    var t3 = Stopwatch.GetTimestamp();
+                    for (var i = 0; i < plaza.RepaintCount; i++) recorder.Record(plaza.RepaintedAt(i));
+                    parts[1] += Stopwatch.GetElapsedTime(t3).TotalMilliseconds;
+                    if (rects.Count > 0)
+                    {
+                        // Each dirty rectangle repainted under its own (cheap, pixel-aligned) clip.
+                        using var ctx = surface.CreateDrawingContext(false);
+                        foreach (var r in rects)
+                        {
+                            one[0] = r;
+                            using (ctx.PushClip(r)) plaza.RenderRegion(ctx, one);
+                        }
+                    }
+                    repaints += plaza.RepaintCount;
+                    dirtyRects += rects.Count;
+                    busy += Stopwatch.GetElapsedTime(t3).TotalMilliseconds;
+                    parts[2] += Stopwatch.GetElapsedTime(t3).TotalMilliseconds;
+                    foreach (var r in rects) pixels += r.Width * r.Height;
+                }
+                return (busy / seconds, (plaza.Frames - frames0) / seconds, pixels / seconds);
+            }
+
+            // What opening and closing a drawing context on the surface costs by itself (nothing drawn).
+            for (var i = 0; i < 10; i++) using (surface.CreateDrawingContext(false)) { }
+            var open = Stopwatch.StartNew();
+            for (var i = 0; i < 100; i++) using (surface.CreateDrawingContext(false)) { }
+            var perOpen = open.Elapsed.TotalMilliseconds / 100;
+            File.WriteAllText(Path.Combine(dir, "dbg3.txt"), $"open/close {perOpen:0.000} ms");
+            Run(full: true, MotionMode.Smooth, 1, sprites: false); // warm up every way
+            Run(full: true, MotionMode.Smooth, 1);
+            Run(full: false, MotionMode.Balanced, 1);
+            const double secs = 4;
+            var old = Run(full: true, MotionMode.Smooth, secs, sprites: false);
+            var fullNew = Run(full: true, MotionMode.Smooth, secs);
+            var smooth = Run(full: false, MotionMode.Smooth, secs);
+            var balanced = Run(full: false, MotionMode.Balanced, secs);
+            var balancedParts = $"step and move {parts[0] / secs:0.0} ms, record {parts[1] / secs:0.0} ms, raster {(parts[2] - parts[1]) / secs:0.0} ms per second; "
+                + $"per frame {repaints / (balanced.Frames * secs):0.0} visuals repainted, {dirtyRects / (balanced.Frames * secs):0.0} dirty rects";
+            var battery = Run(full: false, MotionMode.BatterySaver, secs);
+            plaza.FocusOverride = false;
+            var away = Run(full: false, MotionMode.Smooth, secs);
+            plaza.FocusOverride = true;
+
+            // Nothing moving: the plaza sleeps and costs nothing until someone sets off.
+            host.IsPlaying = false;
+            host.RaiseNowPlaying();
+            plaza.World.Chatty = false;
+            plaza.World.HoldStill(3);
+            var quiet = Run(full: false, MotionMode.Balanced, 1);
+
+            string Line(string name, (double BusyMs, double Frames, double Pixels) r)
+                => $"{name}: {r.Frames:0} frames/s, {r.BusyMs:0.0} ms of CPU per second ({r.BusyMs / 10:0.0}% of a core), {r.Pixels / 1e6:0.0} Mpx repainted per second";
+            var report = $"{plaza.World.Creatures.Count} creatures, plaza {plaza.Bounds.Width:0}x{plaza.Bounds.Height:0}, real-time 60 Hz, {secs:0} s each, CPU Skia raster\n"
+                + Line("1.1 way: 60 fps, whole plaza repainted, 1.1 drawing", old) + "\n"
+                + Line("1.2 drawing, 60 fps, whole plaza repainted (for comparison)", fullNew) + "\n"
+                + Line("1.2 Smooth (60 fps, only what changed)", smooth) + "\n"
+                + Line("1.2 Balanced (30 fps, default)", balanced) + $" [{balancedParts}]\n"
+                + Line("1.2 Battery saver (15 fps)", battery) + "\n"
+                + Line("1.2 window not in front (Smooth chosen: 15 fps)", away) + "\n"
+                + Line("1.2 nobody moving (asleep)", quiet) + "\n"
+                + $"Balanced vs the 1.1 way: {old.BusyMs / Math.Max(0.01, balanced.BusyMs):0.0}x less CPU, {old.Pixels / Math.Max(1, balanced.Pixels):0.0}x fewer pixels; "
+                + $"vs a full 60 fps repaint with the 1.2 drawing: {fullNew.BusyMs / Math.Max(0.01, balanced.BusyMs):0.0}x less CPU\n";
+            File.WriteAllText(Path.Combine(dir, "plaza-cpu.txt"), report);
+            Console.WriteLine(report);
+            surface.Dispose();
+
+            Assert.InRange(balanced.Frames, 24, 33);
+            Assert.InRange(battery.Frames, 11, 17);
+            Assert.InRange(away.Frames, 11, 17);
+            Assert.True(balanced.BusyMs * 3 <= old.BusyMs, report);
+            Assert.True(quiet.Frames <= 2, report);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Merges dirty rectangles: overlapping ones first, then the pair that wastes the
+    /// least area, until at most <paramref name="max"/> remain (as a compositor does).</summary>
+    private static void MergeDirty(List<Rect> rects, int max)
+    {
+        for (var merged = true; merged;)
+        {
+            merged = false;
+            for (var i = 0; i < rects.Count && !merged; i++)
+                for (var j = i + 1; j < rects.Count; j++)
+                    if (rects[i].Intersects(rects[j]))
+                    {
+                        rects[i] = rects[i].Union(rects[j]);
+                        rects.RemoveAt(j);
+                        merged = true;
+                        break;
+                    }
+        }
+        while (rects.Count > max)
+        {
+            var (bi, bj, best) = (0, 1, double.MaxValue);
+            for (var i = 0; i < rects.Count; i++)
+                for (var j = i + 1; j < rects.Count; j++)
+                {
+                    var u = rects[i].Union(rects[j]);
+                    var waste = u.Width * u.Height - rects[i].Width * rects[i].Height - rects[j].Width * rects[j].Height;
+                    if (waste < best) (bi, bj, best) = (i, j, waste);
+                }
+            rects[bi] = rects[bi].Union(rects[bj]);
+            rects.RemoveAt(bj);
         }
     }
 
@@ -892,12 +1240,18 @@ public class AlbumTownPluginTests
             control.Render(_ctx);
             (_results() as IDisposable)?.Dispose();
         }
+
+        public void Record(Action<DrawingContext> draw)
+        {
+            draw(_ctx);
+            (_results() as IDisposable)?.Dispose();
+        }
     }
 
     /// <summary>A maximized-size town: 60 residents with covers, one dancing, all walked in.</summary>
-    private static (AlbumTownView View, Window Window, FakeTownHost Host) BigPlaza(string dir, int width, int height)
+    private static (AlbumTownView View, Window Window, FakeTownHost Host) BigPlaza(string dir, int width, int height, int crowd = 60)
     {
-        var host = new FakeTownHost { CrowdSize = 60, Pulse = 0.7 };
+        var host = new FakeTownHost { CrowdSize = crowd, Pulse = 0.7 };
         var covers = PreviewCovers(Path.Combine(dir, "covers"));
         for (var i = 0; i < 120; i++)
         {
@@ -923,8 +1277,18 @@ public class AlbumTownPluginTests
 
     private static void RenderFrame(AlbumTownView view, RenderTargetBitmap bmp)
     {
+        view.Plaza.Sync();
         using var ctx = bmp.CreateDrawingContext();
-        view.Plaza.Render(ctx);
+        view.Plaza.RenderAll(ctx);
+    }
+
+    /// <summary>The window as the compositor draws it (a real frame).</summary>
+    internal static void Capture(Window window, string path)
+    {
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        using var frame = Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
+        frame!.Save(path);
     }
 
     /// <summary>Made-up album covers (gradients and shapes) for the preview.</summary>
@@ -1162,7 +1526,10 @@ public class AlbumTownPluginTests
         Assert.NotNull(manifest.CheckCompatibility("1.6.5")); // before API 1.3/1.4
         Assert.Equal("1.6.6", manifest.MinAppVersion); // 1.6.6 ships API 1.4
         Assert.Null(manifest.CheckCompatibility("1.6.6"));
-        Assert.Equal(new[] { "crowdSize", "showNames", "chatty" }, manifest.Settings.Select(s => s.Key));
+        Assert.Equal(new[] { "crowdSize", "showNames", "chatty", "motion" }, manifest.Settings.Select(s => s.Key));
+        var motion = manifest.Settings.Single(s => s.Key == "motion");
+        Assert.Equal(new[] { Motion.Smooth, Motion.Balanced, Motion.BatterySaver }, motion.Choices);
+        Assert.Equal(Motion.Balanced, motion.Default);
     }
 
     [AvaloniaFact]

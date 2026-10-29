@@ -15,7 +15,10 @@
       "description": "How many albums come to the plaza at once. Fewer is lighter on older computers." },
     { "key": "showNames", "label": "Show album names", "type": "bool", "default": false,
       "description": "Off: a name shows when you point at a creature." },
-    { "key": "chatty", "label": "Let them talk", "type": "bool", "default": true }
+    { "key": "chatty", "label": "Let them talk", "type": "bool", "default": true },
+    { "key": "motion", "label": "Motion", "type": "choice", "choices": ["Smooth (60 fps)", "Balanced (30 fps)", "Battery saver (15 fps)"],
+      "default": "Balanced (30 fps)",
+      "description": "How often the town is drawn. They walk at the same speed either way; fewer frames are lighter on the computer." }
   ],
   "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown"
 }

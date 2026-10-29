@@ -21,6 +21,8 @@ public interface ITownHost
     int CrowdSize { get; }
     bool ShowNames { get; }
     bool Chatty { get; }
+    /// <summary>The "Motion" setting (<see cref="Town.Motion"/>): frames per second.</summary>
+    string Motion => Town.Motion.Balanced;
     event EventHandler? SettingsChanged;
 
     /// <summary>Albums the user called to the plaza (kept between sessions).</summary>
@@ -116,6 +118,7 @@ public sealed class PluginTownHost : ITownHost, IDisposable
     public int CrowdSize => (int)Math.Round(_host.Settings.GetNumber("crowdSize", PlazaCast.DefaultCrowd));
     public bool ShowNames => _host.Settings.GetBool("showNames");
     public bool Chatty => _host.Settings.GetBool("chatty", true);
+    public string Motion => _host.Settings.GetString("motion") ?? Town.Motion.Balanced;
     public event EventHandler? SettingsChanged;
 
     public IReadOnlyList<string> LoadCalled()
