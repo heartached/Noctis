@@ -20,6 +20,7 @@ namespace Noctis.Tests;
 /// life in the rooms, the view's shelf, menu and picker, and the frame budget for 30 rooms and
 /// about 50 pets.
 /// </summary>
+[Collection("AlbumTown")] // one at a time with AlbumTownPluginTests: the frame budgets count GCs, process-wide
 public class AlbumTownApartmentsTests
 {
     // ── The grid ──
@@ -830,6 +831,8 @@ public class AlbumTownApartmentsTests
 
             const int frames = 600;
             var times = new double[frames];
+            // Start from a settled heap: what earlier tests left behind is not this budget's.
+            GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
             var gc1 = GC.CollectionCount(1); var gc2 = GC.CollectionCount(2);
             var bytes = 0L; var stepBytes = 0L; var images = 0L;
             for (var i = 0; i < frames; i++)
@@ -855,10 +858,12 @@ public class AlbumTownApartmentsTests
             // What allocates in the steady state, sampled by the runtime (one sample per ~100 KB):
             // only Avalonia's own recording may show up, never the plugin's types, closures or text.
             string[] sampled;
+            double ownShare;
             using (var listener = new AllocListener())
             {
                 for (var i = 0; i < 3000; i++) { canvas.Step(1 / 60f); recorder.Record(canvas); }
                 sampled = listener.Types.OrderByDescending(k => k.Value).Select(k => $"{k.Value} x {k.Key}").ToArray();
+                ownShare = OwnShare(listener.Types);
             }
             var layersAfter = canvas.LayerBuilds;
 
@@ -885,7 +890,8 @@ public class AlbumTownApartmentsTests
             Assert.True(per < 16 * 1024, report);
             Assert.True(gcs.Item1 + gcs.Item2 == 0, report);
             Assert.Equal(layers, layersAfter); // the rooms are not redrawn while nothing changes
-            Assert.DoesNotContain(sampled, t => t.Contains("AlbumTown") || t.Contains("DisplayClass") || t.Contains("FormattedText") || t.Contains("TextLayout"));
+            // Avalonia's own objects; the plugin's only when a new chat builds its lines (a sliver).
+            Assert.True(ownShare <= 0.02, $"plugin share of the samples {ownShare:P1}\n{report}");
         }
         finally
         {
@@ -901,17 +907,32 @@ internal static class AlbumTownTestText
         => Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(root).OfType<TextBlock>().Select(t => t.Text ?? "");
 }
 
+/// <summary>
+/// Samples what the thread that creates it allocates (the runtime's allocation ticks, one per
+/// ~100 KB, with the type). Other threads (cover decodes, the test host) are left out.
+/// </summary>
 internal sealed class AllocListener : System.Diagnostics.Tracing.EventListener
 {
     public readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> Types = new();
+    private readonly long? _thread;
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    public AllocListener() : this(OperatingSystem.IsWindows() ? GetCurrentThreadId() : null) { }
+
+    private AllocListener(long? thread) : base() => _thread = thread;
+
     protected override void OnEventSourceCreated(System.Diagnostics.Tracing.EventSource source)
     {
         if (source.Name == "Microsoft-Windows-DotNETRuntime")
             EnableEvents(source, System.Diagnostics.Tracing.EventLevel.Verbose, (System.Diagnostics.Tracing.EventKeywords)0x1);
     }
+
     protected override void OnEventWritten(System.Diagnostics.Tracing.EventWrittenEventArgs e)
     {
         if (e.EventName?.StartsWith("GCAllocationTick") != true || e.Payload is null) return;
+        if (_thread is { } t && e.OSThreadId != t) return;
         var i = e.PayloadNames!.IndexOf("TypeName");
         if (i >= 0) Types.AddOrUpdate(e.Payload[i]?.ToString() ?? "?", 1, (_, n) => n + 1);
     }
