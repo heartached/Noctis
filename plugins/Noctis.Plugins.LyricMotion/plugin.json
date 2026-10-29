@@ -3,7 +3,7 @@
   "name": "Lyric Motion",
   "version": "1.0.0",
   "author": "Alfamin",
-  "description": "Word-synced lyrics grow letter by letter as the singer reaches them.",
+  "description": "Lyrics that grow letter by letter as they are sung.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.LyricMotion.dll",
   "apiVersion": "1.5",

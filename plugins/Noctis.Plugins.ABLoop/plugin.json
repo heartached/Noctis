@@ -3,7 +3,7 @@
   "name": "A-B Loop",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "Loop any part of a song to practise it, and save your loops for later.",
+  "description": "Loop any part of a song and save your loops.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.ABLoop.dll",
   "apiVersion": "1.5",

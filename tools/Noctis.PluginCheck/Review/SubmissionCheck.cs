@@ -378,7 +378,7 @@ public static class SubmissionCheck
     //    backticks swapped, so it can't add links, mentions, HTML or headings to the comment. ──
 
     /// <summary>The card shows two lines of a description (docs/PLUGINS.md, "Writing your description").</summary>
-    internal const int DescriptionNoteLength = 100;
+    internal const int DescriptionNoteLength = 56;
 
     /// <summary>Notes, not problems: a description over <see cref="DescriptionNoteLength"/>
     /// characters, or with an em dash. The reviewer can ask for a shorter, plainer one.</summary>

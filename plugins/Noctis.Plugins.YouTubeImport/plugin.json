@@ -3,7 +3,7 @@
   "name": "Add from YouTube",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "Paste a YouTube link and save the song's audio into your library.",
+  "description": "Save audio from a YouTube link to your library.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.YouTubeImport.dll",
   "apiVersion": "1.5",

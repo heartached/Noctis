@@ -3,7 +3,7 @@
   "name": "True Shuffle",
   "version": "1.0.0",
   "author": "Alfamin",
-  "description": "A fairer shuffle with modes for no repeats, rarely played songs and more.",
+  "description": "A fairer shuffle with modes like No repeats.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.TrueShuffle.dll",
   "apiVersion": "1.5",

@@ -3,7 +3,7 @@
   "name": "Mixxx",
   "version": "1.0.1",
   "author": "Noctis",
-  "description": "Brings the BPM and key Mixxx found for your songs into Noctis.",
+  "description": "Brings BPM and key from Mixxx into Noctis.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.Mixxx.dll",
   "apiVersion": "1.2",

@@ -12,7 +12,7 @@ namespace Noctis.Tests;
 public class PluginDescriptionRulesTests
 {
     /// <summary>The card's two lines.</summary>
-    private const int MaxDescription = 100;
+    private const int MaxDescription = 56;
     /// <summary>One line beside a setting's label.</summary>
     private const int MaxSettingDescription = 55;
     private const char EmDash = (char)0x2014;

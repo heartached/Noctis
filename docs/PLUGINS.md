@@ -173,15 +173,15 @@ are case-insensitive.
 
 The card in Settings → Plugins shows two lines of it, so write it to fit there:
 
-- **One short, plain sentence**, about 60 to 90 characters, never more than 100. Say what the
+- **One short, plain sentence** of 56 characters or fewer, so it fits the card's two lines. Say what the
   plugin does for the listener, in everyday words: "Spin a reel of your albums and let it pick
   what to play." Leave the details (modes, options, how it works) for its settings and homepage.
 - **No by-line.** The card already says "by X", so don't end with "By X." or credit anyone in it.
 - **No em dashes** (the long dash, U+2014). Use a comma or a colon instead.
 - Each setting's `description` follows the same rules, in one short line of about 50 characters.
 
-`PluginDescriptionRulesTests` checks every plugin.json in this repo (100 characters at most, no em
-dash, no by-line), and the submission checker notes a description over 100 characters or with an
+`PluginDescriptionRulesTests` checks every plugin.json in this repo (56 characters at most, no em
+dash, no by-line), and the submission checker notes a description over 56 characters or with an
 em dash.
 
 ### Icons

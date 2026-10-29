@@ -3,7 +3,7 @@
   "name": "Album Town",
   "version": "1.0.1",
   "author": "Jafezy JD",
-  "description": "Your albums come to life as little creatures in a town you build.",
+  "description": "Your albums come to life in a little town.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.AlbumTown.dll",
   "apiVersion": "1.4",

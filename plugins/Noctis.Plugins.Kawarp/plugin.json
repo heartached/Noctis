@@ -3,7 +3,7 @@
   "name": "Kawarp",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "A fluid, warped album-art background behind the lyrics that moves to the beat.",
+  "description": "A moving album-art background behind the lyrics.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.Kawarp.dll",
   "apiVersion": "1.0",

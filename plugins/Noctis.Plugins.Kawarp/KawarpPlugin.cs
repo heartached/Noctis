@@ -22,7 +22,7 @@ public sealed class KawarpPlugin : INoctisPlugin
         Name: "Kawarp",
         Version: "1.0.0",
         Author: "Noctis",
-        Description: "A fluid, warped album-art background behind the lyrics that moves to the beat.");
+        Description: "A moving album-art background behind the lyrics.");
 
     public void Initialize(IPluginHost host)
     {
