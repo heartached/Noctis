@@ -379,10 +379,17 @@ public sealed partial class PluginCardItem : ObservableObject
         : p.ShowStatusBadge ? p.StatusText
         : "";
     public bool HasEnableLine => EnableLine.Length > 0;
-    /// <summary>The header has a primary action: Install / Update / Replace, or the plugin's own views.</summary>
-    public bool HasHeaderActions => Listing?.ShowButton == true || Installed?.HasViews == true;
-    /// <summary>The header's "..." menu has something in it: the homepage and/or the plugin's folder.</summary>
-    public bool HasMoreMenu => HasHomepage || IsInstalled;
+    /// <summary>Not installed: Install (or Replace, Retry, Cancel while it downloads) sits at the
+    /// header's top-right, where an installed plugin has its "..." (owner 10-29).</summary>
+    public bool ShowCornerButton => !IsInstalled && Listing?.ShowButton == true;
+    /// <summary>Installed with something to do (Update, Cancel): the button sits under the
+    /// description, beside "Open X".</summary>
+    public bool ShowInlineButton => IsInstalled && Listing?.ShowButton == true;
+    /// <summary>The row under the description has something: Update, or the plugin's own views.</summary>
+    public bool HasHeaderActions => ShowInlineButton || Installed?.HasViews == true;
+    /// <summary>The header's "..." (homepage, the plugin's folder): installed plugins only. A plugin
+    /// that is not installed has its Install button in that corner instead.</summary>
+    public bool HasMoreMenu => IsInstalled;
 
     /// <summary>The permissions line is open to the full list.</summary>
     [ObservableProperty] private bool _isPermissionsExpanded;
@@ -485,6 +492,7 @@ public sealed partial class PluginCardItem : ObservableObject
         nameof(Id), nameof(Name), nameof(Author), nameof(ByLine), nameof(Description), nameof(HasDescription),
         nameof(Version), nameof(VersionText), nameof(HasVersion), nameof(Homepage), nameof(HasHomepage), nameof(IsRestricted), nameof(EnableLine),
         nameof(MetaLine), nameof(HasEnableLine), nameof(HasMoreMenu), nameof(HasHeaderActions),
+        nameof(ShowCornerButton), nameof(ShowInlineButton),
         nameof(ChipText), nameof(HasChip), nameof(ChipIsAccent), nameof(AccessibleName),
         nameof(Monogram), nameof(MonogramBrush), nameof(MonogramPaletteIndex),
     };

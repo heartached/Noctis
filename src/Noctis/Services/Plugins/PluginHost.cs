@@ -298,6 +298,9 @@ public sealed partial class PluginSettingItem : ObservableObject
     [CommunityToolkit.Mvvm.Input.RelayCommand]
     private void Increase() => NumberValue = (decimal)RoundToStep((double)(NumberValue ?? 0) + NumberStep);
 
+    /// <summary>Back to the plugin.json default (a double-click on the slider, like Settings' own).</summary>
+    public void ResetToDefault() => Set(Definition.Default);
+
     private double RoundToStep(double value)
     {
         var step = NumberStep;

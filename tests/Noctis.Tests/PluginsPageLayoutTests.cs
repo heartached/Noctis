@@ -260,7 +260,7 @@ public class PluginsPageLayoutTests : IDisposable
             "Plugins.Card.A11yOfficial", "Plugins.Card.A11yCommunity", "Plugins.Card.A11yCommunityNoAuthor",
             "Plugins.Detail.Back", "Plugins.Detail.Version", "Plugins.Detail.Homepage", "Plugins.Detail.Enabled",
             "Plugins.Detail.EnableLine", "Plugins.Detail.RestrictedLine", "Plugins.Detail.Files", "Plugins.Detail.FilesLine",
-            // The simpler page (owner 10-29): "...", Remove plugin..., the permissions line, the stepper.
+            // The simpler page (owner 10-29): "...", Remove plugin, the permissions line, the stepper.
             "Plugins.Detail.More", "Plugins.Detail.RemoveRow", "Plugins.PermSummary", "Plugins.PermSummarySeparator",
             "Plugins.PermVerb.PlaybackControl", "Plugins.PermVerb.LibraryRead", "Plugins.PermVerb.Network", "Plugins.PermVerb.LyricsProvider",
             "Plugins.PermVerb.MenuCommands", "Plugins.PermVerb.Notifications", "Plugins.PermVerb.LibraryWriteAnalysis",
@@ -275,7 +275,12 @@ public class PluginsPageLayoutTests : IDisposable
                 Assert.True(values.TryGetValue(key, out var value) && value.Length > 0, $"{file}: {key} missing");
                 Assert.DoesNotContain('—', value!);
             }
+            // Buttons on these pages end without "..." (owner 10-29: "Remove plugin", no ellipsis).
+            foreach (var key in values.Keys.Where(k => k.StartsWith("Plugins.", StringComparison.Ordinal)))
+                Assert.False(values[key].TrimEnd().EndsWith('…') || values[key].TrimEnd().EndsWith("...", StringComparison.Ordinal),
+                    $"{file}: {key} ends in an ellipsis: \"{values[key]}\"");
         }
+        Assert.Equal("Remove plugin", Loc.T("Plugins.Detail.RemoveRow"));
 
         // Read the Guide opens website/src/pages/plugins/make.astro (Astro serves it at /plugins/make).
         Assert.Equal("https://noctisapp.cc/plugins/make", SettingsViewModel.PluginGuideUrl);

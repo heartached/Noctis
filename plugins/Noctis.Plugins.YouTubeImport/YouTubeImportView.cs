@@ -24,6 +24,7 @@ namespace Noctis.Plugins.YouTubeImport;
 public sealed class YouTubeImportView : UserControl
 {
     internal const string PillStylesUri = "avares://Noctis.UI/Assets/PillDialog.axaml";
+    internal const string DropDownStylesUri = "avares://Noctis.UI/Assets/DropDowns.axaml";
 
     private static readonly IBrush Coral = new LinearGradientBrush
     {
@@ -221,6 +222,10 @@ public sealed class YouTubeImportView : UserControl
             _ = include.Loaded; // throws now, not at first layout, when the app has no such file
             Styles.Add(include);
             PillStylesLoaded = true;
+            // The Settings drop-down's card and rows for the format list (Noctis 1.6.6 has it; an
+            // older one keeps the pill list).
+            var lists = new StyleInclude(new Uri("avares://Noctis.Plugins.YouTubeImport/")) { Source = new Uri(DropDownStylesUri) };
+            try { _ = lists.Loaded; Styles.Add(lists); } catch { }
         }
         catch
         {

@@ -318,7 +318,7 @@ public class PluginsGridTests : IDisposable
             Assert.Contains(Loc.T("Plugins.PermSummary", Loc.T("Plugins.PermVerb.PlaybackControl")), texts);
             Assert.DoesNotContain(Loc.T("Plugins.PermShort.PlaybackControl"), texts);
             Assert.Contains("Loud", texts); // the plugin's own settings, as rows of the same card
-            // Its switch and Remove plugin... are on the page; the folder is in the "..." menu.
+            // Its switch and Remove plugin are on the page; the folder is in the "..." menu.
             Assert.NotNull(detail.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>().FirstOrDefault(t => t.Name == "PluginPageToggle"));
             var remove = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageRemoveButton");
             Assert.Same(m.Vm.RemovePluginCommand, remove.Command);
@@ -382,28 +382,60 @@ public class PluginsGridTests : IDisposable
             window.UpdateLayout();
 
             var detail = view.FindControl<StackPanel>("PluginDetailPage")!;
+            var hero = detail.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "PluginHero");
             var install = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageInstallButton");
             Assert.True(install.IsEffectivelyVisible);
             Assert.Equal(Loc.T("Plugins.Get.Install"), AutomationProperties.GetName(install));
             Assert.Same(m.Vm.OfficialPluginActionCommand, install.Command);
             Assert.Contains("accent-pill", install.Classes);
-            // Visit homepage is a quiet item of the "..." menu, not a big pill.
-            Assert.DoesNotContain(detail.GetVisualDescendants().OfType<Button>(), b => b.Name == "PluginPageHomepageButton");
+            // Not installed (owner 10-29): Install sits top-right, where "..." goes, and there is no "...".
+            Assert.Equal("PluginPageCorner", install.FindAncestorOfType<Panel>()!.Name);
+            var corner = install.TranslatePoint(new Point(install.Bounds.Width, 0), hero)!.Value;
+            Assert.True(corner.X >= hero.Bounds.Width - 1 && corner.Y <= 8, $"Install ends at {corner} of a {hero.Bounds.Size} header");
             var more = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageMoreButton");
-            Assert.True(more.IsEffectivelyVisible);
-            more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-            Pump();
-            var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
-            var homepage = Assert.IsType<MenuItem>(Assert.Single(menu.Items)); // not installed: no folder
-            Assert.Equal(Loc.T("Plugins.Detail.Homepage"), homepage.Header);
-            Assert.Equal("https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx", ToolTip.GetTip(homepage));
-            Assert.Same(m.Vm.OpenPluginHomepageCommand, homepage.Command);
-            menu.Hide();
+            Assert.False(more.IsVisible);
+            Assert.False(detail.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Name == "PluginPageActions").IsVisible);
+            Assert.DoesNotContain(detail.GetVisualDescendants().OfType<Button>(), b => b.Name == "PluginPageHomepageButton");
             // Not installed: no switch, no rows, no Remove.
             Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageSwitchPanel").IsEffectivelyVisible);
             Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageRemovePanel").IsVisible);
+
+            // Installed: "..." takes the corner back (Visit homepage and Open folder), Install is gone.
+            await m.Vm.InstallOfficialPluginAsync(m.Vm.OfficialPlugins.Single(o => o.Entry.Id == OfficialId));
+            Pump();
+            window.UpdateLayout();
+            Assert.True(m.Vm.SelectedPluginCard!.IsInstalled);
+            Assert.False(install.IsVisible);
+            Assert.False(detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageUpdateButton").IsVisible);
+            Assert.True(more.IsEffectivelyVisible);
+            Assert.Equal("PluginPageCorner", more.FindAncestorOfType<Panel>()!.Name);
+            more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
+            var homepage = Assert.IsType<MenuItem>(menu.Items[0]);
+            Assert.Equal(Loc.T("Plugins.Detail.Homepage"), homepage.Header);
+            Assert.Equal("https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx", ToolTip.GetTip(homepage));
+            Assert.Same(m.Vm.OpenPluginHomepageCommand, homepage.Command);
+            Assert.Equal(Loc.T("Plugins.OpenPluginFolder"), Assert.IsType<MenuItem>(menu.Items[1]).Header);
+            menu.Hide();
+            Assert.True(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageRemovePanel").IsVisible);
         }
         finally { window.Close(); }
+    }
+
+    /// <summary>An installed plugin with an update: Update sits under the description (the corner keeps
+    /// its "..."), next to the plugin's Open buttons.</summary>
+    [AvaloniaFact]
+    public void PluginCard_CornerAndInlineButtons_FollowTheInstallState()
+    {
+        var card = new PluginCardItem("x");
+        Assert.False(card.ShowCornerButton || card.ShowInlineButton || card.HasMoreMenu || card.HasHeaderActions);
+        _box.WriteFolder("dev.test.code", PluginSandbox.Manifest(id: "dev.test.code", name: "Code Thing"), ("Test.Plugin.dll", new byte[] { 1 }));
+        var host = _box.NewHost(appVersion: "1.6.6");
+        host.LoadAll();
+        card.SetSource(null, host.FindById("dev.test.code"));
+        Assert.True(card.HasMoreMenu);
+        Assert.False(card.ShowCornerButton || card.ShowInlineButton);
     }
 
     /// <summary>Album Town's and Album Roulette's kinds of settings, plus a number with no full range
@@ -490,6 +522,179 @@ public class PluginsGridTests : IDisposable
             Assert.Equal(crowd.Description, ToolTip.GetTip(hint));
         }
         finally { window.Close(); }
+    }
+
+    /// <summary>What a slider looks like, part by part: the same text for the same control and style.</summary>
+    internal static string SliderLook(Slider s)
+    {
+        var track = s.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Track>().Single();
+        var thumb = s.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().Single();
+        var buttons = s.GetVisualDescendants().OfType<RepeatButton>().ToList();
+        string Fill(RepeatButton b)
+        {
+            var border = b.GetVisualDescendants().OfType<Border>().First();
+            return $"{border.Background}/{border.Opacity}/{border.CornerRadius}/{border.Height}";
+        }
+        var value = s.GetVisualParent()!.GetVisualChildren().OfType<TextBlock>().Single();
+        return string.Join(" | ",
+            s.GetType().Name, string.Join(",", s.Classes.Where(c => !c.StartsWith(':'))), s.Bounds.Width, s.Height, s.Margin,
+            track.Height, $"{thumb.Width}x{thumb.Height}", thumb.Background, thumb.Transitions?.Count,
+            string.Join(" ; ", buttons.Select(b => $"{b.Name} {b.Margin} {Fill(b)}")),
+            $"value {value.FontSize} {value.Opacity} {value.Margin} {value.MinWidth} {value.TextAlignment}");
+    }
+
+    /// <summary>The plugin page's number slider IS the Settings slider (owner 10-29): the same control,
+    /// track, thumb, fill, size and value beside it as Lyrics > Minimum line opacity, and a
+    /// double-click puts the default back like there.</summary>
+    [AvaloniaFact]
+    public void DetailPage_NumberSlider_IsExactlyTheSettingsSlider()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        using var m = Mount(withClient: false);
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabLyrics;
+        var view = new SettingsView { DataContext = m.Vm };
+        var window = new Window { Width = 1100, Height = 900, Content = view };
+        try
+        {
+            window.Show();
+            Settle(window);
+            var core = view.FindControl<Noctis.Controls.SmoothSlider>("LyricsMinLineOpacitySlider")!;
+            Assert.True(core.IsEffectivelyVisible);
+            var coreLook = SliderLook(core);
+
+            _box.WriteFolder("dev.test.mixed", PluginSandbox.Manifest(id: "dev.test.mixed", name: "Mixed Settings", author: "Someone",
+                settingsJson: MixedSettings), ("Test.Plugin.dll", new byte[] { 1 }));
+            m.Host.LoadAll();
+            m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+            m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == "dev.test.mixed"));
+            Settle(window);
+            var detail = view.FindControl<StackPanel>("PluginDetailPage")!;
+            var slider = detail.GetVisualDescendants().OfType<Noctis.Controls.SmoothSlider>().Single(s => s.IsEffectivelyVisible);
+            Assert.Equal(coreLook, SliderLook(slider));
+
+            var crowd = m.Host.FindById("dev.test.mixed")!.SettingItems.Single(i => i.Key == "crowd");
+            slider.SteppedValue = 52;
+            Pump();
+            Assert.Equal("52", crowd.Value);
+            slider.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+            Pump();
+            Assert.Equal("40", crowd.Value); // plugin.json's default
+            Assert.Equal(40, slider.SteppedValue);
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>The plugin page's choice list IS a Settings drop-down (owner 10-29): the same pill, the
+    /// same card and rows as Interface Size's list, a pill highlight under the pointer like a menu
+    /// row, and it opens and closes with the menus' pop.</summary>
+    [AvaloniaFact]
+    public void DetailPage_ChoiceList_IsTheSettingsDropDown_AndPopsLikeAMenu()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        using var m = Mount(withClient: false);
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabAppearance;
+        var view = new SettingsView { DataContext = m.Vm };
+        var window = new Window { Width = 1100, Height = 900, Content = view };
+        try
+        {
+            window.Show();
+            Settle(window);
+            var core = view.FindControl<ComboBox>("UiScaleCombo")!;
+            var coreLook = DropDownLook(window, core);
+
+            _box.WriteFolder("dev.test.mixed", PluginSandbox.Manifest(id: "dev.test.mixed", name: "Mixed Settings", author: "Someone",
+                settingsJson: MixedSettings), ("Test.Plugin.dll", new byte[] { 1 }));
+            m.Host.LoadAll();
+            m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+            m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == "dev.test.mixed"));
+            Settle(window);
+            var motion = view.FindControl<StackPanel>("PluginDetailPage")!.GetVisualDescendants().OfType<ComboBox>()
+                .Single(c => AutomationProperties.GetName(c) == "Motion");
+            Assert.Equal(coreLook, DropDownLook(window, motion));
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>
+    /// Opens <paramref name="box"/> (its popup drawn in the window so the headless pointer reaches
+    /// it), checks the menus' pop and the pill hover, closes it and checks the close motion, and
+    /// returns its look: shell and list card and rows, part by part.
+    /// </summary>
+    internal static string DropDownLook(Window window, ComboBox box)
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles(); // the menus' hover fill lives in Styles.axaml
+        Noctis.Helpers.ComboBoxDropDownAnimator.Install(); // App.axaml.cs installs it for every list
+        var popup = box.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Single(p => p.Name == "PART_Popup");
+        popup.ShouldUseOverlayLayer = true;
+        var shell = box.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "Background");
+        var look = $"shell {box.CornerRadius} {shell.Background} {shell.CornerRadius} {shell.BorderThickness}";
+
+        Noctis.Helpers.MenuOpenAnimation.ForgetLastPress();
+        box.IsDropDownOpen = true;
+        var card = Assert.IsAssignableFrom<Control>(popup.Child);
+        Assert.Equal("PopupBorder", card.Name);
+        // Opening: the menus' pop (MenuOpenAnimation.PopIn): it starts small and clear, grows to
+        // full size while it fades in, and its rows settle in after it.
+        Assert.Equal(0, card.Opacity);
+        Assert.Equal(0.9, card.RenderTransform!.Value.M11, 3);
+        PumpFor(60);
+        Assert.Contains(card.Transitions!, t => t is Avalonia.Animation.TransformOperationsTransition { Duration.TotalMilliseconds: 280 });
+        PumpFor(600);
+        Assert.Equal(Matrix.Identity, card.RenderTransform!.Value); // landed at full size
+        Assert.Equal(1, card.Opacity);
+        var rows = box.GetRealizedContainers().OfType<ComboBoxItem>().ToList();
+        Assert.NotEmpty(rows);
+        Assert.All(rows, r => Assert.Equal(1, r.Opacity)); // every row settled in
+        var c = (Border)card;
+        var row = rows.First(r => !r.IsSelected);
+        var rowFace = row.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().First();
+        look += $" | card {c.CornerRadius} {c.Padding} {c.Background} {c.BorderThickness} {c.ClipToBounds}"
+                + $" | row {row.Margin} {row.Padding} {row.CornerRadius} {rowFace.CornerRadius}";
+
+        // Hover: the menus' pill fill on that row only.
+        Assert.True(window.TryFindResource("MenuV2HoverBrush", window.ActualThemeVariant, out var hoverBrush));
+        var hover = ((ISolidColorBrush)hoverBrush!).Color;
+        var at = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window)!.Value;
+        window.MouseMove(at);
+        PumpFor(60);
+        Assert.Equal(hover, (rowFace.Background as ISolidColorBrush)?.Color);
+        var chosen = rows.Single(r => r.IsSelected).GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().First();
+        look += $" | chosen {chosen.Background}";
+        window.MouseMove(new Point(2, 2));
+
+        // Closing: held for the pop's reverse (inert, shrinking toward the click, fading), then
+        // really closed.
+        box.IsDropDownOpen = false;
+        PumpFor(40);
+        Assert.True(popup.IsOpen); // still on screen
+        Assert.NotNull(TopLevel.GetTopLevel(card));
+        Assert.False(card.IsHitTestVisible);
+        Assert.True(card.Opacity < 1, $"opacity {card.Opacity}: not fading");
+        Assert.Contains(card.Transitions!, t => t is Avalonia.Animation.TransformOperationsTransition { Duration.TotalMilliseconds: 150 });
+        PumpFor(500);
+        Assert.False(popup.IsOpen);
+        Assert.Null(TopLevel.GetTopLevel(card)); // gone
+        Assert.False(box.IsDropDownOpen);
+        // A new open is a full pop again, and the card takes clicks.
+        box.IsDropDownOpen = true;
+        PumpFor(500);
+        Assert.True(card.IsHitTestVisible);
+        Assert.Equal(1, card.Opacity);
+        box.IsDropDownOpen = false;
+        PumpFor(500);
+        Assert.False(popup.IsOpen);
+        popup.ShouldUseOverlayLayer = false;
+        return look;
+    }
+
+    private static void PumpFor(int ms)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        do
+        {
+            Pump();
+            Thread.Sleep(5);
+        } while (sw.ElapsedMilliseconds < ms);
     }
 
     [AvaloniaFact]

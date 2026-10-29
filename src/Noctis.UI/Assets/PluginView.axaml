@@ -9,9 +9,11 @@
 
           CheckBox                 the round pill switch of Settings (label left, switch right)
           Button, ToggleButton     rounded pills; TextBox (single line) a rounded pill field
-          ComboBox                 a pill; its drop-down list is frosted glass over the window
+          ComboBox                 the Settings drop-down (DropDowns.axaml): the same pill, list
+                                   card, pill rows and pop open / close as Settings' own lists
           ContextMenu, MenuFlyout  frosted glass over the window (the app's menu card, blurred);
-                                   a MenuFlyout filled in its Opening event shows its rows
+                                   a MenuFlyout filled in its Opening event shows its rows, and
+                                   closes with the menus' pop like the app's own
           every Popup              drawn in the window's overlay layer, so the glass can see what
                                    is behind it (a separate native popup window cannot be frosted)
 
@@ -32,8 +34,10 @@
 
     <!-- ── Menus: the app's menu card as frosted glass ── -->
     <!-- A MenuFlyout that fills itself in Opening shows its rows (Helpers/MenuFlyoutItemsSync.cs). -->
+    <!-- A plugin's MenuFlyout also closes with the menus' pop (a plugin can't ask for it itself). -->
     <Style Selector="MenuFlyoutPresenter">
         <Setter Property="(helpers:MenuFlyoutItemsSync.Enable)" Value="True" />
+        <Setter Property="(helpers:MenuOpenAnimation.AutoFlyoutClose)" Value="True" />
     </Style>
     <Style Selector="ContextMenu, MenuFlyoutPresenter">
         <Setter Property="(helpers:MenuOpenAnimation.UseFade)" Value="True" />
@@ -131,85 +135,10 @@
         <Setter Property="CornerRadius" Value="999" />
     </Style>
 
-    <!-- ── ComboBox: a pill, and its list frosted over the window ── -->
-    <Style Selector="ComboBox">
-        <Setter Property="CornerRadius" Value="999" />
-        <Setter Property="Padding" Value="16,8,12,8" />
-        <Setter Property="MinHeight" Value="36" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="Template">
-            <ControlTemplate>
-                <Grid ColumnDefinitions="*,32">
-                    <Border Name="Background" Grid.ColumnSpan="2"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}" />
-                    <Border Name="HighlightBackground" Grid.ColumnSpan="2" IsVisible="False"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}" />
-                    <TextBlock Name="PlaceholderTextBlock"
-                               Margin="{TemplateBinding Padding}"
-                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                               Text="{TemplateBinding PlaceholderText}"
-                               Foreground="{TemplateBinding PlaceholderForeground}"
-                               Opacity="0.6"
-                               IsVisible="{TemplateBinding SelectionBoxItem, Converter={x:Static ObjectConverters.IsNull}}" />
-                    <ContentControl Name="ContentPresenter"
-                                    Margin="{TemplateBinding Padding}"
-                                    Content="{TemplateBinding SelectionBoxItem}"
-                                    ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                    <PathIcon Name="DropDownGlyph" Grid.Column="1" Width="11" Height="11" Margin="0,0,14,0"
-                              HorizontalAlignment="Right" VerticalAlignment="Center" IsHitTestVisible="False" Opacity="0.7"
-                              Data="M1939 486L2029 576L1024 1581L19 576L109 486L1024 1401L1939 486Z" />
-                    <Popup Name="PART_Popup"
-                           WindowManagerAddShadowHint="False"
-                           IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
-                           MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
-                           MaxHeight="{TemplateBinding MaxDropDownHeight}"
-                           PlacementTarget="Background"
-                           Placement="BottomEdgeAlignedLeft"
-                           VerticalOffset="4"
-                           IsLightDismissEnabled="True"
-                           InheritsTransform="True">
-                        <controls:GlassPanel Name="PopupBorder"
-                                             UseAppGlass="False" IsGlassActive="True"
-                                             BlurRadius="18" GlassTintOpacity="0.72"
-                                             Background="{DynamicResource AppSidebarBackground}"
-                                             CornerRadius="18" Padding="4">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
-                            </ScrollViewer>
-                        </controls:GlassPanel>
-                    </Popup>
-                </Grid>
-            </ControlTemplate>
-        </Setter>
-    </Style>
-    <Style Selector="ComboBox:pointerover /template/ Border#Background">
-        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
-    </Style>
-    <Style Selector="ComboBox:dropdownopen /template/ Border#Background, ComboBox:focus-visible /template/ Border#Background">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-    </Style>
-    <Style Selector="ComboBox:disabled">
-        <Setter Property="Opacity" Value="0.45" />
-    </Style>
-    <Style Selector="ComboBox ComboBoxItem">
-        <Setter Property="Margin" Value="0,1" />
-        <Setter Property="Padding" Value="12,6" />
-        <Setter Property="MinHeight" Value="30" />
-        <Setter Property="CornerRadius" Value="999" />
-    </Style>
-    <Style Selector="ComboBox ComboBoxItem /template/ ContentPresenter">
-        <Setter Property="CornerRadius" Value="999" />
-    </Style>
+    <!-- ── ComboBox: the Settings drop-down (owner 10-29: identical to Settings' own lists, and
+         they open and close with the menus' pop). DropDowns.axaml is after PillDialog.axaml, so
+         a pill-field list gets the same card and rows as Settings. ── -->
+    <StyleInclude Source="avares://Noctis.UI/Assets/DropDowns.axaml" />
 
     <!-- ── A pop-up inside a view (PillDialogHost's look) ── -->
     <!-- The view behind, blurred and dimmed: put it over the view, under the card. Background is

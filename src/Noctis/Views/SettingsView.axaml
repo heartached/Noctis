@@ -59,17 +59,20 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <!-- The Settings slider (Lyrics > Minimum line opacity): 200 wide, value beside it. -->
-                            <StackPanel Classes="plugin-number-slider" Orientation="Horizontal" IsVisible="{Binding UsesSlider}">
-                                <controls:SmoothSlider Classes="accent-slider" Width="200" VerticalAlignment="Center"
+                            <!-- The Settings slider itself (Lyrics > Minimum line opacity, owner 10-29: the same
+                                 control, not a lookalike): a SmoothSlider.accent-slider in a 200 column, 16 in,
+                                 the value beside it, and a double-click puts the default back. -->
+                            <Grid Classes="plugin-number-slider" ColumnDefinitions="200,Auto" IsVisible="{Binding UsesSlider}">
+                                <controls:SmoothSlider Grid.Column="0" Classes="accent-slider" VerticalAlignment="Center" Margin="16,0,0,0"
                                                        AutomationProperties.Name="{Binding Label}"
                                                        AutomationProperties.HelpText="{Binding Description}"
                                                        Maximum="{Binding SliderMaximum}" Minimum="{Binding SliderMinimum}"
                                                        Step="{Binding NumberStep}"
-                                                       SteppedValue="{Binding SliderValue, Mode=TwoWay}"/>
-                                <TextBlock Classes="plugin-number-value" Text="{Binding NumberText}" FontSize="12" Opacity="0.7"
+                                                       SteppedValue="{Binding SliderValue, Mode=TwoWay}"
+                                                       DoubleTapped="OnPluginSliderDoubleTapped"/>
+                                <TextBlock Grid.Column="1" Classes="plugin-number-value" Text="{Binding NumberText}" FontSize="12" Opacity="0.7"
                                            VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
-                            </StackPanel>
+                            </Grid>
                             <!-- No full range: minus, the value, plus, in one rounded capsule. -->
                             <Border Classes="plugin-stepper" IsVisible="{Binding UsesStepper}">
                                 <StackPanel Orientation="Horizontal">
@@ -165,10 +168,11 @@
             </DataTemplate>
 
             <!-- A plugin's own page (owner 10-29: reads top to bottom in one glance). Back; the header
-                 (big icon, name and mark, "by X · v1.2.1", the description at a readable width, Install /
-                 Update / Open X, and a "..." menu with the homepage and the folder); quiet notes; one
-                 card of rows (Enabled, the plugin's settings, a one-line permissions row that opens to
-                 the full list); Remove plugin... on its own at the bottom. -->
+                 (big icon, name and mark, "by X · v1.2.1", the description at a readable width, Update /
+                 Open X under it, and top-right Install while not installed or a "..." menu with the
+                 homepage and the folder once it is); quiet notes; one card of rows (Enabled, the
+                 plugin's settings, a one-line permissions row that opens to the full list); Remove
+                 plugin on its own at the bottom. -->
             <DataTemplate x:Key="PluginPageTemplate" x:DataType="vm:PluginCardItem">
                 <StackPanel Spacing="14">
                     <Button x:Name="PluginBackButton" Classes="pill-action plugin-back" HorizontalAlignment="Left"
@@ -208,16 +212,16 @@
                             <TextBlock x:Name="PluginPageDescription" Text="{Binding Description}" FontSize="13" Opacity="0.78"
                                        TextWrapping="Wrap" LineHeight="19" MaxWidth="560" HorizontalAlignment="Left" Margin="0,6,0,0"
                                        IsVisible="{Binding HasDescription}"/>
-                            <!-- The one primary action: Install / Update / Replace / Cancel from the list, or
-                                 the plugin's own views ("Open Album Town"). -->
+                            <!-- An installed plugin's actions: Update (or Cancel) from the list, and the
+                                 plugin's own views ("Open Album Town"). Install sits top-right instead. -->
                             <WrapPanel x:Name="PluginPageActions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0"
                                        IsVisible="{Binding HasHeaderActions}">
-                                <Button x:Name="PluginPageInstallButton"
+                                <Button x:Name="PluginPageUpdateButton"
                                         Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
                                         Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
                                         Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
                                         MaxWidth="260"
-                                        IsVisible="{Binding Listing.ShowButton, FallbackValue=False}"
+                                        IsVisible="{Binding ShowInlineButton}"
                                         IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
                                         AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
                                         Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
@@ -252,13 +256,30 @@
                                          MaxWidth="260" HorizontalAlignment="Left" Width="260" Margin="0,8,0,0"
                                          IsVisible="{Binding Listing.IsBusy, FallbackValue=False}"/>
                         </StackPanel>
-                        <!-- "...": Visit homepage and Open folder (SettingsView.axaml.cs OnPluginMoreClick). -->
-                        <Button x:Name="PluginPageMoreButton" Grid.Column="2" Classes="icon-chip" VerticalAlignment="Top" Margin="0,4,0,0"
-                                IsVisible="{Binding HasMoreMenu}"
-                                AutomationProperties.Name="{loc:T Plugins.Detail.More}" ToolTip.Tip="{loc:T Plugins.Detail.More}"
-                                Click="OnPluginMoreClick">
-                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15"/>
-                        </Button>
+                        <!-- Top-right (owner 10-29): Install / Replace / Cancel while the plugin is not
+                             installed; once it is, "..." with Visit homepage and Open folder
+                             (SettingsView.axaml.cs OnPluginMoreClick). Never both. -->
+                        <Panel x:Name="PluginPageCorner" Grid.Column="2" VerticalAlignment="Top" Margin="0,4,0,0">
+                            <Button x:Name="PluginPageInstallButton"
+                                    Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
+                                    Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
+                                    Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
+                                    MaxWidth="200" HorizontalAlignment="Right"
+                                    IsVisible="{Binding ShowCornerButton}"
+                                    IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
+                                    AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
+                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
+                                    CommandParameter="{Binding Listing}">
+                                <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Listing.ButtonText, FallbackValue={x:Null}}"/>
+                            </Button>
+                            <Button x:Name="PluginPageMoreButton" Classes="icon-chip" HorizontalAlignment="Right"
+                                    IsVisible="{Binding HasMoreMenu}"
+                                    AutomationProperties.Name="{loc:T Plugins.Detail.More}" ToolTip.Tip="{loc:T Plugins.Detail.More}"
+                                    Click="OnPluginMoreClick">
+                                <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15"/>
+                            </Button>
+                        </Panel>
                     </Grid>
 
                     <!-- Notes and problems, as quiet lines (only when there is something to say). -->
@@ -344,7 +365,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Remove plugin...: one red row of its own (asks first, data kept unless chosen). -->
+                    <!-- Remove plugin: one red row of its own (asks first, data kept unless chosen). -->
                     <Border x:Name="PluginPageRemovePanel" Classes="plugin-panel plugin-group" IsVisible="{Binding IsInstalled}">
                         <Button x:Name="PluginPageRemoveButton" Classes="plugin-row-button plugin-danger-row"
                                 AutomationProperties.Name="{loc:T Plugins.Detail.RemoveRow}"
@@ -1538,70 +1559,9 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
-        <!-- Every combo box: filled pill shell, label centred, and the pill-combo dropdown
-             (rounded popup, pill rows, accent highlight) so no combo has square rows. -->
-        <Style Selector="ComboBox">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-            <Setter Property="MinHeight" Value="34"/>
-            <Setter Property="Padding" Value="12,0,8,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="ComboBox /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-        </Style>
-        <Style Selector="ComboBox /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
-        </Style>
-        <!-- States skip server-pill: its fill and ring are drawn by the server-pill-shell
-             wrapper, so the combo's own chrome must stay clear in every state. -->
-        <Style Selector="ComboBox:not(.server-pill):pointerover /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
-        </Style>
-        <Style Selector="ComboBox:not(.server-pill):pressed /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
-        </Style>
-        <Style Selector="ComboBox:not(.server-pill):focus /template/ Border#Background, ComboBox:not(.server-pill):dropdownopen /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
-        </Style>
-        <Style Selector="ComboBox:not(.server-pill):disabled /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
-        </Style>
-        <Style Selector="ComboBox /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="ComboBox /template/ Border#PopupBorder">
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="0,4"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem">
-            <Setter Property="Margin" Value="4,1"/>
-            <Setter Property="Padding" Value="11,6"/>
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem:selected:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
+        <!-- Every combo box: the Settings drop-down (shell, list, rows, pop motion), shared with
+             plugin windows (Noctis.UI/Assets/DropDowns.axaml). -->
+        <StyleInclude Source="avares://Noctis.UI/Assets/DropDowns.axaml"/>
         <!-- Equalizer: the per-band remove control is a round chip like the page's close X. -->
         <Style Selector="Button.eq-remove">
             <Setter Property="Width" Value="26"/>
@@ -1931,7 +1891,7 @@
         <Style Selector="ItemsControl:disabled Border.plugin-setting-row">
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
-        <!-- A whole row that is a button (permissions, Remove plugin...): no fill, no lift. -->
+        <!-- A whole row that is a button (permissions, Remove plugin): no fill, no lift. -->
         <Style Selector="Button.plugin-row-button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Opacity" Value="1"/>

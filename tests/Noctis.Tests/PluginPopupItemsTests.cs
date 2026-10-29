@@ -183,6 +183,41 @@ public class PluginPopupItemsTests : IDisposable
         }
     }
 
+    /// <summary>Owner 10-29: a plugin's menu opens AND closes with the app menus' pop. The Genre menu
+    /// grows in, its rows have the menus' pill hover, and a close is held while it shrinks away.</summary>
+    [AvaloniaFact]
+    public void AlbumRoulette_GenreMenu_PopsOpenAndClosed_LikeTheAppsMenus()
+    {
+        var host = new AlbumRoulettePluginTests.FakeRouletteHost();
+        var view = new RouletteView(host, new Random(3), () => new DateTime(2026, 10, 29, 12, 0, 0));
+        var window = Open(view, 440, 700);
+        view.SetAlbums(AlbumRoulettePluginTests.Library());
+        Pump();
+        var chip = view.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Genre");
+        var flyout = Assert.IsType<MenuFlyout>(chip.Flyout);
+        Click(window, chip);
+        Pump(600);
+        var presenter = window.GetVisualDescendants().OfType<MenuFlyoutPresenter>().Single();
+        Assert.True(Noctis.Helpers.MenuOpenAnimation.GetPop(presenter));
+        Assert.True(Noctis.Helpers.MenuOpenAnimation.GetEnableFlyoutClose(flyout)); // set for the plugin by PluginView.axaml
+        var row = MenuRows(presenter).OfType<MenuItem>().First(m => !m.IsChecked);
+        var at = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window)!.Value;
+        window.MouseMove(at);
+        Pump(60);
+        var face = row.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PART_LayoutRoot");
+        Assert.Equal(new CornerRadius(999), face.CornerRadius);
+        Assert.True(window.TryFindResource("MenuV2HoverBrush", window.ActualThemeVariant, out var hover));
+        Assert.Equal(((ISolidColorBrush)hover!).Color, (face.Background as ISolidColorBrush)?.Color);
+
+        flyout.Hide();
+        Pump(40);
+        Assert.Same(window, TopLevel.GetTopLevel(presenter)); // still there, shrinking
+        Assert.False(presenter.IsHitTestVisible);
+        Pump(400);
+        Assert.Empty(window.GetVisualDescendants().OfType<MenuFlyoutPresenter>());
+        Assert.False(flyout.IsOpen);
+    }
+
     [AvaloniaFact]
     public void AlbumRoulette_ClickingAGenre_RelabelsTheChip()
     {
@@ -235,14 +270,15 @@ public class PluginPopupItemsTests : IDisposable
     {
         Assert.True(box.ItemCount > 0, $"{where}: no items to show");
         Click(window, box);
-        Pump(300);
+        Pump(600); // the pop: rows settle in one after another
         Assert.True(box.IsDropDownOpen, $"{where}: did not open");
         var popup = box.GetVisualDescendants().OfType<Popup>().Single(p => p.Name == "PART_Popup");
         var card = (Control)popup.Child!;
         Assert.Same(window, TopLevel.GetTopLevel(card)); // frosted in the window
         AssertRowsShown(card, box.GetRealizedContainers().OfType<ComboBoxItem>().Cast<Control>().ToList(), box.ItemCount, where);
         box.IsDropDownOpen = false;
-        Pump();
+        Pump(300); // the pop's reverse, then closed
+        Assert.Null(TopLevel.GetTopLevel(card));
     }
 
     [AvaloniaFact]
@@ -261,6 +297,46 @@ public class PluginPopupItemsTests : IDisposable
         Assert.Equal(2, lists.Count);
         AssertDropDownShown(window, lists[0], "True Shuffle mode");
         AssertDropDownShown(window, lists[1], "True Shuffle source");
+    }
+
+    /// <summary>Owner 10-29: True Shuffle's lists look and move exactly like a Settings list (Interface
+    /// Size): the same shell, card, rows, accent pick and menu-pill hover, and the menus' pop open and
+    /// closed (PluginsGridTests.DropDownLook checks the motion part by part).</summary>
+    [AvaloniaFact]
+    public void TrueShuffle_Lists_AreTheSettingsDropDown()
+    {
+        using var persistence = new TestPersistenceService();
+        var vm = new Noctis.ViewModels.SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory())
+        {
+            SelectedSettingsTab = Noctis.ViewModels.SettingsViewModel.TabAppearance,
+        };
+        var settings = new Window { Width = 1100, Height = 900, Content = new SettingsView { DataContext = vm }, RequestedThemeVariant = ThemeVariant.Dark };
+        _windows.Add(settings);
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        settings.Show();
+        Pump(400);
+        var core = PluginsGridTests.DropDownLook(settings, ((SettingsView)settings.Content!).FindControl<ComboBox>("UiScaleCombo")!);
+
+        _box.Approve(("dev.noctis.plugins.trueshuffle", new[] { "playback.control", "library.read", "menu.commands", "notifications" }));
+        var host = _box.NewHost(library: new FakeLibraryService(), appVersion: "1.6.6");
+        var manifest = PluginManifest.Parse(File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.TrueShuffle/plugin.json")));
+        var dir = Path.Combine(_box.PluginsDir, manifest.Id);
+        Directory.CreateDirectory(dir);
+        var plugin = new TrueShufflePlugin();
+        host.AddInProcess(dir, manifest, () => plugin);
+        var view = plugin.CreateView();
+        var window = Open(view, 520, 640);
+        foreach (var list in view.GetVisualDescendants().OfType<ComboBox>().ToList())
+            Assert.Equal(core, PluginsGridTests.DropDownLook(window, list));
+    }
+
+    private sealed class NoOpPlayHistory : Noctis.Services.IPlayHistoryService
+    {
+        public IReadOnlyList<Noctis.Models.PlayHistoryEvent> Events => Array.Empty<Noctis.Models.PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Noctis.Models.Track track) { }
+        public void RecordSkip(Noctis.Models.Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
     }
 
     [AvaloniaFact]

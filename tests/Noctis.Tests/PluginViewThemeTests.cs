@@ -27,9 +27,9 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// Plugin windows wear Noctis's look (owner 10-29): PluginViewWindow adds PluginViewTheme, so in
-/// every official plugin's window no square CheckBox is left (each is the Settings switch), and
-/// menus, flyouts and drop-down lists are frosted glass drawn in the window's overlay layer (a
-/// native popup window cannot be blurred). Album Town's "Choose songs" picker sits over the town
+/// every official plugin's window no square CheckBox is left (each is the Settings switch), menus
+/// and flyouts are frosted glass drawn in the window's overlay layer (a native popup window cannot
+/// be blurred), and drop-down lists are the Settings drop-down (DropDowns.axaml). Album Town's "Choose songs" picker sits over the town
 /// blurred and dimmed, like PillDialogHost.
 /// </summary>
 public class PluginViewThemeTests : IDisposable
@@ -81,6 +81,22 @@ public class PluginViewThemeTests : IDisposable
         Assert.True(glass.BlurRadius > 0, $"{where}: no blur");
     }
 
+    /// <summary>The list under <paramref name="box"/> is the Settings drop-down (owner 10-29, was frosted
+    /// glass): DropDowns.axaml's card and rows, popping like a menu, drawn in the window.</summary>
+    private static void AssertSettingsDropDown(ComboBox box, Window window, string where)
+    {
+        var popup = box.GetVisualDescendants().OfType<Popup>().Single(p => p.Name == "PART_Popup");
+        Assert.True(popup.IsOpen, $"{where}: not open");
+        var card = Assert.IsType<Border>(popup.Child);
+        Assert.Same(window, TopLevel.GetTopLevel(card));
+        Assert.Equal("PopupBorder", card.Name);
+        Assert.Equal(new CornerRadius(16), card.CornerRadius); // OverlayCornerRadius, as Settings' lists
+        Assert.Empty(card.GetVisualDescendants().OfType<GlassPanel>());
+        Assert.Equal(new CornerRadius(999), box.CornerRadius);
+        foreach (var row in box.GetRealizedContainers().OfType<ComboBoxItem>())
+            Assert.Equal((new Thickness(4, 1), new Thickness(12, 6), new CornerRadius(999)), (row.Margin, row.Padding, row.CornerRadius));
+    }
+
     [AvaloniaFact]
     public void PluginViewWindow_AppliesTheTheme()
     {
@@ -103,7 +119,7 @@ public class PluginViewThemeTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void TrueShuffle_PillListsAndButtons_AndAFrostedDropDown()
+    public void TrueShuffle_PillListsAndButtons_AndTheSettingsDropDown()
     {
         _box.Approve(("dev.noctis.plugins.trueshuffle", new[] { "playback.control", "library.read", "menu.commands", "notifications" }));
         var host = _box.NewHost(library: new FakeLibraryService(), appVersion: "1.6.6");
@@ -130,9 +146,8 @@ public class PluginViewThemeTests : IDisposable
             mode.IsDropDownOpen = true;
             Pump();
             var popup = mode.GetVisualDescendants().OfType<Popup>().Single(p => p.Name == "PART_Popup");
-            Assert.True(popup.IsOpen);
             Assert.True(popup.ShouldUseOverlayLayer);
-            AssertFrosted((Control)popup.Child!, window, "True Shuffle mode list");
+            AssertSettingsDropDown(mode, window, "True Shuffle mode list");
             mode.IsDropDownOpen = false;
         }
         finally { window.Close(); }
@@ -208,7 +223,7 @@ public class PluginViewThemeTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void ABLoop_And_YouTube_HaveNoSquareCheckBoxes_AndYouTubesFormatListIsFrosted()
+    public void ABLoop_And_YouTube_HaveNoSquareCheckBoxes_AndYouTubesFormatListIsTheSettingsDropDown()
     {
         var sim = new ABLoopPluginTests.SimPlayer();
         using var session = new LoopSession(sim, () => sim.Now, useTimer: false);
@@ -223,8 +238,7 @@ public class PluginViewThemeTests : IDisposable
             AssertNoSquareCheckBox(window, "Add from YouTube");
             youtube.FormatBox.IsDropDownOpen = true;
             Pump();
-            var popup = youtube.FormatBox.GetVisualDescendants().OfType<Popup>().Single(p => p.Name == "PART_Popup");
-            AssertFrosted((Control)popup.Child!, window, "Add from YouTube format list");
+            AssertSettingsDropDown(youtube.FormatBox, window, "Add from YouTube format list");
             youtube.FormatBox.IsDropDownOpen = false;
         }
         finally { window.Close(); }

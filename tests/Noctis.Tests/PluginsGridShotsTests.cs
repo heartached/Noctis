@@ -8,6 +8,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Services;
 using Noctis.ViewModels;
 using Noctis.Views;
@@ -136,6 +137,150 @@ public class PluginsGridShotsTests
             Pump(300);
             window.Close();
         });
+    }
+
+    /// <summary>
+    /// The final plugin page (owner 10-29) at 125 %: Album Roulette not installed (Install top-right,
+    /// no "..."), installed ("..." top-right, Open under the description, the Settings slider), its
+    /// Animation list open on the page, and True Shuffle's Mode list open in its window. Explicit
+    /// only: NOCTIS_TEST_SKIA=1 and NOCTIS_PLUGIN_FINAL_DIR (final-*.png).
+    /// </summary>
+    [AvaloniaFact]
+    public async Task PluginPageFinal_SavePreviewPngs()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_PLUGIN_FINAL_DIR");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+        EnsureAppStyles();
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        Noctis.Helpers.ComboBoxDropDownAnimator.Install();
+        const double scale = 1.25;
+
+        using var box = new PluginSandbox();
+        box.Settings.CommunityPluginsEnabled = true;
+        var src = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumRoulette");
+        var manifestJson = File.ReadAllText(Path.Combine(src, "plugin.json"));
+        var description = System.Text.Json.Nodes.JsonNode.Parse(manifestJson)!["description"]!.GetValue<string>();
+        var host = box.NewHost(appVersion: "1.6.6");
+        host.LoadAll();
+
+        using var persistence = new TestPersistenceService();
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory()) { Plugins = host };
+        // The official list with Album Roulette on it (not installed yet).
+        var server = new PluginCatalogTests.FakeHandler();
+        const string zipUrl = "https://github.com/heartached/Noctis/releases/download/plugin-albumroulette-v1.0.0/Noctis.Plugins.AlbumRoulette-1.0.0.zip";
+        server[Noctis.Services.Plugins.PluginCatalog.DefaultUrl] = System.Text.Encoding.UTF8.GetBytes(PluginCatalogTests.Index(
+            PluginCatalogTests.Entry(id: "dev.noctis.plugins.albumroulette", name: "Album Roulette", version: "1.0.0", download: zipUrl,
+                minAppVersion: "1.6.6", extra: new (string, object?)[]
+                {
+                    ("description", description),
+                    ("homepage", "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumRoulette"),
+                    ("icon", "Noctis.Plugins.AlbumRoulette/icon.png"),
+                })));
+        vm.PluginCatalogClient = new Noctis.Services.Plugins.PluginCatalogClient(new HttpClient(server), () => null)
+        {
+            Embedded = () => Noctis.Services.Plugins.PluginCatalog.Empty,
+        };
+        await vm.LoadOfficialPluginsAsync();
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+
+        Window NewStage(Control content) => new()
+        {
+            Width = 2048 / scale, Height = 1152 / scale,
+            RequestedThemeVariant = ThemeVariant.Dark,
+            Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops = { new GradientStop(Color.Parse("#1B1A20"), 0), new GradientStop(Color.Parse("#0C0C0F"), 1) },
+            },
+            Content = content,
+        };
+
+        void HoverSecondRow(Window window, ComboBox list)
+        {
+            if (list.GetRealizedContainers().OfType<ComboBoxItem>().Skip(1).FirstOrDefault() is not { } row) return;
+            var p = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window)!.Value;
+            Avalonia.Headless.HeadlessWindowExtensions.MouseMove(window, p);
+        }
+
+        var shots = new List<string>();
+        AccentTestHarness.WithAccent("#E86A9A", ThemeVariant.Dark, () =>
+        {
+            var view = new SettingsView { DataContext = vm, Width = 1000, Height = 760 };
+            var card = new Border
+            {
+                Child = view,
+                CornerRadius = new CornerRadius(22),
+                ClipToBounds = true,
+                BorderBrush = new SolidColorBrush(Color.Parse("#22FFFFFF")),
+                BorderThickness = new Thickness(1),
+                BoxShadow = BoxShadows.Parse("0 24 60 0 #80000000"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var window = NewStage(card);
+            window.Show();
+            window.SetRenderScaling(scale);
+            vm.OpenPluginCardCommand.Execute(vm.OfficialCards.Single(c => c.Id == "dev.noctis.plugins.albumroulette"));
+            Pump(900);
+            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, "final-detail-not-installed.png"));
+            shots.Add("final-detail-not-installed.png");
+
+            // Installed: the same plugin from its folder (the DLL is a stub, so it waits for approval).
+            vm.ClosePluginDetailCommand.Execute(null);
+            AddRepoPlugin(box, "Noctis.Plugins.AlbumRoulette", "Noctis.Plugins.AlbumRoulette.dll");
+            host.LoadAll();
+            Pump(300);
+            var installed = vm.CommunityCards.Concat(vm.OfficialCards).First(c => c.Id == "dev.noctis.plugins.albumroulette" && c.IsInstalled);
+            vm.OpenPluginCardCommand.Execute(installed);
+            Pump(900);
+            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, "final-detail-installed.png"));
+            shots.Add("final-detail-installed.png");
+
+            // Its Animation list open (drawn in the window so the capture has it), a row hovered.
+            var list = view.FindControl<StackPanel>("PluginDetailPage")!.GetVisualDescendants().OfType<ComboBox>()
+                .First(c => Avalonia.Automation.AutomationProperties.GetName(c) == "Animation");
+            list.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Single(p => p.Name == "PART_Popup").ShouldUseOverlayLayer = true;
+            list.IsDropDownOpen = true;
+            Pump(700);
+            HoverSecondRow(window, list);
+            Pump(200);
+            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, "final-dropdown-page.png"));
+            shots.Add("final-dropdown-page.png");
+            list.IsDropDownOpen = false;
+            Pump(400);
+            window.Close();
+
+            // True Shuffle's window with its Mode list open.
+            box.Approve(("dev.noctis.plugins.trueshuffle", new[] { "playback.control", "library.read", "menu.commands", "notifications" }));
+            var shuffleHost = box.NewHost(library: new FakeLibraryService(), appVersion: "1.6.6");
+            var shuffleManifest = Noctis.Services.Plugins.PluginManifest.Parse(File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.TrueShuffle/plugin.json")));
+            var shuffleDir = Path.Combine(box.PluginsDir, shuffleManifest.Id);
+            Directory.CreateDirectory(shuffleDir);
+            var plugin = new Noctis.Plugins.TrueShuffle.TrueShufflePlugin();
+            var loaded = shuffleHost.AddInProcess(shuffleDir, shuffleManifest, () => plugin);
+            Control? shuffleView = null;
+            // The way Noctis opens it: a PluginViewWindow at the size the plugin asks for.
+            shuffleHost.ViewPresenter = (entry, content) => { shuffleView = content; return PluginViewWindow.Present(entry, content); };
+            Assert.True(loaded.Views.Single().Open());
+            var shuffle = (Window)TopLevel.GetTopLevel(shuffleView!)!;
+            shuffle.RequestedThemeVariant = ThemeVariant.Dark;
+            shuffle.SetRenderScaling(scale);
+            Pump(500);
+            var mode = shuffleView!.GetVisualDescendants().OfType<ComboBox>().First();
+            Noctis.Helpers.MenuOpenAnimation.ForgetLastPress();
+            mode.IsDropDownOpen = true;
+            Pump(700);
+            HoverSecondRow(shuffle, mode);
+            Pump(200);
+            shuffle.CaptureRenderedFrame()!.Save(Path.Combine(dir, "final-dropdown-trueshuffle.png"));
+            shots.Add("final-dropdown-trueshuffle.png");
+            mode.IsDropDownOpen = false;
+            Pump(400);
+            shuffle.Close();
+        });
+        Assert.Equal(4, shots.Count);
     }
 
     [AvaloniaFact]
