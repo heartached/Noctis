@@ -28,7 +28,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.3** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.4** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -41,7 +41,7 @@ API **1.3** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 | Settings | Settings you declare in plugin.json, drawn by Noctis in Settings → Plugins | — |
 | Storage | A private data folder that survives updates | — |
 | Playback control | Play, pause, next, previous, seek; since 1.3 play a list of library tracks | `playback.control` |
-| Library | Read-only search over the library, or all of it (copies, never live objects) | `library.read` |
+| Library | Read-only search over the library, or all of it, and since 1.4 the playlists (copies, never live objects) | `library.read` |
 | BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
 | Track menu | Entries in the track context menu | `menu.commands` |
@@ -123,9 +123,10 @@ samples live in the repository:
   library search and a notice, a lyrics provider stub, a scrobble hook, and declared settings.
 - `plugins/Noctis.Plugins.Kawarp` — a Skia-shader visual layer (Noctis also ships Kawarp built in;
   this copy stays as a realistic visual-layer example).
-- `plugins/Noctis.Plugins.AlbumTown` — *Album Town* (API 1.3): a view of its own where your albums
-  live as little creatures in a plaza. Uses `RegisterView`, `Library.GetAll()` with the 1.3 track
-  fields, `PlayTracks` and `ShowAlbum`.
+- `plugins/Noctis.Plugins.AlbumTown` — *Album Town* (API 1.4): a view of its own where your albums
+  live as little creatures in a plaza and in apartments you build from albums and playlists. Uses
+  `RegisterView`, `Library.GetAll()` with the 1.3 track fields, `Library.GetPlaylists()`,
+  `PlayTracks` and `ShowAlbum`.
 - `plugins/Noctis.Plugins.Mixxx` — *Mixxx* (API 1.2): imports the BPM and key the Mixxx DJ app
   analysed, reading its `mixxxdb.sqlite` read-only with the app's SQLite, matching tracks by file
   path, and writing through `host.TrackAnalysis`.
@@ -197,7 +198,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `void RegisterVisualLayer(IVisualLayerProvider)` | 1.0 | | A lyrics-page background layer. |
 | `string PluginDirectory` | 1.1 | | The folder the plugin was loaded from. Assemblies are loaded from memory, so `Assembly.Location` is empty: use this for bundled files. |
 | `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped). Safe from any thread. |
-| `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track. |
+| `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track; since 1.4 `GetPlaylists()`, see below. |
 | `IPluginSettings Settings` | 1.1 | | Declared settings (see above). |
 | `void Notify(string)` | 1.1 | `notifications` | A notice pill for ~4 s. At most one per second per plugin; long text is cut at 200 characters. |
 | `IDisposable RegisterLyricsProvider(ILyricsProvider)` | 1.1 | `lyrics.provider` | See below. |
@@ -217,6 +218,14 @@ Using a hook without declaring its permission throws `PluginPermissionException`
 1.3 `AlbumId` (the album as Noctis groups it; empty = unknown), `ArtworkPath` (the cover image Noctis
 shows for the track, or null; read it, never write it), `ReleaseType` (`"Album"`, `"Single"`, `"EP"`,
 `"Compilation"`, `"Live"`, `"Remix"`, `"Soundtrack"`, `"Other"`), `DateAdded` and `LastPlayed` (null = never).
+
+`Library.GetPlaylists()` (1.4, `library.read`) returns `PlaylistInfo` copies of the user's
+playlists in sidebar order: `Id`, `Name`, `CoverPath` (the playlist's own cover image, or null when
+it has none; Noctis then shows a mosaic of its songs' covers), `TrackIds` (library track ids in
+playlist order; ids the library no longer has are left out; a smart playlist lists the tracks its
+rules match right now), `Color` (`"#RRGGBB"`, the tile colour without a cover) and `IsSmart`.
+Play one with `Playback.PlayTracks(playlist.TrackIds)` (`playback.control`). Call it off the UI
+thread for big libraries, like `GetAll()`.
 
 ### Views
 
@@ -292,7 +301,7 @@ BPM column, AutoMix transitions and Track Radio.
 |---|---|---|
 | `playback.read` | Now playing, events, scrobble hook. Implicit: you need not list it. | — |
 | `playback.control` | `host.Playback` | Control playback: play, pause, skip and seek |
-| `library.read` | `host.Library` | Search your library (titles, artists, albums, file paths, play counts) |
+| `library.read` | `host.Library` | Read your library and playlists (titles, artists, albums, file paths, play counts) |
 | `network` | Nothing in the API: a **disclosure** that the plugin talks to the internet. Declare it if you do. | Connect to the internet |
 | `lyrics.provider` | `RegisterLyricsProvider` | Supply lyrics to the lyrics search |
 | `menu.commands` | `RegisterTrackCommand` | Add entries to the track menu |
@@ -613,6 +622,8 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.0 | before 1.5.3 | Plugin entry point, now playing, beat/spectrum taps, data folder, visual layers. |
 | 1.1 | 1.5.3+ | plugin.json, permissions, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notices, `PluginDirectory`; data folder moved out of the plugin folder. |
 | 1.2 | 1.5.9+ | `TrackInfo.Bpm` / `MusicalKey`, `ILibraryReader.GetAll()`, `ITrackAnalysisWriter` (`host.TrackAnalysis`) with the `library.write.analysis` permission. |
+| 1.3 | 1.6.6+ | Views (`RegisterView` / `OpenView`), `ShowAlbum`, `IPlaybackControl.PlayTracks`, `TrackInfo.AlbumId` / `ArtworkPath` / `ReleaseType` / `DateAdded` / `LastPlayed`. |
+| 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

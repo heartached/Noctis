@@ -443,6 +443,8 @@ public partial class MainWindowViewModel : ViewModelBase
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
         // API 1.3: plugin views open in a window of their own; ShowAlbum opens the album page here.
         Plugins.ViewPresenter = Views.PluginViewWindow.Present;
+        // API 1.4: plugins read the playlists the sidebar holds (copied by the adapter).
+        Plugins.PlaylistSource = () => Sidebar.Playlists.ToArray();
         Plugins.AlbumOpener = albumId =>
         {
             if (_library.GetAlbumById(albumId) is not { } album) return false;

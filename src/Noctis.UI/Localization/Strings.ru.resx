@@ -2228,7 +2228,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Уведомления</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Запись BPM и тональности</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Управлять воспроизведением: запуск, пауза, переключение и перемотка</value></data>
-  <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Искать в медиатеке (названия, исполнители, альбомы, пути к файлам, число прослушиваний)</value></data>
+  <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Читать медиатеку и плейлисты (названия, исполнители, альбомы, пути к файлам, число прослушиваний)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Подключаться к интернету</value></data>
   <data name="Plugins.Perm.LyricsProvider" xml:space="preserve"><value>Служить источником для поиска текстов</value></data>
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Добавлять пункты в меню трека</value></data>

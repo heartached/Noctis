@@ -561,6 +561,41 @@ public sealed class PluginHost
     /// Set by the app; null = false.</summary>
     public Func<Guid, bool>? AlbumOpener { get; set; }
 
+    /// <summary>API 1.4: the user's playlists, in sidebar order (<see cref="ILibraryReader.GetPlaylists"/>).
+    /// Set by the app; null (tests, headless) = no playlists. Plugins may call it off the UI
+    /// thread, so the adapter copies what it reads.</summary>
+    public Func<IReadOnlyList<Playlist>>? PlaylistSource { get; set; }
+
+    /// <summary>A plain copy of a playlist for plugins: its library tracks in order (a smart
+    /// playlist's current matches), ids the library no longer has left out.</summary>
+    public static PlaylistInfo ToPlaylistInfo(Playlist p, ILibraryService? library)
+    {
+        IEnumerable<string> ids;
+        if (p.IsSmartPlaylist)
+        {
+            if (library is null) ids = Array.Empty<string>();
+            else
+            {
+                Track[] all;
+                try { all = library.Tracks.ToArray(); }
+                catch (InvalidOperationException) { all = library.Tracks.ToArray(); } // mutated mid-copy by a scan: once more
+                ids = SmartPlaylistEvaluator.Evaluate(p, all).Select(t => t.Id.ToString("D"));
+            }
+        }
+        else
+        {
+            Guid[] trackIds;
+            try { trackIds = p.TrackIds.ToArray(); }
+            catch (InvalidOperationException) { trackIds = p.TrackIds.ToArray(); }
+            ids = trackIds.Where(id => library is null || library.GetTrackById(id) is not null).Select(id => id.ToString("D"));
+        }
+        return new PlaylistInfo(p.Id.ToString("D"), p.Name ?? "", string.IsNullOrWhiteSpace(p.CoverArtPath) ? null : p.CoverArtPath, ids.ToArray())
+        {
+            Color = p.Color ?? "",
+            IsSmart = p.IsSmartPlaylist,
+        };
+    }
+
     /// <summary>Views of every running plugin, in load order.</summary>
     public IReadOnlyList<PluginViewEntry> Views
         => Plugins.Where(p => p.Instance is not null).SelectMany(p => p.Views).ToList();
@@ -1637,6 +1672,25 @@ public sealed class PluginHost
             try { snapshot = _library.Tracks.ToArray(); }
             catch (InvalidOperationException) { snapshot = _library.Tracks.ToArray(); } // mutated mid-copy by a scan: once more
             return snapshot.Select(ToTrackInfo).ToArray();
+        }
+
+        public IReadOnlyList<PlaylistInfo> GetPlaylists()
+        {
+            if (_disposed || _owner.PlaylistSource is not { } source) return Array.Empty<PlaylistInfo>();
+            Playlist[] snapshot;
+            try { snapshot = source().ToArray(); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { snapshot = source().ToArray(); } // edited mid-copy: once more
+            var result = new List<PlaylistInfo>(snapshot.Length);
+            foreach (var p in snapshot)
+            {
+                if (p is null) continue;
+                try { result.Add(ToPlaylistInfo(p, _library)); }
+                catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.State, "Plugins", $"{_plugin.Id}: skipped playlist {p.Id}: {ex.Message}");
+                }
+            }
+            return result;
         }
 
         // IPluginSettings

@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.3"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.4"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 3;
+    public const int Minor = 4;
 
-    /// <summary>"1.3": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.4": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 
@@ -124,6 +124,30 @@ public interface ILibraryReader
     /// such as matching by <see cref="TrackInfo.FilePath"/>; call it off the UI thread for big libraries.</summary>
     IReadOnlyList<TrackInfo> GetAll()
         => throw new NotSupportedException("This Noctis build does not implement plugin API 1.2. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.4. The user's playlists, in sidebar order (copies). Smart playlists come
+    /// with the tracks their rules match right now. Play one with
+    /// <see cref="IPlaybackControl.PlayTracks"/> and its <see cref="PlaylistInfo.TrackIds"/>.</summary>
+    IReadOnlyList<PlaylistInfo> GetPlaylists()
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.4. Set minAppVersion in plugin.json.");
+}
+
+/// <summary>
+/// API 1.4. A plain copy of one of the user's playlists (<see cref="ILibraryReader.GetPlaylists"/>).
+/// </summary>
+/// <param name="Id">Stable id of the playlist.</param>
+/// <param name="Name">The name the user gave it.</param>
+/// <param name="CoverPath">The playlist's own cover image, or null when it has none (Noctis then
+/// shows a mosaic of its songs' covers). Read it, never write it.</param>
+/// <param name="TrackIds">Its library tracks (<see cref="TrackInfo.Id"/>), in playlist order.
+/// Ids the library no longer has are left out.</param>
+public sealed record PlaylistInfo(string Id, string Name, string? CoverPath, IReadOnlyList<string> TrackIds)
+{
+    /// <summary>The playlist's colour in Noctis ("#RRGGBB"), the tile colour it shows without a cover.</summary>
+    public string Color { get; init; } = "";
+
+    /// <summary>True for a smart (rule-based) playlist.</summary>
+    public bool IsSmart { get; init; }
 }
 
 /// <summary>One track's tempo and key for <see cref="ITrackAnalysisWriter.SetTrackAnalysisAsync"/>.

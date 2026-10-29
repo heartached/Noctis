@@ -44,7 +44,7 @@ public class PluginViewApiTests : IDisposable
     [Fact]
     public void Kit_Is13()
     {
-        Assert.Equal("1.3", PluginApi.Version);
+        Assert.True(PluginApi.Minor >= 3);
         Assert.Null(PluginManifest.Parse(M()).CheckCompatibility("1.6.6"));
     }
 

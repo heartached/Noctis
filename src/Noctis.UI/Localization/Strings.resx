@@ -2228,7 +2228,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Notifications</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Set BPM and key</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Control playback: play, pause, skip and seek</value></data>
-  <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Search your library (titles, artists, albums, file paths, play counts)</value></data>
+  <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Read your library and playlists (titles, artists, albums, file paths, play counts)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Connect to the internet</value></data>
   <data name="Plugins.Perm.LyricsProvider" xml:space="preserve"><value>Supply lyrics to the lyrics search</value></data>
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Add entries to the track menu</value></data>
