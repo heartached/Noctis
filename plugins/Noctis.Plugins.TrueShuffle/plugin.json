@@ -1,0 +1,27 @@
+{
+  "id": "dev.noctis.plugins.trueshuffle",
+  "name": "True Shuffle",
+  "version": "1.0.0",
+  "author": "Alfamin",
+  "description": "Shuffle your way: Equal chance, No repeats, Discovery, Never played or For you, over the queue, a playlist or the whole library. Songs you add yourself play first, in your order. By Alfamin.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.TrueShuffle.dll",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["playback.control", "library.read", "menu.commands", "notifications"],
+  "settings": [
+    { "key": "mode", "label": "Mode", "type": "choice",
+      "choices": ["Equal chance", "No repeats", "Discovery", "Never played", "For you"], "default": "No repeats",
+      "description": "Equal chance: every song once, in a fair random order. No repeats: songs you heard wait until the rest have played. Discovery: least played first. Never played: only songs you never played. For you: picked from how you listen on this computer." },
+    { "key": "source", "label": "Shuffle", "type": "choice",
+      "choices": ["Current queue", "Whole library"], "default": "Current queue",
+      "description": "What the Shuffle button in the True Shuffle window shuffles first. A playlist can be picked there too." },
+    { "key": "forYouNew", "label": "For you: new songs", "type": "choice",
+      "choices": ["Familiar", "Balanced", "Adventurous"], "default": "Balanced",
+      "description": "How often For you plays a song you have not heard yet: about one in ten, one in five or one in three." },
+    { "key": "skipDisliked", "label": "Leave out songs marked Not liked", "type": "bool", "default": false,
+      "description": "Off: they have the same chance as any other song." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.TrueShuffle"
+}

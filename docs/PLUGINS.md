@@ -28,27 +28,29 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.4** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.5** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
 | Now playing | Current track, play/pause state, position, change events | — (`playback.read`, implicit) |
 | Audio taps | Live beat pulse and spectrum of what is playing | — |
 | Visual layers | A control drawn behind the lyrics (offered as a style in Settings' Flowing background picker) | — |
+| Lyrics motion | How the letters of word-synced lyrics move, and which lines read right to left (1.5) | — |
 | Views | A page of your own, opened from Settings → Plugins ("Open &lt;name&gt;") in its own window (1.3) | — |
 | Album page | Show an album's page in the main window (1.3) | — |
 | Scrobble hook | Called when a track counts as listened (half its length or 4 minutes) | — (`playback.read`) |
 | Settings | Settings you declare in plugin.json, drawn by Noctis in Settings → Plugins | — |
 | Storage | A private data folder that survives updates | — |
-| Playback control | Play, pause, next, previous, seek; since 1.3 play a list of library tracks | `playback.control` |
+| Playback control | Play, pause, next, previous, seek; since 1.3 play a list of library tracks; since 1.5 read the queue, set what is up next and hear when the user queues songs | `playback.control` |
 | Library | Read-only search over the library, or all of it, and since 1.4 the playlists (copies, never live objects) | `library.read` |
 | BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
 | Track menu | Entries in the track context menu | `menu.commands` |
 | Notices | A short message in the app's notice pill | `notifications` |
 
-Not available (yet): writing other library fields or file tags, editing the queue (1.3 can only
-replace it), sidebar entries, and the mobile apps (Android does not load plugins).
+Not available (yet): writing other library fields or file tags, editing single queue entries
+(1.5 sets the whole of Up Next at once), replacing the order of Noctis's own Shuffle button, sidebar
+entries, and the mobile apps (Android does not load plugins).
 
 Themes, lyrics-page presets and translations do not need code at all: ship them as a
 [content pack](#content-packs) (`"type": "content"`), plain JSON that installs without the
@@ -127,6 +129,11 @@ samples live in the repository:
   live as little creatures in a plaza and in apartments you build from albums and playlists. Uses
   `RegisterView`, `Library.GetAll()` with the 1.3 track fields, `Library.GetPlaylists()`,
   `PlayTracks` and `ShowAlbum`.
+- `plugins/Noctis.Plugins.TrueShuffle` — *True Shuffle* by Alfamin (API 1.5, MIT): shuffle modes over
+  the queue, a playlist or the whole library, planned off the UI thread. Uses `GetAll()`,
+  `GetPlaylists()`, `GetQueue()`, `SetUpNext()`, `TracksQueued`, a view and a track-menu command.
+- `plugins/Noctis.Plugins.LyricMotion` — *Lyric Motion* by Alfamin (API 1.5, MIT): letter-by-letter
+  lyrics motion and right-to-left layout through `RegisterLyricsEffect`, with no allocation per frame.
 - `plugins/Noctis.Plugins.Mixxx` — *Mixxx* (API 1.2): imports the BPM and key the Mixxx DJ app
   analysed, reading its `mixxxdb.sqlite` read-only with the app's SQLite, matching tracks by file
   path, and writing through `host.TrackAnalysis`.
@@ -197,7 +204,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `void Log(string)` | 1.0 | | Writes to the Noctis debug log, prefixed with the plugin name. |
 | `void RegisterVisualLayer(IVisualLayerProvider)` | 1.0 | | A lyrics-page background layer. |
 | `string PluginDirectory` | 1.1 | | The folder the plugin was loaded from. Assemblies are loaded from memory, so `Assembly.Location` is empty: use this for bundled files. |
-| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped). Safe from any thread. |
+| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped); since 1.5 `GetQueue()`, `SetUpNext(trackIds)` and the `TracksQueued` event, see [The queue](#the-queue). Safe from any thread. |
 | `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track; since 1.4 `GetPlaylists()`, see below. |
 | `IPluginSettings Settings` | 1.1 | | Declared settings (see above). |
 | `void Notify(string)` | 1.1 | `notifications` | A notice pill for ~4 s. At most one per second per plugin; long text is cut at 200 characters. |
@@ -209,6 +216,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `IDisposable RegisterView(IPluginViewProvider)` | 1.3 | | A view of your own; see [Views](#views). |
 | `bool OpenView(IPluginViewProvider)` | 1.3 | | Opens a view you registered (from a menu command, say). False when it is not registered or the plugin stopped. |
 | `bool ShowAlbum(string albumId)` | 1.3 | | Shows the album's page (`TrackInfo.AlbumId`) in the main window and brings it forward. False for an unknown album. |
+| `IDisposable RegisterLyricsEffect(ILyricsEffect)` | 1.5 | | How word-synced lyrics move; see [Lyrics effects](#lyrics-effects). |
 
 Using a hook without declaring its permission throws `PluginPermissionException`.
 
@@ -217,7 +225,9 @@ Using a hook without declaring its permission throws `PluginPermissionException`
 `PlayCount`, `Rating`, since 1.2 `Bpm` (0 = unknown) and `MusicalKey` (empty = unknown), and since
 1.3 `AlbumId` (the album as Noctis groups it; empty = unknown), `ArtworkPath` (the cover image Noctis
 shows for the track, or null; read it, never write it), `ReleaseType` (`"Album"`, `"Single"`, `"EP"`,
-`"Compilation"`, `"Live"`, `"Remix"`, `"Soundtrack"`, `"Other"`), `DateAdded` and `LastPlayed` (null = never).
+`"Compilation"`, `"Live"`, `"Remix"`, `"Soundtrack"`, `"Other"`), `DateAdded` and `LastPlayed` (null = never),
+and since 1.5 `IsDisliked`, `IsExplicit`, `SkipWhenShuffling` and `SnoozedUntil` (null = not snoozed):
+what Noctis's own shuffle looks at.
 
 `Library.GetPlaylists()` (1.4, `library.read`) returns `PlaylistInfo` copies of the user's
 playlists in sidebar order: `Id`, `Name`, `CoverPath` (the playlist's own cover image, or null when
@@ -226,6 +236,57 @@ playlist order; ids the library no longer has are left out; a smart playlist lis
 rules match right now), `Color` (`"#RRGGBB"`, the tile colour without a cover) and `IsSmart`.
 Play one with `Playback.PlayTracks(playlist.TrackIds)` (`playback.control`). Call it off the UI
 thread for big libraries, like `GetAll()`.
+
+### The queue
+
+API 1.5, `playback.control`:
+
+- `PlaybackQueue GetQueue()`: `CurrentTrackId` (or null) and `UpNext`, the track ids up next in
+  order. Exact on the UI thread; from another thread a best-effort copy.
+- `void SetUpNext(IReadOnlyList<string> trackIds)`: Up Next becomes these library tracks, in this
+  order, while the current song plays on (unknown ids are skipped; explicit songs are left out while
+  Settings hides them). Noctis's own Shuffle is switched off, because the order is now yours; Track
+  Radio ends; Repeat All repeats the playing song and this list. It does not raise `TracksQueued`.
+- `event EventHandler<TracksQueuedEventArgs> TracksQueued`: the user queued songs themselves (Play
+  Next or Add to Queue, one song or a batch), raised on the UI thread after the queue changed, with
+  `TrackIds` (in the order they now stand) and `PlayNext` (true: they went to the front; false: the
+  end). Restoring, shuffling, reordering and autoplay do not raise it.
+
+Keep Up Next short (True Shuffle puts 200 songs there and adds more when 20 are left): Noctis shows
+and edits the whole queue, and a library-sized queue is slow to show.
+
+### Lyrics effects
+
+```csharp
+public interface ILyricsEffect
+{
+    string Name { get; }
+    void GetLineDirections(IReadOnlyList<string> lines, Span<bool> rightToLeft);
+    LyricsWordMode GetMode(in LyricsWord word);                // Native, Whole or Letters
+    LyricsLetterPose GetPose(in LyricsWord word, int letter);  // scale, offset (em), glow
+}
+```
+
+API 1.5, no permission. An effect changes how the words of word-synced lyrics move on the lyrics
+page, the side panel and the mini player. Noctis keeps drawing them (the sweep, the colours, the glow
+layer); the effect only says where each letter sits and how big it is, as a function of what Noctis
+reports for the word this frame (`LyricsWord`: where the sweep is through it, how long it is sung,
+Noctis's own float, whether it is a held note or the line's last word, its letters, font size and
+where it is shown). One effect is used at a time: the latest registered. Dispose the registration (or
+switch the plugin off) and Noctis's own motion comes back.
+
+- `GetLineDirections` runs once per lyrics load. Mark the lines that read right to left: Noctis then
+  lays their words out from the right, puts the line against the right edge and fills each word
+  from the right. Words of such a line are always drawn in one piece (their letters join).
+- `GetMode` is asked when a word is laid out (not per frame): `Native` leaves the word to Noctis,
+  `Whole` poses it in one piece (letter 0), `Letters` poses each letter (grapheme) on its own.
+- `GetPose` runs on the UI thread while a word is drawn, every frame the word changes. It must be
+  quick and must not allocate: no strings, LINQ, closures or boxing. Noctis caches every word's
+  text layouts; only the pose is asked per frame.
+- An exception from any of them withdraws the effect and stops the plugin (Failed), after the frame.
+
+Noctis draws words of joining scripts (Arabic, Persian, Syriac, N'Ko and others) in one piece in any
+case, with or without an effect: drawn letter by letter they lost their joined forms.
 
 ### Views
 
@@ -659,6 +720,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.2 | 1.5.9+ | `TrackInfo.Bpm` / `MusicalKey`, `ILibraryReader.GetAll()`, `ITrackAnalysisWriter` (`host.TrackAnalysis`) with the `library.write.analysis` permission. |
 | 1.3 | 1.6.6+ | Views (`RegisterView` / `OpenView`), `ShowAlbum`, `IPlaybackControl.PlayTracks`, `TrackInfo.AlbumId` / `ArtworkPath` / `ReleaseType` / `DateAdded` / `LastPlayed`. |
 | 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
+| 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`). |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

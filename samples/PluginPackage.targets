@@ -63,6 +63,8 @@
       <_PluginFiles Include="$(MSBuildProjectDirectory)\plugin.json" />
       <!-- The plugin's icon (plugin.json "icon"), when it has one. -->
       <_PluginFiles Include="$(MSBuildProjectDirectory)\icon.png" Condition="Exists('$(MSBuildProjectDirectory)\icon.png')" />
+      <!-- A plugin under its own license (a community plugin brought into the repo) ships it. -->
+      <_PluginFiles Include="$(MSBuildProjectDirectory)\LICENSE" Condition="Exists('$(MSBuildProjectDirectory)\LICENSE')" />
     </ItemGroup>
     <RemoveDir Directories="$(_PluginStage)" />
     <Copy SourceFiles="@(_PluginFiles)" DestinationFolder="$(_PluginStage)" />

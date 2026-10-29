@@ -44,10 +44,16 @@ public class KaraokeRestingWords : Control
     /// <summary>Row alignment, as the word layer's WrapPanel.ItemsAlignment (duet voices).</summary>
     public WrapPanelItemsAlignment ItemsAlignment { get => GetValue(ItemsAlignmentProperty); set => SetValue(ItemsAlignmentProperty, value); }
 
+    public static readonly StyledProperty<bool> RightToLeftProperty =
+        AvaloniaProperty.Register<KaraokeRestingWords, bool>(nameof(RightToLeft));
+
+    /// <summary>The line reads right to left: cells are mirrored the way <see cref="LyricWrapPanel"/> mirrors them.</summary>
+    public bool RightToLeft { get => GetValue(RightToLeftProperty); set => SetValue(RightToLeftProperty, value); }
+
     static KaraokeRestingWords()
     {
         AffectsMeasure<KaraokeRestingWords>(WordsProperty);
-        AffectsArrange<KaraokeRestingWords>(ItemsAlignmentProperty);
+        AffectsArrange<KaraokeRestingWords>(ItemsAlignmentProperty, RightToLeftProperty);
         AffectsRender<KaraokeRestingWords>(ForegroundProperty);
         ClipToBoundsProperty.OverrideDefaultValue<KaraokeRestingWords>(false);
     }
@@ -221,12 +227,14 @@ public class KaraokeRestingWords : Control
         }
         // Arrange puts each cell on the pixel grid (a centred row can start mid-pixel).
         var dpi = UseLayoutRounding ? LayoutHelper.GetLayoutScale(this) : 0;
+        var rtl = RightToLeft;
         for (int i = start; i < end; i++)
         {
             var (size, scale) = Cell(_cellSizes[i], available);
+            var x = rtl ? available - u - size.Width : u;
             _cells[i] = dpi > 0
-                ? new Rect(LayoutHelper.RoundLayoutValue(u, dpi), LayoutHelper.RoundLayoutValue(v, dpi), size.Width, lineV)
-                : new Rect(u, v, size.Width, lineV);
+                ? new Rect(LayoutHelper.RoundLayoutValue(x, dpi), LayoutHelper.RoundLayoutValue(v, dpi), size.Width, lineV)
+                : new Rect(x, v, size.Width, lineV);
             _scales[i] = scale;
             u += size.Width;
         }

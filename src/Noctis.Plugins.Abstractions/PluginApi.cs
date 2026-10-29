@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.4"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.5"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 4;
+    public const int Minor = 5;
 
-    /// <summary>"1.4": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.5": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 
@@ -91,6 +91,18 @@ public sealed record TrackInfo(
 
     /// <summary>API 1.3. When the track was last played, or null for never.</summary>
     public DateTimeOffset? LastPlayed { get; init; }
+
+    /// <summary>API 1.5. Marked "not liked".</summary>
+    public bool IsDisliked { get; init; }
+
+    /// <summary>API 1.5. Marked explicit.</summary>
+    public bool IsExplicit { get; init; }
+
+    /// <summary>API 1.5. "Skip when shuffling" is on: Noctis's own shuffle leaves it out.</summary>
+    public bool SkipWhenShuffling { get; init; }
+
+    /// <summary>API 1.5. Snoozed until this time (Noctis's shuffle leaves it out until then), or null.</summary>
+    public DateTimeOffset? SnoozedUntil { get; init; }
 }
 
 /// <summary>Transport control ("playback.control"). Calls from any thread are marshalled to the UI thread.</summary>
@@ -108,6 +120,48 @@ public interface IPlaybackControl
     /// in this order) and plays from <paramref name="startIndex"/>. Unknown ids are skipped.</summary>
     void PlayTracks(IReadOnlyList<string> trackIds, int startIndex = 0)
         => throw new NotSupportedException("This Noctis build does not implement plugin API 1.3. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.5. What is playing and what is up next (track ids, in order). Exact on the
+    /// UI thread; from another thread a best-effort copy.</summary>
+    PlaybackQueue GetQueue()
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.5. Replaces the songs up next with these library tracks (<see cref="TrackInfo.Id"/>,
+    /// in this order) without touching the song that is playing. Unknown ids are skipped, and
+    /// explicit songs are left out while Settings hides them. Noctis's own Shuffle is switched off:
+    /// the order is now the caller's (switching it on again shuffles what is up next, as always).</summary>
+    void SetUpNext(IReadOnlyList<string> trackIds)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.5. The user put songs in the queue themselves (Play Next or Add to Queue).
+    /// Raised on the UI thread, after the queue changed.</summary>
+    event EventHandler<TracksQueuedEventArgs>? TracksQueued
+    {
+        add => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
+        remove { }
+    }
+}
+
+/// <summary>API 1.5. A copy of the play queue (<see cref="IPlaybackControl.GetQueue"/>).</summary>
+/// <param name="CurrentTrackId">The current track's <see cref="TrackInfo.Id"/>, or null.</param>
+/// <param name="UpNext">The tracks up next, in order.</param>
+public sealed record PlaybackQueue(string? CurrentTrackId, IReadOnlyList<string> UpNext);
+
+/// <summary>API 1.5. Songs the user queued themselves (<see cref="IPlaybackControl.TracksQueued"/>).</summary>
+public sealed class TracksQueuedEventArgs : EventArgs
+{
+    /// <summary>Raised by Noctis; plugins only read it.</summary>
+    public TracksQueuedEventArgs(IReadOnlyList<string> trackIds, bool playNext)
+    {
+        TrackIds = trackIds;
+        PlayNext = playNext;
+    }
+
+    /// <summary>The queued tracks, in the order they now stand in the queue.</summary>
+    public IReadOnlyList<string> TrackIds { get; }
+
+    /// <summary>True for Play Next (they went to the front), false for Add to Queue (the end).</summary>
+    public bool PlayNext { get; }
 }
 
 /// <summary>Read-only library access ("library.read"). Returns copies, never live objects.</summary>

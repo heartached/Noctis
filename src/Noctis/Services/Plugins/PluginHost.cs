@@ -1125,6 +1125,7 @@ public sealed class PluginHost
         {
             parts.AddRange(a.LyricsSources.Select(l => "Lyrics: " + l.Name));
             parts.AddRange(a.TrackCommands.Select(c => "Menu: " + c.Label));
+            parts.AddRange(a.LyricsEffects.Select(e => "Lyrics motion: " + e.Name));
         }
         plugin.Extensions = string.Join(" · ", parts);
     }
@@ -1190,7 +1191,56 @@ public sealed class PluginHost
         ReleaseType = t.ReleaseType.ToString(),
         DateAdded = t.DateAdded == default ? null : new DateTimeOffset(DateTime.SpecifyKind(t.DateAdded, DateTimeKind.Utc)),
         LastPlayed = t.LastPlayed is { } lp ? new DateTimeOffset(DateTime.SpecifyKind(lp, DateTimeKind.Utc)) : null,
+        IsDisliked = t.IsDisliked,
+        IsExplicit = t.IsExplicit,
+        SkipWhenShuffling = t.SkipWhenShuffling,
+        SnoozedUntil = t.SnoozedUntil is { } su ? new DateTimeOffset(DateTime.SpecifyKind(su, DateTimeKind.Utc)) : null,
     };
+
+    // ── Lyrics effects (API 1.5) ──
+
+    private readonly List<PluginWordEffect> _wordEffects = new();
+
+    /// <summary>Lyrics effects of running plugins, oldest first; the newest is the one in use.</summary>
+    internal IReadOnlyList<PluginWordEffect> WordEffects => _wordEffects;
+
+    internal void AddWordEffect(PluginWordEffect effect)
+    {
+        if (_wordEffects.Count == 0) Controls.KaraokeWordText.EffectFailed += OnWordEffectFailed;
+        _wordEffects.Add(effect);
+        RefreshWordEffect();
+    }
+
+    internal void RemoveWordEffect(PluginWordEffect effect)
+    {
+        if (!_wordEffects.Remove(effect)) return;
+        if (_wordEffects.Count == 0) Controls.KaraokeWordText.EffectFailed -= OnWordEffectFailed;
+        RefreshWordEffect();
+    }
+
+    private void RefreshWordEffect()
+    {
+        PluginWordEffect? current = null;
+        for (var i = _wordEffects.Count - 1; i >= 0 && current is null; i--)
+            if (!_wordEffects[i].Failed) current = _wordEffects[i];
+        // Only touch the app-wide slot when it is ours (or empty): another host (tests) may own it.
+        var slot = Controls.LyricsWordEffect.Current;
+        if (slot is null || slot is PluginWordEffect mine && mine.Host == this)
+            Controls.LyricsWordEffect.Set(current);
+    }
+
+    /// <summary>An effect threw while a word was drawn: it is withdrawn and its plugin stopped, after the frame.</summary>
+    private void OnWordEffectFailed(Controls.IWordEffect effect, Exception ex)
+    {
+        if (effect is not PluginWordEffect pe || !_wordEffects.Contains(pe) || pe.Failed) return;
+        pe.Failed = true;
+        void Stop()
+        {
+            RemoveWordEffect(pe);
+            Fault(pe.Plugin, $"Lyrics effect: {ex.GetType().Name}: {ex.Message}");
+        }
+        Dispatcher.UIThread.Post(Stop); // never mid-frame
+    }
 
     // ── Settings declared in plugin.json ──
 
@@ -1409,7 +1459,11 @@ public sealed class PluginHost
             _player = player;
             _library = library;
             AppVersion = appVersion;
-            if (_player is not null) _player.PropertyChanged += OnPlayerPropertyChanged;
+            if (_player is not null)
+            {
+                _player.PropertyChanged += OnPlayerPropertyChanged;
+                _player.TracksQueued += OnPlayerTracksQueued;
+            }
         }
 
         /// <summary>Tests: whether the player subscription is still live.</summary>
@@ -1424,17 +1478,113 @@ public sealed class PluginHost
         {
             if (_disposed) return;
             _disposed = true;
-            if (_player is not null) _player.PropertyChanged -= OnPlayerPropertyChanged;
+            if (_player is not null)
+            {
+                _player.PropertyChanged -= OnPlayerPropertyChanged;
+                _player.TracksQueued -= OnPlayerTracksQueued;
+            }
             IsSubscribedToPlayer = false;
             TrackChanged = null;
             IsPlayingChanged = null;
             Changed = null;
+            _tracksQueued = null;
             lock (_gate)
             {
                 _lyrics.Clear();
                 _commands.Clear();
                 _scrobbled.Clear();
             }
+            // The plugin's lyrics effects go with it (Noctis's own motion comes back).
+            void DropEffects()
+            {
+                foreach (var e in _effects) _owner.RemoveWordEffect(e);
+                _effects.Clear();
+            }
+            if (Dispatcher.UIThread.CheckAccess()) DropEffects();
+            else Dispatcher.UIThread.Post(DropEffects);
+        }
+
+        // ── Lyrics effects (API 1.5) ──
+
+        private readonly List<PluginWordEffect> _effects = new();
+
+        internal IReadOnlyList<PluginWordEffect> LyricsEffects => _effects;
+
+        public IDisposable RegisterLyricsEffect(ILyricsEffect effect)
+        {
+            ArgumentNullException.ThrowIfNull(effect);
+            if (_disposed) return Registration.None;
+            string name;
+            try { name = string.IsNullOrWhiteSpace(effect.Name) ? _plugin.Name : effect.Name.Trim(); }
+            catch { name = _plugin.Name; }
+            var entry = new PluginWordEffect(_owner, _plugin, effect, name);
+            void Add()
+            {
+                if (_disposed) return;
+                _effects.Add(entry);
+                _owner.AddWordEffect(entry);
+                _owner.UpdateExtensions(_plugin);
+            }
+            if (Dispatcher.UIThread.CheckAccess()) Add();
+            else Dispatcher.UIThread.Post(Add);
+            return new Registration(() =>
+            {
+                void Drop()
+                {
+                    if (!_effects.Remove(entry)) return;
+                    _owner.RemoveWordEffect(entry);
+                    _owner.UpdateExtensions(_plugin);
+                }
+                if (Dispatcher.UIThread.CheckAccess()) Drop();
+                else Dispatcher.UIThread.Post(Drop);
+            });
+        }
+
+        // ── Queue (API 1.5) ──
+
+        private EventHandler<TracksQueuedEventArgs>? _tracksQueued;
+
+        public event EventHandler<TracksQueuedEventArgs>? TracksQueued
+        {
+            add { if (!_disposed) _tracksQueued += value; }
+            remove => _tracksQueued -= value;
+        }
+
+        private void OnPlayerTracksQueued(object? sender, QueueAddedEventArgs e)
+        {
+            if (_disposed || _plugin.Instance is null || _tracksQueued is not { } handler || _player is not { } player) return;
+            // The added songs are the front of Up Next (Play Next) or its end (Add to Queue).
+            var up = player.UpNext;
+            var count = Math.Min(e.Count, up.Count);
+            var ids = new string[count];
+            var from = e.PlayNext ? 0 : up.Count - count;
+            for (var i = 0; i < count; i++) ids[i] = up[from + i].Id.ToString("D");
+            var args = new TracksQueuedEventArgs(ids, e.PlayNext);
+            _owner.Guard(_plugin, "TracksQueued", () => handler(this, args));
+        }
+
+        public Noctis.Plugins.PlaybackQueue GetQueue()
+        {
+            if (_disposed || _player is not { } player) return new Noctis.Plugins.PlaybackQueue(null, Array.Empty<string>());
+            Track[] up;
+            try { up = player.UpNext.ToArray(); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { up = player.UpNext.ToArray(); } // changed mid-copy: once more
+            var ids = new string[up.Length];
+            for (var i = 0; i < up.Length; i++) ids[i] = up[i].Id.ToString("D");
+            return new Noctis.Plugins.PlaybackQueue(player.CurrentTrack?.Id.ToString("D"), ids);
+        }
+
+        public void SetUpNext(IReadOnlyList<string> trackIds)
+        {
+            if (_disposed || trackIds is null || _library is not { } library) return;
+            var ids = trackIds.ToArray();
+            OnUi(p =>
+            {
+                var tracks = new List<Track>(ids.Length);
+                foreach (var s in ids)
+                    if (Guid.TryParse(s, out var id) && library.GetTrackById(id) is { } t) tracks.Add(t);
+                p.ReplaceUpNext(tracks);
+            });
         }
 
         public string AppVersion { get; }
@@ -1713,6 +1863,42 @@ public sealed class PluginHost
             if (_disposed || Changed is not { } handler) return;
             _owner.Guard(_plugin, "Settings.Changed", () => handler(this, key));
         }
+    }
+
+    /// <summary>A plugin's <see cref="ILyricsEffect"/> as the lyrics controls call it (no allocation per call).</summary>
+    internal sealed class PluginWordEffect : Controls.IWordEffect
+    {
+        public PluginWordEffect(PluginHost host, LoadedPlugin plugin, ILyricsEffect effect, string name)
+        {
+            Host = host;
+            Plugin = plugin;
+            Effect = effect;
+            Name = name;
+        }
+
+        public PluginHost Host { get; }
+        public LoadedPlugin Plugin { get; }
+        public ILyricsEffect Effect { get; }
+        public string Name { get; }
+        public bool Failed { get; set; }
+
+        private static LyricsWord Word(in Controls.WordPoseInput w) => new(w.Progress, w.DurationMs, w.Lift, w.IsHeld,
+            w.IsLastInLine, w.IsRightToLeft, w.LetterCount, w.FontSize, (LyricsSurface)(int)w.Surface);
+
+        public Controls.WordDrawMode Mode(in Controls.WordPoseInput word) => Effect.GetMode(Word(word)) switch
+        {
+            LyricsWordMode.Whole => Controls.WordDrawMode.Whole,
+            LyricsWordMode.Letters => Controls.WordDrawMode.Letters,
+            _ => Controls.WordDrawMode.Native,
+        };
+
+        public Controls.LetterPose Pose(in Controls.WordPoseInput word, int letter)
+        {
+            var p = Effect.GetPose(Word(word), letter);
+            return new Controls.LetterPose(p.Scale, p.OffsetXEm, p.OffsetYEm, p.Glow);
+        }
+
+        public void LineDirections(IReadOnlyList<string> lines, Span<bool> rightToLeft) => Effect.GetLineDirections(lines, rightToLeft);
     }
 
     private sealed class Registration : IDisposable

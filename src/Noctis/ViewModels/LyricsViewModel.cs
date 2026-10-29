@@ -646,6 +646,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // First handler on the collection, ahead of every view's: a long document's lines are
         // set to rest before any view builds their word layers (see WordLayerWindowMinWords).
         LyricLines.CollectionChanged += (_, _) => OnLyricLinesChangedForWordLayers();
+        // Plugin API 1.5: a lyrics effect says which lines read right to left.
+        LyricLines.CollectionChanged += (_, _) => ApplyLineDirections();
+        Controls.LyricsWordEffect.Changed += OnLyricsWordEffectChanged;
         _player = player;
         _timeline.WordMotion = player.LyricsGlowAndLift;
         _lrcLib = lrcLib;
@@ -4105,8 +4108,38 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             UpdateLineOpacities(-1);
     }
 
+    private void OnLyricsWordEffectChanged(object? sender, EventArgs e) => ApplyLineDirections();
+
+    /// <summary>
+    /// Plugin API 1.5: asks the lyrics effect in use (if any) which of the song's lines read
+    /// right to left, and marks them (LyricLine.SetRightToLeft); without an effect every line is
+    /// laid out from the left, as always. Once per lyrics load, never per frame. An effect that
+    /// throws here is reported like one that throws while drawing.
+    /// </summary>
+    internal void ApplyLineDirections()
+    {
+        var count = LyricLines.Count;
+        var effect = Controls.LyricsWordEffect.Current;
+        if (count == 0) return;
+        var rtl = new bool[count];
+        if (effect is not null)
+        {
+            var texts = new string[count];
+            for (var i = 0; i < count; i++) texts[i] = LyricLines[i].Text ?? "";
+            try { effect.LineDirections(texts, rtl); }
+            catch (Exception ex)
+            {
+                Array.Clear(rtl);
+                Controls.KaraokeWordText.ReportEffectFailure(effect, ex);
+            }
+        }
+        for (var i = 0; i < count; i++)
+            if (LyricLines[i].IsRightToLeft != rtl[i]) LyricLines[i].SetRightToLeft(rtl[i]);
+    }
+
     public void Dispose()
     {
+        Controls.LyricsWordEffect.Changed -= OnLyricsWordEffectChanged;
         // Stop and dispose timer to prevent memory leak. This also ends the word-sweep
         // RequestAnimationFrame loop: WantsWordClock goes false, so the next frame
         // callback exits without re-registering.

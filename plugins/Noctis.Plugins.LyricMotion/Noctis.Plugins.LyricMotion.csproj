@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Lyric Motion for Noctis, by Alfamin (MIT, see LICENSE; ported from
+    https://github.com/Alfamin/LyricMotion): word-synced lyrics move letter by letter with the
+    singer, long notes grow and glow, and right-to-left lyrics (Persian, Arabic, Hebrew) are laid
+    out from the right. Uses plugin API 1.5 (RegisterLyricsEffect).
+    `dotnet build -c Release` writes bin/Release/Noctis.Plugins.LyricMotion-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.LyricMotion</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- Release builds also write bin/Release/Noctis.Plugins.LyricMotion-<version>.zip (DLL + plugin.json + LICENSE). -->
+  <Import Project="..\..\samples\PluginPackage.targets" />
+</Project>

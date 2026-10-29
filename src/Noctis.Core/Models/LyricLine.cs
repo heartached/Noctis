@@ -84,6 +84,28 @@ public partial class LyricLine : ObservableObject
     /// <summary>Duet voice for this line (Apple Music duet layout). Views bind through the LyricVoice* converters.</summary>
     public LyricVoice Voice { get; set; }
 
+    /// <summary>
+    /// The line reads right to left (plugin API 1.5: a lyrics effect decides it): its word rows
+    /// run from the right, it sits against the right edge and its words fill from the right.
+    /// Set with <see cref="SetRightToLeft"/>, which passes it on to the line's words.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isRightToLeft;
+
+    /// <summary>Sets <see cref="IsRightToLeft"/> on the line and on every word of its layers.</summary>
+    public void SetRightToLeft(bool value)
+    {
+        IsRightToLeft = value;
+        Mark(Words);
+        Mark(BackgroundWords);
+        Mark(TransliterationWords);
+        void Mark(IReadOnlyList<WordTiming>? words)
+        {
+            if (words is null) return;
+            foreach (var w in words) w.IsRightToLeft = value;
+        }
+    }
+
     /// <summary>Whether these lyrics are synced (have timestamps).</summary>
     public bool IsSynced => Timestamp.HasValue;
 

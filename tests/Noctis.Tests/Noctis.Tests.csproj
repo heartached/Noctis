@@ -42,6 +42,8 @@
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.AlbumTown\Noctis.Plugins.AlbumTown.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.AlbumRoulette\Noctis.Plugins.AlbumRoulette.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.ABLoop\Noctis.Plugins.ABLoop.csproj" />
+    <ProjectReference Include="..\..\plugins\Noctis.Plugins.TrueShuffle\Noctis.Plugins.TrueShuffle.csproj" />
+    <ProjectReference Include="..\..\plugins\Noctis.Plugins.LyricMotion\Noctis.Plugins.LyricMotion.csproj" />
   </ItemGroup>
 
   <!-- The plugin submission checker's logic (PluginSubmissionCheckTests), compiled in rather than

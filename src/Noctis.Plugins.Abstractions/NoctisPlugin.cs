@@ -28,7 +28,7 @@ public sealed record PluginInfo(string Id, string Name, string Version, string A
 
 /// <summary>
 /// What the host offers a plugin. Everything here is safe to call from the UI thread.
-/// Members added in API 1.1, 1.2 and 1.3 have default bodies that throw <see cref="NotSupportedException"/>,
+/// Members added in API 1.1 and later have default bodies that throw <see cref="NotSupportedException"/>,
 /// so code compiled against an older kit (and any older implementation of this interface) keeps working;
 /// Noctis itself implements all of them. Hooks marked with a permission throw
 /// <see cref="PluginPermissionException"/> unless plugin.json declares it.
@@ -120,6 +120,15 @@ public interface IPluginHost
     /// <summary>API 1.3: shows an album's page in the main window and brings the window forward.
     /// <paramref name="albumId"/> is <see cref="TrackInfo.AlbumId"/>. False for an unknown album.</summary>
     bool ShowAlbum(string albumId) => throw Missing("1.3");
+
+    // ── API 1.5 ──
+
+    /// <summary>API 1.5: changes how word-synced lyrics move (lyrics page, side panel, mini
+    /// player). Noctis keeps drawing the words, their sweep and glow; the effect only says where
+    /// each letter sits and how big it is (<see cref="ILyricsEffect"/>), and which lines read
+    /// right to left. One effect is used at a time: the latest registered. Dispose the result to
+    /// withdraw it (Noctis also does on disable); Noctis's own motion then comes back.</summary>
+    IDisposable RegisterLyricsEffect(ILyricsEffect effect) => throw Missing("1.5");
 
     private static NotSupportedException Missing(string api = "1.1")
         => new($"This Noctis build does not implement plugin API {api}. Set minAppVersion in plugin.json.");

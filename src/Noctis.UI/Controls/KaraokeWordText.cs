@@ -55,6 +55,9 @@ public class KaraokeWordText : TextBlock
     public static readonly StyledProperty<double> LiftProperty =
         AvaloniaProperty.Register<KaraokeWordText, double>(nameof(Lift));
 
+    public static readonly StyledProperty<bool> RightToLeftProperty =
+        AvaloniaProperty.Register<KaraokeWordText, bool>(nameof(RightToLeft));
+
     /// <summary>Front position through the word (driven by <see cref="LyricsTimeline"/>): 0..1
     /// inside it, beyond either end on a neighbour of the current word, sentinels far away.</summary>
     public double Progress { get => GetValue(ProgressProperty); set => SetValue(ProgressProperty, value); }
@@ -71,6 +74,9 @@ public class KaraokeWordText : TextBlock
     /// <summary>How far the sung word has floated up, 0..1 of <see cref="WordFloat.LiftEm"/>
     /// (driven by <see cref="LyricsTimeline"/>). Drawn as an offset: no layout pass.</summary>
     public double Lift { get => GetValue(LiftProperty); set => SetValue(LiftProperty, value); }
+    /// <summary>The word's line reads right to left (plugin API 1.5): the sweep fills it from the
+    /// right. Such a word is always drawn in one piece.</summary>
+    public bool RightToLeft { get => GetValue(RightToLeftProperty); set => SetValue(RightToLeftProperty, value); }
 
     // Styled exactly like the TextBlocks it replaces (app-wide TextBlock font rules apply).
     protected override Type StyleKeyOverride => typeof(TextBlock);
@@ -104,7 +110,8 @@ public class KaraokeWordText : TextBlock
         base.OnPropertyChanged(change);
         var p = change.Property;
         if (p == TextProperty || p == FontFamilyProperty || p == FontSizeProperty || p == FontWeightProperty
-            || p == FontStyleProperty || p == FontStretchProperty || p == IsEmphasisProperty)
+            || p == FontStyleProperty || p == FontStretchProperty || p == IsEmphasisProperty || p == RightToLeftProperty
+            || (p == HeldDurationMsProperty && _effect is not null))
         {
             _dirty = true;
             InvalidateVisual();
@@ -120,12 +127,103 @@ public class KaraokeWordText : TextBlock
         }
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        LyricsWordEffect.Changed += OnEffectChanged;
+        _dirty = true;
+    }
+
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        LyricsWordEffect.Changed -= OnEffectChanged;
         foreach (var piece in _pieces) piece.Layout.Dispose();
         _pieces.Clear();
+        _effect = null;
         _dirty = true;
+    }
+
+    private void OnEffectChanged(object? sender, EventArgs e)
+    {
+        _dirty = true;
+        InvalidateVisual();
+    }
+
+    // ── Lyrics effect (plugin API 1.5) ──
+
+    /// <summary>The effect this word was laid out for, while it poses the word (mode not Native).</summary>
+    private IWordEffect? _effect;
+    private WordDrawMode _mode;
+    private int _letterCount;
+
+    /// <summary>Tests: pieces drawn (1 = the word in one piece) and the effect's mode.</summary>
+    internal int PieceCount { get { EnsurePieces(); return _pieces.Count; } }
+    internal WordDrawMode EffectMode { get { EnsurePieces(); return _effect is null ? WordDrawMode.Native : _mode; } }
+
+    private WordPoseInput Input() => new(Progress, HeldDurationMs, Lift, IsEmphasis, IsLastInLine, RightToLeft,
+        _letterCount, FontSize, LyricsWordEffect.GetSurface(this));
+
+    /// <summary>The effect's pose of piece <paramref name="i"/>; an effect that throws is dropped
+    /// for this word (Noctis's own motion comes back) and the host is told through
+    /// <see cref="EffectFailed"/>.</summary>
+    private LetterPose Pose(int i)
+    {
+        var effect = _effect;
+        if (effect is null) return LetterPose.Rest;
+        try
+        {
+            var pose = effect.Pose(Input(), i);
+            if (!double.IsFinite(pose.Scale) || pose.Scale <= 0.05) pose = pose with { Scale = 1 };
+            if (!double.IsFinite(pose.OffsetXEm)) pose = pose with { OffsetXEm = 0 };
+            if (!double.IsFinite(pose.OffsetYEm)) pose = pose with { OffsetYEm = 0 };
+            if (!double.IsFinite(pose.Glow)) pose = pose with { Glow = 1 };
+            return pose;
+        }
+        catch (Exception ex)
+        {
+            _effect = null;
+            _dirty = true;
+            EffectFailed?.Invoke(effect, ex);
+            return LetterPose.Rest;
+        }
+    }
+
+    /// <summary>Raised (UI thread, while drawing) when an effect threw; the host withdraws it.</summary>
+    public static event Action<IWordEffect, Exception>? EffectFailed;
+
+    /// <summary>Reports an effect that threw outside a word (the line directions).</summary>
+    public static void ReportEffectFailure(IWordEffect effect, Exception ex) => EffectFailed?.Invoke(effect, ex);
+
+    /// <summary>A pose as a transform about the piece's centre, in word space.</summary>
+    private Matrix PoseTransform(int i, in LetterPose pose)
+    {
+        var piece = _pieces[i];
+        var cx = piece.X + piece.Width / 2;
+        var cy = _layoutHeight / 2;
+        return Matrix.CreateTranslation(piece.X - cx, -cy)
+               * Matrix.CreateScale(pose.Scale, pose.Scale)
+               * Matrix.CreateTranslation(cx + pose.OffsetXEm * FontSize, cy + pose.OffsetYEm * FontSize);
+    }
+
+    private bool Posed => _effect is not null && _mode != WordDrawMode.Native;
+
+    /// <summary>
+    /// Arabic, Syriac, N'Ko and the other joining scripts draw a letter in the form its
+    /// neighbours give it. Drawn one letter per layout (the held-note animation), every letter
+    /// came out in its isolated form: "سلام" as "س ل ا م". Such a word is drawn in one piece.
+    /// </summary>
+    internal static bool HasJoiningScript(string text)
+    {
+        foreach (var c in text)
+        {
+            if ((c >= '؀' && c <= 'ࣿ') || (c >= 'ﭐ' && c <= '﷿') || (c >= 'ﹰ' && c <= '﻿')
+                || (c >= '᠀' && c <= '᢯') || (c >= 'ꡀ' && c <= '꡿'))
+                return true;
+            // Surrogates: Adlam, Hanifi Rohingya and other supplementary joining scripts.
+            if (char.IsHighSurrogate(c) && (c == '\uD803' || c == '\uD83A')) return true;
+        }
+        return false;
     }
 
     private void EnsurePieces()
@@ -140,9 +238,26 @@ public class KaraokeWordText : TextBlock
         using var word = new TextLayout(sweep, typeface, FontSize, Brushes.White);
         _glyphWidth = word.WidthIncludingTrailingWhitespace;
         _layoutHeight = word.Height;
+        _effect = null;
+        _mode = WordDrawMode.Native;
         if (sweep.Length == 0) return;
 
-        _perLetter = IsEmphasis;
+        var trimmed = sweep.TrimStart();
+        _letterCount = new StringInfo(trimmed).LengthInTextElements;
+        if (LyricsWordEffect.Current is { } effect)
+        {
+            _effect = effect;
+            try { _mode = effect.Mode(Input()); }
+            catch (Exception ex)
+            {
+                _effect = null;
+                EffectFailed?.Invoke(effect, ex);
+            }
+            if (_mode == WordDrawMode.Native) _effect = null;
+        }
+
+        var joined = RightToLeft || HasJoiningScript(trimmed);
+        _perLetter = !joined && (_effect is not null ? _mode == WordDrawMode.Letters : IsEmphasis);
         if (!_perLetter)
         {
             _pieces.Add(MakePiece(sweep, typeface, 0, _glyphWidth));
@@ -218,22 +333,34 @@ public class KaraokeWordText : TextBlock
         if (_pieces.Count == 0 || _glyphWidth <= 0) return;
         var (lit, dim) = Colours();
         var (lo, hi) = Band();
-        if (!_perLetter)
+        var rtl = RightToLeft;
+        // A right-to-left word fills from its right edge: the band is mirrored and the lit
+        // side is the one past it (SetStops).
+        if (rtl) (lo, hi) = (_glyphWidth - hi, _glyphWidth - lo);
+        var posed = Posed;
+        if (!_perLetter && !posed)
         {
-            SetStops(_pieces[0], lo, hi, lit, dim);
+            SetStops(_pieces[0], lo, hi, lit, dim, rtl);
             return;
         }
 
-        var parameters = EmphasisMotion.For(HeldDurationMs, IsLastInLine);
+        var parameters = posed ? default : EmphasisMotion.For(HeldDurationMs, IsLastInLine);
         for (int i = 0; i < _pieces.Count; i++)
         {
             var piece = _pieces[i];
-            LetterTransform(i, parameters, out var s, out var dx);
+            double s, dx;
+            if (posed)
+            {
+                var pose = Pose(i);
+                s = pose.Scale;
+                dx = pose.OffsetXEm * FontSize;
+            }
+            else LetterTransform(i, parameters, out s, out dx);
             var cx = piece.X + piece.Width / 2;
             // The edge stays in word space (AMLL masks the word and its letters move
             // inside the mask): map the band back through this letter's swell and push.
             double ToLocal(double xWord) => (xWord - dx - cx) / s + cx - piece.X;
-            SetStops(piece, ToLocal(lo), ToLocal(hi), lit, dim);
+            SetStops(piece, ToLocal(lo), ToLocal(hi), lit, dim, rtl);
         }
     }
 
@@ -247,6 +374,33 @@ public class KaraokeWordText : TextBlock
             UpdateStops();
         }
         if (_pieces.Count == 0 || _glyphWidth <= 0) return;
+
+        if (Posed)
+        {
+            // The effect's pose replaces Noctis's float and held-note letters. Drawn off the
+            // pixel grid while the word moves (see Unsnapped); the glow layer (BaseOpacity 0)
+            // takes the effect's glow strength on top of its own fade.
+            var at = Matrix.CreateTranslation(origin.X, origin.Y);
+            if (Progress is > KaraokeSweep.InertFuture and < KaraokeSweep.InertPast || Lift is > 0 and < 1)
+                at = Unsnapped * at;
+            using var placed = context.PushTransform(at);
+            var glowLayer = BaseOpacity <= 0;
+            for (int i = 0; i < _pieces.Count; i++)
+            {
+                var pose = Pose(i);
+                if (_effect is null) break; // it threw: Noctis's own look from the next frame
+                using (context.PushTransform(PoseTransform(i, pose)))
+                {
+                    if (glowLayer)
+                    {
+                        using (context.PushOpacity(Math.Clamp(pose.Glow, 0, 1)))
+                            _pieces[i].Layout.Draw(context, default);
+                    }
+                    else _pieces[i].Layout.Draw(context, default);
+                }
+            }
+            return;
+        }
 
         var transform = Matrix.CreateTranslation(origin.X, origin.Y - LiftPixels());
         if (IsMoving) transform = Unsnapped * transform;
@@ -290,13 +444,17 @@ public class KaraokeWordText : TextBlock
 
     /// <summary>Points the piece's two stops at the band (piece-local pixels, unclamped):
     /// clamped to the piece, each carrying the colour the band has at that point.</summary>
-    private static void SetStops(Piece piece, double lo, double hi, Color lit, Color dim)
+    private static void SetStops(Piece piece, double lo, double hi, Color lit, Color dim, bool rightToLeft = false)
     {
         var w = piece.Width;
         var o0 = Math.Clamp(lo / w, 0, 1);
         var o1 = Math.Clamp(hi / w, 0, 1);
-        var c0 = Mix(dim, lit, KaraokeBand.LitAt(o0 * w, lo, hi));
-        var c1 = Mix(dim, lit, KaraokeBand.LitAt(o1 * w, lo, hi));
+        var c0 = Mix(dim, lit, Lit(o0 * w));
+        var c1 = Mix(dim, lit, Lit(o1 * w));
+        // Right to left the lit side is past the band (its right), the mirror of LitAt.
+        double Lit(double x) => rightToLeft
+            ? (hi <= lo ? (x >= hi ? 1 : 0) : Math.Clamp((x - lo) / (hi - lo), 0, 1))
+            : KaraokeBand.LitAt(x, lo, hi);
         var stops = piece.Brush.GradientStops;
         Set(stops[0], o0, c0);
         Set(stops[1], o1, c1);

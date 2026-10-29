@@ -26,6 +26,7 @@
         <!-- Duet layout (ELRC v1:/v2:/v3: voice markers): voice 2 lines anchor right,
              group lines center. Same keys exist in LyricsPanelView — keep in sync. -->
         <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign"/>
+        <conv:LyricLineAlignmentConverter x:Key="LyricLineAlign"/>
         <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign"/>
         <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign"/>
         <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin"/>
@@ -74,7 +75,8 @@
                                               EmphasisMs="{Binding EmphasisMs}"
                                               HeldDurationMs="{Binding HeldDurationMs}"
                                               IsLastInLine="{Binding IsLastInLine}"
-                                              Lift="{Binding Lift}">
+                                              Lift="{Binding Lift}"
+                                              RightToLeft="{Binding IsRightToLeft}">
                         <!-- AMLL per-letter glow bells (mean over the word): they rise and
                              release letter by letter across the hold, peak scaled by hold
                              length. Driven per frame off the word's EmphasisMs clock. -->
@@ -105,7 +107,8 @@
                                           EmphasisMs="{Binding EmphasisMs}"
                                           HeldDurationMs="{Binding HeldDurationMs}"
                                           IsLastInLine="{Binding IsLastInLine}"
-                                          Lift="{Binding Lift}"/>
+                                          Lift="{Binding Lift}"
+                                              RightToLeft="{Binding IsRightToLeft}"/>
                 </Panel>
                 </Viewbox>
             </Panel>
@@ -1070,7 +1073,6 @@
                                         Padding="0"
                                         Margin="0,10"
                                         MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                        HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                         RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                         HorizontalContentAlignment="Left"
                                         Cursor="Hand"
@@ -1078,6 +1080,12 @@
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}"
                                         Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
+                                        <Button.HorizontalAlignment>
+                                            <MultiBinding Converter="{StaticResource LyricLineAlign}">
+                                                <Binding Path="Voice"/>
+                                                <Binding Path="IsRightToLeft"/>
+                                            </MultiBinding>
+                                        </Button.HorizontalAlignment>
                                     <StackPanel HorizontalAlignment="Left"
                                                 MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                     <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
@@ -1116,11 +1124,12 @@
                                             </ItemsControl.Transitions>
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                    <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
                                         <controls:KaraokeRestingWords Words="{Binding Words}"
+                                                                      RightToLeft="{Binding IsRightToLeft}"
                                                                       IsVisible="{Binding ShowRestingWords}"
                                                                       Opacity="{Binding LineOpacity}"
                                                                       Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
@@ -1211,7 +1220,7 @@
                                         </ItemsControl.Transitions>
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
@@ -1243,7 +1252,7 @@
                                         </ItemsControl.Transitions>
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
