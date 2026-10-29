@@ -8,13 +8,12 @@ using Noctis.Services;
 using Noctis.Services.LyricsStudio;
 using Noctis.Services.Server;
 using Noctis.Services.Sync;
-using Noctis.Services.YouTube;
 
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// Settings for the 2026-09 feature batch: Account &amp; Sync tab, multi-channel upmix,
-/// YouTube downloads and Lyrics Studio. Kept in a partial so the main file only carries
+/// Settings for the 2026-09 feature batch: Account &amp; Sync tab, multi-channel upmix
+/// and Lyrics Studio. Kept in a partial so the main file only carries
 /// the tab plumbing and the load/save hooks.
 /// </summary>
 public partial class SettingsViewModel
@@ -302,48 +301,10 @@ public partial class SettingsViewModel
         RefreshPhoneDevices();
     }
 
-    // ── YouTube downloads (Library tab) ──
-
-    [ObservableProperty] private string _youTubeDownloadFolder = string.Empty;
-    /// <summary>A custom yt-dlp the user set before 10-08. Kept and honoured (YtDlpTool.Resolve)
-    /// but no longer shown: the downloader installs and updates its own copy (owner 10-08:
-    /// the Settings yt-dlp row is gone).</summary>
-    [ObservableProperty] private string _ytDlpPath = string.Empty;
-
-    public string YouTubeDownloadFolderHint =>
-        App.Services?.GetService<IYouTubeImportService>()?.ResolveDownloadFolder() is { Length: > 0 } f ? f : "Add a music folder first";
-
-    partial void OnYouTubeDownloadFolderChanged(string value)
-    {
-        if (!_settingsLoaded) return;
-        _settings.YouTubeDownloadFolder = value ?? string.Empty;
-        QueueSettingsSave();
-        OnPropertyChanged(nameof(YouTubeDownloadFolderHint));
-    }
-
-    partial void OnYtDlpPathChanged(string value)
-    {
-        if (!_settingsLoaded) return;
-        _settings.YtDlpPath = value ?? string.Empty;
-        QueueSettingsSave();
-    }
-
-    [RelayCommand]
-    private async Task BrowseYouTubeFolder()
-    {
-        var owner = (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        var top = owner is null ? null : Avalonia.Controls.TopLevel.GetTopLevel(owner);
-        if (top is null) return;
-        var picks = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
-        {
-            Title = "Folder for YouTube downloads",
-            AllowMultiple = false,
-        });
-        if (picks.Count > 0) YouTubeDownloadFolder = picks[0].Path.LocalPath;
-    }
-
-    [RelayCommand]
-    private Task OpenYouTubeDownloader() => MetadataHelper.OpenYouTubeDownloadDialog();
+    // YouTube downloads moved to the official "Add from YouTube" plugin (10-29). Their
+    // settings.json fields (YouTubeDownloadFolder, YtDlpPath) stay as legacy: nothing here
+    // reads or writes them any more, so a saved value survives untouched. YtDlpPath is still
+    // honoured by the lyrics-video yt-dlp (Program.cs).
 
     // ── Lyrics Studio ──
 
@@ -536,9 +497,6 @@ public partial class SettingsViewModel
         _syncTurnedOffByUser = _settings.SyncTurnedOffByUser;
         SyncDeviceName = string.IsNullOrWhiteSpace(_settings.SyncDeviceName) ? Environment.MachineName : _settings.SyncDeviceName;
 
-        YouTubeDownloadFolder = _settings.YouTubeDownloadFolder ?? string.Empty;
-        YtDlpPath = _settings.YtDlpPath ?? string.Empty;
-
         LyricsStudioModel = WhisperModelManager.Info(WhisperModelManager.Parse(_settings.LyricsStudioModel));
         LyricsStudioLanguage = LyricsStudioViewModel.Languages.FirstOrDefault(l => l.Code.Equals(_settings.LyricsStudioLanguage, StringComparison.OrdinalIgnoreCase))
                                ?? LyricsStudioViewModel.Languages[0];
@@ -559,8 +517,6 @@ public partial class SettingsViewModel
         if (AccountFeatures.Enabled) _settings.SyncEnabled = SyncEnabled;
         _settings.SyncTurnedOffByUser = _syncTurnedOffByUser;
         _settings.SyncDeviceName = SyncDeviceName ?? string.Empty;
-        _settings.YouTubeDownloadFolder = YouTubeDownloadFolder ?? string.Empty;
-        _settings.YtDlpPath = YtDlpPath ?? string.Empty;
         _settings.LyricsStudioModel = LyricsStudioModel.Size.ToString();
         _settings.LyricsStudioLanguage = LyricsStudioLanguage.Code;
         _settings.LyricsStudioWordTimings = LyricsStudioWordTimings;
@@ -579,10 +535,6 @@ public partial class SettingsViewModel
         if (tab == TabAccountDevices)
         {
             RefreshServerUsers(); // also the phone list
-        }
-        else if (tab == TabLibrary)
-        {
-            OnPropertyChanged(nameof(YouTubeDownloadFolderHint));
         }
     }
 }

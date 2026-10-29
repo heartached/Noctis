@@ -454,21 +454,13 @@ internal class Program
         services.AddSingleton<ISendToFolderService>(sp => new SendToFolderService(
             sp.GetRequiredService<ILibraryService>(), sp.GetService<ILibraryWatcherService>()));
 
-        // YouTube → library: yt-dlp as an external tool, tagged with TagLib, imported like a drop.
+        // yt-dlp as an external tool, for lyrics background videos from YouTube. (Adding songs from
+        // YouTube to the library is the official "Add from YouTube" plugin since 10-29.)
         services.AddSingleton<Services.YouTube.YtDlpTool>(sp =>
             new Services.YouTube.YtDlpTool(
                 sp.GetRequiredService<HttpClient>(),
                 sp.GetRequiredService<IPersistenceService>().DataDirectory,
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty));
-        services.AddSingleton<Services.YouTube.IYouTubeImportService>(sp =>
-            new Services.YouTube.YouTubeImportService(
-                sp.GetRequiredService<Services.YouTube.YtDlpTool>(),
-                sp.GetRequiredService<IAudioConverterService>(),
-                sp.GetRequiredService<IMetadataService>(),
-                sp.GetRequiredService<ILibraryService>(),
-                sp.GetRequiredService<HttpClient>(),
-                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
-                      ?? new Noctis.Models.AppSettings()));
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;

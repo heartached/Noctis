@@ -2227,6 +2227,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermShort.MenuCommands" xml:space="preserve"><value>Track menu</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Notifications</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Set BPM and key</value></data>
+  <data name="Plugins.PermShort.LibraryImport" xml:space="preserve"><value>Add to library</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Control playback: play, pause, skip and seek</value></data>
   <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Read your library and playlists (titles, artists, albums, file paths, play counts)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Connect to the internet</value></data>
@@ -2234,6 +2235,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Add entries to the track menu</value></data>
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Show short notices</value></data>
   <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Set the BPM and musical key of library tracks (in Noctis only, never in your files)</value></data>
+  <data name="Plugins.Perm.LibraryImport" xml:space="preserve"><value>Add audio files it saved (such as downloads) to your library</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Enable {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} asks to:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} by {2} asks to:</value></data>
@@ -2413,22 +2415,6 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
 
-  <data name="Main.AddFromYouTube" xml:space="preserve"><value>Add from YouTube</value><comment>New/Add menu item</comment></data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve"><value>Search or paste a link — downloads into your library</value><comment>New/Add menu item subtitle</comment></data>
-
-  <data name="YouTube.Title" xml:space="preserve"><value>Add from YouTube</value><comment>Dialog title</comment></data>
-  <data name="YouTube.Subtitle" xml:space="preserve"><value>Search or paste a link. Saved to your library with cover art.</value><comment>Dialog subtitle</comment></data>
-  <data name="YouTube.SearchHint" xml:space="preserve"><value>Search or paste a link</value><comment>Search box watermark</comment></data>
-  <data name="YouTube.Search" xml:space="preserve"><value>Search</value><comment>Search button</comment></data>
-  <data name="YouTube.SetupTitle" xml:space="preserve"><value>One-time setup</value><comment>First-run card title</comment></data>
-  <data name="YouTube.SetupBody" xml:space="preserve"><value>Downloads need yt-dlp. Noctis installs it once and keeps it updated.</value><comment>First-run card body</comment></data>
-  <data name="YouTube.Install" xml:space="preserve"><value>Install yt-dlp</value><comment>First-run card button</comment></data>
-  <data name="YouTube.Download" xml:space="preserve"><value>Download</value><comment>Per-result button</comment></data>
-  <data name="YouTube.SavesTo" xml:space="preserve"><value>Saves to</value><comment>Footer label before the folder</comment></data>
-  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Find a song, then download it into your library.</value><comment>Empty state</comment></data>
-  <data name="YouTube.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
-  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Update</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
-  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Install Noctis's own up-to-date copy of yt-dlp.</value><comment>Tooltip of the footer Update button</comment></data>
   <data name="Import.Hint.Spotify" xml:space="preserve"><value>Spotify blocks this. Export it with Exportify, then choose the CSV file.</value><comment>Import Playlist: a Spotify link was pasted</comment></data>
   <data name="Import.Hint.AppleMusic" xml:space="preserve"><value>Apple Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: an Apple Music link was pasted</comment></data>
   <data name="Import.Hint.Tidal" xml:space="preserve"><value>This TIDAL link can't be read here yet. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: a TIDAL link in a build without TIDAL sign-in</comment></data>
@@ -2436,29 +2422,11 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Import.Hint.AmazonMusic" xml:space="preserve"><value>Amazon Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: an Amazon Music link was pasted</comment></data>
   <data name="Import.Hint.OpenExportify" xml:space="preserve"><value>Open Exportify</value><comment>Button: opens exportify.net (a product name, keep it)</comment></data>
   <data name="Import.Hint.OpenTuneMyMusic" xml:space="preserve"><value>Open TuneMyMusic</value><comment>Button: opens tunemymusic.com (a product name, keep it)</comment></data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="YouTube.Installing" xml:space="preserve"><value>Installing…</value><comment>Install button label while yt-dlp downloads</comment></data>
-  <data name="YouTube.Status.NoFolder" xml:space="preserve"><value>Add a music folder in Settings → Library first.</value><comment>Footer status: no library folder to save into</comment></data>
-  <data name="YouTube.Status.InstallingTool" xml:space="preserve"><value>Downloading yt-dlp…</value><comment>Footer status while yt-dlp installs</comment></data>
-  <data name="YouTube.Status.Ready" xml:space="preserve"><value>yt-dlp is ready.</value><comment>Footer status after yt-dlp installed</comment></data>
-  <data name="YouTube.Status.InstallFailed" xml:space="preserve"><value>Couldn't install yt-dlp — {0}</value><comment>Footer status; {0} = error message</comment></data>
-  <data name="YouTube.Status.InstallFirst" xml:space="preserve"><value>Install yt-dlp first.</value><comment>Footer status: search pressed before setup</comment></data>
-  <data name="YouTube.Status.ReadingLink" xml:space="preserve"><value>Reading link…</value><comment>Footer status while a pasted link resolves</comment></data>
-  <data name="YouTube.Status.Searching" xml:space="preserve"><value>Searching…</value><comment>Footer status while searching</comment></data>
-  <data name="YouTube.Status.NothingFound" xml:space="preserve"><value>Nothing found.</value><comment>Footer status: search returned no results</comment></data>
-  <data name="YouTube.Status.SearchFailed" xml:space="preserve"><value>Search failed — {0}</value><comment>Footer status; {0} = error message</comment></data>
-  <data name="YouTube.Row.Starting" xml:space="preserve"><value>Starting…</value><comment>Result card status when a download begins</comment></data>
-  <data name="YouTube.Row.InLibrary" xml:space="preserve"><value>In your library</value><comment>Result card status after the download was imported</comment></data>
-  <data name="YouTube.Row.SavedToFolder" xml:space="preserve"><value>Saved to folder</value><comment>Result card status: saved but not imported</comment></data>
+  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Update</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
+  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Install Noctis's own up-to-date copy of yt-dlp.</value><comment>Tooltip of the footer Update button</comment></data>
 
-  <data name="YouTubeSettings.Section" xml:space="preserve"><value>YOUTUBE DOWNLOADS</value><comment>Library tab section title</comment></data>
-  <data name="YouTubeSettings.Title" xml:space="preserve"><value>Add songs from YouTube</value><comment>Card title</comment></data>
-  <data name="YouTubeSettings.Description" xml:space="preserve"><value>Search or paste a link to download.</value><comment>Card description</comment></data>
-  <data name="YouTubeSettings.Open" xml:space="preserve"><value>Open downloader</value><comment>Card button</comment></data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve"><value>Download folder</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve"><value>Empty uses a &quot;YouTube&quot; folder inside your first music folder.</value><comment>Row help</comment></data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve"><value>yt-dlp</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve"><value>Install / update</value><comment>Row button</comment></data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve"><value>Custom path to yt-dlp (optional)</value><comment>Path watermark</comment></data>
   <data name="YtDlp.Version" xml:space="preserve"><value>yt-dlp {0}</value><comment>Small secondary text: the installed yt-dlp version ({0})</comment></data>
   <data name="YtDlp.UpdateAvailable" xml:space="preserve"><value>update available</value><comment>Appended after the yt-dlp version when a newer release exists</comment></data>
   <data name="YtDlp.UpdatingRetrying" xml:space="preserve"><value>Updating yt-dlp and retrying…</value><comment>Download status after YouTube blocked the first attempt</comment></data>

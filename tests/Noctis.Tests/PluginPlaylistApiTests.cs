@@ -46,7 +46,8 @@ public class PluginPlaylistApiTests : IDisposable
     [Fact]
     public void Kit_HasThe14Members_AndA14PluginRunsOn166()
     {
-        Assert.True(PluginApi.Minor >= 4);
+        Assert.True(PluginApi.Minor >= 4); // 1.5 added library.import on top
+        Assert.Equal((1, PluginApi.Minor), (typeof(PluginApi).Assembly.GetName().Version!.Major, typeof(PluginApi).Assembly.GetName().Version!.Minor));
         Assert.Null(PluginManifest.Parse(M()).CheckCompatibility("1.6.6"));
         Assert.NotNull(PluginManifest.Parse(M()).CheckCompatibility("1.6.5"));
     }

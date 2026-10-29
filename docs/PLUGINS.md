@@ -44,6 +44,7 @@ API **1.5** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 | Playback control | Play, pause, next, previous, seek; since 1.3 play a list of library tracks; since 1.5 read the queue, set what is up next and hear when the user queues songs | `playback.control` |
 | Library | Read-only search over the library, or all of it, and since 1.4 the playlists (copies, never live objects) | `library.read` |
 | BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
+| Add to library | Add audio files the plugin saved (downloads, conversions) to the library, and read the music folders (1.5) | `library.import` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
 | Track menu | Entries in the track context menu | `menu.commands` |
 | Notices | A short message in the app's notice pill | `notifications` |
@@ -134,6 +135,10 @@ samples live in the repository:
   `GetPlaylists()`, `GetQueue()`, `SetUpNext()`, `TracksQueued`, a view and a track-menu command.
 - `plugins/Noctis.Plugins.LyricMotion` — *Lyric Motion* by Alfamin (API 1.5, MIT): letter-by-letter
   lyrics motion and right-to-left layout through `RegisterLyricsEffect`, with no allocation per frame.
+- `plugins/Noctis.Plugins.YouTubeImport` — *Add from YouTube* (API 1.5): a view of its own that
+  downloads audio with yt-dlp (installed and kept current by the plugin, checked against the
+  release's SHA-256 list), tags it with the app's TagLib#, and adds it through
+  `host.LibraryImport`.
 - `plugins/Noctis.Plugins.Mixxx` — *Mixxx* (API 1.2): imports the BPM and key the Mixxx DJ app
   analysed, reading its `mixxxdb.sqlite` read-only with the app's SQLite, matching tracks by file
   path, and writing through `host.TrackAnalysis`.
@@ -242,6 +247,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `bool OpenView(IPluginViewProvider)` | 1.3 | | Opens a view you registered (from a menu command, say). False when it is not registered or the plugin stopped. |
 | `bool ShowAlbum(string albumId)` | 1.3 | | Shows the album's page (`TrackInfo.AlbumId`) in the main window and brings it forward. False for an unknown album. |
 | `IDisposable RegisterLyricsEffect(ILyricsEffect)` | 1.5 | | How word-synced lyrics move; see [Lyrics effects](#lyrics-effects). |
+| `ILibraryImport LibraryImport` | 1.5 | `library.import` | Adds audio files the plugin saved to the library; see [Adding files to the library](#adding-files-to-the-library). |
 
 Using a hook without declaring its permission throws `PluginPermissionException`.
 
@@ -381,6 +387,29 @@ BPM column, AutoMix transitions and Track Radio.
 - Values set this way survive a rescan unless the file's own tags carry a BPM or key, and tracks
   that have both are skipped by the background analysis.
 
+### Adding files to the library
+
+```csharp
+public interface ILibraryImport
+{
+    IReadOnlyList<string> MusicFolders { get; }
+    Task<IReadOnlyList<TrackInfo>> ImportFilesAsync(IReadOnlyList<string> paths, CancellationToken ct = default);
+}
+```
+
+For plugins that produce audio files (a downloader, a converter, a recorder). `ImportFilesAsync`
+does what dropping the files on the window does: it adds them to the library (or refreshes them
+when already there) without a rescan, and marks them as added one by one, so they stay in the
+library across rescans even outside the music folders.
+
+- Nothing is moved, renamed or retagged: put the file where it belongs and write its tags first.
+  `MusicFolders` (the folders from Settings → Library, copies) helps pick that place.
+- Paths that are not absolute, do not exist, or are not a format Noctis plays are skipped; at most
+  500 paths per call. The result holds the library's copies (`TrackInfo`) of the files that are in
+  the library afterwards, so a file Noctis could not read is simply missing from it.
+- Waits for a running library scan, then imports on the UI thread. Callable from any thread. A
+  stopped plugin's calls change nothing.
+
 ## Permissions
 
 | Name | Grants | Shown to the user as |
@@ -393,6 +422,7 @@ BPM column, AutoMix transitions and Track Radio.
 | `menu.commands` | `RegisterTrackCommand` | Add entries to the track menu |
 | `notifications` | `Notify` | Show short notices |
 | `library.write.analysis` | `TrackAnalysis` (1.2) | Set the BPM and musical key of library tracks (in Noctis only, never in your files) |
+| `library.import` | `LibraryImport` (1.5) | Add audio files it saved (such as downloads) to your library |
 
 The first time a user switches a plugin on, Noctis shows exactly this list and asks. If an
 update asks for more, the plugin waits in *Needs approval* until the user switches it on again.
@@ -788,7 +818,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.2 | 1.5.9+ | `TrackInfo.Bpm` / `MusicalKey`, `ILibraryReader.GetAll()`, `ITrackAnalysisWriter` (`host.TrackAnalysis`) with the `library.write.analysis` permission. |
 | 1.3 | 1.6.6+ | Views (`RegisterView` / `OpenView`), `ShowAlbum`, `IPlaybackControl.PlayTracks`, `TrackInfo.AlbumId` / `ArtworkPath` / `ReleaseType` / `DateAdded` / `LastPlayed`. |
 | 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
-| 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`). |
+| 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`); `ILibraryImport` (`host.LibraryImport`) with the `library.import` permission: add audio files to the library, read the music folders. |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

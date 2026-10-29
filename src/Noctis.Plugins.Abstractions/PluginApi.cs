@@ -33,11 +33,13 @@ public static class PluginPermissions
     public const string Notifications = "notifications";
     /// <summary>API 1.2: <see cref="IPluginHost.TrackAnalysis"/> (BPM and key of library tracks).</summary>
     public const string LibraryWriteAnalysis = "library.write.analysis";
+    /// <summary>API 1.5: <see cref="IPluginHost.LibraryImport"/> (add audio files to the library).</summary>
+    public const string LibraryImport = "library.import";
 
     /// <summary>Every permission this kit version knows.</summary>
     public static IReadOnlyList<string> All { get; } = new[]
     {
-        PlaybackRead, PlaybackControl, LibraryRead, Network, LyricsProvider, MenuCommands, Notifications, LibraryWriteAnalysis,
+        PlaybackRead, PlaybackControl, LibraryRead, Network, LyricsProvider, MenuCommands, Notifications, LibraryWriteAnalysis, LibraryImport,
     };
 }
 

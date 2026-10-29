@@ -1,58 +1,74 @@
-using Noctis.Models;
+using System.Runtime.InteropServices;
 
-namespace Noctis.Services.YouTube;
+namespace Noctis.Plugins.YouTubeImport;
 
 public sealed record YouTubeImportProgress(string Stage, double Fraction);
 
 public sealed record YouTubeImportResult(string FilePath, string Artist, string Title, bool AddedToLibrary);
 
-public interface IYouTubeImportService
+public interface IYouTubeImporter
 {
     YtDlpTool Tool { get; }
 
     /// <summary>Destination folder for downloads (may not exist yet); empty when no music folder is configured.</summary>
     string ResolveDownloadFolder();
 
+    /// <summary>True when ffmpeg was found, so the converted formats (MP3, Opus) can be offered.</summary>
+    bool HasFfmpeg { get; }
+
     Task<List<YouTubeTrackInfo>> SearchAsync(string query, CancellationToken ct);
 
     /// <summary>Full metadata for a pasted link or a search result (search entries are shallow).</summary>
     Task<YouTubeTrackInfo?> ResolveAsync(string urlOrId, CancellationToken ct);
 
-    /// <summary>Download → tag → move into the library folder → import. Returns the library file.</summary>
-    Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, IProgress<YouTubeImportProgress>? progress, CancellationToken ct);
+    /// <summary>Download → tag → move into the download folder → add to the library. Returns the file.</summary>
+    Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, AudioFormat format, IProgress<YouTubeImportProgress>? progress, CancellationToken ct);
 }
 
 /// <summary>
 /// Turns a YouTube video into a properly tagged file in the user's own library folder. No
 /// streaming section, no YouTube browsing inside the app — the result is a normal local
 /// track like any other import, with title/artist/album/year/cover written into the file.
+/// Moved from the app (Services/YouTube/YouTubeImportService) into the plugin on 10-29: the
+/// library import goes through plugin API 1.5's "library.import".
 /// </summary>
-public sealed class YouTubeImportService : IYouTubeImportService
+public sealed class YouTubeImporter : IYouTubeImporter
 {
-    private readonly IAudioConverterService _ffmpeg;
-    private readonly IMetadataService _metadata;
-    private readonly ILibraryService _library;
+    private readonly ILibraryImport _library;
     private readonly HttpClient _http;
-    private readonly Func<AppSettings> _settings;
+    private readonly Func<string> _customFolder;
+    private readonly Func<string?> _ffmpegPath;
+    private readonly Action<string>? _log;
 
     public YtDlpTool Tool { get; }
 
-    public YouTubeImportService(YtDlpTool tool, IAudioConverterService ffmpeg, IMetadataService metadata, ILibraryService library, HttpClient http, Func<AppSettings> settings)
+    /// <param name="customFolder">The folder the user chose in the window, or empty for the default.</param>
+    /// <param name="ffmpegPath">ffmpeg for conversions, or null (<see cref="FfmpegLocator.Find"/>).</param>
+    public YouTubeImporter(YtDlpTool tool, ILibraryImport library, HttpClient http, Func<string> customFolder, Func<string?> ffmpegPath, Action<string>? log = null)
     {
         Tool = tool;
-        _ffmpeg = ffmpeg;
-        _metadata = metadata;
         _library = library;
         _http = http;
-        _settings = settings;
+        _customFolder = customFolder;
+        _ffmpegPath = ffmpegPath;
+        _log = log;
+    }
+
+    public bool HasFfmpeg => SafeFfmpeg() is not null;
+
+    private string? SafeFfmpeg()
+    {
+        try { return _ffmpegPath(); } catch { return null; }
     }
 
     public string ResolveDownloadFolder()
     {
-        AppSettings s;
-        try { s = _settings(); } catch { return string.Empty; }
-        if (!string.IsNullOrWhiteSpace(s.YouTubeDownloadFolder)) return s.YouTubeDownloadFolder.Trim();
-        return DefaultDownloadFolder(s.MusicFolders);
+        string custom;
+        try { custom = _customFolder() ?? string.Empty; } catch { custom = string.Empty; }
+        if (!string.IsNullOrWhiteSpace(custom)) return custom.Trim();
+        IReadOnlyList<string> folders;
+        try { folders = _library.MusicFolders; } catch { return string.Empty; }
+        return DefaultDownloadFolder(folders);
     }
 
     /// <summary>
@@ -101,11 +117,14 @@ public sealed class YouTubeImportService : IYouTubeImportService
         return Tool.GetInfoAsync(url, ct);
     }
 
-    public async Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, IProgress<YouTubeImportProgress>? progress, CancellationToken ct)
+    public async Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, AudioFormat format, IProgress<YouTubeImportProgress>? progress, CancellationToken ct)
     {
         var folder = ResolveDownloadFolder();
         if (string.IsNullOrWhiteSpace(folder))
             throw new InvalidOperationException("Add a music folder first (Settings → Library), or choose a download folder.");
+        var ffmpeg = SafeFfmpeg();
+        if (format.NeedsFfmpeg && ffmpeg is null)
+            throw new InvalidOperationException($"{format.Label} needs ffmpeg, which Noctis could not find. Choose M4A, or put ffmpeg next to Noctis or on PATH.");
         Directory.CreateDirectory(folder);
 
         // Search entries are shallow (no track/artist/album): fetch the full record first.
@@ -119,8 +138,8 @@ public sealed class YouTubeImportService : IYouTubeImportService
 
         progress?.Report(new YouTubeImportProgress("Downloading", 0.05));
         var downloadProgress = new Progress<double>(f => progress?.Report(new YouTubeImportProgress("Downloading", 0.05 + 0.75 * f)));
-        var produced = await Tool.DownloadAsync(info.Url, folder, _ffmpeg.GetFfmpegPath(), downloadProgress, ct,
-            status => progress?.Report(new YouTubeImportProgress(status, 0.05))).ConfigureAwait(false);
+        var produced = await Tool.DownloadAsync(info.Url, folder, ffmpeg, downloadProgress, ct,
+            status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format).ConfigureAwait(false);
 
         try
         {
@@ -131,22 +150,11 @@ public sealed class YouTubeImportService : IYouTubeImportService
             File.Move(produced, final);
             YtDlpTool.CleanupScratch(produced);
 
-            var tags = new Track
-            {
-                FilePath = final,
-                Title = title,
-                Artist = artist,
-                AlbumArtist = artist,
-                Album = string.IsNullOrWhiteSpace(info.Album) ? title : info.Album!,
-                Year = info.Year ?? 0,
-                Comment = info.Url,
-                TrackNumber = 0,
-                DiscNumber = 0,
-            };
+            var album = string.IsNullOrWhiteSpace(info.Album) ? title : info.Album!;
             await Task.Run(() =>
             {
-                try { _metadata.WriteTrackMetadata(tags, final); }
-                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "YouTube.TagFailed", ex.Message); }
+                try { TagWriter.WriteTags(final, title, artist, album, info.Year ?? 0, info.Url); }
+                catch (Exception ex) { Log("YouTube.TagFailed: " + ex.Message); }
             }, ct).ConfigureAwait(false);
 
             var cover = await FetchCoverAsync(info, ct).ConfigureAwait(false);
@@ -154,25 +162,27 @@ public sealed class YouTubeImportService : IYouTubeImportService
             {
                 await Task.Run(() =>
                 {
-                    try { _metadata.WriteAlbumArt(final, cover); }
-                    catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "YouTube.CoverFailed", ex.Message); }
+                    try { TagWriter.WriteCover(final, cover); }
+                    catch (Exception ex) { Log("YouTube.CoverFailed: " + ex.Message); }
                 }, ct).ConfigureAwait(false);
             }
 
             progress?.Report(new YouTubeImportProgress("Adding to library", 0.95));
+            // In the library only when Noctis says so: before the move to a plugin, a file the
+            // import skipped (a format Noctis doesn't play) still showed "In your library".
             var added = false;
             try
             {
-                await _library.ImportFilesAsync(new[] { final }, ct).ConfigureAwait(false);
-                added = true;
+                var tracks = await _library.ImportFilesAsync(new[] { final }, ct).ConfigureAwait(false);
+                added = tracks.Count > 0;
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
-                DebugLogger.Warn(DebugLogger.Category.State, "YouTube.ImportFailed", ex.Message);
+                Log("YouTube.ImportFailed: " + ex.Message);
             }
             progress?.Report(new YouTubeImportProgress("Done", 1));
-            DebugLogger.Info(DebugLogger.Category.State, "YouTube.Imported", $"{artist} - {title} → {Path.GetFileName(final)}");
+            Log($"YouTube.Imported: {artist} - {title} → {Path.GetFileName(final)} ({format.Key}, in library: {added})");
             return new YouTubeImportResult(final, artist, title, added);
         }
         catch
@@ -180,6 +190,11 @@ public sealed class YouTubeImportService : IYouTubeImportService
             YtDlpTool.CleanupScratch(produced);
             throw;
         }
+    }
+
+    private void Log(string line)
+    {
+        try { _log?.Invoke(line); } catch { }
     }
 
     private async Task<byte[]?> FetchCoverAsync(YouTubeTrackInfo info, CancellationToken ct)
@@ -194,8 +209,8 @@ public sealed class YouTubeImportService : IYouTubeImportService
             {
                 using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode) continue;
-                var bytes = await HttpSafety.ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes, ct).ConfigureAwait(false);
-                if (bytes.Length > 1024 && HttpSafety.LooksLikeImage(bytes)) return bytes;
+                var bytes = await HttpBounded.ReadBytesAsync(response.Content, HttpBounded.MaxImageBytes, ct).ConfigureAwait(false);
+                if (bytes.Length > 1024 && HttpBounded.LooksLikeImage(bytes)) return bytes;
             }
             catch (OperationCanceledException) { throw; }
             catch { /* next candidate */ }
@@ -215,5 +230,34 @@ public sealed class YouTubeImportService : IYouTubeImportService
             if (!File.Exists(candidate)) return candidate;
         }
         return Path.Combine(dir, $"{stem} {Guid.NewGuid():N}{ext}");
+    }
+}
+
+/// <summary>
+/// Finds ffmpeg the way Noctis does when no custom path is set: next to the app (the installer
+/// bundles it there), then PATH. The plugin runs inside the Noctis process, so
+/// <see cref="AppContext.BaseDirectory"/> is the app's folder.
+/// </summary>
+public static class FfmpegLocator
+{
+    public static string? Find()
+    {
+        var exe = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+        try
+        {
+            var bundled = Path.Combine(AppContext.BaseDirectory, exe);
+            if (File.Exists(bundled)) return bundled;
+        }
+        catch { }
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var candidate = Path.Combine(dir.Trim(), exe);
+                if (File.Exists(candidate)) return candidate;
+            }
+            catch { /* invalid PATH segment */ }
+        }
+        return null;
     }
 }

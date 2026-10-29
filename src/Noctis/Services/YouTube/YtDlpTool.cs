@@ -337,37 +337,6 @@ public sealed class YtDlpTool
 
     // ── Operations ────────────────────────────────────────────────────────────
 
-    public async Task<List<YouTubeTrackInfo>> SearchAsync(string query, int limit, CancellationToken ct)
-    {
-        var exe = Resolve() ?? throw new InvalidOperationException("yt-dlp is not installed.");
-        var js = await JsRuntimeForAsync(exe, ct).ConfigureAwait(false);
-        var (code, stdout, stderr) = await RunLoggedAsync("Search", exe, YtDlpParsing.SearchArgs(query, limit, js), null, ct).ConfigureAwait(false);
-        var list = YtDlpParsing.ParseSearch(stdout);
-        if (list.Count == 0 && code != 0) throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Search failed.");
-        return list;
-    }
-
-    public Task<YouTubeTrackInfo?> GetInfoAsync(string url, CancellationToken ct) =>
-        RunWithBlockedRetryAsync("Info", async (exe, js) =>
-        {
-            var (code, stdout, stderr) = await RunLoggedAsync("Info", exe, YtDlpParsing.InfoArgs(url, js), null, ct).ConfigureAwait(false);
-            var info = YtDlpParsing.ParseInfo(stdout.Split('\n').FirstOrDefault(l => l.TrimStart().StartsWith('{')) ?? string.Empty);
-            if (info is null && code != 0) throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Could not read this video.");
-            return info;
-        }, null, ct);
-
-    /// <summary>
-    /// Downloads the best audio for <paramref name="url"/> into a fresh temp folder under
-    /// <paramref name="targetDir"/> and returns the one file it produced.
-    /// </summary>
-    public Task<string> DownloadAsync(string url, string targetDir, string? ffmpegPath, IProgress<double>? progress, CancellationToken ct, Action<string>? onStatus = null)
-    {
-        var ffmpegDir = ffmpegPath is null ? null : Path.GetDirectoryName(ffmpegPath);
-        return RunWithBlockedRetryAsync("Download", (exe, js) =>
-            DownloadToScratchAsync("Download", exe, targetDir, template => YtDlpParsing.DownloadArgs(url, template, ffmpegDir, js), progress, ct),
-            onStatus, ct);
-    }
-
     /// <summary>
     /// Downloads the video stream (no audio) for a lyrics backdrop into a fresh temp folder under
     /// <paramref name="targetDir"/>, capped at <paramref name="maxHeight"/> (0 = best), and returns the file.
@@ -474,18 +443,6 @@ public sealed class YtDlpTool
     {
         DebugLogger.Warn(DebugLogger.Category.State, action, message);
         DebugLog.Write("YouTube", $"Warn: {action}: {message}");
-    }
-
-    /// <summary>Removes the temp folder a download left behind once its file has been moved out.</summary>
-    public static void CleanupScratch(string producedFile)
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(producedFile);
-            if (dir is not null && Path.GetFileName(dir).StartsWith(".noctis-download-", StringComparison.Ordinal) && Directory.Exists(dir))
-                Directory.Delete(dir, true);
-        }
-        catch { }
     }
 
     private static async Task<(int ExitCode, string Stdout, string Stderr)> RunProcessAsync(string exe, IReadOnlyList<string> args, Action<string>? onStdoutLine, CancellationToken ct)

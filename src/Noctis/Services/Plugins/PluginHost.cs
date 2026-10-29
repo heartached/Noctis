@@ -42,6 +42,7 @@ public static class PluginPermissionText
         PluginPermissions.MenuCommands => "MenuCommands",
         PluginPermissions.Notifications => "Notifications",
         PluginPermissions.LibraryWriteAnalysis => "LibraryWriteAnalysis",
+        PluginPermissions.LibraryImport => "LibraryImport",
         _ => "",
     };
 
@@ -1683,6 +1684,16 @@ public sealed class PluginHost
             {
                 Require(PluginPermissions.LibraryWriteAnalysis);
                 return _trackAnalysis ??= new PluginTrackAnalysisWriter(_library, () => !_disposed && _plugin.Instance is not null, _plugin.Id);
+            }
+        }
+
+        private PluginLibraryImporter? _libraryImport;
+        public ILibraryImport LibraryImport
+        {
+            get
+            {
+                Require(PluginPermissions.LibraryImport);
+                return _libraryImport ??= new PluginLibraryImporter(_library, _owner._settings, () => !_disposed && _plugin.Instance is not null, _plugin.Id);
             }
         }
 

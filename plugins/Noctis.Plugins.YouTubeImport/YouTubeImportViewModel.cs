@@ -3,21 +3,22 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Noctis.Localization;
-using Noctis.Services;
-using Noctis.Services.YouTube;
 
-namespace Noctis.ViewModels;
+namespace Noctis.Plugins.YouTubeImport;
 
 /// <summary>
-/// "Add from YouTube": search or paste a link, download the audio into the library folder,
-/// tagged and with cover art. Deliberately not a YouTube browser — results exist only to be
-/// added to the user's own library.
+/// "Add from YouTube": search or paste a link, pick a format, download the audio into the
+/// library folder, tagged and with cover art. Deliberately not a YouTube browser — results
+/// exist only to be added to the user's own library. Moved from the app's
+/// YouTubeDownloadViewModel (10-29) with three additions: the format choice, a download folder
+/// that can be changed here, and the recent downloads.
 /// </summary>
-public partial class YouTubeDownloadViewModel : ViewModelBase
+public partial class YouTubeImportViewModel : ObservableObject
 {
-    private readonly IYouTubeImportService _service;
+    private readonly IYouTubeImporter _service;
     private readonly HttpClient _http;
+    private readonly ImportState _state;
+    private readonly CancellationToken _lifetime;
     private CancellationTokenSource? _searchCts;
 
     [ObservableProperty] private string _query = string.Empty;
@@ -35,27 +36,38 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(HasToolVersion))]
     private string _toolVersionText = string.Empty;
 
-    [ObservableProperty] private string _destinationFolder = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDestination))]
+    private string _destinationFolder = string.Empty;
     public bool HasDestination => !string.IsNullOrWhiteSpace(DestinationFolder);
+
+    /// <summary>The user picked a folder here (Reset goes back to the default next to the music folders).</summary>
+    public bool HasCustomFolder => !string.IsNullOrWhiteSpace(_state.DownloadFolder);
 
     public ObservableCollection<ResultRow> Results { get; } = new();
     public bool HasResults => Results.Count > 0;
     public bool ShowSetup => !ToolInstalled;
 
-    // Pill dialog body states (exactly one shows): setup, skeleton while searching, the result
-    // cards, or the one-line empty hint.
+    // Body states (exactly one shows): setup, skeleton while searching, the result cards, or
+    // the one-line empty hint.
     public bool ShowSkeleton => !ShowSetup && IsSearching;
     public bool ShowResults => !ShowSetup && !IsSearching && HasResults;
     public bool ShowEmpty => !ShowSetup && !IsSearching && !HasResults;
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
     public bool HasToolVersion => !ShowSetup && !string.IsNullOrEmpty(ToolVersionText);
 
+    /// <summary>The formats on offer: M4A always, MP3 and Opus only with ffmpeg.</summary>
+    public IReadOnlyList<AudioFormat> Formats { get; }
+    [ObservableProperty] private AudioFormat _selectedFormat;
+
+    public ObservableCollection<RecentDownload> Recent { get; } = new();
+    public bool HasRecent => Recent.Count > 0;
+
     /// <summary>
-    /// A newer yt-dlp exists than the copy in use. Noctis keeps its own copy current by itself,
+    /// A newer yt-dlp exists than the copy in use. The plugin keeps its own copy current by itself,
     /// so this only stays true for a copy it may not replace (PATH, e.g. Chocolatey/winget, or a
-    /// custom path): the footer then offers Update, which installs Noctis's own copy — it takes
-    /// priority over PATH (YtDlpTool.Resolve). This was the Settings "Install / update" button
-    /// until that row went (owner 10-08); an old PATH copy can quietly return no results.
+    /// custom path): the footer then offers Update, which installs the plugin's own copy — it takes
+    /// priority over PATH (YtDlpTool.Resolve). An old PATH copy can quietly return no results.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowToolUpdate))]
@@ -63,21 +75,30 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
     public bool ShowToolUpdate => ToolUpdateAvailable && ToolInstalled && !IsInstallingTool;
     partial void OnIsInstallingToolChanged(bool value) => OnPropertyChanged(nameof(ShowToolUpdate));
 
-    public event EventHandler? Closed;
+    /// <summary>Set by the view: opens a folder picker and returns the chosen folder, or null.</summary>
+    public Func<Task<string?>>? PickFolder { get; set; }
 
-    public YouTubeDownloadViewModel(IYouTubeImportService service, HttpClient http, string? initialQuery = null)
+    /// <param name="lifetime">Cancelled when the plugin stops: downloads still running end then.</param>
+    public YouTubeImportViewModel(IYouTubeImporter service, HttpClient http, ImportState state, CancellationToken lifetime = default, string? initialQuery = null)
     {
         _service = service;
         _http = http;
+        _state = state;
+        _lifetime = lifetime;
         Results.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasResults));
             OnPropertyChanged(nameof(ShowResults));
             OnPropertyChanged(nameof(ShowEmpty));
         };
+        Recent.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasRecent));
+        Formats = service.HasFfmpeg ? AudioFormat.All : new[] { AudioFormat.M4a };
+        _selectedFormat = Formats.FirstOrDefault(f => f.Key == _state.Format) ?? AudioFormat.Default;
         ToolInstalled = service.Tool.IsAvailable;
         DestinationFolder = service.ResolveDownloadFolder();
-        StatusMessage = HasDestination ? string.Empty : Loc.T("YouTube.Status.NoFolder");
+        StatusMessage = HasDestination ? string.Empty : NoFolderMessage;
+        ReloadRecent();
+        _state.RecentChanged += OnRecentChanged;
         _ = CheckToolUpdateAsync();
         if (!string.IsNullOrWhiteSpace(initialQuery))
         {
@@ -86,7 +107,13 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         }
     }
 
-    partial void OnDestinationFolderChanged(string value) => OnPropertyChanged(nameof(HasDestination));
+    internal const string NoFolderMessage = "Add a music folder in Settings → Library first, or choose a download folder.";
+
+    partial void OnSelectedFormatChanged(AudioFormat value)
+    {
+        if (value is not null) _state.SetFormat(value.Key);
+    }
+
     partial void OnToolInstalledChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowSetup));
@@ -97,6 +124,25 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowToolUpdate));
     }
 
+    private void OnRecentChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.UIThread.CheckAccess()) ReloadRecent();
+        else Dispatcher.UIThread.Post(ReloadRecent);
+    }
+
+    private void ReloadRecent()
+    {
+        Recent.Clear();
+        foreach (var r in _state.Recent) Recent.Add(r);
+    }
+
+    /// <summary>The view went away: stop listening to the shared state, end a search.</summary>
+    public void Detach()
+    {
+        _state.RecentChanged -= OnRecentChanged;
+        _searchCts?.Cancel();
+    }
+
     private async Task RefreshVersionAsync()
     {
         if (!ToolInstalled) { ToolVersionText = string.Empty; ToolUpdateAvailable = false; return; }
@@ -105,7 +151,7 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         ToolUpdateAvailable = !string.IsNullOrWhiteSpace(v) && YtDlpParsing.IsNewer(_service.Tool.LatestKnownVersion, v);
     }
 
-    /// <summary>Opening the downloader: show the version, then the quiet once-per-session update check.</summary>
+    /// <summary>Opening the window: show the version, then the quiet once-per-session update check.</summary>
     private async Task CheckToolUpdateAsync()
     {
         try
@@ -115,7 +161,7 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
             await _service.Tool.EnsureSessionUpdateCheckAsync();
             await RefreshVersionAsync();
         }
-        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "YtDlp.DialogCheckFailed", ex.Message); }
+        catch { /* the version note is cosmetic */ }
     }
 
     [RelayCommand]
@@ -124,17 +170,17 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         if (IsInstallingTool) return;
         IsInstallingTool = true;
         InstallProgress = 0;
-        StatusMessage = Loc.T("YouTube.Status.InstallingTool");
+        StatusMessage = "Downloading yt-dlp…";
         try
         {
-            await _service.Tool.InstallAsync(new Progress<double>(p => Dispatcher.UIThread.Post(() => InstallProgress = p)), CancellationToken.None);
+            await _service.Tool.InstallAsync(new Progress<double>(p => Dispatcher.UIThread.Post(() => InstallProgress = p)), _lifetime);
             ToolInstalled = true;
-            StatusMessage = Loc.T("YouTube.Status.Ready");
+            StatusMessage = "yt-dlp is ready.";
             await RefreshVersionAsync();
         }
         catch (Exception ex)
         {
-            StatusMessage = Loc.T("YouTube.Status.InstallFailed", ex.Message);
+            StatusMessage = $"Couldn't install yt-dlp — {ex.Message}";
         }
         finally
         {
@@ -143,16 +189,46 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task ChangeFolder()
+    {
+        if (PickFolder is null) return;
+        string? picked;
+        try { picked = await PickFolder(); }
+        catch (Exception ex) { StatusMessage = "Couldn't open the folder picker — " + ex.Message; return; }
+        if (string.IsNullOrWhiteSpace(picked)) return;
+        _state.SetDownloadFolder(picked);
+        RefreshDestination();
+    }
+
+    [RelayCommand]
+    private void ResetFolder()
+    {
+        _state.SetDownloadFolder(null);
+        RefreshDestination();
+    }
+
+    private void RefreshDestination()
+    {
+        DestinationFolder = _service.ResolveDownloadFolder();
+        OnPropertyChanged(nameof(HasCustomFolder));
+        if (HasDestination && StatusMessage == NoFolderMessage) StatusMessage = string.Empty;
+        else if (!HasDestination) StatusMessage = NoFolderMessage;
+    }
+
+    [RelayCommand]
+    private void ClearRecent() => _state.ClearRecent();
+
+    [RelayCommand]
     private async Task Search()
     {
         var q = Query?.Trim() ?? string.Empty;
         if (q.Length == 0) return;
-        if (!ToolInstalled) { StatusMessage = Loc.T("YouTube.Status.InstallFirst"); return; }
+        if (!ToolInstalled) { StatusMessage = "Install yt-dlp first."; return; }
 
         _searchCts?.Cancel();
         var cts = _searchCts = new CancellationTokenSource();
         IsSearching = true;
-        StatusMessage = Loc.T(YtDlpParsing.LooksLikeYouTubeUrl(q) ? "YouTube.Status.ReadingLink" : "YouTube.Status.Searching");
+        StatusMessage = YtDlpParsing.LooksLikeYouTubeUrl(q) ? "Reading link…" : "Searching…";
         try
         {
             List<YouTubeTrackInfo> found;
@@ -170,14 +246,14 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
             Results.Clear();
             foreach (var info in found)
                 Results.Add(new ResultRow(info, this));
-            StatusMessage = found.Count == 0 ? Loc.T("YouTube.Status.NothingFound") : string.Empty;
+            StatusMessage = found.Count == 0 ? "Nothing found." : string.Empty;
             foreach (var row in Results.ToList())
                 _ = LoadThumbnailAsync(row, cts.Token);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            StatusMessage = Loc.T("YouTube.Status.SearchFailed", ex.Message);
+            StatusMessage = $"Search failed — {ex.Message}";
         }
         finally
         {
@@ -192,8 +268,8 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         {
             using var response = await _http.GetAsync(row.Info.ThumbnailUrl, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode) return;
-            var bytes = await HttpSafety.ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes, ct);
-            if (!HttpSafety.LooksLikeImage(bytes)) return;
+            var bytes = await HttpBounded.ReadBytesAsync(response.Content, HttpBounded.MaxImageBytes, ct);
+            if (!HttpBounded.LooksLikeImage(bytes)) return;
             using var ms = new MemoryStream(bytes);
             var bitmap = Bitmap.DecodeToWidth(ms, 192);
             await Dispatcher.UIThread.InvokeAsync(() => row.Thumbnail = bitmap);
@@ -204,11 +280,11 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
     internal async Task DownloadAsync(ResultRow row)
     {
         if (row.IsBusy || row.IsDone) return;
-        if (!HasDestination) { StatusMessage = Loc.T("YouTube.Status.NoFolder"); return; }
+        if (!HasDestination) { StatusMessage = NoFolderMessage; return; }
         row.IsBusy = true;
         row.Failed = false;
         row.Progress = 0;
-        row.StatusText = Loc.T("YouTube.Row.Starting");
+        row.StatusText = "Starting…";
         var progress = new Progress<YouTubeImportProgress>(p => Dispatcher.UIThread.Post(() =>
         {
             row.Progress = p.Fraction;
@@ -216,11 +292,17 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         }));
         try
         {
-            var result = await _service.ImportAsync(row.Info, progress, CancellationToken.None);
+            var result = await _service.ImportAsync(row.Info, SelectedFormat ?? AudioFormat.Default, progress, _lifetime);
             row.IsDone = true;
-            row.StatusText = Loc.T(result.AddedToLibrary ? "YouTube.Row.InLibrary" : "YouTube.Row.SavedToFolder");
+            row.StatusText = result.AddedToLibrary ? "In your library" : "Saved to folder";
             row.Title = result.Title;
             row.Subtitle = result.Artist;
+            _state.AddRecent(new RecentDownload(result.Title, result.Artist, result.FilePath, DateTimeOffset.Now, result.AddedToLibrary));
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            row.Failed = true;
+            row.StatusText = "Stopped.";
         }
         catch (Exception ex)
         {
@@ -236,18 +318,11 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private void Close()
-    {
-        _searchCts?.Cancel();
-        Closed?.Invoke(this, EventArgs.Empty);
-    }
-
     public sealed partial class ResultRow : ObservableObject
     {
-        private readonly YouTubeDownloadViewModel _owner;
+        private readonly YouTubeImportViewModel _owner;
 
-        public ResultRow(YouTubeTrackInfo info, YouTubeDownloadViewModel owner)
+        public ResultRow(YouTubeTrackInfo info, YouTubeImportViewModel owner)
         {
             Info = info;
             _owner = owner;
@@ -265,7 +340,9 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
 
         [ObservableProperty] private string _title = string.Empty;
         [ObservableProperty] private string _subtitle = string.Empty;
-        [ObservableProperty] private Bitmap? _thumbnail;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasThumbnail))]
+        private Bitmap? _thumbnail;
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(ShowDownload))]
         private bool _isBusy;
@@ -282,7 +359,5 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         public bool HasThumbnail => Thumbnail is not null;
         /// <summary>"42%" on the card while it downloads.</summary>
         public string ProgressText => $"{(int)Math.Round(Math.Clamp(Progress, 0, 1) * 100)}%";
-
-        partial void OnThumbnailChanged(Bitmap? value) => OnPropertyChanged(nameof(HasThumbnail));
     }
 }

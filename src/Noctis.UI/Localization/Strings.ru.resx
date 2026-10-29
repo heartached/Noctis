@@ -2227,6 +2227,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.PermShort.MenuCommands" xml:space="preserve"><value>Меню трека</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Уведомления</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Запись BPM и тональности</value></data>
+  <data name="Plugins.PermShort.LibraryImport" xml:space="preserve"><value>Добавление в медиатеку</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Управлять воспроизведением: запуск, пауза, переключение и перемотка</value></data>
   <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Читать медиатеку и плейлисты (названия, исполнители, альбомы, пути к файлам, число прослушиваний)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Подключаться к интернету</value></data>
@@ -2234,6 +2235,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Добавлять пункты в меню трека</value></data>
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Показывать короткие уведомления</value></data>
   <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Задавать BPM и тональность треков медиатеки (только в Noctis, никогда в ваших файлах)</value></data>
+  <data name="Plugins.Perm.LibraryImport" xml:space="preserve"><value>Добавлять в медиатеку аудиофайлы, которые он сохранил (например, загрузки)</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Включить {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} запрашивает разрешение:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} от {2} запрашивает разрешение:</value></data>
@@ -2413,22 +2415,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Тексты песен</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
 
-  <data name="Main.AddFromYouTube" xml:space="preserve"><value>Добавить с YouTube</value><comment>New/Add menu item</comment></data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve"><value>Найдите или вставьте ссылку — загрузка в вашу медиатеку</value><comment>New/Add menu item subtitle</comment></data>
-
-  <data name="YouTube.Title" xml:space="preserve"><value>Добавить с YouTube</value><comment>Dialog title</comment></data>
-  <data name="YouTube.Subtitle" xml:space="preserve"><value>Найдите или вставьте ссылку. Сохраняется в медиатеку вместе с обложкой.</value><comment>Dialog subtitle</comment></data>
-  <data name="YouTube.SearchHint" xml:space="preserve"><value>Найдите или вставьте ссылку</value><comment>Search box watermark</comment></data>
-  <data name="YouTube.Search" xml:space="preserve"><value>Найти</value><comment>Search button</comment></data>
-  <data name="YouTube.SetupTitle" xml:space="preserve"><value>Однократная настройка</value><comment>First-run card title</comment></data>
-  <data name="YouTube.SetupBody" xml:space="preserve"><value>Для загрузки нужен yt-dlp. Noctis установит его один раз и будет обновлять.</value><comment>First-run card body</comment></data>
-  <data name="YouTube.Install" xml:space="preserve"><value>Установить yt-dlp</value><comment>First-run card button</comment></data>
-  <data name="YouTube.Download" xml:space="preserve"><value>Скачать</value><comment>Per-result button</comment></data>
-  <data name="YouTube.SavesTo" xml:space="preserve"><value>Сохраняется в</value><comment>Footer label before the folder</comment></data>
-  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Найдите песню и скачайте её в свою медиатеку.</value><comment>Empty state</comment></data>
-  <data name="YouTube.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
-  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Обновить</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
-  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Установить собственную актуальную копию yt-dlp для Noctis.</value><comment>Tooltip of the footer Update button</comment></data>
   <data name="Import.Hint.Spotify" xml:space="preserve"><value>Spotify это блокирует. Экспортируйте плейлист через Exportify, затем выберите CSV-файл.</value><comment>Import Playlist: a Spotify link was pasted</comment></data>
   <data name="Import.Hint.AppleMusic" xml:space="preserve"><value>Apple Music нельзя прочитать напрямую. Сконвертируйте плейлист через TuneMyMusic, затем выберите файл.</value><comment>Import Playlist: an Apple Music link was pasted</comment></data>
   <data name="Import.Hint.Tidal" xml:space="preserve"><value>Эту ссылку TIDAL пока нельзя прочитать здесь. Сконвертируйте плейлист через TuneMyMusic, затем выберите файл.</value><comment>Import Playlist: a TIDAL link in a build without TIDAL sign-in</comment></data>
@@ -2436,29 +2422,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Import.Hint.AmazonMusic" xml:space="preserve"><value>Amazon Music нельзя прочитать напрямую. Сконвертируйте плейлист через TuneMyMusic, затем выберите файл.</value><comment>Import Playlist: an Amazon Music link was pasted</comment></data>
   <data name="Import.Hint.OpenExportify" xml:space="preserve"><value>Открыть Exportify</value><comment>Button: opens exportify.net (a product name, keep it)</comment></data>
   <data name="Import.Hint.OpenTuneMyMusic" xml:space="preserve"><value>Открыть TuneMyMusic</value><comment>Button: opens tunemymusic.com (a product name, keep it)</comment></data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="YouTube.Installing" xml:space="preserve"><value>Установка…</value><comment>Install button label while yt-dlp downloads</comment></data>
-  <data name="YouTube.Status.NoFolder" xml:space="preserve"><value>Сначала добавьте папку с музыкой в «Настройки → Медиатека».</value><comment>Footer status: no library folder to save into</comment></data>
-  <data name="YouTube.Status.InstallingTool" xml:space="preserve"><value>Загрузка yt-dlp…</value><comment>Footer status while yt-dlp installs</comment></data>
-  <data name="YouTube.Status.Ready" xml:space="preserve"><value>yt-dlp готов.</value><comment>Footer status after yt-dlp installed</comment></data>
-  <data name="YouTube.Status.InstallFailed" xml:space="preserve"><value>Не удалось установить yt-dlp — {0}</value><comment>Footer status; {0} = error message</comment></data>
-  <data name="YouTube.Status.InstallFirst" xml:space="preserve"><value>Сначала установите yt-dlp.</value><comment>Footer status: search pressed before setup</comment></data>
-  <data name="YouTube.Status.ReadingLink" xml:space="preserve"><value>Чтение ссылки…</value><comment>Footer status while a pasted link resolves</comment></data>
-  <data name="YouTube.Status.Searching" xml:space="preserve"><value>Поиск…</value><comment>Footer status while searching</comment></data>
-  <data name="YouTube.Status.NothingFound" xml:space="preserve"><value>Ничего не найдено.</value><comment>Footer status: search returned no results</comment></data>
-  <data name="YouTube.Status.SearchFailed" xml:space="preserve"><value>Ошибка поиска — {0}</value><comment>Footer status; {0} = error message</comment></data>
-  <data name="YouTube.Row.Starting" xml:space="preserve"><value>Запуск…</value><comment>Result card status when a download begins</comment></data>
-  <data name="YouTube.Row.InLibrary" xml:space="preserve"><value>В вашей медиатеке</value><comment>Result card status after the download was imported</comment></data>
-  <data name="YouTube.Row.SavedToFolder" xml:space="preserve"><value>Сохранено в папку</value><comment>Result card status: saved but not imported</comment></data>
+  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Обновить</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
+  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Установить собственную актуальную копию yt-dlp для Noctis.</value><comment>Tooltip of the footer Update button</comment></data>
 
-  <data name="YouTubeSettings.Section" xml:space="preserve"><value>ЗАГРУЗКИ С YOUTUBE</value><comment>Library tab section title</comment></data>
-  <data name="YouTubeSettings.Title" xml:space="preserve"><value>Добавление песен с YouTube</value><comment>Card title</comment></data>
-  <data name="YouTubeSettings.Description" xml:space="preserve"><value>Найдите или вставьте ссылку для загрузки.</value><comment>Card description</comment></data>
-  <data name="YouTubeSettings.Open" xml:space="preserve"><value>Открыть загрузчик</value><comment>Card button</comment></data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve"><value>Папка загрузок</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve"><value>Если пусто, используется папка «YouTube» внутри вашей первой папки с музыкой.</value><comment>Row help</comment></data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve"><value>yt-dlp</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve"><value>Установить / обновить</value><comment>Row button</comment></data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve"><value>Свой путь к yt-dlp (необязательно)</value><comment>Path watermark</comment></data>
   <data name="YtDlp.Version" xml:space="preserve"><value>yt-dlp {0}</value><comment>Small secondary text: the installed yt-dlp version ({0})</comment></data>
   <data name="YtDlp.UpdateAvailable" xml:space="preserve"><value>доступно обновление</value><comment>Appended after the yt-dlp version when a newer release exists</comment></data>
   <data name="YtDlp.UpdatingRetrying" xml:space="preserve"><value>Обновление yt-dlp и повторная попытка…</value><comment>Download status after YouTube blocked the first attempt</comment></data>
