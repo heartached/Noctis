@@ -40,6 +40,8 @@
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.Kawarp\Noctis.Plugins.Kawarp.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.Mixxx\Noctis.Plugins.Mixxx.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.AlbumTown\Noctis.Plugins.AlbumTown.csproj" />
+    <ProjectReference Include="..\..\plugins\Noctis.Plugins.AlbumRoulette\Noctis.Plugins.AlbumRoulette.csproj" />
+    <ProjectReference Include="..\..\plugins\Noctis.Plugins.ABLoop\Noctis.Plugins.ABLoop.csproj" />
   </ItemGroup>
 
   <!-- The plugin submission checker's logic (PluginSubmissionCheckTests), compiled in rather than

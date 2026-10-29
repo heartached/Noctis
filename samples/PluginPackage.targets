@@ -1,7 +1,7 @@
 <Project>
   <!--
     Packs a Noctis plugin after a Release build: the plugin DLL (+ its private dependencies,
-    minus the shared kit) and plugin.json into bin/<Configuration>/<AssemblyName>-<Version>.zip,
+    minus the shared kit), plugin.json and icon.png (if there is one) into bin/<Configuration>/<AssemblyName>-<Version>.zip,
     ready for Settings → Plugins → "Install from file…".
     plugin.json is deliberately NOT a CopyToOutputDirectory item: that would flow into every
     project referencing the plugin (the test project references several).
@@ -61,6 +61,8 @@
       <_PluginFiles Include="$(OutDir)*.dll" Exclude="$(OutDir)Noctis.Plugins.Abstractions.dll;$(OutDir)Avalonia*.dll;$(OutDir)SkiaSharp*.dll;$(OutDir)HarfBuzzSharp*.dll" />
       <_PluginFiles Include="$(OutDir)$(AssemblyName).deps.json" Condition="Exists('$(OutDir)$(AssemblyName).deps.json')" />
       <_PluginFiles Include="$(MSBuildProjectDirectory)\plugin.json" />
+      <!-- The plugin's icon (plugin.json "icon"), when it has one. -->
+      <_PluginFiles Include="$(MSBuildProjectDirectory)\icon.png" Condition="Exists('$(MSBuildProjectDirectory)\icon.png')" />
     </ItemGroup>
     <RemoveDir Directories="$(_PluginStage)" />
     <Copy SourceFiles="@(_PluginFiles)" DestinationFolder="$(_PluginStage)" />

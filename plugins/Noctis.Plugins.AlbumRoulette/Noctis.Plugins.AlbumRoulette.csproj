@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Album Roulette for Noctis (official): spin a reel of your album covers and let it land on
+    something to play. Filters (genre, decade, albums/EPs/singles, never played, not played in
+    six months), an optional Album of the Day notice, and "Spin from this artist" in the track
+    menu. Uses plugin API 1.4 (a view of its own, PlayTracks, ShowAlbum, the album fields on
+    TrackInfo). `dotnet build -c Release` writes bin/Release/Noctis.Plugins.AlbumRoulette-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.AlbumRoulette</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- Release builds also write bin/Release/Noctis.Plugins.AlbumRoulette-<version>.zip (DLL + plugin.json + icon.png). -->
+  <Import Project="..\..\samples\PluginPackage.targets" />
+</Project>

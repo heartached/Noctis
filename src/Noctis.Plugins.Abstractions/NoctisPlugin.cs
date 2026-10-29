@@ -133,7 +133,9 @@ public interface INowPlaying
 
     bool IsPlaying { get; }
 
-    /// <summary>Playback position; polled, not a stream of events.</summary>
+    /// <summary>Playback position; polled, not a stream of events. It moves in steps (about every
+    /// 100 ms on desktop) and holds still for a moment after a seek: for anything finer, add the
+    /// time since the value last changed (docs/PLUGINS.md, "How exact A-B Loop is").</summary>
     TimeSpan Position { get; }
 
     /// <summary>A new track started (or playback was cleared: <see cref="Track"/> is null).</summary>
