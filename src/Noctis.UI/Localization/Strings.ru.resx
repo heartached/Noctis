@@ -2946,4 +2946,5 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.SleepFade10" xml:space="preserve"><value>10 с</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade30" xml:space="preserve"><value>30 с</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade60" xml:space="preserve"><value>60 с</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ExclusiveModePaused" xml:space="preserve"><value>Монопольный режим приостановлен: не удалось открыть устройство. Он попробует снова при следующем запуске или если выключить и снова включить его.</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

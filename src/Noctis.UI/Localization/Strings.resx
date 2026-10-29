@@ -2946,4 +2946,5 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.SleepFade10" xml:space="preserve"><value>10 s</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade30" xml:space="preserve"><value>30 s</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade60" xml:space="preserve"><value>60 s</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ExclusiveModePaused" xml:space="preserve"><value>Exclusive Mode is paused: the device couldn't be opened. It will try again next launch or when you turn it off and on.</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

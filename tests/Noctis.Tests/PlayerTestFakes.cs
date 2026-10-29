@@ -60,7 +60,11 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void Seek(TimeSpan position) => Seeks.Add(position);
     public void CommitVolume() { }
     public void SetNormalization(bool enabled) { }
-    public void SetExclusiveMode(bool enabled) { }
+    /// <summary>Every SetExclusiveMode call, in order.</summary>
+    public List<bool> ExclusiveRequests { get; } = new();
+    public void SetExclusiveMode(bool enabled) => ExclusiveRequests.Add(enabled);
+    public bool ExclusiveModePaused { get; set; }
+    public void RaiseOutputModeChanged(string status) => OutputModeChanged?.Invoke(this, status);
     public void ApplyReplayGain(string mode, double preampDb) { }
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public bool GaplessEnabled { get; private set; } = true;

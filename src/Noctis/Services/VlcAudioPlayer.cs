@@ -1809,12 +1809,49 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     public double ReplayGainAppliedDb =>
         Math.Abs(_replayGainScalar - 1.0) < 0.0001 ? 0.0 : 20.0 * Math.Log10(_replayGainScalar);
 
+    // ── Exclusive Mode paused ──
+    // The device could not be opened in exclusive mode, or it went away mid-track: the
+    // session falls back to shared output, but the user's saved choice stays on (an
+    // unplugged DAC must not lose it). While paused, the "on" that every ApplyAudioSettings
+    // re-sends is ignored; turning the setting off clears the pause, so off and on again
+    // retries, and so does the next launch (the flag is per session).
+    private volatile bool _exclusivePaused;
+
+    /// <inheritdoc />
+    public bool ExclusiveModePaused => _exclusivePaused;
+
+    /// <summary>Whether a SetExclusiveMode request goes ahead: "off" always does and clears
+    /// the pause; "on" is held while paused. Internal for tests.</summary>
+    internal static bool ExclusiveRequestAllowed(bool enabled, ref bool paused)
+    {
+        if (!enabled)
+        {
+            paused = false;
+            return true;
+        }
+        return !paused;
+    }
+
+    private void PauseExclusiveMode()
+    {
+        _exclusivePaused = true;
+        _exclusiveModeEnabled = false;
+    }
+
     public void SetExclusiveMode(bool enabled)
     {
         if (_disposed) return;
         if (!OperatingSystem.IsWindows()) enabled = false;
         // The experimental NOCTIS_WASAPI sink already owns the audio callbacks.
         if (_wasapiOut != null) return;
+        var paused = _exclusivePaused;
+        var allowed = ExclusiveRequestAllowed(enabled, ref paused);
+        _exclusivePaused = paused;
+        if (!allowed)
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.PausedIgnored", "on request held until off and on again");
+            return;
+        }
         if (_exclusiveModeEnabled == enabled) return;
         _exclusiveModeEnabled = enabled;
 
@@ -2175,7 +2212,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                         // say why.
                         DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed",
                             "no WASAPI output available");
-                        _exclusiveModeEnabled = false;
+                        PauseExclusiveMode();
                         RebuildOutputModeLocked(false, resumeTrack: false);
                         OutputModeChanged?.Invoke(this,
                             "No audio output could be opened in exclusive mode. " +
@@ -2268,7 +2305,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_disposed || !ReferenceEquals(_exclusiveOut, sink)) return;
                 DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.DeviceLost",
                     "output device disappeared; falling back to shared output");
-                _exclusiveModeEnabled = false;
+                PauseExclusiveMode();
                 if (!_playbackLock.Wait(2000)) return;
                 try { RebuildOutputModeLocked(false); }
                 finally { _playbackLock.Release(); }

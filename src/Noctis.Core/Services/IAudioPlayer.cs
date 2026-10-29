@@ -79,6 +79,13 @@ public interface IAudioPlayer : IDisposable
     /// <summary>True while audio is actually flowing through an exclusive-mode device stream.</summary>
     bool ExclusiveModeActive { get; }
 
+    /// <summary>
+    /// Exclusive Mode is on in Settings but this session fell back to shared output (the
+    /// device could not be opened, or it went away). The saved choice is kept; turning it
+    /// off and on again, or the next launch, retries.
+    /// </summary>
+    bool ExclusiveModePaused => false;
+
     /// <summary>True while the active output chain feeds the shared level meters (visualizer,
     /// beat pulse) from the PCM it renders. False when the native output plays the audio
     /// unseen, so a side decode has to feed them instead.</summary>

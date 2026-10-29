@@ -2794,7 +2794,7 @@ public partial class SettingsViewModel : ViewModelBase
             DebugLog.Write("Audio", $"Output path: {status}");
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "";
+                ExclusiveAudioStatus = ExclusiveStatusFor(status);
                 RefreshChannelMixAvailability();
             });
         };
@@ -4588,6 +4588,13 @@ public partial class SettingsViewModel : ViewModelBase
         ApplyAudioSettings();
         _ = SaveAsync();
     }
+
+    /// <summary>The line under the Exclusive Mode toggle: hidden while it is off, the paused
+    /// notice while this session fell back to shared output, else the player's status.</summary>
+    private string ExclusiveStatusFor(string status) =>
+        !ExclusiveAudioEnabled ? ""
+        : _audioPlayer is { ExclusiveModePaused: true } ? Loc.T("Settings.ExclusiveModePaused")
+        : status;
 
     partial void OnExclusiveAudioEnabledChanged(bool value)
     {
