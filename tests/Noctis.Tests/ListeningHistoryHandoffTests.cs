@@ -537,6 +537,35 @@ public class ListeningHistoryHandoffTests : IDisposable
     }
 
     [Fact]
+    public async Task Publisher_TheSendAgain_CapturesOnTheUiThread_NotTheSendsThread()
+    {
+        // The repeat ran where the send finished (a pool thread) and walked Player.UpNext there,
+        // an ObservableCollection the UI changes.
+        var id = Guid.NewGuid();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ui = new List<Action>();
+        var captures = 0;
+        var sent = new List<long>();
+        long position = 0;
+        var publisher = new PickUpPublisher(() => true, () => { captures++; return new PlayQueueShare(new[] { id }, id, position); },
+            async s => { sent.Add(s.PositionMs); if (sent.Count == 1) await gate.Task; },
+            post: a => { lock (ui) ui.Add(a); });
+
+        publisher.Flush();
+        position = 60_000;
+        publisher.Flush();                       // while the first is out: sends again after it
+        gate.SetResult();
+        await publisher.Pending;
+        Assert.Equal(1, captures);               // not captured on the send's thread
+        Action[] queued;
+        lock (ui) queued = ui.ToArray();
+        Assert.Single(queued);
+        queued[0]();                             // the UI thread runs it
+        await publisher.Pending;
+        Assert.Equal(new long[] { 0, 60_000 }, sent);
+    }
+
+    [Fact]
     public void Publisher_Disabled_NeverCaptures()
     {
         var captured = 0;

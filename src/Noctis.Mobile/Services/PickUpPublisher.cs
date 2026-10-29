@@ -27,6 +27,7 @@ public sealed class PickUpPublisher
     private readonly Func<PlayQueueShare?> _capture;
     private readonly Func<PlayQueueShare, Task> _send;
     private readonly Func<DateTime> _utcNow;
+    private readonly Action<Action> _post;
     private readonly object _gate = new();
     private DateTime _lastUtc = DateTime.MinValue;
     private PlayQueueShare? _lastSent;
@@ -34,12 +35,13 @@ public sealed class PickUpPublisher
     private bool _again;
 
     public PickUpPublisher(Func<bool> enabled, Func<PlayQueueShare?> capture, Func<PlayQueueShare, Task> send,
-        Func<DateTime>? utcNow = null)
+        Func<DateTime>? utcNow = null, Action<Action>? post = null)
     {
         _enabled = enabled;
         _capture = capture;
         _send = send;
         _utcNow = utcNow ?? (() => DateTime.UtcNow);
+        _post = post ?? (a => a());
     }
 
     /// <summary>The tail of the last send; tests await it.</summary>
@@ -93,6 +95,7 @@ public sealed class PickUpPublisher
             again = _again;
             _again = false;
         }
-        if (again) Flush();
+        // Back on the UI thread (post): the capture reads the player's queue, which the UI changes.
+        if (again) _post(Flush);
     }
 }
