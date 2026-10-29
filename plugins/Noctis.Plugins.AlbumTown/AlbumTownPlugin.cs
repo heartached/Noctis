@@ -13,7 +13,7 @@ public sealed class AlbumTownPlugin : INoctisPlugin, IPluginViewProvider
     public const string Id = "dev.noctis.plugins.albumtown";
     public const string Author = "Jafezy JD";
     public const string Version = "1.0.1";
-    public const string About = "Your albums become little cover creatures that wander a plaza, chat about what they have in common and move into apartments you build from your albums and playlists. By Jafezy JD.";
+    public const string About = "Your albums come to life as little creatures in a town you build.";
 
     private IPluginHost? _host;
     private IDisposable? _view;

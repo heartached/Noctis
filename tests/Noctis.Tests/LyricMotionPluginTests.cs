@@ -418,7 +418,8 @@ public class LyricMotionPluginTests : IDisposable
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
         Assert.Equal(("Lyric Motion", "1.0.0", "Alfamin"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
-        Assert.EndsWith("By Alfamin.", plugin.Manifest!.Description);
+        Assert.Equal(LyricMotionPlugin.About, plugin.Manifest!.Description); // no "By Alfamin." (the card says by X)
+        Assert.DoesNotContain("Alfamin", plugin.Manifest.Description);
         Assert.Empty(plugin.Manifest.Permissions);
         Assert.Equal(7, plugin.SettingItems.Count);
 

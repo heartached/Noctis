@@ -436,7 +436,8 @@ public class TrueShufflePluginTests : IDisposable
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
         Assert.Equal(("True Shuffle", "1.0.0", "Alfamin"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
-        Assert.EndsWith("By Alfamin.", plugin.Manifest!.Description);
+        Assert.Equal(TrueShufflePlugin.About, plugin.Manifest!.Description); // no "By Alfamin." (the card says by X)
+        Assert.DoesNotContain("Alfamin", plugin.Manifest.Description);
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
         Assert.DoesNotContain("network", plugin.Manifest.Permissions);
 

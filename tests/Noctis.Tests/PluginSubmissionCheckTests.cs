@@ -170,6 +170,25 @@ public class PluginSubmissionCheckTests : IDisposable
         Assert.True(r.CanBeListed);
     }
 
+    /// <summary>docs/PLUGINS.md "Writing your description": over 100 characters or an em dash is a
+    /// note for the reviewer, never a problem (it can still be listed).</summary>
+    [Fact]
+    public void ALongDescription_OrOneWithAnEmDash_IsANote()
+    {
+        var zip = Zip();
+        Assert.DoesNotContain(At(Check(zip), CheckLevel.Note), t => t.Contains("description", StringComparison.OrdinalIgnoreCase));
+
+        var longOne = "A ring that pulses with the beat, glows on the chorus, follows the album colours and fades out when the song ends.";
+        Assert.True(longOne.Length > 100);
+        var r = Check(zip, Body(Sha(zip), (SubmissionForm.Description, longOne)));
+        Assert.Contains(At(r, CheckLevel.Note), t => t.StartsWith("The form's description is " + longOne.Length + " characters"));
+        Assert.True(r.CanBeListed);
+
+        r = Check(zip, Body(Sha(zip), (SubmissionForm.Description, "A ring that pulses \u2014 with the beat.")));
+        Assert.Contains(At(r, CheckLevel.Note), t => t.StartsWith("The form's description has an em dash"));
+        Assert.True(r.CanBeListed);
+    }
+
     // ── Problems ──
 
     [Fact]

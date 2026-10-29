@@ -15,7 +15,7 @@ public sealed class TrueShufflePlugin : INoctisPlugin, IPluginViewProvider
     public const string Id = "dev.noctis.plugins.trueshuffle";
     public const string Author = "Alfamin";
     public const string Version = "1.0.0";
-    public const string About = "Shuffle your way: Equal chance, No repeats, Discovery, Never played or For you, over the queue, a playlist or the whole library. Songs you add yourself play first, in your order. By Alfamin.";
+    public const string About = "A fairer shuffle with modes for no repeats, rarely played songs and more.";
 
     private IPluginHost? _host;
     private ShuffleController? _controller;

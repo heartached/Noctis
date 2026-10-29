@@ -573,7 +573,7 @@ public class YouTubeImportPluginTests : IDisposable
         var plugin = new YouTubeImportPlugin();
         Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.0", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
         Assert.Equal((plugin.Info.Id, plugin.Info.Name, plugin.Info.Version, plugin.Info.Description), (m.Id, m.Name, m.Version, m.Description));
-        Assert.Equal("Download audio from a YouTube link into your library.", m.Description);
+        Assert.Equal("Paste a YouTube link and save the song's audio into your library.", m.Description);
         Assert.Equal(new[] { "library.import", "network" }, m.Permissions);
         Assert.Equal("1.5", m.ApiVersion);
         Assert.Empty(m.Warnings);

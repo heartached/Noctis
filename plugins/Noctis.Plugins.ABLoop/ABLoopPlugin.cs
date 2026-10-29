@@ -14,7 +14,7 @@ public sealed class ABLoopPlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.abloop";
     public const string Version = "1.0.0";
-    public const string About = "Loop a part of a song to practise or learn it: set A and B, nudge them into place, repeat a set number of times and save named loops for each song.";
+    public const string About = "Loop any part of a song to practise it, and save your loops for later.";
     public const string LoopAPartLabel = "Loop a part";
     // A looping arrow (24x24 box) for the menu entry.
     private const string LoopIcon = "M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z";

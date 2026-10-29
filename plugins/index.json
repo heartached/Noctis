@@ -5,7 +5,7 @@
       "id": "dev.noctis.plugins.mixxx",
       "name": "Mixxx",
       "author": "Noctis",
-      "description": "Imports the BPM and key from your Mixxx library.",
+      "description": "Brings the BPM and key Mixxx found for your songs into Noctis.",
       "version": "1.0.1",
       "minAppVersion": "1.5.9",
       "type": "dotnet",

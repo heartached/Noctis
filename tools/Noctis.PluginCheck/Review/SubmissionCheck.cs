@@ -124,6 +124,8 @@ public static class SubmissionCheck
         var description = form[SubmissionForm.Description];
         if (description.Length > 200)
             r.Add(CheckLevel.Problem, $"The short description is {description.Length} characters; keep it under 200 (it's one line in Settings).");
+        else
+            NoteDescriptionStyle(description, "The form's description", r);
         if (form[SubmissionForm.Name].Length > 60) r.Add(CheckLevel.Problem, "The plugin name is longer than 60 characters.");
         if (form[SubmissionForm.Author].Length > 60) r.Add(CheckLevel.Problem, "The author credit is longer than 60 characters.");
 
@@ -234,6 +236,8 @@ public static class SubmissionCheck
         }
 
         foreach (var w in m.Warnings) r.Add(CheckLevel.Note, "plugin.json: " + Code(w));
+        if (!string.Equals(m.Description, form[SubmissionForm.Description], StringComparison.Ordinal))
+            NoteDescriptionStyle(m.Description, "plugin.json's description", r);
         var credit = form[SubmissionForm.Author];
         if (m.Author.Length > 0 && credit.Length > 0 && !string.Equals(m.Author, credit, StringComparison.OrdinalIgnoreCase))
             r.Add(CheckLevel.Note, $"plugin.json's author is {Code(m.Author)}; the list will credit {Code(credit)}.");
@@ -372,6 +376,19 @@ public static class SubmissionCheck
 
     // ── Markdown helpers. Every submitted value is shown as inline code: one line, capped,
     //    backticks swapped, so it can't add links, mentions, HTML or headings to the comment. ──
+
+    /// <summary>The card shows two lines of a description (docs/PLUGINS.md, "Writing your description").</summary>
+    internal const int DescriptionNoteLength = 100;
+
+    /// <summary>Notes, not problems: a description over <see cref="DescriptionNoteLength"/>
+    /// characters, or with an em dash. The reviewer can ask for a shorter, plainer one.</summary>
+    internal static void NoteDescriptionStyle(string description, string what, SubmissionResult r)
+    {
+        if (description.Length > DescriptionNoteLength)
+            r.Add(CheckLevel.Note, $"{what} is {description.Length} characters; the card shows two lines, so keep it to one short sentence of {DescriptionNoteLength} or fewer.");
+        if (description.Contains('\u2014'))
+            r.Add(CheckLevel.Note, $"{what} has an em dash; use a comma or a colon (plugin descriptions are plain sentences).");
+    }
 
     internal static string Code(string? value)
     {

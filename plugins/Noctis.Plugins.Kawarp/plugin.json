@@ -3,7 +3,7 @@
   "name": "Kawarp",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "Fluid, warped album-art background behind the lyrics. Reacts to the beat. Tune it in settings.json in the plugin's data folder. (Noctis also ships Kawarp built in; this is the visual-layer plugin version.)",
+  "description": "A fluid, warped album-art background behind the lyrics that moves to the beat.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.Kawarp.dll",
   "apiVersion": "1.0",

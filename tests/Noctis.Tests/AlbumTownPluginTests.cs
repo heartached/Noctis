@@ -1540,8 +1540,9 @@ public class AlbumTownPluginTests
         Assert.Equal("1.0.1", manifest.Version);
         var plugin = new AlbumTownPlugin();
         Assert.Equal(("Jafezy JD", "1.0.1", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
-        Assert.EndsWith("By Jafezy JD.", manifest.Description);
-        Assert.EndsWith("By Jafezy JD.", AlbumTownPlugin.About);
+        // No by-line in the description: the card already says "by Jafezy JD".
+        Assert.Equal(AlbumTownPlugin.About, manifest.Description);
+        Assert.DoesNotContain("Jafezy", manifest.Description);
         Assert.Equal("Album Town by Jafezy JD", AlbumTownView.Credit);
         Assert.Equal("by Jafezy JD", AlbumTownView.Byline);
         foreach (var text in new[] { manifest.Description, manifest.Author, AlbumTownPlugin.About, AlbumTownView.Credit, AlbumTownView.Byline })

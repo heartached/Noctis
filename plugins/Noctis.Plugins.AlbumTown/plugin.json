@@ -3,7 +3,7 @@
   "name": "Album Town",
   "version": "1.0.1",
   "author": "Jafezy JD",
-  "description": "Your albums become little cover creatures that wander a plaza, chat about what they have in common and move into apartments you build from your albums and playlists. By Jafezy JD.",
+  "description": "Your albums come to life as little creatures in a town you build.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.AlbumTown.dll",
   "apiVersion": "1.4",
@@ -12,13 +12,14 @@
   "permissions": ["library.read", "playback.control"],
   "settings": [
     { "key": "crowdSize", "label": "Albums in the plaza", "type": "number", "default": 40, "min": 24, "max": 60,
-      "description": "How many albums come to the plaza at once. Fewer is lighter on older computers." },
+      "description": "How many albums walk around at once." },
     { "key": "showNames", "label": "Show album names", "type": "bool", "default": false,
-      "description": "Off: a name shows when you point at a creature." },
-    { "key": "chatty", "label": "Let them talk", "type": "bool", "default": true },
+      "description": "Off: names show when you point at one." },
+    { "key": "chatty", "label": "Let them talk", "type": "bool", "default": true,
+      "description": "Albums chat about what they share." },
     { "key": "motion", "label": "Motion", "type": "choice", "choices": ["Smooth (60 fps)", "Balanced (30 fps)", "Battery saver (15 fps)"],
       "default": "Balanced (30 fps)",
-      "description": "How often the town is drawn. They walk at the same speed either way; fewer frames are lighter on the computer." }
+      "description": "Fewer frames are easier on older computers." }
   ],
   "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
   "icon": "icon.png"

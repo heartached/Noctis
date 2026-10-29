@@ -3,7 +3,7 @@
   "name": "Album Roulette",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "Spin a reel of your album covers and let it pick what to play next. Filter by genre, decade or what you have not played in a while, and get an Album of the Day if you like.",
+  "description": "Spin a reel of your albums and let it pick what to play.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.AlbumRoulette.dll",
   "apiVersion": "1.5",
@@ -13,13 +13,13 @@
   "icon": "icon.png",
   "settings": [
     { "key": "albumOfTheDay", "label": "Album of the Day", "type": "bool", "default": false,
-      "description": "Picks one album each day and tells you about it in a short notice." },
+      "description": "Get one album picked for you each day." },
     { "key": "dailyHour", "label": "Daily pick hour", "type": "number", "default": 9, "min": 0, "max": 23,
-      "description": "The hour of the day (0 to 23) the Album of the Day arrives." },
+      "description": "When the daily pick shows up (0 to 23)." },
     { "key": "skipCompilations", "label": "Leave out compilations", "type": "bool", "default": true,
-      "description": "Compilations never come up on the reel or as the Album of the Day." },
+      "description": "Keep compilations off the reel." },
     { "key": "animation", "label": "Animation", "type": "choice", "choices": ["Full", "Reduced"], "default": "Full",
-      "description": "Reduced: a short, gentle spin instead of the full reel." }
+      "description": "Reduced is a short, gentle spin." }
   ],
   "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumRoulette"
 }

@@ -15,7 +15,7 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.albumroulette";
     public const string Version = "1.0.0";
-    public const string About = "Spin a reel of your album covers and let it pick what to play next. Filter by genre, decade or what you have not played in a while, and get an Album of the Day if you like.";
+    public const string About = "Spin a reel of your albums and let it pick what to play.";
     public const string SpinFromArtistLabel = "Spin from this artist";
     // A small wheel (24x24 box) for the menu entry.
     private const string WheelIcon = "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 2.07A8 8 0 0 1 19.93 11H13zM11 4.07V11H4.07A8 8 0 0 1 11 4.07zM4.07 13H11v6.93A8 8 0 0 1 4.07 13zM13 19.93V13h6.93A8 8 0 0 1 13 19.93z";

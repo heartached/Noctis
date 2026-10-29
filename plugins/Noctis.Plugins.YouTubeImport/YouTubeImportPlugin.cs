@@ -16,7 +16,7 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
     public const string Id = "dev.noctis.plugins.youtubeimport";
     public const string DisplayName = "Add from YouTube";
     public const string Version = "1.0.0";
-    public const string About = "Download audio from a YouTube link into your library.";
+    public const string About = "Paste a YouTube link and save the song's audio into your library.";
     /// <summary>plugin.json setting: a yt-dlp of the user's own (never replaced).</summary>
     public const string CustomYtDlpSetting = "ytDlpPath";
 

@@ -23,7 +23,7 @@ public sealed class MixxxPlugin : INoctisPlugin
         Name: "Mixxx",
         Version: "1.0.1",
         Author: "Noctis",
-        Description: "Imports the BPM and musical key Mixxx analysed for your tracks.");
+        Description: "Brings the BPM and key Mixxx found for your songs into Noctis.");
 
     public void Initialize(IPluginHost host)
     {

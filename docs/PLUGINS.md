@@ -156,7 +156,7 @@ are case-insensitive.
 | `name` | yes | Display name, up to 60 characters. |
 | `version` | yes | [Semantic version](https://semver.org) (`1.2.0`, `2.0.0-beta.1`). Updates must increase it. |
 | `author` | no | Shown under the name. |
-| `description` | no | One or two sentences. |
+| `description` | no | One short, plain sentence; see [Writing your description](#writing-your-description). |
 | `type` | no | `"dotnet"` (default), or `"content"` for a data-only [content pack](#content-packs). |
 | `entry` | dotnet | File name of the plugin DLL in the same folder (no path). |
 | `entryType` | no | Full type name of the `INoctisPlugin` to create, when the DLL holds several. Otherwise the only (or first by name) implementation is used. |
@@ -168,6 +168,21 @@ are case-insensitive.
 | `homepage` | no | `http(s)` link to the project. Shown as *Visit homepage* on the plugin's page. |
 | `icon` | no | The plugin's icon: a PNG in the package, as a path relative to plugin.json (`"icon.png"`). See [Icons](#icons). |
 | `contents` | content | What a content pack provides; see [Content packs](#content-packs). Ignored (with a warning) on dotnet plugins. |
+
+### Writing your description
+
+The card in Settings → Plugins shows two lines of it, so write it to fit there:
+
+- **One short, plain sentence**, about 60 to 90 characters, never more than 100. Say what the
+  plugin does for the listener, in everyday words: "Spin a reel of your albums and let it pick
+  what to play." Leave the details (modes, options, how it works) for its settings and homepage.
+- **No by-line.** The card already says "by X", so don't end with "By X." or credit anyone in it.
+- **No em dashes** (the long dash, U+2014). Use a comma or a colon instead.
+- Each setting's `description` follows the same rules, in one short line of about 50 characters.
+
+`PluginDescriptionRulesTests` checks every plugin.json in this repo (100 characters at most, no em
+dash, no by-line), and the submission checker notes a description over 100 characters or with an
+em dash.
 
 ### Icons
 
@@ -208,7 +223,7 @@ fields they don't know, so give such a pack `"minAppVersion": "1.6.6"`). A .NET 
 - `key`: letters, digits, `.`, `-`, `_` (max 64), unique.
 - `type`: `bool` (switch), `string` (text box, the full width of the row), `number` (clamped to `min`/`max`:
   a slider with its value when both are set, else a minus/plus stepper), `choice` (dropdown of `choices`).
-- `description` (optional): keep it to one short line; the page shows one line and the rest in its tooltip.
+- `description` (optional): one short line, about 50 characters ("When the daily pick shows up (0 to 23)."); the page shows one line and the rest in its tooltip.
 - `placeholder` (string settings only, optional): grey hint shown inside the empty text box.
 - Values are stored by Noctis (per plugin id) and survive updates. Read them with
   `host.Settings.GetString/GetBool/GetNumber(key)`; subscribe to `host.Settings.Changed` to react.
@@ -623,7 +638,7 @@ has the author's credit ("by …") and a single button:
       "id": "dev.noctis.plugins.mixxx",
       "name": "Mixxx",
       "author": "Noctis",
-      "description": "One or two plain sentences.",
+      "description": "One short, plain sentence.",
       "version": "1.0.0",
       "minAppVersion": "1.5.9",
       "type": "dotnet",

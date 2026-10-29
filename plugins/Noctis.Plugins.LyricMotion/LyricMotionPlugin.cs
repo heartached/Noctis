@@ -13,7 +13,7 @@ public sealed class LyricMotionPlugin : INoctisPlugin
     public const string Id = "dev.noctis.plugins.lyricmotion";
     public const string Author = "Alfamin";
     public const string Version = "1.0.0";
-    public const string About = "Word-synced lyrics move letter by letter with the singer: each letter grows a touch as the highlight reaches it, long notes grow more and glow, and Persian, Arabic and Hebrew lyrics are laid out from the right. By Alfamin.";
+    public const string About = "Word-synced lyrics grow letter by letter as the singer reaches them.";
 
     private IPluginHost? _host;
     private IDisposable? _registration;
