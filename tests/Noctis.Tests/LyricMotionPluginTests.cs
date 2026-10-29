@@ -405,7 +405,7 @@ public class LyricMotionPluginTests : IDisposable
         using (var archive = ZipFile.OpenRead(zip))
         {
             var names = archive.Entries.Select(e => e.FullName).OrderBy(n => n, StringComparer.Ordinal).ToList();
-            Assert.Equal(new[] { "LICENSE", "Noctis.Plugins.LyricMotion.deps.json", "Noctis.Plugins.LyricMotion.dll", "plugin.json" }, names);
+            Assert.Equal(new[] { "LICENSE", "Noctis.Plugins.LyricMotion.deps.json", "Noctis.Plugins.LyricMotion.dll", "icon.png", "plugin.json" }, names);
             using var license = new StreamReader(archive.GetEntry("LICENSE")!.Open());
             Assert.Contains("Copyright (c) 2026 Alfamin", license.ReadToEnd());
         }

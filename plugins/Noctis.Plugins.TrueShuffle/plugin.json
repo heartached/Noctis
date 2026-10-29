@@ -23,5 +23,6 @@
     { "key": "skipDisliked", "label": "Leave out songs marked Not liked", "type": "bool", "default": false,
       "description": "Off: they have the same chance as any other song." }
   ],
-  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.TrueShuffle"
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.TrueShuffle",
+  "icon": "icon.png"
 }

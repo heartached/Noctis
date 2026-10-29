@@ -27,5 +27,6 @@
     { "key": "otherViews", "label": "Also in the side panel and mini player", "type": "bool", "default": true,
       "description": "Off: only the lyrics page moves. Right-to-left lyrics are laid out everywhere." }
   ],
-  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.LyricMotion"
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.LyricMotion",
+  "icon": "icon.png"
 }

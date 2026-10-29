@@ -421,7 +421,7 @@ public class TrueShufflePluginTests : IDisposable
         using (var archive = ZipFile.OpenRead(zip))
         {
             var names = archive.Entries.Select(e => e.FullName).OrderBy(n => n, StringComparer.Ordinal).ToList();
-            Assert.Equal(new[] { "LICENSE", "Noctis.Plugins.TrueShuffle.deps.json", "Noctis.Plugins.TrueShuffle.dll", "plugin.json" }, names);
+            Assert.Equal(new[] { "LICENSE", "Noctis.Plugins.TrueShuffle.deps.json", "Noctis.Plugins.TrueShuffle.dll", "icon.png", "plugin.json" }, names);
             using var license = new StreamReader(archive.GetEntry("LICENSE")!.Open());
             var text = license.ReadToEnd();
             Assert.Contains("MIT License", text);
