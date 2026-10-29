@@ -72,7 +72,8 @@ public sealed class ShelfStrip : Control
     /// <summary>A cover started being dragged (the view follows it over the building).</summary>
     public event EventHandler<(ShelfItem Item, PointerEventArgs Args)>? DragStarted;
     public event EventHandler<PointerEventArgs>? DragMoved;
-    public event EventHandler<PointerEventArgs>? DragEnded;
+    /// <summary>The cover was let go: where (null when the drag was cancelled).</summary>
+    public event EventHandler<PointerEventArgs?>? DragEnded;
     /// <summary>Double-click: build its room in the first free spot.</summary>
     public event EventHandler<ShelfItem>? Activated;
 
@@ -122,6 +123,13 @@ public sealed class ShelfStrip : Control
     public override void Render(DrawingContext ctx)
     {
         var view = Viewport?.Invoke() ?? new Rect(Bounds.Size);
+        // Hit testing follows the ink: without this, the strip took a click only on a cover or a
+        // title's letters, and a press just under a cover or beside a short title fell through
+        // to the scroll viewer although ItemAt counts it as that cover. A clear fill over the
+        // part in view (plus a screen either side for a scroll before the next frame) makes
+        // the whole slot take it.
+        var hit = view.Inflate(new Thickness(Math.Max(view.Width, 1), 0)).Intersect(new Rect(Bounds.Size));
+        if (hit.Width > 0 && hit.Height > 0) ctx.FillRectangle(Brushes.Transparent, hit);
         foreach (var (x, item, group) in _slots)
         {
             if (x > view.Right + Tile || x + Tile < view.Left - Tile) continue;
@@ -211,13 +219,20 @@ public sealed class ShelfStrip : Control
         _pressAt = point.Position;
         _dragging = false;
         e.Pointer.Capture(this);
+        _tracker.Start(this, OnTrackedMoved, OnTrackedReleased);
         e.Handled = true;
     }
 
-    protected override void OnPointerMoved(PointerEventArgs e)
+    // The press is followed on the window (PointerTracker), not through this control's capture:
+    // Windows takes the capture away when another window grabs the mouse (WM_CAPTURECHANGED),
+    // and a drag that lived on the capture then died silently halfway to the building.
+    private readonly PointerTracker _tracker = new();
+
+    private void OnTrackedMoved(PointerEventArgs e)
     {
-        base.OnPointerMoved(e);
-        if (_pressed is null) return;
+        if (_pressed is null) { _tracker.Stop(); return; }
+        // The button came up where the window could not see it: the drag is over, nothing built.
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { Finish(null); return; }
         var p = e.GetPosition(this);
         if (!_dragging)
         {
@@ -229,23 +244,36 @@ public sealed class ShelfStrip : Control
         DragMoved?.Invoke(this, e);
     }
 
-    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    private void OnTrackedReleased(PointerReleasedEventArgs e)
     {
-        base.OnPointerReleased(e);
-        if (_pressed is null) return;
+        if (e.InitialPressMouseButton == MouseButton.Left) Finish(e);
+    }
+
+    /// <summary>Ends the press: drops the dragged cover at <paramref name="e"/>, or cancels (null).</summary>
+    private void Finish(PointerEventArgs? e)
+    {
         var dragging = _dragging;
         _pressed = null;
         _dragging = false;
-        e.Pointer.Capture(null);
+        _tracker.Stop();
+        if (e is not null && ReferenceEquals(e.Pointer.Captured, this)) e.Pointer.Capture(null);
         if (dragging) DragEnded?.Invoke(this, e);
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
-        if (_pressed is not null && _dragging) DragEnded?.Invoke(this, null!);
+        // Still followed on the window: the drag carries on.
+        if (_tracker.IsActive) return;
+        if (_pressed is not null && _dragging) DragEnded?.Invoke(this, null);
         _pressed = null;
         _dragging = false;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_pressed is not null) Finish(null);
+        base.OnDetachedFromVisualTree(e);
     }
 
     /// <summary>

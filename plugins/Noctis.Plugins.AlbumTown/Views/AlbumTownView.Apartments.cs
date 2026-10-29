@@ -363,9 +363,13 @@ public sealed partial class AlbumTownView
         return items;
     }
 
+    /// <summary>The room menu last opened (tests).</summary>
+    public ContextMenu? RoomMenuShown { get; private set; }
+
     private void OpenRoomMenu(Room room)
     {
         var menu = new ContextMenu();
+        RoomMenuShown = menu;
         foreach (var (label, run, isChecked) in RoomMenu(room))
         {
             var item = new MenuItem { Header = label, IsEnabled = run is not null };

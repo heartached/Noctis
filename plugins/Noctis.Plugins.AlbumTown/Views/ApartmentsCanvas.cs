@@ -224,6 +224,7 @@ public sealed class ApartmentsCanvas : Control
     {
         _attached = false;
         _idle.Stop();
+        _tracker.Stop();
         IsPaused = true;
         _void?.Dispose();
         _void = null;
@@ -663,7 +664,36 @@ public sealed class ApartmentsCanvas : Control
             return;
         }
         if (!point.Properties.IsLeftButtonPressed) return;
-        if (Press(p)) e.Handled = true;
+        if (!Press(p)) return;
+        e.Handled = true;
+        // A room move or resize is followed on the window, so losing the capture (Windows
+        // WM_CAPTURECHANGED) does not drop it halfway (see PointerTracker).
+        if (_dragRoom is not null) _tracker.Start(this, OnTrackedMoved, OnTrackedReleased);
+    }
+
+    private readonly PointerTracker _tracker = new();
+
+    private void OnTrackedMoved(PointerEventArgs e)
+    {
+        // The button came up where the window could not see it: put the room back.
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { _tracker.Stop(); CancelGesture(); return; }
+        Move(e.GetPosition(this));
+    }
+
+    private void OnTrackedReleased(PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton != MouseButton.Left) return;
+        _tracker.Stop();
+        if (Release(e.GetPosition(this))) e.Handled = true;
+    }
+
+    private void CancelGesture()
+    {
+        if (_drag is not (DragKind.Move or DragKind.Resize or DragKind.Pending)) return;
+        _drag = DragKind.None;
+        _dragRoom = null;
+        _ghost = default;
+        InvalidateVisual();
     }
 
     /// <summary>A left press at <paramref name="p"/> (px). True when it hit something.</summary>
@@ -715,7 +745,7 @@ public sealed class ApartmentsCanvas : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        Move(e.GetPosition(this));
+        if (!_tracker.IsActive) Move(e.GetPosition(this)); // else the tracker moves the room
     }
 
     /// <summary>The pointer moved to <paramref name="p"/> (px).</summary>
@@ -752,6 +782,7 @@ public sealed class ApartmentsCanvas : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (e.Handled) return; // the tracker finished the gesture
         if (Release(e.GetPosition(this))) e.Handled = true;
     }
 
@@ -793,13 +824,8 @@ public sealed class ApartmentsCanvas : Control
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
-        if (_drag is DragKind.Move or DragKind.Resize or DragKind.Pending)
-        {
-            _drag = DragKind.None;
-            _dragRoom = null;
-            _ghost = default;
-            InvalidateVisual();
-        }
+        if (_tracker.IsActive) return; // still followed on the window: the gesture carries on
+        CancelGesture();
     }
 
     private void UpdateHover(Point p)
