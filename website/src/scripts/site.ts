@@ -29,7 +29,7 @@ const THEME_KEY = 'noctis-theme';
 /* Mirrors the two <meta name="theme-color"> values in Base.astro. Those tags
    switch on the OS scheme, not on html[data-theme], so a manual toggle has to
    rewrite them or the mobile browser chrome keeps the other theme's color. */
-const THEME_BG: Record<string, string> = { dark: '#000000', light: '#FFFFFF' };
+const THEME_BG: Record<string, string> = { dark: '#161618', light: '#FFFFFF' };
 
 function syncThemeColor(theme: string) {
   for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
