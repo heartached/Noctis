@@ -37,7 +37,7 @@ public class AlbumRoulettePluginTests
 
     private static readonly string NightfallId = Guid.NewGuid().ToString();
 
-    private static IReadOnlyList<RouletteAlbum> Library() => AlbumCatalog.Group(new[]
+    internal static IReadOnlyList<RouletteAlbum> Library() => AlbumCatalog.Group(new[]
     {
         T("a1", "Nightfall", "Nova", 2006, plays: 3, last: Now.AddDays(-3), genre: "Electronic", albumId: NightfallId),
         T("a2", "Nightfall", "Nova", 2006, plays: 1, last: Now.AddDays(-10), genre: "Electronic", number: 2, albumId: NightfallId),

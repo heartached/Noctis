@@ -42,7 +42,8 @@ public sealed partial class AlbumTownView
     private IReadOnlyDictionary<string, string> _residentByTrack = new Dictionary<string, string>();
     private readonly Dictionary<string, TownAlbum> _songs = new(StringComparer.Ordinal);
 
-    // The song picker.
+    // The song picker: a card over the blurred, dimmed town (Noctis's pop-up look).
+    private Panel _pickerLayer = null!;
     private Border _picker = null!;
     private TextBlock _pickerTitle = null!;
     private TextBlock _pickerCount = null!;
@@ -56,7 +57,9 @@ public sealed partial class AlbumTownView
     public ShelfStrip Shelf => _shelf;
     /// <summary>Soft backdrop covers of the rooms.</summary>
     public CoverCache SoftCovers => _softCovers;
-    public bool IsPickerOpen => _picker.IsVisible;
+    public bool IsPickerOpen => _pickerLayer.IsVisible;
+    /// <summary>The picker's layer: the blurred backdrop and the card (tests).</summary>
+    public Panel PickerLayer => _pickerLayer;
     public Room? PickerRoom => _pickerRoom;
     public IReadOnlyList<PlaylistInfo> Playlists => _playlists;
 
@@ -366,7 +369,7 @@ public sealed partial class AlbumTownView
     /// <summary>The room menu last opened (tests).</summary>
     public ContextMenu? RoomMenuShown { get; private set; }
 
-    private void OpenRoomMenu(Room room)
+    public void OpenRoomMenu(Room room)
     {
         var menu = new ContextMenu();
         RoomMenuShown = menu;
@@ -412,17 +415,34 @@ public sealed partial class AlbumTownView
         });
         var done = Pill("Done", HidePicker, accent: true);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Right, Children = { most, done } };
+        // A pop-up like Noctis's own: the card over the town blurred and dimmed ("plugin-backdrop" and
+        // "plugin-dialog" come from the Noctis plugin window; elsewhere the dim alone shows).
         _picker = new Border
         {
-            CornerRadius = new CornerRadius(18),
-            Padding = new Thickness(16),
+            Classes = { "plugin-dialog" },
+            CornerRadius = new CornerRadius(26),
+            Padding = new Thickness(20),
             Margin = new Thickness(18),
-            Width = 360,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            BoxShadow = BoxShadows.Parse("0 10 30 0 #70000000"),
+            Width = 380,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            BoxShadow = BoxShadows.Parse("0 18 48 0 #66000000"),
             Child = new StackPanel { Children = { _pickerTitle, _pickerCount, _pickerSearch, scroll, buttons } },
-            IsVisible = false,
+        };
+        var backdrop = new ContentControl
+        {
+            Classes = { "plugin-backdrop" },
+            Background = new SolidColorBrush(Color.FromArgb(0x50, 0, 0, 0)),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        backdrop.PointerPressed += (_, e) => { HidePicker(); e.Handled = true; }; // a click beside the card closes it
+        _pickerLayer = new Panel { Children = { backdrop, _picker }, IsVisible = false };
+        _pickerLayer.KeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Escape) return;
+            HidePicker();
+            e.Handled = true;
         };
     }
 
@@ -436,12 +456,13 @@ public sealed partial class AlbumTownView
         _pickerTitle.Text = "Choose songs for " + Or(p.Name, "Playlist");
         _pickerSearch.Text = "";
         FillPicker();
-        _picker.IsVisible = true;
+        _pickerLayer.IsVisible = true;
+        _pickerSearch.Focus();
     }
 
     public void HidePicker()
     {
-        _picker.IsVisible = false;
+        _pickerLayer.IsVisible = false;
         _pickerRoom = null;
         _pickerList.Children.Clear();
     }

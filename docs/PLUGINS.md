@@ -206,7 +206,9 @@ fields they don't know, so give such a pack `"minAppVersion": "1.6.6"`). A .NET 
 ```
 
 - `key`: letters, digits, `.`, `-`, `_` (max 64), unique.
-- `type`: `bool` (switch), `string` (text box), `number` (number box, clamped to `min`/`max`), `choice` (dropdown of `choices`).
+- `type`: `bool` (switch), `string` (text box, the full width of the row), `number` (clamped to `min`/`max`:
+  a slider with its value when both are set, else a minus/plus stepper), `choice` (dropdown of `choices`).
+- `description` (optional): keep it to one short line; the page shows one line and the rest in its tooltip.
 - `placeholder` (string settings only, optional): grey hint shown inside the empty text box.
 - Values are stored by Noctis (per plugin id) and survive updates. Read them with
   `host.Settings.GetString/GetBool/GetNumber(key)`; subscribe to `host.Settings.Changed` to react.
@@ -339,6 +341,12 @@ own (one per view: opening it again brings that window forward).
 - The window closes when the plugin stops (switched off, removed, reloaded) or you dispose the
   registration. The control is then detached, so stop timers in `DetachedFromVisualTree`.
 - Keep it cheap: draw only while the control is attached, visible and its window is not minimized.
+- Your window wears Noctis's look: every `CheckBox` is the Settings switch (label left, switch right),
+  buttons, single-line text boxes and `ComboBox`es are pills, and menus, flyouts and drop-down lists
+  are frosted glass over your window. The pop-up classes are there too: `pill-primary`,
+  `pill-secondary`, `pill-field`, `pill-well`, and for a pop-up inside your view a
+  `ContentControl` with class `plugin-backdrop` (your view behind it, blurred and dimmed; give it a
+  dim `Background`) under a `Border` with class `plugin-dialog` (the card). Your own styles win.
 
 ### Lyrics providers
 

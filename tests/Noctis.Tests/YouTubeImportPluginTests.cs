@@ -95,6 +95,22 @@ public class YouTubeImportPluginTests : IDisposable
         return tool;
     }
 
+    /// <summary>The window's view with yt-dlp installed, under <paramref name="root"/> (PluginViewThemeTests).</summary>
+    internal static YouTubeImportView NewView(string root)
+    {
+        var tool = new YtDlpTool(new HttpClient(), Path.Combine(root, "tools"), () => string.Empty);
+        Directory.CreateDirectory(tool.ToolsDirectory);
+        File.WriteAllText(tool.InstalledPath, "fake");
+        tool.JsRuntimes = (true, false);
+        tool.LatestVersionFetcher = _ => Task.FromResult<string?>("2026.09.01");
+        tool.Updater = _ => Task.CompletedTask;
+        tool.Runner = (_, args, _, _) => Task.FromResult(args.Count == 1 && args[0] == "--version"
+            ? (0, "2026.09.01\n", string.Empty)
+            : (1, string.Empty, "not in tests"));
+        var vm = new YouTubeImportViewModel(new FakeImporter(tool), new HttpClient(), new ImportState(Path.Combine(root, "data")));
+        return new YouTubeImportView(vm);
+    }
+
     private static YouTubeTrackInfo Info(string id, string title, string channel) =>
         new(id, "https://www.youtube.com/watch?v=" + id, title, channel, TimeSpan.FromSeconds(214), null, null, null, null, null, null);
 
