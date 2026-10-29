@@ -592,6 +592,32 @@ public class ListeningHistoryHandoffTests : IDisposable
     }
 
     [Fact]
+    public void Inbox_TheSameSpotSentAgain_KeepsItsTime_SoAnAnsweredOfferDoesNotComeBack()
+    {
+        // A paused phone whose app restarted forgets what it sent and sends the same spot again
+        // (a finished sync flushes it). It must not become a new, newer offer.
+        var now = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+        var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var inbox = new PhoneHandoffInbox(_dir);
+        var h = PhoneHandoff.FromWire(ids, ids[1], 83_000, 0, now, "Pixel")!;
+        inbox.Save(h);
+        inbox.MarkHandled(h);                        // the user took it (or dismissed it)
+        inbox.NoteDesktopPlayback(now.AddMinutes(10)); // and played here since
+
+        var again = PhoneHandoff.FromWire(ids, ids[1], 83_400, 0, now.AddHours(1), "Pixel")!;
+        inbox.Save(again);
+
+        Assert.Null(inbox.Pending(inbox.DesktopPlaybackUtc));
+        Assert.Equal(now, inbox.Latest!.SavedUtc);
+        Assert.Null(new PhoneHandoffInbox(_dir).Pending(DateTime.MinValue)); // also after a restart
+
+        // A real move on the phone is still a new offer.
+        var moved = PhoneHandoff.FromWire(ids, ids[1], 120_000, 0, now.AddHours(2), "Pixel")!;
+        inbox.Save(moved);
+        Assert.Same(moved, inbox.Pending(inbox.DesktopPlaybackUtc));
+    }
+
+    [Fact]
     public void Inbox_AnUnreadableFile_IsIgnored()
     {
         File.WriteAllText(Path.Combine(_dir, "phone_handoff.json"), "{not json");
