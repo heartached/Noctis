@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Noctis.Plugins.TrueShuffle.Shuffle;
 using Noctis.Plugins.TrueShuffle.Views;
@@ -23,6 +24,9 @@ public sealed class TrueShufflePlugin : INoctisPlugin, IPluginViewProvider
     public PluginInfo Info { get; } = new(Id, "True Shuffle", Version, Author, About);
 
     public string Name => "True Shuffle";
+
+    /// <summary>API 1.5: the view is one short column (560 wide at most), not a page.</summary>
+    public Size? PreferredWindowSize => new Size(600, 440);
 
     /// <summary>Tests: the running controller.</summary>
     public ShuffleController? Controller => _controller;

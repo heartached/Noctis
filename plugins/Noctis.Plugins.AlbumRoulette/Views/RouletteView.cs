@@ -18,6 +18,8 @@ public sealed class RouletteView : UserControl
 {
     public const double WindowWidth = 440;
     public const double WindowHeight = 700;
+    public const double MinWindowWidth = 360;
+    public const double MinWindowHeight = 560;
     /// <summary>Covers that warm up (decode) for the reel; a spin draws its strip from them.</summary>
     public const int PoolSize = 24;
 
@@ -57,7 +59,6 @@ public sealed class RouletteView : UserControl
     private bool _loadStarted;
     private int _albumsVersion;
     private bool _loaded;
-    private bool _sized;
     private bool _spinWhenLoaded;
 
     public RouletteView(IRouletteHost host, Random? random = null, Func<DateTimeOffset>? clock = null)
@@ -205,16 +206,6 @@ public sealed class RouletteView : UserControl
         base.OnAttachedToVisualTree(e);
         ApplyTheme(RouletteTheme.From(this));
         ActualThemeVariantChanged += OnThemeChanged;
-        // A compact window: the host opens plugin views at a size made for pages.
-        if (!_sized && TopLevel.GetTopLevel(this) is Window w)
-        {
-            _sized = true;
-            w.MinWidth = 360;
-            w.MinHeight = 560;
-            w.Width = WindowWidth;
-            w.Height = WindowHeight;
-            Recentre(w, WindowWidth, WindowHeight);
-        }
         if (!_loadStarted) _ = LoadAsync();
     }
 
@@ -604,21 +595,4 @@ public sealed class RouletteView : UserControl
 
     private static void AutomationName(Control c, string name)
         => Avalonia.Automation.AutomationProperties.SetName(c, name);
-
-    /// <summary>The host centred the window for its own (page) size; centre it again for ours.</summary>
-    private static void Recentre(Window w, double width, double height)
-    {
-        try
-        {
-            if (w.Screens.ScreenFromWindow(w) is not { } screen) return;
-            var area = screen.WorkingArea;
-            var scale = screen.Scaling > 0 ? screen.Scaling : 1;
-            w.Position = new PixelPoint(area.X + Math.Max(0, (int)((area.Width - width * scale) / 2)),
-                area.Y + Math.Max(0, (int)((area.Height - height * scale) / 2)));
-        }
-        catch (Exception)
-        {
-            // No screen information (headless): leave it where it is.
-        }
-    }
 }

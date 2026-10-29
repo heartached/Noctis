@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Noctis.Plugins.ABLoop.Looping;
 using Noctis.Plugins.ABLoop.Views;
@@ -27,6 +28,11 @@ public sealed class ABLoopPlugin : INoctisPlugin, IPluginViewProvider
     public PluginInfo Info { get; } = new(Id, "A-B Loop", Version, "Noctis", About);
 
     public string Name => "A-B Loop";
+
+    /// <summary>API 1.5: a slim window (the host's default is made for pages).</summary>
+    public Size? PreferredWindowSize => new Size(ABLoopView.WindowWidth, ABLoopView.WindowHeight);
+
+    public Size? MinWindowSize => new Size(ABLoopView.MinWindowWidth, ABLoopView.MinWindowHeight);
 
     /// <summary>The running loop (tests).</summary>
     public LoopSession? Session => _session;

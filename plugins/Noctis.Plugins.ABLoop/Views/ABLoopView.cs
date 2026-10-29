@@ -18,6 +18,8 @@ public sealed class ABLoopView : UserControl
 {
     public const double WindowWidth = 460;
     public const double WindowHeight = 500;
+    public const double MinWindowWidth = 380;
+    public const double MinWindowHeight = 320;
 
     private readonly LoopSession _session;
     private readonly LoopStrip _strip = new();
@@ -51,7 +53,6 @@ public sealed class ABLoopView : UserControl
     private SavedLoop[] _shownLoops = Array.Empty<SavedLoop>();
     private string _shownPos = "";
     private bool _shift;
-    private bool _sized;
 
     public ABLoopView(LoopSession session)
     {
@@ -167,20 +168,7 @@ public sealed class ABLoopView : UserControl
         base.OnAttachedToVisualTree(e);
         ApplyTheme(LoopTheme.From(this));
         ActualThemeVariantChanged += OnThemeChanged;
-        if (TopLevel.GetTopLevel(this) is Window w)
-        {
-            if (!_sized)
-            {
-                // Slim: the host opens plugin views at a size made for pages.
-                _sized = true;
-                w.MinWidth = 380;
-                w.MinHeight = 320;
-                w.Width = WindowWidth;
-                w.Height = WindowHeight;
-                Recentre(w, WindowWidth, WindowHeight);
-            }
-            w.Topmost = _session.Store.OnTop;
-        }
+        if (TopLevel.GetTopLevel(this) is Window w) w.Topmost = _session.Store.OnTop;
         _frame.Start();
         Refresh();
     }
@@ -387,22 +375,5 @@ public sealed class ABLoopView : UserControl
         var t = new TextBlock { FontSize = 12 };
         _faintTexts.Add(t);
         return t;
-    }
-
-    /// <summary>The host centred the window for its own (page) size; centre it again for ours.</summary>
-    private static void Recentre(Window w, double width, double height)
-    {
-        try
-        {
-            if (w.Screens.ScreenFromWindow(w) is not { } screen) return;
-            var area = screen.WorkingArea;
-            var scale = screen.Scaling > 0 ? screen.Scaling : 1;
-            w.Position = new PixelPoint(area.X + Math.Max(0, (int)((area.Width - width * scale) / 2)),
-                area.Y + Math.Max(0, (int)((area.Height - height * scale) / 2)));
-        }
-        catch (Exception)
-        {
-            // No screen information (headless): leave it where it is.
-        }
     }
 }

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Noctis.Plugins.AlbumRoulette.Roulette;
 using Noctis.Plugins.AlbumRoulette.Views;
@@ -30,6 +31,11 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
     public PluginInfo Info { get; } = new(Id, "Album Roulette", Version, "Noctis", About);
 
     public string Name => "Album Roulette";
+
+    /// <summary>API 1.5: a compact, tall window (the host's default is made for pages).</summary>
+    public Size? PreferredWindowSize => new Size(RouletteView.WindowWidth, RouletteView.WindowHeight);
+
+    public Size? MinWindowSize => new Size(RouletteView.MinWindowWidth, RouletteView.MinWindowHeight);
 
     public void Initialize(IPluginHost host)
     {

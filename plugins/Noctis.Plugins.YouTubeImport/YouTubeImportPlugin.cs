@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Avalonia;
 using Avalonia.Controls;
 
 namespace Noctis.Plugins.YouTubeImport;
@@ -30,6 +31,9 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
     public PluginInfo Info { get; } = new(Id, DisplayName, Version, "Noctis", About);
 
     public string Name => DisplayName;
+
+    /// <summary>API 1.5: the view's column is 760 wide at most (plus its margins), so no wider window.</summary>
+    public Size? PreferredWindowSize => new Size(840, 680);
 
     /// <summary>Tests: swaps the importer (and its yt-dlp) the window uses.</summary>
     internal IYouTubeImporter? ImporterOverride { get; set; }

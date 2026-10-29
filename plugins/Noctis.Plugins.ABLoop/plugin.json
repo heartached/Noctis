@@ -6,7 +6,7 @@
   "description": "Loop a part of a song to practise or learn it: set A and B, nudge them into place, repeat a set number of times and save named loops for each song.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.ABLoop.dll",
-  "apiVersion": "1.4",
+  "apiVersion": "1.5",
   "minAppVersion": "1.6.6",
   "platforms": ["windows", "macos", "linux"],
   "permissions": ["playback.control", "menu.commands"],

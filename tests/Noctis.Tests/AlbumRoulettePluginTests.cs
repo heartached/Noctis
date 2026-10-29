@@ -546,7 +546,7 @@ public class AlbumRoulettePluginTests
         var manifest = PluginManifest.TryLoad(PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumRoulette"))!;
         Assert.Equal((AlbumRoulettePlugin.Id, AlbumRoulettePlugin.Version, "Noctis"), (manifest.Id, manifest.Version, manifest.Author));
         Assert.Equal(AlbumRoulettePlugin.About, manifest.Description);
-        Assert.Equal("1.4", manifest.ApiVersion);
+        Assert.Equal("1.5", manifest.ApiVersion);
         Assert.DoesNotContain('\u2014', File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumRoulette/plugin.json")));
         Assert.True(File.Exists(PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumRoulette/icon.png")));
     }
