@@ -61,6 +61,8 @@
       <_PluginFiles Include="$(OutDir)*.dll" Exclude="$(OutDir)Noctis.Plugins.Abstractions.dll;$(OutDir)Avalonia*.dll;$(OutDir)SkiaSharp*.dll;$(OutDir)HarfBuzzSharp*.dll" />
       <_PluginFiles Include="$(OutDir)$(AssemblyName).deps.json" Condition="Exists('$(OutDir)$(AssemblyName).deps.json')" />
       <_PluginFiles Include="$(MSBuildProjectDirectory)\plugin.json" />
+      <!-- The plugin's own picture, when it has one (icon.png next to plugin.json). -->
+      <_PluginFiles Include="$(MSBuildProjectDirectory)\icon.png" Condition="Exists('$(MSBuildProjectDirectory)\icon.png')" />
     </ItemGroup>
     <RemoveDir Directories="$(_PluginStage)" />
     <Copy SourceFiles="@(_PluginFiles)" DestinationFolder="$(_PluginStage)" />
