@@ -46,6 +46,12 @@ Expected (what `index.json` says now):
 |---|---|---|
 | Noctis.Plugins.Mixxx-1.0.1.zip | `0c87f61087cb3b0b21ba7ab4ca2e56b07344d6150f341dc7e89e8b8ef88d09ce` | 11781 |
 
+That hash is the published 1.0.1 zip, built before Mixxx had an icon. The source now adds
+`"icon": "icon.png"` to plugin.json and `icon.png` to the zip, so a rebuild gives a different
+zip: publish it as the next version (bump `version` in plugin.json and `<Version>` in the csproj,
+then steps 2 to 5 with the new hash and size). The installed 1.0.1 still gets its card icon from
+the list's `icon` (built into the app).
+
 ### 3. Update `index.json` if anything differs
 
 Put the new `sha256` and `size` in the plugin's entry, commit, and push to `main` (step 5).

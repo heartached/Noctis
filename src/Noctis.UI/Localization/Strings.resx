@@ -2283,6 +2283,32 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Make.Step3Title" xml:space="preserve"><value>Get listed</value></data>
   <data name="Plugins.Make.Step3" xml:space="preserve"><value>We check it's safe, then it appears here, credited to you.</value></data>
   <data name="Plugins.Make.Guide" xml:space="preserve"><value>Read the Guide</value></data>
+  <data name="Plugins.OfficialSection" xml:space="preserve"><value>Official Noctis plugins</value></data>
+  <data name="Plugins.CommunitySection" xml:space="preserve"><value>Community plugins</value></data>
+  <data name="Plugins.CommunityEmpty" xml:space="preserve"><value>Plugins made by the community show up here once you install one. Use Install from file, or make your own below.</value></data>
+  <data name="Plugins.Search" xml:space="preserve"><value>Search plugins</value></data>
+  <data name="Plugins.SearchEmpty" xml:space="preserve"><value>No plugins match your search.</value></data>
+  <data name="Plugins.Refresh" xml:space="preserve"><value>Refresh plugins</value></data>
+  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>Reloaded. No plugins found.</value></data>
+  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Reloaded. 1 plugin found.</value></data>
+  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Reloaded. {0} plugins found.</value></data>
+  <data name="Plugins.Get.Replace" xml:space="preserve"><value>Replace with official</value></data>
+  <data name="Plugins.Card.NoAuthor" xml:space="preserve"><value>Community plugin</value></data>
+  <data name="Plugins.Card.Installing" xml:space="preserve"><value>Installing</value></data>
+  <data name="Plugins.Card.On" xml:space="preserve"><value>On</value></data>
+  <data name="Plugins.Card.Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Official plugin, made by the Noctis team</value></data>
+  <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, official plugin by Noctis</value></data>
+  <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, community plugin by {1}</value></data>
+  <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, community plugin</value></data>
+  <data name="Plugins.Detail.Back" xml:space="preserve"><value>Plugins</value></data>
+  <data name="Plugins.Detail.Version" xml:space="preserve"><value>Version {0}</value></data>
+  <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>Visit homepage</value></data>
+  <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Turn it off to stop the plugin without removing it.</value></data>
+  <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Community plugins are off, so this plugin can't run. Turn them on at the top of the Plugins page.</value></data>
+  <data name="Plugins.Detail.Files" xml:space="preserve"><value>Plugin files</value></data>
+  <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Removing it keeps its settings and data unless you choose otherwise.</value></data>
 
   <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <data name="Integrations.More.Title" xml:space="preserve"><value>More integrations</value></data>

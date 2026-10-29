@@ -187,9 +187,19 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (Plugins is null) return;
         Plugins.LoadAll();
+        // Was a hard-coded English line ("Reloaded · 2 plugins found."): Russian showed it as is.
         var n = Plugins.Plugins.Count;
         TransientStatus.Show(nameof(PluginsStatus), v => PluginsStatus = v,
-            n == 0 ? "Reloaded · no plugins found." : $"Reloaded · {n} plugin{(n == 1 ? "" : "s")} found.");
+            n == 0 ? Loc.T("Plugins.ReloadedNone") : n == 1 ? Loc.T("Plugins.ReloadedOne") : Loc.T("Plugins.ReloadedMany", n));
+    }
+
+    /// <summary>The Plugins header's one refresh button: reads the plugins folder again and fetches
+    /// the list again.</summary>
+    [RelayCommand]
+    private async Task RefreshPlugins()
+    {
+        ReloadPlugins();
+        await LoadOfficialPluginsAsync();
     }
 
     /// <summary>The "Community plugins" switch; off = restricted mode (nothing third-party runs).</summary>
@@ -266,7 +276,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// be that plugin and version, and its Update button already asked, so no second dialog.
     /// True when the plugin was installed or updated.
     /// </summary>
-    internal async Task<bool> InstallPluginPackageAsync(string zipPath, PluginCatalogEntry? official = null)
+    internal async Task<bool> InstallPluginPackageAsync(string zipPath, PluginCatalogEntry? official = null, bool replaceUnverified = false)
     {
         if (Plugins is null) return false;
         PluginPackage package;
@@ -283,6 +293,23 @@ public partial class SettingsViewModel : ViewModelBase
         {
             ShowPluginStatus(Loc.T("Plugins.Get.WrongPackage", official.Name, official.Version));
             return false;
+        }
+
+        // Install from file of a zip that is on the list (same id and version): the host checks its
+        // SHA-256 against the listing, so the official zip installed by hand is verified too, and
+        // anything else with that id and version is not.
+        var listing = official ?? OfficialPlugins.Select(o => o.Entry).FirstOrDefault(e =>
+            string.Equals(e.Id, package.Manifest.Id, StringComparison.OrdinalIgnoreCase)
+            && PluginVersion.Compare(e.Version, package.Manifest.Version) == 0);
+
+        // Get plugins' Replace: the listed zip over a copy that was not checked against the list.
+        if (existing is not null && official is not null && replaceUnverified)
+        {
+            var replaced = Plugins.InstallPackage(zipPath, allowUpdate: true, listing, replaceExisting: true);
+            ShowPluginStatus(replaced.Outcome == PluginInstallOutcome.Failed
+                ? Loc.T("Plugins.InstallFailed", replaced.Message)
+                : Loc.T("Plugins.Updated", replaced.Plugin!.Name, replaced.Plugin.Version));
+            return replaced.Outcome is PluginInstallOutcome.Installed or PluginInstallOutcome.Updated;
         }
 
         var allowUpdate = false;
@@ -305,7 +332,7 @@ public partial class SettingsViewModel : ViewModelBase
             allowUpdate = true;
         }
 
-        var result = Plugins.InstallPackage(zipPath, allowUpdate);
+        var result = Plugins.InstallPackage(zipPath, allowUpdate, listing);
         ShowPluginStatus(result.Outcome switch
         {
             PluginInstallOutcome.Installed when result.Plugin!.IsContentPack => Loc.T("Plugins.InstalledContent", result.Plugin.Name, result.Plugin.Version),
@@ -3361,6 +3388,7 @@ public partial class SettingsViewModel : ViewModelBase
         nameof(AppSettings.CommunityPluginsEnabled),
         nameof(AppSettings.PluginPermissionGrants),
         nameof(AppSettings.PluginSettingValues),
+        nameof(AppSettings.VerifiedOfficialPlugins),
         // Made once at load straight onto _settings (LoadFeatureSettings): pulled back from a
         // file without one, the first save emptied it and the ledger got a new id per launch.
         nameof(AppSettings.SyncDeviceId),

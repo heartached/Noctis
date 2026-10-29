@@ -2283,6 +2283,32 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Make.Step3Title" xml:space="preserve"><value>Попадите в список</value></data>
   <data name="Plugins.Make.Step3" xml:space="preserve"><value>Мы проверим, что он безопасен, и он появится здесь с вашим авторством.</value></data>
   <data name="Plugins.Make.Guide" xml:space="preserve"><value>Читать руководство</value></data>
+  <data name="Plugins.OfficialSection" xml:space="preserve"><value>Официальные плагины Noctis</value></data>
+  <data name="Plugins.CommunitySection" xml:space="preserve"><value>Плагины сообщества</value></data>
+  <data name="Plugins.CommunityEmpty" xml:space="preserve"><value>Плагины от сообщества появятся здесь, когда вы установите хотя бы один. Нажмите «Установить из файла» или создайте свой ниже.</value></data>
+  <data name="Plugins.Search" xml:space="preserve"><value>Поиск плагинов</value></data>
+  <data name="Plugins.SearchEmpty" xml:space="preserve"><value>Нет плагинов по вашему запросу.</value></data>
+  <data name="Plugins.Refresh" xml:space="preserve"><value>Обновить плагины</value></data>
+  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>Перезагружено. Плагины не найдены.</value></data>
+  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Перезагружено. Найден 1 плагин.</value></data>
+  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Перезагружено. Найдено плагинов: {0}.</value></data>
+  <data name="Plugins.Get.Replace" xml:space="preserve"><value>Заменить официальным</value></data>
+  <data name="Plugins.Card.NoAuthor" xml:space="preserve"><value>Плагин сообщества</value></data>
+  <data name="Plugins.Card.Installing" xml:space="preserve"><value>Установка</value></data>
+  <data name="Plugins.Card.On" xml:space="preserve"><value>Вкл.</value></data>
+  <data name="Plugins.Card.Off" xml:space="preserve"><value>Выкл.</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Официальный плагин от команды Noctis</value></data>
+  <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, официальный плагин Noctis</value></data>
+  <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, плагин сообщества, автор: {1}</value></data>
+  <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, плагин сообщества</value></data>
+  <data name="Plugins.Detail.Back" xml:space="preserve"><value>Плагины</value></data>
+  <data name="Plugins.Detail.Version" xml:space="preserve"><value>Версия {0}</value></data>
+  <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>Открыть сайт</value></data>
+  <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Включён</value></data>
+  <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Выключите, чтобы остановить плагин, не удаляя его.</value></data>
+  <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Плагины сообщества выключены, поэтому этот плагин не может работать. Включите их вверху страницы «Плагины».</value></data>
+  <data name="Plugins.Detail.Files" xml:space="preserve"><value>Файлы плагина</value></data>
+  <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>При удалении его настройки и данные сохраняются, если вы не выберете иное.</value></data>
 
   <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <data name="Integrations.More.Title" xml:space="preserve"><value>Другие интеграции</value></data>

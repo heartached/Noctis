@@ -43,7 +43,7 @@ public sealed class PluginManifest
     private static readonly HashSet<string> KnownFields = new(StringComparer.OrdinalIgnoreCase)
     {
         "$schema", "id", "name", "version", "author", "description", "type", "entry", "entryType", "apiVersion",
-        "minAppVersion", "platforms", "permissions", "settings", "homepage", "contents",
+        "minAppVersion", "platforms", "permissions", "settings", "homepage", "contents", "icon",
     };
 
     /// <summary>Largest plugin.json we read; anything bigger is not a manifest.</summary>
@@ -72,6 +72,10 @@ public sealed class PluginManifest
     public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
     public IReadOnlyList<PluginSettingDefinition> Settings { get; init; } = Array.Empty<PluginSettingDefinition>();
     public string? Homepage { get; init; }
+    /// <summary>Optional "icon": a PNG in the plugin folder, as a relative path ("icon.png",
+    /// "assets/icon.png"). Shown on the plugin's card and page in Settings → Plugins; without
+    /// one the card draws a letter tile. A bad value is a warning, never an error.</summary>
+    public string? Icon { get; init; }
     /// <summary>Things that did not stop the plugin but the author should fix (unknown permission names, …).</summary>
     public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
 
@@ -195,6 +199,14 @@ public sealed class PluginManifest
                 homepage = null;
             }
 
+            var icon = OptionalString(root, "icon")?.Trim();
+            if (string.IsNullOrEmpty(icon)) icon = null;
+            else if (!IsSafeIconPath(icon))
+            {
+                warnings.Add($"\"icon\" \"{icon}\" must be a .png file inside the plugin folder (a relative path) and was ignored.");
+                icon = null;
+            }
+
             return new PluginManifest
             {
                 Id = id,
@@ -211,6 +223,7 @@ public sealed class PluginManifest
                 Permissions = permissions,
                 Settings = ParseSettings(root),
                 Homepage = string.IsNullOrEmpty(homepage) ? null : homepage,
+                Icon = icon,
                 Contents = contents,
                 Warnings = warnings,
             };
@@ -234,6 +247,17 @@ public sealed class PluginManifest
         if (Platforms.Count > 0 && !Platforms.Contains(CurrentPlatform))
             return $"Made for {string.Join(", ", Platforms)}; not available on {CurrentPlatform}.";
         return null;
+    }
+
+    /// <summary>A relative .png path that stays inside the folder: no drive, no leading slash,
+    /// no "." or ".." segment. Shared by plugin.json "icon" and plugins/index.json "icon".</summary>
+    internal static bool IsSafeIconPath(string path)
+    {
+        if (path.Length is 0 or > 200 || !path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) return false;
+        if (path.Contains(':') || path.Contains('\0') || path[0] is '/' or '\\') return false;
+        foreach (var part in path.Split('/', '\\'))
+            if (part.Length == 0 || part is "." or "..") return false;
+        return true;
     }
 
     /// <summary>Lowercase reverse-DNS style, 3 to 100 characters ("dev.example.myplugin").</summary>

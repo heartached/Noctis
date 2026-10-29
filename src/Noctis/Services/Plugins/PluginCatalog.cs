@@ -23,15 +23,39 @@ public sealed record PluginCatalogEntry
     /// <summary>Exact size of the zip in bytes.</summary>
     public required long Size { get; init; }
     public string? Homepage { get; init; }
+    /// <summary>Optional "icon" as written in the list when it is a path relative to the list
+    /// ("Noctis.Plugins.Mixxx/icon.png"): the app looks for a copy built into it first.</summary>
+    public string? IconPath { get; init; }
+    /// <summary>Where the icon is fetched from when there is no built-in copy: the relative path
+    /// resolved against the list's own address, or an absolute https link on GitHub.</summary>
+    public Uri? IconUri { get; init; }
     /// <summary>From a NOCTIS_PLUGIN_INDEX list: http:// and local files are allowed for its downloads.</summary>
     public bool IsLocalTest { get; init; }
 
     public bool IsCodePlugin => Type == PluginManifest.TypeDotnet;
+    /// <summary>Made by the Noctis team: credited to <see cref="PluginTrust.OfficialAuthor"/>. Only
+    /// these listings carry the verified mark; everything else on the list is a community plugin.</summary>
+    public bool IsOfficial => PluginTrust.IsOfficialAuthor(Author);
     public bool SupportsPlatform(string platform) => Platforms.Count == 0 || Platforms.Contains(platform);
 }
 
 /// <summary>What the Get plugins button offers for a listed plugin.</summary>
 public enum OfficialPluginState { Install, Installed, Update, NeedsNewerApp, NotForThisOs }
+
+/// <summary>
+/// Official vs community (docs/PLUGINS.md, "Official and community plugins"). Official means made
+/// by the Noctis team: listed in plugins/index.json under the author "Noctis". An installed copy
+/// only counts as official when its zip was checked against that listing at install time (same
+/// id and version, author Noctis in both, SHA-256 equal to the list's): a plugin cannot claim it,
+/// by its author field or anything else in its plugin.json.
+/// </summary>
+public static class PluginTrust
+{
+    public const string OfficialAuthor = "Noctis";
+
+    public static bool IsOfficialAuthor(string? author)
+        => string.Equals(author?.Trim(), OfficialAuthor, StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>The list file could not be used at all (not JSON, another schema, no "plugins" array).</summary>
 public sealed class PluginCatalogException : Exception
@@ -138,6 +162,22 @@ public sealed class PluginCatalog
         var homepage = Text(e, "homepage");
         if (homepage is not null && !(Uri.TryCreate(homepage, UriKind.Absolute, out var hp) && hp.Scheme is "https" or "http")) homepage = null;
 
+        // "icon" is optional and never fatal: a bad value just means the letter tile.
+        string? iconPath = null;
+        Uri? iconUri = null;
+        if (Text(e, "icon") is { Length: > 0 } icon)
+        {
+            if (PluginManifest.IsSafeIconPath(icon) && !Uri.TryCreate(icon, UriKind.Absolute, out _))
+            {
+                iconPath = icon.Replace('\\', '/');
+                Uri.TryCreate(baseUri ?? new Uri(DefaultUrl), iconPath, out iconUri);
+                if (iconUri is not null && !IsAllowedDownload(iconUri, localTest)) iconUri = null;
+            }
+            else if (Uri.TryCreate(icon, UriKind.Absolute, out var abs) && IsAllowedDownload(abs, localTest)
+                     && abs.AbsolutePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                iconUri = abs;
+        }
+
         return new PluginCatalogEntry
         {
             Id = id,
@@ -152,6 +192,8 @@ public sealed class PluginCatalog
             Sha256 = sha,
             Size = size,
             Homepage = homepage,
+            IconPath = iconPath,
+            IconUri = iconUri,
             IsLocalTest = localTest,
         };
     }
@@ -198,6 +240,34 @@ public sealed class PluginCatalog
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
+
+    /// <summary>Largest icon the app reads (built in, fetched, or in a plugin folder).</summary>
+    internal const long MaxIconBytes = 512 * 1024;
+
+    /// <summary>
+    /// The built-in copy of a listed icon: every plugins/&lt;folder&gt;/icon.png in the repo is
+    /// embedded (Noctis.csproj), so the official list's icons show offline and without a fetch.
+    /// <paramref name="relativePath"/> is the list's "icon" value ("Noctis.Plugins.Mixxx/icon.png").
+    /// </summary>
+    internal static byte[]? ReadEmbeddedIcon(string relativePath)
+    {
+        var wanted = "/plugins/" + relativePath.Replace('\\', '/').TrimStart('/');
+        var asm = typeof(PluginCatalog).Assembly;
+        foreach (var name in asm.GetManifestResourceNames())
+        {
+            if (!name.StartsWith(EmbeddedIconPrefix, StringComparison.Ordinal)) continue;
+            var normalized = "/" + name[EmbeddedIconPrefix.Length..].Replace('\\', '/').TrimStart('.', '/');
+            if (!normalized.EndsWith(wanted, StringComparison.OrdinalIgnoreCase)) continue;
+            using var stream = asm.GetManifestResourceStream(name);
+            if (stream is null || stream.Length > MaxIconBytes) return null;
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
+        return null;
+    }
+
+    internal const string EmbeddedIconPrefix = "Noctis.PluginIcons/";
 
     /// <summary>The built-in list; empty if it somehow cannot be read.</summary>
     public static PluginCatalog LoadEmbedded()
@@ -340,6 +410,43 @@ public sealed class PluginCatalogClient
             throw;
         }
     }
+
+    /// <summary>
+    /// A listed plugin's icon (PNG bytes): the built-in copy when the app has one, else fetched
+    /// from <see cref="PluginCatalogEntry.IconUri"/> (GitHub only, at most 512 KB, PNG only).
+    /// Null when there is none or it cannot be had; the card then shows its letter tile.
+    /// </summary>
+    public async Task<byte[]?> LoadIconAsync(PluginCatalogEntry entry, CancellationToken ct = default)
+    {
+        if (entry.IconPath is { } rel && PluginCatalog.ReadEmbeddedIcon(rel) is { } builtIn) return builtIn;
+        if (entry.IconUri is not { } uri || !PluginCatalog.IsAllowedDownload(uri, entry.IsLocalTest)) return null;
+        try
+        {
+            byte[] bytes;
+            if (uri.IsFile)
+            {
+                var info = new FileInfo(uri.LocalPath);
+                if (!info.Exists || info.Length > PluginCatalog.MaxIconBytes) return null;
+                bytes = await File.ReadAllBytesAsync(info.FullName, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode) return null;
+                bytes = await HttpSafety.ReadBytesBoundedAsync(response.Content, PluginCatalog.MaxIconBytes, ct).ConfigureAwait(false);
+            }
+            return IsPng(bytes) ? bytes : null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or InvalidOperationException
+                                       || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+        {
+            DebugLogger.Warn(DebugLogger.Category.State, "Plugins.Catalog", $"icon {entry.Id}: {ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
+    }
+
+    internal static bool IsPng(ReadOnlySpan<byte> bytes)
+        => bytes.Length > 8 && bytes[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
 
     private async Task FetchAsync(PluginCatalogEntry entry, string path, Action<long, long>? progress, CancellationToken ct)
     {

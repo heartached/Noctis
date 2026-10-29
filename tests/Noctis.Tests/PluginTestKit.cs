@@ -55,11 +55,12 @@ internal sealed class PluginSandbox : IDisposable
         string? minAppVersion = null,
         string[]? permissions = null,
         string? settingsJson = null,
-        string? extra = null)
+        string? extra = null,
+        string author = "Tests")
     {
         var sb = new StringBuilder();
         sb.Append("{\n");
-        sb.Append($"  \"id\": \"{id}\",\n  \"name\": \"{name}\",\n  \"version\": \"{version}\",\n  \"author\": \"Tests\",\n");
+        sb.Append($"  \"id\": \"{id}\",\n  \"name\": \"{name}\",\n  \"version\": \"{version}\",\n  \"author\": \"{author}\",\n");
         sb.Append($"  \"type\": \"dotnet\",\n  \"entry\": \"{entry}\",\n  \"apiVersion\": \"{apiVersion}\",\n");
         if (minAppVersion is not null) sb.Append($"  \"minAppVersion\": \"{minAppVersion}\",\n");
         if (settingsJson is not null) sb.Append($"  \"settings\": {settingsJson},\n");
