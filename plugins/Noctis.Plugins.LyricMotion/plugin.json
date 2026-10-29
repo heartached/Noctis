@@ -1,0 +1,31 @@
+{
+  "id": "dev.noctis.plugins.lyricmotion",
+  "name": "Lyric Motion",
+  "version": "1.0.0",
+  "author": "Alfamin",
+  "description": "Word-synced lyrics move letter by letter with the singer: each letter grows a touch as the highlight reaches it, long notes grow more and glow, and Persian, Arabic and Hebrew lyrics are laid out from the right. By Alfamin.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.LyricMotion.dll",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": [],
+  "settings": [
+    { "key": "animation", "label": "Animation", "type": "choice",
+      "choices": ["Smooth", "Crisp", "Flowing", "Off"], "default": "Smooth",
+      "description": "Smooth: each word is a step of its own and its last letters finish a moment into the next word. Crisp: every word finishes exactly on its note. Flowing: the motion passes along the line in one piece. Off: Noctis's own motion." },
+    { "key": "strength", "label": "Strength", "type": "choice",
+      "choices": ["Subtle", "Balanced", "Expressive"], "default": "Balanced",
+      "description": "How much words grow, and how much long notes grow and glow." },
+    { "key": "letters", "label": "Letter by letter", "type": "bool", "default": true,
+      "description": "A word grows one letter at a time, with the highlight. Off: each word moves in one piece." },
+    { "key": "heldMs", "label": "Long note from (ms)", "type": "number", "default": 600, "min": 300, "max": 2000,
+      "description": "A word sung at least this long counts as a long note: it grows more and glows. Lower means more words get it." },
+    { "key": "glow", "label": "Glow on long notes", "type": "bool", "default": true },
+    { "key": "rtl", "label": "Right-to-left lyrics", "type": "bool", "default": true,
+      "description": "Persian, Arabic, Hebrew and other right-to-left lyrics are found by themselves: their words run from the right, the lines sit against the right edge and each word fills in from the right." },
+    { "key": "otherViews", "label": "Also in the side panel and mini player", "type": "bool", "default": true,
+      "description": "Off: only the lyrics page moves. Right-to-left lyrics are laid out everywhere." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.LyricMotion"
+}
