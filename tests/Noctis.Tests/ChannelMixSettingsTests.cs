@@ -126,4 +126,41 @@ public class ChannelMixSettingsTests : IDisposable
     [InlineData(-3, 0)]
     public void FadeSeconds_SnapToTheOffered(int stored, int expected) =>
         Assert.Equal(expected, AppSettings.SnapSleepTimerFadeSeconds(stored));
+
+    // Fade Out follows the changed-defaults rule: 30 s for a new install, off for a settings
+    // file saved before the setting existed, and a stored value always wins.
+
+    private async Task<AppSettings> LoadFromAsync(string? settingsJson)
+    {
+        Directory.CreateDirectory(_root);
+        if (settingsJson != null)
+            await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), settingsJson);
+        return await new PersistenceService(_root).LoadSettingsAsync();
+    }
+
+    [Fact]
+    public async Task FadeOut_NewInstall_Is30Seconds()
+    {
+        Assert.Equal(30, new AppSettings().SleepTimerFadeSeconds);
+        Assert.Equal(30, (await LoadFromAsync(null)).SleepTimerFadeSeconds);
+    }
+
+    [Fact]
+    public async Task FadeOut_ExistingFileWithoutTheKey_IsOff()
+    {
+        var s = await LoadFromAsync("""{ "volume": 42, "theme": "Dark" }""");
+        Assert.Equal(42, s.Volume);
+        Assert.Equal(0, s.SleepTimerFadeSeconds);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(30)]
+    [InlineData(60)]
+    [InlineData(0)]
+    public async Task FadeOut_StoredValue_IsKept(int seconds)
+    {
+        var s = await LoadFromAsync($$"""{ "sleepTimerFadeSeconds": {{seconds}} }""");
+        Assert.Equal(seconds, s.SleepTimerFadeSeconds);
+    }
 }

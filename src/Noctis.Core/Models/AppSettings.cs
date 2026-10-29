@@ -422,7 +422,9 @@ public class AppSettings : IJsonOnDeserializing
     public int AudioBalance { get; set; }
 
     /// <summary>Settings → Player: the sleep timer fades playback out over its last N seconds
-    /// (and "stop after current track" over the end of the track). 0 = off; 10, 30 or 60.</summary>
+    /// (and "stop after current track" over the end of the track). 0 = off; 10, 30 or 60.
+    /// 30 on a new install; a settings file from before the setting reads as off
+    /// (<see cref="OnDeserializing"/>).</summary>
     public int SleepTimerFadeSeconds { get; set; } = 30;
 
     /// <summary>The Fade Out choices; anything else snaps to the nearest.</summary>
@@ -1166,6 +1168,8 @@ public class AppSettings : IJsonOnDeserializing
         AlbumPageTintEnabled = false;
         PlayPauseFadeEnabled = false;
         IgnoreLeadingWordsInArtistSort = false;
+        // Sleep timer Fade Out (2026-10-29): the timer used to pause outright.
+        SleepTimerFadeSeconds = 0;
     }
 }
 
