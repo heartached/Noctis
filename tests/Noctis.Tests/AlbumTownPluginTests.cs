@@ -19,15 +19,16 @@ using Xunit;
 namespace Noctis.Tests;
 
 /// <summary>
-/// Album Town (plugin API 1.3): who is a resident (one per album, singles their own), who comes
-/// to the plaza, what they say, the plaza state machine, the apartment sizes, the frame budget
-/// for 60 creatures, and the plugin through the real loader and its Release zip.
+/// Album Town (plugin API 1.4): who is a resident (one per album, singles their own), who comes
+/// to the plaza, what they say, the plaza state machine, the frame budget for 60 creatures, and
+/// the plugin through the real loader and its Release zip. The Apartments are in
+/// AlbumTownApartmentsTests.
 /// </summary>
 public class AlbumTownPluginTests
 {
-    private static readonly DateTimeOffset Now = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);
+    internal static readonly DateTimeOffset Now = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);
 
-    private static TrackInfo T(string title, string album = "Album", string artist = "Artist", int year = 2019, int plays = 0,
+    internal static TrackInfo T(string title, string album = "Album", string artist = "Artist", int year = 2019, int plays = 0,
         DateTimeOffset? last = null, string? art = "C:/art/a.jpg", string albumId = "", string releaseType = "Album",
         string genre = "Pop", int number = 1, string? id = null, bool favorite = false)
         => new(id ?? Guid.NewGuid().ToString("D"), title, artist, album, artist, TimeSpan.FromMinutes(3), year, genre, number,
@@ -372,45 +373,6 @@ public class AlbumTownPluginTests
 
     // ── Apartments ──
 
-    [Theory]
-    [InlineData(1, 1, "Studio")]
-    [InlineData(2, 2, "Flat")]
-    [InlineData(3, 2, "Flat")]
-    [InlineData(4, 3, "Family home")]
-    [InlineData(6, 3, "Family home")]
-    [InlineData(7, 4, "Loft")]
-    [InlineData(12, 6, "Penthouse")]
-    [InlineData(80, 6, "Penthouse")]
-    public void Apartment_GrowsWithTheAlbums(int albums, int units, string tier)
-        => Assert.Equal((units, tier), (Apartments.UnitsFor(albums), Apartments.TierFor(albums)));
-
-    [Fact]
-    public void Building_GivesEveryArtistAHome_AndNoFloorOverflows()
-    {
-        var town = new List<TownAlbum>();
-        var random = new Random(4);
-        for (var artist = 0; artist < 40; artist++)
-            for (var i = random.Next(1, 15); i > 0; i--)
-                town.Add(A($"{artist}-{i}", title: "T" + i, artist: "Artist " + artist));
-        town.Add(A("u", artist: ""));
-
-        var building = Apartments.Build(town);
-
-        Assert.Equal(41, building.Apartments.Count);
-        Assert.Equal(town.Count, building.Apartments.Sum(a => a.Albums.Count));
-        Assert.Contains(building.Apartments, a => a.Artist == "Unknown artist");
-        foreach (var floor in building.Apartments.GroupBy(a => a.Floor))
-        {
-            Assert.True(floor.Sum(a => a.Units) <= building.UnitsPerFloor);
-            var columns = floor.OrderBy(a => a.Column).ToList();
-            for (var i = 1; i < columns.Count; i++) Assert.Equal(columns[i - 1].Column + columns[i - 1].Units, columns[i].Column);
-        }
-        Assert.Equal(building.Apartments.Max(a => a.Floor) + 1, building.Floors);
-        // Biggest households move in first (top floors).
-        Assert.Equal(building.Apartments.Max(a => a.Albums.Count), building.Apartments[0].Albums.Count);
-        Assert.Equal(0, Apartments.Build(Array.Empty<TownAlbum>()).Floors);
-    }
-
     // ── The view ──
 
     internal sealed class FakeTownHost : ITownHost
@@ -441,6 +403,14 @@ public class AlbumTownPluginTests
         public void SaveZoom(double zoom) { Zoom = zoom; ZoomSaves++; }
         public void RaiseNowPlaying() => NowPlayingChanged?.Invoke(this, EventArgs.Empty);
         public void RaiseSettings() => SettingsChanged?.Invoke(this, EventArgs.Empty);
+        public List<PlaylistInfo> PlaylistList { get; } = new();
+        public IReadOnlyList<PlaylistInfo> LoadPlaylists() => PlaylistList;
+        public List<IReadOnlyList<string>> PlayedTracks { get; } = new();
+        public void PlayTracks(IReadOnlyList<string> trackIds) => PlayedTracks.Add(trackIds);
+        public ApartmentLayout? Layout { get; set; }
+        public int LayoutSaves;
+        public ApartmentLayout? LoadApartments() => ApartmentLayout.FromJson(Layout?.ToJson());
+        public void SaveApartments(ApartmentLayout layout) { Layout = layout; LayoutSaves++; }
     }
 
     private static (AlbumTownView View, FakeTownHost Host) NewView(int albums, int crowd = 40)
@@ -469,7 +439,7 @@ public class AlbumTownPluginTests
         Assert.Equal(60, view.Cast.Count);
         Assert.Contains(view.Cast, m => m.Album.Key == outsider.Key && m.Reason == CastReason.Called);
         Assert.Equal(new[] { outsider.Key }, host.Called);
-        Assert.Equal(7, view.ApartmentsView.Building.Apartments.Count);
+        Assert.Equal(300, view.Shelf.Items.Count); // every album is on the Apartments shelf
 
         var window = new Window { Content = view, Width = 900, Height = 600 };
         window.Show();
@@ -883,7 +853,7 @@ public class AlbumTownPluginTests
     }
 
     /// <summary>Bytes Avalonia allocates per DrawImage it records (the floor under any frame budget).</summary>
-    private static double AvaloniaBytesPerDrawImage(Window window)
+    internal static double AvaloniaBytesPerDrawImage(Window window)
     {
         using var image = new RenderTargetBitmap(new PixelSize(16, 16));
         var probe = new ImageProbe { Image = image };
@@ -902,7 +872,7 @@ public class AlbumTownPluginTests
 
     /// <summary>Records a control the way the compositor does on the UI thread (Avalonia's
     /// internal RenderDataDrawingContext, reused frame to frame like a visual's own).</summary>
-    private sealed class Recorder
+    internal sealed class Recorder
     {
         private readonly DrawingContext _ctx;
         private readonly Func<object?> _results;
@@ -958,7 +928,7 @@ public class AlbumTownPluginTests
     }
 
     /// <summary>Made-up album covers (gradients and shapes) for the preview.</summary>
-    private static List<string> PreviewCovers(string dir)
+    internal static List<string> PreviewCovers(string dir)
     {
         Directory.CreateDirectory(dir);
         var palettes = new[]
@@ -1165,18 +1135,18 @@ public class AlbumTownPluginTests
     private const string PluginId = "dev.noctis.plugins.albumtown";
 
     [Fact]
-    public void Manifest_Is13_CreditsJafezy_AndAsksOnlyForWhatItUses()
+    public void Manifest_Is14_CreditsJafezy_AndAsksOnlyForWhatItUses()
     {
         var json = File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/plugin.json"));
         var manifest = PluginManifest.Parse(json);
-        Assert.Equal((PluginId, "Album Town", "1.3"), (manifest.Id, manifest.Name, manifest.ApiVersion));
+        Assert.Equal((PluginId, "Album Town", "1.4"), (manifest.Id, manifest.Name, manifest.ApiVersion));
         Assert.Equal(new[] { "library.read", "playback.control" }, manifest.Permissions);
         Assert.Empty(manifest.Warnings);
         // The author is Jafezy JD: Noctis is not credited as the author anywhere a user reads it.
         Assert.Equal("Jafezy JD", manifest.Author);
-        Assert.Equal("1.1.1", manifest.Version);
+        Assert.Equal("1.2.0", manifest.Version);
         var plugin = new AlbumTownPlugin();
-        Assert.Equal(("Jafezy JD", "1.1.1", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
+        Assert.Equal(("Jafezy JD", "1.2.0", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
         Assert.EndsWith("By Jafezy JD.", manifest.Description);
         Assert.EndsWith("By Jafezy JD.", AlbumTownPlugin.About);
         Assert.Equal("Album Town by Jafezy JD", AlbumTownView.Credit);
@@ -1189,7 +1159,8 @@ public class AlbumTownPluginTests
         }
         Assert.DoesNotContain('\u2014', json);
         Assert.Equal(new AlbumTownPlugin().Info.Id, manifest.Id);
-        Assert.NotNull(manifest.CheckCompatibility("1.6.5")); // before API 1.3
+        Assert.NotNull(manifest.CheckCompatibility("1.6.5")); // before API 1.3/1.4
+        Assert.Equal("1.6.6", manifest.MinAppVersion); // 1.6.6 ships API 1.4
         Assert.Null(manifest.CheckCompatibility("1.6.6"));
         Assert.Equal(new[] { "crowdSize", "showNames", "chatty" }, manifest.Settings.Select(s => s.Key));
     }
@@ -1228,7 +1199,7 @@ public class AlbumTownPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.1.1.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.2.0.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumTown -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -1246,7 +1217,7 @@ public class AlbumTownPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Town", "1.1.1", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Album Town", "1.2.0", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
 
         host.SetEnabled(plugin, true);

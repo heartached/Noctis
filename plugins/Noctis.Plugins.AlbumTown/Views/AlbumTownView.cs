@@ -13,19 +13,20 @@ namespace Noctis.Plugins.AlbumTown.Views;
 
 /// <summary>
 /// Album Town's page: a header (Plaza / Apartments, call an album, new crowd), the plaza or the
-/// building, a card for the clicked resident (Play, Go to album) and a credit line. Colours
-/// follow the app (<see cref="TownTheme.From"/>), dark by default.
+/// apartments (AlbumTownView.Apartments.cs), a card for the clicked resident (Play, Go to album)
+/// and a credit line. Colours follow the app (<see cref="TownTheme.From"/>), dark by default.
 /// </summary>
-public sealed class AlbumTownView : UserControl
+public sealed partial class AlbumTownView : UserControl
 {
     public const string Byline = "by Jafezy JD";
     public const string Credit = "Album Town " + Byline;
     public const int MaxCalled = 20;
 
     private readonly ITownHost _host;
-    // The plaza draws ~100 px covers for at most 60 residents; the building shows hundreds of small ones.
+    // The plaza draws ~100 px covers for at most 60 residents; the apartments' pets and the shelf
+    // show smaller ones (up to ~84 px at 125%).
     private readonly CoverCache _covers = new(capacity: 160, thumbSize: 192);
-    private readonly CoverCache _residentCovers = new(capacity: 600);
+    private readonly CoverCache _residentCovers = new(capacity: 400, thumbSize: 128);
     private readonly List<(Button Button, TextBlock Label, bool Accent)> _pills = new();
     private readonly Border _header;
     private readonly Border _footer;
@@ -38,8 +39,6 @@ public sealed class AlbumTownView : UserControl
     private TownTheme _theme = TownTheme.Dark;
     private readonly Random _random;
     private readonly PlazaCanvas _plaza;
-    private readonly ApartmentsCanvas _apartments;
-    private readonly ScrollViewer _apartmentsScroll;
     private readonly TextBlock _message;
     private readonly TextBlock _status;
     private readonly Button _plazaTab;
@@ -80,18 +79,6 @@ public sealed class AlbumTownView : UserControl
             // The card opened before its cover was decoded: show it now.
             if (_cardAlbum is { } a && _cardCover!.Source is null) _cardCover.Source = _covers.Get(a.ArtworkPath)?.Image;
         };
-
-        _apartments = new ApartmentsCanvas(_residentCovers);
-        _apartmentsScroll = new ScrollViewer
-        {
-            Content = _apartments,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            IsVisible = false,
-        };
-        _apartments.Viewport = () => new Rect(_apartmentsScroll.Offset.X, _apartmentsScroll.Offset.Y, _apartmentsScroll.Viewport.Width, _apartmentsScroll.Viewport.Height);
-        _apartmentsScroll.ScrollChanged += (_, _) => _apartments.InvalidateVisual();
-        _apartments.ResidentClicked += (_, a) => ShowCard(a, null);
 
         _message = new TextBlock
         {
@@ -212,7 +199,7 @@ public sealed class AlbumTownView : UserControl
         _cardTitle = new TextBlock { FontSize = 16, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
         _cardArtist = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
         _cardStats = new TextBlock { FontSize = 12 };
-        _cardReason = new TextBlock { FontSize = 11 };
+        _cardReason = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
         var play = Pill("Play", () => { if (_cardAlbum is { } a) _host.Play(a); }, accent: true);
         _cardShowAlbum = Pill("Go to album", () => { if (_cardAlbum is { } a) _host.ShowAlbum(a); });
         var close = Pill("Close", HideCard);
@@ -240,7 +227,8 @@ public sealed class AlbumTownView : UserControl
             IsVisible = false,
         };
 
-        var stage = new Panel { Children = { _plaza, _apartmentsScroll, _message, _card, _suggestionsBox } };
+        var apartments = BuildApartments();
+        var stage = new Panel { Children = { _plaza, apartments, _message, _card, _suggestionsBox, _picker } };
         var root = new DockPanel();
         DockPanel.SetDock(_header, Dock.Top);
         DockPanel.SetDock(_footer, Dock.Bottom);
@@ -291,6 +279,7 @@ public sealed class AlbumTownView : UserControl
             _zoomSave.Stop();
             _host.SaveZoom(_plaza.Zoom);
         }
+        FlushApartments();
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -299,6 +288,7 @@ public sealed class AlbumTownView : UserControl
     {
         _covers.Dispose();
         _residentCovers.Dispose();
+        _softCovers.Dispose();
     }
 
     private void OnThemeChanged(object? sender, EventArgs e) => ApplyTheme(TownTheme.From(this));
@@ -330,20 +320,27 @@ public sealed class AlbumTownView : UserControl
         if (_zoomBox.Children[0] is TextBlock sizeLabel) sizeLabel.Foreground = theme.Muted;
         _plazaTab.Background = _plaza.IsVisible ? theme.TabOn : Brushes.Transparent;
         _apartmentsTab.Background = _plaza.IsVisible ? Brushes.Transparent : theme.TabOn;
+        ApplyApartmentsTheme(theme);
     }
 
-    /// <summary>Reads the library off the UI thread, then fills the plaza and the building.</summary>
+    /// <summary>Reads the library, the playlists and the saved building off the UI thread, then
+    /// fills the plaza and the apartments.</summary>
     public async Task LoadAsync()
     {
         IReadOnlyList<TownAlbum> town;
         IReadOnlyDictionary<string, string> byFile;
+        IReadOnlyDictionary<string, string> byTrack;
         IReadOnlyList<string> called;
+        IReadOnlyList<TrackInfo> tracks;
+        IReadOnlyList<PlaylistInfo> playlists;
+        ApartmentLayout? layout;
         try
         {
-            (town, byFile, called) = await Task.Run(() =>
+            (town, byFile, byTrack, called, tracks, playlists, layout) = await Task.Run(() =>
             {
-                var t = AlbumGrouping.Group(_host.LoadTracks(), out var map);
-                return (t, map, _host.LoadCalled());
+                var all = _host.LoadTracks();
+                var t = AlbumGrouping.Group(all, out var map, out var ids);
+                return (t, map, ids, _host.LoadCalled(), all, _host.LoadPlaylists(), _host.LoadApartments());
             });
         }
         catch (Exception ex)
@@ -352,6 +349,7 @@ public sealed class AlbumTownView : UserControl
             return;
         }
         SetTown(town, byFile, called);
+        SetApartments(tracks, playlists, layout, byTrack);
     }
 
     /// <summary>Fills the town directly (tests, preview).</summary>
@@ -363,7 +361,7 @@ public sealed class AlbumTownView : UserControl
         _called.Clear();
         var known = town.Select(a => a.Key).ToHashSet(StringComparer.Ordinal);
         _called.AddRange(called.Where(known.Contains).Take(MaxCalled));
-        _apartments.Building = Apartments.Build(town);
+        OnTownChanged();
         _message.Text = town.Count == 0 ? "Nobody lives here yet. Add music to your library and your albums will move in." : "";
         _message.IsVisible = town.Count == 0;
         Recast(fresh: false);
@@ -436,6 +434,7 @@ public sealed class AlbumTownView : UserControl
             _plaza.World.Call(member);
         }
         _plaza.World.SetNowPlaying(key, _host.IsPlaying);
+        ApplyNowPlayingToApartments();
         UpdateStatus();
     }
 
@@ -443,6 +442,8 @@ public sealed class AlbumTownView : UserControl
     {
         _plaza.ShowNames = _host.ShowNames;
         _plaza.World.Chatty = _host.Chatty;
+        _apartments.ShowNames = _host.ShowNames;
+        _life.Chatty = _host.Chatty;
         if (_cast.Count != Math.Clamp(_host.CrowdSize, PlazaCast.MinCrowd, Math.Min(PlazaCast.MaxCrowd, Math.Max(1, _town.Count))))
             Recast(fresh: false);
         _plaza.InvalidateVisual();
@@ -451,18 +452,19 @@ public sealed class AlbumTownView : UserControl
     private void ShowTab(bool plaza)
     {
         _plaza.IsVisible = plaza;
-        _apartmentsScroll.IsVisible = !plaza;
+        _apartmentsPage.IsVisible = !plaza;
+        if (plaza) HidePicker();
         _plazaTab.Background = plaza ? _theme.TabOn : Brushes.Transparent;
         _apartmentsTab.Background = plaza ? Brushes.Transparent : _theme.TabOn;
         _search.IsVisible = plaza;
         _zoomBox.IsVisible = plaza;
         _suggestionsBox.IsVisible = false;
-        if (!plaza) _apartments.InvalidateVisual();
+        if (!plaza) _apartments.Refresh();
         UpdateStatus();
     }
 
     /// <summary>Opens the resident's card: cover, numbers, Play and Go to album.</summary>
-    public void ShowCard(TownAlbum album, CastReason? reason)
+    public void ShowCard(TownAlbum album, CastReason? reason, string? note = null)
     {
         _cardAlbum = album;
         _cardCover.Source = _covers.Get(album.ArtworkPath)?.Image;
@@ -478,10 +480,12 @@ public sealed class AlbumTownView : UserControl
             CastReason.Recent => "Played recently",
             CastReason.MostPlayed => "One of your most played",
             CastReason.Random => "Out for a walk",
-            _ => album.Genre.Length > 0 ? album.Genre : "",
+            _ => note ?? (album.Genre.Length > 0 ? album.Genre : ""),
         };
         _cardReason.IsVisible = _cardReason.Text.Length > 0;
         _cardShowAlbum.IsEnabled = album.AlbumId.Length > 0;
+        // In the Apartments the card sits above the shelf, not on it.
+        _card.Margin = new Thickness(18, 18, 18, 18 + (_apartmentsPage.IsVisible ? _shelfBar.Bounds.Height : 0));
         _card.IsVisible = true;
     }
 
@@ -548,10 +552,9 @@ public sealed class AlbumTownView : UserControl
     {
         if (_town.Count == 0) { _status.Text = ""; return; }
         var albums = _town.Count == 1 ? "1 resident" : $"{_town.Count.ToString(CultureInfo.InvariantCulture)} residents";
-        var artists = _apartments.Building.Apartments.Count;
         _status.Text = _plaza.IsVisible
             ? $"{_cast.Count.ToString(CultureInfo.InvariantCulture)} in the plaza · {albums} in town"
-            : $"{artists.ToString(CultureInfo.InvariantCulture)} {(artists == 1 ? "apartment" : "apartments")} · {albums}";
+            : ApartmentsStatus();
     }
 
     private static string Or(string s, string fallback) => string.IsNullOrWhiteSpace(s) ? fallback : s;

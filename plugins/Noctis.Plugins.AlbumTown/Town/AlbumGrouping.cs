@@ -32,6 +32,12 @@ public static class AlbumGrouping
 
     /// <param name="byFilePath">Which resident a track file belongs to (for "now playing").</param>
     public static IReadOnlyList<TownAlbum> Group(IEnumerable<TrackInfo> tracks, out IReadOnlyDictionary<string, string> byFilePath)
+        => Group(tracks, out byFilePath, out _);
+
+    /// <param name="byFilePath">Which resident a track file belongs to (for "now playing").</param>
+    /// <param name="byTrackId">Which resident a track id belongs to (a playlist song's cover).</param>
+    public static IReadOnlyList<TownAlbum> Group(IEnumerable<TrackInfo> tracks, out IReadOnlyDictionary<string, string> byFilePath,
+        out IReadOnlyDictionary<string, string> byTrackId)
     {
         var groups = new Dictionary<string, List<TrackInfo>>(StringComparer.Ordinal);
         foreach (var t in tracks)
@@ -43,11 +49,12 @@ public static class AlbumGrouping
 
         var result = new List<TownAlbum>(groups.Count);
         var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var ids = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (key, list) in groups)
         {
             if (key.StartsWith("t:", StringComparison.Ordinal))
             {
-                Add(result, files, key, list, single: true);
+                Add(result, files, ids, key, list, single: true);
                 continue;
             }
             // The album's cover is the one most of its songs show; null (no art) never splits.
@@ -60,16 +67,17 @@ public static class AlbumGrouping
             {
                 if (cover is not null && t.ArtworkPath is not null && list.Count > 1
                     && !string.Equals(t.ArtworkPath, cover, StringComparison.OrdinalIgnoreCase))
-                    Add(result, files, "s:" + t.Id, new List<TrackInfo> { t }, single: true);
+                    Add(result, files, ids, "s:" + t.Id, new List<TrackInfo> { t }, single: true);
                 else stayers.Add(t);
             }
             var isSingle = stayers.Count == 1 && list.Count == 1
                 || stayers.All(t => string.Equals(t.ReleaseType, "Single", StringComparison.OrdinalIgnoreCase));
-            Add(result, files, key, stayers, isSingle);
+            Add(result, files, ids, key, stayers, isSingle);
         }
 
         result.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
         byFilePath = files;
+        byTrackId = ids;
         return result;
     }
 
@@ -84,7 +92,7 @@ public static class AlbumGrouping
 
     private static string Norm(string? s) => (s ?? "").Trim().ToLowerInvariant();
 
-    private static void Add(List<TownAlbum> into, Dictionary<string, string> files, string key, List<TrackInfo> list, bool single)
+    private static void Add(List<TownAlbum> into, Dictionary<string, string> files, Dictionary<string, string> ids, string key, List<TrackInfo> list, bool single)
     {
         if (list.Count == 0) return;
         var ordered = list.OrderBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber).ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase).ToList();
@@ -108,7 +116,10 @@ public static class AlbumGrouping
             ordered.Any(t => t.IsFavorite));
         into.Add(album);
         foreach (var t in ordered)
+        {
             if (!string.IsNullOrEmpty(t.FilePath)) files[t.FilePath] = key;
+            ids[t.Id] = key;
+        }
     }
 
     /// <summary>The most common non-blank value (ties: the first seen).</summary>

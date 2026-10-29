@@ -55,6 +55,12 @@ public sealed class TownTheme
         Faint = Solid(dark ? Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x70, 0x00, 0x00, 0x00));
         Chip = Solid(dark ? Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x10, 0x00, 0x00, 0x00));
         TabOn = Solid(dark ? Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x1C, 0x00, 0x00, 0x00));
+        ShelfEdge = new ImmutablePen((IImmutableBrush)Solid(CoverEdge), 1);
+        GhostFill = Solid(Color.FromArgb(0x30, accent.R, accent.G, accent.B));
+        GhostPen = new ImmutablePen((IImmutableBrush)AccentBrush, 2, new ImmutableDashStyle(new double[] { 3, 2 }, 0));
+        var blocked = Color.FromRgb(0xE7, 0x48, 0x56);
+        GhostBlocked = Solid(Color.FromArgb(0x30, blocked.R, blocked.G, blocked.B));
+        GhostBlockedPen = new ImmutablePen((IImmutableBrush)Solid(blocked), 2, new ImmutableDashStyle(new double[] { 3, 2 }, 0));
     }
 
     public bool IsDark { get; }
@@ -92,6 +98,12 @@ public sealed class TownTheme
     public IBrush Faint { get; }
     public IBrush Chip { get; }
     public IBrush TabOn { get; }
+    public IPen ShelfEdge { get; }
+    /// <summary>Where a dragged room would land (fits / blocked).</summary>
+    public IBrush GhostFill { get; }
+    public IPen GhostPen { get; }
+    public IBrush GhostBlocked { get; }
+    public IPen GhostBlockedPen { get; }
 
     /// <summary>
     /// The palette for the app around <paramref name="element"/>: Noctis's page background
