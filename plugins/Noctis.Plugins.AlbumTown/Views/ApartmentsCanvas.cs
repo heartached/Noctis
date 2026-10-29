@@ -10,9 +10,10 @@ namespace Noctis.Plugins.AlbumTown.Views;
 
 /// <summary>
 /// The Apartments building, drawn floor by floor: each artist's home is as wide as
-/// <see cref="Apartments.UnitsFor"/> says, with its residents (album cubes) inside. Static: it
-/// redraws when the building, the scroll position or a cover changes, and only the floors in
-/// view are drawn (and only their covers decoded).
+/// <see cref="Apartments.UnitsFor"/> says, with its residents (flat little album tiles with eyes)
+/// inside. Static: it redraws when the building, the scroll position or a cover changes, and
+/// only the floors in view are drawn (and only their covers decoded). Brushes, the roof and the
+/// labels are made once, so scrolling does not allocate per room.
 /// </summary>
 public sealed class ApartmentsCanvas : Control
 {
@@ -32,19 +33,28 @@ public sealed class ApartmentsCanvas : Control
     private static readonly IBrush SignText = new ImmutableSolidColorBrush(Colors.White);
     private static readonly IBrush VacantText = new ImmutableSolidColorBrush(Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF));
     private static readonly IPen RoomPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x60, 0x10, 0x0C, 0x16)), 1.5);
-    private static readonly IPen CubePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x8C, 0x1E, 0x18, 0x28)), 1);
+    private static readonly IPen TilePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x30, 0x00, 0x00, 0x00)), 1);
+    private static readonly IBrush TileShadow = new ImmutableSolidColorBrush(Color.FromArgb(0x38, 0x10, 0x0C, 0x16));
+    private static readonly IBrush EyeWhite = new ImmutableSolidColorBrush(Colors.White);
+    private static readonly IBrush Pupil = new ImmutableSolidColorBrush(Color.FromRgb(0x1C, 0x1C, 0x1E));
     private static readonly Typeface Face = new(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold);
 
     private readonly CoverCache _covers;
     private Building _building = new(Array.Empty<Apartment>(), Apartments.DefaultUnitsPerFloor, 0);
     private readonly List<(Rect Rect, TownAlbum Album)> _hits = new();
-    private readonly Dictionary<string, FormattedText> _texts = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string Text, double Size, IBrush Brush), FormattedText> _texts = new();
+    private readonly Dictionary<Apartment, (FormattedText Name, FormattedText Tier)> _labels = new();
+    private readonly Dictionary<string, IBrush> _walls = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IBrush> _placeholders = new(StringComparer.Ordinal);
+    private readonly Cursor _arrow = new(StandardCursorType.Arrow);
+    private readonly Cursor _hand = new(StandardCursorType.Hand);
+    private (double X, double Width, StreamGeometry Geometry)? _roof;
 
     public ApartmentsCanvas(CoverCache covers)
     {
         _covers = covers;
         covers.CoverReady += (_, _) => { if (IsEffectivelyVisible) InvalidateVisual(); };
-        Cursor = new Cursor(StandardCursorType.Arrow);
+        Cursor = _arrow;
     }
 
     /// <summary>The part of this control the user can see (the scroll viewport), in its own coordinates.</summary>
@@ -56,6 +66,7 @@ public sealed class ApartmentsCanvas : Control
         set
         {
             _building = value;
+            _labels.Clear();
             InvalidateMeasure();
             InvalidateVisual();
         }
@@ -71,7 +82,11 @@ public sealed class ApartmentsCanvas : Control
     {
         base.OnPointerMoved(e);
         var p = e.GetPosition(this);
-        Cursor = new Cursor(_hits.Any(h => h.Rect.Contains(p)) ? StandardCursorType.Hand : StandardCursorType.Arrow);
+        var over = false;
+        foreach (var (rect, _) in _hits)
+            if (rect.Contains(p)) { over = true; break; }
+        var cursor = over ? _hand : _arrow;
+        if (!ReferenceEquals(Cursor, cursor)) Cursor = cursor;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -97,16 +112,20 @@ public sealed class ApartmentsCanvas : Control
         var width = _building.UnitsPerFloor * Unit;
 
         // Roof and sign.
-        var roof = new StreamGeometry();
-        using (var g = roof.Open())
+        if (_roof is not { } roof || roof.X != x0 || roof.Width != width)
         {
-            g.BeginFigure(new Point(x0 - 10, Pad + Roof), true);
-            g.LineTo(new Point(x0 + 30, Pad + 12));
-            g.LineTo(new Point(x0 + width - 30, Pad + 12));
-            g.LineTo(new Point(x0 + width + 10, Pad + Roof));
-            g.EndFigure(true);
+            var geometry = new StreamGeometry();
+            using (var g = geometry.Open())
+            {
+                g.BeginFigure(new Point(x0 - 10, Pad + Roof), true);
+                g.LineTo(new Point(x0 + 30, Pad + 12));
+                g.LineTo(new Point(x0 + width - 30, Pad + 12));
+                g.LineTo(new Point(x0 + width + 10, Pad + Roof));
+                g.EndFigure(true);
+            }
+            _roof = roof = (x0, width, geometry);
         }
-        ctx.DrawGeometry(RoofBrush, null, roof);
+        ctx.DrawGeometry(RoofBrush, null, roof.Geometry);
         var sign = Text("Album Town Apartments", 15, SignText);
         ctx.DrawText(sign, new Point(x0 + (width - sign.Width) / 2, Pad + 12 + (Roof - 12 - sign.Height) / 2));
 
@@ -142,17 +161,19 @@ public sealed class ApartmentsCanvas : Control
 
     private void DrawApartment(DrawingContext ctx, Apartment apt, Rect r)
     {
-        var wall = CoverCache.Pastel(apt.Artist, 0.86f);
-        ctx.DrawRectangle(new ImmutableSolidColorBrush(wall), RoomPen, new RoundedRect(r, 8));
+        if (!_walls.TryGetValue(apt.Artist, out var wall))
+            _walls[apt.Artist] = wall = new ImmutableSolidColorBrush(CoverCache.Pastel(apt.Artist, 0.86f));
+        ctx.DrawRectangle(wall, RoomPen, new RoundedRect(r, 8));
         // Floorboards.
         ctx.FillRectangle(Floorboards, new Rect(r.X + 1, r.Bottom - 9, r.Width - 2, 8));
 
-        var name = Text(Fit(apt.Artist, apt.Units), 11, LabelBrush);
-        ctx.DrawText(name, new Point(r.X + 7, r.Y + 5));
-        var tier = Text(apt.Albums.Count == 1 ? apt.Tier : $"{apt.Tier} · {apt.Albums.Count.ToString(CultureInfo.InvariantCulture)} albums", 9.5, DimLabel);
-        if (tier.Width < r.Width - 12) ctx.DrawText(tier, new Point(r.X + 7, r.Y + 20));
+        if (!_labels.TryGetValue(apt, out var labels))
+            _labels[apt] = labels = (NewText(Fit(apt.Artist, apt.Units), 11, LabelBrush),
+                NewText(apt.Albums.Count == 1 ? apt.Tier : $"{apt.Tier} · {apt.Albums.Count.ToString(CultureInfo.InvariantCulture)} albums", 9.5, DimLabel));
+        ctx.DrawText(labels.Name, new Point(r.X + 7, r.Y + 5));
+        if (labels.Tier.Width < r.Width - 12) ctx.DrawText(labels.Tier, new Point(r.X + 7, r.Y + 20));
 
-        // Residents: little cubes lined up on the floor, in rows.
+        // Residents: little tiles lined up on the floor, in rows.
         var capacity = Apartments.Capacity(apt.Units);
         var perRow = Math.Max(1, (int)((r.Width - 10) / (Resident + 8)));
         var shown = Math.Min(apt.Albums.Count, capacity);
@@ -173,33 +194,32 @@ public sealed class ApartmentsCanvas : Control
         }
     }
 
+    /// <summary>A resident, flat like the plaza's: a rounded cover tile with a soft drop and two dot eyes.</summary>
     private void DrawResident(DrawingContext ctx, TownAlbum album, Rect front)
     {
-        var cover = _covers.Get(album.ArtworkPath);
-        var d = 5.0;
-        var lid = new StreamGeometry();
-        using (var g = lid.Open())
+        var image = _covers.Get(album.ArtworkPath)?.Image;
+        var rounded = new RoundedRect(front, 4);
+        ctx.DrawRectangle(TileShadow, null, new RoundedRect(front.Translate(new Vector(0, 1.5)), 4));
+        if (image is not null)
         {
-            g.BeginFigure(front.TopLeft, true);
-            g.LineTo(new Point(front.X + d, front.Y - d));
-            g.LineTo(new Point(front.Right + d, front.Y - d));
-            g.LineTo(new Point(front.Right + d, front.Bottom - d));
-            g.LineTo(front.BottomRight);
-            g.LineTo(front.TopRight);
-            g.EndFigure(true);
-        }
-        ctx.DrawGeometry(new ImmutableSolidColorBrush(cover?.Side ?? CoverCache.Pastel(album.Key, 0.5f)), CubePen, lid);
-        var rounded = new RoundedRect(front, 3);
-        if (cover?.Image is { } image)
+            var side = Math.Min(image.Size.Width, image.Size.Height);
             using (ctx.PushClip(rounded))
-                ctx.DrawImage(image, new Rect(image.Size), front);
-        else ctx.DrawRectangle(new ImmutableSolidColorBrush(CoverCache.Pastel(album.Key, 0.7f)), null, rounded);
-        ctx.DrawRectangle(null, CubePen, rounded);
+                ctx.DrawImage(image, new Rect((image.Size.Width - side) / 2, (image.Size.Height - side) / 2, side, side), front);
+        }
+        else
+        {
+            if (!_placeholders.TryGetValue(album.Key, out var fill))
+                _placeholders[album.Key] = fill = new ImmutableSolidColorBrush(CoverCache.Pastel(album.Key, 0.7f));
+            ctx.DrawRectangle(fill, null, rounded);
+        }
+        ctx.DrawRectangle(null, TilePen, rounded);
         // Two dot eyes so they are clearly residents, not pictures on a shelf.
-        ctx.DrawEllipse(Brushes.White, null, new Point(front.X + front.Width * 0.32, front.Y + front.Height * 0.38), 2.4, 2.8);
-        ctx.DrawEllipse(Brushes.White, null, new Point(front.X + front.Width * 0.68, front.Y + front.Height * 0.38), 2.4, 2.8);
-        ctx.DrawEllipse(LabelBrush, null, new Point(front.X + front.Width * 0.32, front.Y + front.Height * 0.42), 1.2, 1.4);
-        ctx.DrawEllipse(LabelBrush, null, new Point(front.X + front.Width * 0.68, front.Y + front.Height * 0.42), 1.2, 1.4);
+        var ey = front.Y + front.Height * 0.36;
+        var r = front.Width * 0.1;
+        ctx.DrawEllipse(EyeWhite, null, new Point(front.X + front.Width * 0.32, ey), r, r * 1.15);
+        ctx.DrawEllipse(EyeWhite, null, new Point(front.X + front.Width * 0.68, ey), r, r * 1.15);
+        ctx.DrawEllipse(Pupil, null, new Point(front.X + front.Width * 0.32, ey + r * 0.2), r * 0.5, r * 0.6);
+        ctx.DrawEllipse(Pupil, null, new Point(front.X + front.Width * 0.68, ey + r * 0.2), r * 0.5, r * 0.6);
         _hits.Add((front.Inflate(3), album));
     }
 
@@ -211,9 +231,11 @@ public sealed class ApartmentsCanvas : Control
 
     private FormattedText Text(string s, double size, IBrush brush)
     {
-        var key = s + "|" + size.ToString("0.#", CultureInfo.InvariantCulture) + "|" + brush.GetHashCode().ToString(CultureInfo.InvariantCulture);
-        if (_texts.TryGetValue(key, out var t)) return t;
+        if (_texts.TryGetValue((s, size, brush), out var t)) return t;
         if (_texts.Count > 2000) _texts.Clear();
-        return _texts[key] = new FormattedText(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Face, size, brush);
+        return _texts[(s, size, brush)] = NewText(s, size, brush);
     }
+
+    private static FormattedText NewText(string s, double size, IBrush brush)
+        => new(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Face, size, brush);
 }

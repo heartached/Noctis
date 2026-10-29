@@ -6,18 +6,20 @@ namespace Noctis.Plugins.AlbumTown;
 
 /// <summary>
 /// Album Town: your albums as little square creatures. Settings → Plugins → Album Town →
-/// "Open Album Town" opens the town in a window of its own. Idea by Jafezy JD (Noctis Discord).
+/// "Open Album Town" opens the town in a window of its own. By Jafezy JD (Noctis Discord).
 /// </summary>
 public sealed class AlbumTownPlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.albumtown";
-    public const string About = "Your albums become little square creatures that wander a plaza, chat about what they have in common and live in apartments that grow with every album. Idea by Jafezy JD.";
+    public const string Author = "Jafezy JD";
+    public const string Version = "1.1.0";
+    public const string About = "Your albums become little cover creatures that wander a plaza, chat about what they have in common and live in apartments that grow with every album. By Jafezy JD.";
 
     private IPluginHost? _host;
     private IDisposable? _view;
     private readonly List<PluginTownHost> _townHosts = new();
 
-    public PluginInfo Info { get; } = new(Id, "Album Town", "1.0.0", "Noctis, idea by Jafezy JD", About);
+    public PluginInfo Info { get; } = new(Id, "Album Town", Version, Author, About);
 
     public string Name => "Album Town";
 
@@ -38,7 +40,7 @@ public sealed class AlbumTownPlugin : INoctisPlugin, IPluginViewProvider
         {
             town.Dispose();
             _townHosts.Remove(town);
-            view.Covers.Dispose();
+            view.ReleaseCovers();
         };
         return view;
     }

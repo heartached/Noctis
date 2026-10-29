@@ -44,7 +44,8 @@ public sealed class Creature
     public float Pulse;
     /// <summary>Seconds the creature has been in the plaza (fades in on arrival).</summary>
     public float Age;
-    /// <summary>Speed in px/s, a little different per creature.</summary>
+    /// <summary>Speed in px/s at <see cref="PlazaWorld.BaseSize"/>, a little different per creature
+    /// (the world scales it with the body size so big creatures do not crawl).</summary>
     public float Speed = 42;
 }
 
@@ -53,11 +54,15 @@ public sealed class Creature
 /// no Avalonia: <see cref="Step"/> advances time, the canvas reads the creatures.
 /// Idle → Wander (to a random spot) → Idle; two idle neighbours may stop and Talk (two lines);
 /// an idle creature near the cursor turns to look at it; a click makes it Wave; the album that
-/// is playing Dances in place to the beat.
+/// is playing Dances in place to the beat. Distances (reach, strolls, spacing, margins, speed)
+/// are tuned at <see cref="BaseSize"/> and scale with <see cref="BodySize"/>, so a zoomed-in
+/// plaza behaves the same, only bigger. The creature under the pointer (<see cref="Held"/>)
+/// stops and looks at it, so it is easy to click.
 /// </summary>
 public sealed class PlazaWorld
 {
-    public const float CreatureRadius = 18;
+    /// <summary>The body size the distances below are tuned for.</summary>
+    public const float BaseSize = 36;
     private const float TalkReach = 90;
     private const float LookReach = 110;
     private const float LineSeconds = 2.6f;
@@ -78,8 +83,33 @@ public sealed class PlazaWorld
     /// <summary>Pointer position in plaza coordinates, or null when it is outside.</summary>
     public Vector2? Cursor { get; set; }
     public DateTimeOffset Now { get; set; } = DateTimeOffset.Now;
+
+    /// <summary>Width of a creature's cover face in px (the canvas sets it from the window and zoom).</summary>
+    public float BodySize
+    {
+        get => _bodySize;
+        set
+        {
+            value = Math.Max(8, value);
+            if (value == _bodySize) return;
+            _bodySize = value;
+            foreach (var c in _creatures)
+            {
+                c.Position = Clamp(c.Position);
+                c.Target = Clamp(c.Target);
+            }
+        }
+    }
+    private float _bodySize = BaseSize;
+
+    /// <summary><see cref="BodySize"/> relative to <see cref="BaseSize"/>.</summary>
+    public float Scale => _bodySize / BaseSize;
+    /// <summary>The creature under the pointer: it holds still and looks at the pointer.</summary>
+    public Creature? Held { get; set; }
     /// <summary>Margin kept free at the edges (bubbles and names need room).</summary>
-    public float Margin => 28;
+    public float Margin => 28 * Scale;
+    /// <summary>Extra room at the top for the head and a speech bubble above it.</summary>
+    public float TopMargin => Margin + 24 * Scale;
 
     /// <summary>New plaza size: everyone keeps their relative spot (a crowd placed before the
     /// window had its size spreads out instead of bunching in the old corner).</summary>
@@ -123,7 +153,7 @@ public sealed class PlazaWorld
         var existing = _creatures.FirstOrDefault(c => c.Album.Key == member.Album.Key);
         if (existing is not null) { Wave(existing); return existing; }
         var spot = RandomSpot();
-        var edge = new Vector2(spot.X, _random.Next(2) == 0 ? Margin + 24 : Height - Margin);
+        var edge = new Vector2(spot.X, _random.Next(2) == 0 ? TopMargin : Height - Margin);
         var c = new Creature(member, edge);
         Prime(c);
         c.Target = spot;
@@ -160,18 +190,43 @@ public sealed class PlazaWorld
         }
     }
 
-    /// <summary>The topmost creature under <paramref name="point"/>, or null.</summary>
-    public Creature? HitTest(Vector2 point)
+    /// <summary>
+    /// The creature under <paramref name="point"/>, or null. The target is generous (the cover
+    /// plus the hands, feet and a little air around them): the front-most creature whose cover
+    /// is under the point wins, otherwise the nearest one whose wider target is.
+    /// <paramref name="prefer"/> (the one already hovered) keeps winning while the point is
+    /// anywhere on its target, so overlapping neighbours do not flicker.
+    /// </summary>
+    public Creature? HitTest(Vector2 point, Creature? prefer = null)
     {
-        Creature? best = null;
+        var s = _bodySize;
+        if (prefer is not null && _creatures.Contains(prefer) && InTarget(prefer, point, s)) return prefer;
+        Creature? onCover = null;
+        Creature? near = null;
+        var nearDist = float.MaxValue;
         foreach (var c in _creatures)
         {
-            var d = point - (c.Position - new Vector2(0, CreatureRadius));
-            if (Math.Abs(d.X) <= CreatureRadius + 4 && Math.Abs(d.Y) <= CreatureRadius + 10
-                && (best is null || c.Position.Y > best.Position.Y))
-                best = c;
+            var d = point - BodyCenter(c, s);
+            if (Math.Abs(d.X) <= s * 0.5f && Math.Abs(d.Y) <= s * 0.5f)
+            {
+                if (onCover is null || c.Position.Y > onCover.Position.Y) onCover = c;
+            }
+            else if (onCover is null && InTarget(c, point, s) && d.LengthSquared() < nearDist)
+            {
+                near = c;
+                nearDist = d.LengthSquared();
+            }
         }
-        return best;
+        return onCover ?? near;
+    }
+
+    /// <summary>Middle of the cover face (it floats a little above the feet).</summary>
+    public static Vector2 BodyCenter(Creature c, float size) => c.Position - new Vector2(0, size * 0.8f);
+
+    private static bool InTarget(Creature c, Vector2 point, float s)
+    {
+        var d = point - BodyCenter(c, s);
+        return Math.Abs(d.X) <= s * 0.8f && d.Y >= -s * 0.75f && d.Y <= s * 0.95f;
     }
 
     /// <summary>Click: the creature stops, waves and says hello.</summary>
@@ -196,6 +251,12 @@ public sealed class PlazaWorld
             c.TalkCooldown -= dt;
             c.BlinkTimer -= dt;
             if (c.BlinkTimer < -0.12f) c.BlinkTimer = 1.5f + (float)(_random.NextDouble() * 4);
+            if (ReferenceEquals(c, Held) && c.State is CreatureState.Idle or CreatureState.Wander or CreatureState.LookAtCursor)
+            {
+                // Under the pointer: stop and look at it, so it is easy to click.
+                c.State = CreatureState.LookAtCursor;
+                c.Target = c.Position;
+            }
             switch (c.State)
             {
                 case CreatureState.Idle: StepIdle(c, dt); break;
@@ -217,7 +278,7 @@ public sealed class PlazaWorld
 
     private void StepIdle(Creature c, float dt)
     {
-        if (Cursor is { } cur && Vector2.Distance(cur, c.Position) < LookReach)
+        if (Cursor is { } cur && Vector2.Distance(cur, c.Position) < LookReach * Scale)
         {
             c.State = CreatureState.LookAtCursor;
             return;
@@ -238,7 +299,7 @@ public sealed class PlazaWorld
             ToIdle(c);
             return;
         }
-        var step = Math.Min(dist, c.Speed * dt);
+        var step = Math.Min(dist, c.Speed * Scale * dt);
         var dir = to / dist;
         c.Position += dir * step;
         if (Math.Abs(dir.X) > 0.15f) c.Facing = Math.Sign(dir.X);
@@ -251,7 +312,8 @@ public sealed class PlazaWorld
 
     private void StepLook(Creature c, float dt)
     {
-        if (Cursor is not { } cur || Vector2.Distance(cur, c.Position) > LookReach * 1.15f)
+        var held = ReferenceEquals(c, Held);
+        if (Cursor is not { } cur || (!held && Vector2.Distance(cur, c.Position) > LookReach * Scale * 1.15f))
         {
             ToIdle(c);
             return;
@@ -293,27 +355,30 @@ public sealed class PlazaWorld
     private bool TryStartTalk(Creature c)
     {
         Creature? best = null;
-        var bestDist = TalkReach;
+        var bestDist = TalkReach * Scale;
         foreach (var o in _creatures)
         {
-            if (ReferenceEquals(o, c) || o.TalkCooldown > 0 || o.State is not (CreatureState.Idle or CreatureState.Wander)) continue;
+            if (ReferenceEquals(o, c) || ReferenceEquals(o, Held) || o.TalkCooldown > 0 || o.State is not (CreatureState.Idle or CreatureState.Wander)) continue;
             var d = Vector2.Distance(o.Position, c.Position);
             if (d < bestDist) { best = o; bestDist = d; }
         }
         if (best is null) return false;
         var chat = TalkLines.Between(c.Album, best.Album, Now, _random);
         var seconds = 2 * LineSeconds + 0.6f;
-        foreach (var (who, partner, opened) in new[] { (c, best, true), (best, c, false) })
-        {
-            who.State = CreatureState.Talk;
-            who.Partner = partner;
-            who.Opened = opened;
-            who.Chat = chat;
-            who.StateTimer = seconds;
-            who.Target = who.Position;
-            FaceToward(who, partner.Position);
-        }
+        BeginTalk(c, best, opened: true, chat, seconds);
+        BeginTalk(best, c, opened: false, chat, seconds);
         return true;
+    }
+
+    private static void BeginTalk(Creature who, Creature partner, bool opened, Chat chat, float seconds)
+    {
+        who.State = CreatureState.Talk;
+        who.Partner = partner;
+        who.Opened = opened;
+        who.Chat = chat;
+        who.StateTimer = seconds;
+        who.Target = who.Position;
+        FaceToward(who, partner.Position);
     }
 
     private void EndTalk(Creature c)
@@ -348,10 +413,11 @@ public sealed class PlazaWorld
         if (Math.Abs(d.X) > 4) c.Facing = Math.Sign(d.X);
     }
 
-    /// <summary>Pushes overlapping creatures apart (O(n²), fine for 60).</summary>
+    /// <summary>Pushes overlapping creatures apart (O(n²), fine for 60). Talkers and the one
+    /// under the pointer stand their ground.</summary>
     private void Separate(float dt)
     {
-        const float min = CreatureRadius * 2 + 4;
+        var min = _bodySize * 1.35f; // the tile plus its hands
         for (var i = 0; i < _creatures.Count; i++)
         {
             var a = _creatures[i];
@@ -363,8 +429,8 @@ public sealed class PlazaWorld
                 if (len >= min) continue;
                 var push = len < 0.01f ? new Vector2(1, 0) : d / len;
                 var amount = (min - len) * Math.Min(1, dt * 8) * 0.5f;
-                if (a.State != CreatureState.Talk) a.Position -= push * amount;
-                if (b.State != CreatureState.Talk) b.Position += push * amount;
+                if (a.State != CreatureState.Talk && !ReferenceEquals(a, Held)) a.Position -= push * amount;
+                if (b.State != CreatureState.Talk && !ReferenceEquals(b, Held)) b.Position += push * amount;
             }
             a.Position = Clamp(a.Position);
         }
@@ -376,17 +442,18 @@ public sealed class PlazaWorld
         if (_random.NextDouble() < 0.75)
         {
             var angle = _random.NextDouble() * Math.PI * 2;
-            var r = 40 + _random.NextDouble() * 110;
+            var r = (40 + _random.NextDouble() * 110) * Scale;
             return Clamp(c.Position + new Vector2((float)(Math.Cos(angle) * r), (float)(Math.Sin(angle) * r * 0.7)));
         }
         return RandomSpot();
     }
 
     private Vector2 RandomSpot()
-        => new(Margin + (float)_random.NextDouble() * (Width - 2 * Margin), Margin + 24 + (float)_random.NextDouble() * (Height - 2 * Margin - 24));
+        => new(Margin + (float)_random.NextDouble() * Math.Max(0, Width - 2 * Margin),
+            TopMargin + (float)_random.NextDouble() * Math.Max(0, Height - Margin - TopMargin));
 
     private Vector2 Clamp(Vector2 p)
-        => new(Math.Clamp(p.X, Margin, Width - Margin), Math.Clamp(p.Y, Margin + 24, Height - Margin));
+        => new(Math.Clamp(p.X, Margin, Math.Max(Margin, Width - Margin)), Math.Clamp(p.Y, TopMargin, Math.Max(TopMargin, Height - Margin)));
 
     private static float Approach(float value, float target, float delta)
         => value < target ? Math.Min(target, value + delta) : Math.Max(target, value - delta);

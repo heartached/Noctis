@@ -26,6 +26,10 @@ public interface ITownHost
     /// <summary>Albums the user called to the plaza (kept between sessions).</summary>
     IReadOnlyList<string> LoadCalled();
     void SaveCalled(IReadOnlyList<string> keys);
+
+    /// <summary>The plaza's creature size (zoom, 1 = automatic size), kept between sessions.</summary>
+    double LoadZoom();
+    void SaveZoom(double zoom);
 }
 
 /// <summary>The town's view of the real Noctis host (plugin API 1.3).</summary>
@@ -33,11 +37,13 @@ public sealed class PluginTownHost : ITownHost, IDisposable
 {
     private readonly IPluginHost _host;
     private readonly string _calledFile;
+    private readonly string _viewFile;
 
     public PluginTownHost(IPluginHost host)
     {
         _host = host;
         _calledFile = Path.Combine(host.DataDirectory, "called.json");
+        _viewFile = Path.Combine(host.DataDirectory, "view.json");
         host.NowPlaying.TrackChanged += OnNowPlaying;
         host.NowPlaying.IsPlayingChanged += OnNowPlaying;
         host.Settings.Changed += OnSettings;
@@ -85,6 +91,38 @@ public sealed class PluginTownHost : ITownHost, IDisposable
         {
             _host.Log("could not save called albums: " + ex.Message);
         }
+    }
+
+    public double LoadZoom()
+    {
+        try
+        {
+            if (!File.Exists(_viewFile)) return 1;
+            var view = JsonSerializer.Deserialize<ViewState>(File.ReadAllText(_viewFile));
+            return view is { Zoom: > 0 and var z } && double.IsFinite(z) ? z : 1;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return 1;
+        }
+    }
+
+    public void SaveZoom(double zoom)
+    {
+        try
+        {
+            Directory.CreateDirectory(_host.DataDirectory);
+            File.WriteAllText(_viewFile, JsonSerializer.Serialize(new ViewState { Zoom = Math.Round(zoom, 2) }));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _host.Log("could not save the creature size: " + ex.Message);
+        }
+    }
+
+    private sealed class ViewState
+    {
+        public double Zoom { get; set; } = 1;
     }
 
     public void Dispose()

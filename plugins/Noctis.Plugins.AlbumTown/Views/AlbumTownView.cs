@@ -13,24 +13,29 @@ namespace Noctis.Plugins.AlbumTown.Views;
 
 /// <summary>
 /// Album Town's page: a header (Plaza / Apartments, call an album, new crowd), the plaza or the
-/// building, a card for the clicked resident (Play, Go to album) and a credit line.
+/// building, a card for the clicked resident (Play, Go to album) and a credit line. Colours
+/// follow the app (<see cref="TownTheme.From"/>), dark by default.
 /// </summary>
 public sealed class AlbumTownView : UserControl
 {
-    public const string Credit = "Album Town by Noctis · idea by Jafezy JD";
+    public const string Byline = "by Jafezy JD";
+    public const string Credit = "Album Town " + Byline;
     public const int MaxCalled = 20;
 
-    private static readonly IBrush HeaderBg = new ImmutableSolidColorBrush(Color.FromRgb(0x1B, 0x18, 0x22));
-    private static readonly IBrush CardBg = new ImmutableSolidColorBrush(Color.FromRgb(0x24, 0x20, 0x2B));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.FromArgb(0xA8, 0xFF, 0xFF, 0xFF));
-    private static readonly IBrush Faint = new ImmutableSolidColorBrush(Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF));
-    private static readonly IBrush White = new ImmutableSolidColorBrush(Colors.White);
-    private static readonly IBrush TabOn = new ImmutableSolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
-    private static readonly IBrush AccentBrush = new ImmutableSolidColorBrush(CreaturePainter.Accent);
-    private static readonly IBrush Chip = new ImmutableSolidColorBrush(Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF));
-
     private readonly ITownHost _host;
-    private readonly CoverCache _covers = new(600);
+    // The plaza draws ~100 px covers for at most 60 residents; the building shows hundreds of small ones.
+    private readonly CoverCache _covers = new(capacity: 160, thumbSize: 192);
+    private readonly CoverCache _residentCovers = new(capacity: 600);
+    private readonly List<(Button Button, TextBlock Label, bool Accent)> _pills = new();
+    private readonly Border _header;
+    private readonly Border _footer;
+    private readonly TextBlock _titleText;
+    private readonly TextBlock _byline;
+    private readonly TextBlock _credit;
+    private readonly Slider _zoom;
+    private readonly StackPanel _zoomBox;
+    private readonly DispatcherTimer _zoomSave;
+    private TownTheme _theme = TownTheme.Dark;
     private readonly Random _random;
     private readonly PlazaCanvas _plaza;
     private readonly ApartmentsCanvas _apartments;
@@ -69,8 +74,14 @@ public sealed class AlbumTownView : UserControl
         };
         world.Chatty = host.Chatty;
         _plaza.CreatureClicked += (_, c) => ShowCard(c.Album, c.Member.Reason);
+        _plaza.Zoom = host.LoadZoom();
+        _covers.CoverReady += (_, _) =>
+        {
+            // The card opened before its cover was decoded: show it now.
+            if (_cardAlbum is { } a && _cardCover!.Source is null) _cardCover.Source = _covers.Get(a.ArtworkPath)?.Image;
+        };
 
-        _apartments = new ApartmentsCanvas(_covers);
+        _apartments = new ApartmentsCanvas(_residentCovers);
         _apartmentsScroll = new ScrollViewer
         {
             Content = _apartments,
@@ -85,7 +96,6 @@ public sealed class AlbumTownView : UserControl
         _message = new TextBlock
         {
             Text = "Loading your town...",
-            Foreground = new ImmutableSolidColorBrush(Color.FromRgb(0x5A, 0x52, 0x66)),
             FontSize = 15,
             FontWeight = FontWeight.SemiBold,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -115,14 +125,49 @@ public sealed class AlbumTownView : UserControl
         var newCrowd = Pill("New crowd", () => Recast(fresh: true));
         newCrowd.Margin = new Thickness(8, 0, 0, 0);
 
+        // Creature size: the same zoom as Ctrl+wheel on the plaza, remembered between sessions.
+        _zoom = new Slider
+        {
+            Minimum = PlazaCanvas.MinZoom,
+            Maximum = PlazaCanvas.MaxZoom,
+            SmallChange = 0.1,
+            LargeChange = 0.2,
+            Value = _plaza.Zoom,
+            Width = 110,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        AutomationName(_zoom, "Creature size");
+        ToolTip.SetTip(_zoom, "Creature size (Ctrl + mouse wheel on the plaza)");
+        _zoom.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == RangeBase.ValueProperty) _plaza.Zoom = _zoom.Value;
+        };
+        _zoomSave = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Background, (_, _) =>
+        {
+            _zoomSave!.Stop();
+            _host.SaveZoom(_plaza.Zoom);
+        });
+        _plaza.ZoomChanged += (_, _) =>
+        {
+            if (Math.Abs(_zoom.Value - _plaza.Zoom) > 0.001) _zoom.Value = _plaza.Zoom;
+            _zoomSave.Stop();
+            _zoomSave.Start();
+        };
+        _zoomBox = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Margin = new Thickness(0, 0, 14, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { new TextBlock { Text = "Size", FontSize = 12, VerticalAlignment = VerticalAlignment.Center }, _zoom },
+        };
+
+        _titleText = new TextBlock { Text = "Album Town", FontSize = 18, FontWeight = FontWeight.Bold };
+        _byline = new TextBlock { Text = Byline, FontSize = 11 };
         var title = new StackPanel
         {
             VerticalAlignment = VerticalAlignment.Center,
-            Children =
-            {
-                new TextBlock { Text = "Album Town", FontSize = 18, FontWeight = FontWeight.Bold, Foreground = White },
-                new TextBlock { Text = "Idea by Jafezy JD", FontSize = 11, Foreground = Faint },
-            },
+            Children = { _titleText, _byline },
         };
         var tabs = new StackPanel
         {
@@ -132,27 +177,26 @@ public sealed class AlbumTownView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Children = { _plazaTab, _apartmentsTab },
         };
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { _search, newCrowd } };
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { _zoomBox, _search, newCrowd } };
         var headerGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         Grid.SetColumn(tabs, 1);
         Grid.SetColumn(tools, 2);
         headerGrid.Children.Add(title);
         headerGrid.Children.Add(tabs);
         headerGrid.Children.Add(tools);
-        var header = new Border { Background = HeaderBg, Padding = new Thickness(18, 10), Child = headerGrid };
+        _header = new Border { Padding = new Thickness(18, 10), Child = headerGrid };
 
-        _status = new TextBlock { FontSize = 11, Foreground = Muted, VerticalAlignment = VerticalAlignment.Center };
-        var credit = new TextBlock { Text = Credit, FontSize = 11, Foreground = Faint, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        _status = new TextBlock { FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+        _credit = new TextBlock { Text = Credit, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         var footerGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        Grid.SetColumn(credit, 1);
+        Grid.SetColumn(_credit, 1);
         footerGrid.Children.Add(_status);
-        footerGrid.Children.Add(credit);
-        var footer = new Border { Background = HeaderBg, Padding = new Thickness(18, 7), Child = footerGrid };
+        footerGrid.Children.Add(_credit);
+        _footer = new Border { Padding = new Thickness(18, 7), Child = footerGrid };
 
         _suggestions = new StackPanel { Spacing = 2 };
         _suggestionsBox = new Border
         {
-            Background = CardBg,
             CornerRadius = new CornerRadius(14),
             Padding = new Thickness(6),
             Margin = new Thickness(0, 8, 18, 0),
@@ -165,10 +209,10 @@ public sealed class AlbumTownView : UserControl
         };
 
         _cardCover = new Image { Width = 88, Height = 88, Stretch = Stretch.UniformToFill };
-        _cardTitle = new TextBlock { FontSize = 16, FontWeight = FontWeight.Bold, Foreground = White, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
-        _cardArtist = new TextBlock { FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
-        _cardStats = new TextBlock { FontSize = 12, Foreground = Muted };
-        _cardReason = new TextBlock { FontSize = 11, Foreground = AccentBrush };
+        _cardTitle = new TextBlock { FontSize = 16, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
+        _cardArtist = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
+        _cardStats = new TextBlock { FontSize = 12 };
+        _cardReason = new TextBlock { FontSize = 11 };
         var play = Pill("Play", () => { if (_cardAlbum is { } a) _host.Play(a); }, accent: true);
         _cardShowAlbum = Pill("Go to album", () => { if (_cardAlbum is { } a) _host.ShowAlbum(a); });
         var close = Pill("Close", HideCard);
@@ -186,7 +230,6 @@ public sealed class AlbumTownView : UserControl
         var cardButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 14, 0, 0), Children = { play, _cardShowAlbum, close } };
         _card = new Border
         {
-            Background = CardBg,
             CornerRadius = new CornerRadius(18),
             Padding = new Thickness(16),
             Margin = new Thickness(18),
@@ -199,13 +242,14 @@ public sealed class AlbumTownView : UserControl
 
         var stage = new Panel { Children = { _plaza, _apartmentsScroll, _message, _card, _suggestionsBox } };
         var root = new DockPanel();
-        DockPanel.SetDock(header, Dock.Top);
-        DockPanel.SetDock(footer, Dock.Bottom);
-        root.Children.Add(header);
-        root.Children.Add(footer);
+        DockPanel.SetDock(_header, Dock.Top);
+        DockPanel.SetDock(_footer, Dock.Bottom);
+        root.Children.Add(_header);
+        root.Children.Add(_footer);
         root.Children.Add(stage);
         Content = root;
 
+        ApplyTheme(TownTheme.Dark);
         ShowTab(plaza: true);
         UpdateStatus();
     }
@@ -214,7 +258,12 @@ public sealed class AlbumTownView : UserControl
     public ApartmentsCanvas ApartmentsView => _apartments;
     public IReadOnlyList<TownAlbum> Town => _town;
     public IReadOnlyList<CastMember> Cast => _cast;
+    /// <summary>Big covers for the plaza and the card.</summary>
     public CoverCache Covers => _covers;
+    /// <summary>Small covers for the Apartments.</summary>
+    public CoverCache ResidentCovers => _residentCovers;
+    public TownTheme Palette => _theme;
+    public Slider ZoomSlider => _zoom;
     public bool IsCardOpen => _card.IsVisible;
     public TownAlbum? CardAlbum => _cardAlbum;
 
@@ -223,6 +272,8 @@ public sealed class AlbumTownView : UserControl
         base.OnAttachedToVisualTree(e);
         _host.NowPlayingChanged += OnNowPlayingChanged;
         _host.SettingsChanged += OnSettingsChanged;
+        ActualThemeVariantChanged += OnThemeChanged;
+        ApplyTheme(TownTheme.From(this));
         if (!_loadStarted)
         {
             _loadStarted = true;
@@ -234,7 +285,51 @@ public sealed class AlbumTownView : UserControl
     {
         _host.NowPlayingChanged -= OnNowPlayingChanged;
         _host.SettingsChanged -= OnSettingsChanged;
+        ActualThemeVariantChanged -= OnThemeChanged;
+        if (_zoomSave.IsEnabled)
+        {
+            _zoomSave.Stop();
+            _host.SaveZoom(_plaza.Zoom);
+        }
         base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>Frees the decoded covers (the window closed).</summary>
+    public void ReleaseCovers()
+    {
+        _covers.Dispose();
+        _residentCovers.Dispose();
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => ApplyTheme(TownTheme.From(this));
+
+    /// <summary>Paints the header, footer, card and plaza in <paramref name="theme"/>.</summary>
+    public void ApplyTheme(TownTheme theme)
+    {
+        _theme = theme;
+        _plaza.Palette = theme;
+        Foreground = theme.Text;
+        _header.Background = theme.Chrome;
+        _footer.Background = theme.Chrome;
+        _card.Background = theme.Card;
+        _suggestionsBox.Background = theme.Card;
+        _titleText.Foreground = theme.Text;
+        _byline.Foreground = theme.Faint;
+        _credit.Foreground = theme.Faint;
+        _status.Foreground = theme.Muted;
+        _message.Foreground = theme.Muted;
+        _cardTitle.Foreground = theme.Text;
+        _cardArtist.Foreground = theme.Muted;
+        _cardStats.Foreground = theme.Muted;
+        _cardReason.Foreground = theme.IsDark || TownTheme.Luminance(theme.Accent) < 0.6 ? theme.AccentBrush : theme.Muted;
+        foreach (var (button, label, accent) in _pills)
+        {
+            button.Background = accent ? theme.AccentBrush : theme.Chip;
+            label.Foreground = accent ? theme.OnAccent : theme.Text;
+        }
+        if (_zoomBox.Children[0] is TextBlock sizeLabel) sizeLabel.Foreground = theme.Muted;
+        _plazaTab.Background = _plaza.IsVisible ? theme.TabOn : Brushes.Transparent;
+        _apartmentsTab.Background = _plaza.IsVisible ? Brushes.Transparent : theme.TabOn;
     }
 
     /// <summary>Reads the library off the UI thread, then fills the plaza and the building.</summary>
@@ -329,7 +424,12 @@ public sealed class AlbumTownView : UserControl
             var member = new CastMember(album, CastReason.NowPlaying);
             if (_cast.Count >= Math.Clamp(_host.CrowdSize, PlazaCast.MinCrowd, PlazaCast.MaxCrowd))
             {
+                // Make room: someone out for a walk, else an earlier "now playing" visitor, else
+                // anyone the user did not call. (Only Random ones used to leave, so a long album
+                // shuffle grew the plaza past its size, one dancer per album.)
                 var leave = _cast.FindLastIndex(m => m.Reason == CastReason.Random);
+                if (leave < 0) leave = _cast.FindIndex(m => m.Reason == CastReason.NowPlaying);
+                if (leave < 0) leave = _cast.FindLastIndex(m => m.Reason != CastReason.Called);
                 if (leave >= 0) { _cast.RemoveAt(leave); _plaza.World.SetCast(_cast); }
             }
             _cast.Add(member);
@@ -352,9 +452,10 @@ public sealed class AlbumTownView : UserControl
     {
         _plaza.IsVisible = plaza;
         _apartmentsScroll.IsVisible = !plaza;
-        _plazaTab.Background = plaza ? TabOn : Brushes.Transparent;
-        _apartmentsTab.Background = plaza ? Brushes.Transparent : TabOn;
+        _plazaTab.Background = plaza ? _theme.TabOn : Brushes.Transparent;
+        _apartmentsTab.Background = plaza ? Brushes.Transparent : _theme.TabOn;
         _search.IsVisible = plaza;
+        _zoomBox.IsVisible = plaza;
         _suggestionsBox.IsVisible = false;
         if (!plaza) _apartments.InvalidateVisual();
         UpdateStatus();
@@ -410,8 +511,8 @@ public sealed class AlbumTownView : UserControl
                 {
                     Children =
                     {
-                        new TextBlock { Text = Or(a.Title, "Untitled"), Foreground = White, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis },
-                        new TextBlock { Text = Or(a.Artist, "Unknown artist"), Foreground = Muted, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis },
+                        new TextBlock { Text = Or(a.Title, "Untitled"), Foreground = _theme.Text, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis },
+                        new TextBlock { Text = Or(a.Artist, "Unknown artist"), Foreground = _theme.Muted, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis },
                     },
                 },
             };
@@ -455,27 +556,28 @@ public sealed class AlbumTownView : UserControl
 
     private static string Or(string s, string fallback) => string.IsNullOrWhiteSpace(s) ? fallback : s;
 
-    private static Button Tab(string text, Action click)
+    private Button Tab(string text, Action click)
     {
         var b = Pill(text, click);
         b.Background = Brushes.Transparent;
         return b;
     }
 
-    private static Button Pill(string text, Action click, bool accent = false)
+    private Button Pill(string text, Action click, bool accent = false)
     {
+        var label = new TextBlock { Text = text, FontSize = 12.5, FontWeight = FontWeight.SemiBold };
         var b = new Button
         {
-            Content = new TextBlock { Text = text, FontSize = 12.5, FontWeight = FontWeight.SemiBold, Foreground = White },
+            Content = label,
             Padding = new Thickness(14, 6),
             CornerRadius = new CornerRadius(999),
-            Background = accent ? AccentBrush : Chip,
             BorderThickness = new Thickness(0),
             Cursor = new Cursor(StandardCursorType.Hand),
             VerticalAlignment = VerticalAlignment.Center,
         };
         AutomationName(b, text);
         b.Click += (_, _) => click();
+        _pills.Add((b, label, accent));
         return b;
     }
 
