@@ -3463,6 +3463,108 @@
             </Border>
             </StackPanel>
             </Border>
+
+            <!-- GitHub #147: the Queue panel's rows and width. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.Queue}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.QueueRows}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.QueueRowsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,*" RowDefinitions="Auto,Auto,Auto"
+                          ColumnSpacing="8" RowSpacing="8">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T Settings.QueueFirstLine}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox Grid.Row="0" Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.QueueFirstLine}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueLine1Options}"
+                                  SelectedItem="{Binding SelectedQueueLine1Option}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <ComboBox Grid.Row="0" Grid.Column="2"
+                                  AutomationProperties.Name="{loc:T Settings.QueueFirstLineExtra}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueOptionalFieldOptions}"
+                                  SelectedItem="{Binding SelectedQueueLine1ExtraOption}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:T Settings.QueueSecondLine}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox Grid.Row="1" Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.QueueSecondLine}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueOptionalFieldOptions}"
+                                  SelectedItem="{Binding SelectedQueueLine2Option}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <ComboBox Grid.Row="1" Grid.Column="2"
+                                  AutomationProperties.Name="{loc:T Settings.QueueSecondLineExtra}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueOptionalFieldOptions}"
+                                  SelectedItem="{Binding SelectedQueueLine2ExtraOption}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:T Settings.QueueRightSide}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox Grid.Row="2" Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.QueueRightSide}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueRightOptions}"
+                                  SelectedItem="{Binding SelectedQueueRightOption}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.QueueWidth}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.QueueWidthHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.Narrower}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <Slider Grid.Column="1"
+                                AutomationProperties.Name="{loc:T Settings.QueueWidth}"
+                                Classes="accent-slider"
+                                Minimum="300" Maximum="720"
+                                x:Name="QueueWidthSlider"
+                                Value="{Binding QueuePanelWidth, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{loc:T Settings.Wider}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding QueuePanelWidth, StringFormat='{}{0:0} px'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="52" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
             </StackPanel>
 
             <StackPanel x:Name="LyricsTabPanel" Classes="tab-page" IsVisible="{Binding IsLyricsTabVisible}" Spacing="4">

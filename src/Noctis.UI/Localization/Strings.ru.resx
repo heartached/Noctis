@@ -2941,4 +2941,27 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.SleepFade30" xml:space="preserve"><value>30 с</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade60" xml:space="preserve"><value>60 с</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ExclusiveModePaused" xml:space="preserve"><value>Монопольный режим приостановлен: не удалось открыть устройство. Он попробует снова при следующем запуске или если выключить и снова включить его.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.Queue" xml:space="preserve"><value>Очередь</value><comment>Settings section label</comment></data>
+  <data name="Settings.QueueRows" xml:space="preserve"><value>Строки очереди</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRowsHint" xml:space="preserve"><value>Что показывает каждая песня в очереди. В строку можно добавить второе поле через точку.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueFirstLine" xml:space="preserve"><value>Первая строка</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueFirstLineExtra" xml:space="preserve"><value>Первая строка, добавленное поле</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueSecondLine" xml:space="preserve"><value>Вторая строка</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueSecondLineExtra" xml:space="preserve"><value>Вторая строка, добавленное поле</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRightSide" xml:space="preserve"><value>Справа</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidth" xml:space="preserve"><value>Ширина очереди</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidthHint" xml:space="preserve"><value>Насколько широкой открывается очередь. Можно также потянуть её левый край. Двойной щелчок по ползунку или краю сбрасывает.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueField.None" xml:space="preserve"><value>Нет</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Title" xml:space="preserve"><value>Название</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Artist" xml:space="preserve"><value>Исполнитель</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Album" xml:space="preserve"><value>Альбом</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.AlbumArtist" xml:space="preserve"><value>Исполнитель альбома</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Composer" xml:space="preserve"><value>Композитор</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Genre" xml:space="preserve"><value>Жанр</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Year" xml:space="preserve"><value>Год</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Duration" xml:space="preserve"><value>Длительность</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Format" xml:space="preserve"><value>Формат</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.Position" xml:space="preserve"><value>Номер в очереди</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.Duration" xml:space="preserve"><value>Длительность</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.None" xml:space="preserve"><value>Ничего</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
 </root>

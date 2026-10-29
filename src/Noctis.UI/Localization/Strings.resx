@@ -2941,4 +2941,27 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.SleepFade30" xml:space="preserve"><value>30 s</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade60" xml:space="preserve"><value>60 s</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ExclusiveModePaused" xml:space="preserve"><value>Exclusive Mode is paused: the device couldn't be opened. It will try again next launch or when you turn it off and on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.Queue" xml:space="preserve"><value>Queue</value><comment>Settings section label</comment></data>
+  <data name="Settings.QueueRows" xml:space="preserve"><value>Queue Rows</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRowsHint" xml:space="preserve"><value>What each song in the queue shows. A line can add a second field after a dot.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueFirstLine" xml:space="preserve"><value>First line</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueFirstLineExtra" xml:space="preserve"><value>First line, added field</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueSecondLine" xml:space="preserve"><value>Second line</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueSecondLineExtra" xml:space="preserve"><value>Second line, added field</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRightSide" xml:space="preserve"><value>Right side</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidth" xml:space="preserve"><value>Queue Width</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidthHint" xml:space="preserve"><value>How wide the queue opens. You can also drag the queue's left edge. Double-click the knob or the edge to reset.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueField.None" xml:space="preserve"><value>None</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Title" xml:space="preserve"><value>Title</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Artist" xml:space="preserve"><value>Artist</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Album" xml:space="preserve"><value>Album</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.AlbumArtist" xml:space="preserve"><value>Album artist</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Composer" xml:space="preserve"><value>Composer</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Genre" xml:space="preserve"><value>Genre</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Year" xml:space="preserve"><value>Year</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Duration" xml:space="preserve"><value>Duration</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Format" xml:space="preserve"><value>Format</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.Position" xml:space="preserve"><value>Queue number</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.Duration" xml:space="preserve"><value>Duration</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.None" xml:space="preserve"><value>Nothing</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
 </root>

@@ -449,6 +449,15 @@ public partial class PlayerViewModel : ViewModelBase
     /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
     /// 626 default mirrors both the settings default and the XAML base width.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = 536;
+    /// <summary>Queue panel width (GitHub #147). Hydrated from AppSettings.QueuePanelWidth and
+    /// set live by the panel's left-edge drag; the panel and its glass frost bind to it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(QueueTitleMaxWidth))]
+    private double _queuePanelWidth = QueuePanelMetrics.Default;
+    /// <summary>MaxWidth of a queue row's title: follows the panel width (165 at the stock 330).</summary>
+    public double QueueTitleMaxWidth => QueuePanelMetrics.TitleMaxWidth(QueuePanelWidth);
+    /// <summary>What the Queue panel rows show (GitHub #147); Settings swaps in a new instance.</summary>
+    [ObservableProperty] private QueueRowLayout _queueRowLayout = QueueRowLayout.Default;
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
@@ -1368,6 +1377,14 @@ public partial class PlayerViewModel : ViewModelBase
     {
         PlaybackBarIslandWidth = width;
         _settings?.SetPlaybackBarWidth(width);
+    }
+
+    /// <summary>Commits a finished queue panel resize (GitHub #147: drag release or edge
+    /// double-click reset) and persists it through Settings; headless tests have none.</summary>
+    public void CommitQueuePanelWidth(double width)
+    {
+        QueuePanelWidth = QueuePanelMetrics.Clamp(width);
+        _settings?.SetQueuePanelWidth(QueuePanelWidth);
     }
 
     /// <summary>Sets the play history log used for play/skip event recording.</summary>

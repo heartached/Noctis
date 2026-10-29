@@ -1510,6 +1510,96 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
         };
         vm.Player.PropertyChanged += _queuePopupStateHandler;
+
+        // GitHub #147: a stored width never pushes the drawer past the window's left edge.
+        if (_queuePopupPanel?.Parent is Control host)
+        {
+            host.SizeChanged += (_, _) => UpdateQueuePanelMaxWidth();
+            UpdateQueuePanelMaxWidth();
+        }
+    }
+
+    // GitHub #147: left-edge resize of the queue drawer. The drag writes Player.QueuePanelWidth
+    // live (the drawer, its frost and the row titles bind to it); release persists it.
+    private bool _queueResizeDragging;
+    private bool _queueResizeChanged;
+    private double _queueResizeStartX;
+    private double _queueResizeStartWidth;
+
+    /// <summary>The widest the drawer may be in this window: its host less the 8px margins.</summary>
+    private double QueuePanelHostMaxWidth() =>
+        _queuePopupPanel?.Parent is Control { Bounds.Width: > 0 } host
+            ? Math.Max(QueuePanelMetrics.Min, host.Bounds.Width - 16)
+            : QueuePanelMetrics.Max;
+
+    private void UpdateQueuePanelMaxWidth()
+    {
+        var max = QueuePanelHostMaxWidth();
+        if (_queuePopupPanel != null) _queuePopupPanel.MaxWidth = max;
+        if (_queueGlass != null) _queueGlass.MaxWidth = max;
+    }
+
+    private void OnQueueResizeGripPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control grip || DataContext is not MainWindowViewModel vm) return;
+        if (!e.GetCurrentPoint(grip).Properties.IsLeftButtonPressed) return;
+
+        if (e.ClickCount == 2)
+        {
+            // Double-click the edge: back to the stock width, persisted like a drag.
+            _queueResizeDragging = false;
+            vm.Player.CommitQueuePanelWidth(QueuePanelMetrics.Default);
+            e.Handled = true;
+            return;
+        }
+
+        _queueResizeDragging = true;
+        _queueResizeChanged = false;
+        _queueResizeStartX = e.GetPosition(this).X;
+        // The arranged width: MaxWidth may be clamping a wider stored value.
+        _queueResizeStartWidth = _queuePopupPanel is { Bounds.Width: > 0 } panel
+            ? panel.Bounds.Width
+            : vm.Player.QueuePanelWidth;
+        e.Pointer.Capture(grip);
+        e.Handled = true;
+    }
+
+    private void OnQueueResizeGripMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_queueResizeDragging || DataContext is not MainWindowViewModel vm) return;
+        // The drawer is pinned to the right edge, so pulling its left edge left widens it.
+        var target = _queueResizeStartWidth - (e.GetPosition(this).X - _queueResizeStartX);
+        target = QueuePanelMetrics.Clamp(Math.Min(target, QueuePanelHostMaxWidth()));
+        if (Math.Abs(vm.Player.QueuePanelWidth - target) >= 1)
+        {
+            vm.Player.QueuePanelWidth = target;
+            _queueResizeChanged = true;
+        }
+        e.Handled = true;
+    }
+
+    private void OnQueueResizeGripReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_queueResizeDragging) return;
+        _queueResizeDragging = false;
+        e.Pointer.Capture(null);
+        CommitQueueResize();
+        e.Handled = true;
+    }
+
+    private void OnQueueResizeGripCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_queueResizeDragging) return;
+        _queueResizeDragging = false;
+        // The width already changed on screen; keep Settings and disk in step with it.
+        CommitQueueResize();
+    }
+
+    private void CommitQueueResize()
+    {
+        if (_queueResizeChanged && DataContext is MainWindowViewModel vm)
+            vm.Player.CommitQueuePanelWidth(vm.Player.QueuePanelWidth);
+        _queueResizeChanged = false;
     }
 
     private bool _queueScrollToCurrentPending;
