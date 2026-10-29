@@ -23,16 +23,17 @@ namespace Noctis.Tests;
 [Collection("AlbumTown")]
 public class AlbumTownInputTests
 {
-    private static (AlbumTownView View, Window Window, FakeTownHost Host) Open(double scaling, int albums = 30, int playlists = 2)
+    private static (AlbumTownView View, Window Window, FakeTownHost Host) Open(double scaling, int albums = 30, int playlists = 2, bool covers = false)
     {
         var host = new FakeTownHost();
+        var art = covers ? CoverFiles(albums) : null;
         var genres = new[] { "Hip-Hop/Rap", "Rock", "Pop" };
         for (var i = 0; i < albums; i++)
         {
             var id = Guid.NewGuid().ToString("D");
             for (var n = 0; n < 3; n++)
                 host.Tracks.Add(T($"Song {i}-{n}", album: $"Album {i}", artist: $"Artist {i % 9}", plays: (i * 7 + n * 3) % 40, albumId: id,
-                    genre: genres[i % genres.Length], number: n + 1, id: $"t{i}-{n}"));
+                    genre: genres[i % genres.Length], number: n + 1, id: $"t{i}-{n}", art: art?[i] ?? "C:/art/a.jpg"));
         }
         for (var p = 0; p < playlists; p++)
             host.PlaylistList.Add(new PlaylistInfo("pl" + p, "Mix " + p, null, host.Tracks.Where((_, i) => i % (p + 2) == 0).Take(12).Select(t => t.Id).ToArray()));
@@ -47,6 +48,24 @@ public class AlbumTownInputTests
         if (Math.Abs(scaling - 1) > 1e-9) window.SetRenderScaling(scaling);
         Dispatcher.UIThread.RunJobs();
         return (view, window, host);
+    }
+
+    /// <summary>Real cover files (one colour each), so covers decode as in the app.</summary>
+    private static string[] CoverFiles(int count)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "albumtown-input-covers");
+        Directory.CreateDirectory(dir);
+        var files = new string[count];
+        for (var i = 0; i < count; i++)
+        {
+            files[i] = Path.Combine(dir, $"cover{i}.png");
+            if (File.Exists(files[i])) continue;
+            using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(120, 120));
+            using (var ctx = bmp.CreateDrawingContext())
+                ctx.FillRectangle(new Avalonia.Media.SolidColorBrush(CoverCache.Pastel("c" + i, 0.5f)), new Rect(0, 0, 120, 120));
+            bmp.Save(files[i]);
+        }
+        return files;
     }
 
     /// <summary>The app's resources and styles (smooth scrolling, scroll bars, inertia) as in Noctis.</summary>
@@ -337,6 +356,150 @@ public class AlbumTownInputTests
         Click(window, At(canvas, canvas.ToPx(pet.X, pet.Y - pet.Size * 0.8), window));
         Assert.True(view.IsCardOpen);
         Assert.Same(pet.Album, view.CardAlbum);
+        window.Close();
+    }
+
+    // ── Gesture after gesture (one view, no reopening) ──
+
+    /// <summary>As the live test did it: press, a pause, 40 moves 15 ms apart, a pause, release,
+    /// with the window's frames running (pets walk, the canvas repaints) between the moves.</summary>
+    private static void LiveDrag(Window w, Point from, Point to, int steps = 40)
+    {
+        void Frame()
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+        }
+        // Real time passes with frames coming (the canvas runs its frame gate on the clock).
+        void Hold(int ms)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            do { Frame(); Thread.Sleep(4); } while (sw.ElapsedMilliseconds < ms);
+        }
+        w.MouseMove(from);
+        Frame();
+        w.MouseDown(from, MouseButton.Left);
+        Hold(200);
+        for (var i = 1; i <= steps; i++)
+        {
+            var t = i / (double)steps;
+            w.MouseMove(new Point(from.X + (to.X - from.X) * t, from.Y + (to.Y - from.Y) * t), RawInputModifiers.LeftMouseButton);
+            Hold(15);
+        }
+        Hold(300);
+        w.MouseUp(to, MouseButton.Left);
+        Frame();
+        // The pointer rests where it was let go for a moment, frames keep coming.
+        for (var i = 0; i < 5; i++) { Thread.Sleep(2); Frame(); }
+    }
+
+    private static Point Cover(AlbumTownView view, Window window, ShelfItem item)
+        => At(view.Shelf, view.Shelf.TileRect(item)!.Value.Center, window);
+
+    /// <summary>Pets out of the way of the rooms' bodies and grips (they are clickable too).</summary>
+    private static void PetsAside(AlbumTownView view)
+    {
+        foreach (var pet in view.Life.Pets) { pet.X = pet.Area.Rect.X + 0.05; }
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    public void BuildingARoom_ThenAnother_ThenResizingTheFirst_AllWork(double scaling)
+    {
+        var (view, window, host) = Open(scaling, covers: true);
+        ShowApartments(view, window);
+        var canvas = view.ApartmentsView;
+        var albums = view.Shelf.Items.Where(i => i.Kind == RoomKind.Album).Take(3).ToList();
+        // Music on, as in the app: a beat to dance to, and the first room's album playing.
+        var song = host.Tracks.First(t => view.Town.Single(a => a.Key == albums[0].Source).TrackIds.Contains(t.Id));
+        host.Pulse = 0.6;
+        host.NowPlaying = new NowPlayingTrack(song.Title, song.Artist, song.Album, song.Duration, song.FilePath, song.ArtworkPath, 120);
+        host.IsPlaying = true;
+        host.RaiseNowPlaying();
+
+        LiveDrag(window, Cover(view, window, albums[0]), At(canvas, canvas.ToPx(3.5, 2.5), window));
+        var first = Assert.Single(view.Building.Rooms);
+        Assert.Equal(new Cells(3, 2, 1, 1), first.Cells);
+        Assert.False(canvas.IsDragging);
+        // Its pet lives: the canvas now runs frames on its own (it was idle before the first room).
+        var frames = canvas.Frames;
+        Assert.Single(view.Life.Pets);
+
+        LiveDrag(window, Cover(view, window, albums[1]), At(canvas, canvas.ToPx(5.5, 2.5), window));
+        Assert.True(canvas.Frames > frames + 10, $"frames {frames} -> {canvas.Frames}");
+        Assert.Equal(2, view.Building.Rooms.Count);
+        Assert.Equal(new Cells(5, 2, 1, 1), view.Building.FindSource(RoomKind.Album, albums[1].Source)!.Cells);
+
+        LiveDrag(window, Cover(view, window, albums[2]), At(canvas, canvas.ToPx(3.5, 4.5), window));
+        Assert.Equal(3, view.Building.Rooms.Count);
+        Assert.Equal(new Cells(3, 4, 1, 1), view.Building.FindSource(RoomKind.Album, albums[2].Source)!.Cells);
+
+        PetsAside(view);
+        var rect = canvas.RoomRect(first.Cells);
+        LiveDrag(window, At(canvas, new Point(rect.Right - 4, rect.Bottom - 4), window), At(canvas, canvas.ToPx(3.9, 3.9), window));
+        Assert.Equal(new Cells(3, 2, 1, 2), first.Cells);
+        Assert.False(canvas.IsDragging);
+        window.Close();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    public void FiveShelfDrags_InARow_BuildFiveRooms(double scaling)
+    {
+        var (view, window, _) = Open(scaling);
+        ShowApartments(view, window);
+        var canvas = view.ApartmentsView;
+        var albums = view.Shelf.Items.Where(i => i.Kind == RoomKind.Album).Take(5).ToList();
+        for (var n = 0; n < 5; n++)
+        {
+            LiveDrag(window, Cover(view, window, albums[n]), At(canvas, canvas.ToPx(1.5 + n * 2, 1.5), window));
+            Assert.Equal(n + 1, view.Building.Rooms.Count);
+            Assert.Equal(new Cells(1 + n * 2, 1, 1, 1), view.Building.FindSource(RoomKind.Album, albums[n].Source)!.Cells);
+            Assert.False(canvas.IsDragging);
+        }
+        window.Close();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    public void MovingARoom_RightAfterBuildingIt_Works(double scaling)
+    {
+        var (view, window, _) = Open(scaling);
+        ShowApartments(view, window);
+        var canvas = view.ApartmentsView;
+        var item = view.Shelf.Items.First(i => i.Kind == RoomKind.Album);
+        LiveDrag(window, Cover(view, window, item), At(canvas, canvas.ToPx(2.5, 2.5), window));
+        var room = Assert.Single(view.Building.Rooms);
+        PetsAside(view);
+        var rect = canvas.RoomRect(room.Cells);
+        var grab = new Point(rect.X + rect.Width * 0.7, rect.Y + rect.Height * 0.5);
+        LiveDrag(window, At(canvas, grab, window), At(canvas, grab + new Vector(canvas.Cell * 3, canvas.Cell), window));
+        Assert.Equal(new Cells(5, 3, 1, 1), room.Cells);
+        Assert.False(canvas.IsDragging);
+        window.Close();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    public void DoubleClickingACover_AfterADrag_PlacesIt(double scaling)
+    {
+        var (view, window, _) = Open(scaling);
+        ShowApartments(view, window);
+        var canvas = view.ApartmentsView;
+        var albums = view.Shelf.Items.Where(i => i.Kind == RoomKind.Album).Take(2).ToList();
+        LiveDrag(window, Cover(view, window, albums[0]), At(canvas, canvas.ToPx(4.5, 3.5), window));
+        Assert.Single(view.Building.Rooms);
+        var p = Cover(view, window, albums[1]);
+        Click(window, p);
+        Click(window, p);
+        Assert.Equal(2, view.Building.Rooms.Count);
+        Assert.NotNull(view.Building.FindSource(RoomKind.Album, albums[1].Source));
         window.Close();
     }
 
