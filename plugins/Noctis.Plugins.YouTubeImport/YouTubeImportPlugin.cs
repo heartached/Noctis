@@ -45,7 +45,7 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         // GitHub's API refuses requests without a User-Agent (the update check).
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Noctis-AddFromYouTube", Version));
-        _state = new ImportState(host.DataDirectory);
+        _state = new ImportState(host.DataDirectory, () => LegacyAppSettings.Read(host.DataDirectory, LegacyAppSettings.DownloadFolderKey));
         _tool = new YtDlpTool(_http, ToolsDirectory(host.DataDirectory), CustomYtDlp, host.Log);
         _importer = new YouTubeImporter(_tool, host.LibraryImport, _http, () => _state.DownloadFolder, FfmpegLocator.Find, host.Log);
         _view = host.RegisterView(this);
@@ -58,21 +58,18 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
     /// downloaded twice; otherwise a tools folder inside the plugin's data folder.
     /// </summary>
     internal static string ToolsDirectory(string dataDirectory)
-    {
-        try
-        {
-            var dir = new DirectoryInfo(Path.GetFullPath(dataDirectory));
-            if (dir.Parent is { } parent && string.Equals(parent.Name, "plugin-data", StringComparison.OrdinalIgnoreCase) && parent.Parent is { } root)
-                return Path.Combine(root.FullName, "tools");
-        }
-        catch { /* odd path: fall through */ }
-        return Path.Combine(dataDirectory, "tools");
-    }
+        => LegacyAppSettings.AppDataRoot(dataDirectory) is { } root
+            ? Path.Combine(root, "tools")
+            : Path.Combine(dataDirectory, "tools");
 
+    /// <summary>The plugin's own setting; empty = the yt-dlp path set in Noctis before this was a
+    /// plugin (the app still uses that one for lyrics videos), else the plugin manages yt-dlp.</summary>
     private string CustomYtDlp()
     {
-        try { return _host?.Settings.GetString(CustomYtDlpSetting)?.Trim() ?? string.Empty; }
-        catch { return string.Empty; }
+        string own;
+        try { own = _host?.Settings.GetString(CustomYtDlpSetting)?.Trim() ?? string.Empty; }
+        catch { own = string.Empty; }
+        return own.Length > 0 || _host is null ? own : LegacyAppSettings.Read(_host.DataDirectory, LegacyAppSettings.YtDlpPathKey);
     }
 
     public Control CreateView()

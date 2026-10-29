@@ -567,6 +567,30 @@ public class YouTubeImportPluginTests : IDisposable
     }
 
     [Fact]
+    public void FirstRun_CarriesOverTheFolderSetInNoctis_OnceOnly()
+    {
+        // Owner 10-29: the built-in version's custom folder (C:\Users\...\Downloads\) was dropped.
+        var appData = Path.Combine(_root, "Noctis");
+        var pluginData = Path.Combine(appData, "plugin-data", YouTubeImportPlugin.Id);
+        var old = Path.Combine(_root, "My Downloads");
+        Directory.CreateDirectory(appData);
+        File.WriteAllText(Path.Combine(appData, "settings.json"),
+            System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["youTubeDownloadFolder"] = old + "  ", ["ytDlpPath"] = @"C:\tools\yt-dlp.exe" }));
+
+        Assert.Equal(old, LegacyAppSettings.Read(pluginData, LegacyAppSettings.DownloadFolderKey));
+        Assert.Equal(@"C:\tools\yt-dlp.exe", LegacyAppSettings.Read(pluginData, LegacyAppSettings.YtDlpPathKey));
+        Assert.Equal("", LegacyAppSettings.Read(Path.Combine(_root, "elsewhere"), LegacyAppSettings.DownloadFolderKey));
+
+        Func<string?> legacy = () => LegacyAppSettings.Read(pluginData, LegacyAppSettings.DownloadFolderKey);
+        var first = new ImportState(pluginData, legacy);
+        Assert.Equal(old, first.DownloadFolder);
+
+        // Reset to the default in the window: the old folder does not come back next time.
+        first.SetDownloadFolder("");
+        Assert.Equal("", new ImportState(pluginData, legacy).DownloadFolder);
+    }
+
+    [Fact]
     public void Manifest_MatchesThePlugin_AndAsksForTheMinimum()
     {
         var m = PluginManifest.TryLoad(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport"))!;
