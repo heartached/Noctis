@@ -48,9 +48,10 @@ public class OfficialPluginsFlowTests : IDisposable
         return new Mounted(vm, host, dialogs, persistence, server);
     }
 
+    /// <summary>The listed zip: credited to Noctis like the list entry, so the install is verified official.</summary>
     private byte[] ZipBytes(string version, string id = "dev.test.zip")
         => File.ReadAllBytes(_box.WriteZip($"{id}-{version}.zip",
-            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: id, version: version))),
+            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: id, version: version, author: "Noctis"))),
             ("Test.Plugin.dll", new byte[] { 1 })));
 
     /// <summary>Serves <paramref name="zip"/> at <see cref="Url"/> and lists it as dev.test.zip <paramref name="version"/>.</summary>

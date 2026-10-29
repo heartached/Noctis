@@ -95,21 +95,78 @@ public partial class SettingsView : UserControl
 
         // Plugins → Make your own plugin: three steps side by side, stacked on a narrow pane.
         MakePluginSteps.SizeChanged += (_, e) => LayoutMakePluginSteps(e.NewSize.Width);
-        // Custom Category's Install from file + folder + reload: under the title when they don't fit beside it.
-        CustomPluginsHeader.SizeChanged += (_, e) => LayoutCustomPluginsHeader(e.NewSize.Width);
+        // Plugins: search + Install from file / folder / refresh (actions under the search box when
+        // they don't fit beside it), and the cards per row from the page width.
+        PluginsHeader.SizeChanged += (_, e) => LayoutPluginsHeader(e.NewSize.Width);
+        PluginsTabPanel.SizeChanged += (_, e) => LayoutPluginGrid(e.NewSize.Width);
     }
 
-    /// <summary>Room the Custom Category title keeps beside its buttons before they drop under it.</summary>
-    private const double CustomPluginsTitleRoom = 120;
+    /// <summary>Room the search box keeps beside the header's actions before they drop under it.</summary>
+    internal const double PluginSearchMinWidth = 200;
 
-    private void LayoutCustomPluginsHeader(double width)
+    private void LayoutPluginsHeader(double width)
     {
-        var stacked = width < CustomPluginsActions.DesiredSize.Width + CustomPluginsTitleRoom;
-        Grid.SetRow(CustomPluginsActions, stacked ? 1 : 0);
-        Grid.SetColumn(CustomPluginsActions, stacked ? 0 : 1);
-        Grid.SetColumnSpan(CustomPluginsActions, stacked ? 2 : 1);
-        CustomPluginsActions.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
-        CustomPluginsActions.Margin = stacked ? new Thickness(0, 8, 0, 0) : default;
+        var stacked = width < PluginsHeaderActions.DesiredSize.Width + PluginSearchMinWidth;
+        Grid.SetRow(PluginsHeaderActions, stacked ? 1 : 0);
+        Grid.SetColumn(PluginsHeaderActions, stacked ? 0 : 1);
+        Grid.SetColumnSpan(PluginsHeaderActions, stacked ? 2 : 1);
+        Grid.SetColumnSpan(PluginSearchBox, stacked ? 2 : 1);
+        PluginsHeaderActions.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
+        PluginsHeaderActions.Margin = stacked ? new Thickness(0, 8, 0, 0) : new Thickness(10, 0, 0, 0);
+    }
+
+    /// <summary>Narrowest a plugin card gets before the grid drops a column, and the gap between cards.</summary>
+    internal const double PluginCardMinWidth = 190;
+    internal const double PluginCardGap = 12;
+    internal const int PluginGridMaxColumns = 4;
+
+    /// <summary>Cards per row for a page <paramref name="width"/> wide: as many as fit at
+    /// <see cref="PluginCardMinWidth"/>, at least one, at most <see cref="PluginGridMaxColumns"/>.</summary>
+    internal static int PluginGridColumnsFor(double width)
+        => Math.Clamp((int)Math.Floor((width + PluginCardGap) / (PluginCardMinWidth + PluginCardGap)), 1, PluginGridMaxColumns);
+
+    private void LayoutPluginGrid(double width)
+    {
+        if (width <= 0 || DataContext is not SettingsViewModel vm) return;
+        var columns = PluginGridColumnsFor(width);
+        if (vm.PluginGridColumns != columns) vm.PluginGridColumns = columns;
+    }
+
+    // ── A plugin's page ──
+
+    private double _pluginGridScrollOffset;
+    private PluginCardItem? _openedPluginCard;
+
+    /// <summary>
+    /// The page opens at the top with the back button focused (keyboard users land on it); going
+    /// back restores where the grid was scrolled and puts focus on the card that opened the page.
+    /// </summary>
+    private void OnPluginDetailChanged(SettingsViewModel vm)
+    {
+        if (vm.SelectedPluginCard is { } card)
+        {
+            if (_openedPluginCard is null) _pluginGridScrollOffset = SettingsScrollViewer.Offset.Y;
+            _openedPluginCard = card;
+            ScrollToTop();
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (PluginDetailHost.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "PluginBackButton") is { } back)
+                    back.Focus(NavigationMethod.Unspecified); // focus moves (Tab goes on from Back), no ring for a mouse click
+            }, DispatcherPriority.Loaded);
+            return;
+        }
+
+        var opened = _openedPluginCard;
+        _openedPluginCard = null;
+        if (opened is null) return;
+        var offset = _pluginGridScrollOffset;
+        Dispatcher.UIThread.Post(() =>
+        {
+            SettingsScrollViewer.Offset = new Vector(SettingsScrollViewer.Offset.X, offset);
+            var cardButton = PluginsListPage.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(b => b.Classes.Contains("plugin-card") && ReferenceEquals(b.DataContext, opened));
+            cardButton?.Focus(NavigationMethod.Unspecified);
+        }, DispatcherPriority.Loaded);
     }
 
     /// <summary>Below this width the three Make your own plugin steps stack: side by side, each
@@ -477,6 +534,10 @@ public partial class SettingsView : UserControl
 
             // Phone app / Web Remote / Local API turned on: their body glides open below the
             // fold (Local API is the page's last card), so follow the card down as it grows.
+            case nameof(SettingsViewModel.SelectedPluginCard):
+                if (_trackedViewModel is { } pluginsVm) OnPluginDetailChanged(pluginsVm);
+                break;
+
             case nameof(SettingsViewModel.IsPhoneCardOpen):
                 if (_trackedViewModel?.IsPhoneCardOpen == true) FollowReveal(PhoneCard, PhoneBody);
                 break;

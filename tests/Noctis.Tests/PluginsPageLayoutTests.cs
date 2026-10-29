@@ -18,10 +18,11 @@ using Xunit;
 namespace Noctis.Tests;
 
 /// <summary>
-/// Settings → Plugins layout: the Community plugins switch first, then Official Plugins, then
-/// Custom Category (Install from file plus folder and reload icon buttons, the folder path in a
-/// tooltip) holding what the user added, then Make your own plugin (three steps, Read the Guide,
-/// Submit a Plugin). With the switch off, a code plugin's row greys out.
+/// Settings → Plugins layout: the Community plugins switch first, then the search box with Install
+/// from file and the folder and refresh icon buttons (the folder path in a tooltip), then the
+/// Official Noctis plugins and Community plugins card grids, then Make your own plugin (three
+/// steps, Read the Guide, Submit a Plugin). With the switch off, a code plugin's card greys out.
+/// (The grid, the detail page, search and trust: PluginsGridTests.)
 /// </summary>
 public class PluginsPageLayoutTests : IDisposable
 {
@@ -72,7 +73,7 @@ public class PluginsPageLayoutTests : IDisposable
         Assert.False(host.CommunityPluginsEnabled);
 
         var code = host.FindById("dev.test.code")!;
-        Assert.True(code.IsRestricted);       // the row greys out (StackPanel.plugin-body.restricted)
+        Assert.True(code.IsRestricted);       // the card greys out (Button.plugin-card.restricted)
         Assert.False(code.ShowStatusBadge);   // instead of a "Restricted" pill
         Assert.False(code.CanToggle);
         Assert.False(host.Plugins.Single(p => p.IsContentPack).IsRestricted);
@@ -90,7 +91,7 @@ public class PluginsPageLayoutTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void Page_IsTheSwitch_ThenOfficial_ThenCustom_WithEveryCommandWired()
+    public void Page_IsTheSwitch_Search_Official_Community_ThenMakeYourOwn_WithEveryCommandWired()
     {
         var (vm, host, _, persistence) = Mount();
         using var _p = persistence;
@@ -104,33 +105,35 @@ public class PluginsPageLayoutTests : IDisposable
             Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
 
+            var list = view.FindControl<StackPanel>("PluginsListPage")!;
+            int IndexOf(string name) => list.Children.IndexOf(view.FindControl<Control>(name)!);
+            Assert.Equal(0, IndexOf("CommunityPluginsCard"));
+            Assert.True(IndexOf("CommunityPluginsCard") < IndexOf("PluginsHeader"));
+            Assert.True(IndexOf("PluginsHeader") < IndexOf("OfficialPluginsSection"));
+            Assert.True(IndexOf("OfficialPluginsSection") < IndexOf("CommunityPluginsSection"));
+            // Make your own plugin closes the grid page.
+            Assert.Equal(list.Children.Count - 1, IndexOf("MakePluginCard"));
+            // The grid and a plugin's page are the Plugins tab's two children.
             var panel = view.FindControl<StackPanel>("PluginsTabPanel")!;
-            int IndexOf(string name) => panel.Children.IndexOf(view.FindControl<Control>(name)!);
-            var official = panel.Children.IndexOf(view.FindControl<ItemsControl>("OfficialPluginsList")!.Parent as Control ?? throw new InvalidOperationException());
-            Assert.True(official >= 0);
-            Assert.True(IndexOf("CommunityPluginsCard") < official);
-            Assert.True(official < IndexOf("CustomPluginsCard"));
-            // Make your own plugin closes the page.
-            Assert.Equal(panel.Children.Count - 1, IndexOf("MakePluginCard"));
+            Assert.Equal(new Control[] { list, view.FindControl<StackPanel>("PluginDetailPage")! }, panel.Children.ToArray());
 
-            // The hand-installed test plugin is not on the official list: it is a Custom row.
+            // The hand-installed test plugin is not on the official list: a community card.
             Assert.Equal("dev.test.code", Assert.Single(vm.CustomPlugins).Id);
+            Assert.Contains(vm.CommunityCards, c => c.Id == "dev.test.code");
+            // The official list shows the built-in copy at once (no client = no fetch in tests): Mixxx.
+            Assert.Contains(vm.OfficialCards, c => c.Id == "dev.noctis.plugins.mixxx");
 
-            // The official list shows the built-in copy at once (no client = no fetch in tests).
-            Assert.NotEmpty(vm.OfficialPlugins);
-
-            Assert.Same(vm.RefreshOfficialPluginsCommand, view.FindControl<Button>("RefreshOfficialPluginsButton")!.Command);
-            // Submit a Plugin lives on the Make your own plugin card, no longer in the Official header.
+            Assert.Same(vm.RefreshPluginsCommand, view.FindControl<Button>("RefreshPluginsButton")!.Command);
+            Assert.Equal(Loc.T("Plugins.Refresh"), ToolTip.GetTip(view.FindControl<Button>("RefreshPluginsButton")!));
+            // Submit a Plugin lives on the Make your own plugin card.
             var submit = view.FindControl<Button>("SubmitPluginButton")!;
             Assert.Same(vm.SubmitPluginCommand, submit.Command);
             Assert.Contains(view.FindControl<Border>("MakePluginCard")!, submit.GetLogicalAncestors());
             Assert.Same(vm.OpenPluginGuideCommand, view.FindControl<Button>("ReadPluginGuideButton")!.Command);
-            // Each official row credits its author ("by Noctis" for Mixxx).
-            Assert.Contains(view.FindControl<ItemsControl>("OfficialPluginsList")!.GetLogicalDescendants().OfType<TextBlock>(),
-                t => t.Text == Loc.T("Plugins.Get.By", "Noctis") && t.IsVisible);
+            // Each official card credits its author ("by Noctis" for Mixxx).
+            Assert.Contains(view.FindControl<ItemsControl>("OfficialPluginsGrid")!.GetVisualDescendants().OfType<TextBlock>(),
+                t => t.Text == Loc.T("Plugins.Get.By", "Noctis") && t.IsEffectivelyVisible);
             Assert.Same(vm.InstallPluginFromFileCommand, view.FindControl<Button>("InstallPluginFromFileButton")!.Command);
-            Assert.Same(vm.ReloadPluginsCommand, view.FindControl<Button>("ReloadPluginsButton")!.Command);
-            Assert.Equal(Loc.T("Plugins.Reload"), ToolTip.GetTip(view.FindControl<Button>("ReloadPluginsButton")!));
 
             var folder = view.FindControl<Button>("OpenPluginsFolderButton")!;
             Assert.Same(vm.OpenPluginsFolderCommand, folder.Command);
@@ -142,15 +145,13 @@ public class PluginsPageLayoutTests : IDisposable
 
             // The path is no longer a line of its own on the page.
             Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == host.PluginsDirectory);
-
-            // No hairline above a list's first row (it showed above Mixxx); none on the status line either.
-            var firstRow = view.FindControl<ItemsControl>("OfficialPluginsList")!
-                .GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("setting-row"));
-            Assert.Equal(new Thickness(0), firstRow.BorderThickness);
-            // (Make your own plugin says "Publish it on GitHub" on purpose: a step, not a status line.)
             var makeCard = view.FindControl<Border>("MakePluginCard")!;
             Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
                 t => t.IsEffectivelyVisible && t.Text?.Contains("GitHub") == true && !t.GetVisualAncestors().Contains(makeCard));
+
+            // Every card and every header button has a name a screen reader can read.
+            foreach (var b in list.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible))
+                Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(b)), $"{b.Name ?? b.GetType().Name} has no accessible name");
         }
         finally { window.Close(); }
     }
@@ -184,8 +185,8 @@ public class PluginsPageLayoutTests : IDisposable
             Assert.Equal(3, boxes.Count);
             Assert.All(boxes, b => Assert.Equal(boxes[0].Y, b.Y));
             Assert.True(boxes[0].Right <= boxes[1].X && boxes[1].Right <= boxes[2].X);
-            var customActions = view.FindControl<StackPanel>("CustomPluginsActions")!;
-            Assert.Equal(0, Grid.GetRow(customActions)); // Custom Category's buttons beside its title
+            var actions = view.FindControl<WrapPanel>("PluginsHeaderActions")!;
+            Assert.Equal(0, Grid.GetRow(actions)); // the header's buttons beside the search box
 
             // Narrow pane (a small window at a large Interface Size): stacked, one under another,
             // each the full width.
@@ -200,16 +201,6 @@ public class PluginsPageLayoutTests : IDisposable
             Assert.All(boxes, b => Assert.Equal(boxes[0].X, b.X));
             Assert.True(boxes[0].Bottom <= boxes[1].Y && boxes[1].Bottom <= boxes[2].Y);
             Assert.All(boxes, b => Assert.Equal(steps.Bounds.Width, b.Width, 1));
-
-            // Custom Category's buttons drop under the title, and nothing on the page runs past its
-            // right edge (it did: the header's buttons, and "Requires Noctis 1.5.9" on an official row).
-            Assert.Equal(1, Grid.GetRow(customActions));
-            var page = view.FindControl<StackPanel>("PluginsTabPanel")!;
-            foreach (var b in page.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible))
-            {
-                var right = b.TranslatePoint(new Point(b.Bounds.Width, 0), page)!.Value.X;
-                Assert.True(right <= page.Bounds.Width + 0.5, $"{b.Name ?? b.GetType().Name} in{string.Join(" < ", b.GetLogicalAncestors().OfType<Control>().Where(a => !string.IsNullOrEmpty(a.Name)).Take(2).Select(a => a.Name))} ends at {right}, page is {page.Bounds.Width}");
-            }
 
             // Read the Guide, then Submit a Plugin: in reading order and in Tab order, both named.
             var guide = view.FindControl<Button>("ReadPluginGuideButton")!;
@@ -262,6 +253,13 @@ public class PluginsPageLayoutTests : IDisposable
             "Plugins.Make.Title", "Plugins.Make.Line", "Plugins.Make.Step1Title", "Plugins.Make.Step1", "Plugins.Make.Step2Title",
             "Plugins.Make.Step2", "Plugins.Make.Step3Title", "Plugins.Make.Step3", "Plugins.Make.Guide", "Plugins.Submit",
             "Integrations.More.Title", "Integrations.More.Line", "Integrations.More.Browse",
+            // The grid and a plugin's page.
+            "Plugins.OfficialSection", "Plugins.CommunitySection", "Plugins.CommunityEmpty", "Plugins.Search", "Plugins.SearchEmpty",
+            "Plugins.Refresh", "Plugins.ReloadedNone", "Plugins.ReloadedOne", "Plugins.ReloadedMany", "Plugins.Get.Replace",
+            "Plugins.Card.NoAuthor", "Plugins.Card.Installing", "Plugins.Card.On", "Plugins.Card.Off", "Plugins.Card.Verified",
+            "Plugins.Card.A11yOfficial", "Plugins.Card.A11yCommunity", "Plugins.Card.A11yCommunityNoAuthor",
+            "Plugins.Detail.Back", "Plugins.Detail.Version", "Plugins.Detail.Homepage", "Plugins.Detail.Enabled",
+            "Plugins.Detail.EnableLine", "Plugins.Detail.RestrictedLine", "Plugins.Detail.Files", "Plugins.Detail.FilesLine",
         };
         foreach (var file in new[] { "Strings.resx", "Strings.ru.resx" })
         {
