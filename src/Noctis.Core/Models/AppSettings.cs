@@ -312,6 +312,20 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
     public bool KeepPlayedInQueue { get; set; }
 
+    /// <summary>Queue panel width in DIPs (GitHub #147): its left edge drags, Settings ▸ Player ▸
+    /// Queue has a slider. See <see cref="QueuePanelMetrics"/> for the range.</summary>
+    public double QueuePanelWidth { get; set; } = QueuePanelMetrics.Default;
+
+    /// <summary>What Queue panel rows show (GitHub #147), as <see cref="QueueRowField"/> names:
+    /// line 1 and line 2 each a field plus an optional extra one ("None"), and the right slot as a
+    /// <see cref="QueueRowSide"/> name. Read through <see cref="QueueRowLayout.FromSettings"/>;
+    /// the defaults are the rows from before the setting existed.</summary>
+    public string QueueRowLine1 { get; set; } = nameof(QueueRowField.Title);
+    public string QueueRowLine1Extra { get; set; } = nameof(QueueRowField.None);
+    public string QueueRowLine2 { get; set; } = nameof(QueueRowField.Artist);
+    public string QueueRowLine2Extra { get; set; } = nameof(QueueRowField.None);
+    public string QueueRowRight { get; set; } = nameof(QueueRowSide.Position);
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 
@@ -1162,6 +1176,7 @@ public class AppSettings : IJsonOnDeserializing
         // old default, so it follows the new one instead of leaving a stretched pill.
         if (PlaybackBarWidth == 626) PlaybackBarWidth = 536;
         PlaybackBarSkipSeconds = PlaybackBarSkipSeconds is 10 or 15 or 30 ? PlaybackBarSkipSeconds : 15;
+        QueuePanelWidth = QueuePanelMetrics.Clamp(QueuePanelWidth);
     }
 
     /// <summary>
