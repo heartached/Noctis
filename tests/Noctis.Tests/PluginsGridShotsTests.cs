@@ -62,6 +62,82 @@ public class PluginsGridShotsTests
             (dll, new byte[] { 1 }), ("icon.png", File.ReadAllBytes(Path.Combine(src, "icon.png"))));
     }
 
+    /// <summary>
+    /// The simpler plugin page and its Remove dialog (owner 10-29), on a 2560 x 1440 screen at
+    /// 125 %: the window is 2048 x 1152 DIP rendered at scaling 1.25. Album Roulette carries a
+    /// switch, a number (the Settings slider) and a list. NOCTIS_PLUGIN_POLISH_DIR names the
+    /// folder (polish-detail.png, polish-remove.png).
+    /// </summary>
+    [AvaloniaFact]
+    public void PluginPagePolish_SavePreviewPngs()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_PLUGIN_POLISH_DIR");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+        EnsureAppStyles();
+
+        using var box = new PluginSandbox();
+        box.Settings.CommunityPluginsEnabled = true;
+        AddRepoPlugin(box, "Noctis.Plugins.AlbumRoulette", "Noctis.Plugins.AlbumRoulette.dll");
+        var host = box.NewHost(appVersion: "1.6.6");
+        host.LoadAll();
+
+        using var persistence = new TestPersistenceService();
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory()) { Plugins = host };
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+
+        AccentTestHarness.WithAccent("#E86A9A", ThemeVariant.Dark, () =>
+        {
+            const double scale = 1.25;
+            var view = new SettingsView { DataContext = vm, Width = 1000, Height = 1000 };
+            var card = new Border
+            {
+                Child = view,
+                CornerRadius = new CornerRadius(22),
+                ClipToBounds = true,
+                BorderBrush = new SolidColorBrush(Color.Parse("#22FFFFFF")),
+                BorderThickness = new Thickness(1),
+                BoxShadow = BoxShadows.Parse("0 24 60 0 #80000000"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var window = new Window
+            {
+                Width = 2560 / scale, Height = 1440 / scale,
+                RequestedThemeVariant = ThemeVariant.Dark,
+                Background = new LinearGradientBrush
+                {
+                    StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                    EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                    GradientStops = { new GradientStop(Color.Parse("#1B1A20"), 0), new GradientStop(Color.Parse("#0C0C0F"), 1) },
+                },
+                Content = card,
+            };
+            window.Show();
+            window.SetRenderScaling(scale);
+            vm.OpenPluginCardCommand.Execute(vm.CommunityCards.First(c => c.Id == "dev.noctis.plugins.albumroulette"));
+            Pump(900);
+            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, "polish-detail.png"));
+
+            var dialog = new ConfirmationDialog(new ConfirmationRequest(
+                Noctis.Localization.Loc.T("Plugins.RemoveBody"),
+                Title: Noctis.Localization.Loc.T("Plugins.RemoveTitle", "Album Roulette"),
+                ConfirmText: Noctis.Localization.Loc.T("Plugins.Remove"),
+                OptionText: Noctis.Localization.Loc.T("Plugins.RemoveDeleteData"),
+                Width: 420))
+            {
+                Width = window.Width, Height = window.Height, RequestedThemeVariant = ThemeVariant.Dark,
+            };
+            _ = dialog.ShowDialog(window);
+            dialog.SetRenderScaling(scale);
+            Pump(900);
+            dialog.CaptureRenderedFrame()!.Save(Path.Combine(dir, "polish-remove.png"));
+            dialog.Close();
+            Pump(300);
+            window.Close();
+        });
+    }
+
     [AvaloniaFact]
     public void PluginsGridAndPage_SavePreviewPngs()
     {

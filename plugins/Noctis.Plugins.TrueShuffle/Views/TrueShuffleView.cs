@@ -14,10 +14,11 @@ public sealed class TrueShuffleView : UserControl
 {
     private readonly ShuffleController _controller;
     private readonly IPluginHost _host;
-    private readonly ComboBox _mode = new() { MinWidth = 220 };
-    private readonly ComboBox _source = new() { MinWidth = 220 };
+    // Pill lists and pill buttons: the Noctis look (the plugin window carries the app's pill classes).
+    private readonly ComboBox _mode = new() { MinWidth = 240, Classes = { "pill-field" } };
+    private readonly ComboBox _source = new() { MinWidth = 240, Classes = { "pill-field" } };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
-    private readonly Button _reset = new() { Content = "Forget heard songs" };
+    private readonly Button _reset = new() { Content = "Forget heard songs", Classes = { "pill-secondary" } };
     private List<ShuffleSource> _sources = new();
     private bool _confirmReset;
 
@@ -30,9 +31,9 @@ public sealed class TrueShuffleView : UserControl
         AutomationName(_mode, "Shuffle mode");
         AutomationName(_source, "What to shuffle");
 
-        var shuffle = new Button { Content = "Shuffle", Classes = { "accent" }, IsDefault = true };
+        var shuffle = new Button { Content = "Shuffle", Classes = { "pill-primary" }, IsDefault = true };
         shuffle.Click += async (_, _) => await ShuffleAsync();
-        var end = new Button { Content = "End True Shuffle" };
+        var end = new Button { Content = "End True Shuffle", Classes = { "pill-secondary" } };
         end.Click += (_, _) => _controller.End();
         _reset.Click += async (_, _) => await ResetAsync();
         _reset.LostFocus += (_, _) => { _confirmReset = false; _reset.Content = "Forget heard songs"; };
@@ -49,7 +50,7 @@ public sealed class TrueShuffleView : UserControl
                     new TextBlock { Text = "True Shuffle", FontSize = 22, FontWeight = FontWeight.Bold },
                     Row("Mode", _mode),
                     Row("Shuffle", _source),
-                    new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { shuffle, end, _reset } },
+                    new WrapPanel { Orientation = Orientation.Horizontal, ItemSpacing = 8, LineSpacing = 8, Margin = new Thickness(0, 4, 0, 0), Children = { shuffle, end, _reset } },
                     _status,
                     new TextBlock
                     {
@@ -74,11 +75,15 @@ public sealed class TrueShuffleView : UserControl
 
     private static void AutomationName(Control c, string name) => Avalonia.Automation.AutomationProperties.SetName(c, name);
 
-    private static Control Row(string label, Control field) => new StackPanel
+    private static Control Row(string label, Control field)
     {
-        Orientation = Orientation.Horizontal, Spacing = 12,
-        Children = { new TextBlock { Text = label, Width = 70, VerticalAlignment = VerticalAlignment.Center }, field },
-    };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("80,*") };
+        grid.Children.Add(new TextBlock { Text = label, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        field.HorizontalAlignment = HorizontalAlignment.Left;
+        Grid.SetColumn(field, 1);
+        grid.Children.Add(field);
+        return grid;
+    }
 
     private string? Setting(string key)
     {

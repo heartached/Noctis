@@ -2245,7 +2245,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Noctis будет загружать плагины, которые вы включите. Каждый из них при первом запуске запросит ваше одобрение.</value></data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve"><value>Включить</value></data>
   <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Удалить {0}?</value></data>
-  <data name="Plugins.RemoveBody" xml:space="preserve"><value>Папка плагина будет удалена. Его данные и настройки сохранятся, если не поставить флажок, — при переустановке плагин продолжит с того же места.</value></data>
+  <data name="Plugins.RemoveBody" xml:space="preserve"><value>Папка плагина будет удалена. Его данные и настройки сохранятся, если не включить переключатель ниже. При переустановке плагин продолжит с того же места.</value></data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve"><value>Также удалить его данные и настройки</value></data>
   <data name="Plugins.Removed" xml:space="preserve"><value>Плагин {0} удалён.</value></data>
   <data name="Plugins.RemoveFailed" xml:space="preserve"><value>Не удалось удалить некоторые файлы. Закройте Noctis и удалите {0} вручную.</value></data>
@@ -2272,7 +2272,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Get.DownloadFailed" xml:space="preserve"><value>Ошибка загрузки. Проверьте подключение и повторите попытку.</value></data>
   <data name="Plugins.Get.Mismatch" xml:space="preserve"><value>Загруженный файл не совпал с официальным списком, поэтому он не установлен.</value></data>
   <data name="Plugins.Get.NotAllowed" xml:space="preserve"><value>Эта ссылка для загрузки не разрешена, поэтому ничего не установлено.</value></data>
-  <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>Загруженный файл — не {0} {1}, поэтому он не установлен.</value></data>
+  <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>Загруженный файл не совпадает с {0} {1}, поэтому он не установлен.</value></data>
   <data name="Plugins.Get.By" xml:space="preserve"><value>автор: {0}</value></data>
   <data name="Plugins.Submit" xml:space="preserve"><value>Предложить плагин</value></data>
   <!-- Settings → Plugins → Make your own plugin -->
@@ -2304,13 +2304,27 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, плагин сообщества, автор: {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, плагин сообщества</value></data>
   <data name="Plugins.Detail.Back" xml:space="preserve"><value>Плагины</value></data>
-  <data name="Plugins.Detail.Version" xml:space="preserve"><value>Версия {0}</value></data>
+  <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
   <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>Открыть сайт</value></data>
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Включён</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Выключите, чтобы остановить плагин, не удаляя его.</value></data>
-  <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Плагины сообщества выключены, поэтому этот плагин не может работать. Включите их вверху страницы «Плагины».</value></data>
+  <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Включите плагины сообщества, чтобы им пользоваться.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Файлы плагина</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>При удалении его настройки и данные сохраняются, если вы не выберете иное.</value></data>
+  <data name="Plugins.Detail.More" xml:space="preserve"><value>Ещё</value></data>
+  <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Удалить плагин…</value></data>
+  <data name="Plugins.PermSummary" xml:space="preserve"><value>Может {0}</value></data>
+  <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
+  <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>управлять воспроизведением</value></data>
+  <data name="Plugins.PermVerb.LibraryRead" xml:space="preserve"><value>читать вашу медиатеку</value></data>
+  <data name="Plugins.PermVerb.Network" xml:space="preserve"><value>выходить в интернет</value></data>
+  <data name="Plugins.PermVerb.LyricsProvider" xml:space="preserve"><value>давать тексты песен</value></data>
+  <data name="Plugins.PermVerb.MenuCommands" xml:space="preserve"><value>добавлять пункты в меню трека</value></data>
+  <data name="Plugins.PermVerb.Notifications" xml:space="preserve"><value>показывать уведомления</value></data>
+  <data name="Plugins.PermVerb.LibraryWriteAnalysis" xml:space="preserve"><value>задавать BPM и тональность</value></data>
+  <data name="Plugins.PermVerb.LibraryImport" xml:space="preserve"><value>добавлять файлы в медиатеку</value></data>
+  <data name="Plugins.Setting.Decrease" xml:space="preserve"><value>Уменьшить: {0}</value></data>
+  <data name="Plugins.Setting.Increase" xml:space="preserve"><value>Увеличить: {0}</value></data>
 
   <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <data name="Integrations.More.Title" xml:space="preserve"><value>Другие интеграции</value></data>

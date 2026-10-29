@@ -44,6 +44,8 @@ public sealed class PluginViewWindow : Window
         Height = size.SizeToContent.HasFlag(SizeToContent.Height) ? double.NaN : size.Height;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = new SolidColorBrush(Color.FromRgb(0x14, 0x12, 0x18));
+        // Noctis's controls for the plugin's view: pill switches, buttons and lists, frosted menus.
+        Noctis.Helpers.PluginViewTheme.Apply(this);
         Content = content;
         view.Withdrawn += OnWithdrawn;
         _reactivate = BringForward;

@@ -229,7 +229,7 @@ public sealed partial class AlbumTownView : UserControl
         };
 
         var apartments = BuildApartments();
-        var stage = new Panel { Children = { _plaza, apartments, _message, _card, _suggestionsBox, _picker } };
+        var stage = new Panel { Children = { _plaza, apartments, _message, _card, _suggestionsBox, _pickerLayer } };
         var root = new DockPanel();
         DockPanel.SetDock(_header, Dock.Top);
         DockPanel.SetDock(_footer, Dock.Bottom);

@@ -19,7 +19,7 @@
 
         <StackPanel x:Name="DialogCard" Width="332" Margin="24,20,24,18" Spacing="18">
 
-            <!-- Message (+ optional title, detail lines, note and checkbox; see ConfirmationRequest) -->
+            <!-- Message (+ optional title, detail lines, note and option switch; see ConfirmationRequest) -->
             <StackPanel Spacing="10">
                 <TextBlock x:Name="TitleText"
                            IsVisible="False"
@@ -49,7 +49,15 @@
                            IsVisible="False"
                            FontSize="12" Opacity="0.65"
                            TextWrapping="Wrap" />
-                <CheckBox x:Name="OptionCheck" IsVisible="False" FontSize="13"/>
+                <!-- The option (e.g. Remove a plugin: "Also delete its data and settings"): a
+                     Settings row, label left and the app's round switch right (owner 10-29: no
+                     square checkbox). Clicking the label flips it too. -->
+                <Grid x:Name="OptionRow" ColumnDefinitions="*,Auto" IsVisible="False" Margin="0,4,0,0"
+                      Background="Transparent" PointerPressed="OnOptionRowPressed">
+                    <TextBlock x:Name="OptionLabel" FontSize="13" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <controls:LottieToggle x:Name="OptionToggle" Grid.Column="1" VerticalAlignment="Center"/>
+                </Grid>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">

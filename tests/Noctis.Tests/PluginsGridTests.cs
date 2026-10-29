@@ -310,16 +310,26 @@ public class PluginsGridTests : IDisposable
             Assert.Equal(Loc.T("Plugins.Detail.Back"), AutomationProperties.GetName(back));
             var texts = detail.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
             Assert.Contains("Code Thing", texts);
-            Assert.Contains(Loc.T("Plugins.Get.By", "Someone"), texts);
-            Assert.Contains(Loc.T("Plugins.Detail.Version", "1.0.0"), texts);
+            // "by Someone · v1.0.0" on one line.
+            Assert.Contains(Loc.T("Plugins.Get.By", "Someone") + " · " + Loc.T("Plugins.Detail.Version", "1.0.0"), texts);
+            Assert.Equal("v1.0.0", Loc.T("Plugins.Detail.Version", "1.0.0"));
+            // Permissions are one quiet line, not chips.
             Assert.Contains(Loc.T("Plugins.Permissions"), texts);
-            Assert.Contains(Loc.T("Plugins.Settings"), texts); // the settings moved here from the old row
-            Assert.Contains("Loud", texts);
-            // Its switch, its folder and Remove are on the page.
+            Assert.Contains(Loc.T("Plugins.PermSummary", Loc.T("Plugins.PermVerb.PlaybackControl")), texts);
+            Assert.DoesNotContain(Loc.T("Plugins.PermShort.PlaybackControl"), texts);
+            Assert.Contains("Loud", texts); // the plugin's own settings, as rows of the same card
+            // Its switch and Remove plugin... are on the page; the folder is in the "..." menu.
             Assert.NotNull(detail.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>().FirstOrDefault(t => t.Name == "PluginPageToggle"));
             var remove = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageRemoveButton");
             Assert.Same(m.Vm.RemovePluginCommand, remove.Command);
             Assert.Same(m.Host.FindById("dev.test.code"), remove.CommandParameter);
+            Assert.Equal(Loc.T("Plugins.Detail.RemoveRow"), AutomationProperties.GetName(remove));
+            var more = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageMoreButton");
+            Assert.True(more.IsEffectivelyVisible);
+            Assert.Equal(Loc.T("Plugins.Detail.More"), AutomationProperties.GetName(more));
+            var folder = Assert.Single(SettingsView.PluginMoreMenuItems(m.Vm, cardData)); // no homepage: just the folder
+            Assert.Same(m.Vm.OpenPluginDirectoryCommand, folder.Command);
+            Assert.Same(m.Host.FindById("dev.test.code"), folder.CommandParameter);
 
             back.Command!.Execute(back.CommandParameter);
             Pump();
@@ -377,14 +387,241 @@ public class PluginsGridTests : IDisposable
             Assert.Equal(Loc.T("Plugins.Get.Install"), AutomationProperties.GetName(install));
             Assert.Same(m.Vm.OfficialPluginActionCommand, install.Command);
             Assert.Contains("accent-pill", install.Classes);
-            var homepage = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageHomepageButton");
-            Assert.True(homepage.IsEffectivelyVisible);
+            // Visit homepage is a quiet item of the "..." menu, not a big pill.
+            Assert.DoesNotContain(detail.GetVisualDescendants().OfType<Button>(), b => b.Name == "PluginPageHomepageButton");
+            var more = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageMoreButton");
+            Assert.True(more.IsEffectivelyVisible);
+            more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
+            var homepage = Assert.IsType<MenuItem>(Assert.Single(menu.Items)); // not installed: no folder
+            Assert.Equal(Loc.T("Plugins.Detail.Homepage"), homepage.Header);
             Assert.Equal("https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx", ToolTip.GetTip(homepage));
-            // Not installed: no switch, no Remove.
-            Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageSwitchPanel").IsVisible);
-            Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageFilesPanel").IsVisible);
+            Assert.Same(m.Vm.OpenPluginHomepageCommand, homepage.Command);
+            menu.Hide();
+            // Not installed: no switch, no rows, no Remove.
+            Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageSwitchPanel").IsEffectivelyVisible);
+            Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageRemovePanel").IsVisible);
         }
         finally { window.Close(); }
+    }
+
+    /// <summary>Album Town's and Album Roulette's kinds of settings, plus a number with no full range
+    /// and a text setting with a hint.</summary>
+    private const string MixedSettings = """
+        [{ "key": "crowd", "label": "Albums in the plaza", "type": "number", "default": 40, "min": 24, "max": 60,
+           "description": "How many albums come to the plaza at once. Fewer is lighter on older computers, and the town is just as busy." },
+         { "key": "gap", "label": "Gap", "type": "number", "default": 1.5, "min": 0 },
+         { "key": "names", "label": "Show album names", "type": "bool", "default": false },
+         { "key": "motion", "label": "Motion", "type": "choice", "choices": ["Smooth (60 fps)", "Balanced (30 fps)", "Battery saver (15 fps)"], "default": "Balanced (30 fps)" },
+         { "key": "tool", "label": "Custom yt-dlp (optional)", "type": "string", "default": "", "placeholder": "Path to yt-dlp",
+           "description": "Leave empty and the plugin installs yt-dlp and keeps it up to date." }]
+        """;
+
+    private (SettingsView View, Window Window, StackPanel Detail) OpenMixedPage(Mounted m, double width = 1100)
+    {
+        _box.WriteFolder("dev.test.mixed", PluginSandbox.Manifest(id: "dev.test.mixed", name: "Mixed Settings", author: "Someone",
+            settingsJson: MixedSettings, permissions: new[] { "library.read", "playback.control" }), ("Test.Plugin.dll", new byte[] { 1 }));
+        m.Host.LoadAll();
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+        var view = new SettingsView { DataContext = m.Vm };
+        var window = new Window { Width = width, Height = 900, Content = view };
+        window.Show();
+        Pump();
+        m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == "dev.test.mixed"));
+        Settle(window);
+        return (view, window, view.FindControl<StackPanel>("PluginDetailPage")!);
+    }
+
+    [AvaloniaFact]
+    public void DetailPage_NumberSettings_AreTheSettingsSliderOrAPillStepper_NeverASquareSpinBox()
+    {
+        using var m = Mount(withClient: false);
+        var (_, window, detail) = OpenMixedPage(m);
+        try
+        {
+            var items = m.Host.FindById("dev.test.mixed")!.SettingItems;
+            Assert.Empty(detail.GetVisualDescendants().OfType<NumericUpDown>());
+
+            // A number with min and max: the Settings slider (accent-slider, 200 wide) with its value beside it.
+            var crowd = items.Single(i => i.Key == "crowd");
+            Assert.True(crowd.UsesSlider);
+            var slider = detail.GetVisualDescendants().OfType<Noctis.Controls.SmoothSlider>()
+                .Single(s => AutomationProperties.GetName(s) == "Albums in the plaza");
+            Assert.True(slider.IsEffectivelyVisible);
+            Assert.Contains("accent-slider", slider.Classes);
+            Assert.Equal((24d, 60d, 1d, 40d), (slider.Minimum, slider.Maximum, slider.Step, slider.SteppedValue));
+            var row = slider.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("plugin-row"));
+            Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), t => t.Classes.Contains("plugin-number-value") && t.Text == "40" && t.IsEffectivelyVisible);
+            slider.SteppedValue = 52;
+            Pump();
+            Assert.Equal("52", crowd.Value);
+            Assert.Equal("52", _box.Settings.PluginSettingValues["dev.test.mixed"]["crowd"]); // saved like before
+            Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), t => t.Classes.Contains("plugin-number-value") && t.Text == "52");
+
+            // No max: minus, the value, plus, in one rounded capsule; steps of 0.1 for a decimal default.
+            var gap = items.Single(i => i.Key == "gap");
+            Assert.True(gap.UsesStepper);
+            var stepper = detail.GetVisualDescendants().OfType<Border>()
+                .Single(b => b.Classes.Contains("plugin-stepper") && b.IsEffectivelyVisible);
+            Assert.Equal(new CornerRadius(999), stepper.CornerRadius);
+            var buttons = stepper.GetVisualDescendants().OfType<Button>().ToList();
+            Assert.Equal(new[] { Loc.T("Plugins.Setting.Decrease", "Gap"), Loc.T("Plugins.Setting.Increase", "Gap") },
+                buttons.Select(AutomationProperties.GetName));
+            buttons[1].Command!.Execute(null);
+            Assert.Equal(1.6m, gap.NumberValue);
+            for (var i = 0; i < 30; i++) buttons[0].Command!.Execute(null);
+            Assert.Equal(0m, gap.NumberValue); // clamped at min
+            Pump();
+            Assert.Contains(stepper.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "0");
+
+            // The other kinds: the Settings switch, the pill list, a full-width text box.
+            Assert.Contains(detail.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>(), t => AutomationProperties.GetName(t) == "Show album names");
+            var motion = detail.GetVisualDescendants().OfType<ComboBox>().Single(c => AutomationProperties.GetName(c) == "Motion");
+            Assert.Contains("pill-list", motion.Classes);
+            var text = detail.GetVisualDescendants().OfType<TextBox>().Single(t => AutomationProperties.GetName(t) == "Custom yt-dlp (optional)");
+            var textRow = text.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("plugin-row"));
+            Assert.True(text.Bounds.Width >= textRow.Bounds.Width - 1, $"text box {text.Bounds.Width} of a {textRow.Bounds.Width} row");
+            Assert.Equal("Path to yt-dlp", text.Watermark);
+
+            // A long description is one grey line; the whole of it is in the tooltip.
+            var hint = row.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("plugin-setting-hint"));
+            Assert.Equal(1, hint.MaxLines);
+            Assert.Equal(crowd.Description, ToolTip.GetTip(hint));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void DetailPage_IsOneCardOfRows_WithoutDebugText_AndThePermissionsLineOpens()
+    {
+        using var m = Mount(withClient: false);
+        var (_, window, detail) = OpenMixedPage(m);
+        try
+        {
+            var plugin = m.Host.FindById("dev.test.mixed")!;
+            plugin.Extensions = "View: A-B Loop · Menu: Loop a part";
+            Pump();
+            var texts = detail.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+            Assert.DoesNotContain(texts, t => t?.Contains("View: A-B Loop") == true);
+            Assert.DoesNotContain(Loc.T("Plugins.Settings"), texts); // no section titles: the rows say it all
+            Assert.DoesNotContain(Loc.T("Plugins.Detail.EnableLine"), texts); // a plugin that runs fine has no subtitle
+
+            // Enabled, the five settings and the permissions line share one card; Remove is its own row.
+            var group = detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageGroup");
+            var rows = group.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("plugin-row") && b.IsEffectivelyVisible).ToList();
+            Assert.Equal(7, rows.Count);
+            Assert.Equal(new Thickness(0), rows[0].BorderThickness); // no hairline above the first row
+            Assert.All(rows.Skip(1), r => Assert.Equal(new Thickness(0, 1, 0, 0), r.BorderThickness));
+            Assert.Equal(2, detail.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("plugin-panel") && b.IsEffectivelyVisible));
+
+            var summary = Loc.T("Plugins.PermSummary", Loc.T("Plugins.PermVerb.LibraryRead") + ", " + Loc.T("Plugins.PermVerb.PlaybackControl"));
+            Assert.Equal(summary, plugin.PermissionSummary);
+            Assert.Contains(summary, texts);
+            var line = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPagePermissions");
+            Assert.Equal(summary, AutomationProperties.GetHelpText(line));
+            var card = (PluginCardItem)detail.GetVisualDescendants().OfType<Grid>().First(g => g.Name == "PluginHero").DataContext!;
+            Assert.False(card.IsPermissionsExpanded);
+            line.Command!.Execute(null);
+            Settle(window);
+            Assert.True(card.IsPermissionsExpanded);
+            var list = detail.GetVisualDescendants().OfType<ItemsControl>().Single(i => i.Name == "PluginPagePermissionList");
+            Assert.Equal(new[] { Loc.T("Plugins.Perm.LibraryRead"), Loc.T("Plugins.Perm.PlaybackControl") },
+                list.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1300)]
+    [InlineData(900)]
+    [InlineData(640)]
+    [InlineData(580)]
+    public void DetailPage_AtNarrowWidths_NoTextIsClippedOrRunsPastTheEdge(double windowWidth)
+    {
+        using var m = Mount(withClient: false);
+        var (view, window, detail) = OpenMixedPage(m, windowWidth);
+        try
+        {
+            m.Vm.SelectedPluginCard!.IsPermissionsExpanded = true;
+            Settle(window);
+            AssertNoClippedText(detail, $"page {windowWidth}");
+
+            // The grid's own pills (Install from file, Read the guide ...) too.
+            m.Vm.ClosePluginDetailCommand.Execute(null);
+            Settle(window);
+            AssertNoClippedText(view.FindControl<StackPanel>("PluginsListPage")!, $"grid {windowWidth}");
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>Every visible text under <paramref name="page"/> shows whole: inside the page, as wide
+    /// and as tall as it needs (or, for a description trimmed on purpose, the whole text in its
+    /// tooltip); and every control ends inside the page.</summary>
+    private static void AssertNoClippedText(Control page, string what)
+    {
+        foreach (var t in page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)))
+        {
+            var left = t.TranslatePoint(new Point(0, 0), page)!.Value.X;
+            var right = t.TranslatePoint(new Point(t.Bounds.Width, 0), page)!.Value.X;
+            Assert.True(left >= -0.5 && right <= page.Bounds.Width + 0.5, $"{what}: \"{t.Text}\" spans {left}..{right} of {page.Bounds.Width}");
+            var layout = t.TextLayout;
+            if (t.TextTrimming == TextTrimming.None)
+            {
+                Assert.True(layout.WidthIncludingTrailingWhitespace <= t.Bounds.Width + 0.5 || t.TextWrapping != TextWrapping.NoWrap,
+                    $"{what}: \"{t.Text}\" needs {layout.WidthIncludingTrailingWhitespace}, has {t.Bounds.Width}");
+                Assert.True(layout.Height <= t.Bounds.Height + 0.5, $"{what}: \"{t.Text}\" cut at the bottom ({layout.Height} in {t.Bounds.Height})");
+            }
+            else if (layout.TextLines.Any(l => l.HasCollapsed) && (t.Classes.Contains("plugin-setting-hint") || t.Classes.Contains("plugin-choice-text")))
+            {
+                Assert.Equal(t.Text, ToolTip.GetTip(t) as string);
+            }
+        }
+        foreach (var c in page.GetVisualDescendants().OfType<Control>()
+                     .Where(c => c.IsEffectivelyVisible && c is Button or TextBox or ComboBox or Slider or Noctis.Controls.LottieToggle))
+        {
+            var right = c.TranslatePoint(new Point(c.Bounds.Width, 0), page)!.Value.X;
+            Assert.True(right <= page.Bounds.Width + 0.5, $"{what}: {c.GetType().Name} {AutomationProperties.GetName(c)} ends at {right} of {page.Bounds.Width}");
+        }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Remove_AsksWithTheSwitchRow_AndTheDataOptionStillDecides(bool deleteData)
+    {
+        using var m = Mount(withClient: false);
+        _box.WriteFolder("dev.test.code", PluginSandbox.Manifest(id: "dev.test.code", name: "Code Thing"), ("Test.Plugin.dll", new byte[] { 1 }));
+        m.Host.LoadAll();
+        var plugin = m.Host.FindById("dev.test.code")!;
+        Directory.CreateDirectory(plugin.DataDirectory);
+        File.WriteAllText(Path.Combine(plugin.DataDirectory, "state.json"), "{}");
+
+        ConfirmationRequest? asked = null;
+        m.Vm.ShowPluginDialog = r => { asked = r; return Task.FromResult(new ConfirmationResult(true, deleteData)); };
+        await m.Vm.RemovePluginCommand.ExecuteAsync(plugin);
+        Assert.Equal(Loc.T("Plugins.RemoveDeleteData"), asked!.OptionText);
+        Assert.Null(m.Host.FindById("dev.test.code"));
+        Assert.Equal(!deleteData, Directory.Exists(plugin.DataDirectory));
+
+        // The dialog itself: the option is a row with the app's switch, never a square checkbox.
+        var dialog = new ConfirmationDialog(asked);
+        dialog.Show();
+        try
+        {
+            Pump();
+            Assert.Empty(dialog.GetVisualDescendants().OfType<CheckBox>());
+            var toggle = dialog.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>().Single(t => t.Name == "OptionToggle");
+            Assert.True(toggle.IsEffectivelyVisible);
+            Assert.Equal(Loc.T("Plugins.RemoveDeleteData"), AutomationProperties.GetName(toggle));
+            var label = dialog.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "OptionLabel");
+            Assert.Equal(Loc.T("Plugins.RemoveDeleteData"), label.Text);
+            Assert.True(label.TranslatePoint(new Point(0, 0), toggle)!.Value.X < 0); // label left, switch right
+            Assert.False(dialog.OptionChecked);
+            toggle.IsChecked = true;
+            Assert.True(dialog.OptionChecked);
+        }
+        finally { dialog.Close(); }
     }
 
     // ── Icons ──

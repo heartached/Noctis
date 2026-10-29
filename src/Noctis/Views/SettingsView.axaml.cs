@@ -99,6 +99,8 @@ public partial class SettingsView : UserControl
         // they don't fit beside it), and the cards per row from the page width.
         PluginsHeader.SizeChanged += (_, e) => LayoutPluginsHeader(e.NewSize.Width);
         PluginsTabPanel.SizeChanged += (_, e) => LayoutPluginGrid(e.NewSize.Width);
+        // A plugin's page: on a narrow pane its settings' controls drop under their labels.
+        PluginDetailPage.SizeChanged += (_, e) => LayoutPluginRows(e.NewSize.Width);
     }
 
     /// <summary>Room the search box keeps beside the header's actions before they drop under it.</summary>
@@ -167,6 +169,53 @@ public partial class SettingsView : UserControl
                 .FirstOrDefault(b => b.Classes.Contains("plugin-card") && ReferenceEquals(b.DataContext, opened));
             cardButton?.Focus(NavigationMethod.Unspecified);
         }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Below this page width a plugin setting's control sits under its label (the slider
+    /// alone is 248 wide).</summary>
+    internal const double PluginRowStackWidth = 520;
+
+    private void LayoutPluginRows(double width) => PluginDetailPage.Classes.Set("narrow", width > 0 && width < PluginRowStackWidth);
+
+    /// <summary>The page header's "..." menu: Visit homepage (its address in the tooltip) and Open
+    /// folder, the two quiet actions that used to be big pills.</summary>
+    internal static List<MenuItem> PluginMoreMenuItems(SettingsViewModel vm, PluginCardItem card)
+    {
+        var items = new List<MenuItem>();
+        if (card.HasHomepage)
+        {
+            var homepage = new MenuItem
+            {
+                Name = "PluginPageHomepageItem",
+                Header = Noctis.Localization.Loc.T("Plugins.Detail.Homepage"),
+                Command = vm.OpenPluginHomepageCommand,
+                CommandParameter = card,
+            };
+            ToolTip.SetTip(homepage, card.Homepage);
+            items.Add(homepage);
+        }
+        if (card.Installed is { } plugin)
+            items.Add(new MenuItem
+            {
+                Name = "PluginPageFolderItem",
+                Header = Noctis.Localization.Loc.T("Plugins.OpenPluginFolder"),
+                Command = vm.OpenPluginDirectoryCommand,
+                CommandParameter = plugin,
+            });
+        return items;
+    }
+
+    /// <summary>The menu last opened from a plugin page's "..." button (tests).</summary>
+    internal MenuFlyout? PluginMoreMenu { get; private set; }
+
+    private void OnPluginMoreClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not PluginCardItem card || DataContext is not SettingsViewModel vm) return;
+        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        foreach (var item in PluginMoreMenuItems(vm, card)) menu.Items.Add(item);
+        if (menu.Items.Count == 0) return;
+        PluginMoreMenu = menu;
+        menu.ShowAt(button);
     }
 
     /// <summary>Below this width the three Make your own plugin steps stack: side by side, each
