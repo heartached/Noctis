@@ -7542,7 +7542,7 @@ public partial class SettingsViewModel : ViewModelBase
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
             TaskbarMediaControlsEnabled = defaultSettings.TaskbarMediaControlsEnabled;
-            // Upmix, sync, YouTube downloads and Lyrics Studio: re-read from the defaulted
+            // Upmix, sync and Lyrics Studio: re-read from the defaulted
             // _settings the same way LoadAsync does (ApplyAudioSettings below pushes upmix).
             LoadFeatureSettings();
 

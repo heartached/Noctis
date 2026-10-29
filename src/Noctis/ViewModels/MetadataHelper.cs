@@ -193,14 +193,6 @@ public static class MetadataHelper
         if (tracks.Count > 0) await OpenLyricsStudio(tracks);
     }
 
-    /// <summary>Search YouTube / paste a link and download into the library folder.</summary>
-    public static async Task OpenYouTubeDownloadDialog(string? initialQuery = null)
-    {
-        var service = App.Services!.GetRequiredService<Services.YouTube.IYouTubeImportService>();
-        var vm = new YouTubeDownloadViewModel(service, App.Services!.GetRequiredService<HttpClient>(), initialQuery);
-        await ShowDialogOwned(new YouTubeDownloadDialog(vm));
-    }
-
     /// <summary>Opens the Spek-style spectrogram window for one track (decodes via ffmpeg).</summary>
     public static async Task OpenSpectrogramWindow(Track track)
     {

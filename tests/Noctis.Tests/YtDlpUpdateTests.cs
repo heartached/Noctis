@@ -6,6 +6,8 @@ namespace Noctis.Tests;
 /// <summary>
 /// yt-dlp self-update + blocked-download retry (09-24 report: "HTTP Error 403: Forbidden" from a
 /// stale yt-dlp on Noctis 1.5.2). Pure helpers plus the tool driven through its internal seams.
+/// The app keeps yt-dlp for lyrics background videos; the audio side moved with "Add from
+/// YouTube" to the plugin (YouTubeImportToolTests drives the plugin's copy).
 /// </summary>
 public class YtDlpUpdateTests : IDisposable
 {
@@ -137,21 +139,12 @@ public class YtDlpUpdateTests : IDisposable
     public void ArgsBuilders_PassJsRuntimeBeforeTheUrl()
     {
         const string url = "https://www.youtube.com/watch?v=NvU2OQPyq-8";
-        foreach (var args in new[]
-                 {
-                     YtDlpParsing.InfoArgs(url, "node"),
-                     YtDlpParsing.DownloadArgs(url, "out/%(id)s.%(ext)s", null, "node"),
-                     YtDlpParsing.VideoDownloadArgs(url, "out/%(id)s.%(ext)s", "C:/ffmpeg/bin", 0, "node"),
-                 })
-        {
-            var i = args.ToList().IndexOf("--js-runtimes");
-            Assert.True(i >= 0);
-            Assert.Equal("node", args[i + 1]);
-            Assert.Equal(url, args[^1]);
-        }
-        Assert.Equal("node", YtDlpParsing.SearchArgs("song", 5, "node").SkipWhile(a => a != "--js-runtimes").Skip(1).First());
+        var args = YtDlpParsing.VideoDownloadArgs(url, "out/%(id)s.%(ext)s", "C:/ffmpeg/bin", 0, "node");
+        var i = args.ToList().IndexOf("--js-runtimes");
+        Assert.True(i >= 0);
+        Assert.Equal("node", args[i + 1]);
+        Assert.Equal(url, args[^1]);
         Assert.DoesNotContain("--js-runtimes", YtDlpParsing.VideoDownloadArgs(url, "o", null, 720));
-        Assert.DoesNotContain("--js-runtimes", YtDlpParsing.InfoArgs(url));
     }
 
     // ── Tool: update check / throttle / never touching foreign copies ────────
@@ -302,7 +295,7 @@ public class YtDlpUpdateTests : IDisposable
         Directory.CreateDirectory(target);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            tool.DownloadAsync("https://www.youtube.com/watch?v=vid", target, null, null, CancellationToken.None));
+            tool.DownloadVideoAsync("https://www.youtube.com/watch?v=vid", target, null, 0, null, CancellationToken.None));
 
         Assert.Equal(2, fake.Runs.Count);
         Assert.Equal(0, fake.UpdateCalls); // already current
@@ -342,26 +335,12 @@ public class YtDlpUpdateTests : IDisposable
         Directory.CreateDirectory(target);
 
         var ex = await Assert.ThrowsAsync<YtDlpRunException>(() =>
-            tool.DownloadAsync("https://www.youtube.com/watch?v=vid", target, null, null, CancellationToken.None));
+            tool.DownloadVideoAsync("https://www.youtube.com/watch?v=vid", target, null, 0, null, CancellationToken.None));
 
         Assert.Equal("ERROR: [youtube] vid: Video unavailable", ex.Message);
         Assert.Single(fake.Runs);
         Assert.Equal(0, fake.FetchCalls);
         Assert.Equal(0, fake.UpdateCalls);
-    }
-
-    [Fact]
-    public async Task GetInfo_BotCheck_UpdatesAndRetries()
-    {
-        var fake = new Fake();
-        var tool = MakeTool(fake);
-        fake.Outcomes.Enqueue((1, "ERROR: [youtube] vid: Sign in to confirm you're not a bot\n"));
-
-        var info = await tool.GetInfoAsync("https://www.youtube.com/watch?v=vid", CancellationToken.None);
-
-        Assert.Equal("vid", info!.Id);
-        Assert.Equal(2, fake.Runs.Count);
-        Assert.Equal(1, fake.UpdateCalls);
     }
 
     [Fact]
@@ -371,7 +350,9 @@ public class YtDlpUpdateTests : IDisposable
         var tool = MakeTool(fake);
         tool.JsRuntimes = (false, true);
 
-        await tool.GetInfoAsync("https://www.youtube.com/watch?v=vid", CancellationToken.None);
+        var target = Path.Combine(_root, "dl");
+        Directory.CreateDirectory(target);
+        await tool.DownloadVideoAsync("https://www.youtube.com/watch?v=vid", target, null, 0, null, CancellationToken.None);
 
         var args = fake.Runs.Single().ToList();
         Assert.Equal("node", args[args.IndexOf("--js-runtimes") + 1]);

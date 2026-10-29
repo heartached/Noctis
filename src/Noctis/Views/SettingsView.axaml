@@ -4845,39 +4845,6 @@
             </StackPanel>
             </Border>
 
-            <!-- YouTube: its own card, header row then the two settings stacked. -->
-            <Border Classes="setting-card group-card">
-            <StackPanel>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineSearch}"/>
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="{loc:T YouTubeSettings.Title}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T YouTubeSettings.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenYouTubeDownloaderCommand}"
-                            AutomationProperties.Name="{loc:T YouTubeSettings.Open}"
-                            Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{loc:T YouTubeSettings.Open}" FontSize="13"/>
-                    </Button>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <!-- The watermark is the folder a blank field uses, so no hint line under it. -->
-                <Grid ColumnDefinitions="150,*,Auto">
-                    <TextBlock Grid.Column="0" Text="{loc:T YouTubeSettings.Folder}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Text="{Binding YouTubeDownloadFolder}" Watermark="{Binding YouTubeDownloadFolderHint}"
-                             AutomationProperties.Name="{loc:T YouTubeSettings.Folder}"
-                             CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Content="{loc:T Settings.Browse}" Command="{Binding BrowseYouTubeFolderCommand}"
-                            Padding="14,8" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand" VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <!-- No yt-dlp row (owner 10-08): the downloader installs and keeps its own copy
-                 current; a custom path set earlier still works (YtDlpTool.Resolve). -->
-            </StackPanel>
-            </Border>
-
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.HiddenTracks}" Margin="0,16,0,8"/>
             <Border Classes="setting-card group-card">
             <StackPanel>

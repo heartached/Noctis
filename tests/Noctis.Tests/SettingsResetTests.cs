@@ -134,4 +134,26 @@ public class SettingsResetTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(afterReset.SyncDeviceId));
         Assert.False(string.IsNullOrWhiteSpace(fresh.SyncDeviceId));
     }
+
+    /// <summary>
+    /// "Add from YouTube" became a plugin (10-29): a settings.json that still carries its folder and
+    /// a custom yt-dlp loads, and a save keeps both as they were (legacy fields nothing writes).
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SavedYouTubeSettings_FromBeforeThePlugin_LoadAndSurviveASave()
+    {
+        var dataDir = Path.Combine(_root, "legacy");
+        Directory.CreateDirectory(dataDir);
+        File.WriteAllText(Path.Combine(dataDir, "settings.json"),
+            """{ "youTubeDownloadFolder": "D:\\Music\\YT", "ytDlpPath": "C:\\tools\\yt-dlp.exe", "musicFolders": ["D:\\Music"] }""");
+        var persistence = new PersistenceService(dataDir);
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+
+        await vm.LoadAsync();
+        await vm.SaveAsync();
+
+        var saved = await persistence.LoadSettingsAsync();
+        Assert.Equal(@"D:\Music\YT", saved.YouTubeDownloadFolder);
+        Assert.Equal(@"C:\tools\yt-dlp.exe", saved.YtDlpPath);
+    }
 }

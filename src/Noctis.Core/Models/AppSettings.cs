@@ -415,10 +415,14 @@ public class AppSettings : IJsonOnDeserializing
 
     // ── YouTube downloads ──
 
-    /// <summary>Where downloaded tracks land. Empty = "&lt;first music folder&gt;/YouTube".</summary>
+    /// <summary>Legacy (unused since 10-29): where "Add from YouTube" saved downloads before it became
+    /// the official plugin, which keeps its own folder choice. Kept so older settings.json files
+    /// load and round-trip unchanged.</summary>
     public string YouTubeDownloadFolder { get; set; } = string.Empty;
 
-    /// <summary>Override path to yt-dlp. Empty = the copy Noctis installs, then PATH.</summary>
+    /// <summary>Override path to yt-dlp for the lyrics background videos. Empty = the copy Noctis
+    /// installs, then PATH. No longer shown in Settings (10-08); the "Add from YouTube" plugin has
+    /// its own setting.</summary>
     public string YtDlpPath { get; set; } = string.Empty;
 
     // ── Lyrics Studio ──

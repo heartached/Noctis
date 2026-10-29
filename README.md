@@ -99,7 +99,7 @@ Options and client notes are in [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 - [x] Listening stats with a monthly and yearly Wrap
 - [x] Artist pages with Top Songs, About, Similar Artists and fan counts from Deezer
 - [x] Playlist and album import from TIDAL and Deezer links
-- [x] Add from YouTube, Send to Folder, and Open with Noctis file associations
+- [x] Send to Folder and Open with Noctis file associations; Add from YouTube as an official plugin
 - [x] Explicit content toggle, with an Explicit badge on albums
 - [x] Group Artists By with editable separators; drag and drop for playlists and the sidebar
 - [x] Rebindable keyboard shortcuts
