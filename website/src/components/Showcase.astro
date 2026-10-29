@@ -32,10 +32,6 @@ const geometry = cards.map((c, i) => {
   <div class="container">
     <header class="sec-head" data-reveal>
       <h2 class="h2" id="showcase-title">Choose the view that suits you.</h2>
-      <p class="lede">
-        Home, Songs, Albums, Artists, Folders, Playlists and Favourites, plus Cover Flow and
-        full-screen lyrics.
-      </p>
     </header>
   </div>
 
@@ -51,8 +47,6 @@ const geometry = cards.map((c, i) => {
       </figure>
     ))}
   </div>
-
-  <p class="fan__caption" data-reveal>Seven library views. One window.</p>
 
   <div class="showcase__shelf">
     <CoverFlow />
@@ -142,13 +136,6 @@ const geometry = cards.map((c, i) => {
     }
   }
 
-  .fan__caption {
-    margin-top: clamp(1.5rem, 3vw, 2.5rem);
-    text-align: center;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
   .showcase__shelf {
     margin-top: clamp(3.5rem, 7vw, 6rem);
   }
@@ -182,10 +169,6 @@ const geometry = cards.map((c, i) => {
 
     .fan__card::after {
       display: none;
-    }
-
-    .fan__label {
-      opacity: 1;
     }
   }
 </style>

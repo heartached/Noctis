@@ -5,10 +5,12 @@ import ThemeToggle from './ThemeToggle.astro';
 import { links } from '../config/site';
 
 /**
- * A floating glass pill, centred at the top of the viewport. Brand on the
- * left, the page links in the middle, the actions on the right, ending in the
- * white "Get the App" button. Below 900px only the brand and a burger stay in
- * the pill; everything else moves into the sheet.
+ * A floating frosted pill, centred at the top of the viewport. Brand on the
+ * left, the page links in the middle, then GitHub, the theme switch and the
+ * "Get the App" button. Discord and Buy Me a Coffee live in the Community
+ * section and the mobile sheet rather than here. Below 900px only the brand,
+ * the button and a burger stay in the pill; everything else moves into the
+ * sheet.
  */
 const nav = [
   { label: 'Features', href: '/#showcase' },
@@ -36,25 +38,7 @@ const nav = [
 
     <div class="hdr__actions">
       <a
-        class="hdr__icon hdr__icon--support"
-        href={links.support}
-        target="_blank"
-        rel="noopener"
-        aria-label="Support Noctis on Buy Me a Coffee"
-      >
-        <BrandIcon brand="buymeacoffee" />
-      </a>
-      <a
-        class="hdr__icon hdr__icon--discord"
-        href={links.discord}
-        target="_blank"
-        rel="noopener"
-        aria-label="Join the Noctis Discord"
-      >
-        <BrandIcon brand="discord" />
-      </a>
-      <a
-        class="hdr__icon hdr__icon--github"
+        class="hdr__icon"
         href={links.repo}
         target="_blank"
         rel="noopener"
@@ -65,12 +49,7 @@ const nav = [
 
       <ThemeToggle />
 
-      <a class="btn btn--primary hdr__cta" href="/#download">
-        Get the App
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </a>
+      <a class="btn btn--primary hdr__cta" href="/#download">Get the App</a>
 
       <button
         class="hdr__burger"
@@ -140,37 +119,20 @@ const nav = [
     pointer-events: auto;
     display: flex;
     align-items: center;
-    gap: var(--s-4);
-    height: 56px;
+    gap: var(--s-3);
+    height: 52px;
     max-width: 100%;
-    padding: 6px 6px 6px 14px;
-    position: relative;
-    isolation: isolate;
-    border: 1px solid transparent;
+    padding: 6px 6px 6px 16px;
+    border: 1px solid rgb(255 255 255 / 0.08);
     border-radius: var(--r-pill);
-    /* Smoked liquid glass. A dark tint over a heavily blurred backdrop, so
-       whatever scrolls underneath shows as soft coloured light rather than
-       shapes. The two ends are darker than the middle, which is what gives
-       the capsule its rounded, lens-like depth; the edge is a faint hairline,
-       not a bright rim. */
-    background:
-      radial-gradient(
-        ellipse 60% 140% at 50% 50%,
-        rgb(20 20 24 / 0.1) 0%,
-        rgb(8 8 10 / 0.45) 100%
-      ),
-      linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.01)),
-      rgb(12 12 14 / 0.42);
+    /* Plain frosted glass: one tint over a blurred backdrop, a hairline edge
+       and a soft drop shadow. */
+    background: color-mix(in srgb, var(--bg-1) 72%, transparent);
     /* Through a custom property: the CSS minifier otherwise merges the two
        declarations and keeps only one of them. */
-    --glass: blur(22px) saturate(160%) brightness(0.95);
+    --glass: blur(20px) saturate(160%);
     backdrop-filter: var(--glass);
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.1),
-      inset 0 0 0 1px rgb(255 255 255 / 0.06),
-      inset 0 -10px 24px -12px rgb(0 0 0 / 0.5),
-      0 16px 44px -14px rgb(0 0 0 / 0.7),
-      0 2px 8px rgb(0 0 0 / 0.3);
+    box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.6);
   }
 
   /* Safari before 18 only knows the prefixed property. It lives in its own
@@ -182,67 +144,10 @@ const nav = [
     }
   }
 
-  /* Specular highlight: a curved sheen across the upper half, the way light
-     pools on the top of a glass capsule. */
-  .hdr__pill::before {
-    content: '';
-    position: absolute;
-    inset: 1px 1px 50% 1px;
-    z-index: -1;
-    border-radius: var(--r-pill) var(--r-pill) 40% 40% / var(--r-pill) var(--r-pill) 100% 100%;
-    background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0));
-    pointer-events: none;
-  }
-
-  /* A thin gradient border: brighter along the top-left, fading around the
-     bottom-right, masked so only the 1px ring paints. */
-  .hdr__pill::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    z-index: -1;
-    padding: 1px;
-    border-radius: inherit;
-    background: linear-gradient(
-      135deg,
-      rgb(255 255 255 / 0.2),
-      rgb(255 255 255 / 0.04) 40%,
-      rgb(255 255 255 / 0.03) 60%,
-      rgb(255 255 255 / 0.12)
-    );
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-      linear-gradient(#000 0 0) content-box exclude,
-      linear-gradient(#000 0 0);
-    pointer-events: none;
-  }
-
-  /* On the white page the glass needs a touch of darkness at the edge to hold
-     its shape, and less lift so white content under it does not blow out. */
   :global(html[data-theme='light']) .hdr__pill {
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.25)),
-      rgb(255 255 255 / 0.2);
-    --glass: blur(14px) saturate(190%) brightness(1.02);
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.9),
-      inset 0 -1px 0 0 rgb(0 0 0 / 0.04),
-      inset 0 0 0 1px rgb(0 0 0 / 0.06),
-      0 12px 36px -14px rgb(0 0 0 / 0.28),
-      0 2px 6px rgb(0 0 0 / 0.06);
-  }
-
-  :global(html[data-theme='light']) .hdr__pill::after {
-    background: linear-gradient(
-      135deg,
-      rgb(255 255 255 / 1),
-      rgb(0 0 0 / 0.06) 45%,
-      rgb(0 0 0 / 0.04) 60%,
-      rgb(255 255 255 / 0.8)
-    );
+    border-color: rgb(0 0 0 / 0.08);
+    background: rgb(255 255 255 / 0.72);
+    box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.18);
   }
 
   /* Where backdrop-filter is missing, fall back to an opaque bar so the nav
@@ -257,6 +162,7 @@ const nav = [
     display: inline-flex;
     align-items: center;
     gap: var(--s-2);
+    min-height: 40px;
     text-decoration: none;
     flex: none;
   }
@@ -264,21 +170,21 @@ const nav = [
   .brand__name {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     letter-spacing: -0.02em;
   }
 
   .hdr__nav {
     display: flex;
     gap: 2px;
-    margin-inline: var(--s-3);
+    margin-inline: var(--s-4);
   }
 
   .hdr__link {
-    padding: var(--s-2) var(--s-3);
+    padding: 6px var(--s-3);
     border-radius: var(--r-pill);
-    color: var(--ink-1);
-    font-size: 0.95rem;
+    color: var(--ink-2);
+    font-size: 0.9rem;
     font-weight: 500;
     text-decoration: none;
     transition:
@@ -298,7 +204,7 @@ const nav = [
     flex: none;
   }
 
-  /* Small, filled, brand-coloured — the vendor's own ground under its mark. */
+  /* Monochrome and unfilled, so it reads as part of the bar, not a badge. */
   .hdr__icon {
     display: inline-grid;
     place-items: center;
@@ -306,52 +212,40 @@ const nav = [
     height: 36px;
     flex: none;
     border-radius: 50%;
+    color: var(--ink-2);
     text-decoration: none;
     transition:
-      transform var(--t-base) var(--ease),
-      filter var(--t-instant) var(--ease);
+      color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
   }
 
   .hdr__icon :global(svg) {
-    width: 17px;
-    height: 17px;
-  }
-
-  .hdr__icon--support {
-    background: #ffdd00;
-    color: #0d0c22;
-  }
-
-  .hdr__icon--discord {
-    background: #5865f2;
-    color: #fff;
-  }
-
-  .hdr__icon--github {
-    background: var(--ink-0);
-    color: var(--bg-0);
+    width: 18px;
+    height: 18px;
   }
 
   .hdr__icon:hover {
-    filter: brightness(0.92);
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 7%, transparent);
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .hdr__icon:hover {
-      transform: scale(1.08);
-    }
-  }
-
-  /* The switch is a 40px control in a 44px row — pull it in a touch. */
+  /* A smaller, neutral switch in the bar: the accent stays on the CTA alone. */
   .hdr__actions :global([data-theme-toggle]) {
+    --tsw-w: 56px;
+    --tsw-h: 32px;
+    --tsw-knob: color-mix(in srgb, var(--ink-0) 14%, transparent);
+    --tsw-knob-shadow: none;
+    --tsw-on: var(--ink-0);
+    --tsw-track: transparent;
+    --tsw-hover: color-mix(in srgb, var(--ink-0) 24%, transparent);
     margin-inline: var(--s-1);
   }
 
   .hdr__cta {
-    min-height: 42px;
-    padding-inline: var(--s-4) 14px;
+    min-height: 38px;
+    padding-inline: var(--s-4);
+    font-size: 0.9rem;
     font-weight: 600;
-    --btn-icon: 15px;
   }
 
   .hdr__burger {
@@ -498,13 +392,6 @@ const nav = [
 
   /* --- Responsive --------------------------------------------------------- */
 
-  @media (max-width: 1080px) {
-    .hdr__icon--support,
-    .hdr__icon--discord {
-      display: none;
-    }
-  }
-
   @media (max-width: 900px) {
     .hdr__nav,
     .hdr__icon,
@@ -515,12 +402,7 @@ const nav = [
     .hdr__pill {
       width: 100%;
       justify-content: space-between;
-      height: 52px;
       padding: 5px 5px 5px 14px;
-    }
-
-    .hdr__cta {
-      min-height: 40px;
     }
 
     .hdr__burger {

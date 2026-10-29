@@ -39,7 +39,6 @@ const cards: Card[] = [
   <div class="container">
     <header class="sec-head dl__head" data-reveal>
       <h2 class="h2" id="download-title">Put your music<br />back on your desktop.</h2>
-      <p class="lede">Free and open source, and it stays that way. No account, no trial.</p>
     </header>
 
     <ul class="dl__grid" role="list" data-reveal-group>
@@ -63,7 +62,6 @@ const cards: Card[] = [
       ))}
     </ul>
 
-    <p class="dl__note" data-reveal>MIT licence · No telemetry · Straight from GitHub Releases</p>
   </div>
 </section>
 
@@ -141,13 +139,6 @@ const cards: Card[] = [
 
   .dl__alt:hover {
     color: var(--accent-text);
-  }
-
-  .dl__note {
-    margin-top: clamp(1.5rem, 3vw, 2.25rem);
-    color: var(--ink-2);
-    font-size: var(--step--1);
-    text-align: center;
   }
 
   :global(html:not([data-os])) .dl__card[data-os='windows'],

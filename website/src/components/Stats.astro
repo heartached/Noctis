@@ -2,7 +2,7 @@
 import { release, downloadsFormatted } from '../lib/release';
 
 /**
- * The proof row: a laurel around the download count, then five facts.
+ * The proof row: a laurel around the download count, then three facts.
  * Every number here is either from the release feed or from
  * src/data/verified-claims.md.
  */
@@ -12,8 +12,6 @@ const facts = [
   { value: stars, label: 'GitHub stars', hook: 'stars' },
   { value: '13', label: 'formats', hook: 'formats' },
   { value: '3', label: 'platforms', hook: 'platforms' },
-  { value: 'MIT', label: 'licence' },
-  { value: '0', label: 'trackers' },
 ].filter((f) => f.value != null);
 ---
 
@@ -135,8 +133,9 @@ const facts = [
 
   .stats__row {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    margin: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 720px;
+    margin: 0 auto;
     padding: 0 0 clamp(2rem, 4vw, 3rem);
     list-style: none;
   }
@@ -168,28 +167,4 @@ const facts = [
     font-size: var(--step--1);
   }
 
-  @media (max-width: 720px) {
-    .stats__row {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      row-gap: var(--s-5);
-    }
-
-    .stat:nth-child(4) {
-      border-inline-start: 0;
-    }
-  }
-
-  @media (max-width: 420px) {
-    .stats__row {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .stat:nth-child(4) {
-      border-inline-start: 1px solid var(--line);
-    }
-
-    .stat:nth-child(odd) {
-      border-inline-start: 0;
-    }
-  }
 </style>
