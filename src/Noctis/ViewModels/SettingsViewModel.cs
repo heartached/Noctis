@@ -348,10 +348,21 @@ public partial class SettingsViewModel : ViewModelBase
         return result.Outcome is PluginInstallOutcome.Installed or PluginInstallOutcome.Updated;
     }
 
+    /// <summary>
+    /// Owner 10-29: on release builds plugins can only be switched on and off, never removed
+    /// (official and community alike); Remove is a dev-build (Debug) tool. Tests set it.
+    /// </summary>
+    public bool PluginRemovalAllowed { get; internal set; } =
+#if DEBUG
+        true;
+#else
+        false;
+#endif
+
     [RelayCommand]
     private async Task RemovePluginAsync(LoadedPlugin? plugin)
     {
-        if (Plugins is null || plugin is null) return;
+        if (Plugins is null || plugin is null || !PluginRemovalAllowed) return;
         var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Plugins.RemoveBody"),
             Title: Loc.T("Plugins.RemoveTitle", plugin.Name),
