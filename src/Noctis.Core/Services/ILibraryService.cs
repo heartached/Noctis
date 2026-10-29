@@ -98,6 +98,13 @@ public interface ILibraryService
     event EventHandler<string[]>? ScanAborted;
 
     /// <summary>
+    /// Fires once a scan or import has published tracks for files the library did not know
+    /// before (re-read known files are not included). Raised on the scan's thread, after
+    /// <see cref="LibraryUpdated"/>. Drives the automatic ReplayGain scan (GitHub #148).
+    /// </summary>
+    event EventHandler<IReadOnlyList<Track>>? TracksAdded { add { } remove { } }
+
+    /// <summary>
     /// Scans configured music folders for audio files.
     /// Reads metadata, extracts artwork, and builds the library index.
     /// </summary>
