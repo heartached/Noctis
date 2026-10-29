@@ -733,7 +733,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Settings ▸ Lyrics ▸ Preferred lyrics type (GitHub #135): "WordSynced", "LineSynced" or "Plain".</summary>
     [ObservableProperty] private string _lyricsPreferredType = nameof(Models.LyricsPreferredType.WordSynced);
 
-    /// <summary>One row of a string-valued picker (lyrics saving, Discord status): the stored value and its label.</summary>
+    /// <summary>One row of a string-valued picker (lyrics saving, Discord status, queue rows): the stored value and its label.</summary>
     public sealed record LyricsChoiceOption(string Value, string Label)
     {
         public override string ToString() => Label;
@@ -817,6 +817,117 @@ public partial class SettingsViewModel : ViewModelBase
             DiscordStatusDisplay = value.Value;
         }
     }
+
+    /// <summary>Settings ▸ Player ▸ Queue ▸ Queue rows (GitHub #147): what each queue row shows,
+    /// as <see cref="QueueRowField"/> / <see cref="QueueRowSide"/> names (see AppSettings.QueueRowLine1).</summary>
+    [ObservableProperty] private string _queueRowLine1 = nameof(QueueRowField.Title);
+    [ObservableProperty] private string _queueRowLine1Extra = nameof(QueueRowField.None);
+    [ObservableProperty] private string _queueRowLine2 = nameof(QueueRowField.Artist);
+    [ObservableProperty] private string _queueRowLine2Extra = nameof(QueueRowField.None);
+    [ObservableProperty] private string _queueRowRight = nameof(QueueRowSide.Position);
+
+    /// <summary>Settings ▸ Player ▸ Queue ▸ Queue width (GitHub #147); the panel's left-edge
+    /// drag drives the same value through <see cref="SetQueuePanelWidth"/>.</summary>
+    [ObservableProperty] private double _queuePanelWidth = QueuePanelMetrics.Default;
+
+    /// <summary>The five queue-row pickers as one layout (unknown values read as the defaults).</summary>
+    public QueueRowLayout CurrentQueueRowLayout =>
+        QueueRowLayout.From(QueueRowLine1, QueueRowLine1Extra, QueueRowLine2, QueueRowLine2Extra, QueueRowRight);
+
+    /// <summary>First-line picker: every field but None.</summary>
+    public IReadOnlyList<LyricsChoiceOption> QueueLine1Options
+    {
+        get => _queueLine1Options;
+        private set => SetProperty(ref _queueLine1Options, value);
+    }
+    private IReadOnlyList<LyricsChoiceOption> _queueLine1Options = BuildQueueFieldOptions(QueueRowLayout.Line1Choices);
+
+    /// <summary>Second-line and both "and" pickers: None first.</summary>
+    public IReadOnlyList<LyricsChoiceOption> QueueOptionalFieldOptions
+    {
+        get => _queueOptionalFieldOptions;
+        private set => SetProperty(ref _queueOptionalFieldOptions, value);
+    }
+    private IReadOnlyList<LyricsChoiceOption> _queueOptionalFieldOptions = BuildQueueFieldOptions(QueueRowLayout.OptionalChoices);
+
+    public IReadOnlyList<LyricsChoiceOption> QueueRightOptions
+    {
+        get => _queueRightOptions;
+        private set => SetProperty(ref _queueRightOptions, value);
+    }
+    private IReadOnlyList<LyricsChoiceOption> _queueRightOptions = BuildQueueRightOptions();
+
+    private static IReadOnlyList<LyricsChoiceOption> BuildQueueFieldOptions(IEnumerable<QueueRowField> fields) =>
+        fields.Select(f => new LyricsChoiceOption(f.ToString(), Loc.T($"Settings.QueueField.{f}"))).ToList();
+
+    private static IReadOnlyList<LyricsChoiceOption> BuildQueueRightOptions() =>
+        Enum.GetValues<QueueRowSide>()
+            .Select(r => new LyricsChoiceOption(r.ToString(), Loc.T($"Settings.QueueSide.{r}")))
+            .ToList();
+
+    public LyricsChoiceOption? SelectedQueueLine1Option
+    {
+        get => QueueLine1Options.FirstOrDefault(o => o.Value == CurrentQueueRowLayout.Line1.ToString());
+        set { if (value is not null) QueueRowLine1 = value.Value; }
+    }
+
+    public LyricsChoiceOption? SelectedQueueLine1ExtraOption
+    {
+        get => QueueOptionalFieldOptions.FirstOrDefault(o => o.Value == CurrentQueueRowLayout.Line1Extra.ToString());
+        set { if (value is not null) QueueRowLine1Extra = value.Value; }
+    }
+
+    public LyricsChoiceOption? SelectedQueueLine2Option
+    {
+        get => QueueOptionalFieldOptions.FirstOrDefault(o => o.Value == CurrentQueueRowLayout.Line2.ToString());
+        set { if (value is not null) QueueRowLine2 = value.Value; }
+    }
+
+    public LyricsChoiceOption? SelectedQueueLine2ExtraOption
+    {
+        get => QueueOptionalFieldOptions.FirstOrDefault(o => o.Value == CurrentQueueRowLayout.Line2Extra.ToString());
+        set { if (value is not null) QueueRowLine2Extra = value.Value; }
+    }
+
+    public LyricsChoiceOption? SelectedQueueRightOption
+    {
+        get => QueueRightOptions.FirstOrDefault(o => o.Value == CurrentQueueRowLayout.Right.ToString());
+        set { if (value is not null) QueueRowRight = value.Value; }
+    }
+
+    partial void OnQueueRowLine1Changed(string value) => OnQueueRowChoiceChanged();
+    partial void OnQueueRowLine1ExtraChanged(string value) => OnQueueRowChoiceChanged();
+    partial void OnQueueRowLine2Changed(string value) => OnQueueRowChoiceChanged();
+    partial void OnQueueRowLine2ExtraChanged(string value) => OnQueueRowChoiceChanged();
+    partial void OnQueueRowRightChanged(string value) => OnQueueRowChoiceChanged();
+
+    private void OnQueueRowChoiceChanged()
+    {
+        OnPropertyChanged(nameof(SelectedQueueLine1Option));
+        OnPropertyChanged(nameof(SelectedQueueLine1ExtraOption));
+        OnPropertyChanged(nameof(SelectedQueueLine2Option));
+        OnPropertyChanged(nameof(SelectedQueueLine2ExtraOption));
+        OnPropertyChanged(nameof(SelectedQueueRightOption));
+        // Live: the queue's rows re-read the new layout.
+        if (_player != null) _player.QueueRowLayout = CurrentQueueRowLayout;
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    /// <summary>Slider path of the queue width: clamp, push to the panel live, persist debounced.</summary>
+    partial void OnQueuePanelWidthChanged(double value)
+    {
+        var clamped = QueuePanelMetrics.Clamp(value);
+        if (clamped != value)
+        {
+            QueuePanelWidth = clamped;
+            return;
+        }
+        if (_player != null) _player.QueuePanelWidth = clamped;
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
+    }
+
+    /// <summary>Persists a finished drag of the queue panel's left edge (GitHub #147).</summary>
+    public void SetQueuePanelWidth(double width) => QueuePanelWidth = QueuePanelMetrics.Clamp(width);
 
     partial void OnLyricsSaveTargetChanged(string value)
     {
@@ -1089,6 +1200,14 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
         DiscordStatusDisplayOptions = BuildDiscordStatusDisplayOptions();
         OnPropertyChanged(nameof(SelectedDiscordStatusDisplayOption));
+        QueueLine1Options = BuildQueueFieldOptions(QueueRowLayout.Line1Choices);
+        QueueOptionalFieldOptions = BuildQueueFieldOptions(QueueRowLayout.OptionalChoices);
+        QueueRightOptions = BuildQueueRightOptions();
+        OnPropertyChanged(nameof(SelectedQueueLine1Option));
+        OnPropertyChanged(nameof(SelectedQueueLine1ExtraOption));
+        OnPropertyChanged(nameof(SelectedQueueLine2Option));
+        OnPropertyChanged(nameof(SelectedQueueLine2ExtraOption));
+        OnPropertyChanged(nameof(SelectedQueueRightOption));
         // Endpoint list is live, but its labels (default marker, disconnected row)
         // are localized — rebuild it with the same selection.
         RebuildOutputDeviceOptions(_selectedOutputDeviceId);
@@ -2189,6 +2308,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
     [ObservableProperty] private bool _writeAnalysisToTags;
 
+    /// <summary>Scan new files for ReplayGain automatically (GitHub #148). Off by default.</summary>
+    [ObservableProperty] private bool _autoReplayGainScanEnabled;
+
     // ── Output device (Windows WASAPI) ──
 
     public bool IsOutputDeviceSupported => OperatingSystem.IsWindows();
@@ -3153,9 +3275,17 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
+            var queueRows = QueueRowLayout.FromSettings(_settings);
+            QueueRowLine1 = queueRows.Line1.ToString();
+            QueueRowLine1Extra = queueRows.Line1Extra.ToString();
+            QueueRowLine2 = queueRows.Line2.ToString();
+            QueueRowLine2Extra = queueRows.Line2Extra.ToString();
+            QueueRowRight = queueRows.Right.ToString();
+            QueuePanelWidth = QueuePanelMetrics.Clamp(_settings.QueuePanelWidth);
             AllowExplicitContent = _settings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
+            AutoReplayGainScanEnabled = _settings.AutoReplayGainScanEnabled;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             // The pin was already applied at player construction (Program.cs reads it
             // before the player exists); this only builds the picker's option list.
@@ -3629,10 +3759,18 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
+        var queueRows = CurrentQueueRowLayout;
+        _settings.QueueRowLine1 = queueRows.Line1.ToString();
+        _settings.QueueRowLine1Extra = queueRows.Line1Extra.ToString();
+        _settings.QueueRowLine2 = queueRows.Line2.ToString();
+        _settings.QueueRowLine2Extra = queueRows.Line2Extra.ToString();
+        _settings.QueueRowRight = queueRows.Right.ToString();
+        _settings.QueuePanelWidth = QueuePanelMetrics.Clamp(QueuePanelWidth);
         _settings.AllowExplicitContent = AllowExplicitContent;
         SaveFeatureSettings();
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
+        _settings.AutoReplayGainScanEnabled = AutoReplayGainScanEnabled;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.AudioOutputDeviceId = IsOutputDeviceSupported ? _selectedOutputDeviceId : "";
         _settings.NetEaseEnabled = NetEaseEnabled;
@@ -3835,6 +3973,8 @@ public partial class SettingsViewModel : ViewModelBase
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
+        _player.QueueRowLayout = CurrentQueueRowLayout;
+        _player.QueuePanelWidth = QueuePanelWidth;
         _player.AllowExplicitContent = AllowExplicitContent;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
@@ -5653,6 +5793,16 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnWriteAnalysisToTagsChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoReplayGainScanEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        // Turning it off also drops the albums still waiting to settle; a scan already
+        // measuring stops before its next file.
+        if (!value)
+            App.Services?.GetService<ReplayGainAutoScanService>()?.Clear();
         _ = SaveAsync();
     }
 
@@ -7589,9 +7739,16 @@ public partial class SettingsViewModel : ViewModelBase
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
+            QueueRowLine1 = defaultSettings.QueueRowLine1;
+            QueueRowLine1Extra = defaultSettings.QueueRowLine1Extra;
+            QueueRowLine2 = defaultSettings.QueueRowLine2;
+            QueueRowLine2Extra = defaultSettings.QueueRowLine2Extra;
+            QueueRowRight = defaultSettings.QueueRowRight;
+            QueuePanelWidth = defaultSettings.QueuePanelWidth;
             AllowExplicitContent = defaultSettings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
+            AutoReplayGainScanEnabled = defaultSettings.AutoReplayGainScanEnabled;
             ReplayGainMode = defaultSettings.ReplayGainMode;
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;

@@ -38,6 +38,23 @@ public sealed class ScanSummary
     public int Failed { get; set; }
 }
 
+/// <summary>How a scan treats the files it measures (the automatic scan, GitHub #148).</summary>
+public sealed class ReplayGainScanOptions
+{
+    /// <summary>
+    /// Which measured tracks get tags written. Null writes every track. A track it refuses
+    /// still counts toward its album's gain but its file is left as it is (the album's
+    /// already-known songs when a new song joins it).
+    /// </summary>
+    public Func<Track, bool>? ShouldWrite { get; init; }
+
+    /// <summary>
+    /// Background run: ffmpeg at below-normal priority, and a tag write never has the
+    /// player let go of a file it holds (a gap in the music); that write fails instead.
+    /// </summary>
+    public bool Background { get; init; }
+}
+
 public interface IReplayGainScannerService
 {
     /// <summary>True if a usable ffmpeg binary is available.</summary>
@@ -54,6 +71,16 @@ public interface IReplayGainScannerService
         bool albumMode,
         IProgress<ScanProgress> progress,
         CancellationToken ct);
+
+    /// <summary><see cref="ScanAsync(IReadOnlyList{Track}, bool, IProgress{ScanProgress}, CancellationToken)"/>
+    /// with <paramref name="options"/>.</summary>
+    Task<ScanSummary> ScanAsync(
+        IReadOnlyList<Track> tracks,
+        bool albumMode,
+        IProgress<ScanProgress> progress,
+        CancellationToken ct,
+        ReplayGainScanOptions options)
+        => ScanAsync(tracks, albumMode, progress, ct);
 }
 
 public sealed class ReplayGainScannerService : IReplayGainScannerService
@@ -69,11 +96,19 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
 
     public bool IsAvailable => _converter.GetFfmpegPath() != null;
 
-    public async Task<ScanSummary> ScanAsync(
+    public Task<ScanSummary> ScanAsync(
         IReadOnlyList<Track> tracks,
         bool albumMode,
         IProgress<ScanProgress> progress,
         CancellationToken ct)
+        => ScanAsync(tracks, albumMode, progress, ct, new ReplayGainScanOptions());
+
+    public async Task<ScanSummary> ScanAsync(
+        IReadOnlyList<Track> tracks,
+        bool albumMode,
+        IProgress<ScanProgress> progress,
+        CancellationToken ct,
+        ReplayGainScanOptions options)
     {
         var summary = new ScanSummary();
 
@@ -96,7 +131,7 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             ct.ThrowIfCancellationRequested();
             progress.Report(new ScanProgress { Track = t, Status = "Measuring…" });
 
-            var r = await MeasureAsync(ffmpeg, t.FilePath, ct);
+            var r = await MeasureAsync(ffmpeg, t.FilePath, options.Background, ct);
             measured[t] = r;
             if (r.Failed)
             {
@@ -150,6 +185,11 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             ct.ThrowIfCancellationRequested();
             var r = measured[t];
             if (r.Failed) continue;
+            if (options.ShouldWrite is { } shouldWrite && !shouldWrite(t))
+            {
+                progress.Report(new ScanProgress { Track = t, Status = "Measured", Done = true });
+                continue;
+            }
 
             // Clamped before it is written into the user's file. The raw value is
             // unbounded, so a quiet field recording measuring -58 LUFS produced
@@ -166,7 +206,8 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
                 aPeakLinear = DbToLinear(albumPeak[AlbumGroupKey(t)]);
             }
 
-            var (ok, error) = WriteReplayGainTags(t.FilePath, trackGainDb, trackPeakLinear, aGainDb, aPeakLinear);
+            var (ok, error) = WriteReplayGainTags(t.FilePath, trackGainDb, trackPeakLinear, aGainDb, aPeakLinear,
+                releaseOpenFile: !options.Background);
             progress.Report(new ScanProgress
             {
                 Track = t,
@@ -203,9 +244,13 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
     private static double ClampGain(double db)
         => double.IsFinite(db) ? System.Math.Clamp(db, -30.0, 20.0) : 0.0;
 
-    private static async Task<LoudnessResult> MeasureAsync(string ffmpeg, string source, CancellationToken ct)
+    private static async Task<LoudnessResult> MeasureAsync(string ffmpeg, string source, bool background, CancellationToken ct)
     {
         // ebur128 prints a summary block to stderr when `peak=true` is set.
+        // framelog=verbose moves its per-frame "t: … M: … I: …" lines (ten per second of
+        // audio) below ffmpeg's default log level. They were all read into one string before
+        // the Summary block was parsed: an hour-long file made ~36,000 lines (several MB of
+        // large-object-heap strings per track) for nothing. The Summary is still printed.
         var psi = new ProcessStartInfo
         {
             FileName = ffmpeg,
@@ -215,13 +260,18 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             CreateNoWindow = true,
         };
         foreach (var a in new[] { "-nostats", "-hide_banner", "-i", source, "-map", "0:a:0",
-                                  "-af", "ebur128=peak=true", "-f", "null", "-" })
+                                  "-af", "ebur128=peak=true:framelog=verbose", "-f", "null", "-" })
             psi.ArgumentList.Add(a);
 
         try
         {
             using var p = Process.Start(psi);
             if (p == null) return new LoudnessResult { Failed = true, Error = "process start failed" };
+            if (background)
+            {
+                // A background scan must not take CPU from playback or the UI.
+                try { p.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { /* exited / not permitted */ }
+            }
 
             var stderrTask = p.StandardError.ReadToEndAsync();
             _ = p.StandardOutput.ReadToEndAsync();
@@ -282,7 +332,8 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
 
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
     internal static (bool ok, string error) WriteReplayGainTags(
-        string filePath, double trackGainDb, double trackPeakLinear, double? albumGainDb, double? albumPeakLinear)
+        string filePath, double trackGainDb, double trackPeakLinear, double? albumGainDb, double? albumPeakLinear,
+        bool releaseOpenFile = true)
     {
         // ReplayGain 2.0 standard tag keys: dB suffix on gain, linear (0..1+) peak.
         string Gain(double db) => db.ToString("F2", CultureInfo.InvariantCulture) + " dB";
@@ -316,7 +367,7 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
                     }
                     // Only the gain values change: no new ID3v1 trailer on an MP3 that had none.
                     AdvancedTagIO.RemoveAddedForeignTags(file);
-                });
+                }, releaseOpenFile);
                 return (true, string.Empty);
             }
             catch (System.IO.IOException ex)

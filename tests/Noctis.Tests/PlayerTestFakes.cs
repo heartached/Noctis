@@ -114,6 +114,8 @@ internal sealed class FakeLibraryService : ILibraryService
     public event EventHandler? FavoritesChanged;
     public event EventHandler<List<string>>? MusicFoldersChanged;
     public event EventHandler<string[]>? ScanAborted;
+    public event EventHandler<IReadOnlyList<Track>>? TracksAdded;
+    public void RaiseTracksAdded(IReadOnlyList<Track> tracks) => TracksAdded?.Invoke(this, tracks);
 
     /// <summary>When set, ScanAsync behaves like the real service meeting an offline
     /// root: it raises ScanAborted with these roots and leaves the library untouched.</summary>

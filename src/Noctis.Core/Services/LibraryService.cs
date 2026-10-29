@@ -100,6 +100,8 @@ public class LibraryService : ILibraryService
     /// only those folders' songs are, and the scan applies the rest).
     /// </summary>
     public event EventHandler<string[]>? ScanAborted;
+    /// <inheritdoc />
+    public event EventHandler<IReadOnlyList<Track>>? TracksAdded;
 
     public LibraryService(
         IMetadataService metadata,
@@ -212,6 +214,8 @@ public class LibraryService : ILibraryService
         // Tracks re-read this scan: their embedded cover may have changed, so the
         // per-track cover pass after the scan re-decides their albums.
         var freshlyRead = new ConcurrentDictionary<Guid, byte>();
+        // Files the library did not know before this scan (TracksAdded, GitHub #148).
+        var firstSeen = new ConcurrentBag<Track>();
         var fileCount = 0;
         var unchangedCount = 0;
         var changedCount = 0;
@@ -373,6 +377,7 @@ public class LibraryService : ILibraryService
                             // Before the add below: a progressive publish must never show it
                             // in Songs first.
                             track.IsInInbox = IsUnderAnyRoot(filePath, inboxRoots);
+                            firstSeen.Add(track);
                         }
                         track.ArtworkHash = TrackArtwork.Fingerprint(embeddedArt);
                         freshlyRead.TryAdd(track.Id, 0);
@@ -773,6 +778,7 @@ public class LibraryService : ILibraryService
 
         DebugLog.Write("Scan", $"done ({_tracks.Count} tracks, t={Environment.TickCount64 - scanStarted}ms)");
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        RaiseTracksAdded(firstSeen);
         // Tag reads and artwork extraction above leave large dead arrays behind;
         // every caller (startup, Settings rescan, folder watcher) gets the trim.
         MemoryTrim.RequestAfterIdle("scan");
@@ -1283,6 +1289,8 @@ public class LibraryService : ILibraryService
         var originalAlbumIndex = _albumIndex;
         var didPublishPartial = false;
         var imported = new ConcurrentBag<Track>();
+        // Files the library did not know before this import (TracksAdded, GitHub #148).
+        var firstSeen = new ConcurrentBag<Track>();
         var unchangedKnown = new ConcurrentBag<Track>();
         // Same as the scan's: a file the tag read refused is named, not just left out.
         var skippedNote = new CappedBreadcrumb("Library", "import skipped, unreadable:", cap: 10, isEnabled: () => true);
@@ -1400,6 +1408,7 @@ public class LibraryService : ILibraryService
             {
                 track.SourceType = SourceType.Local;
                 track.IsInInbox = IsUnderAnyRoot(filePath, inboxRoots);
+                firstSeen.Add(track);
             }
             track.ArtworkHash = TrackArtwork.Fingerprint(embeddedArt);
 
@@ -1482,6 +1491,21 @@ public class LibraryService : ILibraryService
         // so a single file appearing in a watched folder rewrote all ~100k rows.
         await _sqliteIndex.UpsertTracksAsync(imported, ct);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        RaiseTracksAdded(firstSeen);
+    }
+
+    /// <summary>Raises <see cref="TracksAdded"/> for the new files that made it into the
+    /// published library. A subscriber's fault must not fail the scan or import.</summary>
+    private void RaiseTracksAdded(IEnumerable<Track> firstSeen)
+    {
+        var handler = TracksAdded;
+        if (handler == null) return;
+        var index = AllTrackIndex();
+        var added = firstSeen.Where(t => index.TryGetValue(t.Id, out var live) && ReferenceEquals(live, t))
+            .DistinctBy(t => t.Id).ToList();
+        if (added.Count == 0) return;
+        try { handler(this, added); }
+        catch (Exception ex) { DebugLog.Write("Library", $"TracksAdded handler failed: {ex.Message}"); }
     }
 
     /// <summary>

@@ -1284,6 +1284,14 @@
     <value>プリアンプ (dB)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve">
+    <value>新しいファイルを自動でスキャン</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve">
+    <value>アルバムのコピーが完了したら、新しい曲に ReplayGain タグを書き込みます。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve">
     <value>リモート操作</value>
     <comment>Text in SettingsView.axaml</comment>

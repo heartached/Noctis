@@ -35,9 +35,12 @@ public class SmoothSlider : Slider
 
     internal double Snap(double value)
     {
-        var v = Math.Clamp(value, Minimum, Maximum);
+        // XAML sets Minimum before Maximum, so a range above the stock 0-100 (Queue Width,
+        // 300-720) passes through Minimum > Maximum; Math.Clamp throws on that (10-29).
+        var max = Math.Max(Minimum, Maximum);
+        var v = Math.Clamp(value, Minimum, max);
         if (Step > 0)
-            v = Math.Clamp(Minimum + Math.Round((v - Minimum) / Step) * Step, Minimum, Maximum);
+            v = Math.Clamp(Minimum + Math.Round((v - Minimum) / Step) * Step, Minimum, max);
         // 0.1 steps accumulate binary noise (0.30000000000000004); the label and the saved
         // setting should read the step itself.
         return Math.Round(v, 6);
