@@ -624,7 +624,8 @@ push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING
 | Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.4: a view, `PlayTracks`, `ShowAlbum`, a track command, notices |
 | A-B Loop | `plugins/Noctis.Plugins.ABLoop` | API 1.4: a view, `Seek`/`Play`/`Pause`, a track command |
 
-Their icons come from `scripts/plugin-icons/generate_plugin_icons.py` (Pillow and numpy; run it
+Album Roulette's and A-B Loop's icons come from `scripts/plugin-icons/generate_official_plugin_icons.py`
+(Mixxx's and the community plugins' from `generate_plugin_icons.py`; Pillow and numpy; run it
 after changing a design and commit the `icon.png` files it writes).
 
 **Album Roulette's reel** draws on `TopLevel.RequestAnimationFrame` only while it moves and waits
