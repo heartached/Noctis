@@ -121,6 +121,20 @@ public class Mp3FrameScanTests : IDisposable
         Assert.Equal(1500 * 576 / 22050.0 + 1500 * 1152 / 44100.0, length.TotalSeconds, 3);
     }
 
+    [Fact]
+    public void TwoConstantBitrateParts_OfDifferentRates_AreCounted()
+    {
+        // Each part is CBR, but at its own bitrate: a length guessed from the first frame's
+        // 64 kbps read the 128 kbps part as twice its length. The probes only looked for
+        // frames shaped like the first one, found none in the second part and called it CBR.
+        var ms = new MemoryStream();
+        for (var i = 0; i < 1500; i++) WriteMpeg2Frame(ms, 8);
+        for (var i = 0; i < 1500; i++) WriteFrame(ms, 9);
+        ms.Position = 0;
+        Assert.True(Mp3FrameScan.TryMeasureHeaderlessVbr(ms, out var length, out _));
+        Assert.Equal(1500 * 576 / 22050.0 + 1500 * 1152 / 44100.0, length.TotalSeconds, 3);
+    }
+
     [Theory]
     [InlineData("Xing")]
     [InlineData("Info")]
