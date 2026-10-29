@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -434,6 +435,10 @@ public class AlbumTownPluginTests
         public bool ShowAlbum(TownAlbum album) { Shown.Add(album); return true; }
         public IReadOnlyList<string> LoadCalled() => Called;
         public void SaveCalled(IReadOnlyList<string> keys) { Called = keys.ToList(); Saves++; }
+        public double Zoom { get; set; } = 1;
+        public int ZoomSaves;
+        public double LoadZoom() => Zoom;
+        public void SaveZoom(double zoom) { Zoom = zoom; ZoomSaves++; }
         public void RaiseNowPlaying() => NowPlayingChanged?.Invoke(this, EventArgs.Empty);
         public void RaiseSettings() => SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -545,17 +550,172 @@ public class AlbumTownPluginTests
         window.Close();
     }
 
+    // ── Size, zoom and the pointer (v1.1) ──
+
+    [Fact]
+    public void Size_ScalesWithTheWindow_AndTheCrowd_WithoutPilingUp()
+    {
+        // "Could you make them bigger?": ~96 px covers on a maximized 2560x1440 window (40 out).
+        var big = PlazaCanvas.SizeFor(2560, 1352, 1, 40, 1);
+        Assert.InRange(big, 90, 110);
+        // At 125% scaling the cover is about as many device pixels.
+        Assert.InRange(PlazaCanvas.SizeFor(2048, 1080, 1.25, 40, 1) * 1.25, 85, 110);
+        // A full crowd of 60 gets a little smaller instead of piling up.
+        var full = PlazaCanvas.SizeFor(2560, 1352, 1, 60, 1);
+        Assert.InRange(full, 75, big);
+        foreach (var (w, h, n) in new[] { (2560.0, 1352.0, 60), (1200.0, 700.0, 60), (900.0, 500.0, 60), (900.0, 500.0, 24) })
+            foreach (var zoom in new[] { PlazaCanvas.MinZoom, 1, PlazaCanvas.MaxZoom })
+            {
+                var s = PlazaCanvas.SizeFor(w, h, 1, n, zoom);
+                var footprint = n * Math.Pow(s * 1.45, 2) / (w * h);
+                Assert.True(footprint <= 0.52, $"{n} creatures of {s:0} px in {w}x{h} at zoom {zoom} cover {footprint:P0}");
+                Assert.True(s >= 20);
+            }
+        // Zoom grows them, within the crowd's room.
+        Assert.True(PlazaCanvas.SizeFor(2560, 1352, 1, 24, 1.4) > PlazaCanvas.SizeFor(2560, 1352, 1, 24, 1));
+        Assert.True(PlazaCanvas.SizeFor(2560, 1352, 1, 40, 0.6) < big);
+    }
+
+    [Fact]
+    public void BigCreatures_KeepTheirDistance_AndStayInsideThePlaza()
+    {
+        var world = World(Enumerable.Range(0, 40).Select(i => A("big" + i)).ToArray());
+        world.Resize(2560, 1352);
+        world.BodySize = 96;
+        world.Chatty = false;
+        Assert.Equal(28 * 96 / 36f, world.Margin, 3);
+        for (var i = 0; i < 60 * 30; i++) world.Step(1 / 60f);
+        foreach (var c in world.Creatures)
+        {
+            Assert.InRange(c.Position.X, world.Margin - 0.01f, world.Width - world.Margin + 0.01f);
+            Assert.InRange(c.Position.Y, world.TopMargin - 0.01f, world.Height - world.Margin + 0.01f);
+        }
+        // Spacing scales with the body: nobody stands inside a neighbour's cover.
+        var closest = world.Creatures.SelectMany((a, i) => world.Creatures.Skip(i + 1).Select(b => Vector2.Distance(a.Position, b.Position))).Min();
+        Assert.True(closest > 96 * 0.8f, $"two creatures {closest:0} px apart");
+    }
+
+    [Fact]
+    public void TheCreatureUnderThePointer_HoldsStill_AndIsEasyToHit()
+    {
+        var world = World(A("a"), A("b"));
+        world.BodySize = 96;
+        var (a, b) = (world.Creatures[0], world.Creatures[1]);
+        a.Position = new Vector2(400, 400);
+        b.Position = new Vector2(700, 400);
+        a.StateTimer = 0; // would set off on a stroll next step
+
+        // The whole cover, the hands beside it and the feet under it all count.
+        var center = PlazaWorld.BodyCenter(a, 96);
+        Assert.Same(a, world.HitTest(center));
+        Assert.Same(a, world.HitTest(center + new Vector2(70, 0)));   // a hand
+        Assert.Same(a, world.HitTest(new Vector2(400, 395)));         // the feet
+        Assert.Null(world.HitTest(center + new Vector2(0, -90)));     // well above the head
+
+        world.Cursor = center;
+        world.Held = a;
+        var at = a.Position;
+        for (var i = 0; i < 120; i++) world.Step(1 / 60f);
+        Assert.Equal(at, a.Position);
+        Assert.Equal(CreatureState.LookAtCursor, a.State);
+        // A neighbour walking into it does not shove it away.
+        b.Position = a.Position + new Vector2(30, 0);
+        world.Step(1 / 60f);
+        Assert.Equal(at, a.Position);
+
+        world.Held = null;
+        world.Cursor = null;
+        world.Step(1 / 60f);
+        Assert.Equal(CreatureState.Idle, a.State);
+    }
+
+    [Fact]
+    public void HitTest_KeepsTheHoveredOne_WhileThePointerIsOnIt()
+    {
+        var world = World(A("a"), A("b"));
+        world.BodySize = 96;
+        var (a, b) = (world.Creatures[0], world.Creatures[1]);
+        a.Position = new Vector2(400, 400);
+        b.Position = new Vector2(500, 420); // overlapping targets, b in front
+        var between = new Vector2(452, PlazaWorld.BodyCenter(a, 96).Y);
+        Assert.Same(b, world.HitTest(between));
+        Assert.Same(a, world.HitTest(between, prefer: a));
+    }
+
+    [AvaloniaFact]
+    public void View_NowPlayingVisitors_NeverGrowThePlazaPastItsSize()
+    {
+        var (view, host) = NewView(200, crowd: 24);
+        var window = new Window { Content = view, Width = 900, Height = 600 };
+        window.Show();
+        host.IsPlaying = true;
+        // An album shuffle: a new album starts 40 times.
+        foreach (var track in host.Tracks.Where(t => view.Cast.All(m => !m.Album.TrackIds.Contains(t.Id))).Take(40).ToList())
+        {
+            host.NowPlaying = new NowPlayingTrack(track.Title, track.Artist, track.Album, track.Duration, track.FilePath, null, 0);
+            host.RaiseNowPlaying();
+            Assert.Equal(24, view.Cast.Count);
+            Assert.Equal(24, view.Plaza.World.Creatures.Count);
+            Assert.Contains(view.Plaza.World.Creatures, c => c.IsPlaying && c.Album.TrackIds.Contains(track.Id));
+        }
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void View_CreatureSize_ComesBackNextTime_AndFollowsCtrlWheel()
+    {
+        var (view, host) = NewView(60);
+        host.Zoom = 1.3;
+        view = new AlbumTownView(host, new Random(2));
+        Assert.Equal(1.3, view.Plaza.Zoom, 3);
+        Assert.Equal(1.3, view.ZoomSlider.Value, 3);
+
+        var window = new Window { Content = view, Width = 900, Height = 600 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        view.ZoomSlider.Value = 0.8;
+        Assert.Equal(0.8, view.Plaza.Zoom, 3);
+
+        var plaza = view.Plaza.TranslatePoint(new Point(200, 200), window)!.Value;
+        window.MouseWheel(plaza, new Avalonia.Vector(0, 1), Avalonia.Input.RawInputModifiers.Control);
+        Assert.Equal(0.9, view.Plaza.Zoom, 3);
+        Assert.Equal(0.9, view.ZoomSlider.Value, 3);
+        window.MouseWheel(plaza, new Avalonia.Vector(0, -1)); // a plain wheel does not zoom
+        Assert.Equal(0.9, view.Plaza.Zoom, 3);
+
+        window.Close(); // saved when the window closes, even before the save timer
+        Assert.Equal(0.9, host.Zoom, 3);
+        Assert.True(host.ZoomSaves >= 1);
+    }
+
+    [AvaloniaFact]
+    public void View_FollowsTheAppTheme_AndIsDarkWithoutOne()
+    {
+        var (view, _) = NewView(10);
+        var window = new Window { Content = view, Width = 900, Height = 600 };
+        window.Show();
+        Assert.True(view.Palette.IsDark); // the test app has no Noctis resources: the dark default
+        Assert.Same(view.Palette, view.Plaza.Palette);
+
+        window.Resources["AppMainBackgroundColor"] = Colors.White;
+        window.Resources["AccentColorBrush"] = new SolidColorBrush(Color.FromRgb(0x0A, 0x84, 0xFF));
+        view.ApplyTheme(TownTheme.From(view));
+        Assert.False(view.Palette.IsDark);
+        Assert.Equal(Color.FromRgb(0x0A, 0x84, 0xFF), view.Palette.Accent);
+        window.Close();
+    }
+
     // ── Real rendering: frame time and the preview picture (NOCTIS_TEST_SKIA=1) ──
 
     [AvaloniaFact]
-    public void Plaza_Renders60Creatures_WithinTheFrameBudget_AndWritesThePreview()
+    public void Plaza_WritesThePreview_At2560x1440_DarkAndLight()
     {
         if (Environment.GetEnvironmentVariable("NOCTIS_TEST_SKIA") != "1")
             Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
 
         var dir = Environment.GetEnvironmentVariable("NOCTIS_ALBUMTOWN_PREVIEW") is { Length: > 0 } d ? d : Path.Combine(Path.GetTempPath(), "albumtown-preview");
         Directory.CreateDirectory(dir);
-        var host = new FakeTownHost { CrowdSize = 60, Pulse = 0.7 };
+        var host = new FakeTownHost { CrowdSize = 40, Pulse = 0.7 };
         var covers = PreviewCovers(Path.Combine(dir, "covers"));
         var names = new[] { "Midnight Arcade", "Paper Moons", "Glasshouse", "Velvet Static", "Northern Lights", "Saltwater", "Neon Garden", "Low Tide",
             "Echo Park", "Golden Hour", "Small Hours", "Polaroid Summer", "Blue Room", "Satellite Hearts", "Wildflower", "Afterglow" };
@@ -580,11 +740,11 @@ public class AlbumTownPluginTests
         host.NowPlaying = new NowPlayingTrack(playing.Title, playing.Artist, playing.Album, playing.Duration, playing.FilePath, playing.ArtworkPath, 120);
         host.IsPlaying = true;
 
-        var window = new Window { Content = view, Width = 1200, Height = 760 };
+        var window = new Window { Content = view, Width = 2560, Height = 1440 };
         window.Show();
         host.RaiseNowPlaying();
         Dispatcher.UIThread.RunJobs();
-        Assert.Equal(60, view.Plaza.World.Creatures.Count);
+        Assert.Equal(40, view.Plaza.World.Creatures.Count);
 
         // Let them walk and chat for a while, then a click so the card is in the shot.
         for (var i = 0; i < 30 * 14; i++) view.Plaza.Step(1 / 30f);
@@ -596,47 +756,199 @@ public class AlbumTownPluginTests
         var clicked = view.Plaza.World.Creatures.Where(c => !c.IsPlaying && c.State != CreatureState.Talk)
             .OrderBy(c => Vector2.Distance(c.Position, new Vector2(w * 0.36f, h * 0.3f))).First();
 
-        var size = new PixelSize((int)view.Plaza.Bounds.Width, (int)view.Plaza.Bounds.Height);
-        using (var bmp = new RenderTargetBitmap(size))
-        {
-            const int frames = 120;
-            for (var i = 0; i < 10; i++) RenderFrame(view, bmp); // warm up
-            var sw = Stopwatch.StartNew();
-            for (var i = 0; i < frames; i++)
-            {
-                view.Plaza.Step(1 / 30f);
-                RenderFrame(view, bmp);
-            }
-            sw.Stop();
-            var ms = sw.Elapsed.TotalMilliseconds / frames;
-            File.WriteAllText(Path.Combine(dir, "frame-time.txt"), $"60 creatures, {size.Width}x{size.Height}: {ms:0.00} ms per step+render (CPU raster, headless), {talking} talking");
-            Assert.True(ms < 33, $"a frame took {ms:0.0} ms");
-        }
+        // Big enough to read the covers: ~96 px on a maximized 2560x1440 window.
+        Assert.InRange(view.Plaza.Painter.Size, 90, 110);
+        using var tiny = new RenderTargetBitmap(new PixelSize(8, 8));
+        for (var i = 0; i < 20; i++) { view.Plaza.Step(1 / 60f); RenderFrame(view, tiny); } // tiles built
+        File.WriteAllText(Path.Combine(dir, "preview.txt"), $"{view.Plaza.World.Creatures.Count} creatures, {view.Plaza.Painter.Size:0} px covers, {talking} talking");
 
         view.Plaza.World.Wave(clicked);
         view.Plaza.Step(1 / 30f);
         view.ShowCard(clicked.Album, clicked.Member.Reason);
         Dispatcher.UIThread.RunJobs();
 
-        using (var shot = new RenderTargetBitmap(new PixelSize(1200, 760)))
+        using (var shot = new RenderTargetBitmap(new PixelSize(2560, 1440)))
         {
             shot.Render(window);
             shot.Save(Path.Combine(dir, "preview.png"));
         }
+        view.ApplyTheme(TownTheme.Light);
+        for (var i = 0; i < 20; i++) { view.Plaza.Step(1 / 60f); RenderFrame(view, tiny); }
+        Dispatcher.UIThread.RunJobs();
+        using (var shot = new RenderTargetBitmap(new PixelSize(2560, 1440)))
+        {
+            shot.Render(window);
+            shot.Save(Path.Combine(dir, "preview-light.png"));
+        }
+        view.ApplyTheme(TownTheme.Dark);
         view.HideCard();
         view.GetLogicalDescendants().OfType<Button>().Single(b => Avalonia.Automation.AutomationProperties.GetName(b) == "Apartments")
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Dispatcher.UIThread.RunJobs();
-        foreach (var a in town) view.Covers.GetNow(a.ArtworkPath);
+        foreach (var a in town) view.ResidentCovers.GetNow(a.ArtworkPath);
         view.ApartmentsView.InvalidateVisual();
         Dispatcher.UIThread.RunJobs();
-        using (var shot = new RenderTargetBitmap(new PixelSize(1200, 760)))
+        using (var shot = new RenderTargetBitmap(new PixelSize(2560, 1440)))
         {
             shot.Render(window);
             shot.Save(Path.Combine(dir, "preview-apartments.png"));
         }
         window.Close();
         Assert.True(albums > 60);
+    }
+
+    /// <summary>
+    /// The live complaint ("laggy and stuttering" with 40 of 3033 albums at 2560x1440): the UI
+    /// thread's share of a frame, measured the way Avalonia records it (Render into the
+    /// compositor's RenderDataDrawingContext), plus the bytes allocated and GCs per frame, and
+    /// the full CPU raster of a frame for scale. Numbers go to bench.txt next to the preview.
+    /// </summary>
+    [AvaloniaFact]
+    public void Plaza_At2560x1440_60Creatures_StaysInTheFrameAndAllocationBudget()
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_TEST_SKIA") != "1")
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_ALBUMTOWN_PREVIEW") is { Length: > 0 } d ? d : Path.Combine(Path.GetTempPath(), "albumtown-preview");
+        Directory.CreateDirectory(dir);
+        var (view, window, _) = BigPlaza(dir, 2560, 1440);
+        try
+        {
+            var plaza = view.Plaza;
+            var recorder = new Recorder(plaza);
+            for (var i = 0; i < 120; i++) { plaza.Step(1 / 60f); recorder.Record(plaza); } // warm up (JIT, caches)
+
+            const int frames = 600;
+            var times = new double[frames];
+            var gc0 = GC.CollectionCount(0); var gc1 = GC.CollectionCount(1); var gc2 = GC.CollectionCount(2);
+            var stepBytes = 0L; var renderBytes = 0L; var images = 0L;
+            for (var i = 0; i < frames; i++)
+            {
+                var a0 = GC.GetAllocatedBytesForCurrentThread();
+                var t0 = Stopwatch.GetTimestamp();
+                plaza.Step(1 / 60f);
+                var a1 = GC.GetAllocatedBytesForCurrentThread();
+                recorder.Record(plaza);
+                times[i] = Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
+                renderBytes += GC.GetAllocatedBytesForCurrentThread() - a1;
+                stepBytes += a1 - a0;
+                images += plaza.Painter.ImagesDrawn + 1; // + the floor
+            }
+            var gcs = (GC.CollectionCount(0) - gc0, GC.CollectionCount(1) - gc1, GC.CollectionCount(2) - gc2);
+            Array.Sort(times);
+            var mean = times.Average();
+            var p95 = times[(int)(frames * 0.95)];
+            var stepPer = stepBytes / (double)frames;
+            var renderPer = renderBytes / (double)frames;
+            // Avalonia itself allocates a little per DrawImage it records (measured here, on this
+            // Avalonia): the plugin's own share is what is left.
+            var perImage = AvaloniaBytesPerDrawImage(window);
+            var imagesPer = images / (double)frames;
+            var own = stepPer + renderPer - imagesPer * perImage;
+
+            var size = new PixelSize((int)plaza.Bounds.Width, (int)plaza.Bounds.Height);
+            double raster;
+            using (var bmp = new RenderTargetBitmap(size))
+            {
+                for (var i = 0; i < 5; i++) RenderFrame(view, bmp);
+                var sw = Stopwatch.StartNew();
+                for (var i = 0; i < 30; i++) { plaza.Step(1 / 60f); RenderFrame(view, bmp); }
+                raster = sw.Elapsed.TotalMilliseconds / 30;
+            }
+            var report = $"{plaza.World.Creatures.Count} creatures, plaza {size.Width}x{size.Height}, {frames} frames\n"
+                + $"UI thread (step + record): mean {mean:0.000} ms, p95 {p95:0.000} ms, max {times[^1]:0.000} ms\n"
+                + $"allocated per frame: step {stepPer:0} B, render {renderPer:0} B ({imagesPer:0} bitmaps x {perImage:0} B recorded by Avalonia; plugin's own {Math.Max(0, own):0} B)\n"
+                + $"GCs over {frames} frames: gen0 {gcs.Item1}, gen1 {gcs.Item2}, gen2 {gcs.Item3}\n"
+                + $"full CPU raster (headless Skia, step + render into a bitmap): {raster:0.00} ms per frame\n";
+            File.WriteAllText(Path.Combine(dir, "bench.txt"), report);
+            Console.WriteLine(report);
+
+            Assert.True(p95 < 4, report);
+            Assert.True(own < 256, report);
+            Assert.True(stepPer + renderPer < 16 * 1024, report);
+            Assert.True(gcs.Item2 + gcs.Item3 == 0, report);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private sealed class ImageProbe : Control
+    {
+        public RenderTargetBitmap? Image;
+        public override void Render(DrawingContext context)
+        {
+            for (var i = 0; i < 100; i++) context.DrawImage(Image!, new Rect(0, 0, 16, 16), new Rect(i, 0, 16, 16));
+        }
+    }
+
+    /// <summary>Bytes Avalonia allocates per DrawImage it records (the floor under any frame budget).</summary>
+    private static double AvaloniaBytesPerDrawImage(Window window)
+    {
+        using var image = new RenderTargetBitmap(new PixelSize(16, 16));
+        var probe = new ImageProbe { Image = image };
+        var old = window.Content;
+        window.Content = probe;
+        Dispatcher.UIThread.RunJobs();
+        var recorder = new Recorder(probe);
+        for (var i = 0; i < 20; i++) recorder.Record(probe);
+        var a0 = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 50; i++) recorder.Record(probe);
+        var per = (GC.GetAllocatedBytesForCurrentThread() - a0) / 50.0 / 100;
+        window.Content = old;
+        Dispatcher.UIThread.RunJobs();
+        return per;
+    }
+
+    /// <summary>Records a control the way the compositor does on the UI thread (Avalonia's
+    /// internal RenderDataDrawingContext, reused frame to frame like a visual's own).</summary>
+    private sealed class Recorder
+    {
+        private readonly DrawingContext _ctx;
+        private readonly Func<object?> _results;
+
+        public Recorder(Visual visual)
+        {
+            var compositor = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(visual)!.Compositor;
+            var type = typeof(DrawingContext).Assembly.GetType("Avalonia.Rendering.Composition.Drawing.RenderDataDrawingContext", throwOnError: true)!;
+            _ctx = (DrawingContext)Activator.CreateInstance(type, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic,
+                null, new object[] { compositor }, null)!;
+            _results = type.GetMethod("GetRenderResults", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!
+                .CreateDelegate<Func<object?>>(_ctx);
+        }
+
+        public void Record(Control control)
+        {
+            control.Render(_ctx);
+            (_results() as IDisposable)?.Dispose();
+        }
+    }
+
+    /// <summary>A maximized-size town: 60 residents with covers, one dancing, all walked in.</summary>
+    private static (AlbumTownView View, Window Window, FakeTownHost Host) BigPlaza(string dir, int width, int height)
+    {
+        var host = new FakeTownHost { CrowdSize = 60, Pulse = 0.7 };
+        var covers = PreviewCovers(Path.Combine(dir, "covers"));
+        for (var i = 0; i < 120; i++)
+        {
+            var id = Guid.NewGuid().ToString("D");
+            for (var n = 0; n < 3; n++)
+                host.Tracks.Add(T($"Song {i} {n}", album: $"Album number {i}", artist: $"Artist {i % 23}", year: 1990 + i % 30, plays: i % 40,
+                    last: Now.AddDays(-(i % 50)), albumId: id, art: covers[i % covers.Count], number: n + 1));
+        }
+        var view = new AlbumTownView(host, new Random(7));
+        var town = AlbumGrouping.Group(host.Tracks, out var map);
+        view.SetTown(town, map, Array.Empty<string>());
+        foreach (var a in town) view.Covers.GetNow(a.ArtworkPath);
+        var playing = host.Tracks.First(t => view.Cast.Any(m => m.Album.TrackIds.Contains(t.Id)));
+        host.NowPlaying = new NowPlayingTrack(playing.Title, playing.Artist, playing.Album, playing.Duration, playing.FilePath, playing.ArtworkPath, 120);
+        host.IsPlaying = true;
+        var window = new Window { Content = view, Width = width, Height = height };
+        window.Show();
+        host.RaiseNowPlaying();
+        Dispatcher.UIThread.RunJobs();
+        for (var i = 0; i < 60 * 10; i++) view.Plaza.Step(1 / 60f);
+        return (view, window, host);
     }
 
     private static void RenderFrame(AlbumTownView view, RenderTargetBitmap bmp)
@@ -699,10 +1011,21 @@ public class AlbumTownPluginTests
         Assert.Equal((PluginId, "Album Town", "1.3"), (manifest.Id, manifest.Name, manifest.ApiVersion));
         Assert.Equal(new[] { "library.read", "playback.control" }, manifest.Permissions);
         Assert.Empty(manifest.Warnings);
-        Assert.Contains("Jafezy JD", manifest.Description);
-        Assert.Contains("Jafezy JD", manifest.Author);
-        Assert.Contains("Jafezy JD", AlbumTownPlugin.About);
-        Assert.Contains("Jafezy JD", AlbumTownView.Credit);
+        // The author is Jafezy JD: Noctis is not credited as the author anywhere a user reads it.
+        Assert.Equal("Jafezy JD", manifest.Author);
+        Assert.Equal("1.1.0", manifest.Version);
+        var plugin = new AlbumTownPlugin();
+        Assert.Equal(("Jafezy JD", "1.1.0", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
+        Assert.EndsWith("By Jafezy JD.", manifest.Description);
+        Assert.EndsWith("By Jafezy JD.", AlbumTownPlugin.About);
+        Assert.Equal("Album Town by Jafezy JD", AlbumTownView.Credit);
+        Assert.Equal("by Jafezy JD", AlbumTownView.Byline);
+        foreach (var text in new[] { manifest.Description, manifest.Author, AlbumTownPlugin.About, AlbumTownView.Credit, AlbumTownView.Byline })
+        {
+            Assert.DoesNotContain("Noctis", text);
+            Assert.DoesNotContain("idea by", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain('\u2014', text);
+        }
         Assert.DoesNotContain('\u2014', json);
         Assert.Equal(new AlbumTownPlugin().Info.Id, manifest.Id);
         Assert.NotNull(manifest.CheckCompatibility("1.6.5")); // before API 1.3
@@ -744,7 +1067,7 @@ public class AlbumTownPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.0.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.1.0.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumTown -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -762,7 +1085,7 @@ public class AlbumTownPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Town", "1.0.0"), (plugin.Name, plugin.Version));
+        Assert.Equal(("Album Town", "1.1.0", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
 
         host.SetEnabled(plugin, true);
