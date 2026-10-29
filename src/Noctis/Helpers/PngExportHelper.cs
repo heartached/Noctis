@@ -57,9 +57,15 @@ public static class PngExportHelper
         try
         {
             var transfer = new DataTransfer();
-            // Raw PNG bytes under the platform "PNG" format — understood by
-            // most image-aware apps (Discord, GIMP, Paint.NET, browsers).
-            transfer.Add(DataTransferItem.Create(DataFormat.CreateBytesPlatformFormat("PNG"), png));
+            // Raw PNG bytes under the platform's PNG clipboard format — understood by
+            // most image-aware apps (Discord, GIMP, Paint.NET, browsers). The name is
+            // per platform: "PNG" is a Windows clipboard format; macOS rejects it as an
+            // invalid UTI (nothing pasteable reached the pasteboard) and wants public.png,
+            // X11/Wayland selections use the MIME type.
+            var pngFormat = OperatingSystem.IsMacOS() ? "public.png"
+                : OperatingSystem.IsLinux() ? "image/png"
+                : "PNG";
+            transfer.Add(DataTransferItem.Create(DataFormat.CreateBytesPlatformFormat(pngFormat), png));
 
             // Also put a temp .png file on the clipboard so chat apps and
             // file managers can paste it as an attachment.

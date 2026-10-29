@@ -155,6 +155,9 @@ public static class StartupHelper
         return true;
     }
 
+    /// <summary>macOS: whether this process lives inside a .app bundle (launch at login needs one).</summary>
+    public static bool IsRunningFromMacAppBundle => MacAppBundlePath() != null;
+
     /// <summary>Resolves the enclosing .app bundle from the running executable
     /// (…/Noctis.app/Contents/MacOS/Noctis → …/Noctis.app); null when not bundled.</summary>
     private static string? MacAppBundlePath()

@@ -20,10 +20,12 @@ const { releases } = changelog as {
   releases: {
     tag: string;
     version: string;
+    label: string;
     publishedAt: string;
     url: string;
     prerelease: boolean;
     sections: { title: string | null; items: string[] }[];
+    summary: string | null;
   }[];
 };
 
@@ -93,7 +95,7 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
                   rel="noopener"
                   aria-label={`Release ${r.tag} on GitHub`}
                 >
-                  {r.version}
+                  {r.label}
                 </a>
                 <time class="cl__date" datetime={r.publishedAt}>
                   {dateFmt.format(new Date(r.publishedAt))}
@@ -104,7 +106,7 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
                 {/* The id lives on the heading so a #v1.4.2 link lands on the
                     version rather than a wrapper above it. */}
                 <h2 class="cl__version" id={r.tag}>
-                  <a class="cl__anchor" href={`#${r.tag}`}>{r.version}</a>
+                  <a class="cl__anchor" href={`#${r.tag}`}>{r.label}</a>
                   {r.prerelease && <span class="cl__pre">Pre-release</span>}
                 </h2>
 
@@ -114,6 +116,8 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
                       <p class="cl__prologue-title">{PROLOGUE[r.tag].title}</p>
                       <p class="cl__prologue-body">{PROLOGUE[r.tag].body}</p>
                     </div>
+                  ) : r.summary ? (
+                    <p class="cl__summary">{r.summary}</p>
                   ) : (
                     <p class="cl__none">
                       No release notes.{' '}
@@ -329,6 +333,14 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     color: var(--ink-2);
   }
 
+  /* Plugin and model releases carry a sentence, not a list of changes. */
+  .cl__summary {
+    color: var(--ink-1);
+    max-width: 60ch;
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
   /* v1.0.0 shipped without notes. Rather than an apology for missing data, it
      gets the one piece of hand-written copy on the page — it is the bottom of
      the scroll and the start of the project. */
@@ -519,7 +531,7 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     const li = el('li', 'cl__entry');
 
     const rail = el('div', 'cl__rail');
-    const pill = el('a', 'cl__pill mono', r.version);
+    const pill = el('a', 'cl__pill mono', r.label);
     pill.href = r.url;
     pill.target = '_blank';
     pill.rel = 'noopener';
@@ -531,13 +543,15 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     const body = el('div', 'cl__body');
     const h2 = el('h2', 'cl__version');
     h2.id = r.tag;
-    const anchor = el('a', 'cl__anchor', r.version);
+    const anchor = el('a', 'cl__anchor', r.label);
     anchor.href = `#${r.tag}`;
     h2.append(anchor);
     if (r.prerelease) h2.append(el('span', 'cl__pre', 'Pre-release'));
     body.append(h2);
 
-    if (!r.sections.length) {
+    if (!r.sections.length && r.summary) {
+      body.append(el('p', 'cl__summary', r.summary));
+    } else if (!r.sections.length) {
       const p = el('p', 'cl__none', 'No release notes. ');
       const a = el('a', undefined, 'View on GitHub');
       a.href = r.url;

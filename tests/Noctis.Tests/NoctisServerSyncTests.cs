@@ -67,13 +67,15 @@ public class NoctisServerSyncTests : IAsyncLifetime
     private Task<JsonElement> Push(object body, string? deviceKey = null)
         => PushRaw(JsonSerializer.Serialize(body), deviceKey);
 
-    private async Task<JsonElement> PushRaw(string body, string? deviceKey = null)
+    /// <param name="chunked">Send the body chunked (no Content-Length), so the server counts it as it reads.</param>
+    private async Task<JsonElement> PushRaw(string body, string? deviceKey = null, bool chunked = false)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, $"rest/pushNoctisSyncChanges.view?f=json{(deviceKey is null ? "&apiKey=" + _apiKey : "")}")
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         };
         if (deviceKey is not null) req.Headers.Add(NoctisServer.KeyHeader, deviceKey);
+        if (chunked) req.Headers.TransferEncodingChunked = true;
         var response = await _http.SendAsync(req);
         var json = await response.Content.ReadAsStringAsync();
         return JsonDocument.Parse(json).RootElement.GetProperty("subsonic-response");
@@ -329,7 +331,13 @@ public class NoctisServerSyncTests : IAsyncLifetime
         Assert.Equal("failed", r.GetProperty("status").GetString());
         Assert.Empty(_lib.AppliedTracks);
 
-        var huge = await PushRaw($$"""{"device":"phone-001","pad":"{{new string('x', 5 * 1024 * 1024)}}","items":[]}""");
+        // Just over the 4 MB cap, chunked. A body far over the cap with a Content-Length is refused
+        // before a byte of it is read and the connection closes; a client still writing then gets
+        // "Broken pipe" instead of the answer: a 5 MB body did that every time on macOS (128 KB
+        // loopback socket buffers), and the same body with a 4 MB pad does too, while Windows
+        // passed. Here the server reads to the cap first, so all but a few bytes are taken and
+        // the client is done writing when the refusal comes back.
+        var huge = await PushRaw($$"""{"device":"phone-001","pad":"{{new string('x', 4 * 1024 * 1024)}}","items":[]}""", chunked: true);
         Assert.Equal("failed", huge.GetProperty("status").GetString());
         Assert.Contains("too large", huge.GetProperty("error").GetProperty("message").GetString());
     }

@@ -546,6 +546,8 @@ public partial class SidebarViewModel : ViewModelBase
     private int CountShownTracks(Playlist pl)
     {
         if (_library.Tracks.Count == 0) return pl.TrackIds.Count;
+        // A smart playlist keeps rules, not ids: its tile said "0 tracks" over a full page.
+        if (pl.IsSmartPlaylist) return SmartPlaylistEvaluator.Evaluate(pl, _library.Tracks).Count;
         var shown = 0;
         foreach (var id in pl.TrackIds)
             if (_library.GetTrackById(id) != null) shown++;
@@ -593,10 +595,18 @@ public partial class SidebarViewModel : ViewModelBase
 
         // "16 tracks · 54 min" meta line for the Playlists grid tiles
         var totalDuration = TimeSpan.Zero;
-        foreach (var trackId in pl.TrackIds)
+        if (pl.IsSmartPlaylist)
         {
-            var t = _library.GetTrackById(trackId);
-            if (t != null) totalDuration += t.Duration;
+            foreach (var t in SmartPlaylistEvaluator.Evaluate(pl, _library.Tracks))
+                totalDuration += t.Duration;
+        }
+        else
+        {
+            foreach (var trackId in pl.TrackIds)
+            {
+                var t = _library.GetTrackById(trackId);
+                if (t != null) totalDuration += t.Duration;
+            }
         }
         var tracksLabel = item.TrackCount == 1 ? "1 track" : $"{item.TrackCount:N0} tracks";
         var durationLabel = totalDuration.TotalHours >= 1

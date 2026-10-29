@@ -151,6 +151,13 @@ public interface IAudioPlayer : IDisposable
     void SetPitchSemitones(double semitones);
 
     /// <summary>
+    /// True when <see cref="SetPitchSemitones"/> is audible, i.e. playback runs through the
+    /// gapless engine. False on macOS (no engine there) and when the engine fell back to a
+    /// LibVLC output, so the UI can hide a Pitch control that would do nothing.
+    /// </summary>
+    bool SupportsPitch => false;
+
+    /// <summary>
     /// Multi-channel upmix for 5.1/7.1 devices ("Off", "Duplicate" or "Surround" — see
     /// <see cref="UpmixMode"/>). Shared-mode gapless engine only; Exclusive Mode stays bit-exact.
     /// </summary>

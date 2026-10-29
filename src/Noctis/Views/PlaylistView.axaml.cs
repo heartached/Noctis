@@ -371,7 +371,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         // only ever moved that one row. OnTrackRowPointerReleased clears it on a click.
         _clearSelectionOnRelease = false;
         if (_selectedTracks.Count > 1 && _selectedTracks.Contains(track)
-            && !e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
             && DataContext is PlaylistViewModel { CanReorder: true })
         {

@@ -85,9 +85,9 @@ public class PlaylistMultiDragTests
 
     private static void CtrlClick(Window win, Point p)
     {
-        win.MouseMove(p, RawInputModifiers.Control);
-        win.MouseDown(p, MouseButton.Left, RawInputModifiers.Control);
-        win.MouseUp(p, MouseButton.Left, RawInputModifiers.Control);
+        win.MouseMove(p, TestKeys.Primary);
+        win.MouseDown(p, MouseButton.Left, TestKeys.Primary);
+        win.MouseUp(p, MouseButton.Left, TestKeys.Primary);
         Pump();
     }
 

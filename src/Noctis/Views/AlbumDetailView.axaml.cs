@@ -120,7 +120,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             return;
         }
 
-        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)) return;
         if (DataContext is not AlbumDetailViewModel vm) return;
         e.Handled = true;
 

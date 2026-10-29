@@ -16,12 +16,12 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.6.4</Version>
+    <Version>1.6.5</Version>
     <!-- Pre-release marker: numeric Version stays 1.1.16 (update checks + the
          displayed number are unchanged); the "-prerelease" SemVer suffix on the
          informational version is what lights the "Pre-release" badge in Settings.
          Remove this line (or drop the suffix) when cutting a stable release. -->
-    <InformationalVersion>1.6.4</InformationalVersion>
+    <InformationalVersion>1.6.5</InformationalVersion>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
@@ -63,6 +63,23 @@
     <ProjectReference Include="..\Noctis.Core.Server\Noctis.Core.Server.csproj" />
     <ProjectReference Include="..\Noctis.UI\Noctis.UI.csproj" />
   </ItemGroup>
+  <!-- arm64 (Apple Silicon, Linux arm64): leave Noctis.dll itself out of ReadyToRun. crossgen2
+       miscompiles SettingsView's generated XAML method (~320 KB of IL, the largest in the app):
+       the precompiled code reads a garbage GridLength and throws "Invalid value" building the
+       view, so Settings never opened on macOS 1.6.4. The same publish with this assembly
+       JIT-compiled opens it fine, and x64 (Windows) is unaffected. Avalonia, Skia and the
+       other dependencies stay precompiled. -->
+  <ItemGroup Condition="$(RuntimeIdentifier.EndsWith('-arm64'))">
+    <PublishReadyToRunExclude Include="Noctis.dll" />
+    <!-- Mitigation, root cause not found: with these two precompiled, osx-arm64 builds died
+         at startup in roughly a third of cold launches (SIGSEGV in libSkiaSharp
+         sk_codec_new_from_stream on a thread-pool artwork decode, the stream's vtable
+         already freed): 18 of 52 launches across the shipped-1.6.4 config and this one.
+         With both JIT-compiled: 0 of 24. Same code either way, only precompiled or not. -->
+    <PublishReadyToRunExclude Include="SkiaSharp.dll" />
+    <PublishReadyToRunExclude Include="Avalonia.Skia.dll" />
+  </ItemGroup>
+
   <!-- The official plugin list (plugins/index.json), used by Settings → Plugins → Get plugins
        when the live copy on GitHub cannot be fetched. -->
   <ItemGroup>

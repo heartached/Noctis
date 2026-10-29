@@ -2055,7 +2055,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             });
             if (changed.Count > 0)
             {
-                var message = Localization.Loc.T(changed.Count == 1 ? "Lyrics.SaveReplaceOne" : "Lyrics.SaveReplaceMany",
+                // macOS/Linux variants say "Trash": there is no Recycle Bin there.
+                var trash = OperatingSystem.IsWindows() ? "" : "Trash";
+                var message = Localization.Loc.T((changed.Count == 1 ? "Lyrics.SaveReplaceOne" : "Lyrics.SaveReplaceMany") + trash,
                     track.Title, string.Join(Localization.Loc.T("Lyrics.SaveFilesJoin"), changed));
                 bool confirmed;
                 try { confirmed = await ConfirmReplaceLyrics(message); } catch { confirmed = false; }
@@ -2079,7 +2081,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (ReferenceEquals(_currentTrack, track))
                 LoadLyricsForTrack(track);
             ShowStatusText(
-                outcome.KeptForeignSidecar ? Localization.Loc.T("Lyrics.SaveKeptOld")
+                outcome.KeptForeignSidecar ? Localization.Loc.T(OperatingSystem.IsWindows() ? "Lyrics.SaveKeptOld" : "Lyrics.SaveKeptOldTrash")
                 : outcome.Saved ? Localization.Loc.T("Lyrics.Saved")
                 : Localization.Loc.T("Lyrics.SaveFailed"),
                 outcome.Saved && !outcome.KeptForeignSidecar ? 3000 : 5000);

@@ -25,7 +25,7 @@ public static class MultiSelectHelper
         if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             return false;
 
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
         {
             // Normal left-click — clear all selections
             ClearAlbumSelections(selectedTiles);
@@ -54,7 +54,7 @@ public static class MultiSelectHelper
     /// </summary>
     public static bool HandleAlbumSelectAll(KeyEventArgs e, List<Button> allTiles, HashSet<Button> selectedTiles)
     {
-        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
             return false;
 
         e.Handled = true;
@@ -97,7 +97,7 @@ public static class MultiSelectHelper
         if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             return false;
 
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
         {
             ClearTrackSelections(selectedItems);
             return false;
@@ -124,7 +124,7 @@ public static class MultiSelectHelper
     /// </summary>
     public static bool HandleTrackSelectAll(KeyEventArgs e, ListBox listBox, HashSet<ListBoxItem> selectedItems)
     {
-        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
             return false;
 
         e.Handled = true;
@@ -209,7 +209,7 @@ public static class MultiSelectHelper
         if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             return false;
 
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
         {
             // Strip the realized rows too: clearing only the set left every row painted
             // ctrl-selected after a plain click, with the selection bar already gone.
@@ -237,7 +237,7 @@ public static class MultiSelectHelper
     /// <summary>Ctrl+A toggle for data-tracked track selection.</summary>
     public static bool HandleTrackSelectAllByData<T>(KeyEventArgs e, ListBox listBox, HashSet<T> selectedData) where T : class
     {
-        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
             return false;
 
         e.Handled = true;
@@ -305,7 +305,7 @@ public static class MultiSelectHelper
         if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             return false;
 
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
             return false;
 
         e.Handled = true;
@@ -325,7 +325,7 @@ public static class MultiSelectHelper
     /// <summary>Ctrl+A toggle for data-tracked album selection over the full item set.</summary>
     public static bool HandleAlbumSelectAllByData<T>(KeyEventArgs e, IEnumerable<T> allData, IEnumerable<Button> realizedTiles, HashSet<T> selectedData) where T : class
     {
-        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
             return false;
 
         e.Handled = true;

@@ -42,7 +42,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         if (tile.DataContext is not FavoriteItem item) return;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, item, e, _selectedItems)
-            && !e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
         {
             // Plain left-click clears any existing selection (mirrors prior behavior).

@@ -293,6 +293,14 @@ public class LyricsSearchEndToEndTests
         var (vm, _, track) = Mount(lrcLib, netEase);
         var lrcPath = Path.ChangeExtension(track.FilePath, ".lrc");
         var cacheLrc = Path.Combine(AppPaths.DataRoot, "lyrics_cache", $"{track.Id}.lrc");
+        // Windows trashes through the Recycle Bin for real. macOS asks Finder over Apple
+        // Events, which a test host without the Automation permission never gets an answer
+        // to (osascript times out and the trash reports failure), and Linux needs gio or a
+        // trash folder: there the move is recorded and done here, so the registry contract
+        // below is checked the same way on every OS.
+        var trashed = new List<string>();
+        if (!OperatingSystem.IsWindows())
+            vm.TrashSidecarFile = p => { trashed.Add(p); File.Delete(p); return true; };
 
         try
         {
@@ -316,11 +324,9 @@ public class LyricsSearchEndToEndTests
             Assert.True(vm.ShowSearchButton);
             Assert.False(vm.CanRemoveLyrics);
 
-            // The physical delete goes through the OS trash, whose backends are
-            // environment-dependent on CI (Finder / gio); assert it where it is
-            // deterministic. The registry gate above is the cross-platform contract.
-            if (OperatingSystem.IsWindows())
-                Assert.False(File.Exists(lrcPath));
+            Assert.False(File.Exists(lrcPath));
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(new[] { lrcPath }, trashed); // only the app's own sidecar went to the trash
         }
         finally
         {

@@ -511,15 +511,29 @@ public class LyricsBackgroundColorDialogTests : IDisposable
             Assert.Equal(XOf("ArtworkSegment"), PillX());                      // on Artwork, in place
             Assert.Equal(1, Named<Border>(dialog, "ArtworkPanel").Opacity);   // no fade on open
 
-            vm.SelectColorModeGradientCommand.Execute(null);
+            // The slide and the fade run on the real-time frame clock, so every frame is looked
+            // at: a slide passes through positions between the two labels, a snap goes straight
+            // from one to the other. One look after a fixed 30 ms failed whenever the runner
+            // stalled for longer than the 260 ms slide right then: the pill was already there
+            // ("jumped to 329.4"), having slid all the way through the stall.
             var gradient = Named<StackPanel>(dialog, "GradientPanel");
-            Assert.True(PumpUntil(() => gradient.IsEffectivelyVisible));
-            Pump(30);
-            Assert.True(PillX() > XOf("ArtworkSegment") && PillX() < XOf("GradientSegment") - 1, $"the pill jumped to {PillX()} instead of sliding");
-            Assert.True(gradient.Opacity < 1, "the Gradient choices popped in");
+            var from = XOf("ArtworkSegment");
+            var pillBetween = new List<double>();
+            var fadeBetween = new List<double>();
+            bool Look()
+            {
+                var x = PillX();
+                if (x > from + 0.5 && x < XOf("GradientSegment") - 0.5) pillBetween.Add(x);
+                if (gradient.IsEffectivelyVisible && gradient.Opacity is > 0.001 and < 0.999) fadeBetween.Add(gradient.Opacity);
+                return gradient.IsEffectivelyVisible;
+            }
+            vm.SelectColorModeGradientCommand.Execute(null);
+            Assert.True(PumpUntil(Look));
 
-            Assert.True(PumpUntil(() => Math.Abs(PillX() - XOf("GradientSegment")) < 0.5 && gradient.Opacity >= 0.999, 1500),
+            Assert.True(PumpUntil(() => Look() && Math.Abs(PillX() - XOf("GradientSegment")) < 0.5 && gradient.Opacity >= 0.999, 1500),
                 $"the pill settled at {PillX()} (want {XOf("GradientSegment")}), opacity {gradient.Opacity}");
+            Assert.True(pillBetween.Count > 0, $"the pill jumped from {from} to {PillX()} instead of sliding");
+            Assert.True(fadeBetween.Count > 0, "the Gradient choices popped in");
 
             vm.SelectColorModeSolidCommand.Execute(null);
             Assert.True(PumpUntil(() => Math.Abs(PillX() - XOf("SolidSegment")) < 0.5

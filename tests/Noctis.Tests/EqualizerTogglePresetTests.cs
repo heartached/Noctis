@@ -145,9 +145,21 @@ public class EqualizerTogglePresetTests : IDisposable
         Assert.True(Math.Abs(expected - actual) < 0.01f, $"applied preamp moved: {expected} → {actual}");
 
     /// <summary>Built-in curves come from LibVLC's preset table (the native libvlc ships in
-    /// the test output). Without it every built-in falls back to the Custom path and the
-    /// preamp tests below would pass without testing anything.</summary>
-    private static void EnsureLibVlc() => LibVLCSharp.Shared.Core.Initialize();
+    /// the test output on Windows). Without it every built-in falls back to the Custom path and
+    /// the preamp tests below would pass without testing anything. macOS has no libvlc NuGet
+    /// payload: load the one the app itself would (VlcAudioPlayer.PickMacLibVlcDirectory:
+    /// VLC.app or Homebrew on a dev Mac), and skip, saying why, where there is none.</summary>
+    private static void EnsureLibVlc()
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            var dir = VlcAudioPlayer.PickMacLibVlcDirectory(AppContext.BaseDirectory, File.Exists);
+            Assert.SkipWhen(dir is null, "no libvlc on this Mac (install VLC.app or Homebrew's libvlc)");
+            LibVLCSharp.Shared.Core.Initialize(dir);
+            return;
+        }
+        LibVLCSharp.Shared.Core.Initialize();
+    }
 
     [AvaloniaFact]
     public async Task DeletingTheSelectedBuiltIn_KeepsTheAppliedPreamp()

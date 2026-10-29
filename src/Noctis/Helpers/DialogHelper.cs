@@ -31,11 +31,26 @@ public static class DialogHelper
         // owner's content with no cross-platform coordinate assumptions.
         if (!OperatingSystem.IsWindows())
         {
-            var clientTopLeft = owner.PointToScreen(new Point(0, 0));
+            void Cover()
+            {
+                dialog.Position = owner.PointToScreen(new Point(0, 0));
+                dialog.Width = owner.ClientSize.Width;
+                dialog.Height = owner.ClientSize.Height;
+            }
             dialog.WindowStartupLocation = WindowStartupLocation.Manual;
-            dialog.Position = clientTopLeft;
-            dialog.Width = owner.ClientSize.Width;
-            dialog.Height = owner.ClientSize.Height;
+            Cover();
+
+            // The owner stays draggable/resizable under a modal here (Windows disables it),
+            // so keep the overlay on it: it used to stay put while the window moved away.
+            EventHandler<PixelPointEventArgs> moved = (_, _) => Cover();
+            EventHandler<WindowResizedEventArgs> resized = (_, _) => Cover();
+            owner.PositionChanged += moved;
+            owner.Resized += resized;
+            dialog.Closed += (_, _) =>
+            {
+                owner.PositionChanged -= moved;
+                owner.Resized -= resized;
+            };
             return;
         }
 

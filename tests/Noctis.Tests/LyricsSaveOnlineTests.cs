@@ -243,7 +243,7 @@ public class LyricsSaveOnlineTests
 
             var prompt = Assert.Single(h.Prompts);
             Assert.Contains($"“{Name(h.Track, ".ttml")}”", prompt);
-            Assert.Contains("Recycle Bin", prompt);
+            Assert.Contains(OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash", prompt);
             Assert.Contains(Name(h.Track, ".ttml"), h.Trashed);
             Assert.False(File.Exists(Sidecar(h.Track, ".ttml")));
             Assert.Equal(Elrc, Read(Sidecar(h.Track, ".elrc")));

@@ -421,6 +421,8 @@ public partial class PlayerViewModel : ViewModelBase
 
     public string PitchText => PitchSemitones == 0 ? "±0" : (PitchSemitones > 0 ? "+" : "") + PitchSemitones.ToString(System.Globalization.CultureInfo.InvariantCulture);
     public bool IsPitchChanged => PitchSemitones != 0;
+    /// <summary>Shows the Pitch submenu only where the output path can shift pitch (not macOS).</summary>
+    public bool IsPitchSupported => _audioPlayer.SupportsPitch;
     /// <summary>Lights the island speed button when either control is off its default.</summary>
     public bool IsSpeedOrPitchChanged => IsPlaybackRateChanged || IsPitchChanged;
 

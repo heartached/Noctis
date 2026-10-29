@@ -305,7 +305,7 @@
                         Classes.expanded="{Binding IsExpanded}"
                         IsEnabled="{Binding TopBar.IsSearchActionAvailable, FallbackValue=False}"
                         Click="OnSearchButtonClick"
-                        ToolTip.Tip="{loc:T Sidebar.SearchCtrlFTip}">
+                        ToolTip.Tip="{loc:T Sidebar.SearchCtrlFTip, MacKeys=True}">
                     <StackPanel Orientation="Horizontal" Spacing="14"
                                 HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid x:Name="SearchIconHost" Width="28" Height="28">

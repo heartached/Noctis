@@ -208,6 +208,21 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         if (DataContext is not MainWindowViewModel vm) return;
 
+        // macOS: Hide() below on a native-fullscreen window leaves its Space up and empty — a
+        // black screen with no menu bar or Dock, only the mini player floating on it. Leave
+        // fullscreen first and come back here once the exit transition is over; the main
+        // window re-enters fullscreen when the mini player closes (OnMiniPlayerClosed).
+        if (OperatingSystem.IsMacOS() && WindowState == WindowState.FullScreen)
+        {
+            _restoreFullScreenAfterMini = true;
+            LeaveMacFullScreenThen(() =>
+            {
+                if (_miniPlayer == null) ToggleMiniPlayer();
+            });
+            return;
+        }
+        if (_leavingMacFullScreen) return; // a second press during the exit transition
+
         var miniVm = vm.CreateMiniPlayerViewModel();
         _miniPlayer = new MiniPlayerWindow { DataContext = miniVm };
         _miniPlayer.Closed += OnMiniPlayerClosed;
@@ -285,6 +300,52 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
         Activate();
+
+        // Opened from fullscreen on macOS (see ToggleMiniPlayer): go back to it, as the
+        // Windows build does when Show() restores a hidden fullscreen window.
+        if (_restoreFullScreenAfterMini)
+        {
+            _restoreFullScreenAfterMini = false;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_miniPlayer == null && IsVisible && WindowState != WindowState.FullScreen)
+                    ToggleFullScreen();
+            }, DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>Set when the mini player was opened from macOS fullscreen.</summary>
+    private bool _restoreFullScreenAfterMini;
+
+    /// <summary>True while <see cref="LeaveMacFullScreenThen"/> waits out the exit transition.</summary>
+    private bool _leavingMacFullScreen;
+
+    /// <summary>Long enough for AppKit's exit-fullscreen transition (measured: an orderOut
+    /// 300 ms after the request was dropped, 700 ms landed, on an M-series MacBook).</summary>
+    private const int MacFullScreenExitMs = 1000;
+
+    /// <summary>
+    /// macOS only: a native-fullscreen window has its own Space, and hiding it leaves that
+    /// Space on screen, empty and black, with no menu bar or Dock. This leaves fullscreen and
+    /// runs <paramref name="then"/> after the transition. An orderOut sent DURING the transition
+    /// is dropped: the window stays on screen while Avalonia reports it hidden. Anywhere else,
+    /// or when not fullscreen, <paramref name="then"/> runs right away.
+    /// </summary>
+    private void LeaveMacFullScreenThen(Action then)
+    {
+        if (!OperatingSystem.IsMacOS() || WindowState != WindowState.FullScreen)
+        {
+            then();
+            return;
+        }
+        if (_leavingMacFullScreen) return;
+        _leavingMacFullScreen = true;
+        ToggleFullScreen();
+        DispatcherTimer.RunOnce(() =>
+        {
+            _leavingMacFullScreen = false;
+            then();
+        }, TimeSpan.FromMilliseconds(MacFullScreenExitMs));
     }
 
     // Parameterless overload kept for the XAML previewer/designer; the app always
@@ -1115,6 +1176,22 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             var windowMenu = new NativeMenu();
             windowMenu.Items.Add(new NativeMenuItem("Playback") { Menu = playback });
             NativeMenu.SetMenu(this, windowMenu);
+
+            // Dock icon menu: the macOS counterpart of the Windows taskbar thumbnail buttons
+            // (InitializeTaskbarButtons) — Previous, Play/Pause, Next, Favorite.
+            var dock = new NativeMenu();
+            void AddDockItem(string header, Action run)
+            {
+                var item = new NativeMenuItem(header);
+                item.Click += (_, _) => run();
+                dock.Items.Add(item);
+            }
+            AddDockItem("Play / Pause", () => vm.Player.PlayPauseCommand.Execute(null));
+            AddDockItem("Next Track", () => vm.Player.NextCommand.Execute(null));
+            AddDockItem("Previous Track", () => vm.Player.PreviousCommand.Execute(null));
+            dock.Items.Add(new NativeMenuItemSeparator());
+            AddDockItem("Favorite", () => vm.Player.ToggleCurrentTrackFavoriteCommand.Execute(null));
+            NativeDock.SetMenu(Application.Current!, dock);
         }
         catch (Exception ex)
         {
@@ -1301,7 +1378,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // graceful shutdown (OS shutdown while in tray), so snapshot the
             // queue now for next launch's restore.
             vm.Player.SaveQueueStateInBackground();
-            Hide();
+            // macOS fullscreen: hiding in place leaves a black, empty Space (see helper).
+            LeaveMacFullScreenThen(Hide);
             return;
         }
 
@@ -2300,11 +2378,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             if (selection.Count == 0) return;
             selection.Clear();
         }
-        else if (e.Key == Key.A && e.KeyModifiers == KeyModifiers.Control)
+        else if (e.Key == Key.A && e.KeyModifiers == PlatformHelper.PrimaryModifier)
         {
             selection.SelectAll();
         }
-        else if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
+        else if (PlatformHelper.IsDeleteKey(e.Key) && e.KeyModifiers == KeyModifiers.None)
         {
             if (selection.Count == 0) return;
             vm.Player.RemoveQueueRows(selection.Snapshot());
@@ -2383,7 +2461,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             && _queueSelection is { } selection
             && QueueRowIndex(listBox, rowControl) is var row and >= 0)
         {
-            var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+            var ctrl = e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier);
             var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
             if (shift) selection.SelectRangeTo(row, additive: ctrl);
             else if (ctrl) selection.Toggle(row);
@@ -2625,7 +2703,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         var onRow = (e.Source as Visual)?.GetSelfAndVisualAncestors()
             .Any(v => v is Border b && b.Classes.Contains("queue-row")) == true;
-        var modifiers = e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Shift);
+        var modifiers = e.KeyModifiers & (PlatformHelper.PrimaryModifier | KeyModifiers.Shift);
         if (onRow && modifiers == KeyModifiers.None) return;
 
         var pos = e.GetPosition(listBox);

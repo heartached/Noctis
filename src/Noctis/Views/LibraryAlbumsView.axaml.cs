@@ -48,7 +48,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         if (tile.DataContext is not Album album) return;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
-            && !e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
         {
             // Plain left-click clears any existing selection (mirrors prior behavior).

@@ -100,9 +100,16 @@ public class LanguageLiveSwitchTests
     [InlineData("ko", "한국어 (Korean)")]
     [InlineData("ru", "Русский (Russian)")]
     [InlineData("tr", "Türkçe (Turkish)")]
-    [InlineData("zh-Hans", "中文（简体） (Chinese, Simplified)")]
     public void LanguageEntries_ShowNativeThenEnglishName(string code, string expected)
         => Assert.Equal(expected, SettingsViewModel.DescribeCulture(code));
+
+    /// <summary>The native name comes from the OS's ICU data, and CLDR spells Simplified
+    /// Chinese two ways: "中文（简体）" (Windows' ICU) and "简体中文" (the newer data macOS
+    /// ships). Either is the native name; the English one follows it the same way.</summary>
+    [Fact]
+    public void SimplifiedChinese_ShowsItsNativeThenEnglishName()
+        => Assert.Contains(SettingsViewModel.DescribeCulture("zh-Hans"),
+            new[] { "中文（简体） (Chinese, Simplified)", "简体中文 (Chinese, Simplified)" });
 
     private sealed class NoOpPlayHistory : IPlayHistoryService
     {

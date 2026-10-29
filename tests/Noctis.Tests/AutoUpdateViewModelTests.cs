@@ -363,7 +363,7 @@ public class AutoUpdateViewModelTests : IDisposable
         public Task FlushAsync() => Task.CompletedTask;
     }
 
-    /// <summary>One two-day-old release (soaked) with a Windows installer and its SHA256SUMS.</summary>
+    /// <summary>One two-day-old release (soaked) with this platform's installer and its SHA256SUMS.</summary>
     private sealed class FakeGitHub(string tag, bool prerelease = false) : HttpMessageHandler
     {
         public int ReleaseChecks;
@@ -383,7 +383,11 @@ public class AutoUpdateViewModelTests : IDisposable
         /// <summary>The release list request fails (offline, GitHub down).</summary>
         public bool FailChecks;
 
-        private string AssetName => $"Noctis-{tag}-Setup.exe";
+        /// <summary>The asset the updater installs here (UpdateService.FindInstallerAsset): a
+        /// release with only the Windows Setup.exe offers macOS nothing to download.</summary>
+        private string AssetName => OperatingSystem.IsMacOS()
+            ? $"Noctis-{tag}-osx-{UpdateService.MacDmgArch(System.Runtime.InteropServices.RuntimeInformation.OSArchitecture, MacRosetta.IsTranslated)}.dmg"
+            : $"Noctis-{tag}-Setup.exe";
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {

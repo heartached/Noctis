@@ -138,7 +138,7 @@
                                         Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).PlayFromLineCommand}"
                                         CommandParameter="{Binding}">
                                     <TextBlock Text="{Binding TimestampLabel}"
-                                               FontFamily="Consolas,monospace"
+                                               FontFamily="Consolas,Menlo,monospace"
                                                FontSize="12"
                                                HorizontalAlignment="Center"
                                                Opacity="{Binding HasTimestamp, Converter={StaticResource BoolToOpacity}}"/>

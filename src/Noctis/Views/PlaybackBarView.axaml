@@ -629,10 +629,11 @@
                                         <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=200}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <Separator/>
+                                <Separator IsVisible="{Binding IsPitchSupported}"/>
                                 <!-- Pitch (Harmonoid-style, independent of speed): semitones on the
-                                     engine's resampler; the WSOLA stage keeps the tempo. -->
-                                <MenuItem>
+                                     engine's resampler; the WSOLA stage keeps the tempo. Hidden where
+                                     there is no engine (macOS), since LibVLC output ignores pitch. -->
+                                <MenuItem IsVisible="{Binding IsPitchSupported}">
                                     <MenuItem.Header>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <TextBlock Text="{loc:T PlaybackBar.Pitch}"/>

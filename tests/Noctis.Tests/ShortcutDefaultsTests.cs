@@ -24,7 +24,13 @@ public class ShortcutDefaultsTests
     public void PlatformNeutralKeys_AreTheSameEverywhere(bool isMac)
     {
         Assert.Equal(new KeyGesture(Key.Space), ShortcutDefaults.For(ShortcutAction.PlayPause, isMac));
-        Assert.Equal(new KeyGesture(Key.F11), ShortcutDefaults.For(ShortcutAction.ToggleFullscreen, isMac));
+    }
+
+    [Fact]
+    public void Fullscreen_IsF11_OnWindows_AndCtrlCmdF_OnMac()
+    {
+        Assert.Equal(new KeyGesture(Key.F11), ShortcutDefaults.For(ShortcutAction.ToggleFullscreen, isMac: false));
+        Assert.Equal(new KeyGesture(Key.F, KeyModifiers.Meta | KeyModifiers.Control), ShortcutDefaults.For(ShortcutAction.ToggleFullscreen, isMac: true));
     }
 
     [Fact]

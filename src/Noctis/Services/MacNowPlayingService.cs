@@ -106,7 +106,8 @@ public sealed class MacNowPlayingService : IDisposable
     {
         if (e.PropertyName is nameof(PlayerViewModel.State)
             or nameof(PlayerViewModel.CurrentTrack)
-            or nameof(PlayerViewModel.CurrentArtPath))
+            or nameof(PlayerViewModel.CurrentArtPath)
+            or nameof(PlayerViewModel.PlaybackRate))
         {
             OnUiThread(UpdateNowPlaying);
         }
@@ -136,7 +137,9 @@ public sealed class MacNowPlayingService : IDisposable
             SetString(dict, _keyAlbum, track.Album);
             SetDouble(dict, _keyDuration, track.Duration.TotalSeconds);
             SetDouble(dict, _keyElapsed, _player.Position.TotalSeconds);
-            SetDouble(dict, _keyRate, _player.IsPlaying ? 1.0 : 0.0);
+            // The real speed: macOS extrapolates elapsed from this rate, so a fixed 1.0
+            // let Control Center's clock drift whenever the speed menu was off 1×.
+            SetDouble(dict, _keyRate, _player.IsPlaying ? _player.PlaybackRate : 0.0);
 
             var artwork = GetArtwork(_player.CurrentArtPath);
             if (artwork != IntPtr.Zero)

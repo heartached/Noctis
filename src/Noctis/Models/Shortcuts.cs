@@ -112,7 +112,9 @@ public static class ShortcutDefaults
             ShortcutAction.VolumeUp => new KeyGesture(Key.Up, primary),
             ShortcutAction.VolumeDown => new KeyGesture(Key.Down, primary),
             ShortcutAction.ToggleFavorite => new KeyGesture(Key.L, primary),
-            ShortcutAction.ToggleFullscreen => new KeyGesture(Key.F11),
+            // A Mac keyboard's F11 is volume up (fn+F11 is Show Desktop), so the key never
+            // reaches the app there; ⌃⌘F is the macOS Enter Full Screen key.
+            ShortcutAction.ToggleFullscreen => isMac ? new KeyGesture(Key.F, KeyModifiers.Meta | KeyModifiers.Control) : new KeyGesture(Key.F11),
             ShortcutAction.SearchLibrary => new KeyGesture(Key.F, primary),
             ShortcutAction.CommandPalette => new KeyGesture(Key.K, primary),
             ShortcutAction.NewPlaylist => new KeyGesture(Key.N, primary),

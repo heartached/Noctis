@@ -13,10 +13,12 @@ export interface Section {
 export interface ParsedRelease {
   tag: string;
   version: string;
+  label: string;
   publishedAt: string;
   url: string;
   prerelease: boolean;
   sections: Section[];
+  summary: string | null;
 }
 
 const SECTION_MAP: [RegExp, string][] = [
@@ -104,11 +106,34 @@ export function parseSections(body: string | null | undefined): Section[] {
   return resolved.sort((a, b) => ranked(a) - ranked(b));
 }
 
+export function parseSummary(body: string | null | undefined): string | null {
+  if (!body) return null;
+  const lines = contentSlice(body)
+    .split(/\r?\n/)
+    .filter((l) => !/^\s*(#|[-*+]\s|\|)/.test(l))
+    .map(plain)
+    .filter(Boolean);
+  return lines.join(' ') || null;
+}
+
+export function labelFor(tag: string, name: string | null, version: string): string {
+  if (/^v?\d/.test(tag)) return version;
+  const fromName = plain(name ?? '')
+    .replace(/\bplugin\b/gi, '')
+    .replace(/\bv?\d+(\.\d+)*\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (fromName) return fromName;
+  const bare = tag.replace(/^plugin-/, '').replace(/-v[\d.]*$/, '');
+  return bare.charAt(0).toUpperCase() + bare.slice(1);
+}
+
 interface GitHubRelease {
   draft?: boolean;
   prerelease?: boolean;
   published_at?: string | null;
   tag_name?: string;
+  name?: string | null;
   html_url?: string;
   body?: string | null;
 }
@@ -130,12 +155,19 @@ export function fromGitHub(all: GitHubRelease[], repo: string): ParsedRelease[] 
   return all
     .filter((r) => !r.draft && r.published_at && r.tag_name)
     .sort((a, b) => Date.parse(b.published_at!) - Date.parse(a.published_at!))
-    .map((r) => ({
-      tag: r.tag_name!.replace(/[^\w.\-+]/g, ''),
-      version: r.tag_name!.replace(/^v/, '').replace(/[^\w.\-+]/g, ''),
-      publishedAt: r.published_at!,
-      url: safeUrl(r.html_url),
-      prerelease: Boolean(r.prerelease),
-      sections: parseSections(r.body),
-    }));
+    .map((r) => {
+      const tag = r.tag_name!.replace(/[^\w.\-+]/g, '');
+      const version = r.tag_name!.replace(/^v/, '').replace(/[^\w.\-+]/g, '');
+      const sections = parseSections(r.body);
+      return {
+        tag,
+        version,
+        label: labelFor(tag, r.name ?? null, version),
+        publishedAt: r.published_at!,
+        url: safeUrl(r.html_url),
+        prerelease: Boolean(r.prerelease),
+        sections,
+        summary: sections.length ? null : parseSummary(r.body),
+      };
+    });
 }

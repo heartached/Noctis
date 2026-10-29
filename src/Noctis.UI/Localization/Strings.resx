@@ -1216,13 +1216,20 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Lyrics.SaveReplaceOne" xml:space="preserve"><value>“{0}” already has {1}.
 
 Saving replaces it with the lyrics on screen. A lyrics file Noctis didn't write goes to the Recycle Bin first.</value><comment>Save Lyrics to File prompt in LyricsViewModel; {0} = song title, {1} = one quoted file name</comment></data>
+  <data name="Lyrics.SaveReplaceOneTrash" xml:space="preserve"><value>“{0}” already has {1}.
+
+Saving replaces it with the lyrics on screen. A lyrics file Noctis didn't write goes to the Trash first.</value><comment>Save Lyrics to File prompt in LyricsViewModel; {0} = song title, {1} = one quoted file name (macOS/Linux)</comment></data>
   <data name="Lyrics.SaveReplaceMany" xml:space="preserve"><value>“{0}” already has {1}.
 
 Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't write goes to the Recycle Bin first.</value><comment>Save Lyrics to File prompt in LyricsViewModel; {0} = song title, {1} = quoted file names joined by Lyrics.SaveFilesJoin</comment></data>
+  <data name="Lyrics.SaveReplaceManyTrash" xml:space="preserve"><value>“{0}” already has {1}.
+
+Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't write goes to the Trash first.</value><comment>Save Lyrics to File prompt in LyricsViewModel; {0} = song title, {1} = quoted file names joined by Lyrics.SaveFilesJoin (macOS/Linux)</comment></data>
   <data name="Lyrics.SaveFilesJoin" xml:space="preserve"><value> and </value><comment>Joins the file names in Lyrics.SaveReplaceMany (keep the spaces)</comment></data>
   <data name="Lyrics.SaveReplaceTags" xml:space="preserve"><value>the lyrics inside the audio file</value><comment>Save Lyrics to File prompt: joined into {1} of Lyrics.SaveReplaceOne/Many when the save replaces lyrics in the audio file's tags (GitHub #135)</comment></data>
   <data name="Lyrics.Saved" xml:space="preserve"><value>Saved Lyrics</value><comment>Lyrics page status after Save Lyrics to File</comment></data>
   <data name="Lyrics.SaveKeptOld" xml:space="preserve"><value>Saved · an old lyrics file was kept, couldn't move it to the Recycle Bin</value><comment>Lyrics page status after Save Lyrics to File</comment></data>
+  <data name="Lyrics.SaveKeptOldTrash" xml:space="preserve"><value>Saved · an old lyrics file was kept, couldn't move it to the Trash</value><comment>Lyrics page status after Save Lyrics to File (macOS/Linux)</comment></data>
   <data name="Lyrics.SaveFailed" xml:space="preserve"><value>Save failed — check file permissions</value><comment>Lyrics page status after Save Lyrics to File</comment></data>
   <data name="Lyrics.LrcRedSync" xml:space="preserve"><value>Word-sync with lrc.red's model</value><comment>Lyrics page pill and lrc.red's row in Search Lyrics: has lrc.red's in-house model time every word of a song it has only line-synced</comment></data>
   <data name="Lyrics.LrcRedSyncWorking" xml:space="preserve"><value>Timing every word… a few seconds</value><comment>Lyrics page pill / Search Lyrics row while lrc.red's model runs</comment></data>

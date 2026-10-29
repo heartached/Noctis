@@ -651,7 +651,7 @@ public partial class MiniPlayerWindow : Window
                 if (p != Position) Position = p;
             }
 
-            if (t < 1) { RequestAnimationFrame(Frame); return; }
+            if (t < 1) { RequestGeometryFrame(Frame); return; }
 
             Width = targetWidth;
             Height = targetHeight;
@@ -661,7 +661,28 @@ public partial class MiniPlayerWindow : Window
             CapturePlacement();
             RevealDeferredForm();
         }
-        RequestAnimationFrame(Frame);
+        RequestGeometryFrame(Frame);
+    }
+
+    /// <summary>
+    /// Schedules one step of a window-geometry glide (size / drawer) on the frame clock.
+    /// macOS: a RequestAnimationFrame callback runs INSIDE AppKit's display pass
+    /// (-[AvnView updateLayer]). Resizing the NSWindow there marks it as needing another
+    /// display pass in the same cycle, that pass runs the next frame callback, which resizes
+    /// again, and so on until AppKit throws NSGenericException ("more Display Window passes
+    /// than there are views in the window") and the app aborts. Posting the step to the
+    /// dispatcher keeps the frame-clock pacing but moves the resize out of the display pass.
+    /// Windows / Linux keep the direct callback (the 1.6.0 smoothness fix).
+    /// </summary>
+    private void RequestGeometryFrame(Action<TimeSpan> step)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            RequestAnimationFrame(step);
+            return;
+        }
+        RequestAnimationFrame(ts => Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => step(ts), Avalonia.Threading.DispatcherPriority.Normal));
     }
 
     /// <summary>Generation of the AnimateSizeTo that owns <see cref="_sizeAnimating"/>.</summary>
@@ -1557,7 +1578,7 @@ public partial class MiniPlayerWindow : Window
     /// <summary>Delete on a clicked (focused) queue row removes it, as in the main Queue panel.</summary>
     private void OnMiniQueueRowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Delete || e.KeyModifiers != KeyModifiers.None) return;
+        if (!PlatformHelper.IsDeleteKey(e.Key) || e.KeyModifiers != KeyModifiers.None) return;
         if (sender is not Control { DataContext: MiniQueueRow row } || Vm is not { } vm) return;
         vm.RemoveFromQueueCommand.Execute(row);
         e.Handled = true;
@@ -1857,7 +1878,7 @@ public partial class MiniPlayerWindow : Window
                 _drawerShiftY = shift;
             }
 
-            if (t < 1) { RequestAnimationFrame(Frame); return; }
+            if (t < 1) { RequestGeometryFrame(Frame); return; }
 
             _drawerAnim = null;
             Height = fromHeight + delta;
@@ -1868,7 +1889,7 @@ public partial class MiniPlayerWindow : Window
             onLanded();
             CapturePlacement();
         }
-        RequestAnimationFrame(Frame);
+        RequestGeometryFrame(Frame);
     }
 
     /// <summary>In-flight drawer animation: generation tag (only honored while it matches

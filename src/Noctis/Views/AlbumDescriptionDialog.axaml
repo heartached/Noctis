@@ -188,7 +188,7 @@
                     <Button x:Name="SaveButton"
                             Classes="pill-primary"
                             Content="{loc:T AlbumDescription.Save}"
-                            ToolTip.Tip="{loc:T DescriptionDialog.SaveTip}"
+                            ToolTip.Tip="{loc:T DescriptionDialog.SaveTip, MacKeys=True}"
                             Command="{Binding SaveAlbumDescriptionEditCommand}"
                             MinWidth="108" />
                 </StackPanel>

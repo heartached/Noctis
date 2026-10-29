@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Avalonia.Input;
 using Noctis.Services;
 
 namespace Noctis.Helpers;
@@ -12,6 +13,18 @@ public static class PlatformHelper
     public static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     public static bool IsMacOS => RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
     public static bool IsLinux => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
+    /// <summary>
+    /// Modifier for select-all and add-to-selection clicks: ⌘ on macOS (where Ctrl+click is a
+    /// right-click and Ctrl+A moves the caret), Ctrl everywhere else.
+    /// </summary>
+    public static KeyModifiers PrimaryModifier => IsMacOS ? KeyModifiers.Meta : KeyModifiers.Control;
+
+    /// <summary>
+    /// The key that removes selected rows. A Mac keyboard's "delete" key reports Backspace
+    /// (forward Delete needs fn), so both count there.
+    /// </summary>
+    public static bool IsDeleteKey(Key key) => key == Key.Delete || (IsMacOS && key == Key.Back);
 
     /// <summary>
     /// Opens the system file manager and selects the specified file.
@@ -63,7 +76,7 @@ public static class PlatformHelper
     {
         try
         {
-            if (IsMacOS && appPath.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+            if (IsMacOS && appPath.TrimEnd('/').EndsWith(".app", StringComparison.OrdinalIgnoreCase))
             {
                 // ArgumentList — see ShowInFileManager.
                 Process.Start(new ProcessStartInfo

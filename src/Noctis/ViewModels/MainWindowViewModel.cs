@@ -2303,6 +2303,11 @@ public partial class MainWindowViewModel : ViewModelBase
             };
         }
 
+        // Shortcuts (Ctrl/⌘+1…4) and the command palette navigate here without touching the
+        // sidebar, which kept highlighting the section you came from. Sidebar clicks already
+        // selected this item; keys without a sidebar row leave the highlight alone.
+        HighlightSidebarSection(key);
+
         if (previousEntry != null && !ReferenceEquals(CurrentView, previousEntry.View))
         {
             PushHistoryEntry(previousEntry);

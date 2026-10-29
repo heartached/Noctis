@@ -190,6 +190,39 @@ function parseSections(body) {
   return resolved.sort((a, b) => ranked(a) - ranked(b));
 }
 
+/**
+ * A release whose notes are a sentence rather than a list — plugins and the
+ * Lyrics Studio model are published that way. Prose lines only: headings,
+ * bullets and tables belong to the structured path above.
+ */
+function parseSummary(body) {
+  if (!body) return null;
+  const lines = contentSlice(body)
+    .split(/\r?\n/)
+    .filter((l) => !/^\s*(#|[-*+]\s|\|)/.test(l))
+    .map(plain)
+    .filter(Boolean);
+  return lines.join(' ') || null;
+}
+
+/**
+ * What the pill and heading say. App releases are tagged v<version> and show
+ * the version; anything else (plugin-mixxx-v1.0.1, lullaby-v1) is its own
+ * product and shows just its name — "Mixxx", "Lullaby" — with the word
+ * "plugin" and the version stripped from the release title.
+ */
+function labelFor(tag, name, version) {
+  if (/^v?\d/.test(tag)) return version;
+  const fromName = plain(name ?? '')
+    .replace(/\bplugin\b/gi, '')
+    .replace(/\bv?\d+(\.\d+)*\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (fromName) return fromName;
+  const bare = tag.replace(/^plugin-/, '').replace(/-v[\d.]*$/, '');
+  return bare.charAt(0).toUpperCase() + bare.slice(1);
+}
+
 /* --- Build ---------------------------------------------------------------- */
 
 let payload;
@@ -211,21 +244,29 @@ try {
    * which puts a long-drafted release in the wrong place.
    *
    * Official plugin releases (plugin-<name>-v<version>, see plugins/PUBLISHING.md)
-   * are not app versions and stay out of the history.
+   * are listed too, under their own name — see labelFor.
    */
   const releases = all
-    .filter((r) => !r.draft && r.published_at && !r.tag_name.startsWith('plugin-'))
+    .filter((r) => !r.draft && r.published_at)
     .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
-    .map((r) => ({
+    .map((r) => {
       // Tag names flow into HTML and into element ids — plain version tokens only.
-      tag: r.tag_name.replace(/[^\w.\-+]/g, ''),
-      version: r.tag_name.replace(/^v/, '').replace(/[^\w.\-+]/g, ''),
-      name: plain(r.name ?? '') || null,
-      publishedAt: r.published_at,
-      url: assertRepoUrl(r.html_url),
-      prerelease: Boolean(r.prerelease),
-      sections: parseSections(r.body),
-    }));
+      const tag = r.tag_name.replace(/[^\w.\-+]/g, '');
+      const version = r.tag_name.replace(/^v/, '').replace(/[^\w.\-+]/g, '');
+      const name = plain(r.name ?? '') || null;
+      const sections = parseSections(r.body);
+      return {
+        tag,
+        version,
+        name,
+        label: labelFor(tag, name, version),
+        publishedAt: r.published_at,
+        url: assertRepoUrl(r.html_url),
+        prerelease: Boolean(r.prerelease),
+        sections,
+        summary: sections.length ? null : parseSummary(r.body),
+      };
+    });
 
   if (!releases.length) throw new Error('no published release found');
 

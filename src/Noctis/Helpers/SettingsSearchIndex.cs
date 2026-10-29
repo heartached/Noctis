@@ -19,8 +19,24 @@ public sealed class SettingsSearchIndex
     public const string CardClass = "setting-card";
     public const string HiddenClass = "search-hidden";
 
-    public sealed record Entry(string Text, string Tab, Border Card, Control Panel)
+    public sealed record Entry(string Tab, Border Card, Control Panel, IReadOnlyList<TextBlock> Blocks)
     {
+        /// <summary>
+        /// Section name plus the text of the rows the page shows right now. Read at query
+        /// time: a row gated off by a binding (a Windows-only switch on macOS, a parent
+        /// toggle) must not make its card a hit for a word the user cannot see in it.
+        /// </summary>
+        public string Text => Tab + ' ' + string.Join(' ', Blocks
+            .Where(t => !string.IsNullOrWhiteSpace(t.Text) && IsShownInCard(t))
+            .Select(t => t.Text));
+
+        private bool IsShownInCard(TextBlock block)
+        {
+            for (ILogical? v = block; v != null && !ReferenceEquals(v, Card); v = v.LogicalParent)
+                if (v is Visual { IsVisible: false }) return false;
+            return true;
+        }
+
         /// <summary>
         /// Visible for reasons other than the search itself: a card gated off by a
         /// binding (platform, Developer Mode, a parent toggle) must neither count as a
@@ -59,12 +75,12 @@ public sealed class SettingsSearchIndex
             {
                 if (!card.Classes.Contains(CardClass)) continue;
                 // The section name is part of the text so "audio" or "about" finds the
-                // section's cards, the way a person would expect.
-                var text = tab + ' ' + string.Join(' ',
-                    card.GetLogicalDescendants().OfType<TextBlock>()
-                        .Select(t => t.Text)
-                        .Where(t => !string.IsNullOrWhiteSpace(t)));
-                entries.Add(new Entry(text, tab, card, panel));
+                // section's cards, the way a person would expect. Selectable text (the
+                // Developer session log) is content, not a setting's label.
+                var blocks = card.GetLogicalDescendants().OfType<TextBlock>()
+                    .Where(t => t is not SelectableTextBlock)
+                    .ToList();
+                entries.Add(new Entry(tab, card, panel, blocks));
             }
         }
         return new SettingsSearchIndex(entries);

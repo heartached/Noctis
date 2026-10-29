@@ -1203,15 +1203,22 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
 
-        LaunchAtStartupError = value
-            ? "Couldn't register Noctis to launch at login. Check the app has permission to write its startup entry."
-            : "Couldn't remove the launch-at-login entry.";
+        LaunchAtStartupError = !value
+            ? "Couldn't remove the launch-at-login entry."
+            : OperatingSystem.IsMacOS() && !Helpers.StartupHelper.IsRunningFromMacAppBundle
+                ? "Launch at login needs Noctis to run from its app bundle (Noctis.app), e.g. from the Applications folder."
+                : "Couldn't register Noctis to launch at login. Check the app has permission to write its startup entry.";
 
         if (actual != value)
         {
-            _suppressLaunchAtStartupHandler = true;
-            try { LaunchAtStartup = actual; }
-            finally { _suppressLaunchAtStartupHandler = false; }
+            // Posted: this runs inside the toggle's own TwoWay write, and a value raised from
+            // there never reaches the switch, so it stayed drawn ON with nothing registered.
+            Dispatcher.UIThread.Post(() =>
+            {
+                _suppressLaunchAtStartupHandler = true;
+                try { LaunchAtStartup = actual; }
+                finally { _suppressLaunchAtStartupHandler = false; }
+            });
         }
     }
 
@@ -5731,6 +5738,22 @@ public partial class SettingsViewModel : ViewModelBase
 
         var top = Avalonia.Controls.TopLevel.GetTopLevel(owner);
         if (top == null) return;
+
+        if (OperatingSystem.IsMacOS())
+        {
+            // A macOS program is a .app bundle — a folder — which the file picker cannot
+            // return (picking TextEdit.app left the path empty). The folder picker can.
+            var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "Choose a program",
+                AllowMultiple = false,
+                SuggestedStartLocation = await top.StorageProvider.TryGetFolderFromPathAsync(new Uri("file:///Applications/")),
+            });
+            var app = folders.Count > 0 ? folders[0].Path.LocalPath.TrimEnd('/') : null;
+            if (app != null && app.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                ExternalOpenAppPath = app;
+            return;
+        }
 
         var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {

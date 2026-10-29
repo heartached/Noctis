@@ -78,7 +78,7 @@ public class PlaylistViewSelectionSwapTests
         await PumpUntil(() => list.ItemCount == 2);
 
         // Ctrl+A in playlist A selects both of its songs.
-        win.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+        win.KeyPress(Key.A, TestKeys.Primary, PhysicalKey.A, "a");
         Pump();
         Assert.Equal(2, vmA.SelectedCount);
 

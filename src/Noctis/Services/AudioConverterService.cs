@@ -161,8 +161,22 @@ public sealed class AudioConverterService : IAudioConverterService
             }
             catch { /* invalid PATH segment — skip */ }
         }
+
+        // 3) macOS package managers. An app opened from Finder or the Dock gets launchd's
+        // minimal PATH, which has neither Homebrew (Apple silicon / Intel) nor MacPorts.
+        if (OperatingSystem.IsMacOS())
+        {
+            foreach (var dir in MacPackageManagerBinDirs)
+            {
+                var candidate = Path.Combine(dir, exeName);
+                if (File.Exists(candidate)) return candidate;
+            }
+        }
         return null;
     }
+
+    /// <summary>Homebrew (Apple silicon, Intel) and MacPorts bin folders, which a GUI app's PATH lacks.</summary>
+    internal static readonly string[] MacPackageManagerBinDirs = { "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin" };
 
     public async Task<string?> ValidateFfmpegAsync(string? path = null, CancellationToken ct = default)
     {

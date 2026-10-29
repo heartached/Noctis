@@ -58,6 +58,31 @@ public class DuplicateFinderDialogTests
         return condition();
     }
 
+    /// <summary>
+    /// Pumps until the Rescan arrow rests, for at least <paramref name="budgetMs"/> and at least
+    /// <paramref name="minFrames"/> frames. The ease to rest moves at most 0.1 s of its curve per
+    /// frame (OnSpinFrame clamps a long frame so a stall can't fling the arrow), so it needs about
+    /// a dozen frames however long they take: on a runner whose frames came slowly a time-only
+    /// budget ran out before the frames it needed ("never came to rest"). Says how far it got.
+    /// </summary>
+    private static (bool Rested, string Why) PumpUntilRested(DuplicateFinderDialog win, DuplicateFinderViewModel vm,
+        int budgetMs = 3000, int minFrames = 60)
+    {
+        var sw = Stopwatch.StartNew();
+        var frames = 0;
+        while (win.IsRescanSpinning && (sw.ElapsedMilliseconds < budgetMs || frames < minFrames) && sw.ElapsedMilliseconds < 30_000)
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            frames++;
+            if (!win.IsRescanSpinning) break;
+            Thread.Sleep(5);
+        }
+        Dispatcher.UIThread.RunJobs();
+        return (!win.IsRescanSpinning,
+            $"never came to rest: {frames} frames in {sw.ElapsedMilliseconds} ms, angle {win.RescanAngle:0.#}, busy {vm.IsBusy}");
+    }
+
     private static Track Copy(string path, string codec, int kbps, int rate, int bits, long size) => new()
     {
         Id = Guid.NewGuid(), Title = "YAYA", Artist = "6ix9ine", Album = "Dummy Boy",
@@ -388,7 +413,8 @@ public class DuplicateFinderDialogTests
                 var atEnd = win.RescanAngle;
                 PumpUntil(() => false, 40);
                 Assert.True(!win.IsRescanSpinning || win.RescanAngle >= atEnd, "went backwards on the way to rest");
-                Assert.True(PumpUntil(() => !win.IsRescanSpinning, 3000), "never came to rest");
+                var rest = PumpUntilRested(win, vm);
+                Assert.True(rest.Rested, rest.Why);
                 Assert.Equal(0, win.RescanAngle, 3);
 
                 // Rescan turns it again.
@@ -396,7 +422,8 @@ public class DuplicateFinderDialogTests
                 rescan.Command!.Execute(null);
                 Assert.True(PumpUntil(() => win.IsRescanSpinning && win.RescanAngle > 10), "Rescan didn't turn it");
                 service.Gate.SetResult();
-                Assert.True(PumpUntil(() => !win.IsRescanSpinning, 3000));
+                var again = PumpUntilRested(win, vm);
+                Assert.True(again.Rested, again.Why);
             }
             finally { win.Close(); }
         });

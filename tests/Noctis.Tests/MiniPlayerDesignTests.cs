@@ -96,6 +96,18 @@ public class MiniPlayerDesignTests
         }
     }
 
+    /// <summary>Pumps frames until <paramref name="done"/> holds or <paramref name="budgetMs"/> runs out.</summary>
+    private static async Task PumpUntil(Func<bool> done, int budgetMs)
+    {
+        var end = Environment.TickCount64 + budgetMs;
+        while (!done() && Environment.TickCount64 < end)
+        {
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            await Task.Delay(8);
+        }
+    }
+
     [Theory]
     [InlineData("Pill", MiniPlayerStyle.Pill)]
     [InlineData("sleeve", MiniPlayerStyle.Sleeve)]
@@ -656,13 +668,21 @@ public class MiniPlayerDesignTests
             Assert.Equal(sw, win.Width, 1.0);
             Assert.Equal(sh, win.Height, 1.0);
 
+            // The window glides to each size on its own real-time clock (280 ms), one step per
+            // frame. A fixed wait failed when the runner stalled a few hundred ms mid-glide: the
+            // wait ran out right after the stall with no frame left to land the glide ("Expected
+            // 340, Actual 379"). Wait for the landing itself instead, bounded.
+            var lyricsRoot = win.FindControl<Grid>("LyricsFormRoot")!;
+            var (lw, lh) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Lyrics);
             vm.ToggleLyricsFormCommand.Execute(null);
-            await PumpFor(700);
+            await PumpUntil(() => vm.Form == MiniPlayerForm.Lyrics && lyricsRoot.IsVisible
+                                  && Math.Abs(win.Width - lw) <= 1.0 && Math.Abs(win.Height - lh) <= 1.0, 3000);
             Assert.Equal(MiniPlayerForm.Lyrics, vm.Form);
-            Assert.True(win.FindControl<Grid>("LyricsFormRoot")!.IsVisible);
+            Assert.True(lyricsRoot.IsVisible);
 
             vm.ToggleLyricsFormCommand.Execute(null);
-            await PumpFor(900);
+            await PumpUntil(() => vm.Form == MiniPlayerForm.Sleeve
+                                  && Math.Abs(win.Width - sw) <= 1.0 && Math.Abs(win.Height - sh) <= 1.0, 3000);
             Assert.Equal(MiniPlayerForm.Sleeve, vm.Form);
             Assert.Equal(sw, win.Width, 1.0);
             Assert.Equal(sh, win.Height, 1.0);

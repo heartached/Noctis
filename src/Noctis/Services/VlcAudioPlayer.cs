@@ -2827,6 +2827,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// ":audio-time-stretch" (see the AddOption sites). Re-applied whenever the
     /// output owner changes, like mute.
     /// </summary>
+    public bool SupportsPitch => _gaplessEngine && _gaplessSink != null;
+
     private void ApplyPlaybackRateToOwner()
     {
         var rate = Volatile.Read(ref _playbackRate);

@@ -182,7 +182,7 @@
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding MainHex}"
-                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   FontFamily="Consolas, Menlo, Courier New, monospace"
                                                    FontSize="12" FontWeight="Bold"
                                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                                    VerticalAlignment="Center"/>
@@ -199,7 +199,7 @@
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding SidebarHex}"
-                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   FontFamily="Consolas, Menlo, Courier New, monospace"
                                                    FontSize="12" FontWeight="Bold"
                                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                                    VerticalAlignment="Center"/>
@@ -216,7 +216,7 @@
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding AccentHex}"
-                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   FontFamily="Consolas, Menlo, Courier New, monospace"
                                                    FontSize="12" FontWeight="Bold"
                                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                                    VerticalAlignment="Center"/>

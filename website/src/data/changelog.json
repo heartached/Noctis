@@ -1,9 +1,513 @@
 {
   "releases": [
     {
+      "tag": "v1.6.4",
+      "version": "1.6.4",
+      "name": "v1.6.4",
+      "label": "1.6.4",
+      "publishedAt": "2026-10-19T02:21:28Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.4",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added album genre display as separate entries",
+            "Added duet overlap for two singers",
+            "Added .m4b audiobook support",
+            "Added Chapters menu for audiobooks",
+            "Added keyboard star rating in Edit Info",
+            "Added taskbar media controls switch",
+            "Added Discord status choice for artist, song or Noctis",
+            "Added Lyrics Studio nudge bar",
+            "Added Lyrics Studio live preview",
+            "Added Inbox for new songs found by rescans and folder watching",
+            "Added lrc.red and Unison lyrics sources",
+            "Added Headphone Surround for multi-channel files on Windows",
+            "Added drag playing song onto playlists or queue",
+            "Added artist name hover outlines on the player island",
+            "Added Queue Reshuffle button",
+            "Added Shuffle and Repeat to mini player Pill and Sleeve designs",
+            "Added mini player queue reordering and removal",
+            "Added Artists list view with sortable columns",
+            "Added new user Home empty and scanning states",
+            "Added animated artwork search grid with preview",
+            "Added Apple Music style lyrics glow and lift",
+            "Added Glow and Lift switch in lyrics settings",
+            "Added keep these names together setting",
+            "Added new-install defaults for tint, fade and artist sorting"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved screen reader names across the app",
+            "Improved Artists search empty-state message",
+            "Improved lyric scroll timing and easing",
+            "Improved audio file handling for ALAC and m4a",
+            "Improved Linux Show in Folder reliability"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed artist pictures not showing during library scans",
+            "Fixed Artists grid pictures waiting for all downloads to finish",
+            "Fixed albums missing genre when the first song has none",
+            "Fixed music server songs with several genres only listed under one",
+            "Fixed scanning text staying stuck after startup scan",
+            "Fixed grey Deezer placeholder pictures",
+            "Fixed slider red and grey edge artifacts",
+            "Fixed seeking back before the first lyric leaving an old line lit",
+            "Fixed TTML lyrics losing syllable timing in several conversions",
+            "Fixed TTML duet singers being dropped on save",
+            "Fixed TTML text before a line's first timed word disappearing",
+            "Fixed adlib translations showing as sung lines after TTML import",
+            "Fixed TTML pasted into Edit Info being saved as raw XML",
+            "Fixed background vocals being dropped on save in four editors",
+            "Fixed Lyrics Studio dropping the second singer on duet saves",
+            "Fixed re-timing a line not moving its word timings",
+            "Fixed translation and romaji lines turning into separate sung lines",
+            "Fixed repeated timestamps saving incorrect word times",
+            "Fixed clearing a line's time leaving raw tags",
+            "Fixed tag edits failing on the playing song on Windows",
+            "Fixed failed saves on read-only files leaving a full copy behind",
+            "Fixed misleading error message when a save is blocked",
+            "Fixed hi-res ALAC files with index at end reading wrong sample rate",
+            "Fixed animated artwork search with artist names finding nothing",
+            "Fixed Apple Music links with long numbers opening the wrong album",
+            "Fixed slow previews overwriting the current animated artwork search",
+            "Fixed taskbar tooltips not following the app language",
+            "Fixed Discord status not updating for a paused song",
+            "Fixed Discord cutting an emoji in long titles",
+            "Fixed Lyrics Studio losing edits when quitting",
+            "Fixed Lyrics Studio tap mode continuing after Re-sync",
+            "Fixed Lyrics Studio step buttons read incorrectly by screen readers",
+            "Fixed live preview leaving unsaved timings on the lyrics page",
+            "Fixed held ELRC words looking choppy",
+            "Fixed slow emphasis landing on the wrong words",
+            "Fixed saved TTML losing spaces between words in other apps",
+            "Fixed Chinese and Japanese lyrics getting spaces between characters",
+            "Fixed Apple Music cover links returning 300 pixels",
+            "Fixed Lyrics Studio AVX error on some processors",
+            "Fixed Open Folder failing on Fedora after updates",
+            "Fixed Show in Folder reporting success without opening anything on Linux",
+            "Fixed Queue panel being see-through with Liquid Glass off",
+            "Fixed Edit Info lyrics scrollbar overlapping rounded corners",
+            "Fixed Artists sort button showing over Cover Flow",
+            "Fixed island artwork toggling the Mini Player on release",
+            "Fixed engine input leaving a file open after close",
+            "Fixed Settings sliders stuttering on fast drags",
+            "Fixed blurred background behind Settings jumping",
+            "Fixed first letter sliced on held words like \"why\" and \"way\"",
+            "Fixed next lyric line flashing white before it is sung",
+            "Fixed one-letter Discord titles and artists not showing",
+            "Fixed AC/DC and Now, Now being split apart",
+            "Fixed names with commas being cut in metadata search and playlist import",
+            "Fixed animated artwork pop-up wrong album label and failed counts"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "v1.6.3",
+      "version": "1.6.3",
+      "name": "v1.6.3",
+      "label": "1.6.3",
+      "publishedAt": "2026-10-12T22:03:53Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.3",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Save Lyrics to File as LRC or TTML",
+            "Added Russian language",
+            "Added Account and Devices reorganised into four groups",
+            "Added phone app card with server switch and phone list",
+            "Added Background Color pop-up with Artwork, Solid and Gradient modes",
+            "Added Gradient Auto that persists across restarts",
+            "Added twelve new rebindable shortcuts",
+            "Added second singer placement in TTML files",
+            "Added .ttml import in Edit Info and Lyrics Studio",
+            "Added Keep Played Songs queue view with Clear Played",
+            "Added Saving lyrics settings section",
+            "Added automatic lyrics download when the lyrics view opens"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved password check protection against flood attempts",
+            "Improved profile name handling against password guessing",
+            "Improved server error messages hiding stack traces",
+            "Improved certificate password storage",
+            "Improved Local API token handling",
+            "Improved sync handling of future-dated changes",
+            "Improved Share Lyrics option speed and dialog behaviour",
+            "Improved lyrics background colour picks",
+            "Improved Settings switches for keyboard and screen reader use",
+            "Improved queue scrolling to the playing song",
+            "Improved About page update timing display",
+            "Improved translations across all ten languages"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Newest Albums First resetting after going Back",
+            "Fixed gaps and stutter between songs on Linux",
+            "Fixed MP3 track edges including encoder padding and garbled starts",
+            "Fixed short tracks going silent",
+            "Fixed saving lyrics sending your lyrics file to the Recycle Bin",
+            "Fixed Account page deleting an account with one click",
+            "Fixed Account page creating an API key without asking",
+            "Fixed pairing turning sync on unexpectedly",
+            "Fixed server staying on after switching it off",
+            "Fixed sync ID changing on every save",
+            "Fixed sync changes made while off not applying when turned back on",
+            "Fixed renaming the PC not reaching signed-in phones",
+            "Fixed signed-out phones not being removable",
+            "Fixed Share Lyrics option changes being slow",
+            "Fixed Share Lyrics Save Card delay",
+            "Fixed Share Lyrics black text on Artwork background",
+            "Fixed Share Lyrics line jumping when editing",
+            "Fixed Share Lyrics option lists running off the window",
+            "Fixed file names starting with \" - \" for songs without an artist",
+            "Fixed Share Lyrics messages not following app language",
+            "Fixed lyrics background text colours over some covers",
+            "Fixed lyrics background gradients showing a green band",
+            "Fixed saved gradient text colours coming back wrong",
+            "Fixed damaged saved colours breaking the artwork background",
+            "Fixed Visualizer frozen when Exclusive Mode is off",
+            "Fixed auto-update never installing on time",
+            "Fixed auto-update crashing on two-part version tags",
+            "Fixed TTML lines with the same start time being shuffled",
+            "Fixed TTML line breaks and indentation showing up in lyrics",
+            "Fixed TTML files with a stray blank line showing no lyrics",
+            "Fixed \"Your queue is empty\" showing while a song plays",
+            "Fixed played songs not being removable from the queue",
+            "Fixed double-clicking Up Next restarting the queue",
+            "Fixed Liquid Glass letting page text show through the island",
+            "Fixed embedded lyrics fields being ignored",
+            "Fixed saving tags turning timed lyrics into plain text",
+            "Fixed Edit Info creating a stray lrc file",
+            "Fixed shortcut conflicts running two actions on one key",
+            "Fixed phone app sort button staying lit",
+            "Fixed phone app stop sending needing two taps",
+            "Fixed phone app send summary being overwritten"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "v1.6.2",
+      "version": "1.6.2",
+      "name": "v1.6.2",
+      "label": "1.6.2",
+      "publishedAt": "2026-10-11T04:48:02Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.2",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added setting to turn off accent color on artist and album names",
+            "Added whole-selection drag in playlists"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved drag card to show a song count when carrying multiple songs"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed YouTube search and download failing until restart after installer updates",
+            "Fixed dragging several selected playlist songs moving only one",
+            "Fixed rows staying highlighted after selection was cleared",
+            "Fixed incorrect \"game cover\" wording in accent translations",
+            "Fixed Arabic and Chinese accent translations using the wrong meaning"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "v1.6.1",
+      "version": "1.6.1",
+      "name": "v1.6.1",
+      "label": "1.6.1",
+      "publishedAt": "2026-10-11T02:18:45Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.1",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added unified Home-style menu for player bar and lyrics page",
+            "Added Play Next and Add to Queue tiles in the player menu",
+            "Added accent color on Lyrics and Queue buttons when open",
+            "Added custom theme colors for the player island",
+            "Added Already on playlist indicator in Add to Playlist",
+            "Added Snooze for a Month option",
+            "Added Clear lyrics option in Lyrics Studio",
+            "Added Send to Folder for albums, artists and playlists",
+            "Added Move instead of copy option for Send to Folder",
+            "Added Live Albums and Compilations filter entries",
+            "Added Live Albums and Compilations artist page tabs",
+            "Added genre suggestions in the Metadata editor",
+            "Added artist pictures in View Artist menus"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Albums filter empty-state message",
+            "Improved Send to Folder subtitle and footer when moving",
+            "Improved Snooze description in Settings",
+            "Improved confirmation pop-up styling"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed hover box covering the whole artist credit instead of one name",
+            "Fixed Picard-tagged live albums and compilations being read as plain albums",
+            "Fixed Picard MP3 release types not being read",
+            "Fixed Lyrics Studio timing old lyrics instead of pasted ones",
+            "Fixed Re-sync dropping lyric edits",
+            "Fixed moved songs losing plays and playlist spots on rescan",
+            "Fixed moved songs pointing to old locations",
+            "Fixed multiple genres being lost on save",
+            "Fixed Snooze ignoring Ctrl multi-selection",
+            "Fixed snoozed songs appearing in Home suggestions",
+            "Fixed snoozed songs appearing in playlist suggestions",
+            "Fixed Home not updating after snoozing an album",
+            "Fixed plugin and content pack installs failing to move into place",
+            "Fixed double separators in the player bar menu on first open",
+            "Fixed songs being cut off early on some MP3 files",
+            "Fixed 96 kHz ALAC files being imported as 48 kHz",
+            "Fixed artist credit zooming on hover or click"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "v1.6.0",
+      "version": "1.6.0",
+      "name": "v1.6.0",
+      "label": "1.6.0",
+      "publishedAt": "2026-10-10T12:34:43Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.0",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Also save as TTML option for Lyrics Studio",
+            "Added Save Lyrics to File in player menu",
+            "Added multi-line LRC support for original, romaji and translation",
+            "Added Don't Scrobble option for songs, albums and artists",
+            "Added hide library folders option",
+            "Added single-artist click in shared credits",
+            "Added collapsible Similar Artists section",
+            "Added custom ListenBrainz server URL",
+            "Added Find online metadata search",
+            "Added before and after comparison in Find online",
+            "Added label, composer, copyright, explicit, release date and barcode fields",
+            "Added Undo before save in metadata editing",
+            "Added rounded pill pop-up design",
+            "Added Settings background blur",
+            "Added Background Blur slider",
+            "Added Cover Flow layout transition animation",
+            "Added yt-dlp update button",
+            "Added live volume percentage readout",
+            "Added arrow keys for volume with speaker focused",
+            "Added Match All or Any choice for Smart Playlists",
+            "Added Noctis Wrap statistics report",
+            "Added Statistics page revamp with time ranges",
+            "Added Added to Queue confirmation pill",
+            "Added artist pictures in View Artist menus",
+            "Added playlist date tracking for added songs",
+            "Added foldable Other Versions and More By sections",
+            "Added Plugins community and official sections",
+            "Added Mixxx plugin placeholder text",
+            "Added right-click and dots menu redesign",
+            "Added menu open and close animation everywhere",
+            "Added accessibility names for controls and rows",
+            "Added play history limit increase to 250,000"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved artist separators display as commas",
+            "Improved Play history saving speed",
+            "Improved Find online search caching and rate limits",
+            "Improved Find online layout and wording",
+            "Improved Remove from Library logging",
+            "Improved log detail for audio rates and Next state",
+            "Improved Settings field appearance",
+            "Improved volume pill appearance and behavior",
+            "Improved Search button animation",
+            "Improved Settings pop-up styling across the app",
+            "Improved Lyrics Studio pop-up styling",
+            "Improved Organize Files and Duplicates layout",
+            "Improved Import Playlist layout",
+            "Improved YouTube downloader layout",
+            "Improved Smart Playlist layout",
+            "Improved Convert Album layout and options",
+            "Improved Scan ReplayGain feedback",
+            "Improved Send to Folder file name chip",
+            "Improved statistics page and share card speed",
+            "Improved Lyrics Background Video layout",
+            "Improved menu icons across the app",
+            "Improved sort and type menu animation",
+            "Improved folder open and close animation",
+            "Improved Play and Pause hover in Home and Most Played",
+            "Improved album and playlist description editing",
+            "Improved Edit Playlist star animation",
+            "Improved Plugins page wording and layout",
+            "Improved Artist page section buttons and sort pill",
+            "Improved Album page See discography button",
+            "Improved playlist page layout",
+            "Improved Settings theme and Liquid Glass responsiveness"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Home Most Played not re-sorting after a play",
+            "Fixed lyrics saves hidden by older lyrics files",
+            "Fixed Lyrics Studio ignoring TTML-only songs",
+            "Fixed LRCLIB busy errors reporting no internet",
+            "Fixed picked online lyrics being hidden by existing files",
+            "Fixed lyrics file letter case causing hidden saves",
+            "Fixed Lyrics Studio reordering lines with the same start time",
+            "Fixed Plain tab and LRC editor dropping romaji and translations",
+            "Fixed repeated chorus timestamps collapsing into one line",
+            "Fixed word-timed lyrics being saved as line-only",
+            "Fixed LRCLIB results always labelled Word-synced",
+            "Fixed playlist row buttons not responding",
+            "Fixed seeking near the start opening the Mini Player",
+            "Fixed jagged edges and missing shadow on Mini Player Pill and Sleeve",
+            "Fixed artist names splitting on commas that aren't separators",
+            "Fixed artists grid circles overlapping in narrow windows",
+            "Fixed Top Songs being squeezed on narrow artist pages",
+            "Fixed faint person outline on similar-artist photos",
+            "Fixed sidebar playlist song counts with hidden folders",
+            "Fixed hidden-folder songs losing favorites and play counts",
+            "Fixed Web Remote and Local API cards snapping shut",
+            "Fixed Mixxx version showing the online list version",
+            "Fixed blank album description popup for short descriptions",
+            "Fixed NEW badge missing on songs added from Suggested",
+            "Fixed greyed-out sliders looking broken",
+            "Fixed icons that only worked on Windows",
+            "Fixed paused time counting as listening",
+            "Fixed very short songs being scrobbled",
+            "Fixed Don't Scrobble menu entry missing on first open",
+            "Fixed artist page covers bouncing with scrollbar",
+            "Fixed Next dead on last song with Shuffle on",
+            "Fixed main window un-maximizing after Mini Player",
+            "Fixed choppy playback on 384 kHz audio devices",
+            "Fixed background job re-reading the whole library",
+            "Fixed lyric file check freezing the app",
+            "Fixed Search Metadata returning nothing from Deezer",
+            "Fixed deluxe albums matching the standard edition",
+            "Fixed composer credits using aliases",
+            "Fixed album saves rewriting lyrics files",
+            "Fixed album saves overwriting EQ presets",
+            "Fixed renames leaving old lyric files behind",
+            "Fixed start and stop times over 1 hour being cut",
+            "Fixed schema upgrades undoing settings changes",
+            "Fixed Esc not working in Metadata window",
+            "Fixed Save running twice during close animation",
+            "Fixed Esc closing whole window with artwork search open",
+            "Fixed Search Lyrics progress bar width",
+            "Fixed searches continuing after their window closed",
+            "Fixed Identified count being one short",
+            "Fixed empty artwork boxes invisible on Dark theme",
+            "Fixed pop-up shadows being cut off",
+            "Fixed clipped checkboxes in Metadata window",
+            "Fixed blur letting the app show through with Liquid Glass",
+            "Fixed Metadata cover blank before fading in",
+            "Fixed Find online checkmark being clipped",
+            "Fixed sidebar highlight moving to the gear icon",
+            "Fixed Enter in closing pop-ups creating duplicate playlists",
+            "Fixed touchpad swipe jumping volume to 100%",
+            "Fixed volume changing silently while muted",
+            "Fixed volume opening then closing with keyboard",
+            "Fixed volume flashing when reopened during close",
+            "Fixed Search button animation jumping when reversed",
+            "Fixed Search button second click being ignored",
+            "Fixed Esc only working inside the search box",
+            "Fixed Search button snapping shut on navigation",
+            "Fixed Search placeholder in English on some pages",
+            "Fixed Organize Files gluing tags together",
+            "Fixed Convert Album cancel showing failed",
+            "Fixed Convert Album leaving ffmpeg running after close",
+            "Fixed Convert Album converting a track twice",
+            "Fixed Convert Album accepting invalid filename characters",
+            "Fixed 24-bit WAV and AIFF being saved as 16-bit",
+            "Fixed ReplayGain scans stuck on Measuring",
+            "Fixed Smart Playlist removed rules coming back",
+            "Fixed New Playlist and Create firing twice",
+            "Fixed Statistics total plays counting wrong",
+            "Fixed plays losing album and genre after library re-add",
+            "Fixed plays under 30 seconds counting",
+            "Fixed skip counting when leaving songs early",
+            "Fixed play history breaking after moves and renames",
+            "Fixed Share Lyrics line wrapping",
+            "Fixed Share Lyrics video export left running after close",
+            "Fixed Lyrics Background Video applying after Esc",
+            "Fixed Lyrics Studio running after Alt+F4",
+            "Fixed Send to Folder copying only lrc lyrics",
+            "Fixed Send to Folder overwriting same-name lyric files",
+            "Fixed Send to Folder duplicating songs",
+            "Fixed album description being erased on early open",
+            "Fixed Edit Playlist Esc and save behavior",
+            "Fixed Add Songs Esc and empty-library message",
+            "Fixed Remove from Library Esc and double-click",
+            "Fixed Spectrogram progress and memory issues",
+            "Fixed album covers being discarded before redraw",
+            "Fixed streamed songs writing lyrics files",
+            "Fixed album menu acting on only one song",
+            "Fixed rating songs no longer selected",
+            "Fixed Disc 0 group for songs with no disc number",
+            "Fixed Favorites un-favoriting some selected albums",
+            "Fixed album tile Play starting the wrong song",
+            "Fixed \"1 songs\" wording",
+            "Fixed right-click menus getting stuck after closing",
+            "Fixed crash when window closes during menu fade out",
+            "Fixed right-click again during fade out doing nothing",
+            "Fixed Settings background blur lagging theme changes"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-mixxx-v1.0.1",
+      "version": "plugin-mixxx-v1.0.1",
+      "name": "Mixxx plugin 1.0.1",
+      "label": "Mixxx",
+      "publishedAt": "2026-10-10T12:30:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-mixxx-v1.0.1",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Brings the BPM and key from your Mixxx library into Noctis. Works with Noctis 1.5.9 and up. Install it from Settings > Plugins."
+    },
+    {
       "tag": "v1.5.9",
       "version": "1.5.9",
       "name": "v1.5.9",
+      "label": "1.5.9",
       "publishedAt": "2026-10-02T11:17:04Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.9",
       "prerelease": false,
@@ -49,12 +553,14 @@
             "Fixed stray line and misleading message on the Plugins page"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.8",
       "version": "1.5.8",
       "name": "v1.5.8",
+      "label": "1.5.8",
       "publishedAt": "2026-10-01T00:19:56Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.8",
       "prerelease": false,
@@ -112,21 +618,25 @@
             "Fixed genre label being cropped"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "lullaby-v1",
       "version": "lullaby-v1",
       "name": "Lullaby v1.0.0",
+      "label": "Lullaby",
       "publishedAt": "2026-09-30T22:11:46Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/lullaby-v1",
       "prerelease": false,
-      "sections": []
+      "sections": [],
+      "summary": "Lyrics Studio's speech model. Noctis downloads it automatically the first time you use the Studio, so there's nothing to install here."
     },
     {
       "tag": "v1.5.7",
       "version": "1.5.7",
       "name": "v1.5.7",
+      "label": "1.5.7",
       "publishedAt": "2026-09-29T01:16:34Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.7",
       "prerelease": false,
@@ -160,12 +670,14 @@
             "Fixed blurry and jagged album art"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.6",
       "version": "1.5.6",
       "name": "v1.5.6",
+      "label": "1.5.6",
       "publishedAt": "2026-09-28T02:56:21Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.6",
       "prerelease": false,
@@ -176,12 +688,14 @@
             "Bug fixes and performance improvements."
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.5",
       "version": "1.5.5",
       "name": "v1.5.5",
+      "label": "1.5.5",
       "publishedAt": "2026-09-26T16:58:48Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.5",
       "prerelease": false,
@@ -278,12 +792,14 @@
             "Updated Tmds.DBus.Protocol to 0.95.1"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.4",
       "version": "1.5.4",
       "name": "v1.5.4",
+      "label": "1.5.4",
       "publishedAt": "2026-09-25T02:20:44Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.4",
       "prerelease": false,
@@ -314,12 +830,14 @@
             "Fixed search button magnifier icon misalignment"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.3",
       "version": "1.5.3",
       "name": "v1.5.3",
+      "label": "1.5.3",
       "publishedAt": "2026-09-25T00:40:15Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.3",
       "prerelease": false,
@@ -376,12 +894,14 @@
             "Fixed white flicker on Wine when clicking a track"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.2",
       "version": "1.5.2",
       "name": "v1.5.2",
+      "label": "1.5.2",
       "publishedAt": "2026-09-23T02:21:30Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.2",
       "prerelease": false,
@@ -429,12 +949,14 @@
             "Fixed album cover picking wrong track's cover on scan"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.1",
       "version": "1.5.1",
       "name": "v1.5.1",
+      "label": "1.5.1",
       "publishedAt": "2026-09-22T04:59:23Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.1",
       "prerelease": false,
@@ -481,12 +1003,14 @@
             "Fixed visualizer showing static dots on Linux/macOS"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.5.0",
       "version": "1.5.0",
       "name": "v1.5.0",
+      "label": "1.5.0",
       "publishedAt": "2026-09-20T23:06:27Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.0",
       "prerelease": false,
@@ -693,12 +1217,14 @@
             "Fixed wrong artist match on accented names"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.7",
       "version": "1.4.7",
       "name": "v1.4.7",
+      "label": "1.4.7",
       "publishedAt": "2026-08-16T18:37:18Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.7",
       "prerelease": false,
@@ -730,12 +1256,14 @@
             "Fixed toggle-spam audio death/glitching"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.6",
       "version": "1.4.6",
       "name": "v1.4.6",
+      "label": "1.4.6",
       "publishedAt": "2026-08-16T00:32:40Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.6",
       "prerelease": false,
@@ -763,12 +1291,14 @@
             "Fixed wrong IP selected for local address detection"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.5",
       "version": "1.4.5",
       "name": "v1.4.5",
+      "label": "1.4.5",
       "publishedAt": "2026-08-15T18:12:03Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.5",
       "prerelease": false,
@@ -802,12 +1332,14 @@
             "Fixed middle-click autoscroll judder"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.4",
       "version": "1.4.4",
       "name": "v1.4.4",
+      "label": "1.4.4",
       "publishedAt": "2026-08-14T03:30:32Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.4",
       "prerelease": false,
@@ -854,12 +1386,14 @@
             "Fixed ReplayGain volume too low"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.3",
       "version": "1.4.3",
       "name": "v1.4.3",
+      "label": "1.4.3",
       "publishedAt": "2026-08-10T18:57:09Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.3",
       "prerelease": false,
@@ -891,12 +1425,14 @@
             "Fixed silent tracks on Linux/macOS"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.2",
       "version": "1.4.2",
       "name": "v1.4.2",
+      "label": "1.4.2",
       "publishedAt": "2026-08-10T04:06:56Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.2",
       "prerelease": false,
@@ -945,12 +1481,14 @@
             "Fixed Queue covering player instead of opening"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.1",
       "version": "1.4.1",
       "name": "v1.4.1",
+      "label": "1.4.1",
       "publishedAt": "2026-08-08T19:19:47Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.1",
       "prerelease": false,
@@ -991,12 +1529,14 @@
             "Fixed glide fighting scrollbar thumb during manual scroll"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.4.0",
       "version": "1.4.0",
       "name": "v1.4.0",
+      "label": "1.4.0",
       "publishedAt": "2026-08-06T23:52:13Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.0",
       "prerelease": false,
@@ -1026,12 +1566,14 @@
             "Fixed Jellyfin \"Couldn't reach the server\" on bare addresses"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.9",
       "version": "1.3.9",
       "name": "v1.3.9",
+      "label": "1.3.9",
       "publishedAt": "2026-08-06T02:26:11Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.9",
       "prerelease": false,
@@ -1129,12 +1671,14 @@
             "Fixed duplicate stale comments"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.8",
       "version": "1.3.8",
       "name": "v1.3.8",
+      "label": "1.3.8",
       "publishedAt": "2026-07-31T00:17:55Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.8",
       "prerelease": false,
@@ -1175,12 +1719,14 @@
             "Fixed emphasis glow snapping and freezing"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.7",
       "version": "1.3.7",
       "name": "v1.3.7",
+      "label": "1.3.7",
       "publishedAt": "2026-07-30T20:25:56Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.7",
       "prerelease": false,
@@ -1199,12 +1745,14 @@
             "Fixed lost folders upon restarting"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.6",
       "version": "1.3.6",
       "name": "v1.3.6",
+      "label": "1.3.6",
       "publishedAt": "2026-07-28T23:06:46Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.6",
       "prerelease": false,
@@ -1237,12 +1785,14 @@
             "Fixed volume flyout stuck-open bug"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.5",
       "version": "1.3.5",
       "name": "v1.3.5",
+      "label": "1.3.5",
       "publishedAt": "2026-07-26T02:01:32Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.5",
       "prerelease": false,
@@ -1262,12 +1812,14 @@
             "Fixed wrong artwork never self-healing"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.4",
       "version": "1.3.4",
       "name": "v1.3.4",
+      "label": "1.3.4",
       "publishedAt": "2026-07-25T23:31:58Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.4",
       "prerelease": false,
@@ -1300,12 +1852,14 @@
             "Fixed Discord relay not republishing while paused"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.3",
       "version": "1.3.3",
       "name": "v1.3.3",
+      "label": "1.3.3",
       "publishedAt": "2026-07-25T01:41:19Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.3",
       "prerelease": false,
@@ -1373,12 +1927,14 @@
             "Fixed M3U file:// decoding"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.2",
       "version": "1.3.2",
       "name": "v1.3.2",
+      "label": "1.3.2",
       "publishedAt": "2026-07-24T01:53:27Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.2",
       "prerelease": false,
@@ -1444,12 +2000,14 @@
             "Fixed M3U8 imports from VLC/foobar"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.1",
       "version": "1.3.1",
       "name": "v1.3.1",
+      "label": "1.3.1",
       "publishedAt": "2026-07-20T23:13:17Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.1",
       "prerelease": false,
@@ -1511,12 +2069,14 @@
             "Fixed Queue popup double-click closing the panel"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.3.0",
       "version": "1.3.0",
       "name": "v1.3.0",
+      "label": "1.3.0",
       "publishedAt": "2026-07-17T02:44:14Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.0",
       "prerelease": false,
@@ -1537,12 +2097,14 @@
             "Fixed Synced Lyrics clipping in metadata editor"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.9",
       "version": "1.2.9",
       "name": "v1.2.9",
+      "label": "1.2.9",
       "publishedAt": "2026-07-15T23:49:50Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.9",
       "prerelease": false,
@@ -1570,12 +2132,14 @@
             "Fixed row-number clipping in Folders"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.8",
       "version": "1.2.8",
       "name": "v1.2.8",
+      "label": "1.2.8",
       "publishedAt": "2026-07-15T03:18:52Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.8",
       "prerelease": false,
@@ -1627,12 +2191,14 @@
             "Fixed Artists page press-drag highlight"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.7",
       "version": "1.2.7",
       "name": "v1.2.7",
+      "label": "1.2.7",
       "publishedAt": "2026-07-12T14:42:07Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.7",
       "prerelease": false,
@@ -1659,12 +2225,14 @@
             "Fixed intermittent silent tracks on Linux"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.6",
       "version": "1.2.6",
       "name": "v1.2.6",
+      "label": "1.2.6",
       "publishedAt": "2026-07-11T20:33:51Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.6",
       "prerelease": false,
@@ -1696,12 +2264,14 @@
             "Fixed hover highlight box on lyric lines"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.5",
       "version": "1.2.5",
       "name": "v1.2.5",
+      "label": "1.2.5",
       "publishedAt": "2026-07-11T01:32:39Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.5",
       "prerelease": false,
@@ -1739,12 +2309,14 @@
             "Fixed drop import silently doing nothing when folder contains no audio files"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.4",
       "version": "1.2.4",
       "name": "v1.2.4",
+      "label": "1.2.4",
       "publishedAt": "2026-07-10T02:25:41Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.4",
       "prerelease": false,
@@ -1795,12 +2367,14 @@
             "Fixed empty space inside share card with artwork background"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.3",
       "version": "1.2.3",
       "name": "v1.2.3",
+      "label": "1.2.3",
       "publishedAt": "2026-07-08T03:13:26Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.3",
       "prerelease": false,
@@ -1922,12 +2496,14 @@
             "Fixed filename-based argument injection in ffprobe reader"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.2",
       "version": "1.2.2",
       "name": "v1.2.2",
+      "label": "1.2.2",
       "publishedAt": "2026-06-25T00:23:36Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.2",
       "prerelease": false,
@@ -1971,12 +2547,14 @@
             "Fixed track-start audio clipping"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.1",
       "version": "1.2.1",
       "name": "v1.2.1",
+      "label": "1.2.1",
       "publishedAt": "2026-06-23T11:27:09Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.1",
       "prerelease": false,
@@ -1987,12 +2565,14 @@
             "Fixed a startup crash where the app failed to launch with a \"resource could not be found\" error, caused by case-mismatched icon references"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.2.0",
       "version": "1.2.0",
       "name": "v1.2.0",
+      "label": "1.2.0",
       "publishedAt": "2026-06-23T10:32:33Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.0",
       "prerelease": false,
@@ -2090,12 +2670,14 @@
             "Fixed multiple Settings persistence and UI issues"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.16",
       "version": "1.1.16",
       "name": "v1.1.16",
+      "label": "1.1.16",
       "publishedAt": "2026-06-10T00:21:32Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.16",
       "prerelease": true,
@@ -2116,12 +2698,14 @@
             "Fixed volume controls affecting the keep-alive stream instead of active playback"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.15",
       "version": "1.1.15",
       "name": "v1.1.15",
+      "label": "1.1.15",
       "publishedAt": "2026-06-08T22:21:11Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.15",
       "prerelease": true,
@@ -2153,12 +2737,14 @@
             "Fixed Bluetooth audio stuttering and frame skipping during playback"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.14",
       "version": "1.1.14",
       "name": "v1.1.14",
+      "label": "1.1.14",
       "publishedAt": "2026-06-03T15:18:43Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.14",
       "prerelease": false,
@@ -2178,12 +2764,14 @@
             "Fixed missing or stale Discord Rich Presence artwork after relay reconnections"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.13",
       "version": "1.1.13",
       "name": "v1.1.13",
+      "label": "1.1.13",
       "publishedAt": "2026-06-01T20:22:25Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.13",
       "prerelease": false,
@@ -2225,12 +2813,14 @@
             "Fixed album edition grouping for versioned releases"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.12",
       "version": "1.1.12",
       "name": "v1.1.12",
+      "label": "1.1.12",
       "publishedAt": "2026-06-01T03:04:06Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.12",
       "prerelease": false,
@@ -2312,12 +2902,14 @@
             "Fixed outdated Chocolatey package metadata and installer references"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.11",
       "version": "1.1.11",
       "name": "v1.1.11",
+      "label": "1.1.11",
       "publishedAt": "2026-05-28T22:57:22Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.11",
       "prerelease": false,
@@ -2344,12 +2936,14 @@
             "Fixed stale storage size values after library scans"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.10",
       "version": "1.1.10",
       "name": "v1.1.10",
+      "label": "1.1.10",
       "publishedAt": "2026-05-27T19:33:33Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.10",
       "prerelease": false,
@@ -2384,12 +2978,14 @@
             "Fixed active lyric line clipping on long lyrics"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.9",
       "version": "1.1.9",
       "name": "v1.1.9",
+      "label": "1.1.9",
       "publishedAt": "2026-05-26T17:22:35Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.9",
       "prerelease": false,
@@ -2456,12 +3052,14 @@
             "Fixed volume slider static and popping during drag"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.8",
       "version": "1.1.8",
       "name": "v1.1.8",
+      "label": "1.1.8",
       "publishedAt": "2026-05-21T17:26:59Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.8",
       "prerelease": false,
@@ -2472,12 +3070,14 @@
             "Bug fixes and improvements"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.7",
       "version": "1.1.7",
       "name": "v1.1.7",
+      "label": "1.1.7",
       "publishedAt": "2026-05-19T17:57:48Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.7",
       "prerelease": false,
@@ -2526,12 +3126,14 @@
             "Fixed Back button text clipping issues"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.6",
       "version": "1.1.6",
       "name": "v1.1.6",
+      "label": "1.1.6",
       "publishedAt": "2026-05-19T04:42:57Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.6",
       "prerelease": false,
@@ -2635,12 +3237,14 @@
             "Fixed nested submenu corner radius mismatches"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.5",
       "version": "1.1.5",
       "name": "v1.1.5",
+      "label": "1.1.5",
       "publishedAt": "2026-05-11T05:14:34Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.5",
       "prerelease": false,
@@ -2706,12 +3310,14 @@
             "Fixed hover and click animations on playback controls"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.4",
       "version": "1.1.4",
       "name": "v1.1.4",
+      "label": "1.1.4",
       "publishedAt": "2026-05-06T17:49:58Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.4",
       "prerelease": false,
@@ -2730,12 +3336,14 @@
             "Fixed terminal window opening alongside Noctis on Windows"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.3",
       "version": "1.1.3",
       "name": "v1.1.3",
+      "label": "1.1.3",
       "publishedAt": "2026-05-06T01:07:18Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.3",
       "prerelease": false,
@@ -2754,12 +3362,14 @@
             "Fixed terminal window opening alongside Noctis on Windows"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.2",
       "version": "1.1.2",
       "name": "v1.1.2",
+      "label": "1.1.2",
       "publishedAt": "2026-05-06T00:23:50Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.2",
       "prerelease": false,
@@ -2810,12 +3420,14 @@
             "Fixed context menu stuttering issues"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.1",
       "version": "1.1.1",
       "name": "v1.1.1",
+      "label": "1.1.1",
       "publishedAt": "2026-05-04T23:18:12Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.1",
       "prerelease": false,
@@ -2896,12 +3508,14 @@
             "Fixed theme migration persistence issues"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.1.0",
       "version": "1.1.0",
       "name": "v1.1.0",
+      "label": "1.1.0",
       "publishedAt": "2026-04-02T17:10:43Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.0",
       "prerelease": false,
@@ -2965,12 +3579,14 @@
             "Fixed artwork cache memory leaks"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.0.2",
       "version": "1.0.2",
       "name": "v1.0.2",
+      "label": "1.0.2",
       "publishedAt": "2026-03-20T22:14:04Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.2",
       "prerelease": false,
@@ -2998,12 +3614,14 @@
             "Fixed inconsistent styling in Play menu items"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.0.1",
       "version": "1.0.1",
       "name": "v1.0.1",
+      "label": "1.0.1",
       "publishedAt": "2026-03-19T19:08:47Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.1",
       "prerelease": false,
@@ -3030,18 +3648,21 @@
             "Fixed player bar overlapping top bar buttons during window resize"
           ]
         }
-      ]
+      ],
+      "summary": null
     },
     {
       "tag": "v1.0.0",
       "version": "1.0.0",
       "name": "v1.0.0",
+      "label": "1.0.0",
       "publishedAt": "2026-03-19T04:16:15Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.0",
       "prerelease": false,
-      "sections": []
+      "sections": [],
+      "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-10-10T12:26:09.575Z",
+  "updatedAt": "2026-10-19T02:21:48.401Z",
   "degraded": false
 }
