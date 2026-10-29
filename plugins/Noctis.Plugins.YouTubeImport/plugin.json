@@ -15,5 +15,6 @@
       "placeholder": "Path to yt-dlp",
       "description": "Leave empty and the plugin installs yt-dlp and keeps it up to date. A copy you set here is used as it is and never replaced." }
   ],
-  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.YouTubeImport"
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.YouTubeImport",
+  "icon": "icon.png"
 }
