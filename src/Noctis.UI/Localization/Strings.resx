@@ -469,6 +469,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Adjust volume from ReplayGain tags. Scan tracks via right-click.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Mode</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Pre-amp (dB)</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Scan new files automatically</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Writes ReplayGain tags into new songs once their album has finished copying.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>REMOTE CONTROL</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Web Remote</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Control what's playing from your phone's browser. No app needed. Only use it on Wi-Fi you trust.</value><comment>Text in SettingsView.axaml</comment></data>

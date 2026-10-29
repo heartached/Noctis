@@ -2182,6 +2182,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
     [ObservableProperty] private bool _writeAnalysisToTags;
 
+    /// <summary>Scan new files for ReplayGain automatically (GitHub #148). Off by default.</summary>
+    [ObservableProperty] private bool _autoReplayGainScanEnabled;
+
     // ── Output device (Windows WASAPI) ──
 
     public bool IsOutputDeviceSupported => OperatingSystem.IsWindows();
@@ -3149,6 +3152,7 @@ public partial class SettingsViewModel : ViewModelBase
             AllowExplicitContent = _settings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
+            AutoReplayGainScanEnabled = _settings.AutoReplayGainScanEnabled;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             // The pin was already applied at player construction (Program.cs reads it
             // before the player exists); this only builds the picker's option list.
@@ -3626,6 +3630,7 @@ public partial class SettingsViewModel : ViewModelBase
         SaveFeatureSettings();
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
+        _settings.AutoReplayGainScanEnabled = AutoReplayGainScanEnabled;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.AudioOutputDeviceId = IsOutputDeviceSupported ? _selectedOutputDeviceId : "";
         _settings.NetEaseEnabled = NetEaseEnabled;
@@ -5649,6 +5654,16 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnAutoReplayGainScanEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        // Turning it off also drops the albums still waiting to settle; a scan already
+        // measuring stops before its next file.
+        if (!value)
+            App.Services?.GetService<ReplayGainAutoScanService>()?.Clear();
+        _ = SaveAsync();
+    }
+
     partial void OnReplayGainPreampDbChanged(double value)
     {
         if (_suspendSettingPersistence) return;
@@ -7569,6 +7584,7 @@ public partial class SettingsViewModel : ViewModelBase
             AllowExplicitContent = defaultSettings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
+            AutoReplayGainScanEnabled = defaultSettings.AutoReplayGainScanEnabled;
             ReplayGainMode = defaultSettings.ReplayGainMode;
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;

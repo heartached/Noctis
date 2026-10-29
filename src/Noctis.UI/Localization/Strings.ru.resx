@@ -469,6 +469,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Регулировать громкость по тегам ReplayGain. Сканируйте треки через контекстное меню.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Режим</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Предусиление (дБ)</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Автоматически сканировать новые файлы</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Записывает теги ReplayGain в новые треки, когда альбом полностью скопирован.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>ДИСТАНЦИОННОЕ УПРАВЛЕНИЕ</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Веб-пульт</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Управляйте музыкой из браузера на телефоне. Приложение не нужно. Используйте только в надёжной сети Wi-Fi.</value><comment>Text in SettingsView.axaml</comment></data>

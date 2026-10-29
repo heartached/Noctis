@@ -1284,6 +1284,14 @@
     <value>프리앰프 (dB)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve">
+    <value>새 파일 자동 스캔</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve">
+    <value>앨범 복사가 끝나면 새 곡에 ReplayGain 태그를 기록합니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve">
     <value>원격 제어</value>
     <comment>Text in SettingsView.axaml</comment>

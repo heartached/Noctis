@@ -4384,6 +4384,19 @@
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" MinWidth="60"/>
                     </Grid>
+                    <!-- GitHub #148: tagging new files works whether or not playback applies
+                         ReplayGain, so this row is not tied to the toggle above. -->
+                    <Grid Classes="sub-setting" ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.ScanNewFilesReplayGain}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ScanNewFilesReplayGainDesc}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.ScanNewFilesReplayGain}"
+                                              IsChecked="{Binding AutoReplayGainScanEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
             </StackPanel>

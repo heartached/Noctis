@@ -364,6 +364,8 @@
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Sesi ReplayGain etiketlerinden ayarla. Parçaları sağ tıkla tarayabilirsin.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Mod</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Ön yükseltme (dB)</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Yeni dosyaları otomatik tara</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Albümün kopyalanması bittiğinde yeni şarkılara ReplayGain etiketleri yazar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>UZAKTAN KUMANDA</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Web Kumandası</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Çalanı telefonunun tarayıcısından yönet. Uygulama gerekmez. Yalnızca güvendiğin Wi-Fi ağlarında kullan.</value><comment>Text in SettingsView.axaml</comment></data>

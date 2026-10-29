@@ -206,6 +206,9 @@ public partial class App : Application
             var analysisCoordinator = Services!.GetRequiredService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>();
             var library = Services!.GetRequiredService<ILibraryService>();
             library.LibraryUpdated += (_, _) => analysisCoordinator.StartBackfill();
+            // Automatic ReplayGain for new files (GitHub #148); a no-op while the setting is off.
+            var autoReplayGain = Services!.GetRequiredService<ReplayGainAutoScanService>();
+            autoReplayGain.Attach();
             // Feeds the visualizer / beat-reactive backdrops whenever the output does not
             // tap the meters itself (LibVLC's own output: macOS, and Windows/Linux shared
             // mode without the gapless engine); stands aside while the engine or the
@@ -250,7 +253,13 @@ public partial class App : Application
                 // down" — or Windows force-terminated us and cut off the very save the
                 // cancel exists to protect. Bounded, the veto lasts at most a few seconds
                 // and we always exit under our own power.
-                try { await analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)); } catch { }
+                try
+                {
+                    await Task.WhenAll(
+                        analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)),
+                        autoReplayGain.StopAsync(TimeSpan.FromSeconds(3)));
+                }
+                catch { }
                 try { await mainVm.ShutdownAsync().WaitAsync(ShutdownSaveDeadline); }
                 catch (TimeoutException)
                 {
