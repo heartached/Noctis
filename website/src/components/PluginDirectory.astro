@@ -1,0 +1,291 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import index from '../../../plugins/index.json';
+
+/**
+ * The plugins people can install in Noctis, read from plugins/index.json when
+ * the site is built. The app reads the same file, so the two always agree:
+ * merging a submission PR that edits the list redeploys the site
+ * (.github/workflows/deploy-website.yml watches plugins/index.json and every
+ * plugins/<name>/icon.png).
+ *
+ * Grouped the way Settings > Plugins groups them: author "Noctis" is an
+ * Official Noctis plugin and wears the blue check; anyone else is a Community
+ * plugin, credited by name. On the web that is only a label. The app's check
+ * also verifies the zip against the list, which a website can't do.
+ *
+ * Shared by /plugins and, when wanted, the home page: drop <PluginDirectory />
+ * in. There is no install link: installing happens in the app.
+ */
+
+interface Props {
+  /** Heading level for the two section titles. */
+  level?: 2 | 3;
+  /** Where "Share your plugin" points when the community list is empty. */
+  submitHref?: string;
+}
+
+const { level = 3, submitHref = '/plugins/submit' } = Astro.props;
+const H = `h${level}` as 'h2' | 'h3';
+
+type Entry = {
+  id: string;
+  name: string;
+  author: string;
+  description?: string;
+  version?: string;
+  minAppVersion?: string;
+  platforms?: string[];
+  homepage?: string;
+  icon?: string;
+  authorUrl?: string;
+};
+
+/* Every icon in plugins/<name>/icon.png, keyed "<name>/icon.png" so it can be
+   matched against an entry's `icon` path. Vite copies the ones that are used
+   into the build; a deleted or renamed icon simply isn't found. */
+const iconFiles = import.meta.glob<{ default: ImageMetadata }>('../../../plugins/*/icon.png', { eager: true });
+const icons = new Map(
+  Object.entries(iconFiles).map(([path, mod]) => [path.replace(/^.*\/plugins\//, ''), mod.default])
+);
+
+/* An entry the app would skip (no id, name or author) is skipped here too,
+   rather than failing the build. */
+const entries = ((index as { plugins?: unknown[] }).plugins ?? []).filter(
+  (p): p is Entry =>
+    !!p && typeof p === 'object' &&
+    typeof (p as Entry).id === 'string' &&
+    typeof (p as Entry).name === 'string' &&
+    typeof (p as Entry).author === 'string'
+);
+
+const PLATFORM: Record<string, string> = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
+
+const https = (url?: string) => (url && /^https:\/\//i.test(url) ? url : undefined);
+
+/* The app's letter tile: the name's initials on a colour picked from the
+   name, so the same plugin always gets the same colour. */
+function tile(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters = (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) % 360;
+  return { letters, hue: h };
+}
+
+const cards = entries.map((p) => ({
+  ...p,
+  official: p.author.trim().toLowerCase() === 'noctis',
+  image: p.icon ? icons.get(p.icon.replace(/^\.?\//, '')) : undefined,
+  tile: tile(p.name),
+  platforms: (p.platforms?.length ? p.platforms : Object.keys(PLATFORM)).map((x) => PLATFORM[x] ?? x),
+  homepage: https(p.homepage),
+  authorUrl: https(p.authorUrl),
+}));
+
+const groups = [
+  { key: 'official', title: 'Official Noctis plugins', items: cards.filter((c) => c.official) },
+  { key: 'community', title: 'Community plugins', items: cards.filter((c) => !c.official) },
+];
+---
+
+<div class="pd">
+  {groups.map((g) => (
+    <section class="pd__group" aria-labelledby={`pd-${g.key}`}>
+      <H class="pd__title" id={`pd-${g.key}`}>{g.title}</H>
+
+      {g.items.length === 0 ? (
+        <p class="pd__empty">
+          {g.key === 'community'
+            ? <>None listed yet. Made one? <a href={submitHref}>Share your plugin</a>.</>
+            : 'None listed right now.'}
+        </p>
+      ) : (
+        <ul class="pd__grid" role="list">
+          {g.items.map((c) => (
+            <li class="pcard">
+              {c.image ? (
+                <Image class="pcard__icon" src={c.image} alt="" width={112} height={112} format="webp" loading="lazy" />
+              ) : (
+                <span class="pcard__icon pcard__tile" style={`--hue:${c.tile.hue}`} aria-hidden="true">{c.tile.letters}</span>
+              )}
+
+              <div class="pcard__main">
+                <p class="pcard__name">{c.name}</p>
+                <p class="pcard__by">
+                  {c.official ? (
+                    <>
+                      Noctis
+                      <svg class="pcard__check" viewBox="0 0 24 24" role="img" aria-label="Official">
+                        <path fill="currentColor" d="M12 1.5l2.6 1.9 3.2-.2 1 3 2.7 1.8-1 3.1 1 3.1-2.7 1.8-1 3-3.2-.2L12 22.5l-2.6-1.9-3.2.2-1-3-2.7-1.8 1-3.1-1-3.1 2.7-1.8 1-3 3.2.2z" />
+                        <path fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.7 2.7L16.2 9.4" />
+                      </svg>
+                    </>
+                  ) : c.authorUrl ? (
+                    <>by <a href={c.authorUrl} target="_blank" rel="noopener">{c.author}</a></>
+                  ) : (
+                    <>by {c.author}</>
+                  )}
+                </p>
+                {c.description && <p class="pcard__desc">{c.description}</p>}
+                <p class="pcard__meta">
+                  {c.version && <span class="mono">v{c.version}</span>}
+                  <span>{c.platforms.join(', ')}</span>
+                  {c.homepage && (
+                    <a class="pcard__src" href={c.homepage} target="_blank" rel="noopener" aria-label={`Source for ${c.name}`}>Source</a>
+                  )}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  ))}
+
+  <p class="pd__how">Install any of these in Noctis: <strong>Settings → Plugins</strong>.</p>
+</div>
+
+<style>
+  .pd {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-7);
+    padding-top: var(--s-4);
+  }
+
+  .pd__title {
+    margin-bottom: var(--s-4);
+    color: var(--ink-0);
+    font-size: var(--step-0);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .pd__empty {
+    color: var(--ink-2);
+  }
+
+  .pd__empty a {
+    color: var(--accent-text);
+  }
+
+  .pd__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: var(--s-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pcard {
+    display: flex;
+    gap: var(--s-4);
+    padding: var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+  }
+
+  /* Drawn at 56px, the card size in the app (60px) give or take. */
+  .pcard__icon {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    object-fit: cover;
+  }
+
+  .pcard__tile {
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, hsl(var(--hue) 62% 58%), hsl(calc(var(--hue) + 28) 58% 44%));
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .pcard__main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .pcard__name {
+    color: var(--ink-0);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .pcard__by {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  .pcard__by a {
+    color: inherit;
+    text-decoration-color: var(--line);
+    text-underline-offset: 0.2em;
+  }
+
+  .pcard__by a:hover {
+    color: var(--ink-0);
+  }
+
+  .pcard__check {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    color: #1d9bf0;
+  }
+
+  /* Two lines, like the card in the app; descriptions are 56 characters. */
+  .pcard__desc {
+    margin-top: var(--s-1);
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .pcard__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px var(--s-3);
+    margin-top: var(--s-2);
+    color: var(--ink-2);
+    font-size: var(--step--2);
+  }
+
+  .pcard__src {
+    color: var(--accent-text);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .pcard__src:hover {
+    text-decoration: underline;
+  }
+
+  .pd__how {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  .pd__how strong {
+    color: var(--ink-0);
+    font-weight: 600;
+  }
+</style>
