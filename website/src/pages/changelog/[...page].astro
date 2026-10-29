@@ -1,9 +1,10 @@
 ---
-import Base from '../layouts/Base.astro';
-import Community from '../components/Community.astro';
-import BrandIcon from '../components/BrandIcon.astro';
-import { links } from '../config/site';
-import changelog from '../data/changelog.json';
+import type { GetStaticPaths, Page } from 'astro';
+import Base from '../../layouts/Base.astro';
+import Community from '../../components/Community.astro';
+import BrandIcon from '../../components/BrandIcon.astro';
+import { links } from '../../config/site';
+import changelog from '../../data/changelog.json';
 
 /**
  * Every published release, newest first, rendered from src/data/changelog.json —
@@ -12,22 +13,57 @@ import changelog from '../data/changelog.json';
  * runtime and nothing is hand-maintained: publishing a release is the only
  * step, and this page follows within about a minute.
  *
+ * Paged five releases at a time: /changelog, /changelog/2, … One release can
+ * run to 30+ lines, so five keeps a page to a reasonable scroll on a phone.
+ * Each page is static HTML, so it has its own shareable URL.
+ *
  * Bullet text arrives as plain strings and is interpolated as text, never as
  * markup. That is deliberate — release bodies are remote input and the site
  * ships a hash-based CSP.
  */
-const { releases } = changelog as {
-  releases: {
-    tag: string;
-    version: string;
-    label: string;
-    publishedAt: string;
-    url: string;
-    prerelease: boolean;
-    sections: { title: string | null; items: string[] }[];
-    summary: string | null;
-  }[];
+type Release = {
+  tag: string;
+  version: string;
+  label: string;
+  publishedAt: string;
+  url: string;
+  prerelease: boolean;
+  sections: { title: string | null; items: string[] }[];
+  summary: string | null;
 };
+
+/* getStaticPaths runs before the rest of this file, so it can't see a
+   module-level constant; the page size is written there and read back here. */
+export const getStaticPaths = (({ paginate }) => {
+  const { releases } = changelog as { releases: Release[] };
+  return paginate(releases, { pageSize: 5 });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props as { page: Page<Release> };
+const PER_PAGE = page.size;
+const { releases } = changelog as { releases: Release[] };
+const shown = page.data;
+const pageCount = page.lastPage;
+const current = page.currentPage;
+
+/* Which page each release lives on, so an old /changelog#v1.4.2 link can be
+   sent to the page that now holds it. Read by the script at the bottom. */
+const tagPages = Object.fromEntries(
+  releases.map((r, i) => [r.tag, Math.floor(i / PER_PAGE) + 1])
+);
+
+const pageHref = (n: number) => (n === 1 ? '/changelog' : `/changelog/${n}`);
+
+/* Numbered links: first, last, and the current page with one either side,
+   with a gap marker wherever pages are skipped. */
+const pageItems: (number | 'gap')[] = [];
+for (let n = 1; n <= pageCount; n++) {
+  if (n === 1 || n === pageCount || Math.abs(n - current) <= 1) {
+    pageItems.push(n);
+  } else if (pageItems.at(-1) !== 'gap') {
+    pageItems.push('gap');
+  }
+}
 
 /* Fixed to UTC so the rendered date can't shift with the build machine's zone. */
 const dateFmt = new Intl.DateTimeFormat('en-US', {
@@ -67,9 +103,9 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
 ---
 
 <Base
-  title="Noctis - Changelog and release notes."
+  title={current === 1 ? 'Noctis - Changelog and release notes.' : `Noctis - Changelog, page ${current}.`}
   description="Every Noctis release, with the new features, improvements and bug fixes that shipped in each one. Generated from the GitHub releases."
-  path="/changelog"
+  path={pageHref(current)}
 >
   <section class="section cl" aria-labelledby="cl-title">
     <div class="container">
@@ -83,9 +119,9 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
         </p>
       </header>
 
-      <ol class="cl__list" role="list">
+      <ol class="cl__list" role="list" data-page={current} data-tag-pages={JSON.stringify(tagPages)}>
         {
-          releases.map((r) => (
+          shown.map((r) => (
             <li class="cl__entry">
               <div class="cl__rail">
                 <a
@@ -144,6 +180,50 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
         }
       </ol>
 
+      {pageCount > 1 && (
+        <nav class="pager" aria-label="Changelog pages">
+          {page.url.prev ? (
+            <a class="pager__step" href={pageHref(current - 1)} rel="prev">
+              <span aria-hidden="true">←</span> Newer
+            </a>
+          ) : (
+            <span class="pager__step" aria-hidden="true" data-off>
+              <span>←</span> Newer
+            </span>
+          )}
+
+          <ol class="pager__nums" role="list">
+            {pageItems.map((n) =>
+              n === 'gap' ? (
+                <li class="pager__gap" aria-hidden="true">…</li>
+              ) : (
+                <li>
+                  <a
+                    class="pager__num"
+                    href={pageHref(n)}
+                    aria-label={`Page ${n}`}
+                    aria-current={n === current ? 'page' : undefined}
+                  >
+                    {n}
+                  </a>
+                </li>
+              )
+            )}
+          </ol>
+          <span class="pager__of">Page {current} of {pageCount}</span>
+
+          {page.url.next ? (
+            <a class="pager__step" href={pageHref(current + 1)} rel="next">
+              Older <span aria-hidden="true">→</span>
+            </a>
+          ) : (
+            <span class="pager__step" aria-hidden="true" data-off>
+              Older <span>→</span>
+            </span>
+          )}
+        </nav>
+      )}
+
       <p class="cl__foot">
         <a class="btn cl__gh" href={links.releases} target="_blank" rel="noopener">
           <BrandIcon brand="github" />
@@ -153,7 +233,7 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     </div>
   </section>
 
-  {/* 41 releases is a long way down, and the nav is at the top. Hidden until
+  {/* Five long releases is still a long way down. Hidden until
       the page heading has scrolled away, so it never covers content on a
       screen that has not moved yet. */}
   <a class="totop" href="#cl-title" data-to-top aria-label="Back to top">
@@ -365,6 +445,86 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     margin-top: var(--s-7);
   }
 
+  /* --- Pages -------------------------------------------------------------- */
+
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    max-width: 62rem;
+    margin: var(--s-7) auto 0;
+    padding-top: var(--s-6);
+    border-top: 1px solid var(--line);
+  }
+
+  .pager__step {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: 44px;
+    padding-inline: var(--s-3);
+    border-radius: var(--r-pill);
+    color: var(--ink-0);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  a.pager__step:hover {
+    background: color-mix(in srgb, var(--ink-0) 7%, transparent);
+  }
+
+  .pager__step[data-off] {
+    color: var(--ink-2);
+    opacity: 0.5;
+  }
+
+  .pager__nums {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pager__num {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    height: 40px;
+    padding-inline: var(--s-2);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+  }
+
+  .pager__num:hover {
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 7%, transparent);
+  }
+
+  .pager__num[aria-current='page'] {
+    background: var(--ink-0);
+    color: var(--bg-0);
+    font-weight: 600;
+  }
+
+  .pager__gap {
+    min-width: 20px;
+    color: var(--ink-2);
+    text-align: center;
+  }
+
+  .pager__of {
+    display: none;
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* --- Back to top -------------------------------------------------------- */
 
   /* Under the header's z-index, over everything else. `visibility` rather than
@@ -464,6 +624,28 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     .cl__version {
       margin-bottom: var(--s-5);
     }
+
+    /* 128px under the lede read as a missing section on a phone. */
+    .cl__head {
+      margin-bottom: var(--s-7);
+    }
+
+    .cl__entry:first-child {
+      padding-top: 0;
+    }
+
+    /* Numbers give way to "Page 3 of 14"; Newer/Older carry the rest. */
+    .pager__nums {
+      display: none;
+    }
+
+    .pager__of {
+      display: inline;
+    }
+
+    .pager__step {
+      padding-inline: var(--s-2);
+    }
   }
 </style>
 
@@ -485,6 +667,21 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
       btn.toggleAttribute('data-on', !entry.isIntersecting);
     }).observe(head);
   }
+
+  /* Links made before the changelog was paged point at /changelog#v1.4.2.
+     If that release now lives on another page, go there instead. */
+  const pages = document.querySelector<HTMLElement>('.cl__list');
+  const tag = decodeURIComponent(location.hash.slice(1));
+  if (pages && tag && !document.getElementById(tag)) {
+    try {
+      const where = JSON.parse(pages.dataset.tagPages ?? '{}')[tag];
+      if (where && String(where) !== pages.dataset.page) {
+        location.replace(`${where === 1 ? '/changelog' : `/changelog/${where}`}#${encodeURIComponent(tag)}`);
+      }
+    } catch {
+      /* malformed map — stay on this page */
+    }
+  }
 </script>
 
 {/*
@@ -495,8 +692,8 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
   hash CSP allows no other route and release notes are remote input.
 */}
 <script>
-  import { REPO } from '../config/site';
-  import { fromGitHub, type ParsedRelease } from '../lib/changelog-parse';
+  import { REPO } from '../../config/site';
+  import { fromGitHub, type ParsedRelease } from '../../lib/changelog-parse';
 
   const list = document.querySelector<HTMLOListElement>('.cl__list');
   const nReleases = document.querySelector<HTMLElement>('[data-cl-releases]');
@@ -575,7 +772,8 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
   }
 
   async function refresh() {
-    if (!list || document.visibilityState === 'hidden') return;
+    /* New releases belong at the top of page 1 only. */
+    if (!list || list.dataset.page !== '1' || document.visibilityState === 'hidden') return;
     try {
       const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=100`, {
         headers: { Accept: 'application/vnd.github+json' },
@@ -583,16 +781,23 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
       if (!res.ok) return;
       const releases = fromGitHub(await res.json(), REPO);
 
-      /* Anything already on the page stays as built; only unseen tags are
-         added, newest first, so the order matches GitHub's. */
-      const fresh = releases.filter((r) => !document.getElementById(r.tag)).reverse();
+      /* Anything already built stays as is; only tags missing from the whole
+         changelog (not just this page) are added, newest first. */
+      const known = new Set(Object.keys(JSON.parse(list.dataset.tagPages ?? '{}')));
+      const fresh = releases
+        .filter((r) => !known.has(r.tag) && !document.getElementById(r.tag))
+        .reverse();
       for (const r of fresh) list.prepend(render(r));
 
+      /* The counts in the lede cover every page, so add to them rather than
+         recounting what this one page shows. */
       if (fresh.length) {
-        const entries = list.querySelectorAll('.cl__entry').length;
-        const changes = list.querySelectorAll('.cl__items > li').length;
-        if (nReleases) nReleases.textContent = String(entries);
-        if (nChanges) nChanges.textContent = changes.toLocaleString('en-US');
+        const added = fresh.reduce((n, r) => n + r.sections.reduce((m, s) => m + s.items.length, 0), 0);
+        if (nReleases) nReleases.textContent = String(Number(nReleases.textContent) + fresh.length);
+        if (nChanges) {
+          const was = Number((nChanges.textContent ?? '0').replace(/,/g, ''));
+          nChanges.textContent = (was + added).toLocaleString('en-US');
+        }
       }
     } catch {
       /* offline or rate-limited — the built page is still correct */
