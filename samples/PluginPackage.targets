@@ -61,6 +61,8 @@
       <_PluginFiles Include="$(OutDir)*.dll" Exclude="$(OutDir)Noctis.Plugins.Abstractions.dll;$(OutDir)Avalonia*.dll;$(OutDir)SkiaSharp*.dll;$(OutDir)HarfBuzzSharp*.dll" />
       <_PluginFiles Include="$(OutDir)$(AssemblyName).deps.json" Condition="Exists('$(OutDir)$(AssemblyName).deps.json')" />
       <_PluginFiles Include="$(MSBuildProjectDirectory)\plugin.json" />
+      <!-- A plugin under its own license (a community plugin brought into the repo) ships it. -->
+      <_PluginFiles Include="$(MSBuildProjectDirectory)\LICENSE" Condition="Exists('$(MSBuildProjectDirectory)\LICENSE')" />
     </ItemGroup>
     <RemoveDir Directories="$(_PluginStage)" />
     <Copy SourceFiles="@(_PluginFiles)" DestinationFolder="$(_PluginStage)" />

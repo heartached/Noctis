@@ -98,6 +98,11 @@ public partial class WordTiming : ObservableObject
     [ObservableProperty]
     private double _lift;
 
+    /// <summary>The word's line reads right to left (<see cref="LyricLine.SetRightToLeft"/>):
+    /// the sweep fills it from the right and it is drawn in one piece.</summary>
+    [ObservableProperty]
+    private bool _isRightToLeft;
+
     /// <summary>Letters the held-note animation staggers across (text elements of the
     /// visible word) — shared by the timeline's window and the renderer.</summary>
     public int EmphasisCharCount =>

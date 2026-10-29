@@ -1823,6 +1823,39 @@ public partial class PlayerViewModel : ViewModelBase
         _parkedExplicit.Clear();
     }
 
+    /// <summary>
+    /// Plugin API 1.5 (IPlaybackControl.SetUpNext): Up Next becomes <paramref name="tracks"/>, in
+    /// that order, while the current song plays on. The order is the caller's, so Shuffle goes off
+    /// and its Shuffle-off snapshot is dropped (turning Shuffle on again shuffles this list), Track
+    /// Radio ends (it would refill behind it), and the Repeat All cycle is the playing song and this
+    /// list. Explicit songs are parked while Settings hides them, as for a fresh shuffle.
+    /// </summary>
+    public void ReplaceUpNext(IList<Track> tracks)
+    {
+        DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceUpNext", $"tracks={tracks.Count}, was={UpNext.Count}");
+        CancelAutoMixTransition("queue replaced");
+        MarkQueueChanged();
+        IsRadioActive = false;
+        _radioSeed = null;
+        _originalQueue.Clear();
+        _parkedExplicit.Clear();
+        IsShuffleEnabled = false;
+        _repeatCycleTracks = new List<Track>(tracks.Count + 1);
+        if (CurrentTrack is { } playing) _repeatCycleTracks.Add(playing);
+        _repeatCycleTracks.AddRange(tracks);
+        _suppressHasContentNotify = true;
+        try
+        {
+            UpNext.ReplaceAll(tracks);
+            PruneBlockedExplicit(wholeQueue: true);
+        }
+        finally
+        {
+            _suppressHasContentNotify = false;
+            OnPropertyChanged(nameof(HasContent));
+        }
+    }
+
     /// <summary>The queue ran out with Keep played songs on: stop, keep the last song loaded
     /// at its start and keep the queue's History and Repeat All cycle.</summary>
     private void StopAtQueueEnd()

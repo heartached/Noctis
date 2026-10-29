@@ -135,7 +135,7 @@ public class CjkWordGapViewTests
             Visual container = k!;
             while (container.GetVisualParent() is { } parent && parent is not WrapPanel)
                 container = parent;
-            Assert.IsType<WrapPanel>(container.GetVisualParent());
+            Assert.IsAssignableFrom<WrapPanel>(container.GetVisualParent()); // LyricWrapPanel since plugin API 1.5
             cells.Add((w, container.Bounds, k));
         }
         return cells;
