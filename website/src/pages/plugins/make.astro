@@ -16,8 +16,11 @@ import { links } from '../../config/site';
  *   - plugin.json follows src/Noctis/Services/Plugins/PluginManifest.cs: id, name, version,
  *     entry and apiVersion are required for a code plugin; type defaults to "dotnet".
  *   - the code uses INoctisPlugin, IPluginHost.RegisterTrackCommand and IPluginHost.Notify
- *     from src/Noctis.Plugins.Abstractions (API 1.2, Noctis 1.5.9 and newer).
+ *     from src/Noctis.Plugins.Abstractions (kit API 1.5, Noctis 1.6.6; these two calls are
+ *     1.1, so 1.5.3 is an honest minAppVersion for this exact plugin).
  *   - "What we check" is the review list in docs/PLUGINS.md, "Submitting a plugin".
+ *   - step 4 follows Settings > Plugins in 1.6.6: Install from file beside the search box,
+ *     the plugin's own page with its Enabled switch.
  * No dotnet new template exists, so the page never mentions one.
  *
  * No page script: copy buttons use the site-wide [data-copy] handler in src/scripts/site.ts.
@@ -27,7 +30,7 @@ const needs = [
   { name: 'The .NET 10 SDK', note: 'Free, for Windows, macOS and Linux.', href: 'https://dotnet.microsoft.com/download/dotnet/10.0' },
   { name: 'A code editor', note: 'VS Code is free and works well.', href: 'https://code.visualstudio.com/' },
   { name: 'A GitHub account', note: 'Free. You share your plugin there.', href: 'https://github.com/signup' },
-  { name: 'Noctis 1.6 or newer', note: 'To try your plugin before you share it.', href: links.releasesLatest },
+  { name: 'Noctis 1.6.6 or newer', note: 'To try your plugin before you share it.', href: links.releasesLatest },
 ];
 
 /* Code samples live here rather than in the markup: Astro would read their braces as
@@ -47,8 +50,8 @@ rm PulseRingPlugin.cs`,
   "description": "Says hello from the track menu.",
   "type": "dotnet",
   "entry": "MyPlugin.dll",
-  "apiVersion": "1.2",
-  "minAppVersion": "1.6.0",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
   "permissions": ["menu.commands", "notifications"]
 }`,
   cs: `using Noctis.Plugins;
@@ -91,7 +94,7 @@ const checks = [
 
 <Base
   title="Noctis - Make a plugin."
-  description="A beginner's guide to making a Noctis plugin: what you need, five steps from the sample to a working plugin, and how to submit it for the Official Plugins list."
+  description="A beginner's guide to making a Noctis plugin: what you need, five steps from the sample to a working plugin, and how to share it so it shows up in Noctis under Community plugins."
   path="/plugins/make"
 >
   <section class="section mk" aria-labelledby="mk-title">
@@ -101,7 +104,7 @@ const checks = [
         <h1 class="display" id="mk-title">Make a <em>plugin</em>.</h1>
         <p class="lede mk__lede">
           You don’t need to be an expert. Start from our sample, change a few lines, try it in Noctis, then share it.
-          If it passes our review, it shows up in Official Plugins with your name on it.
+          If it passes our review, it shows up in Noctis under Community plugins, with your name on it.
         </p>
       </header>
 
@@ -190,10 +193,23 @@ const checks = [
                 </li>
                 <li><strong>entry</strong> is your project’s name plus <code>.dll</code>.</li>
                 <li>
+                  <strong>description</strong> is one plain sentence of 56 characters or fewer, so it fits on the
+                  card. No em dashes, and don’t add “by you”: the card already shows your name.
+                </li>
+                <li>
                   <strong>permissions</strong> lists what your plugin asks to do. People see this list before they
                   switch it on. This one adds a menu entry and shows a notice.
                 </li>
+                <li>
+                  <strong>apiVersion</strong> and <strong>minAppVersion</strong>: 1.6.6 is the first Noctis with
+                  API 1.5. This plugin only uses older features, so you could set <code>1.5.3</code> to let older
+                  copies of Noctis run it too.
+                </li>
               </ul>
+              <p class="mk__note">
+                Want an icon? Put a square <code>icon.png</code> (256 × 256) next to <code>plugin.json</code> and add
+                <code>"icon": "icon.png"</code>. The build puts it in the zip. Without one, Noctis shows a letter tile.
+              </p>
             </div>
           </li>
 
@@ -238,9 +254,12 @@ const checks = [
                 The build makes the zip for you: <code>bin/Release/MyPlugin-1.0.0.zip</code>. Then, in Noctis:
               </p>
               <ol class="sub" role="list">
-                <li>Open <strong>Settings → Plugins</strong> and choose <strong>Install from file</strong>. Pick the zip.</li>
-                <li>Turn on <strong>Community plugins</strong> at the top of the page.</li>
-                <li>Switch your plugin on and approve what it asks for.</li>
+                <li>
+                  Open <strong>Settings → Plugins</strong> and press <strong>Install from file</strong>, beside the
+                  search box. Pick the zip.
+                </li>
+                <li>Turn on <strong>Community plugins</strong> so Noctis can run plugin code.</li>
+                <li>Click your plugin’s card. On its page, switch on <strong>Enabled</strong> and approve what it asks for.</li>
                 <li>Right-click any song and choose <strong>Say hello</strong>.</li>
               </ol>
               <p class="mk__note">
@@ -281,11 +300,11 @@ const checks = [
                 <pre tabindex="0"><code>{code.shaUnix}</code></pre>
               </div>
               <p>
-                Then fill in the <strong>Submit a Plugin</strong> form. It’s also in Noctis: Settings → Plugins → Make
-                your own plugin → Submit a Plugin.
+                Then submit it. The submit page has a checklist and the form. In Noctis, the
+                <strong>Submit a Plugin</strong> button in Settings → Plugins goes there too.
               </p>
               <p class="mk__links">
-                <a class="btn" href={links.pluginSubmit} target="_blank" rel="noopener">Submit a Plugin</a>
+                <a class="btn btn--primary" href={links.pluginSubmit}>Submit a plugin</a>
               </p>
               <p class="mk__note">
                 A bot checks your zip within a few minutes and comments on your submission. It never runs your
@@ -304,7 +323,7 @@ const checks = [
           {checks.map((c) => <li>{c}</li>)}
         </ul>
         <p class="mk__note">
-          Approved plugins show up in Official Plugins in every copy of Noctis, credited to you. To update yours,
+          Approved plugins show up under Community plugins in every copy of Noctis, credited to you. To update yours,
           make a new release with a higher version and submit the form again.
         </p>
       </section>
