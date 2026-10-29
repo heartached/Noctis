@@ -131,7 +131,25 @@ internal sealed class FakeLibraryService : ILibraryService
         return Task.CompletedTask;
     }
     public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
-    public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null) => Task.CompletedTask;
+    /// <summary>Every ImportFilesAsync call's paths, in order.</summary>
+    public List<List<string>> ImportCalls { get; } = new();
+
+    /// <summary>When set, an import adds a track per new path (as the real service does for a file it can read).</summary>
+    public bool ImportAddsTracks { get; set; }
+
+    /// <summary>Whether each import call ran on the UI thread.</summary>
+    public List<bool> ImportOnUiThread { get; } = new();
+
+    public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null)
+    {
+        var list = filePaths.ToList();
+        ImportCalls.Add(list);
+        ImportOnUiThread.Add(Avalonia.Threading.Dispatcher.UIThread.CheckAccess());
+        if (ImportAddsTracks)
+            foreach (var path in list.Where(p => !TrackList.Any(t => string.Equals(t.FilePath, p, StringComparison.OrdinalIgnoreCase))))
+                TrackList.Add(new Track { Title = Path.GetFileNameWithoutExtension(path), Artist = "Artist", Album = "Album", FilePath = path });
+        return Task.CompletedTask;
+    }
     public Track? GetTrackById(Guid id) => TrackList.FirstOrDefault(t => t.Id == id);
     public Album? GetAlbumById(Guid id) => Albums.FirstOrDefault(a => a.Id == id);
     /// <summary>Albums GetAlbumsByArtist answers from (by Artist); empty unless a test fills it.</summary>
