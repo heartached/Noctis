@@ -289,7 +289,8 @@ public sealed record PluginCatalogSource(Uri Location, bool IsLocalTest)
     /// <summary>Empty → the official list on main. A URL or a file path (or file:// URI) → that test list.</summary>
     public static PluginCatalogSource Resolve(string? overrideValue)
     {
-        var value = overrideValue?.Trim().Trim('"').Trim();
+        // Expanded like NOCTIS_DATA_DIR (AppPaths): launchSettings.json writes %LOCALAPPDATA% literally.
+        var value = overrideValue is null ? null : Environment.ExpandEnvironmentVariables(overrideValue).Trim().Trim('"').Trim();
         if (string.IsNullOrEmpty(value)) return new PluginCatalogSource(new Uri(PluginCatalog.DefaultUrl), false);
         if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme is "https" or "http" || uri.IsFile))
             return new PluginCatalogSource(uri.IsFile ? new Uri(Path.GetFullPath(uri.LocalPath)) : uri, true);
