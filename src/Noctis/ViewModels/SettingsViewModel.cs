@@ -2779,6 +2779,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer = audioPlayer;
         OnPropertyChanged(nameof(HeadphoneSurroundNeedsRestart));
+        RefreshChannelMixAvailability();
         // Only surface the output-mode status while Exclusive Mode is enabled (it
         // describes the exclusive/fell-back-to-shared state). When exclusive is off
         // the line stays hidden. This also prevents a flicker: toggling exclusive
@@ -2792,7 +2793,10 @@ public partial class SettingsViewModel : ViewModelBase
             // report needs, and they are rare — log them all.
             DebugLog.Write("Audio", $"Output path: {status}");
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "");
+            {
+                ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "";
+                RefreshChannelMixAvailability();
+            });
         };
         ApplyAudioSettings();
     }
@@ -3766,6 +3770,7 @@ public partial class SettingsViewModel : ViewModelBase
             IsOutputDeviceSupported && _selectedOutputDeviceId.Length > 0 ? _selectedOutputDeviceId : null);
         _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
         _audioPlayer?.SetUpmixMode(UpmixMode);
+        ApplyChannelMix();
         _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
         ApplyEqualizer();
         _player?.RefreshSignalPath();
@@ -3802,6 +3807,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandSkipSeconds = PlaybackBarSkipSeconds;
         _player.IslandShowPlaybackSpeed = PlaybackBarShowPlaybackSpeed;
         _player.IslandShowSleepTimer = PlaybackBarShowSleepTimer;
+        _player.SleepTimerFadeSeconds = SleepTimerFadeSeconds;
         _player.IslandShowShuffle = PlaybackBarShowShuffle;
         _player.IslandShowEqualizer = PlaybackBarShowEqualizer;
         _player.IslandShowRepeat = PlaybackBarShowRepeat;
@@ -4587,6 +4593,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetExclusiveMode(value);
         if (!value) ExclusiveAudioStatus = "";
+        RefreshChannelMixAvailability();
         _ = SaveAsync();
     }
 

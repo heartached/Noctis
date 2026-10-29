@@ -2791,6 +2791,40 @@
                                               IsChecked="{Binding PlaybackBarShowSleepTimer}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- The sleep timer's fade-out (also "stop after current track"): a playback
+                         gain of its own, so the volume setting never moves. -->
+                    <StackPanel Spacing="6">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{loc:T Settings.SleepTimerFadeOut}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.SleepTimerFadeOutDesc}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                            <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFadeOff}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFadeOff, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFadeOff}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFade10}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFade10, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFade10}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFade30}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFade30, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFade30}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton Grid.Column="3" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFade60}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFade60, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFade60}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                        </Grid>
+                    </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.Shuffle}" FontSize="13" FontWeight="SemiBold"/>
@@ -3926,6 +3960,47 @@
                                           IsChecked="{Binding HeadphoneSurround}"
                                           VerticalAlignment="Center"/>
                 </Grid>
+            </Border>
+            <!-- Accessibility: Mono Audio and Balance, applied in the output's sample stage
+                 (ChannelMixProvider). Bypassed in bit-perfect Exclusive Mode. -->
+            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding IsChannelMixEnabled}">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.MonoAudio}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.MonoAudioDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.MonoAudio}"
+                                              IsChecked="{Binding MonoAudio}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel Spacing="6" IsEnabled="{Binding IsChannelMixEnabled}">
+                        <TextBlock Text="{loc:T Settings.Balance}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.BalanceDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:SmoothSlider Grid.Column="0"
+                                    AutomationProperties.Name="{loc:T Settings.Balance}"
+                                    Classes="accent-slider" Step="1"
+                                    Minimum="-100" Maximum="100"
+                                    SteppedValue="{Binding AudioBalance, Mode=TwoWay}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding AudioBalanceLabel}"
+                                       FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding ChannelMixNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6">
+                        <TextBlock Text="{Binding ChannelMixNote}"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentColorBrush}"
+                                   TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                </StackPanel>
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="10">

@@ -2931,4 +2931,19 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.AppIcon.Aurora" xml:space="preserve"><value>Aurora</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Midnight</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Ruby</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.MonoAudio" xml:space="preserve"><value>Mono Audio</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Plays the left and right channels together in both ears. For hearing in one ear or listening with a single earbud.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Balance" xml:space="preserve"><value>Balance</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Moves the sound toward the left or right ear. Snaps to the center.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceCenter" xml:space="preserve"><value>Center</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceLeftFormat" xml:space="preserve"><value>L {0}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceRightFormat" xml:space="preserve"><value>R {0}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChannelMixExclusiveNote" xml:space="preserve"><value>Off while Exclusive Mode is on, which plays files bit-perfect.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChannelMixUnavailableNote" xml:space="preserve"><value>Not available on the current audio output. Restart Noctis to bring it back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOut" xml:space="preserve"><value>Sleep Timer Fade Out</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOutDesc" xml:space="preserve"><value>Fades the music out over the last seconds of the sleep timer, and at the end of the track with Stop After Current Track. Your volume stays as it is.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFadeOff" xml:space="preserve"><value>Off</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade10" xml:space="preserve"><value>10 s</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade30" xml:space="preserve"><value>30 s</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade60" xml:space="preserve"><value>60 s</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

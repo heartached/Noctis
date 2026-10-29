@@ -2733,6 +2733,55 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         _gaplessSink?.RequestRebuild();
     }
 
+    // ── Mono Audio / Balance / sleep fade (ChannelMixProvider) ──
+    // The stage sits in the engine sink (Windows, Linux) and in the WASAPI callback sinks;
+    // Exclusive Mode's sink runs it with mono/balance bypassed. LibVLC's own output (macOS,
+    // and the classic path after an output-mode rebuild disabled the engine) has no sample
+    // stage of ours: mono/balance are unavailable there, and the fade rides the volume.
+
+    /// <summary>True while an output with the sample stage is rendering.</summary>
+    private bool SampleStageActive => (_gaplessEngine && _gaplessSink != null) || ActiveCallbackSink != null;
+
+    public bool ChannelMixAvailable =>
+        !_disposed && !_exclusiveModeEnabled &&
+        ((_gaplessEngine && _gaplessSink != null) || _wasapiOut != null);
+
+    public void SetChannelMix(bool mono, double balance)
+    {
+        if (_disposed) return;
+        var mix = ChannelMixSettings.Shared;
+        var b = Math.Clamp(balance, -1.0, 1.0);
+        if (mix.Mono == mono && mix.Balance == (float)b) return;
+        mix.SetChannelMix(mono, b);
+        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+            $"channelMix mono={mono}, balance={b:0.00}, available={ChannelMixAvailable}");
+    }
+
+    public void SetPlaybackFadeGain(double gain, int rampMs)
+    {
+        if (_disposed) return;
+        var g = double.IsFinite(gain) ? Math.Clamp(gain, 0.0, 1.0) : 1.0;
+        ChannelMixSettings.Shared.SetFadeGain(g, rampMs);
+        if (SampleStageActive) return;
+        // No sample stage: scale the level the classic path carries. The user's volume
+        // setting itself is untouched; g = 1 puts the user's level back.
+        try
+        {
+            if (_sessionVolume != null)
+                _sessionVolume.SetLevel(UserLevelMilli() / 1000.0 * g);
+            else
+                SetPlayerVolumeInsistent(_player, (int)Math.Round(GetTargetVlcVolume() * g));
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "PlaybackFade.Failed", ex.Message);
+        }
+    }
+
+    /// <summary>The sleep fade has already taken the output to silence: a pause then needs
+    /// no play/pause fade of its own (it would only delay the pause, inaudibly).</summary>
+    private bool PlaybackFadeSilenced => ChannelMixSettings.Shared.FadeGainTarget <= 0.001f;
+
     /// <summary>
     /// Engine: the speed is a pitch-preserving stretch in the sink's render path
     /// (LibVLC stays at 1× — it was started with --no-audio-time-stretch, so its
@@ -5227,7 +5276,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_currentMedia != null && !_isPaused)
                 {
                     ResetEndReachedPending();
-                    var fade = PlayPauseFadeArmed;
+                    // Not twice: a pause the sleep timer's fade-out already silenced lands
+                    // straight away (the fade-out was the fade).
+                    var fade = PlayPauseFadeArmed && !PlaybackFadeSilenced;
                     var drainMs = PausedOutputDrainMs(OutputLatency);
                     var vlcState = _player.State;
                     RunFadedPause(

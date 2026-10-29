@@ -174,6 +174,12 @@ public sealed class GaplessSink : IDisposable
         // gain on the blocks it hands us, so with seconds staged ahead it was heard ~2 s
         // late (and unmute ~2 s late again, the ring being full of zeros by then). The
         // gate ramps over a few ms and is a pure pass-through when open.
+        // Mono Audio, Balance and the sleep timer's fade-out (ChannelMixSettings.Shared):
+        // after the splice and the tap, so the whole engine output follows them on every
+        // platform the engine runs on, and upstream of the upmix (built per output in
+        // CreateOutput), which then spreads the already-mixed stereo. A pass-through at
+        // stereo, centre and no fade.
+        renderSource = new ChannelMixProvider(renderSource, ChannelMixSettings.Shared);
         _muteGate = new MuteGateProvider(renderSource);
         renderSource = _muteGate;
         // Beat pulse for the flowing-artwork lyrics background: tapped post-mute so a

@@ -74,6 +74,13 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public string UpmixMode { get; private set; } = "Off";
     public void SetUpmixMode(string mode) => UpmixMode = mode;
     public bool HeadphoneSurroundActive { get; set; }
+    public (bool Mono, double Balance) ChannelMix { get; private set; }
+    public void SetChannelMix(bool mono, double balance) => ChannelMix = (mono, balance);
+    public bool ChannelMixAvailable { get; set; } = true;
+    /// <summary>Every SetPlaybackFadeGain call, in order.</summary>
+    public List<(double Gain, int RampMs)> FadeGainCalls { get; } = new();
+    public double FadeGain => FadeGainCalls.Count == 0 ? 1.0 : FadeGainCalls[^1].Gain;
+    public void SetPlaybackFadeGain(double gain, int rampMs) => FadeGainCalls.Add((gain, rampMs));
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public bool PreparesRemoteStreams { get; set; }
     public int CancelledCount { get; private set; }

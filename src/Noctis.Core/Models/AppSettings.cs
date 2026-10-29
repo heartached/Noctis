@@ -413,6 +413,28 @@ public class AppSettings : IJsonOnDeserializing
     /// instance option), so a change applies the next time Noctis starts.</summary>
     public bool HeadphoneSurround { get; set; }
 
+    /// <summary>Settings → Audio: Mono Audio, left and right averaged onto both channels (hearing
+    /// in one ear, a single earbud). Bypassed in Exclusive Mode.</summary>
+    public bool MonoAudio { get; set; }
+
+    /// <summary>Settings → Audio: left/right balance, -100 (left only) … 0 (centre) … +100 (right
+    /// only). Linear balance law, see ChannelMixProvider. Bypassed in Exclusive Mode.</summary>
+    public int AudioBalance { get; set; }
+
+    /// <summary>Settings → Player: the sleep timer fades playback out over its last N seconds
+    /// (and "stop after current track" over the end of the track). 0 = off; 10, 30 or 60.</summary>
+    public int SleepTimerFadeSeconds { get; set; } = 30;
+
+    /// <summary>The Fade Out choices; anything else snaps to the nearest.</summary>
+    public static int SnapSleepTimerFadeSeconds(int seconds)
+    {
+        int[] options = [0, 10, 30, 60];
+        var best = options[0];
+        foreach (var o in options)
+            if (Math.Abs(o - seconds) < Math.Abs(best - seconds)) best = o;
+        return best;
+    }
+
     // ── YouTube downloads ──
 
     /// <summary>Where downloaded tracks land. Empty = "&lt;first music folder&gt;/YouTube".</summary>
@@ -1097,6 +1119,8 @@ public class AppSettings : IJsonOnDeserializing
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        AudioBalance = Math.Clamp(AudioBalance, -100, 100);
+        SleepTimerFadeSeconds = SnapSleepTimerFadeSeconds(SleepTimerFadeSeconds);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         UiScalePercent = SnapUiScale(UiScalePercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);

@@ -156,6 +156,25 @@ public interface IAudioPlayer : IDisposable
     /// </summary>
     bool HeadphoneSurroundActive => false;
 
+    /// <summary>
+    /// Mono Audio (L and R averaged onto both channels) and the left/right balance
+    /// (-1 left only … 0 centre … +1 right only), ramped click-free in the output's sample
+    /// stage. Exclusive Mode bypasses both (bit-perfect).
+    /// </summary>
+    void SetChannelMix(bool mono, double balance) { }
+
+    /// <summary>
+    /// True when the current output runs the sample stage that applies
+    /// <see cref="SetChannelMix"/> (false in Exclusive Mode and on outputs without one).
+    /// </summary>
+    bool ChannelMixAvailable => false;
+
+    /// <summary>
+    /// A playback fade layer (0..1) on top of the user's volume, which it never changes:
+    /// the sleep timer's fade-out. Reached linearly over <paramref name="rampMs"/>.
+    /// </summary>
+    void SetPlaybackFadeGain(double gain, int rampMs) { }
+
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 

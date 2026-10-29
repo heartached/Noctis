@@ -994,7 +994,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (!int.TryParse(minutes, out var mins) || mins <= 0) return;
 
-        _sleepTimerEndsAtUtc = DateTime.UtcNow.AddMinutes(mins);
+        _sleepTimerEndsAtUtc = SleepClock().AddMinutes(mins);
         _sleepTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _sleepTimer.Tick -= OnSleepTimerTick;
         _sleepTimer.Tick += OnSleepTimerTick;
@@ -1002,6 +1002,9 @@ public partial class PlayerViewModel : ViewModelBase
         IsSleepTimerActive = true;
         SleepTimerMinutes = mins;
         UpdateSleepTimerRemaining();
+        // A restart (15 then 60 min) mid-fade lifts the level straight back.
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Start", $"minutes={mins}");
     }
 
@@ -1012,6 +1015,10 @@ public partial class PlayerViewModel : ViewModelBase
         IsSleepTimerActive = false;
         SleepTimerMinutes = 0;
         SleepTimerRemainingText = string.Empty;
+        // Cancelled mid-fade: the level comes straight back (one click-free ramp). When the
+        // timer fired, the hold below keeps it silent until the pause has landed.
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Cancel", null);
     }
 
@@ -1025,20 +1032,134 @@ public partial class PlayerViewModel : ViewModelBase
 
     private void OnSleepTimerTick(object? sender, EventArgs e)
     {
-        if (DateTime.UtcNow >= _sleepTimerEndsAtUtc)
+        if (!IsSleepTimerActive) return;
+        if (SleepClock() >= _sleepTimerEndsAtUtc)
         {
+            var playing = State == PlaybackState.Playing;
+            // The fade-out has taken the level to silence: hold it there until playback
+            // starts again, or the cancel below would lift it for the moment the pause
+            // takes to land (the player pauses on a worker).
+            if (playing && SleepTimerFadeSeconds > 0)
+                _playbackFadeHoldUntilPlay = true;
             CancelSleepTimer();
-            if (State == PlaybackState.Playing)
+            if (playing)
                 PlayPause();
-            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fired", "paused playback");
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fired",
+                playing ? $"paused playback, fadeSeconds={SleepTimerFadeSeconds}" : "nothing playing");
             return;
         }
         UpdateSleepTimerRemaining();
     }
 
+    // ── Sleep timer fade-out ──
+    // Over the last SleepTimerFadeSeconds of the timer (and of the track, with "stop after
+    // current track") the player's playback fade layer goes 1 to 0 along SleepFadeGain. It is
+    // a gain of its own in the output stage (IAudioPlayer.SetPlaybackFadeGain), so Volume and
+    // the saved volume never move and the next play is at the user's level. A 250 ms ticker
+    // aims each step at where the curve will be when the step's ramp lands, so the output
+    // follows the curve piecewise-linearly and reaches silence at the end.
+
+    /// <summary>Fade ticker period, and the length of each fade step's ramp.</summary>
+    internal const int PlaybackFadeTickMs = 250;
+
+    /// <summary>Wall clock for the sleep timer; tests replace it.</summary>
+    internal Func<DateTime> SleepClock { get; set; } = () => DateTime.UtcNow;
+
+    /// <summary>Settings → Player → Fade Out: 0 (off), 10, 30 or 60 seconds.</summary>
+    [ObservableProperty] private int _sleepTimerFadeSeconds = 30;
+
+    private DispatcherTimer? _playbackFadeTimer;
+    private double _appliedPlaybackFadeGain = 1.0;
+    private bool _playbackFadeHoldUntilPlay;
+
+    /// <summary>The playback fade gain last sent to the player (1 = none).</summary>
+    internal double AppliedPlaybackFadeGain => _appliedPlaybackFadeGain;
+
+    /// <summary>
+    /// The fade curve: gain for <paramref name="remainingSeconds"/> left of a
+    /// <paramref name="fadeSeconds"/> fade. Quadratic in amplitude (x² of the remaining
+    /// fraction: -6 dB at 71 % left, -12 dB half way), which sounds like an even fade where
+    /// a linear amplitude ramp hangs loud and then drops at the end. 1 before the fade
+    /// window, 0 at the end; 1 throughout when the fade is off.
+    /// </summary>
+    internal static double SleepFadeGain(double remainingSeconds, int fadeSeconds)
+    {
+        if (fadeSeconds <= 0 || double.IsNaN(remainingSeconds)) return 1.0;
+        var x = Math.Clamp(remainingSeconds / fadeSeconds, 0.0, 1.0);
+        return x * x;
+    }
+
+    /// <summary>The fade gain the timer and stop-after state call for,
+    /// <paramref name="lookaheadSeconds"/> after <paramref name="nowUtc"/>.</summary>
+    internal double DesiredPlaybackFadeGain(DateTime nowUtc, double lookaheadSeconds = 0)
+    {
+        if (_playbackFadeHoldUntilPlay) return 0.0;
+        var fade = SleepTimerFadeSeconds;
+        if (fade <= 0) return 1.0;
+        var gain = 1.0;
+        if (IsSleepTimerActive)
+            gain = Math.Min(gain, SleepFadeGain((_sleepTimerEndsAtUtc - nowUtc).TotalSeconds - lookaheadSeconds, fade));
+        if (StopAfterCurrentTrack && CurrentTrack != null && Duration > TimeSpan.Zero)
+        {
+            // Media time runs at the playback speed.
+            var left = (Duration - Position).TotalSeconds / Math.Max(0.25, PlaybackRate);
+            gain = Math.Min(gain, SleepFadeGain(left - lookaheadSeconds, fade));
+        }
+        return gain;
+    }
+
+    /// <summary>Sends the current fade gain to the player when it moved, ramped over <paramref name="rampMs"/>.</summary>
+    internal void UpdatePlaybackFade(int rampMs)
+    {
+        var gain = DesiredPlaybackFadeGain(SleepClock(), rampMs / 1000.0);
+        var prev = _appliedPlaybackFadeGain;
+        // Small moves are skipped, but the ends of the range are always sent exactly.
+        if (gain == prev || (Math.Abs(gain - prev) < 0.0005 && gain is > 0.0 and < 1.0)) return;
+        _appliedPlaybackFadeGain = gain;
+        _audioPlayer.SetPlaybackFadeGain(gain, rampMs);
+        if (prev == 1.0 || gain == 1.0 || gain == 0.0)
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fade",
+                $"gain={gain:0.###}, from={prev:0.###}, rampMs={rampMs}, hold={_playbackFadeHoldUntilPlay}");
+    }
+
+    /// <summary>One fade step (the ticker's body; tests call it directly).</summary>
+    internal void PlaybackFadeTick()
+    {
+        // Fire on the fade clock, not up to a second late on the label tick.
+        if (IsSleepTimerActive && SleepClock() >= _sleepTimerEndsAtUtc)
+        {
+            OnSleepTimerTick(null, EventArgs.Empty);
+            return;
+        }
+        UpdatePlaybackFade(PlaybackFadeTickMs);
+    }
+
+    // The ticker runs only while a fade can be due: a timer or stop-after armed, fade on.
+    private void EnsurePlaybackFadeTimer()
+    {
+        var needed = SleepTimerFadeSeconds > 0 && (IsSleepTimerActive || StopAfterCurrentTrack);
+        if (!needed)
+        {
+            _playbackFadeTimer?.Stop();
+            return;
+        }
+        if (_playbackFadeTimer == null)
+        {
+            _playbackFadeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PlaybackFadeTickMs) };
+            _playbackFadeTimer.Tick += (_, _) => PlaybackFadeTick();
+        }
+        if (!_playbackFadeTimer.IsEnabled) _playbackFadeTimer.Start();
+    }
+
+    partial void OnSleepTimerFadeSecondsChanged(int value)
+    {
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
+    }
+
     private void UpdateSleepTimerRemaining()
     {
-        var remaining = _sleepTimerEndsAtUtc - DateTime.UtcNow;
+        var remaining = _sleepTimerEndsAtUtc - SleepClock();
         if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
         SleepTimerRemainingText = remaining.TotalHours >= 1
             ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
@@ -2475,7 +2596,16 @@ public partial class PlayerViewModel : ViewModelBase
             $"old={oldValue?.Title ?? "<null>"} new={newValue?.Title ?? "<null>"}");
     }
 
-    partial void OnStateChanged(PlaybackState value) => SyncNowPlayingFlags();
+    partial void OnStateChanged(PlaybackState value)
+    {
+        SyncNowPlayingFlags();
+        // Playback starting again after the sleep fade ended it: back to the user's level.
+        if (value == PlaybackState.Playing && (_playbackFadeHoldUntilPlay || _appliedPlaybackFadeGain != 1.0))
+        {
+            _playbackFadeHoldUntilPlay = false;
+            UpdatePlaybackFade(ChannelMixProvider.RampMs);
+        }
+    }
 
     private Album? _flaggedAlbum;
 
@@ -3114,6 +3244,10 @@ public partial class PlayerViewModel : ViewModelBase
             // Play afterwards restarted the current track at the following track's entry
             // point instead of from where it stopped.
             CancelAutoMixTransition("stop after current track");
+            // The end-of-track fade reached silence: keep it until playback starts again
+            // (clearing the flag below would otherwise lift it over the stopped output).
+            if (SleepTimerFadeSeconds > 0)
+                _playbackFadeHoldUntilPlay = true;
             StopAfterCurrentTrack = false;
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
@@ -3983,6 +4117,10 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (value && _autoMixPreparedTrackId != Guid.Empty)
             CancelAutoMixTransition("stop after current track");
+        // Fades over the end of the track; turned off (or a skip cleared it) mid-fade,
+        // the level comes straight back.
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
     }
 
     private void CancelAutoMixTransition(string reason)

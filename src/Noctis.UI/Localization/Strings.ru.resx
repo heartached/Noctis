@@ -2931,4 +2931,19 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AppIcon.Aurora" xml:space="preserve"><value>Аврора</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Полночь</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Рубин</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.MonoAudio" xml:space="preserve"><value>Моно</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Левый и правый каналы звучат вместе в обоих ушах. Для тех, кто слышит одним ухом или слушает с одним наушником.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Balance" xml:space="preserve"><value>Баланс</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Смещает звук к левому или правому уху. Притягивается к центру.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceCenter" xml:space="preserve"><value>Центр</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceLeftFormat" xml:space="preserve"><value>Л {0}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceRightFormat" xml:space="preserve"><value>П {0}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChannelMixExclusiveNote" xml:space="preserve"><value>Не действует в монопольном режиме: он воспроизводит файлы без изменений.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChannelMixUnavailableNote" xml:space="preserve"><value>Недоступно для текущего вывода звука. Перезапустите Noctis, чтобы вернуть.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOut" xml:space="preserve"><value>Затухание таймера сна</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOutDesc" xml:space="preserve"><value>Музыка плавно затихает в последние секунды таймера сна и в конце трека при «Остановить после текущего трека». Громкость не меняется.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFadeOff" xml:space="preserve"><value>Выкл.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade10" xml:space="preserve"><value>10 с</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade30" xml:space="preserve"><value>30 с</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade60" xml:space="preserve"><value>60 с</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

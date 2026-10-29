@@ -528,6 +528,7 @@ public partial class SettingsViewModel
     {
         UpmixMode = GaplessSink.ParseUpmixMode(_settings.UpmixMode).ToString();
         HeadphoneSurround = _settings.HeadphoneSurround;
+        LoadChannelMixSettings();
 
         if (string.IsNullOrWhiteSpace(_settings.SyncDeviceId))
             _settings.SyncDeviceId = Guid.NewGuid().ToString("N")[..12];
@@ -554,6 +555,7 @@ public partial class SettingsViewModel
     {
         _settings.UpmixMode = UpmixMode ?? "Off";
         _settings.HeadphoneSurround = HeadphoneSurround;
+        SaveChannelMixSettings();
         if (AccountFeatures.Enabled) _settings.SyncEnabled = SyncEnabled;
         _settings.SyncTurnedOffByUser = _syncTurnedOffByUser;
         _settings.SyncDeviceName = SyncDeviceName ?? string.Empty;

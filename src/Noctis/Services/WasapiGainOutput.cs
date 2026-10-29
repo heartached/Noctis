@@ -207,7 +207,8 @@ internal sealed class WasapiGainOutput : IDisposable
         _device = device;
         _out = new WasapiOut(device, AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         // Post-gain beat tap for the flowing-artwork lyrics background (see BeatMeter).
-        _out.Init(new BeatTapProvider(_gain, 50));
+        // Mono Audio / Balance / sleep fade, like the engine sink (see ChannelMixProvider).
+        _out.Init(new BeatTapProvider(new ChannelMixProvider(_gain, ChannelMixSettings.Shared), 50));
         HookPlaybackStopped();
         _out.Play();
         Diag($"input S16N {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
@@ -236,7 +237,9 @@ internal sealed class WasapiGainOutput : IDisposable
         foreach (var bits in new[] { 24, 16, 32 })
         {
             // Post-gain beat tap for the flowing-artwork lyrics background (see BeatMeter).
-            var tapped = new BeatTapProvider(_gain, 100);
+            // Bit-perfect: mono/balance are bypassed here (allowChannelMix: false); only the
+            // sleep timer's fade applies, and it is a pass-through at unity.
+            var tapped = new BeatTapProvider(new ChannelMixProvider(_gain, ChannelMixSettings.Shared, allowChannelMix: false), 100);
             IWaveProvider rendered = bits switch
             {
                 24 => new SampleToWaveProvider24(tapped),
