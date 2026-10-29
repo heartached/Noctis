@@ -754,7 +754,11 @@ public sealed partial class NoctisServer : IAsyncDisposable
                     if (Ids.TrackGuid(ids[i]) is not { } g) continue;
                     long? ms = i < times.Count && long.TryParse(times[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
                     if (ms is not null && !_recentScrobbles.Add($"{who}\n{g:N}\n{ms}")) continue;
-                    var forward = i < verdicts.Count && string.Equals(verdicts[i], "computer", StringComparison.Ordinal);
+                    // Only the main account's plays reach this computer's Last.fm / ListenBrainz (another
+                    // account's are its owner's, not this computer's), and only timed ones: the retry
+                    // guard needs the time, so an untimed "computer" repeated would be sent each time.
+                    var forward = user.IsAdmin && ms is not null && i < verdicts.Count
+                        && string.Equals(verdicts[i], "computer", StringComparison.Ordinal);
                     await _library.ScrobbleAsync(g, ScrobbleTime(ms, now), forward).ConfigureAwait(false);
                 }
                 return new JsonObject();
