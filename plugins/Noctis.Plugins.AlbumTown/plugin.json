@@ -1,7 +1,7 @@
 {
   "id": "dev.noctis.plugins.albumtown",
   "name": "Album Town",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Jafezy JD",
   "description": "Your albums become little cover creatures that wander a plaza, chat about what they have in common and live in apartments that grow with every album. By Jafezy JD.",
   "type": "dotnet",

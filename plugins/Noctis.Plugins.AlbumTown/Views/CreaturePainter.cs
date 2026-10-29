@@ -188,22 +188,65 @@ public sealed class CreaturePainter : IDisposable
         if (c.IsPlaying) DrawNotes(ctx, c, x, top);
     }
 
-    /// <summary>Name tag under the feet: a small flat pill.</summary>
-    public void DrawName(DrawingContext ctx, Creature c)
+    /// <summary>Name tag under the feet: a small flat pill, kept inside <paramref name="bounds"/>.</summary>
+    public void DrawName(DrawingContext ctx, Creature c, Rect bounds)
     {
         if (LabelFor(c.Album.Title, LabelKind.Name) is not { } label) return;
-        DrawLabel(ctx, label, c.Position.X - label.Width / 2, c.Position.Y + Size * 0.06);
+        var rect = PlaceName(c, label, bounds);
+        DrawLabel(ctx, label, rect.X, rect.Y);
     }
 
-    /// <summary>Speech bubble above the head: a flat rounded pill.</summary>
+    /// <summary>Where <see cref="DrawName"/> puts the tag, or null when there is none yet.</summary>
+    public Rect? NameBounds(Creature c, Rect bounds)
+        => LabelFor(c.Album.Title, LabelKind.Name) is { } label ? PlaceName(c, label, bounds) : null;
+
+    private Rect PlaceName(Creature c, Label label, Rect bounds)
+        => Inside(new Rect(c.Position.X - label.Width / 2, c.Position.Y + Size * 0.06, label.Width, label.Height), bounds);
+
+    /// <summary>Speech bubble above the head: a flat rounded pill, kept inside <paramref name="bounds"/>.</summary>
     public void DrawBubble(DrawingContext ctx, Creature c, Rect bounds)
     {
-        if (c.Bubble is not { } line || LabelFor(line, LabelKind.Bubble) is not { } label) return;
-        var tipX = c.Position.X;
-        var tipY = c.Position.Y - Size * 1.36 - Bob(c);
-        var x = Math.Clamp(tipX - label.Width / 2, bounds.X + 4, Math.Max(bounds.X + 4, bounds.Right - label.Width - 4));
-        var y = Math.Max(bounds.Y + 4, tipY - label.Height);
-        DrawLabel(ctx, label, x, y);
+        if (c.Bubble is { } line) DrawBubbleLine(ctx, line, c.Position.X, c.Position.Y - Size * 1.36 - Bob(c), c.Position.Y, bounds);
+    }
+
+    /// <summary>Where <see cref="DrawBubble"/> puts the bubble, or null when there is none.</summary>
+    public Rect? BubbleBounds(Creature c, Rect bounds)
+        => c.Bubble is { } line && LabelFor(line, LabelKind.Bubble) is { } label
+            ? PlaceBubble(label, c.Position.X, c.Position.Y - Size * 1.36 - Bob(c), c.Position.Y, bounds)
+            : null;
+
+    /// <summary>
+    /// Draws <paramref name="line"/> as a bubble whose tail points at (<paramref name="tipX"/>,
+    /// <paramref name="headY"/>); returns where it went (null when not built yet).
+    /// </summary>
+    public Rect? DrawBubbleLine(DrawingContext ctx, string line, double tipX, double headY, double feetY, Rect bounds)
+    {
+        if (LabelFor(line, LabelKind.Bubble) is not { } label) return null;
+        var rect = PlaceBubble(label, tipX, headY, feetY, bounds);
+        DrawLabel(ctx, label, rect.X, rect.Y);
+        return rect;
+    }
+
+    /// <summary>
+    /// Above the head when it fits; near the top edge it flips under the feet (below the name
+    /// tag) instead of covering the face, then it is shifted to stay inside the plaza.
+    /// </summary>
+    private Rect PlaceBubble(Label label, double tipX, double headY, double feetY, Rect bounds)
+    {
+        var y = headY - label.Height;
+        if (y < bounds.Y + EdgeMargin)
+            y = feetY + Size * 0.06 + FontSize(LabelKind.Name) * 1.8 + 4;
+        return Inside(new Rect(tipX - label.Width / 2, y, label.Width, label.Height), bounds);
+    }
+
+    private const double EdgeMargin = 4;
+
+    /// <summary><paramref name="r"/> shifted to lie inside <paramref name="bounds"/> (less a small margin) where it fits.</summary>
+    private static Rect Inside(Rect r, Rect bounds)
+    {
+        var x = Math.Clamp(r.X, bounds.X + EdgeMargin, Math.Max(bounds.X + EdgeMargin, bounds.Right - r.Width - EdgeMargin));
+        var y = Math.Clamp(r.Y, bounds.Y + EdgeMargin, Math.Max(bounds.Y + EdgeMargin, bounds.Bottom - r.Height - EdgeMargin));
+        return new Rect(x, y, r.Width, r.Height);
     }
 
     private void DrawNotes(DrawingContext ctx, Creature c, double x, double top)
@@ -226,18 +269,21 @@ public sealed class CreaturePainter : IDisposable
     }
 
     /// <summary>The label bitmap for <paramref name="text"/>, made now if the frame's budget allows.</summary>
-    private Label? LabelFor(string text, LabelKind kind)
+    private Label? LabelFor(string text, LabelKind kind, bool force = false)
     {
         var size = FontSize(kind);
-        if (_labels.TryGetValue((text, kind), out var label) && label.FontSize == size && label.Scaling == Scaling)
+        var wrap = WrapWidth(kind, size);
+        // The wrap width is part of the key: it follows the creature size even while the font
+        // size sits at its clamp, and a bubble laid out for another width would wrap wrongly.
+        if (_labels.TryGetValue((text, kind), out var label) && label.FontSize == size && label.Scaling == Scaling && label.Wrap == wrap)
         {
             label.UsedFrame = _frame;
             return label;
         }
-        if (_labelBudget <= 0) return label; // an older one (other size) until there is budget
+        if (_labelBudget <= 0 && !force) return label; // an older one (other size) until there is budget
         _labelBudget--;
         if (label is not null) Retire(label.Bitmap);
-        label = BuildLabel(text, kind, size);
+        label = BuildLabel(text, kind, size, wrap);
         label.UsedFrame = _frame;
         _labels[(text, kind)] = label;
         return label;
@@ -250,48 +296,69 @@ public sealed class CreaturePainter : IDisposable
         _ => Quantize(Math.Max(12, Size * 0.3)),
     };
 
-    private Label BuildLabel(string text, LabelKind kind, double size)
+    /// <summary>Width of the plaza in px; bubbles wrap narrower than it so they fit inside.</summary>
+    public double AreaWidth { get; set; } = double.PositiveInfinity;
+
+    /// <summary>
+    /// Where a label's text wraps, in whole px. Bubbles: about 14 characters per line at least
+    /// (so every line the town says fits in two), wider with bigger creatures, never wider than
+    /// the plaza. Name tags: one line, trimmed with an ellipsis.
+    /// </summary>
+    private double WrapWidth(LabelKind kind, double size) => kind switch
+    {
+        LabelKind.Bubble => Math.Floor(Math.Max(size * 8, Math.Min(Math.Max(size * 14.5, Math.Min(Size * 2.6, size * 22)), AreaWidth - 2 * EdgeMargin - 2 * BubblePadX(size)))),
+        LabelKind.Name => Math.Floor(Math.Max(size * 6, Math.Min(Math.Max(120, Size * 2.4), AreaWidth - 2 * EdgeMargin - 2 * size * 0.75))),
+        _ => 0,
+    };
+
+    private static double BubblePadX(double size) => size * 0.95;
+
+    /// <summary>Bubble lines wrap to at most this many lines (then trim with an ellipsis).</summary>
+    public const int BubbleMaxLines = 2;
+
+    private FormattedText Layout(string text, LabelKind kind, double size, double wrap, bool lineLimit, out double padX, out double padY)
     {
         var t = _theme;
-        FormattedText formatted;
-        double padX, padY;
-        IBrush? fill;
-        IPen? pen = null;
         switch (kind)
         {
             case LabelKind.Bubble:
-                formatted = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Face, size, t.BubbleText)
-                {
-                    MaxTextWidth = Math.Max(170, Size * 2.6),
-                };
-                padX = size * 0.95;
+                padX = BubblePadX(size);
                 padY = size * 0.55;
-                fill = t.Bubble;
-                pen = t.BubblePen;
-                break;
-            case LabelKind.Name:
-                var shown = text.Length == 0 ? "Untitled" : text.Length > 26 ? text[..25].TrimEnd() + "..." : text;
-                formatted = new FormattedText(shown, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, NameFace, size, t.TagText)
+                var bubble = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Face, size, t.BubbleText) { MaxTextWidth = wrap };
+                if (lineLimit)
                 {
-                    MaxTextWidth = Math.Max(120, Size * 2.4),
+                    bubble.MaxLineCount = BubbleMaxLines;
+                    bubble.Trimming = TextTrimming.WordEllipsis;
+                }
+                return bubble;
+            case LabelKind.Name:
+                padX = size * 0.75;
+                padY = size * 0.2;
+                return new FormattedText(text.Length == 0 ? "Untitled" : TalkLines.Shorten(text, 26), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, NameFace, size, t.TagText)
+                {
+                    MaxTextWidth = wrap,
                     MaxLineCount = 1,
                     Trimming = TextTrimming.CharacterEllipsis,
                 };
-                padX = size * 0.75;
-                padY = size * 0.2;
-                fill = t.Tag;
-                break;
             default:
-                formatted = new FormattedText(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Face, size, t.AccentBrush);
                 padX = padY = 1;
-                fill = null;
-                break;
+                return new FormattedText(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Face, size, t.AccentBrush);
         }
-        var w = Math.Ceiling(formatted.Width + padX * 2);
-        var h = Math.Ceiling(formatted.Height + padY * 2);
-        var bitmap = new RenderTargetBitmap(
-            new PixelSize(Math.Max(1, (int)Math.Ceiling(w * Scaling)), Math.Max(1, (int)Math.Ceiling(h * Scaling))),
-            new Vector(96 * Scaling, 96 * Scaling));
+    }
+
+    private Label BuildLabel(string text, LabelKind kind, double size, double wrap)
+    {
+        var t = _theme;
+        var formatted = Layout(text, kind, size, wrap, lineLimit: true, out var padX, out var padY);
+        IBrush? fill = kind switch { LabelKind.Bubble => t.Bubble, LabelKind.Name => t.Tag, _ => null };
+        IPen? pen = kind == LabelKind.Bubble ? t.BubblePen : null;
+        // Whole device pixels: the label is blitted 1:1, so its drawn size is exactly the
+        // bitmap's pixels at this density (no resampling, no sliver lost to rounding).
+        var px = new PixelSize(Math.Max(1, (int)Math.Ceiling((formatted.WidthIncludingTrailingWhitespace + padX * 2) * Scaling)),
+            Math.Max(1, (int)Math.Ceiling((formatted.Height + padY * 2) * Scaling)));
+        var w = px.Width / Scaling;
+        var h = px.Height / Scaling;
+        var bitmap = new RenderTargetBitmap(px, new Vector(96 * Scaling, 96 * Scaling));
         using (var ctx = bitmap.CreateDrawingContext())
         {
             if (fill is not null)
@@ -302,7 +369,21 @@ public sealed class CreaturePainter : IDisposable
             }
             ctx.DrawText(formatted, new Point(padX, padY));
         }
-        return new Label(bitmap, w, h, size, Scaling);
+        return new Label(bitmap, w, h, size, Scaling, wrap);
+    }
+
+    /// <summary>What a bubble for <paramref name="text"/> looks like at the current size and density (tests).</summary>
+    public BubbleMeasure MeasureBubble(string text)
+    {
+        var size = FontSize(LabelKind.Bubble);
+        var wrap = WrapWidth(LabelKind.Bubble, size);
+        var shown = Layout(text, LabelKind.Bubble, size, wrap, lineLimit: true, out var padX, out var padY);
+        var free = Layout(text, LabelKind.Bubble, size, wrap, lineLimit: false, out _, out _);
+        var one = Layout("Xg", LabelKind.Bubble, size, wrap, lineLimit: false, out _, out _);
+        var label = LabelFor(text, LabelKind.Bubble, force: true)!;
+        return new BubbleMeasure(size, wrap, (int)Math.Round(free.Height / one.Height), padX, padY,
+            new Rect(padX, padY, shown.WidthIncludingTrailingWhitespace, shown.Height), free.Height,
+            label.Width, label.Height, label.Bitmap.PixelSize, label.Bitmap);
     }
 
     private void ClearLabels()
@@ -386,6 +467,15 @@ public sealed class CreaturePainter : IDisposable
         return new Sprite(bitmap, s, Scaling, pad, logical, image is not null);
     }
 
+    /// <summary>
+    /// The whole of <paramref name="bitmap"/> as a DrawImage source rect. Avalonia 12 (Skia)
+    /// reads the source rect in the bitmap's PIXELS, not in its DIP <see cref="Bitmap.Size"/>:
+    /// passing <c>new Rect(bitmap.Size)</c> for a bitmap rendered at 1.25x drew only its top-left
+    /// 80%, stretched over the whole destination, so every bubble lost its right end mid-word
+    /// (at 2x it lost half). AlbumTownPluginTests renders it at each density to keep it so.
+    /// </summary>
+    public static Rect PixelSource(Bitmap bitmap) => new(0, 0, bitmap.PixelSize.Width, bitmap.PixelSize.Height);
+
     private void Retire(RenderTargetBitmap bitmap) => _retired.Enqueue((bitmap, _frame));
 
     private double Snap(double v) => Scaling > 0 ? Math.Round(v * Scaling) / Scaling : v;
@@ -416,16 +506,22 @@ public sealed class CreaturePainter : IDisposable
         while (_retired.Count > 0) _retired.Dequeue().Bitmap.Dispose();
     }
 
+    /// <summary>A bubble's layout (tests): font, wrap width, lines the text needs, the text box
+    /// inside the label, and the label's size in px and device pixels.</summary>
+    public sealed record BubbleMeasure(double FontSize, double Wrap, int Lines, double PadX, double PadY, Rect Text, double FullTextHeight,
+        double Width, double Height, PixelSize Pixels, RenderTargetBitmap Bitmap);
+
     private sealed class Label
     {
-        public Label(RenderTargetBitmap bitmap, double width, double height, double fontSize, double scaling)
+        public Label(RenderTargetBitmap bitmap, double width, double height, double fontSize, double scaling, double wrap)
         {
+            Wrap = wrap;
             Bitmap = bitmap;
             Width = width;
             Height = height;
             FontSize = fontSize;
             Scaling = scaling;
-            Source = new Rect(bitmap.Size);
+            Source = PixelSource(bitmap);
         }
 
         public RenderTargetBitmap Bitmap { get; }
@@ -433,6 +529,7 @@ public sealed class CreaturePainter : IDisposable
         public double Height { get; }
         public double FontSize { get; }
         public double Scaling { get; }
+        public double Wrap { get; }
         public Rect Source { get; }
         public long UsedFrame { get; set; }
     }
@@ -447,7 +544,7 @@ public sealed class CreaturePainter : IDisposable
             Pad = pad;
             Logical = logical;
             HasCover = hasCover;
-            Source = new Rect(bitmap.Size);
+            Source = PixelSource(bitmap);
         }
 
         public RenderTargetBitmap Bitmap { get; }

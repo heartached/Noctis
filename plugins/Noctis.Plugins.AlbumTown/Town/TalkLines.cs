@@ -36,7 +36,7 @@ public static class TalkLines
         if (a.PlayCount >= 10 && a.PlayCount >= b.PlayCount * 2)
             yield return new Chat("plays", $"I've been played {a.PlayCount.ToString(c)} times.", b.PlayCount == 0 ? "I'm still waiting for my first." : $"Only {Plays(b.PlayCount)} for me.");
         if (a.Genre.Length > 0 && string.Equals(a.Genre, b.Genre, StringComparison.OrdinalIgnoreCase))
-            yield return new Chat("genre", $"Another {a.Genre} fan?", "Always.");
+            yield return new Chat("genre", $"Another {Short(a.Genre)} fan?", "Always.");
         if (a.Year > 0 && b.Year > 0 && Math.Abs(a.Year - b.Year) >= 20)
             yield return new Chat("decades", $"{Math.Abs(a.Year - b.Year).ToString(c)} years apart and still friends.", a.Year < b.Year ? "Respect your elders!" : "You kids and your music.");
         if (a.IsSingle && !b.IsSingle)
@@ -64,5 +64,18 @@ public static class TalkLines
 
     private static string Plays(int n) => n == 1 ? "1 play" : n.ToString(CultureInfo.InvariantCulture) + " plays";
 
-    private static string Short(string s) => s.Length <= 24 ? s : s[..23].TrimEnd() + "...";
+    private static string Short(string s) => Shorten(s, 24);
+
+    /// <summary>
+    /// <paramref name="s"/> cut to at most <paramref name="max"/> characters with "..." when longer,
+    /// never splitting a surrogate pair (an emoji or a rare CJK character in a tag would otherwise
+    /// end the text with half a character).
+    /// </summary>
+    public static string Shorten(string s, int max)
+    {
+        if (s.Length <= max) return s;
+        var n = Math.Max(1, max - 1);
+        if (char.IsHighSurrogate(s[n - 1])) n--;
+        return s[..n].TrimEnd() + "...";
+    }
 }

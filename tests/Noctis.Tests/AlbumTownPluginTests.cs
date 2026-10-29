@@ -999,6 +999,167 @@ public class AlbumTownPluginTests
         return list;
     }
 
+    // ── Speech bubbles and name tags: whole lines at every size and density (NOCTIS_TEST_SKIA=1) ──
+
+    private static readonly double[] Densities = { 1.0, 1.25, 1.5, 2.0 };
+    private static readonly double[] Zooms = { 0.6, 0.8, 1.0, 1.2, 1.4, 1.6 };
+
+    /// <summary>Every line the town can say, with the longest values the generator takes.</summary>
+    private static List<string> EveryTalkLine(out HashSet<string> topics)
+    {
+        var longArtist = "Marlow and the Extraordinarily Long Named Orchestra";
+        var longGenre = "Progressive Experimental Electronic Dance";
+        var albums = new[]
+        {
+            A("a", artist: longArtist, year: 1975, plays: 99999, last: Now.AddDays(-400), single: true, tracks: 1, genre: longGenre, favorite: true),
+            A("b", artist: longArtist, year: 1975, plays: 0, tracks: 9999, genre: longGenre),
+            A("c", artist: "x", year: 2024, plays: 12, last: Now.AddDays(-1), tracks: 40, genre: "Hip-Hop/Rap"),
+            A("d", artist: "y", year: 2024, plays: 1, last: Now, tracks: 3, genre: "Hip-Hop/Rap"),
+            A("e", artist: "", year: 0, plays: 4, last: Now.AddDays(-2), tracks: 1, single: true, genre: ""),
+            A("f", artist: "z", year: 1999, plays: 10000, last: Now, tracks: 12),
+        };
+        var lines = new List<string>();
+        topics = new HashSet<string>();
+        foreach (var x in albums)
+        {
+            lines.Add(TalkLines.Greeting(x, Now));
+            foreach (var y in albums)
+            {
+                if (ReferenceEquals(x, y)) continue;
+                foreach (var chat in TalkLines.Topics(x, y, Now))
+                {
+                    topics.Add(chat.Topic);
+                    lines.Add(chat.Opener);
+                    lines.Add(chat.Reply);
+                }
+            }
+        }
+        return lines.Distinct().ToList();
+    }
+
+    [Fact]
+    public void TalkLines_CoverEveryTopic_AndShortenNeverSplitsASurrogatePair()
+    {
+        EveryTalkLine(out var topics);
+        Assert.Equal(new[] { "artist", "decades", "favorite", "fresh", "genre", "hello", "lonely", "long", "plays", "single", "year" },
+            topics.OrderBy(t => t, StringComparer.Ordinal));
+        // A long genre is shortened like a long artist (it used to go in whole).
+        var genre = TalkLines.Topics(A("a", genre: new string('g', 80)), A("b", genre: new string('g', 80), artist: "o", year: 2000), Now).Single(c => c.Topic == "genre");
+        Assert.True(genre.Opener.Length < 40, genre.Opener);
+        var emoji = new string('a', 22) + "\U0001F3B5\U0001F3B5\U0001F3B5";
+        var cut = TalkLines.Shorten(emoji, 24);
+        Assert.EndsWith("...", cut);
+        Assert.False(char.IsHighSurrogate(cut[^4]), cut);
+        Assert.Equal("short", TalkLines.Shorten("short", 24));
+    }
+
+    [AvaloniaFact]
+    public void Bubbles_ShowTheWholeLine_AtEverySizeAndDensity()
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_TEST_SKIA") != "1")
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        var lines = EveryTalkLine(out _);
+        var checkedCount = 0;
+        foreach (var scaling in Densities)
+        foreach (var zoom in Zooms)
+        foreach (var (screenW, screenH) in new[] { (2560, 1340), (1100, 640) })
+        {
+            using var covers = new CoverCache();
+            using var painter = new CreaturePainter(covers) { Scaling = scaling };
+            painter.Size = PlazaCanvas.SizeFor(screenW / scaling, screenH / scaling, scaling, 40, zoom);
+            painter.AreaWidth = screenW / scaling;
+            foreach (var line in lines)
+            {
+                var m = painter.MeasureBubble(line);
+                var at = $"'{line}' at {zoom:0.0}x zoom, {scaling:0.00}x density, size {painter.Size:0.0}, font {m.FontSize}, wrap {m.Wrap}";
+                // Wraps to at most two lines, so nothing is trimmed...
+                Assert.True(m.Lines <= CreaturePainter.BubbleMaxLines, $"{m.Lines} lines: {at}");
+                Assert.True(Math.Abs(m.FullTextHeight - m.Text.Height) < 0.5, $"trimmed: {at}");
+                // ...the text box (plus its padding) fits inside the bitmap...
+                Assert.True(m.Text.Right + m.PadX <= m.Width + 0.01 && m.Text.Bottom + m.PadY <= m.Height + 0.01, $"text {m.Text} in {m.Width}x{m.Height}: {at}");
+                // ...and the bitmap is exactly the drawn size in device pixels (blitted 1:1).
+                Assert.Equal(m.Pixels.Width, (int)Math.Round(m.Width * scaling));
+                Assert.Equal(m.Pixels.Height, (int)Math.Round(m.Height * scaling));
+                checkedCount++;
+            }
+            // Drawn the way a frame draws it: the screen shows the WHOLE bitmap, not a corner of it.
+            foreach (var line in lines.Where((_, i) => i % 4 == 0))
+            {
+                var m = painter.MeasureBubble(line);
+                var px = new PixelSize((int)Math.Ceiling((m.Width + 16) * scaling), (int)Math.Ceiling((m.Height + 16) * scaling));
+                using var target = new RenderTargetBitmap(px, new Avalonia.Vector(96 * scaling, 96 * scaling));
+                Rect? where;
+                using (var ctx = target.CreateDrawingContext())
+                    where = painter.DrawBubbleLine(ctx, line, 8 + m.Width / 2, 8 + m.Height, 400, new Rect(0, 0, px.Width / scaling, px.Height / scaling));
+                Assert.NotNull(where);
+                var drawn = Pixels(target);
+                var own = Pixels(m.Bitmap);
+                int ox = (int)Math.Round(where!.Value.X * scaling), oy = (int)Math.Round(where.Value.Y * scaling);
+                long diff = 0;
+                for (var y = 0; y < m.Pixels.Height; y++)
+                    for (var x = 0; x < m.Pixels.Width * 4; x++)
+                        diff += Math.Abs(drawn[((oy + y) * px.Width + ox) * 4 + x] - own[y * m.Pixels.Width * 4 + x]);
+                var mean = diff / (double)(m.Pixels.Width * m.Pixels.Height * 4);
+                Assert.True(mean < 2, $"drawn bubble differs from its bitmap (mean diff {mean:0.0}): '{line}' at {scaling}x");
+            }
+        }
+        Assert.True(checkedCount > 1000, checkedCount.ToString());
+    }
+
+    [AvaloniaFact]
+    public void BubblesAndNameTags_StayInsideThePlaza_NearEveryEdge()
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_TEST_SKIA") != "1")
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        var world = World(A("a", title: "A Very Long Album Title That Goes On And On", plays: 12, last: DateTimeOffset.Now));
+        var c = world.Creatures[0];
+        world.Wave(c); // says hello: a bubble
+        Assert.NotNull(c.Bubble);
+        using var covers = new CoverCache();
+        foreach (var scaling in Densities)
+        foreach (var zoom in new[] { 0.6, 1.6 })
+        {
+            using var painter = new CreaturePainter(covers) { Scaling = scaling };
+            var bounds = new Rect(0, 0, 1200, 700);
+            painter.Size = PlazaCanvas.SizeFor(bounds.Width, bounds.Height, scaling, 40, zoom);
+            painter.AreaWidth = bounds.Width;
+            foreach (var (x, y) in new[] { (2f, 2f), (1198f, 2f), (2f, 698f), (1198f, 698f), (600f, 30f), (600f, 350f) })
+            {
+                c.Position = new Vector2(x, y);
+                var bubble = painter.BubbleBounds(c, bounds)!.Value;
+                var name = painter.NameBounds(c, bounds)!.Value;
+                Assert.True(bounds.Contains(bubble), $"bubble {bubble} at ({x},{y}) {scaling}x");
+                Assert.True(bounds.Contains(name), $"name {name} at ({x},{y}) {scaling}x");
+                // Room above the head: the bubble sits above it; at the top edge it flips under the
+                // feet instead of covering the face.
+                if (y > 300) Assert.True(bubble.Bottom <= y - painter.Size, $"bubble {bubble} not above the head at ({x},{y})");
+                if (y < 10) Assert.True(bubble.Y >= name.Bottom - 0.5 || bubble.Bottom > bounds.Bottom - 8, $"bubble {bubble} not below the tag {name}");
+            }
+        }
+    }
+
+    private static byte[] Pixels(Bitmap bitmap)
+    {
+        using var stream = new MemoryStream();
+        bitmap.Save(stream);
+        stream.Position = 0;
+        using var copy = new Bitmap(stream);
+        var w = copy.PixelSize.Width;
+        var len = w * 4 * copy.PixelSize.Height;
+        var ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(len);
+        try
+        {
+            copy.CopyPixels(new PixelRect(copy.PixelSize), ptr, len, w * 4);
+            var bytes = new byte[len];
+            System.Runtime.InteropServices.Marshal.Copy(ptr, bytes, 0, len);
+            return bytes;
+        }
+        finally
+        {
+            System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
+        }
+    }
+
     // ── The plugin itself ──
 
     private const string PluginId = "dev.noctis.plugins.albumtown";
@@ -1013,9 +1174,9 @@ public class AlbumTownPluginTests
         Assert.Empty(manifest.Warnings);
         // The author is Jafezy JD: Noctis is not credited as the author anywhere a user reads it.
         Assert.Equal("Jafezy JD", manifest.Author);
-        Assert.Equal("1.1.0", manifest.Version);
+        Assert.Equal("1.1.1", manifest.Version);
         var plugin = new AlbumTownPlugin();
-        Assert.Equal(("Jafezy JD", "1.1.0", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
+        Assert.Equal(("Jafezy JD", "1.1.1", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
         Assert.EndsWith("By Jafezy JD.", manifest.Description);
         Assert.EndsWith("By Jafezy JD.", AlbumTownPlugin.About);
         Assert.Equal("Album Town by Jafezy JD", AlbumTownView.Credit);
@@ -1067,7 +1228,7 @@ public class AlbumTownPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.1.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.1.1.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumTown -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -1085,7 +1246,7 @@ public class AlbumTownPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Town", "1.1.0", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Album Town", "1.1.1", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
 
         host.SetEnabled(plugin, true);

@@ -283,6 +283,7 @@ public sealed class PlazaCanvas : Control
     public override void Render(DrawingContext context)
     {
         var bounds = new Rect(Bounds.Size);
+        Painter.AreaWidth = bounds.Width;
         Painter.BeginFrame();
         DrawFloor(context, bounds);
 
@@ -301,7 +302,7 @@ public sealed class PlazaCanvas : Control
             else Painter.DrawBody(context, c);
         }
         foreach (var c in _order)
-            if (ShowNames || ReferenceEquals(c, Hovered) || c.IsPlaying) Painter.DrawName(context, c);
+            if (ShowNames || ReferenceEquals(c, Hovered) || c.IsPlaying) Painter.DrawName(context, c, bounds);
         foreach (var c in _order) Painter.DrawBubble(context, c, bounds);
     }
 
@@ -316,7 +317,7 @@ public sealed class PlazaCanvas : Control
         }
         while (_retired.Count > 0 && Frames - _retired.Peek().Frame > 30) _retired.Dequeue().Item.Dispose();
         if (_floor is null) ctx.FillRectangle(Palette.FloorBrush, bounds);
-        else ctx.DrawImage(_floor, new Rect(_floor.Size), bounds);
+        else ctx.DrawImage(_floor, CreaturePainter.PixelSource(_floor), bounds);
     }
 
     /// <summary>The floor: a flat surface, a faint grid and a soft light in the middle.</summary>
