@@ -204,6 +204,32 @@ public class MobileBackgroundTests
         ((GeometryDrawing)((DrawingGroup)mesh.Brush.Drawing!).Children[0]).Brush!;
 
     [AvaloniaFact]
+    public async Task AChoiceMadeBeforeTheLoad_KeepsTheSavedMotionAndStrength()
+    {
+        // Cold start: a background picked before settings.json was read kept the pick but saved
+        // Motion off and Strength 0.6 over the user's saved ones.
+        using var rig = MobileFixtures.MakeRig(seed: async p => await p.UpdateSettingsAsync(s =>
+        {
+            s.MobileBackground = "ash";
+            s.MobileBackgroundMotion = true;
+            s.MobileBackgroundStrength = 0.9;
+        }));
+        var background = new PhoneBackground(rig.Persistence);
+        background.Choice = "slate";
+        await background.LoadAsync();
+        await Settled(background);
+
+        Assert.Equal("slate", background.Choice);                // the user's pick stays
+        Assert.True(background.Motion);                           // the rest as saved
+        Assert.Equal(0.9, background.Strength, 3);
+        var saved = await rig.Persistence.LoadSettingsAsync();
+        Assert.Equal("slate", saved.MobileBackground);
+        Assert.True(saved.MobileBackgroundMotion);
+        Assert.Equal(0.9, saved.MobileBackgroundStrength, 3);
+        background.Choice = "Off";
+    }
+
+    [AvaloniaFact]
     public async Task SlowMotion_IsOffByDefault_AndStandsStillWhileBatterySaverIsOn()
     {
         using var rig = MobileFixtures.MakeRig();

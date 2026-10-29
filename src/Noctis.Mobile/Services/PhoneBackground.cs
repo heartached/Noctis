@@ -46,7 +46,8 @@ public sealed class PhoneBackground : ObservableObject
     private int _frames;
     private bool _saverOn;
     private bool _loaded;
-    private bool _setBeforeLoad;
+    // Which of the three the user set before the file was read: the load keeps those and reads the rest.
+    private readonly HashSet<string> _setBeforeLoad = new();
     private Task _saveChain = Task.CompletedTask;
 
     public PhoneBackground(IPersistenceService? persistence = null, IBatterySaver? saver = null)
@@ -140,7 +141,7 @@ public sealed class PhoneBackground : ObservableObject
     {
         OnPropertyChanged(property);
         foreach (var other in also) OnPropertyChanged(other);
-        if (!_loaded) _setBeforeLoad = true;
+        if (!_loaded) _setBeforeLoad.Add(property);
         // A slider drags through many values: the file is written once it settles.
         if (property == nameof(Strength)) SaveWhenSettled();
         Refresh(save: property != nameof(Strength));
@@ -167,14 +168,18 @@ public sealed class PhoneBackground : ObservableObject
     /// <summary>The saved values. A settings file without the fields reads as Off, motion off.</summary>
     public void ApplySettings(AppSettings settings)
     {
-        if (_loaded || _setBeforeLoad) return;   // a choice made while the load ran stays
+        if (_loaded) return;
         _loaded = true;
-        _choice = BackgroundCatalog.Normalize(settings.MobileBackground);
-        _motion = settings.MobileBackgroundMotion;
-        _strength = double.IsFinite(settings.MobileBackgroundStrength)
-            ? Math.Clamp(settings.MobileBackgroundStrength, MinStrength, 1) : DefaultStrength;
+        // A value set while the load ran stays; the others come from the file (saving the defaults
+        // for them put Motion off and Strength back to 0.6 when only the choice was picked).
+        if (!_setBeforeLoad.Contains(nameof(Choice))) _choice = BackgroundCatalog.Normalize(settings.MobileBackground);
+        if (!_setBeforeLoad.Contains(nameof(Motion))) _motion = settings.MobileBackgroundMotion;
+        if (!_setBeforeLoad.Contains(nameof(Strength)))
+            _strength = double.IsFinite(settings.MobileBackgroundStrength)
+                ? Math.Clamp(settings.MobileBackgroundStrength, MinStrength, 1) : DefaultStrength;
         OnPropertyChanged(string.Empty);
-        Refresh(save: false);
+        // The user's early change is saved now, beside the values just read.
+        Refresh(save: _setBeforeLoad.Count > 0);
         ChoiceChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -191,7 +196,7 @@ public sealed class PhoneBackground : ObservableObject
         }
         if (!_loaded)
         {
-            // The user changed it before the file was read: keep theirs, and save it.
+            // The file could not be read: keep what is showing, and save it.
             _loaded = true;
             Save();
         }
