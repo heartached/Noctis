@@ -3545,12 +3545,12 @@
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.Narrower}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" Margin="0,0,12,0"/>
-                        <Slider Grid.Column="1"
+                        <controls:SmoothSlider Grid.Column="1"
                                 AutomationProperties.Name="{loc:T Settings.QueueWidth}"
                                 Classes="accent-slider"
-                                Minimum="300" Maximum="720"
+                                Step="1" Minimum="300" Maximum="720"
                                 x:Name="QueueWidthSlider"
-                                Value="{Binding QueuePanelWidth, Mode=TwoWay}"
+                                SteppedValue="{Binding QueuePanelWidth, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="2" Text="{loc:T Settings.Wider}"
                                    FontSize="12" Opacity="0.7"
