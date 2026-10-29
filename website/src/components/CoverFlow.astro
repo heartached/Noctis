@@ -32,8 +32,6 @@ const COPIES = 3;
 ---
 
 <div class="cf" id="coverflow">
-  <p class="cf__caption eyebrow">A library that looks as good as it sounds</p>
-
   <div class="cf__viewport">
     {
       Array.from({ length: COPIES }, (_, copy) => (
@@ -63,11 +61,6 @@ const COPIES = 3;
 <style>
   .cf {
     overflow: clip;
-  }
-
-  .cf__caption {
-    margin-bottom: clamp(var(--s-6), 4vw, var(--s-7));
-    text-align: center;
   }
 
   .cf__viewport {

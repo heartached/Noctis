@@ -1,6 +1,6 @@
 /* ==========================================================================
    Design tokens
-   Pure black page, white primary action, one red accent for links and marks.
+   Charcoal page, white primary action, one red accent for links and marks.
    Ramp derived from #E74856 in OKLCH — see scripts/accent-ramp.mjs.
    ========================================================================== */
 
@@ -80,14 +80,15 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg-0: #000000;
-  --bg-1: #0e0e10;
-  --bg-2: #161618;
-  --line: #222225;
+  /* Charcoal rather than pure black. ink-2 is lifted to keep 4.5:1 on bg-0. */
+  --bg-0: #161618;
+  --bg-1: #1d1d20;
+  --bg-2: #26262a;
+  --line: #313136;
 
   --ink-0: #ffffff;
-  --ink-1: #a1a1a6;
-  --ink-2: #7d7d83;
+  --ink-1: #a8a8ad;
+  --ink-2: #8b8b91;
 
   --accent-text: var(--accent-500);
   --ok: #3fb950;

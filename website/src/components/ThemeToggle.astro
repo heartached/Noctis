@@ -69,12 +69,12 @@ const { id } = Astro.props;
     position: relative;
     display: grid;
     align-items: center;
-    width: 68px;
-    height: 40px;
+    width: var(--tsw-w, 68px);
+    height: var(--tsw-h, 40px);
     padding: 3px;
     border: 1px solid var(--line);
     border-radius: var(--r-pill);
-    background: var(--bg-2);
+    background: var(--tsw-track, var(--bg-2));
   }
 
   /* Both glyphs are always present and always lit — the knob is what marks the
@@ -90,8 +90,8 @@ const { id } = Astro.props;
   }
 
   .tsw__ico {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     transition:
       color var(--t-base) var(--ease),
       transform var(--t-base) var(--ease);
@@ -107,8 +107,8 @@ const { id } = Astro.props;
     width: calc((100% - 6px) / 2);
     height: calc(100% - 6px);
     border-radius: var(--r-pill);
-    background: var(--accent-500);
-    box-shadow: 0 2px 8px var(--accent-glow);
+    background: var(--tsw-knob, var(--accent-500));
+    box-shadow: var(--tsw-knob-shadow, 0 2px 8px var(--accent-glow));
   }
 
   /* --- State ------------------------------------------------------------- */
@@ -128,7 +128,7 @@ const { id } = Astro.props;
   :global(html[data-theme='light']) .tsw__ico:first-child,
   :global(html[data-theme='dark']) .tsw__ico:last-child,
   :global(html:not([data-theme='light'])) .tsw__ico:last-child {
-    color: var(--on-accent);
+    color: var(--tsw-on, var(--on-accent));
   }
 
   :global(html[data-theme='light']) .tsw__ico:last-child,
@@ -138,7 +138,7 @@ const { id } = Astro.props;
   }
 
   .tsw:hover .tsw__track {
-    border-color: color-mix(in srgb, var(--accent-500) 45%, var(--line));
+    border-color: var(--tsw-hover, color-mix(in srgb, var(--accent-500) 45%, var(--line)));
   }
 
   /* --- Motion ------------------------------------------------------------- */

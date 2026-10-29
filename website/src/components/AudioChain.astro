@@ -1,6 +1,6 @@
 ---
 /**
- * The signal path, as five numbered stage cards on a lit track, then three
+ * The signal path, as five numbered stage cards on a lit track, then two
  * fact cards. Plain HTML rather than an SVG diagram: the cards can carry real
  * type, icons and glow, the list IS the accessible content, and below 900px
  * the same list simply turns vertical with the track running down its edge.
@@ -8,7 +8,7 @@
  * Every stage here is verified against the app SOURCE, not the README — see
  * src/data/verified-claims.md. LibVLC decodes, ReplayGain levels, the EQ is
  * parametric (never "10-band"), and exclusive output is Windows-only, a
- * qualifier that is load-bearing and so is carried on the card AND the fact.
+ * qualifier that is load-bearing and so is carried on its stage card.
  */
 
 type Icon = 'file' | 'decode' | 'gain' | 'eq' | 'output';
@@ -29,16 +29,9 @@ const icons: Record<Icon, string> = {
   output: 'M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12',
 };
 
+/* Exclusive output had a fact card too; it repeated the last stage card
+   directly above it, so it was dropped. */
 const facts = [
-  {
-    /* Deliberately NOT "bit-perfect". Verified in source: LibVLC 3.x's audio
-       callback delivers 16-bit PCM, so anything above 16 bits is truncated
-       before it reaches the exclusive sink, and the claim also breaks at any
-       volume below 100. What IS true is the sample rate and the mixer bypass. */
-    label: 'Exclusive output',
-    note: 'Windows only. Bypasses the system mixer and opens your device at the track’s own rate; 16-bit sources pass through untouched.',
-    icon: 'output' as Icon,
-  },
   {
     label: 'Gapless playback',
     note: 'One album side, no seam between tracks.',
@@ -56,7 +49,6 @@ const facts = [
   <div class="container">
     <header class="sec-head" data-reveal>
       <h2 class="h2" id="audio-title">See the whole chain</h2>
-      <p class="lede">Five stages sit between the file on your disk and your output device.</p>
     </header>
 
     <div class="chain" data-reveal>
