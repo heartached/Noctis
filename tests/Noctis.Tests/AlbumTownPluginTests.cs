@@ -1537,9 +1537,9 @@ public class AlbumTownPluginTests
         Assert.Empty(manifest.Warnings);
         // The author is Jafezy JD: Noctis is not credited as the author anywhere a user reads it.
         Assert.Equal("Jafezy JD", manifest.Author);
-        Assert.Equal("1.2.0", manifest.Version);
+        Assert.Equal("1.2.1", manifest.Version);
         var plugin = new AlbumTownPlugin();
-        Assert.Equal(("Jafezy JD", "1.2.0", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
+        Assert.Equal(("Jafezy JD", "1.2.1", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
         Assert.EndsWith("By Jafezy JD.", manifest.Description);
         Assert.EndsWith("By Jafezy JD.", AlbumTownPlugin.About);
         Assert.Equal("Album Town by Jafezy JD", AlbumTownView.Credit);
@@ -1595,7 +1595,7 @@ public class AlbumTownPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.2.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.2.1.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumTown -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -1613,7 +1613,7 @@ public class AlbumTownPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Town", "1.2.0", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Album Town", "1.2.1", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
 
         host.SetEnabled(plugin, true);
