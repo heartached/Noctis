@@ -1284,6 +1284,14 @@
     <value>Preamplificación (dB)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve">
+    <value>Analizar archivos nuevos automáticamente</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve">
+    <value>Escribe etiquetas ReplayGain en las canciones nuevas cuando su álbum termina de copiarse.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve">
     <value>CONTROL REMOTO</value>
     <comment>Text in SettingsView.axaml</comment>

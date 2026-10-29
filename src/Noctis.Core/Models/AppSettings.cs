@@ -1107,6 +1107,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;
 
+    /// <summary>GitHub #148: measure new files (found by the folder watcher or a library scan)
+    /// and write ReplayGain tags into them once their album has finished copying. Off by
+    /// default: it rewrites the user's files.</summary>
+    public bool AutoReplayGainScanEnabled { get; set; } = false;
+
     // ── Audio analysis (BPM / key) ──
 
     /// <summary>Whether background BPM + musical-key analysis runs (scan-time + backfill).

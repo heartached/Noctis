@@ -1284,6 +1284,14 @@
     <value>前級增益 (dB)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve">
+    <value>自動掃描新檔案</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve">
+    <value>專輯複製完成後，為新歌曲寫入 ReplayGain 標籤。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve">
     <value>遠端控制</value>
     <comment>Text in SettingsView.axaml</comment>

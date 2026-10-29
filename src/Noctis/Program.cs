@@ -488,6 +488,21 @@ internal class Program
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
 
+        // GitHub #148: measures and tags new files once their album has finished copying.
+        // Inert until Settings → Audio → Output → ReplayGain → "Scan new files automatically" is on.
+        services.AddSingleton<ReplayGainAutoScanService>(sp =>
+        {
+            var player = sp.GetRequiredService<IAudioPlayer>();
+            return new ReplayGainAutoScanService(
+                sp.GetRequiredService<IReplayGainScannerService>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings(),
+                playingPath: () => player.CurrentMediaPath,
+                // The player caches the playing file's tags (see OpenReplayGainScannerDialog).
+                onTagsWritten: () => Avalonia.Threading.Dispatcher.UIThread.Post(player.ReloadReplayGainTags));
+        });
+
         // ViewModels — MainWindowViewModel is the root, created once
         services.AddSingleton<MainWindowViewModel>();
     }
