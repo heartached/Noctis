@@ -153,8 +153,8 @@ public partial class SettingsViewModel
 
     /// <summary>
     /// Download → verify → install. Nothing reaches the plugins folder unless the zip matches the
-    /// list. A code plugin installed while community plugins are off offers to turn them on, with
-    /// the switch's own confirmation; declining leaves it installed and off.
+    /// list. Official plugins don't need the Community switch; a code plugin that ends up a
+    /// community one while that is off offers to turn it on (declining leaves it installed and off).
     /// </summary>
     internal async Task InstallOfficialPluginAsync(OfficialPluginItem item)
     {
@@ -170,7 +170,10 @@ public partial class SettingsViewModel
                 cts.Token));
             item.EndDownload();
             var installed = await InstallPluginPackageAsync(zip, item.Entry, replaceUnverified: item.HasUnverifiedCopy);
-            if (installed && Plugins.FindById(item.Entry.Id) is { IsCodePlugin: true } && !Plugins.CommunityPluginsEnabled)
+            // A verified official install runs without the Community switch (owner 10-29); only a
+            // copy that failed the check (a community plugin) still needs it.
+            if (installed && Plugins.FindById(item.Entry.Id) is { IsCodePlugin: true } p && !Plugins.CommunityPluginsEnabled
+                && !Plugins.IsTrustedOfficial(p))
                 await ConfirmTurnOnCommunityPluginsAsync();
         }
         catch (OperationCanceledException)

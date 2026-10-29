@@ -82,12 +82,28 @@ public class PluginsPageLayoutTests : IDisposable
 
         Assert.Equal(Loc.T("Plugins.TurnOnTitle"), Assert.Single(dialogs).Title);
         Assert.True(host.CommunityPluginsEnabled);
-        code = host.FindById("dev.test.code")!; // the switch reloads every plugin (LoadAll)
+        code = host.FindById("dev.test.code")!; // community plugins are re-activated in place
         Assert.False(code.IsRestricted);
         Assert.False(code.ShowStatusBadge); // on/off is the switch, not a pill
 
         code.Status = PluginStatus.Failed;  // a problem still gets one
         Assert.True(code.ShowStatusBadge);
+    }
+
+    [AvaloniaFact]
+    public void TurningTheSwitchOn_AndDecliningTheDialog_LeavesItOff()
+    {
+        var (vm, host, dialogs, persistence) = Mount(confirm: false);
+        using var _p = persistence;
+        AddCodePlugin(host);
+
+        vm.CommunityPluginsEnabled = true;
+
+        Assert.Equal(Loc.T("Plugins.TurnOnTitle"), Assert.Single(dialogs).Title);
+        Assert.False(host.CommunityPluginsEnabled); // never switched on silently
+        Assert.False(vm.CommunityPluginsEnabled);   // the switch flips back
+        Assert.True(host.FindById("dev.test.code")!.IsRestricted);
+        Assert.False(vm.ShowCommunitySection);
     }
 
     [AvaloniaFact]

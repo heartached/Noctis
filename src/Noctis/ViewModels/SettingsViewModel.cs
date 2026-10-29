@@ -202,7 +202,7 @@ public partial class SettingsViewModel : ViewModelBase
         await LoadOfficialPluginsAsync();
     }
 
-    /// <summary>The "Community plugins" switch; off = restricted mode (nothing third-party runs).</summary>
+    /// <summary>The "Community plugins" switch; off = restricted mode for community plugins (official ones still run).</summary>
     [ObservableProperty] private bool _communityPluginsEnabled;
     private bool _syncingCommunityPlugins;
 

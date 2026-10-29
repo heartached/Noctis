@@ -2193,7 +2193,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets installed plugins run. They can do anything Noctis can, so only use ones you trust.</value></data>
+  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets plugins made by other people run. Official plugins work either way.</value></data>
   <data name="Plugins.CustomTitle" xml:space="preserve"><value>Custom Category</value></data>
   <data name="Plugins.CustomNone" xml:space="preserve"><value>Plugins you add from a file show up here.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>

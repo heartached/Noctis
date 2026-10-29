@@ -96,29 +96,22 @@ public class OfficialPluginsFlowTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task Install_WhileCommunityPluginsAreOff_OffersTheSwitchsOwnConfirmation()
+    public async Task Install_WhileCommunityPluginsAreOff_OfficialRunsWithoutTheSwitch()
     {
-        var confirm = false;
-        using var m = Mount(_ => new ConfirmationResult(confirm, false));
-        m.Host.LoadAll(); // fresh: restricted
+        // Owner 10-29: official plugins never depend on the Community switch.
+        using var m = Mount(_ => new ConfirmationResult(true, false));
+        m.Host.LoadAll(); // fresh: Community off
         Publish(m, ZipBytes("1.0.0"), "1.0.0");
         await m.Vm.LoadOfficialPluginsAsync();
 
         await m.Vm.InstallOfficialPluginAsync(m.Vm.OfficialPlugins[0]);
 
-        var dialog = Assert.Single(m.Dialogs);
-        Assert.Equal(Loc.T("Plugins.TurnOnTitle"), dialog.Title);
-        Assert.False(m.Host.CommunityPluginsEnabled); // declined: never switched on silently
-        Assert.Equal(PluginStatus.Restricted, Assert.Single(m.Host.Plugins).Status);
-
-        // Removing and installing again, this time saying yes.
-        m.Host.Remove(m.Host.Plugins[0], deleteData: true);
-        confirm = true;
-        await m.Vm.InstallOfficialPluginAsync(m.Vm.OfficialPlugins[0]);
-        Assert.Equal(2, m.Dialogs.Count);
-        Assert.True(m.Host.CommunityPluginsEnabled);
-        Assert.True(m.Vm.CommunityPluginsEnabled);
-        Assert.Single(m.Host.Plugins);
+        Assert.Empty(m.Dialogs); // no "Turn on community plugins?"
+        Assert.False(m.Host.CommunityPluginsEnabled);
+        var plugin = Assert.Single(m.Host.Plugins);
+        Assert.True(m.Host.IsTrustedOfficial(plugin));
+        Assert.NotEqual(PluginStatus.Restricted, plugin.Status);
+        Assert.True(plugin.CanToggle);
     }
 
     [AvaloniaFact]

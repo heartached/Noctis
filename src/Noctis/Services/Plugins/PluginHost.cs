@@ -623,8 +623,26 @@ public sealed class PluginHost
     /// <summary>Themes, lyrics presets and languages of the switched-on content packs.</summary>
     public ContentCatalog Content { get; } = new();
 
-    /// <summary>False = restricted mode: plugins are listed but none is loaded.</summary>
+    /// <summary>The "Community plugins" switch. Off = restricted mode for community plugins: listed,
+    /// not loaded. Verified official plugins never depend on it (owner 10-29).</summary>
     public bool CommunityPluginsEnabled => _settings().CommunityPluginsEnabled == true;
+
+    /// <summary>
+    /// The verified copy of an official plugin: it credits Noctis, and the zip installed for this
+    /// exact version was checked against the official list (<see cref="RecordOfficialInstall"/>).
+    /// Such a plugin runs whatever the Community switch says; a zip that only claims to be by
+    /// Noctis has no record and stays a community plugin.
+    /// </summary>
+    public bool IsTrustedOfficial(LoadedPlugin plugin)
+    {
+        if (!PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
+        var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
+        var bar = record?.IndexOf('|') ?? -1;
+        return bar > 0 && PluginVersion.Compare(record![..bar], plugin.Version) == 0;
+    }
+
+    /// <summary>The Community switch allows this plugin's code to run.</summary>
+    private bool AllowedToRun(LoadedPlugin plugin) => CommunityPluginsEnabled || IsTrustedOfficial(plugin);
 
     /// <summary>A synchronous plugin callback running longer than this froze the UI; the plugin is stopped.</summary>
     public TimeSpan CallbackBudget { get; set; } = TimeSpan.FromSeconds(1);
@@ -827,14 +845,25 @@ public sealed class PluginHost
         return plugin;
     }
 
-    /// <summary>Turns restricted mode off (loads enabled plugins) or on (stops every plugin).</summary>
+    /// <summary>
+    /// Turns restricted mode off (starts the enabled community plugins) or on (stops them). Only
+    /// community code plugins are touched: official ones keep running (a download in Add from
+    /// YouTube is not cut off), and content packs never depended on the switch.
+    /// </summary>
     public void SetCommunityPluginsEnabled(bool enabled)
     {
         var settings = _settings();
         if (settings.CommunityPluginsEnabled == enabled) return;
         settings.CommunityPluginsEnabled = enabled;
         _saveSettings();
-        LoadAll();
+        foreach (var plugin in Plugins.ToList())
+        {
+            if (plugin.IsContentPack || IsTrustedOfficial(plugin)) continue;
+            Stop(plugin);
+            Activate(plugin);
+        }
+        RebuildContent();
+        VisualLayersChanged?.Invoke(this, EventArgs.Empty);
         CommunityPluginsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -867,7 +896,7 @@ public sealed class PluginHost
         if (enabled && plugin.Instance is null)
         {
             if (CanRun(plugin)) Start(plugin);
-            else if (!CommunityPluginsEnabled) plugin.Status = PluginStatus.Restricted;
+            else if (!AllowedToRun(plugin)) plugin.Status = PluginStatus.Restricted;
         }
         else if (!enabled && (plugin.Instance is not null || plugin.Status == PluginStatus.Failed))
         {
@@ -1020,15 +1049,15 @@ public sealed class PluginHost
             return;
         }
 
-        plugin.CanToggle = CommunityPluginsEnabled;
-        if (!CommunityPluginsEnabled) plugin.Status = PluginStatus.Restricted;
+        plugin.CanToggle = AllowedToRun(plugin);
+        if (!plugin.CanToggle) plugin.Status = PluginStatus.Restricted;
         else if (plugin.IsEnabled) Start(plugin);
         else if (!IsDisabled(plugin) && HasGrantEntry(plugin)) plugin.Status = PluginStatus.NeedsApproval;
         else plugin.Status = PluginStatus.Disabled;
     }
 
     private bool CanRun(LoadedPlugin plugin)
-        => CommunityPluginsEnabled && plugin.CanToggle && (plugin.AssemblyPath is not null || plugin.InProcessFactory is not null);
+        => AllowedToRun(plugin) && plugin.CanToggle && (plugin.AssemblyPath is not null || plugin.InProcessFactory is not null);
 
     // The Settings toggle binds IsEnabled two-way; SetEnabled also writes IsEnabled, so only
     // act when the flag disagrees with the actual running state (re-entrancy guard).

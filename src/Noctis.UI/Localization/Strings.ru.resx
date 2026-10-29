@@ -2193,7 +2193,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Reload" xml:space="preserve"><value>Перезагрузить плагины</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>Плагины пока не установлены.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Плагины сообщества</value></data>
-  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Разрешает запуск установленных плагинов. Они могут всё, что может Noctis, поэтому используйте только те, которым доверяете.</value></data>
+  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Разрешает запуск плагинов от других людей. Официальные плагины работают в любом случае.</value></data>
   <data name="Plugins.CustomTitle" xml:space="preserve"><value>Своя категория</value></data>
   <data name="Plugins.CustomNone" xml:space="preserve"><value>Здесь появятся плагины, добавленные из файла.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Установить из файла</value></data>
