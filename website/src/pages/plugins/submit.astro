@@ -1,0 +1,434 @@
+---
+import Base from '../../layouts/Base.astro';
+import Community from '../../components/Community.astro';
+import BrandIcon from '../../components/BrandIcon.astro';
+import { links } from '../../config/site';
+
+/**
+ * "Submit a plugin": the front door to the review in docs/PLUGINS.md,
+ * "Submitting a plugin" and "Reviewing a submission". The app's Submit a Plugin
+ * button (Settings > Plugins) is meant to open this page.
+ *
+ * Every route here ends at the same GitHub issue form
+ * (.github/ISSUE_TEMPLATE/3-plugin-submission.yml). The workflow behind it
+ * (.github/workflows/plugin-submission.yml) downloads the zip, checks its
+ * SHA-256 and manifest and flags risky code, without ever running it. A
+ * maintainer's `approved` label opens a PR that adds the plugin to
+ * plugins/index.json, credited to the author; merging it lists the plugin.
+ *
+ * No page script: copy buttons use the site-wide [data-copy] handler.
+ */
+
+const code = {
+  shaWindows: `Get-FileHash .\\MyPlugin-1.0.0.zip -Algorithm SHA256`,
+  shaUnix: `shasum -a 256 MyPlugin-1.0.0.zip`,
+};
+
+const checks = [
+  'No viruses and no hidden downloads.',
+  'It does what it says.',
+  'No pirated music, and nothing that gets around DRM.',
+  'The permissions it asks for match what it does.',
+];
+
+const next = [
+  { title: 'An automatic check', body: 'Within a few minutes, a bot posts a report on your issue. It checks the zip and its fingerprint, and never runs your plugin.' },
+  { title: 'We review it', body: 'Someone from the Noctis team reads the source and tries the plugin.' },
+  { title: 'Listed, or a fix to make', body: 'It’s approved and shows up in Noctis under Community plugins with your name, or we tell you what to fix.' },
+];
+---
+
+<Base
+  title="Noctis - Submit a plugin."
+  description="Share your Noctis plugin. We check it's safe, and it shows up in Noctis under Community plugins with your name on it."
+  path="/plugins/submit"
+>
+  <section class="section sb" aria-labelledby="sb-title">
+    <div class="container sb__wrap">
+      <header class="sb__head">
+        <p class="eyebrow"><a href="/plugins">Plugins</a> · Submit</p>
+        <h1 class="display" id="sb-title">Submit a <em>plugin</em>.</h1>
+        <p class="lede sb__lede">
+          Share your plugin with everyone who uses Noctis. We check it’s safe, and it shows up in Noctis with your
+          name on it.
+        </p>
+        <div class="sb__actions">
+          <a class="btn btn--primary btn--lg sb__go" href={links.pluginSubmitForm} target="_blank" rel="noopener">
+            <BrandIcon brand="github" />
+            Submit on GitHub
+          </a>
+          <a class="btn btn--lg" href={links.pluginGuide}>New to plugins? Read the guide</a>
+        </div>
+      </header>
+
+      {/* ---------------------------------------------------------------- */}
+      <section class="sb__sec" aria-labelledby="before">
+        <h2 class="sb__h" id="before">Before you submit</h2>
+        <ul class="ticks" role="list">
+          <li>
+            It installs and works through <strong>Settings → Plugins → Install from file</strong>.
+          </li>
+          <li>The source is public on GitHub.</li>
+          <li>There’s a GitHub release with the plugin zip attached.</li>
+          <li>
+            You have the zip’s SHA-256, a fingerprint the form asks for:
+            <div class="code">
+              <div class="code__bar">
+                <span class="code__file mono">Windows (PowerShell)</span>
+                <button class="code__copy" type="button" data-copy={code.shaWindows} aria-label="Copy the Windows SHA-256 command">Copy</button>
+              </div>
+              <pre tabindex="0"><code>{code.shaWindows}</code></pre>
+            </div>
+            <div class="code">
+              <div class="code__bar">
+                <span class="code__file mono">macOS and Linux</span>
+                <button class="code__copy" type="button" data-copy={code.shaUnix} aria-label="Copy the macOS and Linux SHA-256 command">Copy</button>
+              </div>
+              <pre tabindex="0"><code>{code.shaUnix}</code></pre>
+            </div>
+          </li>
+          <li>
+            The description is one plain sentence of 56 characters or fewer, with no em dashes and no “by you”.
+          </li>
+          <li>
+            It has an icon. Optional, but it makes your card stand out: an <code>icon.png</code> in the zip, named by
+            <code>"icon"</code> in plugin.json.
+          </li>
+        </ul>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <section class="sb__sec" aria-labelledby="checks">
+        <h2 class="sb__h" id="checks">What we check</h2>
+        <ul class="points" role="list">
+          {checks.map((c) => <li>{c}</li>)}
+        </ul>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <section class="sb__sec" aria-labelledby="next">
+        <h2 class="sb__h" id="next">What happens next</h2>
+        <ol class="flow" role="list">
+          {next.map((n, i) => (
+            <li class="flow__step">
+              <span class="flow__n mono" aria-hidden="true">{i + 1}</span>
+              <div>
+                <p class="flow__title">{n.title}</p>
+                <p class="flow__body">{n.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <p class="sb__note">
+          To update a listed plugin, make a new release with a higher version and submit the form again.
+        </p>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <div class="cta">
+        <div class="cta__text">
+          <h2 class="cta__title">Ready?</h2>
+          <p>The form asks for your plugin’s links, its SHA-256, and what it does with the internet and files.</p>
+        </div>
+        <div class="cta__actions">
+          <a class="btn btn--primary btn--lg sb__go" href={links.pluginSubmitForm} target="_blank" rel="noopener">
+            <BrandIcon brand="github" />
+            Submit on GitHub
+          </a>
+          <a class="btn btn--lg" href={links.pluginGuide}>New to plugins? Read the guide</a>
+        </div>
+        <p class="sb__help">
+          Need help? <a href={links.discord} target="_blank" rel="noopener">Ask in our Discord</a>. You can open a
+          ticket there, and we still list plugins through the GitHub form.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <Community slot="footer" />
+</Base>
+
+<style>
+  .sb {
+    padding-bottom: var(--s-8);
+  }
+
+  .sb__wrap {
+    max-width: 48rem;
+  }
+
+  .sb__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-5);
+    text-align: center;
+    margin-bottom: var(--s-9);
+  }
+
+  .sb__head .eyebrow a {
+    color: inherit;
+  }
+
+  .sb__lede {
+    text-wrap: balance;
+  }
+
+  .sb__actions,
+  .cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--s-3);
+  }
+
+  .sb__go :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sb__sec {
+    color: var(--ink-1);
+  }
+
+  .sb__sec + .sb__sec {
+    margin-top: var(--s-8);
+    padding-top: var(--s-8);
+    border-top: 1px solid var(--line);
+  }
+
+  .sb__sec > * + * {
+    margin-top: var(--s-5);
+  }
+
+  .sb strong {
+    color: var(--ink-0);
+    font-weight: 600;
+  }
+
+  .sb__h {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-2);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  .sb__note {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .sb :not(pre) > code {
+    padding: 0.1em 0.4em;
+    border-radius: 6px;
+    background: var(--bg-2);
+    color: var(--ink-0);
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    overflow-wrap: anywhere;
+  }
+
+  /* --- Checklist ---------------------------------------------------------- */
+
+  .ticks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ticks > li {
+    position: relative;
+    padding-inline-start: 2rem;
+    text-wrap: pretty;
+  }
+
+  /* A plain check in a ring, drawn in CSS so the list needs no icons. */
+  .ticks > li::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.15em;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent-text);
+  }
+
+  .ticks > li::after {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0.42rem;
+    top: 0.42em;
+    width: 0.32rem;
+    height: 0.56rem;
+    border: solid var(--accent-text);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+  }
+
+  .ticks .code {
+    margin-top: var(--s-3);
+  }
+
+  .points {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding-inline-start: var(--s-5);
+  }
+
+  .points li::marker {
+    color: var(--accent-text);
+  }
+
+  /* --- What happens next -------------------------------------------------- */
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .flow__step {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--s-4);
+  }
+
+  .flow__n {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-1);
+    color: var(--ink-0);
+    font-size: var(--step--1);
+  }
+
+  .flow__title {
+    color: var(--ink-0);
+    font-weight: 600;
+    padding-top: 0.25rem;
+  }
+
+  .flow__body {
+    margin-top: var(--s-1);
+  }
+
+  /* --- Code blocks: the plugins page's look ------------------------------- */
+
+  .code {
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+    overflow: hidden;
+  }
+
+  .code + .code {
+    margin-top: var(--s-2);
+  }
+
+  .code__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .code__file {
+    color: var(--ink-2);
+    font-size: var(--step--2);
+  }
+
+  .code__copy {
+    flex: none;
+    min-height: 32px;
+    padding: 0 var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: var(--step--2);
+    font-weight: 500;
+  }
+
+  .code__copy:hover {
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 8%, transparent);
+  }
+
+  .code__copy[data-copied] {
+    color: var(--ok);
+    border-color: var(--ok);
+  }
+
+  .code pre {
+    margin: 0;
+    padding: var(--s-4);
+    overflow-x: auto;
+    color: var(--ink-0);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    line-height: 1.65;
+  }
+
+  /* --- Closing card ------------------------------------------------------- */
+
+  .cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-5);
+    margin-top: var(--s-9);
+    padding: var(--s-7) var(--s-6);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+    text-align: center;
+  }
+
+  .cta__title {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-2);
+  }
+
+  .cta__text p {
+    color: var(--ink-1);
+  }
+
+  .sb__help {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  .sb__help a {
+    color: var(--accent-text);
+  }
+
+  @media (max-width: 560px) {
+    .sb__actions .btn,
+    .cta__actions .btn {
+      flex: 1 1 100%;
+      justify-content: center;
+    }
+
+    .cta {
+      padding: var(--s-6) var(--s-5);
+    }
+  }
+</style>

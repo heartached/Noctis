@@ -2,14 +2,18 @@
 import Base from '../layouts/Base.astro';
 import Community from '../components/Community.astro';
 import BrandIcon from '../components/BrandIcon.astro';
+import PluginDirectory from '../components/PluginDirectory.astro';
 import { links } from '../config/site';
 
 /**
  * The plugin system, for people who use Noctis first and developers second.
- * Every statement here traces to the "Plugins (v1.5.3+)" block in
- * src/data/verified-claims.md — the safety wording in particular is careful
- * on purpose: code plugins run with full trust, and the page never says
- * otherwise.
+ * Describes Noctis 1.6.6 (plugin kit API 1.5). Every statement here traces to
+ * docs/PLUGINS.md and the "Plugins" block in src/data/verified-claims.md. The
+ * safety wording in particular is careful on purpose: code plugins run with
+ * full trust, and the page never says otherwise.
+ *
+ * The directory at the top is built from plugins/index.json, the same list the
+ * app reads (see components/PluginDirectory.astro).
  *
  * No page script. Code samples are static <pre><code>; their copy buttons use
  * the site-wide [data-copy] handler in src/scripts/site.ts.
@@ -17,6 +21,7 @@ import { links } from '../config/site';
 
 const toc = [
   { id: 'ways', label: 'Three ways' },
+  { id: 'get', label: 'Get plugins' },
   { id: 'install', label: 'Install and manage' },
   { id: 'safety', label: 'Is it safe?' },
   { id: 'content-packs', label: 'Content packs' },
@@ -45,7 +50,7 @@ const ways = [
   {
     tag: 'Most powerful',
     title: 'Plugins',
-    body: '.NET code that adds features inside Noctis: track-menu commands, lyrics sources, visual layers, scrobble hooks.',
+    body: '.NET code that adds features inside Noctis: windows of its own, track-menu commands, lyrics sources, visual layers.',
     facts: ['Runs with full trust', 'You approve its permissions', 'Only install from people you trust'],
     more: 'How to install one',
     href: '#install',
@@ -53,19 +58,22 @@ const ways = [
 ];
 
 const steps = [
-  { title: 'Open Settings → Plugins.', body: 'Everything plugin-related lives on this one page.' },
-  { title: 'Choose Install from file… and pick the plugin’s .zip.', body: 'Noctis checks the zip before anything is written to disk.' },
-  { title: 'Content packs are on right away. A code plugin lands switched off.', body: 'Nothing from a code plugin runs until you say so.' },
-  { title: 'To run code plugins, turn on Community plugins.', body: 'It is off by default on new installs. That is restricted mode: no third-party code loads at all.' },
-  { title: 'Switch the plugin on and review what it asks for.', body: 'Noctis shows the plugin’s permissions and asks you to approve them.' },
-  { title: 'Update by installing a newer zip of the same plugin.', body: 'Its data and settings are kept. It only asks again if the update wants new permissions.' },
-  { title: 'Remove it with the Remove button.', body: 'The plugin’s data is kept unless you tick “Also delete its data and settings”.' },
-  { title: 'Settings for a plugin are on its card.', body: 'Open plugins folder and Reload plugins are on the same page.' },
+  { title: 'Open Settings → Plugins.', body: 'It’s a grid of cards: Official Noctis plugins first, then Community plugins. The search box filters both.' },
+  { title: 'Click a card to open the plugin’s own page.', body: 'Its icon, version, description and everything you can do with it live there.' },
+  { title: 'Press Install at the top right.', body: 'One click for a listed plugin. Noctis downloads it and checks it against the list before anything is written.' },
+  { title: 'Not on the list? Use Install from file.', body: 'It’s beside the search box, next to the folder and refresh buttons. Pick the plugin’s .zip. Plugins installed this way haven’t been reviewed.' },
+  { title: 'Content packs are on right away. A code plugin lands switched off.', body: 'Nothing from a code plugin runs until you say so. To run code plugins at all, turn on Community plugins: it’s off on new installs.' },
+  { title: 'Switch on Enabled and review what it asks for.', body: 'On the plugin’s page, one list holds the Enabled switch, the plugin’s settings and a one-line Permissions summary you can expand.' },
+  { title: 'Use it.', body: 'Once it’s installed, “Open <name>” and the ⋯ menu (Visit homepage, Open folder) sit at the top right of its page.' },
+  { title: 'Remove it from the bottom of its page.', body: 'Press the red Remove plugin row. Its data and settings are kept unless you turn on the “Also delete its data and settings” switch.' },
 ];
 
 const permissions = [
+  { id: 'playback.read', text: 'Nothing to approve: reading what’s playing is always allowed' },
   { id: 'playback.control', text: 'Control playback: play, pause, skip and seek' },
-  { id: 'library.read', text: 'Search your library (titles, artists, albums, file paths, play counts)' },
+  { id: 'library.read', text: 'Read your library and playlists (titles, artists, albums, file paths, play counts)' },
+  { id: 'library.write.analysis', text: 'Set the BPM and musical key of library tracks (in Noctis only, never in your files)' },
+  { id: 'library.import', text: 'Add audio files it saved (such as downloads) to your library' },
   { id: 'network', text: 'Connect to the internet' },
   { id: 'lyrics.provider', text: 'Supply lyrics to the lyrics search' },
   { id: 'menu.commands', text: 'Add entries to the track menu' },
@@ -90,18 +98,32 @@ const packKinds = [
   },
 ];
 
+/* From the "What a plugin can do" table in docs/PLUGINS.md. `since` is the
+   API version that added it, where that isn't 1.0/1.1. */
 const capabilities = [
   { area: 'Now playing', what: 'Current track, play/pause, position, change events', perm: null },
   { area: 'Audio taps', what: 'Live beat pulse and spectrum', perm: null },
   { area: 'Visual layers', what: 'A layer drawn behind the lyrics, offered in the Flowing background picker', perm: null },
+  { area: 'Lyrics motion', what: 'How the letters of word-synced lyrics move (1.5)', perm: null },
+  { area: 'Windows', what: 'A window of its own, opened from the plugin’s page (1.3)', perm: null },
   { area: 'Scrobble hook', what: 'Called when a track counts as listened (half its length or 4 minutes)', perm: null },
   { area: 'Settings', what: 'Settings declared in plugin.json, drawn by Noctis', perm: null },
   { area: 'Storage', what: 'A private data folder that survives updates', perm: null },
-  { area: 'Playback control', what: 'Play, pause, next, previous, seek', perm: 'playback.control' },
-  { area: 'Library', what: 'Read-only library search', perm: 'library.read' },
+  { area: 'Playback control', what: 'Play, pause, skip, seek, play a list of tracks (1.3), read the queue and set Up Next (1.5)', perm: 'playback.control' },
+  { area: 'Library', what: 'Read the library, and the playlists (1.4)', perm: 'library.read' },
+  { area: 'BPM and key', what: 'Set the BPM and key of library tracks (1.2)', perm: 'library.write.analysis' },
+  { area: 'Add to library', what: 'Add audio files the plugin saved, like downloads (1.5)', perm: 'library.import' },
   { area: 'Lyrics', what: 'A lyrics source that joins the online lyrics search', perm: 'lyrics.provider' },
   { area: 'Track menu', what: 'Entries in the track right-click menu', perm: 'menu.commands' },
   { area: 'Notices', what: 'A short message in the app’s notice pill', perm: 'notifications' },
+];
+
+/* What's in samples/ and plugins/ in the repo, to read and copy from. */
+const samples = [
+  { name: 'Noctis.SamplePlugin', href: `${links.samples}/Noctis.SamplePlugin`, body: 'Pulse Ring: a visual layer that pulses with the beat. The guide starts here.' },
+  { name: 'Noctis.SamplePlugin.TrackTools', href: `${links.samples}/Noctis.SamplePlugin.TrackTools`, body: 'A menu command, library search, a notice, a lyrics source stub, a scrobble hook and settings.' },
+  { name: 'Noctis.ContentPack.Sample', href: `${links.samples}/Noctis.ContentPack.Sample`, body: 'A content pack: two themes, a karaoke lyrics preset and a pseudo-language.' },
+  { name: 'LocalApi', href: `${links.samples}/LocalApi`, body: 'Local API samples: an OBS overlay, a PowerShell script and curl examples.' },
 ];
 
 const faqs = [
@@ -111,7 +133,15 @@ const faqs = [
   },
   {
     q: 'Where do I find plugins?',
-    a: 'In Settings → Plugins → Official Plugins: plugins the Noctis team has reviewed, with an Install button each. Other plugins are shared as zips, for example on GitHub releases and on the Noctis Discord.',
+    a: 'In Noctis: Settings → Plugins. Official Noctis plugins are made by Noctis, like Mixxx, Album Roulette, A-B Loop and Add from YouTube. Community plugins are made by people who use Noctis and credited by name, like Album Town by Jafezy JD, and True Shuffle and Lyric Motion by Alfamin. Click a card, then Install. The same list is at the top of this page.',
+  },
+  {
+    q: 'What does the blue check mean?',
+    a: 'It marks an Official Noctis plugin. A plugin can’t claim it: Noctis only shows the check when the zip it installed matches the official list, down to its SHA-256 fingerprint. Writing “Noctis” as the author, or copying an official plugin’s id, doesn’t earn it.',
+  },
+  {
+    q: 'Is a plugin from a file safe?',
+    a: 'A plugin on the list was reviewed before it was listed. One you install from a file wasn’t reviewed by anyone. It runs with the same full trust, so only install it if you trust whoever made it.',
   },
   {
     q: 'Do I need to know how to code?',
@@ -119,7 +149,7 @@ const faqs = [
   },
   {
     q: 'Will a plugin break after a Noctis update?',
-    a: 'The plugin API follows a compatibility policy: minor versions only add, so a plugin built for 1.0 runs on 1.1. Breaking changes come with a new major version, and deprecations are announced at least one minor release and three months ahead.',
+    a: 'The plugin API follows a compatibility policy: minor versions only add, so a plugin built for 1.1 runs on 1.5. Breaking changes come with a new major version, and deprecations are announced at least one minor release and three months ahead.',
   },
 ];
 
@@ -156,7 +186,7 @@ const code = {
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Noctis.Plugins.Abstractions" Version="1.1.*" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Noctis.Plugins.Abstractions" Version="1.5.*" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 </Project>`,
   cs: `using Noctis.Plugins;
@@ -183,10 +213,12 @@ public sealed class HelloPlugin : INoctisPlugin
   "name": "Hello",
   "version": "1.0.0",
   "author": "You",
+  "description": "Says hello from the track menu.",
   "type": "dotnet",
   "entry": "MyPlugin.dll",
-  "apiVersion": "1.1",
-  "minAppVersion": "1.5.3",
+  "icon": "icon.png",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
   "permissions": ["menu.commands", "notifications"]
 }`,
   pack_kit: `dotnet pack src/Noctis.Plugins.Abstractions -c Release`,
@@ -201,13 +233,13 @@ const quickstart = [
 
 <Base
   title="Noctis - Plugins, content packs and the Local API."
-  description="Extend Noctis 1.5.3 and newer on Windows, macOS and Linux: install themes and language packs, connect apps through the Local API, and run plugins you trust. What each one can do, how to install them, and how safe they are."
+  description="Extend Noctis on Windows, macOS and Linux: install official and community plugins, themes and language packs, connect apps through the Local API, and share plugins you make. What each one can do, how to install them, and how safe they are."
   path="/plugins"
 >
   <section class="section pl" aria-labelledby="pl-title">
     <div class="container">
       <header class="pl__head">
-        <p class="eyebrow">Noctis 1.5.3+ · Windows, macOS, Linux</p>
+        <p class="eyebrow">Noctis 1.6.6 · Windows, macOS, Linux</p>
         <h1 class="display" id="pl-title">Extend <em>Noctis</em>.</h1>
         <p class="lede pl__lede">
           Three ways to make Noctis do more, from the safest to the most powerful. Pick the one that fits, and
@@ -241,11 +273,28 @@ const quickstart = [
 
         <div class="doc">
           {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="get">
+            <h2 class="doc__h" id="get">Get plugins</h2>
+            <p class="doc__lede">
+              These are the plugins listed in Noctis right now. A listed plugin has been reviewed by the Noctis team.
+            </p>
+            <PluginDirectory submitHref={links.pluginSubmit} />
+
+            <div class="share">
+              <div>
+                <h3 class="share__title">Share your plugin</h3>
+                <p>Made a plugin? Send it in. We check it’s safe, and it shows up in Noctis with your name on it.</p>
+              </div>
+              <a class="btn btn--primary" href={links.pluginSubmit}>Submit a plugin</a>
+            </div>
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
           <section class="doc__sec" aria-labelledby="install">
             <h2 class="doc__h" id="install">Install and manage</h2>
             <p class="doc__lede">
               Everything happens in <strong>Settings → Plugins</strong>. The same steps cover content packs and
-              code plugins; the difference is that code waits for you to switch it on.
+              code plugins. The difference is that code waits for you to switch it on.
             </p>
             <ol class="steps" role="list">
               {steps.map((s, i) => (
@@ -276,6 +325,11 @@ const quickstart = [
 
             <ul class="points" role="list">
               <li>
+                <strong>Listed plugins are reviewed. Plugins from a file aren’t.</strong> The Noctis team reads the
+                source and tries every plugin before it’s listed. Install from file stays open to anyone, so be as
+                careful with it as with any download.
+              </li>
+              <li>
                 <strong>Content packs can’t run code.</strong> Noctis refuses a pack that contains a DLL, a script or
                 XAML, and validates every file in it.
               </li>
@@ -302,8 +356,9 @@ const quickstart = [
 
             <h3 class="doc__h3">What the approval dialog shows</h3>
             <p>
-              Reading what’s playing, the audio taps, visual layers, the scrobble hook, settings and private storage
-              need no permission. Everything else is listed when you switch a plugin on:
+              Reading what’s playing, the audio taps, visual layers, lyrics motion, windows of its own, the scrobble
+              hook, settings and private storage need no permission. Everything else is listed when you switch a
+              plugin on:
             </p>
             <div class="tbl" role="region" aria-label="Plugin permissions" tabindex="0">
               <table>
@@ -441,11 +496,11 @@ const quickstart = [
             <h2 class="doc__h" id="developers">For developers</h2>
             <p class="doc__lede">
               A code plugin is a .NET class library targeting <code>net10.0</code> plus a <code>plugin.json</code>.
-              It builds against the plugin kit, <code>Noctis.Plugins.Abstractions</code>, API version 1.1.
+              It builds against the plugin kit, <code>Noctis.Plugins.Abstractions</code>, API version 1.5.
             </p>
             <p>
               Never made one? <a href={links.pluginGuide}>Make a plugin</a> is a beginner guide: what you need, five
-              steps from the sample to a working plugin, and how to submit it.
+              steps from the sample to a working plugin, and how to share it.
             </p>
 
             <h3 class="doc__h3">Quick start</h3>
@@ -458,6 +513,11 @@ const quickstart = [
                 <pre tabindex="0"><code>{q.body}</code></pre>
               </div>
             ))}
+            <p class="doc__note">
+              <code>minAppVersion</code> is the oldest Noctis your plugin runs on. 1.6.6 is the first with API 1.5. A
+              plugin that only uses 1.1 features, like this one, can say <code>1.5.3</code> so older copies of
+              Noctis can run it too.
+            </p>
             <p class="doc__note">
               The kit is coming to NuGet. Until then, build it from the repo with{' '}
               <code>{code.pack_kit}</code>, or reference the project the way the samples do.
@@ -481,7 +541,7 @@ const quickstart = [
               </table>
             </div>
             <p class="doc__note">
-              Not possible yet: writing tags or the library, editing the queue, adding pages or sidebar entries.
+              Not possible yet: sidebar entries, changing the audio itself, and writing tags into your files.
             </p>
 
             <h3 class="doc__h3">Packaging</h3>
@@ -496,34 +556,44 @@ const quickstart = [
                 locked. That is for stability, not security.
               </li>
               <li>
-                A plugin built for a different API major version is refused. Minor versions only add, so 1.0 plugins
-                run on 1.1.
+                A plugin built for a different API major version is refused. Minor versions only add, so a 1.1 plugin
+                runs on 1.5.
+              </li>
+            </ul>
+
+            <h3 class="doc__h3">Icon and description</h3>
+            <ul class="points points--plain" role="list">
+              <li>
+                Give your plugin an icon: an <code>icon.png</code> in the zip, named by <code>"icon"</code> in
+                plugin.json. A square 256 × 256 PNG works best. Without one, Noctis shows a letter tile.
+              </li>
+              <li>
+                Write the description as one plain sentence of 56 characters or fewer, so it fits the card’s two
+                lines. No em dashes, and no “by you”: the card already shows who made it.
               </li>
             </ul>
 
             <h3 class="doc__h3">Samples in the repo</h3>
             <ul class="points points--plain" role="list">
-              <li><strong>Pulse Ring</strong>: a visual layer that pulses with the beat.</li>
-              <li>
-                <strong>Track Tools</strong>: a menu command, library search, a notice, a lyrics source stub, a
-                scrobble hook and declared settings.
-              </li>
-              <li>A sample <strong>content pack</strong>: two themes, a karaoke lyrics preset and a pseudo-language.</li>
-              <li>The <strong>Local API</strong> samples: an OBS overlay, a PowerShell script and curl examples.</li>
+              {samples.map((s) => (
+                <li>
+                  <a href={s.href} target="_blank" rel="noopener"><code>{s.name}</code></a>: {s.body}
+                </li>
+              ))}
             </ul>
-
-            <h3 class="doc__h3">Submit your plugin</h3>
             <p>
-              Made something? Submit it for the list in Settings → Plugins → Official Plugins, credited to you. Put the
-              source in a public GitHub repository, attach the plugin <code>.zip</code> to a GitHub release, then fill
-              in the submission form (also in the app: Settings → Plugins → Make your own plugin → Submit a Plugin). A
-              bot checks the zip without running it, then the Noctis team reads the source and tries the plugin before
-              listing it. New to this? The <a href={links.pluginGuide}>step-by-step guide</a> walks you through it.
+              The <a href={links.pluginExamples} target="_blank" rel="noopener">plugins folder</a> holds real plugins
+              to learn from too, like Mixxx, Album Roulette, A-B Loop and True Shuffle.
+            </p>
+
+            <h3 class="doc__h3">Share your plugin</h3>
+            <p>
+              Made something? Send it in and it can show up under Community plugins in every copy of Noctis, credited
+              to you. A bot checks the zip without running it, then the Noctis team reads the source and tries it.
             </p>
             <p class="doc__links">
+              <a class="link-arrow" href={links.pluginSubmit}>Submit a plugin</a>
               <a class="link-arrow" href={links.pluginGuide}>Make a plugin: the beginner guide</a>
-              <a class="link-arrow" href={links.pluginSubmit} target="_blank" rel="noopener">Open the submission form</a>
-              <a class="link-arrow" href={links.pluginSubmitDocs} target="_blank" rel="noopener">What the review checks</a>
             </p>
 
             <div class="cta">
@@ -557,7 +627,7 @@ const quickstart = [
               ))}
             </div>
             <p class="doc__links">
-              <a class="link-arrow" href={links.discord} target="_blank" rel="noopener">Share plugins and ask for help on Discord</a>
+              <a class="link-arrow" href={links.discord} target="_blank" rel="noopener">Ask for help on Discord</a>
             </p>
           </section>
         </div>
@@ -584,6 +654,41 @@ const quickstart = [
 
   .pl__lede {
     text-wrap: balance;
+  }
+
+  /* --- Share your plugin -------------------------------------------------- */
+
+  .share {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-5);
+    margin-top: var(--s-7);
+    padding: var(--s-5) var(--s-6);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+  }
+
+  .share__title {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-1);
+  }
+
+  .share .btn {
+    flex: none;
+  }
+
+  @media (max-width: 560px) {
+    .share {
+      flex-direction: column;
+      align-items: stretch;
+      padding: var(--s-5);
+    }
   }
 
   /* --- Three ways --------------------------------------------------------- */

@@ -69,23 +69,36 @@ identifier anywhere in the source or package list.
 
 **Plugins (v1.5.3+)**
 Source: `docs/PLUGINS.md`, `docs/LOCAL-API.md` and the plugin host in the app.
-- The plugin system ships in Noctis 1.5.3. Plugin API ("kit") version 1.1,
+- The plugin system ships in Noctis 1.5.3 (kit 1.1); 1.6.6 has kit 1.5,
   package `Noctis.Plugins.Abstractions`. Desktop only (Windows, macOS, Linux);
   Android does not load plugins.
 - Three ways to extend, safest first: content packs (JSON, no code), the Local
   API (other apps talk to Noctis over HTTP, nothing runs inside Noctis),
   plugins (.NET code inside Noctis, `type: "dotnet"`, targets `net10.0`).
-- Everything is in Settings → Plugins: Install from file…, Community plugins
-  switch, per-plugin switch, Remove (optionally "Also delete its data and
-  settings"), Open plugins folder, Reload plugins, declared plugin settings.
+- Everything is in Settings → Plugins (1.6.6): a grid of cards in two sections,
+  "Official Noctis plugins" (author Noctis, blue check, only when the installed
+  zip matched the official list by id, version and SHA-256) and "Community
+  plugins" (credited by name). A card opens the plugin's page: Install top
+  right; once installed "Open <name>" and a ⋯ menu (Visit homepage, Open
+  folder); then the Enabled switch, the plugin's settings and a Permissions
+  summary; a red "Remove plugin" row with an "Also delete its data and
+  settings" switch. "Install from file" sits beside the search box with a
+  folder and a refresh button. The list is plugins/index.json; the website
+  directory is built from the same file.
 - A code plugin installs switched off. Switching it on shows its permissions
   for approval. An update keeps data and settings and asks again only for new
   permissions (the plugin waits in **Needs approval** until switched on again).
-- Permissions: `playback.control`, `library.read`, `network` (disclosure),
+- Kit API 1.5 in Noctis 1.6.6 (1.2 since 1.5.9, 1.1 since 1.5.3). Since 1.2: BPM
+  and key; 1.3: windows of its own; 1.4: playlists; 1.5: queue and Up Next,
+  lyrics motion, adding saved files to the library.
+- Permissions: `playback.read` (implicit), `playback.control`, `library.read`,
+  `library.write.analysis`, `library.import`, `network` (disclosure),
   `lyrics.provider`, `menu.commands`, `notifications`. Reading playback, audio
-  taps, visual layers, the scrobble hook, settings and storage need none.
-- Not possible yet: writing tags or the library, editing the queue, new pages
-  or sidebar entries.
+  taps, visual layers, lyrics motion, views, the scrobble hook, settings and
+  storage need none.
+- Not possible yet: sidebar entries, changing the audio itself, writing file tags.
+- Icons: optional `icon.png` in the zip, named by "icon"; otherwise a letter
+  tile. Descriptions: one sentence, 56 characters at most, no em dash, no by-line.
 - Code plugins run with full trust; .NET has no in-process sandbox.
   Permissions gate only the Noctis API. Each plugin gets its own load context,
   for stability, not security.
@@ -144,7 +157,7 @@ Source: `docs/PLUGINS.md`, `docs/LOCAL-API.md` and the plugin host in the app.
 | Exclusive / hog-mode output on macOS or Linux | Gated to Windows and forced off elsewhere. |
 | "Nothing ever leaves your machine" | The app contacts GitHub (update check) and Deezer (artist portraits) automatically. Use the approved privacy wording above. |
 | Word-by-word lyrics for every song | Only when the source supplies word timing. |
-| An in-app plugin store or directory | Not built. Plugins are shared as zips (GitHub releases, Discord); a public index is only planned. |
+| A plugin store with payments or ratings | Not built. Settings → Plugins lists official and reviewed community plugins from plugins/index.json; nothing more. |
 | Sandboxed or "safe" code plugins | Code plugins run with full trust. Permissions are a summary, not a sandbox. |
 | Plugins on Android or iOS | Desktop only. Android does not load plugins. |
 | The plugin SDK on NuGet | `Noctis.Plugins.Abstractions` is built from the repo for now; say "coming to NuGet". |
