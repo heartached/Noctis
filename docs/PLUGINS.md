@@ -393,7 +393,8 @@ hello-1.0.0.zip
   plugin does not ship falls back to the app's: that is how the Mixxx plugin uses the app's
   `Microsoft.Data.Sqlite` (referenced with `ExcludeAssets="runtime"`, so the zip carries no SQLite).
 - The samples import `samples/PluginPackage.targets`, which zips `bin/Release/<name>-<version>.zip`
-  after every Release build. Copy it into your project or zip by hand.
+  after every Release build. Copy it into your project or zip by hand. An `icon.png` next to the
+  project's plugin.json goes into the zip too (the official plugins ship a 256 px one).
 - That zip is **reproducible**: Release builds leave the commit hash and PDB path out of the DLL,
   and the zip lists its files in name order with one fixed date. The same source, OS and .NET SDK
   give a byte-identical zip, so a published SHA-256 can be checked by rebuilding.
@@ -486,6 +487,40 @@ dotnet run --project src/Noctis/Noctis.csproj -p:Version=1.5.9
 
 **Publishing an official plugin** (build zip → SHA-256 → release tag → update `index.json` →
 push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING.md).
+
+### The official plugins
+
+| Plugin | Folder | Uses |
+|---|---|---|
+| Mixxx | `plugins/Noctis.Plugins.Mixxx` | API 1.2: BPM and key from Mixxx's library |
+| Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.4: a view, `PlayTracks`, `ShowAlbum`, a track command, notices |
+| A-B Loop | `plugins/Noctis.Plugins.ABLoop` | API 1.4: a view, `Seek`/`Play`/`Pause`, a track command |
+
+Their icons come from `scripts/plugin-icons/generate_plugin_icons.py` (Pillow and numpy; run it
+after changing a design and commit the `icon.png` files it writes).
+
+**Album Roulette's reel** draws on `TopLevel.RequestAnimationFrame` only while it moves and waits
+while its window is hidden or minimized. A frame allocates nothing: covers are decoded once,
+straight to the drawn size, with their corners rounded into the bitmap; the glow and the edge
+fades are drawn once into bitmaps; brushes are immutable; no clip or opacity is pushed (each push
+costs the drawing context an object). `AlbumRoulettePluginTests.Reel_FrameBudget_NoAllocationsPerFrame`
+measures it (0 bytes per frame, stepping and drawing).
+
+**How exact A-B Loop is.** A plugin reads `NowPlaying.Position`, which Noctis updates about every
+100 ms (the player's position timer), and stays still for 300 ms after a seek while the player
+settles. Looping on that alone lands up to ~100 ms past B. A-B Loop instead runs a ~15 ms timer
+(while a loop is on) that predicts the position between updates (the last value plus the time
+since it was first seen, re-anchored on every update and at each jump) and jumps half a tick
+early, so the error is centred on zero. Measured against a simulated host with 100 ms updates
+(+-8 ms jitter, up to 6 ms to reach the UI thread) and a 15 ms (+-2 ms) timer, over 400 loops
+(`ABLoopPluginTests.LoopBack_Timing_PredictedVersusRawPosition`): mean |error| 5.8 ms, p95 13.8 ms,
+max 20.7 ms, against 54.5 / 98.8 / 112.9 ms when looping on the raw position. The jump itself is
+an ordinary seek, so the audio engine's seek time (it flushes and refills its buffer) comes on top
+and is not part of that number, and the seam is not sample-exact. A host `SetLoop(a, b)` was
+considered and left out: in the app it would sit on the same 100 ms position updates and jump
+with the same seek, so it would not be more exact; a sample-exact loop needs the decoder itself to
+wrap around, which is engine work, not a small additive API. Expect ~0.1 s or better, not a
+seamless loop.
 
 ## Submitting a plugin
 
