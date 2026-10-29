@@ -89,7 +89,7 @@ public interface IAudioPlayer : IDisposable
     bool EqualizerActive { get; }
 
     /// <summary>Short description of the active output path for the signal-path
-    /// display, e.g. "WASAPI Exclusive — 44.1 kHz / 24-bit".</summary>
+    /// display, e.g. "WASAPI Exclusive, 44.1 kHz / 24-bit".</summary>
     string OutputDescription { get; }
 
     /// <summary>ReplayGain currently applied to the output in dB. 0 = bypass

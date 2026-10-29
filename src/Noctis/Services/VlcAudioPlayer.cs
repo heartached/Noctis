@@ -1784,20 +1784,20 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         {
             // The pinned device (Settings → Output Device), when one is set and alive.
             var device = AudioOutputDeviceCatalog.NameOf(_outputDeviceId);
-            var suffix = string.IsNullOrEmpty(device) ? "" : $" — {device}";
+            var suffix = string.IsNullOrEmpty(device) ? "" : $" ({device})";
             if (_exclusiveModeEnabled && _exclusiveOut is { } sink)
             {
                 // Name the endpoint the sink actually opened (a missing pin falls back
                 // to the default, DeviceId null).
                 if (sink.DeviceId == null) suffix = "";
                 return sink.IsExclusive
-                    ? $"WASAPI Exclusive{suffix} — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
-                    : $"WASAPI Shared{suffix} — {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
+                    ? $"WASAPI Exclusive{suffix}, {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
+                    : $"WASAPI Shared{suffix}, {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
             }
             if (_exclusiveModeEnabled)
                 return "WASAPI Exclusive (engages on play)";
             if (_wasapiOut != null)
-                return $"WASAPI Shared{suffix} — {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
+                return $"WASAPI Shared{suffix}, {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
             if (OperatingSystem.IsWindows())
                 return $"WASAPI Shared{suffix} (system mixer)";
             if (OperatingSystem.IsMacOS())
@@ -2153,7 +2153,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out var reason);
                     if (sink != null)
                     {
-                        notice = $"Exclusive output active — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
+                        notice = $"Exclusive output active: {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
                     }
                     else
                     {
@@ -2161,7 +2161,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                         // Read as an error before: it said what failed but not that
                         // playback is fine, nor that the next track retries exclusive
                         // (the reuse check above drops a shared fallback sink).
-                        notice = $"Playing through the shared system mixer — {reason}. " +
+                        notice = $"Playing through the shared system mixer ({reason}). " +
                                  "Audio is unaffected; exclusive output is retried when the next track starts.";
                     }
 
@@ -2178,7 +2178,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                         _exclusiveModeEnabled = false;
                         RebuildOutputModeLocked(false, resumeTrack: false);
                         OutputModeChanged?.Invoke(this,
-                            "No audio output could be opened in exclusive mode — " +
+                            "No audio output could be opened in exclusive mode. " +
                             "Exclusive Mode was turned off and playback moved back to the shared system mixer.");
                         return;
                     }
@@ -2273,7 +2273,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 try { RebuildOutputModeLocked(false); }
                 finally { _playbackLock.Release(); }
                 OutputModeChanged?.Invoke(this,
-                    "Audio device disconnected — switched back to shared output.");
+                    "Audio device disconnected. Switched back to shared output.");
             }
             catch (Exception ex)
             {

@@ -2263,7 +2263,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Grays the Song Transitions card while it's unavailable (exclusive on).</summary>
     public double SongTransitionsOpacity => ExclusiveAudioEnabled ? 0.5 : 1.0;
-    /// <summary>Live output-path status from the player ("Exclusive output active — 44.1 kHz / 24-bit",
+    /// <summary>Live output-path status from the player ("Exclusive output active: 44.1 kHz / 24-bit",
     /// "Exclusive mode unavailable (device in use) — using shared output", ...).</summary>
     [ObservableProperty] private string _exclusiveAudioStatus = "";
 
