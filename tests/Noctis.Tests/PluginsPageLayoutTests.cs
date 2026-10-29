@@ -130,9 +130,9 @@ public class PluginsPageLayoutTests : IDisposable
             Assert.Same(vm.SubmitPluginCommand, submit.Command);
             Assert.Contains(view.FindControl<Border>("MakePluginCard")!, submit.GetLogicalAncestors());
             Assert.Same(vm.OpenPluginGuideCommand, view.FindControl<Button>("ReadPluginGuideButton")!.Command);
-            // Each official card credits its author ("by Noctis" for Mixxx).
+            // Each official card credits its maker ("by heartached" for Mixxx).
             Assert.Contains(view.FindControl<ItemsControl>("OfficialPluginsGrid")!.GetVisualDescendants().OfType<TextBlock>(),
-                t => t.Text == Loc.T("Plugins.Get.By", "Noctis") && t.IsEffectivelyVisible);
+                t => t.Text == Loc.T("Plugins.Get.By", PluginTrust.OfficialMaker) && t.IsEffectivelyVisible);
             Assert.Same(vm.InstallPluginFromFileCommand, view.FindControl<Button>("InstallPluginFromFileButton")!.Command);
 
             var folder = view.FindControl<Button>("OpenPluginsFolderButton")!;

@@ -116,10 +116,17 @@ public class PluginsGridTests : IDisposable
         var official = Assert.Single(m.Vm.OfficialCards);
         Assert.Equal(OfficialId, official.Id);
         Assert.True(official.IsOfficial);
-        Assert.Equal(Loc.T("Plugins.Get.By", "Noctis"), official.ByLine);
+        // Author "Noctis" is the trust check; the card credits the maker (owner 10-29).
+        Assert.Equal(Loc.T("Plugins.Get.By", PluginTrust.OfficialMaker), official.ByLine);
 
         Assert.Equal(new[] { "dev.community.listed", "dev.test.anon", "dev.test.hand" }, m.Vm.CommunityCards.Select(c => c.Id));
         Assert.All(m.Vm.CommunityCards, c => Assert.False(c.IsOfficial));
+
+        // The Community switch off hides the whole Community section (owner 10-29).
+        Assert.True(m.Vm.ShowCommunitySection);
+        m.Host.SetCommunityPluginsEnabled(false);
+        Assert.False(m.Vm.ShowCommunitySection);
+        Assert.True(m.Vm.ShowOfficialSection);
         Assert.Equal(Loc.T("Plugins.Get.By", "Jafezy JD"), m.Vm.CommunityCards[0].ByLine);
         Assert.Equal(Loc.T("Plugins.Card.NoAuthor"), m.Vm.CommunityCards.Single(c => c.Id == "dev.test.anon").ByLine);
         Assert.Equal(Loc.T("Plugins.Get.By", "Someone"), m.Vm.CommunityCards.Single(c => c.Id == "dev.test.hand").ByLine);

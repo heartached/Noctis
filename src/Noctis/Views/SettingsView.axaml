@@ -7147,7 +7147,7 @@
                 </Grid>
                 <TextBlock Text="{loc:T Plugins.Get.Empty}" FontSize="12" Opacity="0.5" Margin="14,0,0,10"
                            IsVisible="{Binding ShowOfficialEmpty}"/>
-                <ItemsControl x:Name="OfficialPluginsGrid" ItemsSource="{Binding OfficialCards}"
+                <ItemsControl x:Name="OfficialPluginsGrid" ClipToBounds="False" ItemsSource="{Binding OfficialCards}"
                               ItemTemplate="{StaticResource PluginCardTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -7169,7 +7169,7 @@
                 </Grid>
                 <TextBlock x:Name="CommunityPluginsEmpty" Text="{loc:T Plugins.CommunityEmpty}" FontSize="12" Opacity="0.5" Margin="14,0,0,10"
                            TextWrapping="Wrap" IsVisible="{Binding ShowCommunityEmpty}"/>
-                <ItemsControl x:Name="CommunityPluginsGrid" ItemsSource="{Binding CommunityCards}"
+                <ItemsControl x:Name="CommunityPluginsGrid" ClipToBounds="False" ItemsSource="{Binding CommunityCards}"
                               ItemTemplate="{StaticResource PluginCardTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>

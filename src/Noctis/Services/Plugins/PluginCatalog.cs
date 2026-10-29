@@ -52,6 +52,8 @@ public enum OfficialPluginState { Install, Installed, Update, NeedsNewerApp, Not
 public static class PluginTrust
 {
     public const string OfficialAuthor = "Noctis";
+    /// <summary>Shown as the maker of official plugins ("by heartached"); display only.</summary>
+    public const string OfficialMaker = "heartached";
 
     public static bool IsOfficialAuthor(string? author)
         => string.Equals(author?.Trim(), OfficialAuthor, StringComparison.OrdinalIgnoreCase);

@@ -2251,7 +2251,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.EnableConfirm" xml:space="preserve"><value>Enable</value></data>
   <data name="Plugins.SafetyNote" xml:space="preserve"><value>.NET plugins run inside Noctis with the same access to your files, network and computer as the app itself. Permissions only limit what a plugin can do through Noctis; they are not a sandbox. Enable plugins from people you trust.</value></data>
   <data name="Plugins.TurnOnTitle" xml:space="preserve"><value>Turn on community plugins?</value></data>
-  <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Noctis will load the plugins you switch on. Each one asks for your approval the first time.</value></data>
+  <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Community plugins are made by other people, not by Noctis. A plugin can do anything Noctis can on your computer, so only use ones from people you trust.</value></data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve"><value>Turn on</value></data>
   <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Remove {0}?</value></data>
   <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's folder is deleted. Its data and settings are kept unless you turn on the switch below, so a reinstall picks up where it left off.</value></data>
@@ -2286,7 +2286,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Submit" xml:space="preserve"><value>Submit a Plugin</value></data>
   <!-- Settings → Plugins → Make your own plugin -->
   <data name="Plugins.Make.Title" xml:space="preserve"><value>Make your own plugin</value></data>
-  <data name="Plugins.Make.Line" xml:space="preserve"><value>Build something for Noctis and share it. If it passes our review, it shows up in Official Plugins with your name on it.</value></data>
+  <data name="Plugins.Make.Line" xml:space="preserve"><value>Build something for Noctis and share it. If it passes our review, it shows up under Community plugins with your name on it.</value></data>
   <data name="Plugins.Make.Step1Title" xml:space="preserve"><value>Build it</value></data>
   <data name="Plugins.Make.Step1" xml:space="preserve"><value>Follow the guide. You need the free .NET SDK and a code editor.</value></data>
   <data name="Plugins.Make.Step2Title" xml:space="preserve"><value>Submit it</value></data>

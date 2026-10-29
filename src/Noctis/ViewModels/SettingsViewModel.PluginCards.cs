@@ -53,9 +53,12 @@ public partial class SettingsViewModel
     /// <summary>Nothing installed or listed from the community yet (not a search miss).</summary>
     public bool ShowCommunityEmpty => !IsSearchingPlugins && !_pluginCardOrder.Any(c => !c.IsOfficial);
     /// <summary>A search that matched nothing in either section.</summary>
-    public bool ShowNoPluginMatches => IsSearchingPlugins && OfficialCards.Count == 0 && CommunityCards.Count == 0;
+    public bool ShowNoPluginMatches => IsSearchingPlugins && OfficialCards.Count == 0 && (!ShowCommunityPlugins || CommunityCards.Count == 0);
     public bool ShowOfficialSection => HasOfficialCards || ShowOfficialEmpty;
-    public bool ShowCommunitySection => HasCommunityCards || ShowCommunityEmpty;
+    /// <summary>The Community switch off hides the whole section (the host's state, so it doesn't
+    /// show while the turn-on confirmation is still open).</summary>
+    public bool ShowCommunitySection => ShowCommunityPlugins && (HasCommunityCards || ShowCommunityEmpty);
+    private bool ShowCommunityPlugins => Plugins?.CommunityPluginsEnabled == true;
     public string OfficialCountText => OfficialCards.Count.ToString(CultureInfo.CurrentCulture);
     public string CommunityCountText => CommunityCards.Count.ToString(CultureInfo.CurrentCulture);
 
@@ -360,8 +363,11 @@ public sealed partial class PluginCardItem : ObservableObject
     public string Id => Listing?.Entry.Id ?? Local?.Id ?? "";
     public string Name => Listing?.Name ?? Local?.Name ?? "";
     public string Author => Listing is not null ? Listing.Entry.Author : Local?.Author ?? "";
-    /// <summary>"by Noctis" / "by Jafezy JD"; a plugin that names nobody reads "Community plugin".</summary>
-    public string ByLine => Author.Trim().Length > 0 ? Loc.T("Plugins.Get.By", Author.Trim()) : Loc.T("Plugins.Card.NoAuthor");
+    /// <summary>"by heartached" / "by Jafezy JD"; a plugin that names nobody reads "Community plugin".
+    /// Official plugins keep author "Noctis" (the trust check) but credit their maker (owner 10-29);
+    /// only a verified listing gets that name, never a zip that merely says "Noctis".</summary>
+    public string ByLine => IsOfficial ? Loc.T("Plugins.Get.By", PluginTrust.OfficialMaker)
+        : Author.Trim().Length > 0 ? Loc.T("Plugins.Get.By", Author.Trim()) : Loc.T("Plugins.Card.NoAuthor");
     public string Description => Listing is { Description.Length: > 0 } l ? l.Description : Local?.Description ?? "";
     public bool HasDescription => Description.Length > 0;
     public string Version => Listing?.Version ?? Local?.Version ?? "";

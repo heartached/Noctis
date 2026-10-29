@@ -226,7 +226,6 @@ public partial class SettingsViewModel : ViewModelBase
         var result = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Plugins.TurnOnBody"),
             Title: Loc.T("Plugins.TurnOnTitle"),
-            Note: Loc.T("Plugins.SafetyNote"),
             ConfirmText: Loc.T("Plugins.TurnOnConfirm"),
             Width: 440));
         if (result.Confirmed) Plugins?.SetCommunityPluginsEnabled(true);
@@ -238,6 +237,8 @@ public partial class SettingsViewModel : ViewModelBase
         _syncingCommunityPlugins = true;
         try { CommunityPluginsEnabled = Plugins?.CommunityPluginsEnabled ?? false; }
         finally { _syncingCommunityPlugins = false; }
+        OnPropertyChanged(nameof(ShowCommunitySection));
+        OnPropertyChanged(nameof(ShowNoPluginMatches));
     }
 
     /// <summary>The first-enable approval: what the plugin declares, and what that does and does not mean.</summary>
@@ -246,7 +247,10 @@ public partial class SettingsViewModel : ViewModelBase
         var details = plugin.Permissions.Count == 0
             ? new List<string> { Loc.T("Plugins.NoPermissions") }
             : plugin.Permissions.Select(PermissionLabel).ToList();
-        var who = plugin.Author.Length > 0 ? Loc.T("Plugins.EnableBodyBy", plugin.Name, plugin.Version, plugin.Author)
+        // The verified copy of an official listing credits its maker, like its card's "by" line.
+        var author = _pluginCardOrder.Any(c => c.IsOfficial && ReferenceEquals(c.Installed, plugin))
+            ? PluginTrust.OfficialMaker : plugin.Author;
+        var who = author.Length > 0 ? Loc.T("Plugins.EnableBodyBy", plugin.Name, plugin.Version, author)
                                            : Loc.T("Plugins.EnableBody", plugin.Name, plugin.Version);
         var result = await ShowPluginDialog(new Views.ConfirmationRequest(
             who,
