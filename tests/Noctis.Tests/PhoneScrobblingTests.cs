@@ -479,6 +479,25 @@ public sealed class PhoneScrobblingTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Page_ClosedSheet_StopsFollowingTheScrobbler()
+    {
+        // Every Settings open made a Scrobbling pane that the long-lived scrobbler (and the shell)
+        // held for good: each later change re-ran every closed sheet's Refresh.
+        var (shell, scrobbler) = NewShell(await Connected());
+        var page = new SettingsPageViewModel(shell);
+        Assert.True(page.Scrobbling.SendPlays);
+        page.OnClosed();
+        await scrobbler.SetSendPlaysAsync(false);
+        Assert.True(page.Scrobbling.SendPlays);                 // no longer listening
+
+        var open = new SettingsPageViewModel(shell);
+        Assert.False(open.Scrobbling.SendPlays);
+        await scrobbler.SetSendPlaysAsync(true);
+        Assert.True(open.Scrobbling.SendPlays);                 // an open one still follows
+        open.OnClosed();
+    }
+
+    [AvaloniaFact]
     public async Task Page_SummaryNamesWhatThePhoneSendsTo()
     {
         var (shell, scrobbler) = NewShell(await Connected(lastFm: true, listenBrainz: false));

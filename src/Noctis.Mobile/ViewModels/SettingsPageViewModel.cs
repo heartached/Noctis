@@ -876,6 +876,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Background.PropertyChanged -= OnSubPageChanged;
         Background.Detach();
         Scrobbling.PropertyChanged -= OnSubPageChanged;
+        Scrobbling.Detach();
         History.PropertyChanged -= OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
     }
