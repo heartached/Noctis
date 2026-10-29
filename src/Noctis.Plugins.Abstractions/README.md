@@ -12,3 +12,11 @@ install it from Settings → Plugins → Install from file…
 
 Full guide (manifest reference, API, permissions, safety model, packaging):
 https://github.com/heartached/Noctis/blob/main/docs/PLUGINS.md
+
+## Release notes
+
+- **1.5** (Noctis 1.6.6+): the queue (`GetQueue`, `SetUpNext`, `TracksQueued`), more `TrackInfo`
+  fields, lyrics effects, `ILibraryImport`, and the size a view's window opens at
+  (`IPluginViewProvider.PreferredWindowSize`, `MinWindowSize`, `WindowSizeToContent`; older Noctis
+  versions ignore them).
+- Earlier versions: see "Versioning and deprecation policy" in the full guide.

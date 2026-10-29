@@ -467,6 +467,29 @@ public sealed class PluginViewEntry
     /// <summary>Creates the control and hands it to the window presenter.</summary>
     public bool Open() => _owner.OpenView(this);
 
+    /// <summary>
+    /// API 1.5: the window size the plugin asks for (<see cref="IPluginViewProvider.PreferredWindowSize"/>,
+    /// <see cref="IPluginViewProvider.MinWindowSize"/>, <see cref="IPluginViewProvider.WindowSizeToContent"/>).
+    /// A plugin built against an older kit answers with the defaults; a getter that throws counts as
+    /// no hint (logged), so a bad hint never keeps the window from opening.
+    /// </summary>
+    public PluginViewSizeHint ReadSizeHint()
+    {
+        T Read<T>(Func<T> get, T fallback, string what)
+        {
+            try { return get(); }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.State, "Plugins", $"{Plugin.Id}: view '{Name}' {what} failed: {ex.Message}");
+                return fallback;
+            }
+        }
+        return new PluginViewSizeHint(
+            Read(() => Provider.PreferredWindowSize, null, nameof(IPluginViewProvider.PreferredWindowSize)),
+            Read(() => Provider.MinWindowSize, null, nameof(IPluginViewProvider.MinWindowSize)),
+            Read(() => Provider.WindowSizeToContent, Avalonia.Controls.SizeToContent.Manual, nameof(IPluginViewProvider.WindowSizeToContent)));
+    }
+
     internal void Withdraw()
     {
         if (IsWithdrawn) return;
@@ -475,6 +498,12 @@ public sealed class PluginViewEntry
         Withdrawn = null;
         handler?.Invoke(this, EventArgs.Empty);
     }
+}
+
+/// <summary>API 1.5: what a view asked of its window's size (DIPs); null = Noctis's default.</summary>
+public sealed record PluginViewSizeHint(Avalonia.Size? Preferred, Avalonia.Size? Min, Avalonia.Controls.SizeToContent SizeToContent)
+{
+    public static readonly PluginViewSizeHint None = new(null, null, Avalonia.Controls.SizeToContent.Manual);
 }
 
 /// <summary>A message a plugin asked to show.</summary>

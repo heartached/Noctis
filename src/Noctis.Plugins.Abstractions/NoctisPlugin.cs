@@ -206,4 +206,27 @@ public interface IPluginViewProvider
 
     /// <summary>Builds the view (UI thread), each time its window opens.</summary>
     Control CreateView();
+
+    /// <summary>
+    /// API 1.5: the size the view's window opens at, in device-independent pixels (the client
+    /// area, without the title bar). Noctis sizes the window before it shows it and centres it on
+    /// the screen Noctis is on; the user can still resize it. null, or an axis that is not a
+    /// positive number, keeps Noctis's default (1000 × 680). Declare it as a public property on
+    /// the class that implements this interface; older Noctis versions ignore it.
+    /// </summary>
+    Avalonia.Size? PreferredWindowSize => null;
+
+    /// <summary>
+    /// API 1.5: the smallest size the user can shrink the window to, in device-independent pixels.
+    /// null (or an axis that is not a positive number) = Noctis's default of 480 × 360, lowered to
+    /// <see cref="PreferredWindowSize"/> when that is smaller.
+    /// </summary>
+    Avalonia.Size? MinWindowSize => null;
+
+    /// <summary>
+    /// API 1.5: opens the window at the size of the view's content instead of
+    /// <see cref="PreferredWindowSize"/> (on the axes it names), within the minimum size and the
+    /// screen. Once the user resizes the window it keeps the size they gave it.
+    /// </summary>
+    SizeToContent WindowSizeToContent => SizeToContent.Manual;
 }

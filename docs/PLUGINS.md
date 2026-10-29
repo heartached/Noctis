@@ -36,7 +36,7 @@ API **1.5** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 | Audio taps | Live beat pulse and spectrum of what is playing | — |
 | Visual layers | A control drawn behind the lyrics (offered as a style in Settings' Flowing background picker) | — |
 | Lyrics motion | How the letters of word-synced lyrics move, and which lines read right to left (1.5) | — |
-| Views | A page of your own, opened from Settings → Plugins ("Open &lt;name&gt;") in its own window (1.3) | — |
+| Views | A page of your own, opened from Settings → Plugins ("Open &lt;name&gt;") in its own window (1.3), at the size it asks for (1.5) | — |
 | Album page | Show an album's page in the main window (1.3) | — |
 | Scrobble hook | Called when a track counts as listened (half its length or 4 minutes) | — (`playback.read`) |
 | Settings | Settings you declare in plugin.json, drawn by Noctis in Settings → Plugins | — |
@@ -326,6 +326,11 @@ public interface IPluginViewProvider
 {
     string Name { get; }      // window title, and the button: "Open <Name>"
     Control CreateView();     // called each time the user opens it
+
+    // API 1.5, optional (default bodies): the window's size
+    Size? PreferredWindowSize => null;                       // DIPs; null = 1000 × 680
+    Size? MinWindowSize => null;                             // DIPs; null = 480 × 360 (or the preferred size when smaller)
+    SizeToContent WindowSizeToContent => SizeToContent.Manual;
 }
 ```
 
@@ -339,6 +344,24 @@ own (one per view: opening it again brings that window forward).
 - The window closes when the plugin stops (switched off, removed, reloaded) or you dispose the
   registration. The control is then detached, so stop timers in `DetachedFromVisualTree`.
 - Keep it cheap: draw only while the control is attached, visible and its window is not minimized.
+- **Window size (1.5).** The window opens at 1000 × 680, a size made for pages. A smaller view says
+  what it wants with `PreferredWindowSize` (and `MinWindowSize`), declared as public properties on
+  the class that implements `IPluginViewProvider`:
+
+  ```csharp
+  public Size? PreferredWindowSize => new Size(440, 700);
+  public Size? MinWindowSize => new Size(360, 560);
+  ```
+
+  Sizes are device-independent pixels of the client area (a 440 × 700 window is 550 × 875 pixels
+  at 125 %). Noctis sizes the window before it shows it, centres it on the screen Noctis is on,
+  keeps it within that screen, and the user can still resize it down to the minimum. An axis that
+  is not a positive number keeps the default. `WindowSizeToContent` opens the window at the size
+  of your content instead (set a `MinWindowSize` too, or the default minimum applies). Older
+  Noctis versions ignore all three, so declaring them never stops a plugin from loading.
+  Don't resize the window from your control (`TopLevel.GetTopLevel(this)` in
+  `OnAttachedToVisualTree`): that runs inside the window's first layout pass, and the window then
+  goes back to the size it started with.
 
 ### Lyrics providers
 
@@ -818,7 +841,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.2 | 1.5.9+ | `TrackInfo.Bpm` / `MusicalKey`, `ILibraryReader.GetAll()`, `ITrackAnalysisWriter` (`host.TrackAnalysis`) with the `library.write.analysis` permission. |
 | 1.3 | 1.6.6+ | Views (`RegisterView` / `OpenView`), `ShowAlbum`, `IPlaybackControl.PlayTracks`, `TrackInfo.AlbumId` / `ArtworkPath` / `ReleaseType` / `DateAdded` / `LastPlayed`. |
 | 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
-| 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`); `ILibraryImport` (`host.LibraryImport`) with the `library.import` permission: add audio files to the library, read the music folders. |
+| 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`); `ILibraryImport` (`host.LibraryImport`) with the `library.import` permission: add audio files to the library, read the music folders; view window size (`IPluginViewProvider.PreferredWindowSize` / `MinWindowSize` / `WindowSizeToContent`). |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 
