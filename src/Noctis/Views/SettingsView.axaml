@@ -367,8 +367,15 @@
                     </Border>
 
                     <!-- Remove plugin: one red row of its own (asks first, data kept unless chosen).
-                         Dev builds only: release builds just switch plugins on and off (owner 10-29). -->
-                    <Panel x:Name="PluginPageRemoveHost" IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).PluginRemovalAllowed}">
+                         Release builds: only plugins the user added; the ones listed in Noctis just switch
+                         on and off. Dev builds: every plugin (owner 10-29). -->
+                    <Panel x:Name="PluginPageRemoveHost">
+                        <Panel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).PluginRemovalAllowed"/>
+                                <Binding Path="IsUserAdded"/>
+                            </MultiBinding>
+                        </Panel.IsVisible>
                         <Border x:Name="PluginPageRemovePanel" Classes="plugin-panel plugin-group" IsVisible="{Binding IsInstalled}">
                             <Button x:Name="PluginPageRemoveButton" Classes="plugin-row-button plugin-danger-row"
                                     AutomationProperties.Name="{loc:T Plugins.Detail.RemoveRow}"

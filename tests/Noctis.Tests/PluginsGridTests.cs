@@ -805,38 +805,58 @@ public class PluginsGridTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task ReleaseBuild_HasNoRemovePlugin_OnlyTheSwitch()
+    public async Task ReleaseBuild_ListedPluginsOnlySwitch_UserAddedOnesCanBeRemoved()
     {
-        // Owner 10-29: release builds can only switch plugins on and off.
-        using var m = Mount(withClient: false);
+        // Owner 10-29: on release builds the plugins in Noctis can't be removed; one the user
+        // added from a file can.
+        using var m = Mount();
         m.Vm.PluginRemovalAllowed = false;
+        Publish(m, File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis")));
         _box.WriteFolder("dev.test.code", PluginSandbox.Manifest(id: "dev.test.code", name: "Code Thing", author: "Someone"),
             ("Test.Plugin.dll", new byte[] { 1 }));
         m.Host.LoadAll();
+        await m.Vm.LoadOfficialPluginsAsync();
+        var listing = m.Vm.OfficialPlugins.Single(o => o.Entry.Id == OfficialId);
+        await m.Vm.InstallOfficialPluginAsync(listing);
+        var official = Assert.Single(m.Vm.OfficialCards);
+        var added = m.Vm.CommunityCards.Single(c => c.Id == "dev.test.code");
+        Assert.True(official.IsInstalled);
+        Assert.False(official.IsUserAdded);
+        Assert.True(added.IsUserAdded);
+
         m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
         var view = new SettingsView { DataContext = m.Vm };
         var window = new Window { Width = 1100, Height = 900, Content = view };
+        bool RemoveShown()
+        {
+            Pump();
+            window.UpdateLayout();
+            var detail = view.FindControl<StackPanel>("PluginDetailPage")!;
+            Assert.True(detail.IsVisible);
+            Assert.NotNull(detail.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>().FirstOrDefault(t => t.Name == "PluginPageToggle"));
+            return detail.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "PluginPageRemoveButton" && b.IsEffectivelyVisible);
+        }
         try
         {
             window.Show();
             Pump();
-            m.Vm.SelectedPluginCard = m.Vm.CommunityCards.Single(c => c.Id == "dev.test.code");
-            Pump();
-            window.UpdateLayout();
-
-            var detail = view.FindControl<StackPanel>("PluginDetailPage")!;
-            Assert.True(detail.IsVisible);
-            Assert.NotNull(detail.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>().FirstOrDefault(t => t.Name == "PluginPageToggle"));
-            Assert.DoesNotContain(detail.GetVisualDescendants().OfType<Button>(), b => b.Name == "PluginPageRemoveButton" && b.IsEffectivelyVisible);
+            m.Vm.SelectedPluginCard = official;
+            Assert.False(RemoveShown());
+            m.Vm.SelectedPluginCard = added;
+            Assert.True(RemoveShown());
         }
         finally { window.Close(); }
 
-        // Nothing else can remove it either.
         var asked = 0;
-        m.Vm.ShowPluginDialog = r => { asked++; return Task.FromResult(new ConfirmationResult(true, true)); };
-        await m.Vm.RemovePluginCommand.ExecuteAsync(m.Host.FindById("dev.test.code"));
+        m.Vm.ShowPluginDialog = r => { asked++; return Task.FromResult(new ConfirmationResult(true, false)); };
+        // The listed one: nothing removes it, not even the command.
+        await m.Vm.RemovePluginCommand.ExecuteAsync(listing.Installed);
         Assert.Equal(0, asked);
-        Assert.NotNull(m.Host.FindById("dev.test.code"));
+        Assert.NotNull(m.Host.FindById(OfficialId));
+        // The user's own: asks, then goes.
+        await m.Vm.RemovePluginCommand.ExecuteAsync(m.Host.FindById("dev.test.code"));
+        Assert.Equal(1, asked);
+        Assert.Null(m.Host.FindById("dev.test.code"));
     }
 
     [AvaloniaTheory]

@@ -349,8 +349,9 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Owner 10-29: on release builds plugins can only be switched on and off, never removed
-    /// (official and community alike); Remove is a dev-build (Debug) tool. Tests set it.
+    /// Owner 10-29: on release builds the plugins listed in Noctis (official and community) can
+    /// only be switched on and off; only a plugin the user added from a file or the folder can be
+    /// removed there. Debug (dev) builds remove anything. Tests set it.
     /// </summary>
     public bool PluginRemovalAllowed { get; internal set; } =
 #if DEBUG
@@ -362,7 +363,9 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task RemovePluginAsync(LoadedPlugin? plugin)
     {
-        if (Plugins is null || plugin is null || !PluginRemovalAllowed) return;
+        if (Plugins is null || plugin is null) return;
+        // A listed plugin (any listing's installed copy) stays unless this is a dev build.
+        if (!PluginRemovalAllowed && OfficialPlugins.Any(o => ReferenceEquals(o.Installed, plugin))) return;
         var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Plugins.RemoveBody"),
             Title: Loc.T("Plugins.RemoveTitle", plugin.Name),

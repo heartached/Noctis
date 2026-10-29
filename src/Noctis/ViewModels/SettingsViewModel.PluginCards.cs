@@ -356,6 +356,9 @@ public sealed partial class PluginCardItem : ObservableObject
     public LoadedPlugin? Installed => Listing is not null ? Listing.Installed : Local;
     public bool IsInstalled => Installed is not null;
     public bool IsListed => Listing is not null;
+    /// <summary>Added by the user (from a file or the folder), not one of the plugins listed in
+    /// Noctis: the user may always remove it, on release builds too (owner 10-29).</summary>
+    public bool IsUserAdded => Listing is null && Local is not null;
     /// <summary>The verified mark: an official listing (author Noctis on plugins/index.json). An
     /// installed zip is never official on its own say, see PluginHost.IsVerifiedOfficial.</summary>
     public bool IsOfficial => Listing?.IsOfficial == true;
@@ -495,7 +498,7 @@ public sealed partial class PluginCardItem : ObservableObject
 
     private static readonly string[] Derived =
     {
-        nameof(Listing), nameof(Local), nameof(Installed), nameof(IsInstalled), nameof(IsListed), nameof(IsOfficial),
+        nameof(Listing), nameof(Local), nameof(Installed), nameof(IsInstalled), nameof(IsUserAdded), nameof(IsListed), nameof(IsOfficial),
         nameof(Id), nameof(Name), nameof(Author), nameof(ByLine), nameof(Description), nameof(HasDescription),
         nameof(Version), nameof(VersionText), nameof(HasVersion), nameof(Homepage), nameof(HasHomepage), nameof(IsRestricted), nameof(EnableLine),
         nameof(MetaLine), nameof(HasEnableLine), nameof(HasMoreMenu), nameof(HasHeaderActions),
