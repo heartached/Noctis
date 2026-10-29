@@ -260,6 +260,11 @@ public class PluginsPageLayoutTests : IDisposable
             "Plugins.Card.A11yOfficial", "Plugins.Card.A11yCommunity", "Plugins.Card.A11yCommunityNoAuthor",
             "Plugins.Detail.Back", "Plugins.Detail.Version", "Plugins.Detail.Homepage", "Plugins.Detail.Enabled",
             "Plugins.Detail.EnableLine", "Plugins.Detail.RestrictedLine", "Plugins.Detail.Files", "Plugins.Detail.FilesLine",
+            // The simpler page (owner 10-29): "...", Remove plugin..., the permissions line, the stepper.
+            "Plugins.Detail.More", "Plugins.Detail.RemoveRow", "Plugins.PermSummary", "Plugins.PermSummarySeparator",
+            "Plugins.PermVerb.PlaybackControl", "Plugins.PermVerb.LibraryRead", "Plugins.PermVerb.Network", "Plugins.PermVerb.LyricsProvider",
+            "Plugins.PermVerb.MenuCommands", "Plugins.PermVerb.Notifications", "Plugins.PermVerb.LibraryWriteAnalysis",
+            "Plugins.PermVerb.LibraryImport", "Plugins.Setting.Decrease", "Plugins.Setting.Increase",
         };
         foreach (var file in new[] { "Strings.resx", "Strings.ru.resx" })
         {

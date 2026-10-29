@@ -50,6 +50,10 @@ public static class PluginPermissionText
     public static string Short(string permission)
         => Suffix(permission) is { Length: > 0 } s ? Loc.T("Plugins.PermShort." + s) : permission;
 
+    /// <summary>"control playback", the words after "Can" in the plugin page's permissions line.</summary>
+    public static string Verb(string permission)
+        => Suffix(permission) is { Length: > 0 } s ? Loc.T("Plugins.PermVerb." + s) : permission;
+
     /// <summary>"Control playback: play, pause, skip and seek".</summary>
     public static string Describe(string permission)
         => Suffix(permission) is { Length: > 0 } s ? Loc.T("Plugins.Perm." + s) : permission;
@@ -94,6 +98,12 @@ public sealed partial class LoadedPlugin : ObservableObject
     public bool HasPermissions => Permissions.Count > 0;
     /// <summary>Localized chip labels for <see cref="Permissions"/>.</summary>
     public IReadOnlyList<string> PermissionChips => Permissions.Select(PluginPermissionText.Short).ToList();
+    /// <summary>The plugin page's one quiet line: "Can read your library, control playback".</summary>
+    public string PermissionSummary => HasPermissions
+        ? Loc.T("Plugins.PermSummary", string.Join(Loc.T("Plugins.PermSummarySeparator"), Permissions.Select(PluginPermissionText.Verb)))
+        : Loc.T("Plugins.NoPermissionsShort");
+    /// <summary>The full sentences, shown when the line is expanded.</summary>
+    public IReadOnlyList<string> PermissionDetails => Permissions.Select(PluginPermissionText.Describe).ToList();
     public string? Homepage => Manifest?.Homepage;
     /// <summary>Full path of plugin.json's "icon" when that file is in the plugin folder, else null.</summary>
     public string? IconPath
@@ -247,6 +257,54 @@ public sealed partial class PluginSettingItem : ObservableObject
     public decimal Minimum => Definition.Min is { } m ? (decimal)Math.Max(m, -1e9) : -1_000_000_000m;
     public decimal Maximum => Definition.Max is { } m ? (decimal)Math.Min(m, 1e9) : 1_000_000_000m;
 
+    // ── Number settings, drawn like Noctis's own Settings (owner 10-29) ──
+
+    /// <summary>A number with both "min" and "max": the Settings slider with its value beside it
+    /// (Album Town's 24 to 60 albums, Album Roulette's hour 0 to 23).</summary>
+    public bool UsesSlider => IsNumber && Definition.Min is { } min && Definition.Max is { } max && max > min;
+    /// <summary>A number without a full range: the pill stepper (minus, value, plus).</summary>
+    public bool UsesStepper => IsNumber && !UsesSlider;
+    /// <summary>One step: 1 when the range and default are whole numbers, else 0.1.</summary>
+    public double NumberStep
+    {
+        get
+        {
+            static bool Whole(double? v) => v is not { } d || Math.Abs(d - Math.Round(d)) < 1e-9;
+            var whole = Whole(Definition.Min) && Whole(Definition.Max)
+                && (!double.TryParse(Definition.Default, NumberStyles.Float, CultureInfo.InvariantCulture, out var def) || Whole(def));
+            return whole ? 1 : 0.1;
+        }
+    }
+    public double SliderMinimum => Definition.Min ?? 0;
+    public double SliderMaximum => Definition.Max ?? 0;
+
+    /// <summary>The slider's value (two-way); writes clamp and round to <see cref="NumberStep"/>.</summary>
+    public double SliderValue
+    {
+        get => NumberValue is { } v ? (double)v : SliderMinimum;
+        set => NumberValue = (decimal)RoundToStep(value);
+    }
+
+    /// <summary>The value as shown beside the slider or inside the stepper ("40", "1.5").</summary>
+    public string NumberText => NumberValue is { } v ? v.ToString("0.###", CultureInfo.CurrentCulture) : "";
+
+    /// <summary>Screen reader names of the stepper's buttons.</summary>
+    public string DecreaseName => Loc.T("Plugins.Setting.Decrease", Label);
+    public string IncreaseName => Loc.T("Plugins.Setting.Increase", Label);
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void Decrease() => NumberValue = (decimal)RoundToStep((double)(NumberValue ?? 0) - NumberStep);
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void Increase() => NumberValue = (decimal)RoundToStep((double)(NumberValue ?? 0) + NumberStep);
+
+    private double RoundToStep(double value)
+    {
+        var step = NumberStep;
+        var rounded = Math.Round(value / step) * step;
+        return step >= 1 ? Math.Round(rounded) : Math.Round(rounded, 6);
+    }
+
     /// <summary>The stored value as invariant text (what <see cref="IPluginSettings"/> reads).</summary>
     public string Value { get; private set; } = "";
 
@@ -289,6 +347,8 @@ public sealed partial class PluginSettingItem : ObservableObject
         OnPropertyChanged(nameof(BoolValue));
         OnPropertyChanged(nameof(TextValue));
         OnPropertyChanged(nameof(NumberValue));
+        OnPropertyChanged(nameof(SliderValue));
+        OnPropertyChanged(nameof(NumberText));
         OnPropertyChanged(nameof(SelectedChoice));
         if (!_loading) _changed(this);
     }

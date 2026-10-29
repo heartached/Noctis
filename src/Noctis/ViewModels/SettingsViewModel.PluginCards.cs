@@ -370,11 +370,25 @@ public sealed partial class PluginCardItem : ObservableObject
     public string? Homepage => Installed?.Homepage ?? Listing?.Entry.Homepage;
     public bool HasHomepage => !string.IsNullOrEmpty(Homepage);
     public bool IsRestricted => Installed?.IsRestricted == true;
-    /// <summary>The line under the page's switch: why it can't run, a problem, or what it does.</summary>
+    /// <summary>"by Jafezy JD · v1.2.1": the header's one line under the name.</summary>
+    public string MetaLine => HasVersion ? ByLine + " · " + VersionText : ByLine;
+    /// <summary>The short line under the page's switch, only when something is wrong: why it can't
+    /// run, or the problem. A plugin that runs fine has none (owner 10-29: no long subtitle).</summary>
     public string EnableLine => Installed is not { } p ? ""
         : p.IsRestricted ? Loc.T("Plugins.Detail.RestrictedLine")
         : p.ShowStatusBadge ? p.StatusText
-        : Loc.T("Plugins.Detail.EnableLine");
+        : "";
+    public bool HasEnableLine => EnableLine.Length > 0;
+    /// <summary>The header has a primary action: Install / Update / Replace, or the plugin's own views.</summary>
+    public bool HasHeaderActions => Listing?.ShowButton == true || Installed?.HasViews == true;
+    /// <summary>The header's "..." menu has something in it: the homepage and/or the plugin's folder.</summary>
+    public bool HasMoreMenu => HasHomepage || IsInstalled;
+
+    /// <summary>The permissions line is open to the full list.</summary>
+    [ObservableProperty] private bool _isPermissionsExpanded;
+
+    [RelayCommand]
+    private void TogglePermissions() => IsPermissionsExpanded = !IsPermissionsExpanded;
 
     /// <summary>The small pill in the card's corner: Update, On, Off, or a problem (Failed, ...).
     /// Empty for a plugin that is not installed (its card is just the plugin).</summary>
@@ -470,6 +484,7 @@ public sealed partial class PluginCardItem : ObservableObject
         nameof(Listing), nameof(Local), nameof(Installed), nameof(IsInstalled), nameof(IsListed), nameof(IsOfficial),
         nameof(Id), nameof(Name), nameof(Author), nameof(ByLine), nameof(Description), nameof(HasDescription),
         nameof(Version), nameof(VersionText), nameof(HasVersion), nameof(Homepage), nameof(HasHomepage), nameof(IsRestricted), nameof(EnableLine),
+        nameof(MetaLine), nameof(HasEnableLine), nameof(HasMoreMenu), nameof(HasHeaderActions),
         nameof(ChipText), nameof(HasChip), nameof(ChipIsAccent), nameof(AccessibleName),
         nameof(Monogram), nameof(MonogramBrush), nameof(MonogramPaletteIndex),
     };
