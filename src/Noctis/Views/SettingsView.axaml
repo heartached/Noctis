@@ -4504,7 +4504,7 @@
                         <TextBlock Text="{loc:T Settings.BalanceDesc}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <Grid ColumnDefinitions="*,Auto">
-                            <controls:SmoothSlider Grid.Column="0"
+                            <controls:SmoothSlider x:Name="AudioBalanceSlider" Grid.Column="0"
                                     AutomationProperties.Name="{loc:T Settings.Balance}"
                                     Classes="accent-slider" Step="1"
                                     Minimum="-100" Maximum="100"

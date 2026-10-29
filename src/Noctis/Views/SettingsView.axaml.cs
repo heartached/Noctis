@@ -71,6 +71,7 @@ public partial class SettingsView : UserControl
         var defaults = new Noctis.Models.AppSettings();
         AttachThumbDoubleTapReset(IslandWidthSlider, defaults.PlaybackBarWidth);
         AttachThumbDoubleTapReset(QueueWidthSlider, defaults.QueuePanelWidth);
+        AttachThumbDoubleTapReset(AudioBalanceSlider, defaults.AudioBalance);
         AttachThumbDoubleTapReset(PlayerBarOpacitySlider, defaults.PlaybackBarBackgroundOpacity);
         AttachThumbDoubleTapReset(BackgroundBlurSlider, defaults.BackgroundBlurAmount);
         AttachThumbDoubleTapReset(TrackBoxOpacitySlider, defaults.PlaybackBarTrackBoxOpacity);
