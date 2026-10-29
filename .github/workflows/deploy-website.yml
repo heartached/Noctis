@@ -39,11 +39,16 @@ on:
 
   workflow_dispatch:
 
+  # The plugin directory on /plugins is built from plugins/index.json and the
+  # icons beside it, so merging a submission PR (or any change that adds,
+  # updates or removes a plugin) redeploys the site.
   push:
     branches: [main]
     paths:
       - 'website/**'
       - '.github/workflows/deploy-website.yml'
+      - 'plugins/index.json'
+      - 'plugins/*/icon.png'
 
 # Needed by the commit step below. Everything else here is read-only.
 permissions:
