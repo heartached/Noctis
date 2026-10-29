@@ -212,8 +212,8 @@
                             <TextBlock x:Name="PluginPageDescription" Text="{Binding Description}" FontSize="13" Opacity="0.78"
                                        TextWrapping="Wrap" LineHeight="19" MaxWidth="560" HorizontalAlignment="Left" Margin="0,6,0,0"
                                        IsVisible="{Binding HasDescription}"/>
-                            <!-- An installed plugin's actions: Update (or Cancel) from the list, and the
-                                 plugin's own views ("Open Album Town"). Install sits top-right instead. -->
+                            <!-- An installed plugin's Update (or Cancel) from the list. Install, and the plugin's
+                                 own views ("Open Album Town"), sit top-right beside "..." instead. -->
                             <WrapPanel x:Name="PluginPageActions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0"
                                        IsVisible="{Binding HasHeaderActions}">
                                 <Button x:Name="PluginPageUpdateButton"
@@ -229,26 +229,6 @@
                                     <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
                                                TextWrapping="Wrap" TextAlignment="Center"/>
                                 </Button>
-                                <ItemsControl ItemsSource="{Binding Installed.Views, FallbackValue={x:Null}}"
-                                              IsVisible="{Binding Installed.HasViews, FallbackValue=False}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="plugins:PluginViewEntry">
-                                            <Button Classes="accent-pill" Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand"
-                                                    VerticalContentAlignment="Center"
-                                                    AutomationProperties.Name="{Binding OpenText}"
-                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginViewCommand}"
-                                                    CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding OpenText}" FontSize="12.5" FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
                             </WrapPanel>
                             <TextBlock Text="{Binding Listing.Error, FallbackValue={x:Null}}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
                                        Margin="0,6,0,0" IsVisible="{Binding Listing.HasError, FallbackValue=False}"/>
@@ -257,9 +237,30 @@
                                          IsVisible="{Binding Listing.IsBusy, FallbackValue=False}"/>
                         </StackPanel>
                         <!-- Top-right (owner 10-29): Install / Replace / Cancel while the plugin is not
-                             installed; once it is, "..." with Visit homepage and Open folder
-                             (SettingsView.axaml.cs OnPluginMoreClick). Never both. -->
-                        <Panel x:Name="PluginPageCorner" Grid.Column="2" VerticalAlignment="Top" Margin="0,4,0,0">
+                             installed; once it is, the plugin's own views ("Open Album Town") and "..." with
+                             Visit homepage and Open folder (SettingsView.axaml.cs OnPluginMoreClick). -->
+                        <StackPanel x:Name="PluginPageCorner" Grid.Column="2" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Top" Margin="0,4,0,0">
+                            <ItemsControl x:Name="PluginPageViews" VerticalAlignment="Center" ItemsSource="{Binding Installed.Views, FallbackValue={x:Null}}"
+                                          IsVisible="{Binding Installed.HasViews, FallbackValue=False}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="plugins:PluginViewEntry">
+                                        <Button Classes="accent-pill" Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand"
+                                                VerticalContentAlignment="Center"
+                                                AutomationProperties.Name="{Binding OpenText}"
+                                                Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginViewCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="{Binding OpenText}" FontSize="12.5" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <Button x:Name="PluginPageInstallButton"
                                     Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
                                     Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
@@ -279,7 +280,7 @@
                                     Click="OnPluginMoreClick">
                                 <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15"/>
                             </Button>
-                        </Panel>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Notes and problems, as quiet lines (only when there is something to say). -->

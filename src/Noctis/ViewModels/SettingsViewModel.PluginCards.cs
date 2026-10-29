@@ -385,8 +385,9 @@ public sealed partial class PluginCardItem : ObservableObject
     /// <summary>Installed with something to do (Update, Cancel): the button sits under the
     /// description, beside "Open X".</summary>
     public bool ShowInlineButton => IsInstalled && Listing?.ShowButton == true;
-    /// <summary>The row under the description has something: Update, or the plugin's own views.</summary>
-    public bool HasHeaderActions => ShowInlineButton || Installed?.HasViews == true;
+    /// <summary>The row under the description has something: Update or Cancel. The plugin's own
+    /// views ("Open Album Town") sit top-right beside "..." (owner 10-29).</summary>
+    public bool HasHeaderActions => ShowInlineButton;
     /// <summary>The header's "..." (homepage, the plugin's folder): installed plugins only. A plugin
     /// that is not installed has its Install button in that corner instead.</summary>
     public bool HasMoreMenu => IsInstalled;

@@ -409,6 +409,13 @@ public class PluginsGridTests : IDisposable
             Assert.False(detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageUpdateButton").IsVisible);
             Assert.True(more.IsEffectivelyVisible);
             Assert.Equal("PluginPageCorner", more.FindAncestorOfType<Panel>()!.Name);
+            // A plugin's own views ("Open Album Town") sit in that corner too, left of "..." (owner 10-29),
+            // not under the description.
+            var views = detail.GetVisualDescendants().OfType<ItemsControl>().Single(i => i.Name == "PluginPageViews");
+            var cornerPanel = Assert.IsType<StackPanel>(views.Parent);
+            Assert.Equal("PluginPageCorner", cornerPanel.Name);
+            Assert.True(cornerPanel.Children.IndexOf(views) < cornerPanel.Children.IndexOf(more));
+            Assert.False(m.Vm.SelectedPluginCard.HasHeaderActions);
             more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Pump();
             var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
