@@ -1347,6 +1347,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
         var token = linked.Token;
+        // Wi-Fi only holds for the whole batch, not only when it was asked for: a Download All
+        // that loses Wi-Fi stops rather than carrying on over mobile data.
+        var onWifi = IsOnWifi;
+        var wifiOnly = onWifi != null && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
         var queue = new ConcurrentQueue<Guid>(ids);
         // With no other batch running, this one counts from zero: "Downloading 3 of 22" and
         // "1 failed" are about this run, not every run since the app started.
@@ -1376,6 +1380,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         await _downloadSlots.WaitAsync(song.Token).ConfigureAwait(false);
                         try
                         {
+                            if (wifiOnly && !onWifi!())
+                                throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
                             await DownloadOneAsync(client, id, song.Token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);
                             Interlocked.Increment(ref done);
@@ -1385,7 +1391,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     catch (OperationCanceledException) when (token.IsCancellationRequested) { }
                     // Remove Download on this song mid-transfer: stopped, neither done nor failed.
                     catch (Exception) when (song.IsCancellationRequested || _withdrawn.ContainsKey(id)) { }
-                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull)
+                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull or NoctisErrorKind.WifiRequired)
                     {
                         // Every other song would fail the same way.
                         Interlocked.CompareExchange(ref fatal, ex, null);

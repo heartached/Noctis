@@ -27,10 +27,22 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
     {
         _shell = shell;
         _scrobbler = shell.Scrobbler;
-        _scrobbler.Changed += (_, _) => shell.Marshal(Refresh);
-        if (shell.Account != null) shell.Account.StateChanged += (_, _) => shell.Marshal(Refresh);
-        shell.HistoryPrefsChanged += (_, _) => shell.Marshal(Refresh);   // Share with Computer
+        _onChanged = (_, _) => shell.Marshal(Refresh);
+        _scrobbler.Changed += _onChanged;
+        if (shell.Account != null) shell.Account.StateChanged += _onChanged;
+        shell.HistoryPrefsChanged += _onChanged;   // Share with Computer
         Refresh();
+    }
+
+    private readonly EventHandler _onChanged;
+
+    /// <summary>The sheet closed: stop following the scrobbler, the account and the shell, which
+    /// all outlive it (each Settings open makes a new pane).</summary>
+    internal void Detach()
+    {
+        _scrobbler.Changed -= _onChanged;
+        if (_shell.Account != null) _shell.Account.StateChanged -= _onChanged;
+        _shell.HistoryPrefsChanged -= _onChanged;
     }
 
     /// <summary>Raised with the Last.fm approval page; the view opens it in the browser.</summary>

@@ -537,6 +537,35 @@ public class ListeningHistoryHandoffTests : IDisposable
     }
 
     [Fact]
+    public async Task Publisher_TheSendAgain_CapturesOnTheUiThread_NotTheSendsThread()
+    {
+        // The repeat ran where the send finished (a pool thread) and walked Player.UpNext there,
+        // an ObservableCollection the UI changes.
+        var id = Guid.NewGuid();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ui = new List<Action>();
+        var captures = 0;
+        var sent = new List<long>();
+        long position = 0;
+        var publisher = new PickUpPublisher(() => true, () => { captures++; return new PlayQueueShare(new[] { id }, id, position); },
+            async s => { sent.Add(s.PositionMs); if (sent.Count == 1) await gate.Task; },
+            post: a => { lock (ui) ui.Add(a); });
+
+        publisher.Flush();
+        position = 60_000;
+        publisher.Flush();                       // while the first is out: sends again after it
+        gate.SetResult();
+        await publisher.Pending;
+        Assert.Equal(1, captures);               // not captured on the send's thread
+        Action[] queued;
+        lock (ui) queued = ui.ToArray();
+        Assert.Single(queued);
+        queued[0]();                             // the UI thread runs it
+        await publisher.Pending;
+        Assert.Equal(new long[] { 0, 60_000 }, sent);
+    }
+
+    [Fact]
     public void Publisher_Disabled_NeverCaptures()
     {
         var captured = 0;
@@ -589,6 +618,32 @@ public class ListeningHistoryHandoffTests : IDisposable
 
         again.MarkHandled(pending);
         Assert.Null(new PhoneHandoffInbox(_dir).Pending(DateTime.MinValue));
+    }
+
+    [Fact]
+    public void Inbox_TheSameSpotSentAgain_KeepsItsTime_SoAnAnsweredOfferDoesNotComeBack()
+    {
+        // A paused phone whose app restarted forgets what it sent and sends the same spot again
+        // (a finished sync flushes it). It must not become a new, newer offer.
+        var now = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+        var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var inbox = new PhoneHandoffInbox(_dir);
+        var h = PhoneHandoff.FromWire(ids, ids[1], 83_000, 0, now, "Pixel")!;
+        inbox.Save(h);
+        inbox.MarkHandled(h);                        // the user took it (or dismissed it)
+        inbox.NoteDesktopPlayback(now.AddMinutes(10)); // and played here since
+
+        var again = PhoneHandoff.FromWire(ids, ids[1], 83_400, 0, now.AddHours(1), "Pixel")!;
+        inbox.Save(again);
+
+        Assert.Null(inbox.Pending(inbox.DesktopPlaybackUtc));
+        Assert.Equal(now, inbox.Latest!.SavedUtc);
+        Assert.Null(new PhoneHandoffInbox(_dir).Pending(DateTime.MinValue)); // also after a restart
+
+        // A real move on the phone is still a new offer.
+        var moved = PhoneHandoff.FromWire(ids, ids[1], 120_000, 0, now.AddHours(2), "Pixel")!;
+        inbox.Save(moved);
+        Assert.Same(moved, inbox.Pending(inbox.DesktopPlaybackUtc));
     }
 
     [Fact]

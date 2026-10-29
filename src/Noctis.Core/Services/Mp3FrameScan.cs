@@ -69,13 +69,14 @@ internal static class Mp3FrameScan
         if (HasLengthHeader(head, first, firstFrame)) return false;
         var audioStart = start + first;
 
-        // CBR: every frame has the first one's bitrate and the estimates are exact.
+        // CBR: every frame has the first one's bitrate and the estimates are exact. Any
+        // format counts: a part joined at another rate is found by its bitrate too.
         var vbr = false;
         for (var p = 1; p <= BitrateProbes && !vbr; p++)
         {
             var at = audioStart + (length - audioStart) * p / (BitrateProbes + 1);
             var probe = ReadAt(stream, at, ProbeBytes);
-            if (FindFrame(probe, 0, probe.Length, out var f, firstFrame) >= 0 && f.Kbps != firstFrame.Kbps)
+            if (FindFrame(probe, 0, probe.Length, out var f) >= 0 && f.Kbps != firstFrame.Kbps)
                 vbr = true;
         }
         if (!vbr) return false;
@@ -161,15 +162,13 @@ internal static class Mp3FrameScan
     }
 
     // A frame header that the next frame confirms (a lone 0xFFE sync inside audio data is common).
-    // With a reference frame, the two must also share its version and sample rate.
-    private static int FindFrame(ReadOnlySpan<byte> data, int from, int span, out Frame frame, Frame? like = null)
+    private static int FindFrame(ReadOnlySpan<byte> data, int from, int span, out Frame frame)
     {
         frame = default;
         var end = Math.Min(data.Length - 4, from + span);
         for (var i = Math.Max(0, from); i <= end; i++)
         {
             if (!TryReadHeader(data[i..], out var f)) continue;
-            if (like is { } l && (f.Version != l.Version || f.SampleRate != l.SampleRate)) continue;
             var next = i + f.Length;
             if (next + 4 > data.Length) continue;
             if (!TryReadHeader(data[next..], out var n) || n.Version != f.Version || n.SampleRate != f.SampleRate) continue;

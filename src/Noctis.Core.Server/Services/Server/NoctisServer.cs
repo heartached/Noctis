@@ -754,7 +754,11 @@ public sealed partial class NoctisServer : IAsyncDisposable
                     if (Ids.TrackGuid(ids[i]) is not { } g) continue;
                     long? ms = i < times.Count && long.TryParse(times[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
                     if (ms is not null && !_recentScrobbles.Add($"{who}\n{g:N}\n{ms}")) continue;
-                    var forward = i < verdicts.Count && string.Equals(verdicts[i], "computer", StringComparison.Ordinal);
+                    // Only the main account's plays reach this computer's Last.fm / ListenBrainz (another
+                    // account's are its owner's, not this computer's), and only timed ones: the retry
+                    // guard needs the time, so an untimed "computer" repeated would be sent each time.
+                    var forward = user.IsAdmin && ms is not null && i < verdicts.Count
+                        && string.Equals(verdicts[i], "computer", StringComparison.Ordinal);
                     await _library.ScrobbleAsync(g, ScrobbleTime(ms, now), forward).ConfigureAwait(false);
                 }
                 return new JsonObject();
@@ -880,8 +884,9 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 // The phone reads it each sync (sync on or off), so a renamed profile reaches it.
                 if (DisplayName() is { } displayName) status["displayName"] = displayName;
                 // Where this computer sends a phone's plays (the phone's Scrobbling page). Absent: it
-                // sends them nowhere (a host without scrobbling, or an older desktop).
-                if (_library.ScrobbleServices is { } services)
+                // sends them nowhere (a host without scrobbling, or an older desktop). Only the main
+                // account's plays are forwarded (see "scrobble"), so only it is told the services.
+                if (_library.ScrobbleServices is { } services && ctx.Items["user"] is ServerUser { IsAdmin: true })
                     status["scrobbling"] = new JsonObject { ["lastFm"] = services.LastFm, ["listenBrainz"] = services.ListenBrainz };
                 return new JsonObject { ["noctisSync"] = status };
             }

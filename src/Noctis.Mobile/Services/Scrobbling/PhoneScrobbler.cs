@@ -317,6 +317,10 @@ public sealed class PhoneScrobbler
     private async Task FlushServiceAsync(string service, CancellationToken ct)
     {
         var lastFm = service == "lastfm";
+        // A rejection answers for the whole call (ListenBrainz's 400, Last.fm's error 6), so one bad
+        // play would take the good ones batched with it: a rejected batch is halved until the
+        // bad play goes alone, then full batches resume.
+        var take = LastFmScrobbleClient.MaxBatch;
         while (!ct.IsCancellationRequested)
         {
             if (_backoff.TryGetValue(service, out var b) && b.NextUtc > UtcNow) return;
@@ -325,7 +329,7 @@ public sealed class PhoneScrobbler
             List<QueuedPlay> batch;
             lock (_gate)
                 batch = _queue.Where(p => lastFm ? p.LastFm : p.ListenBrainz).OrderBy(p => p.Timestamp)
-                    .Take(LastFmScrobbleClient.MaxBatch).ToList();
+                    .Take(take).ToList();
             if (batch.Count == 0) { _backoff.Remove(service); return; }
 
             var entries = batch.Select(p => p.ToEntry()).ToList();
@@ -335,8 +339,12 @@ public sealed class PhoneScrobbler
 
             switch (result)
             {
+                case ScrobbleSendResult.Rejected when batch.Count > 1:
+                    take = Math.Max(1, batch.Count / 2);
+                    break;
                 case ScrobbleSendResult.Ok:
                 case ScrobbleSendResult.Rejected:
+                    if (result == ScrobbleSendResult.Rejected) take = LastFmScrobbleClient.MaxBatch;
                     lock (_gate)
                     {
                         foreach (var p in batch)

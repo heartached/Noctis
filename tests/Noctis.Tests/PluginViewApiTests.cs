@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using Noctis.Models;
 using Noctis.Plugins;
 using Noctis.Services.Plugins;
@@ -202,5 +203,29 @@ public class PluginViewApiTests : IDisposable
 
         script.Host.Playback.PlayTracks(ids, startIndex: 2);
         Assert.Same(tracks[2], player.CurrentTrack);
+
+        // The start song itself is unknown: it is skipped, so the next known one plays (not the one before).
+        script.Host.Playback.PlayTracks(ids, startIndex: 1);
+        Assert.Same(tracks[2], player.CurrentTrack);
+        Assert.Empty(player.UpNext);
+    }
+
+    [AvaloniaFact]
+    public void OpenView_AndShowAlbum_FromAPluginsBackgroundTask_RunOnTheUiThread()
+    {
+        var view = new View();
+        var (script, plugin, host) = Start(h => h.RegisterView(view));
+        var presentedOnUi = new List<bool>();
+        var openedOnUi = new List<bool>();
+        host.ViewPresenter = (_, _) => { presentedOnUi.Add(Dispatcher.UIThread.CheckAccess()); return true; };
+        host.AlbumOpener = _ => { openedOnUi.Add(Dispatcher.UIThread.CheckAccess()); return true; };
+
+        var work = Task.Run(() => (script.Host!.OpenView(view), script.Host.ShowAlbum(Guid.NewGuid().ToString("D"))));
+        while (!work.IsCompleted) Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal((true, true), work.Result);
+        Assert.Equal(new[] { true }, presentedOnUi);
+        Assert.Equal(new[] { true }, openedOnUi);
+        Assert.Equal(PluginStatus.Running, plugin.Status);
     }
 }

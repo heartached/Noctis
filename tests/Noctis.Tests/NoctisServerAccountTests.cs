@@ -411,6 +411,48 @@ public class NoctisServerAccountTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Scrobble_AnotherAccountsComputerPlays_AreCountedButNeverReachTheOwnersLastFm()
+    {
+        _users.Create("bob", "another pass");
+        var (signIn, _) = await SignIn(user: "bob", password: "another pass", deviceId: "phone-0002");
+        var key = signIn.GetProperty("noctisSignIn").GetProperty("apiKey").GetString()!;
+        var t0 = DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeMilliseconds();
+
+        await GetWithHeader("scrobble", key, $"submission=true&id=tr-{_track.Id:N}&time={t0}&noctisScrobble=computer");
+
+        Assert.Single(_lib.Scrobbles);
+        Assert.Empty(_lib.Forwarded);
+    }
+
+    [Fact]
+    public async Task SyncStatus_AnotherAccount_IsNotToldTheComputerSendsItsPlays()
+    {
+        _lib.ScrobbleServices = (true, true);
+        _users.Create("bob", "another pass");
+        var (signIn, _) = await SignIn(user: "bob", password: "another pass", deviceId: "phone-0002");
+        var key = signIn.GetProperty("noctisSignIn").GetProperty("apiKey").GetString()!;
+
+        var status = (await GetWithHeader("getNoctisSyncStatus", key)).GetProperty("noctisSync");
+
+        // Its plays are never forwarded, so its phone must not offer Through Computer.
+        Assert.False(status.TryGetProperty("scrobbling", out _));
+    }
+
+    [Fact]
+    public async Task Scrobble_AComputerVerdictWithoutATime_IsNotForwarded_SoRepeatsCannotFloodLastFm()
+    {
+        var key = await SignInKey();
+        var query = $"submission=true&id=tr-{_track.Id:N}&noctisScrobble=computer";
+
+        await GetWithHeader("scrobble", key, query);
+        await GetWithHeader("scrobble", key, query);
+        await GetWithHeader("scrobble", key, query);
+
+        Assert.Equal(3, _lib.Scrobbles.Count);
+        Assert.Empty(_lib.Forwarded);
+    }
+
+    [Fact]
     public async Task SyncStatus_SaysWhereTheComputerSendsPlays_OnlyWhenItForwardsThem()
     {
         var key = await SignInKey();

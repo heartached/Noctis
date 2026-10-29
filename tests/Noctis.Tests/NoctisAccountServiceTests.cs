@@ -497,6 +497,27 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(svc.DownloadedCount > 0);
     }
 
+    /// <summary>A Download All started on Wi-Fi that loses it: the rest of the batch is not fetched over
+    /// mobile data (the check ran only when the batch was asked for).</summary>
+    [Fact]
+    public async Task Downloads_StopMidBatch_WhenWifiIsLost_AndWifiOnlyIsOn()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var checks = 0;
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            IsOnWifi = () => Interlocked.Increment(ref checks) <= 1,   // on Wi-Fi when asked, mobile data right after
+        };
+        await svc.SyncNowAsync(ct);
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAllAsync(ct));
+        Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
+        Assert.Equal(0, svc.DownloadedCount);
+        Assert.True(svc.IsSignedIn);
+    }
+
     [Fact]
     public async Task Covers_AreNotFetched_WhenThePhoneHasNoRoomLeft()
     {

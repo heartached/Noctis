@@ -135,7 +135,8 @@ public sealed partial class ShellViewModel
     internal PickUpPublisher PickUp => _pickUp ??= new PickUpPublisher(
         () => PickUpOnComputer && Account is { IsSignedIn: true },
         CaptureQueueShare,
-        share => Account!.SavePlayQueueAsync(share));
+        share => Account!.SavePlayQueueAsync(share),
+        post: Marshal);
 
     /// <summary>The playing desktop song first, then the desktop songs queued after it; null when
     /// the song playing is the phone's own (the computer has no such song to continue).</summary>

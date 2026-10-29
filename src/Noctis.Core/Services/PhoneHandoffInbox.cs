@@ -30,12 +30,15 @@ public sealed class PhoneHandoffInbox
     public PhoneHandoff? Latest { get { lock (_lock) return _latest; } }
 
     /// <summary>Keeps <paramref name="handoff"/> if it is newer than the one held (two phones: the
-    /// later one wins), and tells the listeners. False when an older one was ignored.</summary>
+    /// later one wins), and tells the listeners. False when an older one was ignored. The same spot
+    /// sent again (a phone whose app restarted forgets what it sent, and a finished sync sends it
+    /// once more) keeps the held one and its time: it is not newer, so an answered offer stays answered.</summary>
     public bool Save(PhoneHandoff handoff)
     {
         lock (_lock)
         {
             if (_latest != null && handoff.SavedUtc < _latest.SavedUtc) return false;
+            if (_latest != null && SameSpot(_latest, handoff)) return true;
             _latest = handoff;
             Persist();
         }
@@ -80,6 +83,10 @@ public sealed class PhoneHandoffInbox
             Persist();
         }
     }
+
+    /// <summary>The same queue at the same song and place (a second apart counts as the same, as the phone's PlayQueueShare.SameSpot).</summary>
+    private static bool SameSpot(PhoneHandoff a, PhoneHandoff b)
+        => a.CurrentId == b.CurrentId && Math.Abs(a.PositionMs - b.PositionMs) < 1000 && a.TrackIds.SequenceEqual(b.TrackIds);
 
     private void Load()
     {
