@@ -10,7 +10,8 @@
           CheckBox                 the round pill switch of Settings (label left, switch right)
           Button, ToggleButton     rounded pills; TextBox (single line) a rounded pill field
           ComboBox                 a pill; its drop-down list is frosted glass over the window
-          ContextMenu, MenuFlyout  frosted glass over the window (the app's menu card, blurred)
+          ContextMenu, MenuFlyout  frosted glass over the window (the app's menu card, blurred);
+                                   a MenuFlyout filled in its Opening event shows its rows
           every Popup              drawn in the window's overlay layer, so the glass can see what
                                    is behind it (a separate native popup window cannot be frosted)
 
@@ -30,6 +31,10 @@
     </Style>
 
     <!-- ── Menus: the app's menu card as frosted glass ── -->
+    <!-- A MenuFlyout that fills itself in Opening shows its rows (Helpers/MenuFlyoutItemsSync.cs). -->
+    <Style Selector="MenuFlyoutPresenter">
+        <Setter Property="(helpers:MenuFlyoutItemsSync.Enable)" Value="True" />
+    </Style>
     <Style Selector="ContextMenu, MenuFlyoutPresenter">
         <Setter Property="(helpers:MenuOpenAnimation.UseFade)" Value="True" />
         <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />

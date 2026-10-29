@@ -26,7 +26,7 @@ public class AlbumRoulettePluginTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 29, 12, 0, 0, TimeSpan.Zero);
 
-    private static TrackInfo T(string title, string album = "Album", string artist = "Artist", int year = 2006, int plays = 0,
+    internal static TrackInfo T(string title, string album = "Album", string artist = "Artist", int year = 2006, int plays = 0,
         DateTimeOffset? last = null, string genre = "Pop", string releaseType = "Album", string? albumId = null, string? art = null,
         string albumArtist = "", int number = 1)
         => new(Guid.NewGuid().ToString("D"), title, artist, album, albumArtist, TimeSpan.FromMinutes(3), year, genre, number,
