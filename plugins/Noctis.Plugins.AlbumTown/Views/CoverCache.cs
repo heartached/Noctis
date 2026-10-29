@@ -50,11 +50,18 @@ public sealed class CoverCache : IDisposable
             _lru.AddFirst(node);
             return node.Value.Cover;
         }
-        if (_loading.Add(path))
-            _ = Task.Run(() => Decode(path, ThumbSize)).ContinueWith(t => Dispatcher.UIThread.Post(() => Store(path, t.IsCompletedSuccessfully ? t.Result : null)),
-                TaskScheduler.Default);
+        if (_loading.Add(path)) StartDecode(path);
         return null;
     }
+
+    /// <summary>
+    /// Decodes off the UI thread. Kept out of <see cref="Get"/>: a lambda there captures the
+    /// <c>path</c> parameter, and C# allocates that closure on entry to the method, so every
+    /// cache hit (each creature, each frame) allocated one.
+    /// </summary>
+    private void StartDecode(string path)
+        => _ = Task.Run(() => Decode(path, ThumbSize)).ContinueWith(t => Dispatcher.UIThread.Post(() => Store(path, t.IsCompletedSuccessfully ? t.Result : null)),
+            TaskScheduler.Default);
 
     /// <summary>Tests and previews: decode now, on this thread.</summary>
     public Cover? GetNow(string? path)
