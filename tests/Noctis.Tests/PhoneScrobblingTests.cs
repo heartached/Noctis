@@ -43,6 +43,8 @@ public sealed class PhoneScrobblingTests : IDisposable
         public List<string> LbTimes { get; } = new();
         public int NowPlayingCalls { get; private set; }
         public string ValidateAs { get; set; } = "ben";
+        /// <summary>A title both services refuse for good: any batch holding it is rejected whole.</summary>
+        public string? RejectTitle { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -53,6 +55,8 @@ public sealed class PhoneScrobblingTests : IDisposable
                     .Select(p => p.Split('=')).ToDictionary(p => WebUtility.UrlDecode(p[0]), p => WebUtility.UrlDecode(p[1]));
                 if (form["method"] == "track.updateNowPlaying") { NowPlayingCalls++; return Json(HttpStatusCode.OK, "{}"); }
                 var count = form.Keys.Count(k => k.StartsWith("artist[", StringComparison.Ordinal));
+                if (RejectTitle != null && Enumerable.Range(0, count).Any(i => form[$"track[{i}]"] == RejectTitle))
+                    return Json(HttpStatusCode.OK, "{\"error\":6,\"message\":\"Invalid parameters\"}");
                 var status = LastFmStatus.Count > 0 ? LastFmStatus.Dequeue() : HttpStatusCode.OK;
                 if (status == HttpStatusCode.OK)
                 {
@@ -68,6 +72,8 @@ public sealed class PhoneScrobblingTests : IDisposable
                 using var doc = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
                 if (doc.RootElement.GetProperty("listen_type").GetString() == "playing_now") { NowPlayingCalls++; return Json(HttpStatusCode.OK, "{}"); }
                 var payload = doc.RootElement.GetProperty("payload");
+                if (RejectTitle != null && payload.EnumerateArray().Any(l => l.GetProperty("track_metadata").GetProperty("track_name").GetString() == RejectTitle))
+                    return Json(HttpStatusCode.BadRequest, "{}");
                 var status = LbStatus.Count > 0 ? LbStatus.Dequeue() : HttpStatusCode.OK;
                 if (status == HttpStatusCode.OK)
                 {
@@ -372,6 +378,22 @@ public sealed class PhoneScrobblingTests : IDisposable
         Assert.Equal(0, s.PendingCount);                // not owed to a signed-out service...
         var settings = await NewPersistence().LoadSettingsAsync();
         Assert.False(settings.LastFmScrobblingEnabled);
+    }
+
+    [Fact]
+    public async Task ARejectedBatch_DropsOnlyTheBadPlay_NotTheGoodOnesSentWithIt()
+    {
+        // One bad tag (ListenBrainz answers 400 for the whole submit, Last.fm error 6 for the call)
+        // dropped the 49 good plays batched with it.
+        var s = await Connected(lastFm: true, listenBrainz: true);
+        for (var i = 0; i < 7; i++) s.Enqueue(Song(i == 3 ? "Bad" : "S" + i), _time.GetUtcNow().UtcDateTime.AddMinutes(-i - 5));
+        _http.RejectTitle = "Bad";
+        await s.FlushAsync();
+        Assert.Equal(6, _http.LastFmTimes.Distinct().Count());
+        Assert.Equal(6, _http.LbTimes.Distinct().Count());
+        Assert.Equal(6, _http.LastFmTimes.Count);           // and none twice
+        Assert.Equal(6, _http.LbTimes.Count);
+        Assert.Equal(0, s.PendingCount);
     }
 
     [Fact]
