@@ -127,8 +127,11 @@ export function fromGitHub(all: GitHubRelease[], repo: string): ParsedRelease[] 
     return `https://github.com/${repo}/releases`;
   };
 
+  /* Plugin releases (plugin-<name>-v<version>) aren't app versions. The build
+     (scripts/fetch-changelog.mjs) leaves them out, so the live refresh must
+     too, or they show up at the top of the changelog as if they were. */
   return all
-    .filter((r) => !r.draft && r.published_at && r.tag_name)
+    .filter((r) => !r.draft && r.published_at && r.tag_name && !r.tag_name.startsWith('plugin-'))
     .sort((a, b) => Date.parse(b.published_at!) - Date.parse(a.published_at!))
     .map((r) => ({
       tag: r.tag_name!.replace(/[^\w.\-+]/g, ''),
