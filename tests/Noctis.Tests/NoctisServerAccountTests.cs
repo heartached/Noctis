@@ -425,6 +425,20 @@ public class NoctisServerAccountTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SyncStatus_AnotherAccount_IsNotToldTheComputerSendsItsPlays()
+    {
+        _lib.ScrobbleServices = (true, true);
+        _users.Create("bob", "another pass");
+        var (signIn, _) = await SignIn(user: "bob", password: "another pass", deviceId: "phone-0002");
+        var key = signIn.GetProperty("noctisSignIn").GetProperty("apiKey").GetString()!;
+
+        var status = (await GetWithHeader("getNoctisSyncStatus", key)).GetProperty("noctisSync");
+
+        // Its plays are never forwarded, so its phone must not offer Through Computer.
+        Assert.False(status.TryGetProperty("scrobbling", out _));
+    }
+
+    [Fact]
     public async Task Scrobble_AComputerVerdictWithoutATime_IsNotForwarded_SoRepeatsCannotFloodLastFm()
     {
         var key = await SignInKey();
