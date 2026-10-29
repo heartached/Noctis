@@ -67,6 +67,9 @@
        when the live copy on GitHub cannot be fetched. -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\plugins\index.json" LogicalName="Noctis.Plugins.index.json" Link="Assets\plugins-index.json" />
+    <!-- Each repo plugin's icon (plugins/<folder>/icon.png), so a listed plugin's card shows its
+         icon offline and without a fetch (PluginCatalog.ReadEmbeddedIcon). -->
+    <EmbeddedResource Include="..\..\plugins\*\icon.png" LogicalName="Noctis.PluginIcons/%(RelativeDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Avalonia UI -->

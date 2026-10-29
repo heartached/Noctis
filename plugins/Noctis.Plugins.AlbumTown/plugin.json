@@ -20,5 +20,6 @@
       "default": "Balanced (30 fps)",
       "description": "How often the town is drawn. They walk at the same speed either way; fewer frames are lighter on the computer." }
   ],
-  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown"
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
+  "icon": "icon.png"
 }

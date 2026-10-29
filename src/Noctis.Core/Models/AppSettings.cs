@@ -82,6 +82,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Plugin id → setting key → value (invariant text) for settings declared in plugin.json.</summary>
     public Dictionary<string, Dictionary<string, string>> PluginSettingValues { get; set; } = new();
 
+    /// <summary>Plugin id → "version|sha256" of an installed copy whose zip matched its official
+    /// listing (plugins/index.json, author Noctis) at install time. Only these show the verified
+    /// mark in Settings → Plugins; written by the plugin host on install, dropped on remove.</summary>
+    public Dictionary<string, string> VerifiedOfficialPlugins { get; set; } = new();
+
     /// <summary>
     /// Marker for the v2 theme migration. In v1, "Dark" denoted today's Gray colours.
     /// On first load post-upgrade, a stored "Dark" with this flag false is rewritten to "Gray"

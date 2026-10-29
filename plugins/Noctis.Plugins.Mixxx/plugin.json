@@ -17,5 +17,6 @@
     { "key": "overwrite", "label": "Replace BPM and key Noctis already has", "type": "bool", "default": false,
       "description": "Off: only tracks without a BPM or key get Mixxx's." }
   ],
-  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx",
+  "icon": "icon.png"
 }

@@ -94,6 +94,23 @@ public sealed partial class LoadedPlugin : ObservableObject
     /// <summary>Localized chip labels for <see cref="Permissions"/>.</summary>
     public IReadOnlyList<string> PermissionChips => Permissions.Select(PluginPermissionText.Short).ToList();
     public string? Homepage => Manifest?.Homepage;
+    /// <summary>Full path of plugin.json's "icon" when that file is in the plugin folder, else null.</summary>
+    public string? IconPath
+    {
+        get
+        {
+            if (Manifest?.Icon is not { } rel) return null;
+            try
+            {
+                var root = System.IO.Path.GetFullPath(Directory);
+                var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, rel));
+                var inside = full.StartsWith(root.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar,
+                    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+                return inside && File.Exists(full) ? full : null;
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException) { return null; }
+        }
+    }
 
     [ObservableProperty] private string _name = "";
     [ObservableProperty] private string _version = "";
@@ -1231,7 +1248,14 @@ public sealed class PluginHost
     /// starts disabled until the user approves its permissions, unless an update asks for no
     /// new ones and it was enabled.
     /// </summary>
-    public PluginInstallResult InstallPackage(string zipPath, bool allowUpdate)
+    /// <param name="officialListing">The official list's entry this zip is meant to be (Get plugins,
+    /// or an Install from file whose id and version are on the list). The copy is recorded as
+    /// verified official only when that entry and the zip's plugin.json both credit Noctis, the id
+    /// and version match and the zip's SHA-256 is the list's. Anything else installs as community.</param>
+    /// <param name="replaceExisting">Replace an installed copy of the same id whatever its version
+    /// (a copy that is not the verified official one, swapped for the listed zip).</param>
+    public PluginInstallResult InstallPackage(string zipPath, bool allowUpdate,
+        PluginCatalogEntry? officialListing = null, bool replaceExisting = false)
     {
         // Settle the community-plugins default from what was installed BEFORE this package,
         // so installing into a fresh setup does not count as "plugins were already there".
@@ -1244,7 +1268,9 @@ public sealed class PluginHost
 
         var manifest = package.Manifest;
         var target = Path.Combine(PluginsDirectory, SafeFolderName(manifest.Id));
-        if (existing is not null)
+        if (existing is not null && replaceExisting)
+            target = existing.Directory;
+        else if (existing is not null)
         {
             if (PluginVersion.Compare(manifest.Version, existing.Version) <= 0)
                 return new PluginInstallResult(
@@ -1283,11 +1309,61 @@ public sealed class PluginHost
             return new PluginInstallResult(PluginInstallOutcome.Failed, "Could not move the plugin into place: " + moveError);
         }
 
+        RecordOfficialInstall(zipPath, manifest, officialListing);
         var plugin = LoadFrom(target);
         DebugLogger.Info(DebugLogger.Category.State, "Plugins", $"{(existing is null ? "installed" : "updated")} {manifest.Id} {manifest.Version}");
         return existing is null
             ? new PluginInstallResult(PluginInstallOutcome.Installed, $"Installed {plugin.Name} {plugin.Version}.", plugin)
             : new PluginInstallResult(PluginInstallOutcome.Updated, $"Updated {plugin.Name} to {plugin.Version}.", plugin);
+    }
+
+    /// <summary>
+    /// Writes (or drops) the verified-official record for the copy just installed: only a zip
+    /// whose SHA-256 is the official listing's, for that listing's id and version, with Noctis
+    /// credited in both the listing and the zip's plugin.json. Every other install clears it, so
+    /// a later hand-installed zip of the same id loses the mark.
+    /// </summary>
+    private void RecordOfficialInstall(string zipPath, PluginManifest manifest, PluginCatalogEntry? listing)
+    {
+        var settings = _settings();
+        settings.VerifiedOfficialPlugins ??= new();
+        foreach (var key in settings.VerifiedOfficialPlugins.Keys.Where(k => SameId(k, manifest.Id)).ToList())
+            settings.VerifiedOfficialPlugins.Remove(key);
+
+        if (listing is not null && listing.IsOfficial && PluginTrust.IsOfficialAuthor(manifest.Author)
+            && SameId(listing.Id, manifest.Id) && PluginVersion.Compare(listing.Version, manifest.Version) == 0)
+        {
+            string sha;
+            try
+            {
+                using var fs = File.OpenRead(zipPath);
+                sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fs)).ToLowerInvariant();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { sha = ""; }
+            if (sha.Length > 0 && string.Equals(sha, listing.Sha256, StringComparison.Ordinal))
+                settings.VerifiedOfficialPlugins[manifest.Id] = manifest.Version + "|" + sha;
+        }
+        _saveSettings();
+    }
+
+    /// <summary>
+    /// True when <paramref name="plugin"/> is the verified official copy of <paramref name="listing"/>:
+    /// the listing is official (author Noctis), the copy credits Noctis too, and its zip was checked
+    /// against the official list when it was installed (same version as the one installed now).
+    /// Never decided by plugin.json alone.
+    /// </summary>
+    public bool IsVerifiedOfficial(LoadedPlugin plugin, PluginCatalogEntry listing)
+    {
+        if (!listing.IsOfficial || !SameId(plugin.Id, listing.Id) || !PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
+        var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
+        if (record is null) return false;
+        var bar = record.IndexOf('|');
+        if (bar <= 0) return false;
+        var version = record[..bar];
+        var sha = record[(bar + 1)..];
+        if (PluginVersion.Compare(version, plugin.Version) != 0) return false;
+        // Same version as the list: the hash must be the list's too (a corrected listing wins).
+        return PluginVersion.Compare(version, listing.Version) != 0 || string.Equals(sha, listing.Sha256, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1302,6 +1378,8 @@ public sealed class PluginHost
         settings.DisabledPlugins?.RemoveAll(d => SameId(d, plugin.Id) || SameId(d, plugin.FolderName));
         foreach (var key in (settings.PluginPermissionGrants ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
             settings.PluginPermissionGrants!.Remove(key);
+        foreach (var key in (settings.VerifiedOfficialPlugins ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
+            settings.VerifiedOfficialPlugins!.Remove(key);
         if (deleteData)
         {
             foreach (var key in (settings.PluginSettingValues ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
