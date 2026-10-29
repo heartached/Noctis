@@ -28,4 +28,19 @@ public class SingleInstanceGuardTests
         Assert.Equal(suffix, SingleInstanceGuard.RootSuffix(dev.Replace('\\', '/')));
         Assert.NotEqual(suffix, SingleInstanceGuard.RootSuffix(Path.Combine(Path.GetTempPath(), "Noctis-Other")));
     }
+
+    /// <summary>10-28: a Debug exe started without NOCTIS_DATA_DIR runs on Noctis-dev, yet was
+    /// keyed like the installed app, so it handed itself to the running official Noctis and
+    /// quit. The key now follows the root the app really uses.</summary>
+    [Fact]
+    public void DevRootWithoutTheVariable_IsItsOwnInstance_AndTheDefaultRootKeepsTheOriginalNames()
+    {
+        var appData = Path.Combine(Path.GetTempPath(), "AppData", "Roaming");
+        var installed = Path.Combine(appData, "Noctis");
+        var dev = Path.Combine(appData, "Noctis-dev");
+        Assert.Equal("", SingleInstanceGuard.SuffixFor(installed, installed));
+        Assert.Equal("", SingleInstanceGuard.SuffixFor(installed.ToUpperInvariant() + "\\", installed));
+        Assert.Equal(SingleInstanceGuard.RootSuffix(dev), SingleInstanceGuard.SuffixFor(dev, installed));
+        Assert.NotEqual("", SingleInstanceGuard.SuffixFor(dev, installed));
+    }
 }
