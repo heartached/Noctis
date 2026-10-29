@@ -153,8 +153,33 @@ are case-insensitive.
 | `platforms` | no | Any of `"windows"`, `"macos"`, `"linux"`. Omit for all. |
 | `permissions` | no | What the plugin uses from the API; see [Permissions](#permissions). Unknown names are ignored with a warning. |
 | `settings` | no | Settings Noctis draws for you; see below. |
-| `homepage` | no | `http(s)` link to the project. |
+| `homepage` | no | `http(s)` link to the project. Shown as *Visit homepage* on the plugin's page. |
+| `icon` | no | The plugin's icon: a PNG in the package, as a path relative to plugin.json (`"icon.png"`). See [Icons](#icons). |
 | `contents` | content | What a content pack provides; see [Content packs](#content-packs). Ignored (with a warning) on dotnet plugins. |
+
+### Icons
+
+Settings → Plugins shows every plugin as a card with its icon, and the plugin's own page shows
+it large. Give your plugin one:
+
+- A **PNG**, square, **256 × 256** px, at most 512 KB, in the package next to plugin.json
+  (a subfolder is fine: `"icon": "assets/icon.png"`). No path outside the package, no `..`.
+- Draw it as a rounded-square app tile: one colour or a two-colour gradient filling the square,
+  one simple white glyph, transparent corners. It is shown at 60 px on the card and 88 px on the
+  page, so keep detail out of it.
+- `samples/PluginPackage.targets` puts an `icon.png` that sits next to plugin.json into the zip.
+- No `icon`, or one that can't be read: the card draws a letter tile instead (the name's
+  initials on a colour picked from the name). A bad `icon` value is a warning, never an error.
+
+The official list (`plugins/index.json`) has the same optional `icon` per entry, so a card shows
+its icon before the plugin is installed: a path relative to the list (`"Noctis.Plugins.Mixxx/icon.png"`)
+or an https link on GitHub. Icons of plugins in this repo are built into the app; others are
+fetched once from that link. The repo's icons are made by
+[`scripts/plugin-icons/generate_plugin_icons.py`](../scripts/plugin-icons/generate_plugin_icons.py).
+
+A content pack may set `icon` too, but only Noctis 1.6.6 and newer read it (content packs refuse
+fields they don't know, so give such a pack `"minAppVersion": "1.6.6"`). A .NET plugin can add
+`icon` without raising its `minAppVersion`: older Noctis ignores the field.
 
 ### Declared settings
 
@@ -401,9 +426,9 @@ hello-1.0.0.zip
 
 ## Installing, updating, removing
 
-- **Get plugins**: Settings → Plugins → *Get plugins* lists the official plugins with an
-  *Install* button each; see [Official plugins](#official-plugins-get-plugins).
-- **Install**: Settings → Plugins → Installed → *Install from file* and pick the zip. It lands in
+- **Get plugins**: Settings → Plugins lists the plugins on the official list as cards; a card's
+  page has its *Install* button. See [Official plugins](#official-plugins-get-plugins).
+- **Install**: Settings → Plugins → *Install from file* (top of the page) and pick the zip. It lands in
   `plugins/<id>/`, switched off, until you enable it (with the permission prompt).
 - **Update**: installing a zip with the same id and a **higher** version offers to update; the
   folder is replaced, data and settings are kept, and approval carries over unless new
@@ -411,19 +436,57 @@ hello-1.0.0.zip
 - **Remove**: the *Remove* button asks, deletes the plugin folder, and keeps its data and
   settings unless you tick *Also delete its data and settings*. A reinstall asks for approval again.
 - **By hand**: drop the unzipped folder into the plugins folder (the folder button next to
-  *Install from file*; its tooltip shows the path) and press the reload button next to it.
+  *Install from file*; its tooltip shows the path) and press the refresh button next to it.
+
+## Official and community plugins
+
+Settings → Plugins shows two sections of cards (icon, name, "by …", two lines of description;
+a search box above filters both). A card opens the plugin's own page: its icon, version and
+description, Install / Update / Open, the on/off switch, permissions, settings, homepage, the
+plugin folder and Remove.
+
+**Official Noctis plugins** are built by the Noctis team.
+
+- Their `author` is **Noctis**, in plugins/index.json and in their own plugin.json.
+- They are listed in the official list, [`plugins/index.json`](../plugins/index.json), and their
+  source lives in this repo's `plugins/` folder.
+- They **always** carry the blue verified check, on the card and on the page.
+
+**Community plugins** are made and submitted by users ([Submitting a plugin](#submitting-a-plugin))
+and are credited by name ("by Jafezy JD"). They never carry the check, whether they are on the
+list (a reviewed submission) or installed from a file. Album Town (by Jafezy JD), True Shuffle
+and Lyric Motion (by Alfamin) are community plugins; Mixxx is official.
+
+**How the app decides.** The check is never something a plugin can claim. Writing
+`"author": "Noctis"` in a plugin.json, or reusing an official plugin's `id`, does nothing. An
+installed copy counts as official only when its zip was checked against the official list when
+it was installed:
+
+1. the list has an entry with that `id` whose `author` is Noctis,
+2. the zip's own plugin.json says `author` Noctis, with the same `id` and `version`, and
+3. the zip's SHA-256 equals the entry's `sha256`.
+
+*Get plugins* downloads always go through that check. *Install from file* does too, when the zip
+is the listed id and version, so the official zip installed by hand is still official. Anything
+else with an official plugin's id shows as a separate community card, and the official card
+offers **Replace with official** (downloads the listed zip and puts it in place; data and
+settings are kept). A copy installed before this check existed shows the same way until replaced
+or updated once. The result is kept per plugin id in settings.json (`VerifiedOfficialPlugins`)
+and dropped when the plugin is removed or replaced by another zip.
 
 ## Official plugins (Get plugins)
 
-Settings → Plugins starts with **Get plugins**: the plugins the Noctis project publishes itself
-and community plugins it has reviewed ([Submitting a plugin](#submitting-a-plugin)), one row each
-with the author's credit ("by …") and a single button:
+The official list, plugins/index.json, holds the plugins the Noctis project publishes itself and
+community plugins it has reviewed ([Submitting a plugin](#submitting-a-plugin)). Entries by
+Noctis show under Official Noctis plugins, the others under Community plugins. Each card's page
+has the author's credit ("by …") and a single button:
 
 | Button | When |
 |---|---|
 | Install | not installed |
 | Update | an older version is installed (same flow; data and settings are kept, approval carries over unless new permissions are asked for) |
-| Installed | this version or a newer one is installed |
+| Installed | this version or a newer one is installed (the page shows the plugin's switch instead) |
+| Replace with official | an official plugin's id is installed, but not from its checked zip (see above) |
 | Requires Noctis x.y.z | this Noctis is older than the plugin's `minAppVersion` (disabled) |
 | Not available on this OS | the plugin's `platforms` leave this OS out (disabled) |
 
@@ -445,11 +508,15 @@ with the author's credit ("by …") and a single button:
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-mixxx-v1.0.0/Noctis.Plugins.Mixxx-1.0.0.zip",
       "sha256": "<lowercase hex SHA-256 of that exact zip>",
       "size": 11758,
-      "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
+      "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx",
+      "icon": "Noctis.Plugins.Mixxx/icon.png"
     }
   ]
 }
 ```
+
+- `icon` (optional) is the card's picture: a path relative to index.json, or an https link on
+  GitHub, to a PNG ([Icons](#icons)). Older Noctis versions ignore it.
 
 - `id`, `name`, `version`, `minAppVersion`, `type` and `platforms` must match the plugin's own
   plugin.json (a unit test checks every listed plugin). `download` must be https on GitHub; the
