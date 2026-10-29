@@ -1487,8 +1487,12 @@ public sealed class PluginHost
             });
         }
 
+        // OpenView and ShowAlbum build windows and move the main window's page: from a plugin's
+        // background task they run on the UI thread (waited for, as they answer), so CreateView, the
+        // presenter and the album page never run off it (where Avalonia throws and the plugin failed).
         public bool OpenView(IPluginViewProvider provider)
         {
+            if (!Dispatcher.UIThread.CheckAccess()) return Dispatcher.UIThread.Invoke(() => OpenView(provider));
             if (_disposed || provider is null) return false;
             var view = _plugin.Views.FirstOrDefault(v => ReferenceEquals(v.Provider, provider));
             return view is not null && _owner.OpenView(view);
@@ -1496,6 +1500,7 @@ public sealed class PluginHost
 
         public bool ShowAlbum(string albumId)
         {
+            if (!Dispatcher.UIThread.CheckAccess()) return Dispatcher.UIThread.Invoke(() => ShowAlbum(albumId));
             if (_disposed || !Guid.TryParse(albumId, out var id) || _owner.AlbumOpener is not { } open) return false;
             return open(id);
         }
@@ -1616,7 +1621,8 @@ public sealed class PluginHost
                 for (var i = 0; i < ids.Length; i++)
                 {
                     if (!Guid.TryParse(ids[i], out var id) || library.GetTrackById(id) is not { } t) continue;
-                    if (i <= startIndex) start = tracks.Count;
+                    // The known songs before the start: an unknown start song is skipped to the next one.
+                    if (i < startIndex) start = tracks.Count + 1;
                     tracks.Add(t);
                 }
                 if (tracks.Count > 0) p.ReplaceQueueAndPlay(tracks, Math.Clamp(start, 0, tracks.Count - 1));
