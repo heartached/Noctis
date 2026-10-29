@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    True Shuffle for Noctis, by Alfamin (MIT, see LICENSE; ported from
+    https://github.com/Alfamin/TrueShuffle): shuffle modes Equal chance, No repeats, Discovery,
+    Never played and For you, over the queue, a playlist or the whole library; songs you queue
+    yourself play first, in your order. Only your own library and listening on this computer.
+    Uses plugin API 1.5 (GetQueue, SetUpNext, TracksQueued).
+    `dotnet build -c Release` writes bin/Release/Noctis.Plugins.TrueShuffle-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.TrueShuffle</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- Release builds also write bin/Release/Noctis.Plugins.TrueShuffle-<version>.zip (DLL + plugin.json + LICENSE). -->
+  <Import Project="..\..\samples\PluginPackage.targets" />
+</Project>
