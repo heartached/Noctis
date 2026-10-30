@@ -33,7 +33,10 @@ public sealed class YouTubeImportView : UserControl
         GradientStops = { new GradientStop(Color.FromRgb(0xFF, 0x7A, 0x6B), 0), new GradientStop(Color.FromRgb(0xF0, 0x44, 0x4E), 1) },
     };
     private static readonly IBrush FailedBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0x8A, 0x80));
-    private static readonly Geometry PlayGlyph = Geometry.Parse("M 8,5 L 19,12 L 8,19 Z");
+    // Drawn in its own 22 px box (Stretch.None): Uniform drew the 17 px-wide triangle at the
+    // box's left edge. The box centre is 11; the triangle's is 12.2, 7% of its width to the
+    // right, because a play triangle centred by its box looks left-heavy.
+    private static readonly Geometry PlayGlyph = Geometry.Parse("M 3.56,0 L 20.84,11 L 3.56,22 Z");
     private static readonly Geometry SearchGlyph = Geometry.Parse("M 10.5,3 A 7.5,7.5 0 1 0 15.6,16.1 L 20.3,20.8 L 21.7,19.4 L 17,14.7 A 7.5,7.5 0 0 0 10.5,3 Z M 10.5,5 A 5.5,5.5 0 1 1 10.5,16 A 5.5,5.5 0 1 1 10.5,5 Z");
     private static readonly Geometry CheckGlyph = Geometry.Parse("M 4,12.5 L 9.5,18 L 20,7.5 L 18.6,6.1 L 9.5,15.2 L 5.4,11.1 Z");
 
@@ -57,7 +60,7 @@ public sealed class YouTubeImportView : UserControl
         savesTo.Bind(TextBlock.TextProperty, new Binding(nameof(vm.DestinationFolder)) { StringFormat = "Saves to {0}" });
         savesTo.Bind(ToolTip.TipProperty, new Binding(nameof(vm.DestinationFolder)));
         savesTo.Bind(IsVisibleProperty, new Binding(nameof(vm.HasDestination)));
-        var change = SmallButton("Change…", nameof(vm.ChangeFolderCommand));
+        var change = SmallButton("Change", nameof(vm.ChangeFolderCommand));
         AutomationName(change, "Change download folder");
         var reset = SmallButton("Use default", nameof(vm.ResetFolderCommand));
         reset.Bind(IsVisibleProperty, new Binding(nameof(vm.HasCustomFolder)));
@@ -70,7 +73,7 @@ public sealed class YouTubeImportView : UserControl
         var badge = new Border
         {
             Width = 56, Height = 56, CornerRadius = new CornerRadius(16), Background = Coral,
-            Child = new Avalonia.Controls.Shapes.Path { Data = PlayGlyph, Fill = Brushes.White, Width = 22, Height = 22, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            Child = new Avalonia.Controls.Shapes.Path { Data = PlayGlyph, Fill = Brushes.White, Width = 22, Height = 22, Stretch = Stretch.None, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
         };
         var headerText = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Children = { title, folderRow } };
         var headerGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("56,16,*") };

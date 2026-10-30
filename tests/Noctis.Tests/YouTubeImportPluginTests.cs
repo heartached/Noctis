@@ -357,6 +357,56 @@ public class YouTubeImportPluginTests : IDisposable
         });
     }
 
+    /// <summary>
+    /// Owner 10-29: the play triangle in the coral header tile sat off centre. A right-pointing
+    /// triangle looks left-heavy, so its box sits a little right of the tile's centre (about 7%
+    /// of its width), vertically centred. Measured from the drawn geometry; with real Skia also
+    /// from the white pixels.
+    /// </summary>
+    [AvaloniaFact]
+    public void HeaderPlayGlyph_IsOpticallyCentredInTheTile()
+    {
+        var (win, view) = Show(new YouTubeImportViewModel(new FakeImporter(MakeTool(installed: true)), new HttpClient(), State()));
+        try
+        {
+            PumpUntil(() => false, 100);
+            var glyph = view.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>()
+                .Single(p => p.Parent is Border { Width: 56 });
+            var tile = (Border)glyph.Parent!;
+            var drawn = glyph.RenderedGeometry!.Bounds;
+            var topLeft = glyph.TranslatePoint(drawn.TopLeft, tile)!.Value;
+            var box = new Rect(topLeft, drawn.Size);
+            var shift = box.Center.X - tile.Bounds.Width / 2;
+            _o.WriteLine($"geometry box {box}, centre {box.Center}, tile centre {tile.Bounds.Width / 2}, shift {shift:0.00} px = {shift / box.Width:P1} of width");
+            Assert.InRange(shift / box.Width, 0.05, 0.09);
+            Assert.InRange(box.Center.Y - tile.Bounds.Height / 2, -0.25, 0.25);
+
+            if (HeadlessTestApp.RealRendering)
+            {
+                using var frame = win.CaptureRenderedFrame()!;
+                var origin = tile.TranslatePoint(default, win)!.Value;
+                var (sx, sy, n) = (0.0, 0.0, 0);
+                var px = new byte[4 * 56 * 56];
+                var pin = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try { frame.CopyPixels(new PixelRect((int)Math.Round(origin.X), (int)Math.Round(origin.Y), 56, 56), pin.AddrOfPinnedObject(), px.Length, 4 * 56); }
+                finally { pin.Free(); }
+                for (var y = 0; y < 56; y++)
+                    for (var x = 0; x < 56; x++)
+                    {
+                        var i = 4 * (y * 56 + x);
+                        if (px[i] < 235 || px[i + 1] < 235 || px[i + 2] < 235) continue; // white only, not coral
+                        sx += x + 0.5; sy += y + 0.5; n++;
+                    }
+                // A right-pointing triangle's area centroid is a third of its width from the base.
+                var expectedX = box.Left + box.Width / 3;
+                _o.WriteLine($"white pixels {n}, centroid ({sx / n:0.00}, {sy / n:0.00}), triangle centroid ({expectedX:0.00}, {box.Center.Y:0.00}), tile centre 28");
+                Assert.InRange(sx / n - expectedX, -0.3, 0.3);
+                Assert.InRange(sy / n - box.Center.Y, -0.3, 0.3);
+            }
+        }
+        finally { Close(win); }
+    }
+
     /// <summary>Real Skia only: PNGs of the results and setup states, for eyeballing the layout.</summary>
     [AvaloniaFact]
     public void Probe_SavesTheWindowStates()
