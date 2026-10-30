@@ -145,7 +145,8 @@
                                 <TextBlock Classes="plugin-card-name" Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 <Viewbox Grid.Column="1" Classes="verified-mark" Width="15" Height="15" Margin="5,0,0,0" VerticalAlignment="Center"
-                                         IsVisible="{Binding IsOfficial}" ToolTip.Tip="{loc:T Plugins.Card.Verified}">
+                                         IsVisible="{Binding IsOfficial}" ToolTip.Tip="{loc:T Plugins.Card.Verified}"
+                                         AutomationProperties.Name="{loc:T Plugins.Card.Verified}">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="{StaticResource VerifiedSealGeometry}" Fill="#1D9BF0"/>
                                         <Path Data="{StaticResource VerifiedCheckGeometry}" Stroke="White" StrokeThickness="2.2"
@@ -199,7 +200,8 @@
                                 <TextBlock x:Name="PluginPageName" Text="{Binding Name}" FontSize="22" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center"/>
                                 <Viewbox Grid.Column="1" Classes="verified-mark" Width="20" Height="20" Margin="7,1,0,0" VerticalAlignment="Center"
-                                         IsVisible="{Binding IsOfficial}" ToolTip.Tip="{loc:T Plugins.Card.Verified}">
+                                         IsVisible="{Binding IsOfficial}" ToolTip.Tip="{loc:T Plugins.Card.Verified}"
+                                         AutomationProperties.Name="{loc:T Plugins.Card.Verified}">
                                     <Canvas Width="24" Height="24">
                                         <Path Data="{StaticResource VerifiedSealGeometry}" Fill="#1D9BF0"/>
                                         <Path Data="{StaticResource VerifiedCheckGeometry}" Stroke="White" StrokeThickness="2.2"

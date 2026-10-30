@@ -2308,7 +2308,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Установка</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>Вкл.</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>Выкл.</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Официальный плагин от команды Noctis</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Официальный плагин Noctis</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, официальный плагин Noctis</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, плагин сообщества, автор: {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, плагин сообщества</value></data>

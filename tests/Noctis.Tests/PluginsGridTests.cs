@@ -182,7 +182,13 @@ public class PluginsGridTests : IDisposable
             m.Vm.OpenPluginCardCommand.Execute(m.Vm.OfficialCards[0]);
             Pump();
             window.UpdateLayout();
-            Assert.Single(Marks(view.FindControl<StackPanel>("PluginDetailPage")!));
+            var pageMark = Assert.Single(Marks(view.FindControl<StackPanel>("PluginDetailPage")!));
+            // Owner 10-29: the mark says exactly this, to the mouse and to a screen reader.
+            foreach (var mark in Marks(officialGrid).Append(pageMark))
+            {
+                Assert.Equal("Official Noctis Plugin", ToolTip.GetTip(mark));
+                Assert.Equal("Official Noctis Plugin", AutomationProperties.GetName(mark));
+            }
 
             m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == "dev.test.hand"));
             Pump();
