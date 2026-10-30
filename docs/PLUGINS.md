@@ -482,8 +482,9 @@ Be clear about what protects users and what does not:
    whatever its permissions say. .NET has no sandbox for in-process code (Code Access
    Security is gone). **Permissions only gate the Noctis API**; they are an honest summary
    of intent, not a jail. The approval dialog says so.
-2. **Restricted mode (Community plugins off).** No third-party plugin code is loaded; installed
-   plugins are still listed. Fresh installs start in restricted mode. Installs that already
+2. **Restricted mode (Community plugins off).** No community plugin code is loaded; installed
+   plugins are still listed. Verified official plugins don't depend on the switch: they run either
+   way, and flipping it never restarts them. Fresh installs start in restricted mode. Installs that already
    had plugins before this switch existed start with it **on**, and the plugins that were
    running are approved as-is, so an update does not silently break someone's setup.
 3. **Approval on first enable**, listing the declared permissions, and again when an update
@@ -512,7 +513,8 @@ Install plugins only from people you trust, the same advice as for any desktop a
 
 - **Start**: when Noctis starts (after settings load, at background priority), when the user
   switches the plugin on, after an install/update, and on *Reload plugins*.
-- **Stop**: switch off, *Remove*, *Reload plugins*, turning Community plugins off, app exit.
+- **Stop**: switch off, *Remove*, *Reload plugins*, turning Community plugins off (community
+  plugins only), app exit.
   `Shutdown()` is always called before the plugin's registrations are dropped.
 - `Initialize`, events, menu commands, setting changes and the scrobble hook run on the **UI
   thread**: keep them short, `await` I/O. `ILyricsProvider.FindAsync` runs on a worker thread.
@@ -573,6 +575,8 @@ hello-1.0.0.zip
   permissions are requested. Same or lower versions are refused.
 - **Remove**: the *Remove* button asks, deletes the plugin folder, and keeps its data and
   settings unless you tick *Also delete its data and settings*. A reinstall asks for approval again.
+  On release builds only a plugin you added yourself (Install from file, or the folder) has
+  *Remove*; plugins listed in Noctis, official and community, can only be switched on and off.
 - **By hand**: drop the unzipped folder into the plugins folder (the folder button next to
   *Install from file*; its tooltip shows the path) and press the refresh button next to it.
 
@@ -674,8 +678,9 @@ offline or before main has the file. The website reads the same file when it is 
 then its size and SHA-256 are checked against the list **before** anything touches the plugins
 folder; a mismatch is refused. The zip must also be the listed id and version. It then installs
 exactly like *Install from file*: it lands switched off and asks for approval when you switch it
-on. A .NET plugin installed while *Community plugins* is off offers that switch's own
-confirmation; saying no leaves the plugin installed and off.
+on. An official plugin runs whether *Community plugins* is on or off. A community .NET plugin
+installed while it is off offers that switch's own confirmation; saying no leaves the plugin
+installed and off.
 
 **Testing a list locally**: set `NOCTIS_PLUGIN_INDEX` to a file path or a URL before starting
 Noctis. That list is used instead of the live one, and only for it, `download` may also be
@@ -730,7 +735,8 @@ seamless loop.
 ## Submitting a plugin
 
 Made a plugin? Submit it for the list in **Get plugins**. Someone from the Noctis team reviews it
-and, once it's approved, it shows up in every copy of Noctis with you credited as the author.
+and, once it's approved, it shows up under **Community plugins** in every copy of Noctis, credited
+to you.
 New to plugins? The beginner guide, [Make a plugin](https://noctisapp.cc/plugins/make) (also
 Settings → Plugins → Make your own plugin → *Read the Guide*), goes from the sample to a submission.
 
@@ -744,8 +750,9 @@ Settings → Plugins → Make your own plugin → *Read the Guide*), goes from t
    Windows, `shasum -a 256 file.zip` on macOS and Linux.
 4. **Fill in the form**: in Noctis, Settings → Plugins → Make your own plugin → **Submit a Plugin**, or
    [open it on GitHub](https://github.com/heartached/Noctis/issues/new?template=3-plugin-submission.yml).
-   It asks for the name, id, version, a one-line description, your credit, the source and
-   release links, the SHA-256, the licence, and what the plugin does with the internet and files.
+   It asks for the name, id, version, a one-line description, what the plugin does and how to try
+   it (screenshots help), your credit, the source and release links, the SHA-256, the licence, and
+   what the plugin does with the internet and files.
 
 Within a few minutes a bot comments with a report: it downloads your zip and checks it with the
 same code Noctis uses to install plugins (it never runs your plugin). **Problems** must be fixed

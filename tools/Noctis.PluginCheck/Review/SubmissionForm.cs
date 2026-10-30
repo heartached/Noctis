@@ -17,8 +17,12 @@ public sealed class SubmissionForm
     public static readonly FormField Id = new("plugin-id", "Plugin id");
     public static readonly FormField Version = new("version", "Version");
     public static readonly FormField Description = new("description", "Short description");
+    public static readonly FormField WhatItDoes = new("what-it-does", "What it does");
+    public static readonly FormField HowToTry = new("how-to-try", "How to try it");
+    public static readonly FormField Screenshots = new("screenshots", "Screenshots");
     public static readonly FormField Author = new("author", "Author credit");
     public static readonly FormField AuthorUrl = new("author-url", "Author link");
+    public static readonly FormField Contact = new("contact", "How to reach you");
     public static readonly FormField Source = new("source-repo", "Source code");
     public static readonly FormField License = new("license", "Licence");
     public static readonly FormField Download = new("download", "Release zip");
@@ -35,14 +39,14 @@ public sealed class SubmissionForm
 
     public static IReadOnlyList<FormField> All { get; } = new[]
     {
-        Name, Id, Version, Description, Author, AuthorUrl, Source, License, Download, Sha256, Type, Platforms,
-        MinAppVersion, Network, NetworkDetails, Files, FilesDetails, Notes, Agreements,
+        Name, Id, Version, Description, WhatItDoes, HowToTry, Screenshots, Author, AuthorUrl, Contact, Source, License,
+        Download, Sha256, Type, Platforms, MinAppVersion, Network, NetworkDetails, Files, FilesDetails, Notes, Agreements,
     };
 
     /// <summary>Answered fields, every one but <see cref="Agreements"/>.</summary>
     public static IReadOnlyList<FormField> Required { get; } = new[]
     {
-        Name, Id, Version, Description, Author, Source, License, Download, Sha256, Type, Platforms, MinAppVersion, Network, Files,
+        Name, Id, Version, Description, WhatItDoes, HowToTry, Author, Source, License, Download, Sha256, Type, Platforms, MinAppVersion, Network, Files,
     };
 
     /// <summary>The three boxes of <see cref="Agreements"/>, all required.</summary>
