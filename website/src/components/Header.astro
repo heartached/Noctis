@@ -7,7 +7,8 @@ import { links } from '../config/site';
 /**
  * A floating frosted pill, centred at the top of the viewport. Brand on the
  * left, the page links in the middle, then GitHub, the theme switch and the
- * "Get the App" button. Discord and Buy Me a Coffee live in the Community
+ * "Get the App" button. Plugins opens a small menu (Extend Noctis, Make a
+ * plugin) on hover or keyboard focus. Discord and Buy Me a Coffee live in the Community
  * section and the mobile sheet rather than here. Below 900px only the brand,
  * the button and a burger stay in the pill; everything else moves into the
  * sheet.
@@ -16,7 +17,16 @@ const nav = [
   { label: 'Features', href: '/#showcase' },
   { label: 'Compare', href: '/#compare' },
   { label: 'FAQ', href: '/#faq' },
-  { label: 'Plugins', href: '/plugins' },
+  {
+    label: 'Plugins',
+    href: '/plugins',
+    /* Opens on hover or keyboard focus, like a site's product menu. On touch
+       the link itself still goes to /plugins. */
+    menu: [
+      { label: 'Extend Noctis', note: 'Plugins, content packs and the Local API', href: '/plugins' },
+      { label: 'Make a plugin', note: 'A beginner guide, from sample to shared', href: links.pluginGuide },
+    ],
+  },
   { label: 'Changelog', href: '/changelog' },
 ];
 ---
@@ -29,11 +39,34 @@ const nav = [
     </a>
 
     <nav class="hdr__nav" aria-label="Primary">
-      {nav.map((item) => (
-        <a class="hdr__link" href={item.href}>
-          {item.label}
-        </a>
-      ))}
+      {nav.map((item) =>
+        item.menu ? (
+          <div class="hdr__drop">
+            <a class="hdr__link hdr__link--drop" href={item.href} aria-haspopup="true">
+              {item.label}
+              <svg class="hdr__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </a>
+            <div class="hdr__menu">
+              <ul class="hdr__menu-list" role="list" aria-label={item.label}>
+                {item.menu.map((m) => (
+                  <li>
+                    <a class="hdr__item" href={m.href}>
+                      <span class="hdr__item-title">{m.label}</span>
+                      <span class="hdr__item-note">{m.note}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <a class="hdr__link" href={item.href}>
+            {item.label}
+          </a>
+        )
+      )}
     </nav>
 
     <div class="hdr__actions">
@@ -75,11 +108,23 @@ const nav = [
         <path d="M6 6l12 12M18 6L6 18"></path>
       </svg>
     </button>
-    {nav.map((item) => (
-      <a class="sheet__link" href={item.href}>
-        {item.label}
-      </a>
-    ))}
+    {nav.map((item) =>
+      item.menu ? (
+        <details class="sheet__group">
+          <summary class="sheet__link sheet__toggle">
+            {item.label}
+            <span class="sheet__plus" aria-hidden="true"></span>
+          </summary>
+          {item.menu.map((m) => (
+            <a class="sheet__sub" href={m.href}>{m.label}</a>
+          ))}
+        </details>
+      ) : (
+        <a class="sheet__link" href={item.href}>
+          {item.label}
+        </a>
+      )
+    )}
     <a class="sheet__link" href="/#download">Download</a>
 
     <div class="sheet__foot">
@@ -195,6 +240,104 @@ const nav = [
   .hdr__link:hover {
     color: var(--ink-0);
     background: color-mix(in srgb, var(--ink-0) 7%, transparent);
+  }
+
+  /* --- Plugins menu ------------------------------------------------------- */
+
+  .hdr__drop {
+    position: relative;
+  }
+
+  .hdr__link--drop {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .hdr__chev {
+    width: 14px;
+    height: 14px;
+    transition: transform var(--t-base) var(--ease);
+  }
+
+  /* Hanging below the pill. The padding-top is the gap the pointer crosses
+     on its way down, so the menu doesn't close in between. */
+  .hdr__menu {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    padding-top: 14px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -4px);
+    transition:
+      opacity var(--t-fast) var(--ease),
+      transform var(--t-fast) var(--ease),
+      visibility var(--t-fast) var(--ease);
+  }
+
+  .hdr__drop:hover .hdr__menu,
+  .hdr__drop:focus-within .hdr__menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+
+  .hdr__drop:hover .hdr__link--drop,
+  .hdr__drop:focus-within .hdr__link--drop {
+    color: var(--ink-0);
+  }
+
+  .hdr__drop:hover .hdr__chev,
+  .hdr__drop:focus-within .hdr__chev {
+    transform: rotate(180deg);
+  }
+
+  .hdr__menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 330px;
+    margin: 0;
+    padding: var(--s-2);
+    list-style: none;
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+    box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.35);
+  }
+
+  .hdr__item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--s-3) var(--s-4);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: background-color var(--t-instant) var(--ease);
+  }
+
+  .hdr__item:hover,
+  .hdr__item:focus-visible {
+    background: color-mix(in srgb, var(--ink-0) 6%, transparent);
+  }
+
+  .hdr__item-title {
+    color: var(--ink-0);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .hdr__item-note {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hdr__menu,
+    .hdr__chev {
+      transition: none;
+    }
   }
 
   .hdr__actions {
@@ -314,6 +457,65 @@ const nav = [
 
   .sheet__link:hover {
     background: var(--bg-2);
+  }
+
+  /* Plugins opens in place, like an accordion: a plus that turns into a
+     minus, and its pages listed underneath. Native <details>, no script. */
+  .sheet__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .sheet__toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .sheet__plus {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--ink-1);
+  }
+
+  .sheet__plus::before,
+  .sheet__plus::after {
+    content: '';
+    position: absolute;
+    inset: 50% 0 auto;
+    height: 1.5px;
+    margin-top: -0.75px;
+    border-radius: 1px;
+    background: currentColor;
+    transition: transform var(--t-base) var(--ease);
+  }
+
+  .sheet__plus::after {
+    transform: rotate(90deg);
+  }
+
+  .sheet__group[open] .sheet__plus::after {
+    transform: rotate(0deg);
+  }
+
+  .sheet__sub {
+    display: flex;
+    align-items: center;
+    padding: var(--s-2) var(--s-4) var(--s-2) var(--s-6);
+    border-radius: var(--r-nested);
+    color: var(--ink-1);
+    font-size: 1.05rem;
+    font-weight: 500;
+    text-decoration: none;
+    min-height: 44px;
+  }
+
+  .sheet__sub:hover {
+    background: var(--bg-2);
+    color: var(--ink-0);
   }
 
   .sheet__foot {
