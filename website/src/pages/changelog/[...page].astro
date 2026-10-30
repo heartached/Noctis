@@ -475,9 +475,10 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     background: color-mix(in srgb, var(--ink-0) 7%, transparent);
   }
 
+  /* Not a link on the first or last page, but drawn like its partner so the
+     row looks the same on every page. */
   .pager__step[data-off] {
-    color: var(--ink-2);
-    opacity: 0.5;
+    cursor: default;
   }
 
   .pager__nums {
