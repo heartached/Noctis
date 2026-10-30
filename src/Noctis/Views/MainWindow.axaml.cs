@@ -2136,6 +2136,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // A Shortcuts-tab chip is waiting for a chord: the chip owns every key until it
         // is done, otherwise pressing the key you are trying to assign would run it.
         if (vm.Settings.Shortcuts.IsRecording) return;
+        // A plugin's view shown in Settings owns its keys, as in its own window (where the app's
+        // shortcuts never reached it): Space presses its focused button instead of play/pause.
+        if (IsInHostedPluginView(e.Source)) return;
         if (shortcuts.TryMatch(e) is not { } action) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an
@@ -2147,6 +2150,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _consumedShortcut = action;
         e.Handled = true;
     }
+
+    /// <summary>The key came from inside a plugin view hosted in Settings (PluginViewHost).</summary>
+    private static bool IsInHostedPluginView(object? source)
+        => source is Visual v && v.GetSelfAndVisualAncestors().OfType<ContentControl>().Any(c => c.Name == "PluginViewHost");
 
     private void OnGlobalShortcutKeyUp(object? sender, KeyEventArgs e)
     {
@@ -2270,6 +2277,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // Fullscreen counts as the topmost surface — leave it first, browser-style,
             // before closing any in-app overlay.
             ToggleFullScreen();
+        }
+        else if (vm.IsSettingsModalOpen && vm.Settings.IsPluginViewOpen)
+        {
+            // A plugin's view is the topmost surface in Settings: back to its page, like the
+            // Back pill (a search typed in it isn't thrown away with Settings).
+            vm.Settings.ClosePluginViewCommand.Execute(null);
         }
         else if (vm.IsSettingsModalOpen)
         {
