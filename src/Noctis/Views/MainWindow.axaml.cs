@@ -2140,6 +2140,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // shortcuts never reached it): Space presses its focused button instead of play/pause.
         if (IsInHostedPluginView(e.Source)) return;
         if (shortcuts.TryMatch(e) is not { } action) return;
+        // Space (or Enter) on a control reached with the keyboard, its focus ring showing,
+        // presses that control. After a mouse click it stays play/pause, so clicking Next and
+        // then pressing Space doesn't skip again.
+        if (e.KeyModifiers == KeyModifiers.None && e.Key is Key.Space or Key.Enter && IsKeyboardFocusedControl(e.Source)) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an
         // edit box: typing a space in the search box stays typing a space. Ctrl+←/→ in
@@ -2150,6 +2154,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _consumedShortcut = action;
         e.Handled = true;
     }
+
+    /// <summary>A button, switch or drop-down that has keyboard focus (reached with Tab or the
+    /// arrow keys, so its focus ring shows), not one that was last clicked.</summary>
+    internal static bool IsKeyboardFocusedControl(object? source)
+        => source is Control c && c.Classes.Contains(":focus-visible")
+           && c is Button or ComboBox or Noctis.Controls.LottieToggle;
 
     /// <summary>The key came from inside a plugin view hosted in Settings (PluginViewHost).</summary>
     private static bool IsInHostedPluginView(object? source)
