@@ -39,11 +39,29 @@ public partial class SettingsViewModel
     [ObservableProperty] private int _pluginGridColumns = 3;
 
     /// <summary>The plugin whose page is open, or null for the grid.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPluginDetailOpen), nameof(IsPluginGridVisible))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPluginDetailOpen), nameof(IsPluginGridVisible), nameof(IsPluginPageVisible))]
     private PluginCardItem? _selectedPluginCard;
 
     public bool IsPluginDetailOpen => SelectedPluginCard is not null;
     public bool IsPluginGridVisible => SelectedPluginCard is null;
+    /// <summary>The plugin's page shows: a card is open and none of its views is open over it.</summary>
+    public bool IsPluginPageVisible => IsPluginDetailOpen && !IsPluginViewOpen;
+
+    /// <summary>The plugin view shown in place of its plugin's page ("Open Album Town"), or null.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPluginViewOpen), nameof(IsPluginPageVisible), nameof(PluginViewBackName))]
+    private PluginViewEntry? _openPluginViewEntry;
+
+    /// <summary>The control the plugin made for <see cref="OpenPluginViewEntry"/>.</summary>
+    [ObservableProperty] private Avalonia.Controls.Control? _pluginViewContent;
+
+    public bool IsPluginViewOpen => OpenPluginViewEntry is not null;
+    /// <summary>The view's Back pill, for screen readers ("Back to A-B Loop"); it shows the plugin's name.</summary>
+    public string PluginViewBackName => OpenPluginViewEntry is { } view ? Loc.T("Plugins.View.Back", view.PluginName) : "";
+
+    /// <summary>Set while a view is shown here: what its <see cref="PluginViewEntry.Reactivate"/> is.</summary>
+    private Func<bool>? _pluginViewReactivate;
+
+    partial void OnSelectedPluginCardChanged(PluginCardItem? value) => LeavePluginView();
 
     public bool HasOfficialCards => OfficialCards.Count > 0;
     public bool HasCommunityCards => CommunityCards.Count > 0;
@@ -79,6 +97,67 @@ public partial class SettingsViewModel
 
     [RelayCommand]
     private void ClosePluginDetail() => SelectedPluginCard = null;
+
+    // ── A plugin's own view, in place of its page ──
+    // "Open Album Town" swaps the plugin's page for the view, inside the Settings card (owner
+    // 10-29: the separate window looked choppy); the pop-out button still opens the window. One
+    // live control per view: while its window is open, Open brings that window forward instead
+    // (PluginHost.OpenView asks Reactivate first), and while it is shown here, a plugin's own
+    // OpenView finds it already up. The view leaves (its control released like a closed window's)
+    // on Back, pop-out, another plugin or tab, Settings closing, or the plugin withdrawing it.
+
+    /// <summary>API 1.3: a plugin's own view ("Open Album Town"), shown in place of the plugin's page.</summary>
+    [RelayCommand]
+    private void OpenPluginView(PluginViewEntry? view)
+    {
+        if (view is null || Plugins is not { } host) return;
+        LeavePluginView();
+        host.OpenView(view, ShowPluginViewInPlace);
+    }
+
+    private bool ShowPluginViewInPlace(PluginViewEntry view, Avalonia.Controls.Control content)
+    {
+        _pluginViewReactivate = static () => true; // already on screen: Settings is open on it
+        view.Reactivate = _pluginViewReactivate;
+        view.Withdrawn += OnOpenPluginViewWithdrawn;
+        PluginViewContent = content;
+        OpenPluginViewEntry = view;
+        return true;
+    }
+
+    private void OnOpenPluginViewWithdrawn(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(sender, OpenPluginViewEntry)) LeavePluginView();
+    }
+
+    /// <summary>Back: the plugin's page again.</summary>
+    [RelayCommand]
+    private void ClosePluginView() => LeavePluginView();
+
+    /// <summary>"Open in its own window": the view leaves the page and opens in PluginViewWindow,
+    /// for something to keep open while browsing (A-B Loop).</summary>
+    [RelayCommand]
+    private void PopOutPluginView()
+    {
+        if (OpenPluginViewEntry is not { } view) return;
+        LeavePluginView();
+        view.Open();
+    }
+
+    /// <summary>
+    /// Closes the in-place view as PluginViewWindow does when it closes: unhooks Withdrawn and
+    /// Reactivate and lets go of the control, so its DetachedFromVisualTree runs (timers stop) and
+    /// nothing here keeps the plugin's load context alive. No-op when no view is open.
+    /// </summary>
+    internal void LeavePluginView()
+    {
+        if (OpenPluginViewEntry is not { } view) return;
+        view.Withdrawn -= OnOpenPluginViewWithdrawn;
+        if (ReferenceEquals(view.Reactivate, _pluginViewReactivate)) view.Reactivate = null;
+        _pluginViewReactivate = null;
+        OpenPluginViewEntry = null;
+        PluginViewContent = null;
+    }
 
     [RelayCommand]
     private void ClearPluginSearch() => PluginSearchText = string.Empty;

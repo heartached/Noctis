@@ -945,12 +945,39 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private LyricsPanelView? GetLyricsPanelView() =>
         this.FindControl<ContentControl>("LyricsPanelHost")?.Content as LyricsPanelView;
 
-    private void EnsureSettingsViewLoaded()
+    internal void EnsureSettingsViewLoaded()
     {
         var host = this.FindControl<ContentControl>("SettingsViewHost");
         if (host is null || host.Content is not null) return;
 
-        host.Content = new SettingsView { Background = Avalonia.Media.Brushes.Transparent };
+        var view = new SettingsView { Background = Avalonia.Media.Brushes.Transparent };
+        view.CardSizeRequested += SizeSettingsCard;
+        host.Content = view;
+    }
+
+    /// <summary>The Settings card's own MaxWidth/MaxHeight (MainWindow.axaml), read on first use.</summary>
+    private Avalonia.Size? _settingsCardSize;
+
+    /// <summary>
+    /// <see cref="SettingsView.CardSizeRequested"/>: the card and its frost grow so the Settings
+    /// view inside gets <paramref name="content"/> (a plugin's own view open in place of its page),
+    /// never below their own size; null puts them back. The window still caps them (they stretch
+    /// within the overlay's margin), and their MaxWidth/MaxHeight transitions make it a glide.
+    /// </summary>
+    internal void SizeSettingsCard(Avalonia.Size? content)
+    {
+        var card = _settingsCard ?? this.FindControl<Border>("SettingsCard");
+        if (card is null) return;
+        var normal = _settingsCardSize ??= new Avalonia.Size(card.MaxWidth, card.MaxHeight);
+        var border = card.BorderThickness;
+        var width = content is { } c ? Math.Max(normal.Width, Math.Ceiling(c.Width + border.Left + border.Right)) : normal.Width;
+        var height = content is { } d ? Math.Max(normal.Height, Math.Ceiling(d.Height + border.Top + border.Bottom)) : normal.Height;
+        foreach (var box in new Control?[] { card, _settingsGlass ?? this.FindControl<Controls.GlassPanel>("SettingsGlass") })
+        {
+            if (box is null) continue;
+            box.MaxWidth = width;
+            box.MaxHeight = height;
+        }
     }
 
     private void WireWindowLevelHandlers()

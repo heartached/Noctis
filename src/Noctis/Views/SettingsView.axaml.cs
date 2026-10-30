@@ -103,6 +103,8 @@ public partial class SettingsView : UserControl
         PluginsTabPanel.SizeChanged += (_, e) => LayoutPluginGrid(e.NewSize.Width);
         // A plugin's page: on a narrow pane its settings' controls drop under their labels.
         PluginDetailPage.SizeChanged += (_, e) => LayoutPluginRows(e.NewSize.Width);
+        // A plugin's own view shown here wears the same theme as in its window.
+        PluginViewTheme.Apply(PluginViewHost);
     }
 
     /// <summary>Room the search box keeps beside the header's actions before they drop under it.</summary>
@@ -147,6 +149,9 @@ public partial class SettingsView : UserControl
     /// </summary>
     private void OnPluginDetailChanged(SettingsViewModel vm)
     {
+        // From the grid the page comes in from the right (back from a view it came from the left).
+        PluginDetailPage.Classes.Set("from-left", false);
+        PluginDetailPage.Classes.Set("from-right", true);
         if (vm.SelectedPluginCard is { } card)
         {
             if (_openedPluginCard is null) _pluginGridScrollOffset = SettingsScrollViewer.Offset.Y;
@@ -178,6 +183,83 @@ public partial class SettingsView : UserControl
     internal const double PluginRowStackWidth = 520;
 
     private void LayoutPluginRows(double width) => PluginDetailPage.Classes.Set("narrow", width > 0 && width < PluginRowStackWidth);
+
+    // ── A plugin's own view, in place of its page ──
+
+    /// <summary>
+    /// The size this view needs to give an open plugin view the size it asks for (its hint, else
+    /// PluginViewWindow's defaults) with the rail, the header and the margins around it; null once
+    /// the view leaves. MainWindow grows the Settings card to it (SizeSettingsCard).
+    /// </summary>
+    public event Action<Size?>? CardSizeRequested;
+
+    private Noctis.Services.Plugins.PluginViewEntry? _shownPluginView;
+
+    /// <summary>
+    /// The view opens with the Back pill focused and asks for the card size it needs; it leaves
+    /// with the card back to its own size and, on Back, focus on the view's Open button. The page
+    /// it covered comes back from the left (it went out that way).
+    /// </summary>
+    private void OnPluginViewChanged(SettingsViewModel vm)
+    {
+        if (vm.OpenPluginViewEntry is { } view)
+        {
+            _shownPluginView = view;
+            PluginDetailPage.Classes.Set("from-right", false);
+            PluginDetailPage.Classes.Set("from-left", true);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!ReferenceEquals(vm.OpenPluginViewEntry, view)) return;
+                CardSizeRequested?.Invoke(PluginViewCardSize(view));
+                PluginViewBackButton.Focus(NavigationMethod.Unspecified);
+            }, DispatcherPriority.Loaded);
+            return;
+        }
+
+        var left = _shownPluginView;
+        _shownPluginView = null;
+        if (left is null) return;
+        CardSizeRequested?.Invoke(null);
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Not when Settings closed or moved to another tab or plugin meanwhile.
+            if (vm.IsPluginViewOpen || !PluginDetailPage.IsEffectivelyVisible) return;
+            var buttons = PluginDetailHost.GetVisualDescendants().OfType<Button>().ToList();
+            var target = buttons.FirstOrDefault(b => ReferenceEquals(b.DataContext, left))
+                         ?? buttons.FirstOrDefault(b => b.Name == "PluginBackButton");
+            target?.Focus(NavigationMethod.Unspecified);
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>What this view needs for <paramref name="view"/>: the view's size plus everything
+    /// around its frame (this view's size minus the frame's, as laid out now).</summary>
+    private Size PluginViewCardSize(Noctis.Services.Plugins.PluginViewEntry view)
+    {
+        var frame = PluginViewFrame.Bounds.Size;
+        var size = PluginViewSize(view.ReadSizeHint(), PluginViewHost.Content as Control);
+        return new Size(size.Width + Bounds.Width - frame.Width, size.Height + Bounds.Height - frame.Height);
+    }
+
+    /// <summary>
+    /// The size a plugin view asks for, as its window would open (PluginViewWindow.Resolve, no
+    /// screen cap: the main window caps the card): the hint per axis, else 1000 x 680, never under
+    /// the minimum; on a size-to-content axis the control's own desired size.
+    /// </summary>
+    internal static Size PluginViewSize(Noctis.Services.Plugins.PluginViewSizeHint hint, Control? content)
+    {
+        var size = PluginViewWindow.Resolve(hint, null);
+        double width = size.Width, height = size.Height;
+        var byWidth = size.SizeToContent.HasFlag(SizeToContent.Width);
+        var byHeight = size.SizeToContent.HasFlag(SizeToContent.Height);
+        if (content is not null && (byWidth || byHeight))
+        {
+            content.Measure(new Size(byWidth ? double.PositiveInfinity : width, byHeight ? double.PositiveInfinity : height));
+            if (byWidth) width = Math.Max(size.MinWidth, content.DesiredSize.Width);
+            if (byHeight) height = Math.Max(size.MinHeight, content.DesiredSize.Height);
+            content.InvalidateMeasure(); // its slot measures it again with the real room
+        }
+        return new Size(width, height);
+    }
 
     /// <summary>The page header's "..." menu: Visit homepage (its address in the tooltip) and Open
     /// folder, the two quiet actions that used to be big pills. Rows light up in the accent like
@@ -592,6 +674,9 @@ public partial class SettingsView : UserControl
             // fold (Local API is the page's last card), so follow the card down as it grows.
             case nameof(SettingsViewModel.SelectedPluginCard):
                 if (_trackedViewModel is { } pluginsVm) OnPluginDetailChanged(pluginsVm);
+                break;
+            case nameof(SettingsViewModel.OpenPluginViewEntry):
+                if (_trackedViewModel is { } viewVm) OnPluginViewChanged(viewVm);
                 break;
 
             case nameof(SettingsViewModel.IsPhoneCardOpen):

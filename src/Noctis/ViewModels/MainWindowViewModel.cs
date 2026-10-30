@@ -62,7 +62,12 @@ public partial class MainWindowViewModel : ViewModelBase
     // hidden while it is open: settings flips that rebuild library views (Merge
     // Featured, Collapse Album Editions) used to rebuild the covered grid on the
     // UI thread mid-click, janking the very toggle animation that triggered them.
-    partial void OnIsSettingsModalOpenChanged(bool value) => UpdateSectionActiveFlags();
+    partial void OnIsSettingsModalOpenChanged(bool value)
+    {
+        UpdateSectionActiveFlags();
+        // A plugin view open in place of its page goes with the sheet (its control is released).
+        if (!value) Settings.LeavePluginView();
+    }
 
     /// <summary>
     /// A section VM is "active" only while it is the current view AND not covered

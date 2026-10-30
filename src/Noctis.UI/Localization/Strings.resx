@@ -2321,6 +2321,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Plugin files</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Removing it keeps its settings and data unless you choose otherwise.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>More</value></data>
+  <data name="Plugins.View.Back" xml:space="preserve"><value>Back to {0}</value></data>
+  <data name="Plugins.View.PopOut" xml:space="preserve"><value>Open in its own window</value></data>
   <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Remove plugin</value></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Can {0}</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>

@@ -384,10 +384,6 @@ public partial class SettingsViewModel : ViewModelBase
         PlatformHelper.OpenFolder(plugin.Directory);
     }
 
-    /// <summary>API 1.3: a plugin's own view ("Open Album Town"), shown in a window of its own.</summary>
-    [RelayCommand]
-    private void OpenPluginView(PluginViewEntry? view) => view?.Open();
-
     private void ShowPluginStatus(string text)
         => TransientStatus.Show(nameof(PluginsStatus), v => PluginsStatus = v, text, TimeSpan.FromSeconds(8));
 
@@ -418,6 +414,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnSelectedSettingsTabChanged(string value)
     {
+        LeavePluginView();
         foreach (var section in Sections)
             section.IsSelected = section.Key == value;
 
