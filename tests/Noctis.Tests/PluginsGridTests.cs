@@ -426,6 +426,7 @@ public class PluginsGridTests : IDisposable
             more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Pump();
             var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
+            Assert.True(Noctis.Helpers.MenuOpenAnimation.GetEnableFlyoutClose(menu)); // closes with the pop
             var homepage = Assert.IsType<MenuItem>(menu.Items[0]);
             Assert.Equal(Loc.T("Plugins.Detail.Homepage"), homepage.Header);
             Assert.Equal("https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx", ToolTip.GetTip(homepage));

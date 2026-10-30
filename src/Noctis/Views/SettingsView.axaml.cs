@@ -214,6 +214,8 @@ public partial class SettingsView : UserControl
     {
         if (sender is not Button button || button.DataContext is not PluginCardItem card || DataContext is not SettingsViewModel vm) return;
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        // Closes with the pop like every other menu (the style only opens it that way).
+        MenuOpenAnimation.SetEnableFlyoutClose(menu, true);
         foreach (var item in PluginMoreMenuItems(vm, card)) menu.Items.Add(item);
         if (menu.Items.Count == 0) return;
         PluginMoreMenu = menu;
