@@ -23,8 +23,8 @@ const nav = [
     /* Opens on hover or keyboard focus, like a site's product menu. On touch
        the link itself still goes to /plugins. */
     menu: [
-      { label: 'Extend Noctis', note: 'Plugins, content packs and the Local API', href: '/plugins' },
-      { label: 'Make a plugin', note: 'A beginner guide, from sample to shared', href: links.pluginGuide },
+      { label: 'Extend Noctis', href: '/plugins' },
+      { label: 'Make a plugin', href: links.pluginGuide },
     ],
   },
   { label: 'Changelog', href: '/changelog' },
@@ -53,8 +53,7 @@ const nav = [
                 {item.menu.map((m) => (
                   <li>
                     <a class="hdr__item" href={m.href}>
-                      <span class="hdr__item-title">{m.label}</span>
-                      <span class="hdr__item-note">{m.note}</span>
+                      {m.label}
                     </a>
                   </li>
                 ))}
@@ -297,7 +296,7 @@ const nav = [
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-width: 330px;
+    min-width: 200px;
     margin: 0;
     padding: var(--s-2);
     list-style: none;
@@ -308,10 +307,12 @@ const nav = [
   }
 
   .hdr__item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: var(--s-3) var(--s-4);
+    display: block;
+    padding: 10px var(--s-4);
+    color: var(--ink-0);
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;
     border-radius: 12px;
     text-decoration: none;
     transition: background-color var(--t-instant) var(--ease);
@@ -320,17 +321,6 @@ const nav = [
   .hdr__item:hover,
   .hdr__item:focus-visible {
     background: color-mix(in srgb, var(--ink-0) 6%, transparent);
-  }
-
-  .hdr__item-title {
-    color: var(--ink-0);
-    font-size: 0.95rem;
-    font-weight: 600;
-  }
-
-  .hdr__item-note {
-    color: var(--ink-2);
-    font-size: var(--step--1);
   }
 
   @media (prefers-reduced-motion: reduce) {
