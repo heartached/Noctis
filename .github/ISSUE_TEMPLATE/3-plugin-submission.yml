@@ -1,0 +1,223 @@
+name: Plugin submission
+description: Submit a plugin you made. Approved plugins show under Community plugins in Noctis, credited to you.
+title: "[Plugin] "
+labels: ["plugin-submission", "needs-review"]
+# The field labels below are what tools/Noctis.PluginCheck reads from the issue body
+# (SubmissionForm.cs); change both together. PluginSubmissionCheckTests checks they agree.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for building something for Noctis. Someone from the Noctis team reads the source and tries the plugin. Once it's approved, it shows up under **Community plugins** in Settings → Plugins in every copy of Noctis, credited to you.
+
+        Before you start: the plugin's source must be public on GitHub, and the zip must be an asset of a GitHub release. The [Make a plugin guide](https://noctisapp.cc/plugins/make) has the details.
+
+  - type: input
+    id: plugin-name
+    attributes:
+      label: Plugin name
+      description: The `name` in plugin.json. Shown in Settings, 60 characters at most.
+      placeholder: Pulse Ring
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-id
+    attributes:
+      label: Plugin id
+      description: The `id` in plugin.json, lowercase reverse-DNS style.
+      placeholder: dev.yourname.pulsering
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The `version` in plugin.json.
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: description
+    attributes:
+      label: Short description
+      description: One or two plain sentences, under 200 characters. Shown under the name in Settings.
+      placeholder: A ring that pulses with the beat behind the album art.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-it-does
+    attributes:
+      label: What it does
+      description: What the plugin adds to Noctis and where it shows up (a page, a menu item, the lyrics view, its own window, a setting).
+      placeholder: Adds a glowing ring behind the album art on the Now Playing page that pulses with the beat. Its size and colour can be changed in its settings.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how-to-try
+    attributes:
+      label: How to try it
+      description: The steps a reviewer follows to see it working, and anything it needs first (another app, an account, a certain kind of file).
+      placeholder: |
+        1. Install the zip and switch the plugin on.
+        2. Play any song and open Now Playing.
+        3. The ring appears behind the cover and pulses with the beat.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Optional, but they help a lot. Drag images or a short video here.
+
+  - type: input
+    id: author
+    attributes:
+      label: Author credit
+      description: The name to show as "by …" in Noctis.
+      placeholder: Your name or handle
+    validations:
+      required: true
+
+  - type: input
+    id: author-url
+    attributes:
+      label: Author link
+      description: Optional. An https link for the credit (your GitHub profile, website).
+      placeholder: https://github.com/yourname
+
+  - type: input
+    id: contact
+    attributes:
+      label: How to reach you
+      description: Optional. A Discord username (or anything else) in case the review has questions. Replies on this issue work too.
+      placeholder: yourname on Discord
+
+  - type: input
+    id: source-repo
+    attributes:
+      label: Source code
+      description: The public GitHub repository the plugin is built from. Reviews need the source.
+      placeholder: https://github.com/yourname/noctis-pulse-ring
+    validations:
+      required: true
+
+  - type: input
+    id: license
+    attributes:
+      label: Licence
+      description: The licence of the source, ideally as an SPDX id (MIT, Apache-2.0, GPL-3.0-only, …).
+      placeholder: MIT
+    validations:
+      required: true
+
+  - type: input
+    id: download
+    attributes:
+      label: Release zip
+      description: The direct link to the plugin .zip, attached to a GitHub release of the repository above.
+      placeholder: https://github.com/yourname/noctis-pulse-ring/releases/download/v1.0.0/PulseRing-1.0.0.zip
+    validations:
+      required: true
+
+  - type: input
+    id: sha256
+    attributes:
+      label: SHA-256
+      description: |
+        Of that exact zip, lowercase hex. Windows: `(Get-FileHash file.zip -Algorithm SHA256).Hash.ToLower()`. macOS/Linux: `shasum -a 256 file.zip`.
+      placeholder: 64 hex characters
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: The `type` in plugin.json.
+      options:
+        - Code plugin (dotnet)
+        - Content pack (content)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms
+      description: Where you tested it. Should match `platforms` in plugin.json.
+      multiple: true
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: min-app-version
+    attributes:
+      label: Minimum Noctis version
+      description: The `minAppVersion` in plugin.json, the oldest Noctis it works with.
+      placeholder: 1.6.4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Internet access
+      description: Does the plugin ever connect to anything? If yes, plugin.json must declare the `network` permission.
+      options:
+        - No, it never connects to the internet
+        - Yes (explain below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: network-details
+    attributes:
+      label: What it connects to
+      description: Every host it talks to, what it sends, and why. Leave empty if it never connects.
+      placeholder: Fetches lyrics from api.example.com, sending the track title and artist.
+
+  - type: dropdown
+    id: files
+    attributes:
+      label: Files outside its folder
+      description: Does it read or write files outside its own plugin folder?
+      options:
+        - No, only its own plugin folder
+        - Yes (explain below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: files-details
+    attributes:
+      label: Which files and why
+      description: The paths it reads or writes, and whether it ever changes or deletes anything.
+      placeholder: Reads the Mixxx library file (mixxxdb.sqlite), read-only.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Optional. Anything that would help a review, such as why it ships a native library or starts another program.
+
+  - type: checkboxes
+    id: agreements
+    attributes:
+      label: Before you submit
+      options:
+        - label: I wrote this plugin, or I have the right to submit it.
+          required: true
+        - label: It has no telemetry, ads or malware.
+          required: true
+        - label: It doesn't download copyrighted music or get around DRM.
+          required: true
