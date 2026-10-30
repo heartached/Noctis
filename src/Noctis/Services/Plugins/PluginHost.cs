@@ -523,8 +523,9 @@ public sealed class PluginViewEntry
     /// <summary>Raised (UI thread) when the view goes away: its window should close.</summary>
     public event EventHandler? Withdrawn;
 
-    /// <summary>Set by the open window: brings it forward. While set, opening the view again
-    /// reuses that window instead of creating the plugin's control a second time.</summary>
+    /// <summary>Set by the open window (or Settings, showing the view in place): brings it forward.
+    /// While set, opening the view again reuses that one instead of creating the plugin's control
+    /// a second time.</summary>
     public Func<bool>? Reactivate { get; set; }
 
     /// <summary>Creates the control and hands it to the window presenter.</summary>
@@ -733,9 +734,16 @@ public sealed class PluginHost
     /// guarded (a throw or a null control fails the plugin like any other callback), then the
     /// presenter shows it. False when the view is gone, the plugin stopped, or nothing can show it.
     /// </summary>
-    public bool OpenView(PluginViewEntry view)
+    public bool OpenView(PluginViewEntry view) => ViewPresenter is { } present && OpenView(view, present);
+
+    /// <summary>
+    /// <see cref="OpenView(PluginViewEntry)"/> with another presenter (Settings shows the view in
+    /// place of the plugin's page). While the view is already shown somewhere
+    /// (<see cref="PluginViewEntry.Reactivate"/>) that one is brought forward instead.
+    /// </summary>
+    public bool OpenView(PluginViewEntry view, Func<PluginViewEntry, Avalonia.Controls.Control, bool> present)
     {
-        if (view.IsWithdrawn || view.Plugin.Instance is null || ViewPresenter is not { } present) return false;
+        if (view.IsWithdrawn || view.Plugin.Instance is null) return false;
         if (view.Reactivate is { } reactivate && reactivate()) return true;
         Avalonia.Controls.Control? control = null;
         if (!Guard(view.Plugin, $"view '{view.Name}'", () => control = view.Provider.CreateView())) return false;

@@ -1759,8 +1759,9 @@
         <!-- The grid and a plugin's page slide past each other: the incoming one fades in from
              28 px to its side. Same trick as tab-page: the hidden state pins opacity and offset,
              and releasing it on IsVisible=True transitions both home (keyframe animations can't
-             drive RenderTransform here). -->
-        <Style Selector="StackPanel.plugin-subpage">
+             drive RenderTransform here). A plugin's own view (PluginViewPage) comes in over its
+             page the same way, and the page comes back from the left. -->
+        <Style Selector=":is(Panel).plugin-subpage">
             <Setter Property="RenderTransform" Value="translateX(0px)"/>
             <Setter Property="Transitions">
                 <Transitions>
@@ -1769,11 +1770,11 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="StackPanel.plugin-subpage.from-right[IsVisible=False]">
+        <Style Selector=":is(Panel).plugin-subpage.from-right[IsVisible=False]">
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="RenderTransform" Value="translateX(28px)"/>
         </Style>
-        <Style Selector="StackPanel.plugin-subpage.from-left[IsVisible=False]">
+        <Style Selector=":is(Panel).plugin-subpage.from-left[IsVisible=False]">
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="RenderTransform" Value="translateX(-28px)"/>
         </Style>
@@ -2097,6 +2098,7 @@
          Flowing Lyrics description re-wrapped (09-12). The bar itself still auto-hides its thumb. -->
     <ScrollViewer x:Name="SettingsScrollViewer"
                   Grid.Row="1"
+                  IsVisible="{Binding !IsPluginViewOpen}"
                   Focusable="True"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Visible">
@@ -7262,7 +7264,7 @@
             </StackPanel>
 
             <!-- A plugin's own page (PluginPageTemplate), in place of the grid. -->
-            <StackPanel x:Name="PluginDetailPage" Classes="plugin-subpage from-right" IsVisible="{Binding IsPluginDetailOpen}">
+            <StackPanel x:Name="PluginDetailPage" Classes="plugin-subpage from-right" IsVisible="{Binding IsPluginPageVisible}">
                 <ContentControl x:Name="PluginDetailHost" Content="{Binding SelectedPluginCard}"
                                 ContentTemplate="{StaticResource PluginPageTemplate}"/>
             </StackPanel>
@@ -7697,6 +7699,44 @@
 
         </StackPanel>
     </ScrollViewer>
+
+    <!-- A plugin's own view ("Open Album Town") in place of its page (owner 10-29: the window
+         looked choppy). Outside the scroller so the view gets a real height; it slides in like a
+         plugin's page (plugin-subpage) while MainWindow grows the card to the size the view asks
+         for (CardSizeRequested). Back returns to the page; the icon opens the view in its own
+         window instead. The view wears the plugin-window theme (PluginViewTheme on PluginViewHost). -->
+    <DockPanel x:Name="PluginViewPage" Grid.Row="1" Classes="plugin-subpage from-right"
+               Margin="28,8,28,24" IsVisible="{Binding IsPluginViewOpen}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <Button x:Name="PluginViewBackButton" Classes="pill-action plugin-back" HorizontalAlignment="Left"
+                    Command="{Binding ClosePluginViewCommand}"
+                    AutomationProperties.Name="{Binding PluginViewBackName}"
+                    Height="32" Padding="8,0,14,0" VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="16" Height="16"/>
+                    <TextBlock Text="{Binding OpenPluginViewEntry.PluginName, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="1" x:Name="PluginViewPopOutButton" Classes="icon-chip"
+                    AutomationProperties.Name="{loc:T Plugins.View.PopOut}" ToolTip.Tip="{loc:T Plugins.View.PopOut}"
+                    Command="{Binding PopOutPluginViewCommand}">
+                <Viewbox Width="15" Height="15">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource MenuLineOpenWith}" Stroke="{Binding $parent[Button].Foreground}"
+                              StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+        </Grid>
+        <!-- DataContext null: as in its window, the plugin's control inherits no DataContext
+             (a binding of its own must not resolve against Settings' view model). -->
+        <Border x:Name="PluginViewFrame" CornerRadius="18" ClipToBounds="True">
+            <ContentControl x:Name="PluginViewHost" DataContext="{x:Null}"
+                            Content="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).PluginViewContent}"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+        </Border>
+    </DockPanel>
     </Grid>
     </Grid>
 </UserControl>
