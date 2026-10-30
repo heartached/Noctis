@@ -427,6 +427,7 @@ public class PluginsGridTests : IDisposable
             Pump();
             var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
             Assert.True(Noctis.Helpers.MenuOpenAnimation.GetEnableFlyoutClose(menu)); // closes with the pop
+            Assert.All(menu.Items.OfType<MenuItem>(), i => Assert.Contains("accent-rows", i.Classes)); // accent rows
             var homepage = Assert.IsType<MenuItem>(menu.Items[0]);
             Assert.Equal(Loc.T("Plugins.Detail.Homepage"), homepage.Header);
             Assert.Equal("https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx", ToolTip.GetTip(homepage));

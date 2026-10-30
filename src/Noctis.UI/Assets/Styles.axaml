@@ -832,6 +832,14 @@
     <Style Selector="MenuItem:open /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}" />
     </Style>
+    <!-- accent-rows: the row under the pointer (or keyboard) fills with the accent, like the
+         chosen row of a pill-list drop-down (DropDowns.axaml). The plugin page's "..." menu. -->
+    <Style Selector="MenuItem.accent-rows:pointerover /template/ Border#PART_LayoutRoot, MenuItem.accent-rows:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="MenuItem.accent-rows:pointerover /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.accent-rows:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
     <Style Selector="MenuItem /template/ ContentControl#PART_IconPresenter">
         <Setter Property="Margin" Value="0,0,11,0" />
     </Style>

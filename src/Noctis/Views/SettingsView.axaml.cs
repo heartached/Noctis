@@ -180,7 +180,8 @@ public partial class SettingsView : UserControl
     private void LayoutPluginRows(double width) => PluginDetailPage.Classes.Set("narrow", width > 0 && width < PluginRowStackWidth);
 
     /// <summary>The page header's "..." menu: Visit homepage (its address in the tooltip) and Open
-    /// folder, the two quiet actions that used to be big pills.</summary>
+    /// folder, the two quiet actions that used to be big pills. Rows light up in the accent like
+    /// the Queue Rows drop-downs (owner 10-29).</summary>
     internal static List<MenuItem> PluginMoreMenuItems(SettingsViewModel vm, PluginCardItem card)
     {
         var items = new List<MenuItem>();
@@ -189,6 +190,7 @@ public partial class SettingsView : UserControl
             var homepage = new MenuItem
             {
                 Name = "PluginPageHomepageItem",
+                Classes = { "accent-rows" },
                 Header = Noctis.Localization.Loc.T("Plugins.Detail.Homepage"),
                 Command = vm.OpenPluginHomepageCommand,
                 CommandParameter = card,
@@ -200,6 +202,7 @@ public partial class SettingsView : UserControl
             items.Add(new MenuItem
             {
                 Name = "PluginPageFolderItem",
+                Classes = { "accent-rows" },
                 Header = Noctis.Localization.Loc.T("Plugins.OpenPluginFolder"),
                 Command = vm.OpenPluginDirectoryCommand,
                 CommandParameter = plugin,
