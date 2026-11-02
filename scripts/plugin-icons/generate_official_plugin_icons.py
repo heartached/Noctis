@@ -11,10 +11,13 @@ Icons:
                   pointer notch on top.
   ab-loop         teal #2EC4B6 tile, a white open loop arrow arching from the "B" dot back to
                   the "A" dot over a thin flat waveform line.
+  chords          violet #8B6CF6 tile, five white piano keys (C to G) with three violet black
+                  keys, and a violet dot on C, E and G: a C major chord.
 
 Outputs (paths relative to the repo root):
   plugins/Noctis.Plugins.AlbumRoulette/icon.png   256 px
   plugins/Noctis.Plugins.ABLoop/icon.png          256 px
+  plugins/Noctis.Plugins.Chords/icon.png          256 px
   and, with --out DIR, a copy of each as DIR/<id>-icon.png
 
 Requires Pillow and numpy.  Run:  python scripts/plugin-icons/generate_official_plugin_icons.py [--out DIR]
@@ -224,9 +227,42 @@ def ab_loop(n: int):
     return rgb, alpha
 
 
+def chords(n: int):
+    x, y = grid(n)
+    px = 1.0 / n
+    base = "#8B6CF6"
+    rgb, alpha = tile(x, y, px, base)
+    x0, x1, y0, y1 = 0.175, 0.825, 0.255, 0.745
+    keys = 5
+    w = (x1 - x0) / keys
+    gap = 0.011            # half-width of the violet line between two white keys
+    # The keyboard: one white rounded block, cut into five keys.
+    board = sd_round_rect(x, y, x0, y0, x1, y1, 0.045)
+    cuts = np.full_like(x, 1e9)
+    for k in range(1, keys):
+        kx = x0 + k * w
+        cuts = np.minimum(cuts, sd_segment(x, y, kx, y0 - 0.05, kx, y1 + 0.05, gap))
+    white = np.maximum(board, -cuts)
+    # Black keys between C-D, D-E and F-G (none between E and F), from the top edge down.
+    blacks = np.full_like(x, 1e9)
+    for k in (1, 2, 4):
+        kx = x0 + k * w
+        blacks = np.minimum(blacks, sd_round_rect(x, y, kx - 0.044, y0 - 0.05, kx + 0.044, y0 + 0.265, 0.018))
+    white = np.maximum(white, -(blacks + 0.0))
+    # The chord: C, E and G pressed (a violet dot near the bottom of each).
+    dots = np.full_like(x, 1e9)
+    for k in (0, 2, 4):
+        dots = np.minimum(dots, sd_circle(x, y, x0 + (k + 0.5) * w, y1 - 0.075, 0.036))
+    white = np.maximum(white, -dots)
+    a = coverage(white, px)
+    rgb = rgb * (1 - a[..., None]) + np.array(WHITE) * a[..., None]
+    return rgb, alpha
+
+
 ICONS = [
     ("album-roulette", roulette, "plugins/Noctis.Plugins.AlbumRoulette/icon.png"),
     ("ab-loop", ab_loop, "plugins/Noctis.Plugins.ABLoop/icon.png"),
+    ("chords", chords, "plugins/Noctis.Plugins.Chords/icon.png"),
 ]
 
 

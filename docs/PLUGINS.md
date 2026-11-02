@@ -140,6 +140,9 @@ samples live in the repository:
   downloads audio with yt-dlp (installed and kept current by the plugin, checked against the
   release's SHA-256 list), tags it with the app's TagLib#, and adds it through
   `host.LibraryImport`.
+- `plugins/Noctis.Plugins.Chords` — *Chords* (API 1.6): estimates the playing song's chords from
+  its audio, decoded through `host.AudioDecoder`, and shows them in time with the song in a view
+  of its own.
 - `plugins/Noctis.Plugins.Mixxx` — *Mixxx* (API 1.2): imports the BPM and key the Mixxx DJ app
   analysed, reading its `mixxxdb.sqlite` read-only with the app's SQLite, matching tracks by file
   path, and writing through `host.TrackAnalysis`.
@@ -731,8 +734,9 @@ push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING
 | Mixxx | `plugins/Noctis.Plugins.Mixxx` | API 1.2: BPM and key from Mixxx's library |
 | Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.4: a view, `PlayTracks`, `ShowAlbum`, a track command, notices |
 | A-B Loop | `plugins/Noctis.Plugins.ABLoop` | API 1.4: a view, `Seek`/`Play`/`Pause`, a track command |
+| Chords | `plugins/Noctis.Plugins.Chords` | API 1.6: `AudioDecoder`, a view, `Seek`, `PlayTracks`, a track command |
 
-Album Roulette's and A-B Loop's icons come from `scripts/plugin-icons/generate_official_plugin_icons.py`
+Album Roulette's, A-B Loop's and Chords' icons come from `scripts/plugin-icons/generate_official_plugin_icons.py`
 (Mixxx's and the community plugins' from `generate_plugin_icons.py`; Pillow and numpy; run it
 after changing a design and commit the `icon.png` files it writes).
 
@@ -758,6 +762,44 @@ considered and left out: in the app it would sit on the same 100 ms position upd
 with the same seek, so it would not be more exact; a sample-exact loop needs the decoder itself to
 wrap around, which is engine work, not a small additive API. Expect ~0.1 s or better, not a
 seamless loop.
+
+**How Chords works, and how exact it is.** "Find chords" (or "Show chords" in a track's menu)
+has Noctis decode the playing song to 11025 Hz mono (`host.AudioDecoder`, the first 15 minutes)
+and analyses it on a below-normal-priority thread, cancellable, entirely on the computer: no chord
+website is asked (they forbid scraping). The result is cached per file (path, size and date) in the
+plugin's data folder, so a song opens with its chords at once the next time. The analysis:
+4096-sample Hann frames every 1024 samples (93 ms); spectral peaks between 50 Hz and 2.5 kHz,
+placed to a fraction of a bin; the recording's tuning estimated from where all peaks sit against
+A = 440 Hz; each peak credited to its pitch class and, with falling weight, to the fundamentals it
+could be a harmonic of (a harmonic pitch-class profile), plus a separate bass profile; each frame
+scored against major and minor templates (with "Show seventh chords", also 7, maj7 and m7) by
+cosine similarity and a bass bonus for the root; Viterbi decoding where each chord change costs a
+fixed penalty (so one odd frame does not flip the chord); the key from Krumhansl-Kessler profiles
+plus the tonic chord the song holds longest, then a second pass that favours the key's chords
+a little. Chords are spelled with flats in flat keys.
+
+Accuracy is measured, not claimed: `ChordsAccuracyTests` synthesizes songs with a known chord at
+every instant (each note a stack of harmonics, so the overtones mislead as they do on a real
+instrument) and counts the share of 10 ms instants named right:
+
+| Synthetic test | Frame accuracy |
+|---|---|
+| C G Am F, held notes | 98.8% |
+| C G Am F, piano, drums, noise at 15 dB SNR, detuned +30 cents (tuning found: +29) | 97.6% |
+| C G Am F, piano, a melody of scale notes on top, inversions in the bass, drums, noise at 20 dB | 94.6% |
+| Am Dm E Am F G E Am, piano | 96.9% |
+| All 24 major and minor chords, 1 s each, random order | 97.5% |
+| Dm7 G7 Cmaj7 Am7, sevenths on (exact chord) / off (as Dm G C Am) | 98.8% / 98.9% |
+| Silence, G D Em C, silence (silence must read "no chord") | 97.6% |
+| C G Am F as a WAV and an MP3, decoded through the real host and ffmpeg | 97.5% / 97.5% |
+
+Most of what is missed sits at the chord changes (the frames straddle them). The key is right in
+all seven key tests (C, A minor, F, E minor, Eb, G, and through the host). A 4-minute song takes
+about 1.3 s to analyse on a desktop CPU, plus the decode. Synthetic audio is much easier than a
+mixed record (no voice, no passing notes, every chord exactly a triad or a seventh), so these
+numbers are a ceiling: on real songs expect clearly less, especially with distorted guitars,
+heavy vocals or chords beyond major, minor and sevenths. That is why the window says "Estimate"
+and explains it.
 
 ## Submitting a plugin
 
