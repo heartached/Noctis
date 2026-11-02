@@ -320,6 +320,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.MusicVideo" xml:space="preserve"><value>Клип</value><comment>Options menu toggle in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.MusicVideoAudio" xml:space="preserve"><value>Звук из клипа</value><comment>Options menu toggle in PlaybackBarView.axaml, under Music video</comment></data>
   <data name="Settings.MusicVideoAudioHint" xml:space="preserve"><value>Воспроизводить звук самого видео вместо файла песни. Действует со следующей песни.</value><comment>Music video audio toggle tooltip (Lyrics Studio card and options menu)</comment></data>
+  <data name="PlaybackBar.WatchMusicVideo" xml:space="preserve"><value>Смотреть клип</value><comment>Options menu toggle in PlaybackBarView.axaml: the lyrics page plays the clip full size</comment></data>
+  <data name="Settings.MusicVideoBehindLyricsHint" xml:space="preserve"><value>Показывать видео за текстом песни вместо обложки</value><comment>Behind lyrics toggle tooltip (Lyrics Studio card)</comment></data>
+  <data name="Lyrics.MusicVideoAudioSide" xml:space="preserve"><value>Аудио</value><comment>Lyrics page Audio / Video switch: the normal page (cover and lyrics)</comment></data>
+  <data name="Lyrics.MusicVideoVideoSide" xml:space="preserve"><value>Видео</value><comment>Lyrics page Audio / Video switch: the music video full size</comment></data>
   <data name="Settings.LyricsBackgroundVideo" xml:space="preserve"><value>Фоновое видео для текста</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LoopVideoGIFBehind" xml:space="preserve"><value>Зацикленное видео или GIF за текстом песни.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Choose" xml:space="preserve"><value>Выбрать</value><comment>Content in SettingsView.axaml</comment></data>
@@ -2609,6 +2613,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Показывать клипы</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Скруглённые углы</value><comment>Music videos card: rounded video corners toggle label</comment></data>
   <data name="LyricsStudio.MusicVideoAudio" xml:space="preserve"><value>Звук из видео</value><comment>Music videos card: play the clip's own audio toggle label</comment></data>
+  <data name="LyricsStudio.MusicVideoBehindLyrics" xml:space="preserve"><value>За текстом</value><comment>Music videos card: play the clip behind the lyrics toggle label</comment></data>
   <data name="LyricsStudio.ComposeEmpty" xml:space="preserve"><value>Текста пока нет. Вставьте текст или прослушайте трек.</value><comment>Lyrics box empty state</comment></data>
   <data name="LyricsStudio.ComposeCheck" xml:space="preserve"><value>Проверьте текст ниже — по одной строке на каждую спетую строку, — затем нажмите «Выровнять текст».</value><comment>Lyrics box hint when text is present</comment></data>
   <data name="LyricsStudio.TranscriptBanner" xml:space="preserve"><value>Экспериментальная расшифровка. Пение часто распознаётся плохо, поэтому исправьте слова ниже, затем нажмите «Выровнять текст», чтобы расставить тайминг.</value><comment>Lyrics box banner after a transcription</comment></data>

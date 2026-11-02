@@ -1607,6 +1607,15 @@
                                         <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideoUseVideoAudio}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- The lyrics page's Audio / Video switch, from the island: shown on the
+                                     lyrics page while the song's clip is on screen. -->
+                                <MenuItem Header="{loc:T PlaybackBar.WatchMusicVideo}"
+                                          Command="{Binding ToggleWatchMusicVideoCommand}"
+                                          IsVisible="{Binding HasMusicVideo}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsWatchingMusicVideo}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.RemoveFromLibrary}" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackFromLibraryCommand}">

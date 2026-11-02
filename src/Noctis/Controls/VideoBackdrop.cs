@@ -106,6 +106,28 @@ public sealed class VideoBackdrop : Control
         private set => SetAndRaise(HasVideoStreamProperty, ref _hasVideoStream, value);
     }
 
+    /// <summary>Music-video mode: the clip's playback speed, following the song's (Playback
+    /// speed 0.75x-2x). Without it a sped-up song drifts past the tolerance every tick and the
+    /// clip stutters from re-seek to re-seek.</summary>
+    public static readonly StyledProperty<double> RateProperty =
+        AvaloniaProperty.Register<VideoBackdrop, double>(nameof(Rate), defaultValue: 1.0);
+    public double Rate
+    {
+        get => GetValue(RateProperty);
+        set => SetValue(RateProperty, value);
+    }
+
+    /// <summary>Long-side cap of the decode buffer for this instance (default
+    /// <see cref="MaxLongSide"/>); the full-size music video view raises it so the clip
+    /// is not upscaled from 960 px. Read when a clip starts.</summary>
+    public static readonly StyledProperty<int> MaxDecodeSideProperty =
+        AvaloniaProperty.Register<VideoBackdrop, int>(nameof(MaxDecodeSide), defaultValue: MaxLongSide);
+    public int MaxDecodeSide
+    {
+        get => GetValue(MaxDecodeSideProperty);
+        set => SetValue(MaxDecodeSideProperty, value);
+    }
+
     public const int SyncToleranceMs = 350;
 
     /// <summary>What a sync request does to the clip.</summary>
@@ -129,14 +151,15 @@ public sealed class VideoBackdrop : Control
 
     /// <summary>
     /// Decode-buffer size for a clip of <paramref name="width"/>×<paramref name="height"/>:
-    /// the same aspect ratio, long side capped at <see cref="MaxLongSide"/>, both sides
-    /// even (VLC's chroma planes want even dimensions) and at least 2 px. Unknown
-    /// dimensions (0) fall back to a 16:9 buffer at the cap.
+    /// the same aspect ratio, long side capped at <paramref name="maxLongSide"/> (default
+    /// <see cref="MaxLongSide"/>), both sides even (VLC's chroma planes want even dimensions)
+    /// and at least 2 px. Unknown dimensions (0) fall back to a 16:9 buffer at the cap.
     /// </summary>
-    public static (int Width, int Height) FitBuffer(int width, int height)
+    public static (int Width, int Height) FitBuffer(int width, int height, int maxLongSide = MaxLongSide)
     {
-        if (width <= 0 || height <= 0) { width = MaxLongSide; height = MaxLongSide * 9 / 16; }
-        var scale = Math.Min(1.0, (double)MaxLongSide / Math.Max(width, height));
+        if (maxLongSide < 2) maxLongSide = MaxLongSide;
+        if (width <= 0 || height <= 0) { width = maxLongSide; height = maxLongSide * 9 / 16; }
+        var scale = Math.Min(1.0, (double)maxLongSide / Math.Max(width, height));
         var w = Math.Max(2, (int)Math.Round(width * scale)) & ~1;
         var h = Math.Max(2, (int)Math.Round(height * scale)) & ~1;
         return (Math.Max(2, w), Math.Max(2, h));
@@ -170,6 +193,8 @@ public sealed class VideoBackdrop : Control
         {
             if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds);
         }
+        else if (change.Property == RateProperty)
+            _session?.SetRate(Rate);
         else if (change.Property == StretchProperty || change.Property == CornerRadiusProperty)
             InvalidateVisual();
     }
@@ -212,6 +237,8 @@ public sealed class VideoBackdrop : Control
         var generation = _generation;
         var startPaused = _hostWindow.IsMinimized || IsPaused;
         var synced = SyncPosition != null;
+        var rate = Rate;
+        var maxSide = MaxDecodeSide;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             Session session;
@@ -230,7 +257,7 @@ public sealed class VideoBackdrop : Control
                     vh = (int)track.Data.Video.Height;
                     break;
                 }
-                var (bw, bh) = FitBuffer(vw, vh);
+                var (bw, bh) = FitBuffer(vw, vh, maxSide);
                 session = new Session(this, bw, bh, probe.Duration);
             }
             catch
@@ -248,6 +275,7 @@ public sealed class VideoBackdrop : Control
                     ? new Media(SharedLibVlc.Instance, source, FromType.FromPath, ":no-audio", ":input-repeat=65535")
                     : new Media(SharedLibVlc.Instance, source, FromType.FromPath, ":no-audio");
                 session.Player.Play(media);
+                if (synced) session.SetRate(rate);
                 if (startPaused) session.SetPaused(true);
                 DebugLogger.Info(DebugLogger.Category.Playback, "Backdrop.Play", $"src={Path.GetFileName(source)}");
             }
@@ -270,7 +298,10 @@ public sealed class VideoBackdrop : Control
                 // track changes, before the song's position resets, so a position captured at
                 // start-up could still be the previous song's.
                 if (SyncPosition is { } now)
+                {
+                    if (Rate != rate) session.SetRate(Rate); // speed moved while starting up
                     session.SyncTo((long)now.TotalMilliseconds, force: true);
+                }
             });
         });
     }
@@ -325,6 +356,14 @@ public sealed class VideoBackdrop : Control
             if (_dead) return;
             _paused = paused;
             ThreadPool.QueueUserWorkItem(_ => { try { Player.SetPause(paused); } catch { } });
+        }
+
+        /// <summary>Plays the clip at <paramref name="rate"/> (clamped to VLC's sane range).</summary>
+        public void SetRate(double rate)
+        {
+            if (_dead || double.IsNaN(rate) || rate <= 0) return;
+            var r = (float)Math.Clamp(rate, 0.25, 4.0);
+            ThreadPool.QueueUserWorkItem(_ => { try { Player.SetRate(r); } catch { } });
         }
 
         private int _syncInFlight;

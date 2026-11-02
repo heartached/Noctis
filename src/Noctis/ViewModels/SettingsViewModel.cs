@@ -1274,8 +1274,20 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    /// <summary>The music video plays behind the lyrics instead of in the cover slot.</summary>
+    [ObservableProperty] private bool _musicVideoAsBackground;
+
+    partial void OnMusicVideoAsBackgroundChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     [RelayCommand]
     private void ToggleMusicVideos() => MusicVideosEnabled = !MusicVideosEnabled;
+
+    [RelayCommand]
+    private void ToggleMusicVideoAsBackground() => MusicVideoAsBackground = !MusicVideoAsBackground;
 
     [RelayCommand]
     private void ToggleMusicVideoAudio() => MusicVideoUseVideoAudio = !MusicVideoUseVideoAudio;
@@ -3194,6 +3206,7 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideosEnabled = _settings.MusicVideosEnabled;
             MusicVideoRoundedCorners = _settings.MusicVideoRoundedCorners;
             MusicVideoUseVideoAudio = _settings.MusicVideoUseVideoAudio;
+            MusicVideoAsBackground = _settings.MusicVideoAsBackground;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
@@ -3691,6 +3704,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicVideosEnabled = MusicVideosEnabled;
         _settings.MusicVideoRoundedCorners = MusicVideoRoundedCorners;
         _settings.MusicVideoUseVideoAudio = MusicVideoUseVideoAudio;
+        _settings.MusicVideoAsBackground = MusicVideoAsBackground;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -4026,6 +4040,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.MusicVideosEnabled = MusicVideosEnabled;
         _player.MusicVideoCornerRadius = MusicVideoRoundedCorners ? 18 : 0;
         _player.MusicVideoAudioEnabled = MusicVideoUseVideoAudio;
+        _player.MusicVideoAsBackground = MusicVideoAsBackground;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -7692,6 +7707,8 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsBackgroundPausesWithPlayback = defaultSettings.LyricsBackgroundPausesWithPlayback;
             MusicVideosEnabled = defaultSettings.MusicVideosEnabled;
             MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
+            MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
+            MusicVideoAsBackground = defaultSettings.MusicVideoAsBackground;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;

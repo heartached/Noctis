@@ -73,6 +73,8 @@ public class SettingsResetTests : IDisposable
             LyricsBackgroundPausesWithPlayback = true,
             MusicVideosEnabled = false,
             MusicVideoRoundedCorners = false,
+            MusicVideoUseVideoAudio = true,
+            MusicVideoAsBackground = true,
             DiscordShowAlbum = false,
             DiscordStatusDisplay = "Title",
             NoctisServerPort = 5050,
