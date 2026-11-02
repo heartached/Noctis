@@ -34,14 +34,34 @@ public readonly record struct EmbeddedLyricsText(string Text, string Synced, boo
 /// </summary>
 public static class EmbeddedLyrics
 {
-    /// <summary>Untimed-lyrics names besides LYRICS, Vorbis comments and ID3v2 TXXX alike.</summary>
-    private static readonly string[] TextAliases = ["UNSYNCEDLYRICS", "UNSYNCED LYRICS"];
+    /// <summary>Untimed-lyrics names besides LYRICS, Vorbis comments and ID3v2 TXXX alike, as
+    /// <see cref="Key"/> spells them: UNSYNCEDLYRICS (Mp3tag), "UNSYNCED LYRICS" (foobar2000),
+    /// UNSYNCED_LYRICS, and the ID3v2 frame's own name, "Unsynchronised lyrics" (GitHub #149).</summary>
+    private static readonly string[] TextAliases = ["UNSYNCEDLYRICS", "UNSYNCHRONISEDLYRICS", "UNSYNCHRONIZEDLYRICS"];
 
-    /// <summary>Timed-lyrics names, Vorbis comments and ID3v2 TXXX alike.</summary>
-    private static readonly string[] SyncedAliases = ["SYNCEDLYRICS", "SYNCED LYRICS"];
+    /// <summary>Timed-lyrics names, Vorbis comments and ID3v2 TXXX alike, as <see cref="Key"/> spells them.</summary>
+    private static readonly string[] SyncedAliases = ["SYNCEDLYRICS", "SYNCHRONISEDLYRICS", "SYNCHRONIZEDLYRICS"];
 
-    /// <summary>Everything a lyrics write replaces, besides the main field.</summary>
-    private static readonly string[] AllAliases = ["UNSYNCEDLYRICS", "UNSYNCED LYRICS", "SYNCEDLYRICS", "SYNCED LYRICS"];
+    /// <summary>A tag name as the alias lists spell it: upper case, without the spaces, underscores
+    /// and hyphens taggers put between the words ("Unsynced Lyrics", UNSYNCED_LYRICS).</summary>
+    private static string Key(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return string.Empty;
+        var sb = new StringBuilder(name.Length);
+        foreach (var c in name)
+            if (c is not (' ' or '_' or '-')) sb.Append(char.ToUpperInvariant(c));
+        return sb.ToString();
+    }
+
+    /// <summary>An untimed alias, or "LYRICS:ENG" / "LYRICS:&lt;description&gt;": the lyrics with
+    /// their language or description in the name, as ID3v2's USLT frame carries them.</summary>
+    private static bool IsTextAlias(string? name)
+    {
+        var key = Key(name);
+        return TextAliases.Contains(key) || key.StartsWith("LYRICS:", StringComparison.Ordinal);
+    }
+
+    private static bool IsSyncedAlias(string? name) => SyncedAliases.Contains(Key(name));
 
     /// <summary>Opens <paramref name="path"/> (tags only) and reads its lyrics; empty on any failure.</summary>
     public static EmbeddedLyricsText ReadFile(string path)
@@ -89,22 +109,24 @@ public static class EmbeddedLyrics
     /// stamps. Empty when none holds text.</summary>
     public static string ReadText(TagLib.File file)
     {
+        // Every LYRICS comment, not only the first one TagLib's Tag.Lyrics returns: some taggers
+        // write one comment per line (GitHub #149), and the song showed its first line alone.
+        foreach (var xiph in XiphComments(file))
+            if (FirstField(xiph, "LYRICS") is { } all) return all;
+
         string? main = null;
         try { main = file.Tag.Lyrics; } catch { }
         if (!string.IsNullOrWhiteSpace(main)) return main;
 
         foreach (var xiph in XiphComments(file))
-            foreach (var name in TextAliases)
-                if (FirstField(xiph, name) is { } text) return text;
+            if (XiphAlias(xiph, IsTextAlias) is { } text) return text;
 
-        if (Id3v2(file) is { } id3)
-            foreach (var name in TextAliases.Prepend("LYRICS"))
-                if (Txxx(id3, name) is { } text) return text;
+        if (Id3v2(file) is { } id3
+            && Txxx(id3, d => Key(d) == "LYRICS" || IsTextAlias(d)) is { } txxx) return txxx;
 
         // A "synced" field holding words without a single stamp is still the song's lyrics.
         foreach (var xiph in XiphComments(file))
-            foreach (var name in SyncedAliases)
-                if (FirstField(xiph, name) is { } text && !LyricsTextHelper.ContainsTimestamps(text)) return text;
+            if (XiphAlias(xiph, IsSyncedAlias, t => !LyricsTextHelper.ContainsTimestamps(t)) is { } text) return text;
 
         return string.Empty;
     }
@@ -115,12 +137,10 @@ public static class EmbeddedLyrics
     {
         fromSylt = false;
         foreach (var xiph in XiphComments(file))
-            foreach (var name in SyncedAliases)
-                if (FirstField(xiph, name) is { } text && LyricsTextHelper.ContainsTimestamps(text)) return text;
+            if (XiphAlias(xiph, IsSyncedAlias, LyricsTextHelper.ContainsTimestamps) is { } text) return text;
 
         if (Id3v2(file) is not { } id3) return string.Empty;
-        foreach (var name in SyncedAliases)
-            if (Txxx(id3, name) is { } text && LyricsTextHelper.ContainsTimestamps(text)) return text;
+        if (Txxx(id3, IsSyncedAlias, LyricsTextHelper.ContainsTimestamps) is { } timed) return timed;
 
         var lrc = SyltToLrc(id3);
         fromSylt = lrc.Length > 0;
@@ -209,9 +229,7 @@ public static class EmbeddedLyrics
         // combined setter only writes tags that exist).
         file.Tag.Lyrics = value;
 
-        foreach (var xiph in XiphComments(file))
-            foreach (var name in AllAliases)
-                xiph.RemoveField(name);
+        RemoveAliases(file, synced: true);
 
         if (Id3v2(file) is { } id3)
         {
@@ -222,10 +240,6 @@ public static class EmbeddedLyrics
             if (value != null)
                 id3.AddFrame(new TagLib.Id3v2.UnsynchronisedLyricsFrame(string.Empty, Language(id3)) { Text = value });
 
-            var aliases = AllAliases.Prepend("LYRICS").ToArray();
-            foreach (var frame in id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>().ToList())
-                if (aliases.Contains(frame.Description, StringComparer.OrdinalIgnoreCase))
-                    id3.RemoveFrame(frame);
             foreach (var frame in id3.GetFrames<TagLib.Id3v2.SynchronisedLyricsFrame>().ToList())
                 if (frame.Type == TagLib.Id3v2.SynchedTextType.Lyrics)
                     id3.RemoveFrame(frame);
@@ -287,6 +301,33 @@ public static class EmbeddedLyrics
         catch { return null; }
     }
 
+    /// <summary>
+    /// Removes the lyrics fields besides the main one, or the old lyrics would come back from
+    /// them: the untimed aliases (Vorbis comments, and ID3v2 TXXX with TXXX:LYRICS), and with
+    /// <paramref name="synced"/> the timed ones too.
+    /// </summary>
+    public static void RemoveAliases(TagLib.File file, bool synced)
+    {
+        bool Alias(string? name) => IsTextAlias(name) || (synced && IsSyncedAlias(name));
+        foreach (var xiph in XiphComments(file))
+            foreach (var name in xiph.Where(Alias).ToList())
+                xiph.RemoveField(name);
+        if (Id3v2(file) is { } id3)
+            foreach (var frame in id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>().ToList())
+                if (Key(frame.Description) == "LYRICS" || Alias(frame.Description))
+                    id3.RemoveFrame(frame);
+    }
+
+    /// <summary>The first comment, in the file's order, whose name <paramref name="isName"/> accepts
+    /// and whose text <paramref name="accept"/> does; a repeated comment's values joined by line.</summary>
+    private static string? XiphAlias(TagLib.Ogg.XiphComment xiph, Func<string, bool> isName, Func<string, bool>? accept = null)
+    {
+        foreach (var name in xiph)
+            if (isName(name) && FirstField(xiph, name) is { } text && (accept == null || accept(text)))
+                return text;
+        return null;
+    }
+
     private static string? FirstField(TagLib.Ogg.XiphComment xiph, string name)
     {
         var values = xiph.GetField(name);
@@ -294,13 +335,13 @@ public static class EmbeddedLyrics
         return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
-    private static string? Txxx(TagLib.Id3v2.Tag id3, string description)
+    private static string? Txxx(TagLib.Id3v2.Tag id3, Func<string, bool> isName, Func<string, bool>? accept = null)
     {
         foreach (var frame in id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>())
         {
-            if (!string.Equals(frame.Description, description, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!isName(frame.Description ?? string.Empty)) continue;
             var text = string.Join("\n", frame.Text ?? []);
-            if (!string.IsNullOrWhiteSpace(text)) return text;
+            if (!string.IsNullOrWhiteSpace(text) && (accept == null || accept(text))) return text;
         }
         return null;
     }

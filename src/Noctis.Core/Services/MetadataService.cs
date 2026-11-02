@@ -705,15 +705,7 @@ public class MetadataService : IMetadataService
         var value = string.IsNullOrWhiteSpace(plain) ? null : plain;
         file.Tag.Lyrics = value;
         if (value == null) return;
-        if (file.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
-            foreach (var name in new[] { "UNSYNCEDLYRICS", "UNSYNCED LYRICS" })
-                xiph.RemoveField(name);
-        if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
-            foreach (var frame in id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>().ToList())
-                if (frame.Description is { } d && (d.Equals("LYRICS", StringComparison.OrdinalIgnoreCase)
-                    || d.Equals("UNSYNCEDLYRICS", StringComparison.OrdinalIgnoreCase)
-                    || d.Equals("UNSYNCED LYRICS", StringComparison.OrdinalIgnoreCase)))
-                    id3.RemoveFrame(frame);
+        EmbeddedLyrics.RemoveAliases(file, synced: false);
     }
 
     public bool WriteLyrics(string filePath, string? plain, string? synced, Func<EmbeddedLyricsText, bool>? onlyIf = null)
