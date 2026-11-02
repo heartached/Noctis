@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
              xmlns:ctrl="using:Noctis.Controls"
              x:Class="Noctis.Views.CoverFlowView"
              x:DataType="vm:CoverFlowViewModel"
@@ -41,6 +42,93 @@
             <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- Collage up-next tiles (GitHub #153): the cover, its heart, and a title/artist
+             caption that shows on hover; a click plays the track (code-behind, Tag). -->
+        <Style Selector="Button.collage-tile">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="TileFrame" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000">
+                        <ContentPresenter x:Name="TileContent"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Setter Property="ContentTemplate">
+                <DataTemplate x:DataType="m:Track">
+                    <Panel>
+                        <Border Background="#2A2A31"/>
+                        <ctrl:CachedImage SourcePath="{Binding AlbumArtworkPath}" Stretch="UniformToFill"/>
+                        <Border Classes="collage-caption">
+                            <StackPanel Spacing="1">
+                                <TextBlock Text="{Binding TitleDisplay}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
+                                           Foreground="White" Opacity="0.8" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- Size / Margin per tile size: the s* styles below -->
+                        <ctrl:HeartIcon ShowWhenOff="False"
+                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                        IsFavorite="{Binding IsFavorite}"/>
+                    </Panel>
+                </DataTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.collage-tile.s140 /template/ Border#TileFrame, Button.collage-tile.s110 /template/ Border#TileFrame">
+            <Setter Property="BoxShadow" Value="0 7 20 0 #5A000000"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s90 /template/ Border#TileFrame">
+            <Setter Property="BoxShadow" Value="0 6 18 0 #5A000000"/>
+        </Style>
+        <Style Selector="Button.collage-tile ctrl|HeartIcon">
+            <Setter Property="Size" Value="16"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s200 ctrl|HeartIcon">
+            <Setter Property="Size" Value="18"/>
+            <Setter Property="Margin" Value="0,0,9,9"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s140 ctrl|HeartIcon">
+            <Setter Property="Size" Value="14"/>
+            <Setter Property="Margin" Value="0,0,7,7"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s110 ctrl|HeartIcon">
+            <Setter Property="Size" Value="12"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s90 ctrl|HeartIcon">
+            <Setter Property="Size" Value="11"/>
+            <Setter Property="Margin" Value="0,0,5,5"/>
+        </Style>
+        <Style Selector="Button.collage-tile:pointerover ctrl|HeartIcon, Button.collage-tile:focus-visible ctrl|HeartIcon">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Border.collage-caption">
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="Padding" Value="8,20,8,7"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Color="#00000000" Offset="0"/>
+                    <GradientStop Color="#C8000000" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.collage-caption.playing, Button.collage-tile:pointerover Border.collage-caption, Button.collage-tile:focus-visible Border.collage-caption">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
 
         <!-- Tilted cards in the now-playing pile. Rotation is per-card (RenderTransform
@@ -55,21 +143,9 @@
 
     <Grid RowDefinitions="*">
 
-        <!-- Collage background: quiet charcoal with a subtle radial lift (collage mode only) -->
-        <Panel x:Name="CollageBackground" Grid.Row="0" IsHitTestVisible="False" IsVisible="False">
-            <Border>
-                <Border.Background>
-                    <RadialGradientBrush GradientOrigin="50%,40%" Center="50%,40%" RadiusX="70%" RadiusY="70%">
-                        <GradientStop Color="#202225" Offset="0"/>
-                        <GradientStop Color="#18191B" Offset="1"/>
-                    </RadialGradientBrush>
-                </Border.Background>
-            </Border>
-        </Panel>
-
         <!-- Blurred background: the CURRENT cover, heavily blurred and darkened, behind
-             everything (carousel + cascade). Two stacked copies: on a track change the
-             code-behind points the hidden one at the new cover and swaps their opacities,
+             every layout (carousel, cascade and, since GitHub #153, the collage). Two
+             stacked copies: on a track change the code-behind points the hidden one at the new cover and swaps their opacities,
              and the Opacity transitions crossfade them (CrossfadeBackground). Both decode
              at 768 so they share the centre card's ArtworkCache entry. -->
         <Panel x:Name="BlurredBackground" Grid.Row="0" IsHitTestVisible="False">
@@ -114,16 +190,18 @@
              (SwitchLayout / CoverFlowLayoutMorph). -->
         <Grid Grid.Row="0" Margin="0,24,0,12">
 
-            <!-- ══ Static album-art collage (decorative; library artwork, fully non-interactive) ══
+            <!-- ══ Album-art collage of the queue ══
                  Fixed 1410×540 design canvas, scaled down to fit on smaller windows and centred.
                  A tidy column masonry of up to 32 covers: covers in a column share a width and
                  left edge (so they line up), columns get larger toward the centre and smaller
                  toward the edges. Slots fill from the now-playing track outward through UpNext.
-                 IsHitTestVisible=False → no cover is clickable, hoverable or selectable. -->
+                 GitHub #153: the playing tile carries an accent ring, a "now playing" mark and
+                 its title/artist; every up-next tile (Button.collage-tile, Tag = its place in
+                 the queue) shows its title/artist on hover and plays that track on click. -->
             <Viewbox x:Name="CollageViewbox"
                      Stretch="Uniform"
                      MaxWidth="1900" MaxHeight="760"
-                     IsHitTestVisible="False" Margin="24,24,24,140"
+                     Margin="24,24,24,140"
                      IsVisible="False">
                 <Canvas Width="1410" Height="540">
 
@@ -132,334 +210,196 @@
                             BoxShadow="0 8 22 0 #5E000000"
                             IsVisible="{Binding CenterTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <Panel>
+                            <Border Background="#2A2A31"/>
                             <ctrl:CachedImage SourcePath="{Binding CenterTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
                             <!-- Animated cover for the now-playing tile (same control/setting as the carousel) -->
                             <ctrl:AnimatedCoverImage
                                 Source="{Binding Player.CurrentAnimatedCoverPath}"
                                 IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
+                            <!-- GitHub #153: the playing tile says so and names its song -->
+                            <Border Classes="collage-caption playing">
+                                <StackPanel Spacing="1">
+                                    <TextBlock Text="{Binding CenterTrack.TitleDisplay, FallbackValue=''}" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding CenterTrack.ArtistDisplay, FallbackValue=''}" FontSize="12"
+                                               Foreground="White" Opacity="0.8" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="8" Padding="7,2"
+                                    Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    BoxShadow="0 2 8 0 #66000000">
+                                <TextBlock Text="{loc:T CoverFlow.NOWPLAYING}" FontSize="9" FontWeight="SemiBold"
+                                           LetterSpacing="1.2" Foreground="White"/>
+                            </Border>
                             <ctrl:HeartIcon Size="18" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,9"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,9,9,0"
                                             IsFavorite="{Binding CenterTrack.IsFavorite, FallbackValue=False}"/>
+                            <Border CornerRadius="6" BorderThickness="3" BorderBrush="{DynamicResource AccentColorBrush}"/>
                         </Panel>
                     </Border>
-                    <Border Canvas.Left="604" Canvas.Top="278" Width="200" Height="200" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding NextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="18" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,9"
-                                            IsFavorite="{Binding NextTrack.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
+                    <Button Classes="collage-tile s200" Tag="1"
+                            Canvas.Left="604" Canvas.Top="278" Width="200" Height="200"
+                            Content="{Binding NextTrack}"
+                            AutomationProperties.Name="{Binding NextTrack.Title, FallbackValue=''}"
+                            IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                     <!-- ═══ Inner columns (170) ═══ -->
-                    <Border Canvas.Left="418" Canvas.Top="1" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding FarNextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="16" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                                            IsFavorite="{Binding FarNextTrack.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="418" Canvas.Top="185" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding EdgeNextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="16" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                                            IsFavorite="{Binding EdgeNextTrack.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="418" Canvas.Top="369" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding OffNextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="16" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                                            IsFavorite="{Binding OffNextTrack.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="820" Canvas.Top="1" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding Next5Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next5Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="16" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                                            IsFavorite="{Binding Next5Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="820" Canvas.Top="185" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding Next6Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next6Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="16" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                                            IsFavorite="{Binding Next6Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="820" Canvas.Top="369" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 8 22 0 #5E000000"
-                            IsVisible="{Binding Next7Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next7Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="16" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                                            IsFavorite="{Binding Next7Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
+                    <Button Classes="collage-tile s170" Tag="2"
+                            Canvas.Left="418" Canvas.Top="1" Width="170" Height="170"
+                            Content="{Binding FarNextTrack}"
+                            AutomationProperties.Name="{Binding FarNextTrack.Title, FallbackValue=''}"
+                            IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s170" Tag="3"
+                            Canvas.Left="418" Canvas.Top="185" Width="170" Height="170"
+                            Content="{Binding EdgeNextTrack}"
+                            AutomationProperties.Name="{Binding EdgeNextTrack.Title, FallbackValue=''}"
+                            IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s170" Tag="4"
+                            Canvas.Left="418" Canvas.Top="369" Width="170" Height="170"
+                            Content="{Binding OffNextTrack}"
+                            AutomationProperties.Name="{Binding OffNextTrack.Title, FallbackValue=''}"
+                            IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s170" Tag="5"
+                            Canvas.Left="820" Canvas.Top="1" Width="170" Height="170"
+                            Content="{Binding Next5Track}"
+                            AutomationProperties.Name="{Binding Next5Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next5Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s170" Tag="6"
+                            Canvas.Left="820" Canvas.Top="185" Width="170" Height="170"
+                            Content="{Binding Next6Track}"
+                            AutomationProperties.Name="{Binding Next6Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next6Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s170" Tag="7"
+                            Canvas.Left="820" Canvas.Top="369" Width="170" Height="170"
+                            Content="{Binding Next7Track}"
+                            AutomationProperties.Name="{Binding Next7Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next7Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                     <!-- ═══ Mid columns (140) ═══ -->
-                    <Border Canvas.Left="262" Canvas.Top="44" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next8Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next8Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="14" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
-                                            IsFavorite="{Binding Next8Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="262" Canvas.Top="200" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next9Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next9Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="14" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
-                                            IsFavorite="{Binding Next9Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="262" Canvas.Top="356" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next10Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next10Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="14" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
-                                            IsFavorite="{Binding Next10Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1006" Canvas.Top="44" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next11Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next11Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="14" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
-                                            IsFavorite="{Binding Next11Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1006" Canvas.Top="200" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next12Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next12Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="14" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
-                                            IsFavorite="{Binding Next12Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1006" Canvas.Top="356" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next13Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next13Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="14" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
-                                            IsFavorite="{Binding Next13Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
+                    <Button Classes="collage-tile s140" Tag="8"
+                            Canvas.Left="262" Canvas.Top="44" Width="140" Height="140"
+                            Content="{Binding Next8Track}"
+                            AutomationProperties.Name="{Binding Next8Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next8Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s140" Tag="9"
+                            Canvas.Left="262" Canvas.Top="200" Width="140" Height="140"
+                            Content="{Binding Next9Track}"
+                            AutomationProperties.Name="{Binding Next9Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next9Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s140" Tag="10"
+                            Canvas.Left="262" Canvas.Top="356" Width="140" Height="140"
+                            Content="{Binding Next10Track}"
+                            AutomationProperties.Name="{Binding Next10Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next10Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s140" Tag="11"
+                            Canvas.Left="1006" Canvas.Top="44" Width="140" Height="140"
+                            Content="{Binding Next11Track}"
+                            AutomationProperties.Name="{Binding Next11Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next11Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s140" Tag="12"
+                            Canvas.Left="1006" Canvas.Top="200" Width="140" Height="140"
+                            Content="{Binding Next12Track}"
+                            AutomationProperties.Name="{Binding Next12Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next12Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s140" Tag="13"
+                            Canvas.Left="1006" Canvas.Top="356" Width="140" Height="140"
+                            Content="{Binding Next13Track}"
+                            AutomationProperties.Name="{Binding Next13Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next13Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                     <!-- ═══ Outer columns (110) ═══ -->
-                    <Border Canvas.Left="136" Canvas.Top="26" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next14Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next14Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next14Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="136" Canvas.Top="152" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next15Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next15Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next15Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="136" Canvas.Top="278" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next16Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next16Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next16Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="136" Canvas.Top="404" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next17Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next17Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next17Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1162" Canvas.Top="26" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next18Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next18Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next18Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1162" Canvas.Top="152" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next19Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next19Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next19Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1162" Canvas.Top="278" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next20Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next20Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next20Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1162" Canvas.Top="404" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 7 20 0 #5A000000"
-                            IsVisible="{Binding Next21Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next21Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="12" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                                            IsFavorite="{Binding Next21Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
+                    <Button Classes="collage-tile s110" Tag="14"
+                            Canvas.Left="136" Canvas.Top="26" Width="110" Height="110"
+                            Content="{Binding Next14Track}"
+                            AutomationProperties.Name="{Binding Next14Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next14Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="15"
+                            Canvas.Left="136" Canvas.Top="152" Width="110" Height="110"
+                            Content="{Binding Next15Track}"
+                            AutomationProperties.Name="{Binding Next15Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next15Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="16"
+                            Canvas.Left="136" Canvas.Top="278" Width="110" Height="110"
+                            Content="{Binding Next16Track}"
+                            AutomationProperties.Name="{Binding Next16Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next16Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="17"
+                            Canvas.Left="136" Canvas.Top="404" Width="110" Height="110"
+                            Content="{Binding Next17Track}"
+                            AutomationProperties.Name="{Binding Next17Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next17Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="18"
+                            Canvas.Left="1162" Canvas.Top="26" Width="110" Height="110"
+                            Content="{Binding Next18Track}"
+                            AutomationProperties.Name="{Binding Next18Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next18Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="19"
+                            Canvas.Left="1162" Canvas.Top="152" Width="110" Height="110"
+                            Content="{Binding Next19Track}"
+                            AutomationProperties.Name="{Binding Next19Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next19Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="20"
+                            Canvas.Left="1162" Canvas.Top="278" Width="110" Height="110"
+                            Content="{Binding Next20Track}"
+                            AutomationProperties.Name="{Binding Next20Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next20Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s110" Tag="21"
+                            Canvas.Left="1162" Canvas.Top="404" Width="110" Height="110"
+                            Content="{Binding Next21Track}"
+                            AutomationProperties.Name="{Binding Next21Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next21Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
                     <!-- ═══ Edge columns (90) ═══ -->
-                    <Border Canvas.Left="30" Canvas.Top="13" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next22Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next22Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next22Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="30" Canvas.Top="119" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next23Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next23Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next23Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="30" Canvas.Top="225" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next24Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next24Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next24Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="30" Canvas.Top="331" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next25Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next25Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next25Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="30" Canvas.Top="437" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next26Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next26Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next26Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1288" Canvas.Top="13" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next27Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next27Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next27Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1288" Canvas.Top="119" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next28Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next28Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next28Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1288" Canvas.Top="225" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next29Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next29Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next29Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1288" Canvas.Top="331" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next30Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next30Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next30Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
-                    <Border Canvas.Left="1288" Canvas.Top="437" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #5A000000"
-                            IsVisible="{Binding Next31Track, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Panel>
-                            <ctrl:CachedImage SourcePath="{Binding Next31Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
-                            <ctrl:HeartIcon Size="11" ShowWhenOff="False"
-                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
-                                            IsFavorite="{Binding Next31Track.IsFavorite, FallbackValue=False}"/>
-                        </Panel>
-                    </Border>
+                    <Button Classes="collage-tile s90" Tag="22"
+                            Canvas.Left="30" Canvas.Top="13" Width="90" Height="90"
+                            Content="{Binding Next22Track}"
+                            AutomationProperties.Name="{Binding Next22Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next22Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="23"
+                            Canvas.Left="30" Canvas.Top="119" Width="90" Height="90"
+                            Content="{Binding Next23Track}"
+                            AutomationProperties.Name="{Binding Next23Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next23Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="24"
+                            Canvas.Left="30" Canvas.Top="225" Width="90" Height="90"
+                            Content="{Binding Next24Track}"
+                            AutomationProperties.Name="{Binding Next24Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next24Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="25"
+                            Canvas.Left="30" Canvas.Top="331" Width="90" Height="90"
+                            Content="{Binding Next25Track}"
+                            AutomationProperties.Name="{Binding Next25Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next25Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="26"
+                            Canvas.Left="30" Canvas.Top="437" Width="90" Height="90"
+                            Content="{Binding Next26Track}"
+                            AutomationProperties.Name="{Binding Next26Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next26Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="27"
+                            Canvas.Left="1288" Canvas.Top="13" Width="90" Height="90"
+                            Content="{Binding Next27Track}"
+                            AutomationProperties.Name="{Binding Next27Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next27Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="28"
+                            Canvas.Left="1288" Canvas.Top="119" Width="90" Height="90"
+                            Content="{Binding Next28Track}"
+                            AutomationProperties.Name="{Binding Next28Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next28Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="29"
+                            Canvas.Left="1288" Canvas.Top="225" Width="90" Height="90"
+                            Content="{Binding Next29Track}"
+                            AutomationProperties.Name="{Binding Next29Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next29Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="30"
+                            Canvas.Left="1288" Canvas.Top="331" Width="90" Height="90"
+                            Content="{Binding Next30Track}"
+                            AutomationProperties.Name="{Binding Next30Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next30Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Classes="collage-tile s90" Tag="31"
+                            Canvas.Left="1288" Canvas.Top="437" Width="90" Height="90"
+                            Content="{Binding Next31Track}"
+                            AutomationProperties.Name="{Binding Next31Track.Title, FallbackValue=''}"
+                            IsVisible="{Binding Next31Track, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </Canvas>
             </Viewbox>
 
@@ -473,10 +413,13 @@
                  scale-down, a slide out, a dim and an opacity per slot, every card SIDE BY
                  SIDE with a fixed gap, never overlapping (09-22 mockup). On a skip the content swaps one slot over
                  by binding and the code-behind slides every card from its previous slot's
-                 pose to its own (ease-out cubic, ~360ms). Wheel / ← → move the carousel by
-                 really changing the track. The artwork is NOT a button (09-17): the caption's
-                 title link plays a side card's track / opens the centre card's album, and
-                 the artist link opens the artist. Only these five controls exist — nothing
+                 pose to its own (ease-out cubic, ~360ms). Wheel (one card per notch), drag,
+                 ← → and a click on a side card BROWSE the row without touching playback
+                 (GitHub #152; the cards bind to the view model's Row, centred on the browsed
+                 card). A click on the centred card plays it; its title link opens the album
+                 when it is the playing track. Esc / Home slide back to the playing track,
+                 whose card carries a "now playing" mark while it is off-centre. With Repeat
+                 All on the row runs round. Only these fifteen controls exist — nothing
                  further out is realised. The host cancels the page inset (24 top / 12
                  bottom) with negative margins so the midline is the true page centre. -->
             <Grid x:Name="CarouselHost"
@@ -499,90 +442,99 @@
                                         Classes="flow-card side"
                                         ArtworkSize="300"
                                         DecodeWidth="256"
-                                        ArtworkPath="{Binding Prev7ArtworkPath}"
-                                        Title="{Binding Prev7Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Prev7Track.Artist, FallbackValue=''}"
-                                        IsExplicit="{Binding Prev7Track.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding Prev7Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[0].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[0].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[0].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[0].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[0].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[0].IsMarked}" />
                     <ctrl:CoverFlowCard x:Name="SlotPrev6"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
                                         DecodeWidth="256"
-                                        ArtworkPath="{Binding Prev6ArtworkPath}"
-                                        Title="{Binding Prev6Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Prev6Track.Artist, FallbackValue=''}"
-                                        IsExplicit="{Binding Prev6Track.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding Prev6Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[1].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[1].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[1].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[1].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[1].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[1].IsMarked}" />
                     <ctrl:CoverFlowCard x:Name="SlotPrev5"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
                                         DecodeWidth="256"
-                                        ArtworkPath="{Binding Prev5ArtworkPath}"
-                                        Title="{Binding Prev5Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Prev5Track.Artist, FallbackValue=''}"
-                                        IsExplicit="{Binding Prev5Track.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding Prev5Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[2].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[2].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[2].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[2].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[2].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[2].IsMarked}" />
 
                     <!-- −4 (history) -->
                     <ctrl:CoverFlowCard x:Name="SlotPrev4"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding OffPreviousArtworkPath}"
-                                        Title="{Binding OffPreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding OffPreviousTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding OffPreviousTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding OffPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[3].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[3].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[3].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[3].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[3].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[3].IsMarked}" />
 
                     <!-- −3 (history) -->
                     <ctrl:CoverFlowCard x:Name="SlotPrev3"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding EdgePreviousArtworkPath}"
-                                        Title="{Binding EdgePreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding EdgePreviousTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding EdgePreviousTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding EdgePreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[4].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[4].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[4].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[4].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[4].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[4].IsMarked}" />
 
                     <!-- −2 (history) -->
                     <ctrl:CoverFlowCard x:Name="SlotPrev2"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding FarPreviousArtworkPath}"
-                                        Title="{Binding FarPreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding FarPreviousTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding FarPreviousTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding FarPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[5].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[5].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[5].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[5].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[5].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[5].IsMarked}" />
 
                     <!-- −1 (history) -->
                     <ctrl:CoverFlowCard x:Name="SlotPrev1"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding PreviousArtworkPath}"
-                                        Title="{Binding PreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding PreviousTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding PreviousTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[6].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[6].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[6].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[6].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[6].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[6].IsMarked}" />
 
-                    <!-- 0 (playing) -->
+                    <!-- 0 (the centred card: the playing track unless the row was browsed) -->
                     <ctrl:CoverFlowCard x:Name="CenterCard"
                                         Classes="flow-card centre"
                                         ArtworkSize="300"
                                         DecodeWidth="768"
-                                        ArtworkPath="{Binding CenterArtworkPath}"
-                                        Title="{Binding CenterTitle}"
-                                        Artist="{Binding CenterArtist}"
-                                        IsExplicit="{Binding CenterIsExplicit}"
+                                        ArtworkPath="{Binding Row[7].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[7].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[7].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[7].Track.IsExplicit, FallbackValue=False}"
                                         TitleToolTip="{loc:T PlaybackBar.ViewAlbumTip}"
-                                        ArtistCommand="{Binding GoToArtistCommand}">
+                                        ArtistCommand="{Binding GoToFocusedArtistCommand}">
                         <ctrl:CoverFlowCard.Overlay>
                             <Panel>
+                                <!-- The animated cover belongs to the playing track only -->
                                 <ctrl:AnimatedCoverImage
                                     Source="{Binding Player.CurrentAnimatedCoverPath}"
+                                    IsVisible="{Binding Row[7].IsPlaying}"
                                     IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
                                 <!-- Favorite heart overlay on the centre cover -->
                                 <ctrl:HeartIcon Size="24" ShowWhenOff="False"
                                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,12"
-                                                IsFavorite="{Binding CenterIsFavorite}" />
+                                                IsFavorite="{Binding Row[7].Track.IsFavorite, FallbackValue=False}" />
                             </Panel>
                         </ctrl:CoverFlowCard.Overlay>
                     </ctrl:CoverFlowCard>
@@ -591,70 +543,77 @@
                     <ctrl:CoverFlowCard x:Name="SlotNext1"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding NextArtworkPath}"
-                                        Title="{Binding NextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding NextTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding NextTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[8].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[8].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[8].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[8].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[8].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[8].IsMarked}" />
 
                     <!-- +2 (up next) -->
                     <ctrl:CoverFlowCard x:Name="SlotNext2"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding FarNextArtworkPath}"
-                                        Title="{Binding FarNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding FarNextTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding FarNextTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[9].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[9].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[9].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[9].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[9].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[9].IsMarked}" />
 
                     <!-- +3 (up next) -->
                     <ctrl:CoverFlowCard x:Name="SlotNext3"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding EdgeNextArtworkPath}"
-                                        Title="{Binding EdgeNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding EdgeNextTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding EdgeNextTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[10].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[10].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[10].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[10].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[10].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[10].IsMarked}" />
 
                     <!-- +4 (up next) -->
                     <ctrl:CoverFlowCard x:Name="SlotNext4"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
-                                        ArtworkPath="{Binding OffNextArtworkPath}"
-                                        Title="{Binding OffNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding OffNextTrack.ArtistDisplay, FallbackValue=''}"
-                                        IsExplicit="{Binding OffNextTrack.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[11].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[11].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[11].Track.ArtistDisplay, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[11].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[11].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[11].IsMarked}" />
 
                     <!-- +5..+7 (up next): drawn small, so decoded small -->
                     <ctrl:CoverFlowCard x:Name="SlotNext5"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
                                         DecodeWidth="256"
-                                        ArtworkPath="{Binding Next5ArtworkPath}"
-                                        Title="{Binding Next5Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Next5Track.Artist, FallbackValue=''}"
-                                        IsExplicit="{Binding Next5Track.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding Next5Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[12].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[12].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[12].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[12].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[12].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[12].IsMarked}" />
                     <ctrl:CoverFlowCard x:Name="SlotNext6"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
                                         DecodeWidth="256"
-                                        ArtworkPath="{Binding Next6ArtworkPath}"
-                                        Title="{Binding Next6Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Next6Track.Artist, FallbackValue=''}"
-                                        IsExplicit="{Binding Next6Track.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding Next6Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[13].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[13].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[13].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[13].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[13].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[13].IsMarked}" />
                     <ctrl:CoverFlowCard x:Name="SlotNext7"
                                         Classes="flow-card side"
                                         ArtworkSize="300"
                                         DecodeWidth="256"
-                                        ArtworkPath="{Binding Next7ArtworkPath}"
-                                        Title="{Binding Next7Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Next7Track.Artist, FallbackValue=''}"
-                                        IsExplicit="{Binding Next7Track.IsExplicit, FallbackValue=False}"
-                                        IsVisible="{Binding Next7Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        ArtworkPath="{Binding Row[14].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
+                                        Title="{Binding Row[14].Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Row[14].Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Row[14].Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Row[14].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        IsPlaying="{Binding Row[14].IsMarked}" />
 
 
 

@@ -956,6 +956,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>The History entries this queue played (newest-first); deeper ones are older.</summary>
     private int PlayedInThisQueue => Math.Min(_queueHistoryDepth, History.Count);
 
+    /// <summary>How many leading <see cref="History"/> entries this queue played (Cover Flow's
+    /// Repeat All ring wraps from the last up-next track to the oldest of these).</summary>
+    public int PlayedInThisQueueCount => PlayedInThisQueue;
+
     /// <summary>Island speed menu; parameter is a percent ("75" … "200").</summary>
     [RelayCommand]
     private void SetPlaybackRate(string? percent)

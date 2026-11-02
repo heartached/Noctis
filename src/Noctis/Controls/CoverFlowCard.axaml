@@ -113,6 +113,24 @@
                                               RenderOptions.BitmapInterpolationMode="HighQuality"
                                               IsVisible="{Binding #Root.ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         <ContentPresenter Content="{Binding #Root.Overlay}" />
+                        <!-- "Now playing" mark: the playing track's card after the row was
+                             browsed away from it (GitHub #152). -->
+                        <Border x:Name="PlayingMark"
+                                Background="{DynamicResource AccentColorBrush}"
+                                CornerRadius="9"
+                                Padding="9,3"
+                                Margin="12"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                BoxShadow="0 2 8 0 #66000000"
+                                IsHitTestVisible="False"
+                                IsVisible="{Binding #Root.IsPlaying}">
+                            <TextBlock Text="{loc:T CoverFlow.NOWPLAYING}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       LetterSpacing="1.5"
+                                       Foreground="White" />
+                        </Border>
                     </Panel>
                     </Border>
 
