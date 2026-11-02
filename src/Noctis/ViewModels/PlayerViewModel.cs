@@ -92,6 +92,63 @@ public partial class PlayerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasMusicVideo));
         OnPropertyChanged(nameof(MusicVideoSyncPosition));
+        RaiseMusicVideoPlacement();
+    }
+
+    // ── Where the clip shows (Discord, Cosmo 11-02: "music videos in the back that pause with
+    // the music, or being able to switch from audio and video"). One place at a time, so one
+    // decoder runs: the cover slot (default), behind the lyrics (Settings), or full size
+    // (the page's Audio / Video switch). Every placement is muted and follows the song.
+
+    /// <summary>Settings → Lyrics Studio → Music videos → Behind lyrics: the clip fills the
+    /// page behind the lyrics instead of the cover slot.</summary>
+    [ObservableProperty] private bool _musicVideoAsBackground;
+
+    /// <summary>The lyrics page's Audio / Video switch is on Video: the clip plays full size
+    /// over the page. Session-only, and kept across songs: a song with no clip shows the
+    /// normal page, the next one with a clip goes back to the video.</summary>
+    [ObservableProperty] private bool _isWatchingMusicVideo;
+
+    /// <summary>The clip plays in the cover slot.</summary>
+    public bool ShowsMusicVideoInCover => HasMusicVideo && !MusicVideoAsBackground && !IsWatchingMusicVideo;
+
+    /// <summary>The clip fills the page behind the lyrics.</summary>
+    public bool ShowsMusicVideoBackdrop => HasMusicVideo && MusicVideoAsBackground && !IsWatchingMusicVideo;
+
+    /// <summary>The clip plays full size over the page (Video side of the switch).</summary>
+    public bool ShowsMusicVideoFullSize => HasMusicVideo && IsWatchingMusicVideo;
+
+    /// <summary>The user's lyrics background video shows: it gives way to a music video that
+    /// fills the page, so the two never decode at once.</summary>
+    public bool ShowsLyricsBackgroundMedia =>
+        !string.IsNullOrEmpty(LyricsBackgroundMediaPath) && !ShowsMusicVideoBackdrop && !ShowsMusicVideoFullSize;
+
+    partial void OnMusicVideoAsBackgroundChanged(bool value) => RaiseMusicVideoPlacement();
+    partial void OnIsWatchingMusicVideoChanged(bool value) => RaiseMusicVideoPlacement();
+    partial void OnLyricsBackgroundMediaPathChanged(string value) => OnPropertyChanged(nameof(ShowsLyricsBackgroundMedia));
+
+    private void RaiseMusicVideoPlacement()
+    {
+        OnPropertyChanged(nameof(ShowsMusicVideoInCover));
+        OnPropertyChanged(nameof(ShowsMusicVideoBackdrop));
+        OnPropertyChanged(nameof(ShowsMusicVideoFullSize));
+        OnPropertyChanged(nameof(ShowsLyricsBackgroundMedia));
+    }
+
+    [RelayCommand]
+    private void ShowMusicVideoAudio() => IsWatchingMusicVideo = false;
+
+    [RelayCommand]
+    private void ShowMusicVideoFullSize() => IsWatchingMusicVideo = true;
+
+    /// <summary>The island menu's "Watch music video": back to Audio while the video plays on
+    /// the lyrics page, otherwise Video, opening the lyrics page when elsewhere.</summary>
+    [RelayCommand]
+    private void ToggleWatchMusicVideo()
+    {
+        var watch = !(IsWatchingMusicVideo && IsLyricsPageActive);
+        IsWatchingMusicVideo = watch;
+        if (watch && !IsLyricsPageActive) _navigateAction?.Invoke("lyrics");
     }
 
     partial void OnMusicVideosEnabledChanged(bool value)

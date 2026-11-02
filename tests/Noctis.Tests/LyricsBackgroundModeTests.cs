@@ -247,6 +247,68 @@ public class LyricsBackgroundModeTests : IDisposable
     }
 
     /// <summary>
+    /// Music video placements on the page (Discord, Cosmo 11-02): the Audio / Video switch shows
+    /// with a clip; Video hides the cover and lyrics panels under a full-size layer, Behind
+    /// lyrics fills the page behind them, and both park the flowing background they cover.
+    /// The clip path does not exist, so no decoder starts (VideoBackdrop checks the file).
+    /// </summary>
+    [AvaloniaFact]
+    public void MusicVideo_AudioVideoSwitch_AndBehindLyrics_SwapThePageLayers()
+    {
+        var player = NewPlayer();
+        player.LyricsFlowingLightEnabled = true;
+        player.MusicVideosEnabled = true;
+        var vm = NewVm(player);
+        var view = new LyricsView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 800, Content = view };
+        win.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var switchPill = view.FindControl<Border>("MusicVideoSwitch")!;
+            var left = view.FindControl<Border>("LeftPanel")!;
+            var right = view.FindControl<Grid>("RightPanel")!;
+            var full = view.FindControl<Grid>("MusicVideoFullSizeLayer")!;
+            var behind = view.FindControl<Grid>("MusicVideoBackdropLayer")!;
+            var flow = view.FindControl<Panel>("FlowLayerHost")!;
+            Assert.False(switchPill.IsVisible); // no clip, no switch
+            Assert.True(flow.IsVisible);
+
+            player.CurrentMusicVideoPath = Path.Combine(_dir, "missing.mp4");
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(switchPill.IsVisible);
+            Assert.True(left.IsVisible && right.IsVisible);
+            Assert.False(full.IsVisible);
+            Assert.False(behind.IsVisible);
+
+            player.ShowMusicVideoFullSizeCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(full.IsVisible);
+            Assert.False(left.IsVisible || right.IsVisible);
+            Assert.False(flow.IsVisible);
+            Assert.True(switchPill.IsVisible); // the way back stays on screen
+
+            player.ShowMusicVideoAudioCommand.Execute(null);
+            player.MusicVideoAsBackground = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(full.IsVisible);
+            Assert.True(behind.IsVisible);
+            Assert.True(left.IsVisible && right.IsVisible);
+            Assert.False(flow.IsVisible);
+
+            player.CurrentMusicVideoPath = null;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(behind.IsVisible);
+            Assert.False(switchPill.IsVisible);
+            Assert.True(flow.IsVisible);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>
     /// Bug: a plugin Flowing style (Settings ▸ Appearance ▸ Flowing Lyrics Background ▸ Style)
     /// kept its layer on the page after switching the background to Solid or Gradient. The
     /// built-in Drift and Kawarp styles stop outside Artwork mode; the plugin layer, which

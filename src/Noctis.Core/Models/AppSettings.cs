@@ -1003,6 +1003,10 @@ public class AppSettings : IJsonOnDeserializing
     /// (decided at each song start; the song file is the fallback). Off by default.</summary>
     public bool MusicVideoUseVideoAudio { get; set; }
 
+    /// <summary>The music video fills the lyrics page behind the lyrics (muted, dimmed, in step
+    /// with the song) instead of replacing the cover. Off by default.</summary>
+    public bool MusicVideoAsBackground { get; set; }
+
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }

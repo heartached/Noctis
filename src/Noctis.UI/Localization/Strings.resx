@@ -320,6 +320,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="PlaybackBar.MusicVideo" xml:space="preserve"><value>Music video</value><comment>Options menu toggle in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.MusicVideoAudio" xml:space="preserve"><value>Music video audio</value><comment>Options menu toggle in PlaybackBarView.axaml, under Music video</comment></data>
   <data name="Settings.MusicVideoAudioHint" xml:space="preserve"><value>Play the video's own audio instead of the song file. Takes effect from the next song.</value><comment>Music video audio toggle tooltip (Lyrics Studio card and options menu)</comment></data>
+  <data name="PlaybackBar.WatchMusicVideo" xml:space="preserve"><value>Watch music video</value><comment>Options menu toggle in PlaybackBarView.axaml: the lyrics page plays the clip full size</comment></data>
+  <data name="Settings.MusicVideoBehindLyricsHint" xml:space="preserve"><value>Play the video behind the lyrics instead of in place of the cover</value><comment>Behind lyrics toggle tooltip (Lyrics Studio card)</comment></data>
+  <data name="Lyrics.MusicVideoAudioSide" xml:space="preserve"><value>Audio</value><comment>Lyrics page Audio / Video switch: the normal page (cover and lyrics)</comment></data>
+  <data name="Lyrics.MusicVideoVideoSide" xml:space="preserve"><value>Video</value><comment>Lyrics page Audio / Video switch: the music video full size</comment></data>
   <data name="Settings.LyricsBackgroundVideo" xml:space="preserve"><value>Lyrics Background Video</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LoopVideoGIFBehind" xml:space="preserve"><value>A looping video or GIF behind the lyrics.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Choose" xml:space="preserve"><value>Choose</value><comment>Content in SettingsView.axaml</comment></data>
@@ -2606,6 +2610,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>
   <data name="LyricsStudio.MusicVideoAudio" xml:space="preserve"><value>Video audio</value><comment>Music videos card: play the clip's own audio toggle label</comment></data>
+  <data name="LyricsStudio.MusicVideoBehindLyrics" xml:space="preserve"><value>Behind lyrics</value><comment>Music videos card: play the clip behind the lyrics toggle label</comment></data>
   <data name="LyricsStudio.ComposeEmpty" xml:space="preserve"><value>No lyrics yet. Paste lyrics or listen to the track.</value><comment>Lyrics box empty state</comment></data>
   <data name="LyricsStudio.ComposeCheck" xml:space="preserve"><value>Check the lyrics below, one line per sung line, then press Align lyrics.</value><comment>Lyrics box hint when text is present</comment></data>
   <data name="LyricsStudio.TranscriptBanner" xml:space="preserve"><value>Experimental transcript. Sung vocals often transcribe poorly, so fix the words below, then press Align lyrics to time them.</value><comment>Lyrics box banner after a transcription</comment></data>

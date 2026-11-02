@@ -220,8 +220,10 @@ public partial class MainWindowViewModel : ViewModelBase
             WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
     }
 
-    /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
-    public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
+    /// <summary>Whether the playback island bar should be visible (has content and not in lyrics
+    /// view). The lyrics page's own controls are hidden while its music video plays full size,
+    /// so the island comes back over the video for transport.</summary>
+    public bool IsPlaybackBarVisible => Player.HasContent && (!IsLyricsViewActive || Player.ShowsMusicVideoFullSize);
 
     /// <summary>Whether the playback island should stay mounted in the visual tree.</summary>
     public bool IsPlaybackBarMounted => Player.HasContent;
@@ -803,7 +805,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // and close lyrics panel when playback ends
         Player.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(PlayerViewModel.HasContent))
+            if (e.PropertyName is nameof(PlayerViewModel.HasContent) or nameof(PlayerViewModel.ShowsMusicVideoFullSize))
             {
                 OnPropertyChanged(nameof(IsPlaybackBarVisible));
                 OnPropertyChanged(nameof(IsPlaybackBarMounted));
