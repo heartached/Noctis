@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Helpers;
@@ -37,15 +38,38 @@ public partial class CoverFlowView : UserControl
     private readonly RotateTransform[] _cascadeRotates = new RotateTransform[2 * CoverFlowCascadeGeometry.SideSlots + 1];
 
     private CoverFlowViewModel? _vm;
-    private int _slideStep;
+    /// <summary>Slots the cards still have to travel at the slide's start (fractional when a
+    /// new step lands mid-slide and carries the rest of the old one).</summary>
+    private double _slideStep;
+    /// <summary>Share of <see cref="_slideStep"/> not yet travelled (1 → 0 over a slide).</summary>
+    private double _slideRemaining;
     private double _slideSeconds = CoverFlowCarouselGeometry.SlideDuration.TotalSeconds;
     private long _slideStartTicks;
     private bool _frameQueued;
     private bool _backgroundOnA;
 
-    /// <summary>True while the cards are sliding after a skip (wheel input is gated on it
-    /// so one flick is one skip, not a burst).</summary>
+    /// <summary>True while the cards are sliding after a skip or a browse step.</summary>
     internal bool IsSliding { get; private set; }
+
+    // ── Browsing input (GitHub #152) ───────────────────────────────────────────
+    /// <summary>Wheel delta not yet turned into a card step: one notch (1.0) is one card,
+    /// high-resolution wheels and trackpads add up fractions until they make one.</summary>
+    private double _wheelRemainder;
+    private long _lastWheelTicks;
+    /// <summary>A wheel pause longer than this drops a leftover fraction.</summary>
+    private const double WheelRestSeconds = 0.4;
+
+    /// <summary>Horizontal travel that moves the row one card while dragging: the spacing
+    /// between two side cards.</summary>
+    internal static readonly double DragStepPixels =
+        CoverFlowCarouselGeometry.XAt(2) - CoverFlowCarouselGeometry.XAt(1);
+    /// <summary>Pointer travel below which a press-release is a click, not a drag.</summary>
+    private const double ClickSlop = 6;
+    private Point? _pressPoint;
+    private double _dragLastX;
+    private double _dragRemainder;
+    private bool _dragged;
+    private CoverFlowCard? _pressedCard;
 
     // ── Layout switch (Carousel / Cascade / Collage / empty) ────────────────────
     // The four arrangements are sibling layers; the code-behind owns their visibility
@@ -124,7 +148,11 @@ public partial class CoverFlowView : UserControl
         }
 
         CarouselHost.PointerWheelChanged += OnCarouselWheel;
-        CarouselHost.PointerPressed += (_, _) => Focus();
+        CarouselHost.PointerPressed += OnCarouselPressed;
+        CarouselHost.PointerMoved += OnCarouselMoved;
+        CarouselHost.PointerReleased += OnCarouselReleased;
+        CarouselHost.PointerCaptureLost += (_, _) => _pressPoint = null;
+        CollageViewbox.AddHandler(Button.ClickEvent, OnCollageTileClick);
     }
 
     private static int SlotOf(int index) => index - CoverFlowCarouselGeometry.SideSlots;
@@ -220,12 +248,15 @@ public partial class CoverFlowView : UserControl
         {
             _vm.CarouselShifted -= OnCarouselShifted;
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _vm.FocusedSlot.PropertyChanged -= OnFocusedSlotChanged;
         }
         _vm = DataContext as CoverFlowViewModel;
         if (_vm != null)
         {
             _vm.CarouselShifted += OnCarouselShifted;
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+            _vm.FocusedSlot.PropertyChanged += OnFocusedSlotChanged;
+            UpdateCenterTitleTip();
             CrossfadeBackground(_vm.CenterArtworkPath);
             // A new page (or view model) shows its layout at once; only switches animate.
             _layoutTarget = TargetLayerOf(_vm);
@@ -328,6 +359,7 @@ public partial class CoverFlowView : UserControl
         // Only the destination takes clicks and wheel.
         CarouselHost.IsHitTestVisible = target == LayerCarousel;
         StageGrid.IsHitTestVisible = target == LayerCascade;
+        CollageViewbox.IsHitTestVisible = target == LayerCollage;
 
         _morphStartTicks = Stopwatch.GetTimestamp();
         IsMorphing = true;
@@ -368,7 +400,6 @@ public partial class CoverFlowView : UserControl
             _layerPose[i] = CoverFlowLayoutMorph.Interpolate(_morphFrom[i], _morphTo[i], t);
             ApplyLayerPose(i);
         }
-        ApplyBackgrounds();
     }
 
     /// <summary>Land the switch: only the target layer visible, untransformed, opaque.</summary>
@@ -386,7 +417,7 @@ public partial class CoverFlowView : UserControl
         }
         CarouselHost.IsHitTestVisible = true;
         StageGrid.IsHitTestVisible = true;
-        ApplyBackgrounds();
+        CollageViewbox.IsHitTestVisible = true;
     }
 
     private void ApplyLayerPose(int i)
@@ -404,17 +435,6 @@ public partial class CoverFlowView : UserControl
         {
             layer.RenderTransform = null;
         }
-    }
-
-    /// <summary>The Collage sits on a flat charcoal; the others on the blurred cover. The
-    /// blur fades out as far as the Collage fades in (charcoal underneath, so never a gap),
-    /// and is not rendered at all while the Collage is all there is.</summary>
-    private void ApplyBackgrounds()
-    {
-        var collage = _layers[LayerCollage].IsVisible ? _layerPose[LayerCollage].Opacity : 0;
-        CollageBackground.IsVisible = collage > 0;
-        BlurredBackground.Opacity = 1 - collage;
-        BlurredBackground.IsVisible = collage < 1;
     }
 
     /// <summary>The layer's playing cover in the layers' shared parent, as laid out (the
@@ -458,7 +478,10 @@ public partial class CoverFlowView : UserControl
             return;
         }
 
-        _slideStep = step;
+        // A step landing mid-slide (a fast wheel spin, a drag) carries on from where the
+        // cards are drawn now instead of jumping them back to a whole slot.
+        var carried = IsSliding ? _slideStep * _slideRemaining : 0;
+        _slideStep = step + carried;
         _slideSeconds = CoverFlowCarouselGeometry.SlideDurationFor(step).TotalSeconds;
         _slideStartTicks = Stopwatch.GetTimestamp();
         IsSliding = true;
@@ -494,16 +517,18 @@ public partial class CoverFlowView : UserControl
     internal void ApplySlideFrame(double eased)
     {
         var remaining = 1 - eased;
+        _slideRemaining = remaining;
         for (var i = 0; i < _slots.Length; i++)
             SetPose(i, SlotOf(i) + _slideStep * remaining);
         for (var i = 0; i < _cascadeCards.Length; i++)
             SetCascadePose(i, CascadeSlotOf(i) + _slideStep * remaining);
     }
 
-    private void FinishSlide()
+    internal void FinishSlide()
     {
         IsSliding = false;
         _slideStep = 0;
+        _slideRemaining = 0;
         for (var i = 0; i < _slots.Length; i++)
             SetPose(i, SlotOf(i));
         for (var i = 0; i < _cascadeCards.Length; i++)
@@ -512,14 +537,28 @@ public partial class CoverFlowView : UserControl
 
     // ── Input ──────────────────────────────────────────────────────────────────
 
-    private void OnCarouselWheel(object? sender, PointerWheelEventArgs e)
+    /// <summary>The wheel browses the row, one card per notch, and never changes the track
+    /// (GitHub #152). It used to play the next / previous track per wheel EVENT, gated on
+    /// <see cref="IsSliding"/> — but the slide only starts once the posted queue refresh
+    /// runs, so a notch a mouse reports as several events (high-resolution and free-spin
+    /// wheels) got past the gate and skipped two tracks. Deltas now add up and every whole
+    /// unit is one card.</summary>
+    internal void OnCarouselWheel(object? sender, PointerWheelEventArgs e)
     {
         var delta = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y) ? e.Delta.X : e.Delta.Y;
         if (delta == 0 || _vm == null) return;
         e.Handled = true;
-        if (IsSliding) return;
-        // Wheel down / trackpad swipe left (negative) advances; up / right goes back.
-        _vm.JumpToCommand.Execute(delta < 0 ? 1 : -1);
+        var now = Stopwatch.GetTimestamp();
+        if ((now - _lastWheelTicks) / (double)Stopwatch.Frequency > WheelRestSeconds
+            || Math.Sign(delta) != Math.Sign(_wheelRemainder))
+            _wheelRemainder = 0;
+        _lastWheelTicks = now;
+        _wheelRemainder += delta;
+        var notches = (int)Math.Truncate(_wheelRemainder);
+        if (notches == 0) return;
+        _wheelRemainder -= notches;
+        // Wheel down / trackpad swipe left (negative) moves toward up next; up / right back.
+        _vm.BrowseBy(-notches);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -529,27 +568,108 @@ public partial class CoverFlowView : UserControl
         switch (e.Key)
         {
             case Key.Right:
-                _vm.JumpToCommand.Execute(1);
+                _vm.BrowseBy(1);
                 e.Handled = true;
                 break;
             case Key.Left:
-                _vm.JumpToCommand.Execute(-1);
+                _vm.BrowseBy(-1);
+                e.Handled = true;
+                break;
+            case Key.Enter when _vm.FocusedSlot is { Track: not null, IsPlaying: false }:
+                _vm.PlayFocusedCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Escape or Key.Home when _vm.IsBrowsing:
+                _vm.ReturnToPlayingCommand.Execute(null);
                 e.Handled = true;
                 break;
         }
     }
 
-    /// <summary>The caption's title link (09-17: the artwork itself no longer navigates).
-    /// Side card → play that track (the row slides it to the centre); centre card → the
-    /// album page.</summary>
+    // A press on the row starts a drag; a release that barely moved is a click on the card
+    // under it. Title / artist links are Buttons and handle their own press, so they never
+    // get here (see OnCardTitleClicked).
+    private void OnCarouselPressed(object? sender, PointerPressedEventArgs e)
+    {
+        Focus();
+        if (_vm == null || !e.GetCurrentPoint(CarouselHost).Properties.IsLeftButtonPressed) return;
+        var p = e.GetPosition(CarouselHost);
+        _pressPoint = p;
+        _dragLastX = p.X;
+        _dragRemainder = 0;
+        _dragged = false;
+        _pressedCard = (e.Source as Visual)?.FindAncestorOfType<CoverFlowCard>(includeSelf: true);
+        e.Pointer.Capture(CarouselHost);
+    }
+
+    private void OnCarouselMoved(object? sender, PointerEventArgs e)
+    {
+        if (_pressPoint is not { } start || _vm == null) return;
+        var p = e.GetPosition(CarouselHost);
+        if (!_dragged && Math.Abs(p.X - start.X) < ClickSlop) return;
+        _dragged = true;
+        _dragRemainder += p.X - _dragLastX;
+        _dragLastX = p.X;
+        while (Math.Abs(_dragRemainder) >= DragStepPixels)
+        {
+            var dir = Math.Sign(_dragRemainder);
+            _dragRemainder -= dir * DragStepPixels;
+            // Drag left pulls the up-next cards in, like a touch list.
+            if (!_vm.BrowseBy(-dir)) { _dragRemainder = 0; break; }
+        }
+    }
+
+    private void OnCarouselReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_pressPoint == null) return;
+        _pressPoint = null;
+        e.Pointer.Capture(null);
+        var card = _pressedCard;
+        _pressedCard = null;
+        if (_dragged || card == null) return;
+        OnCardClicked(card);
+    }
+
+    /// <summary>A click anywhere on a card (GitHub #152): a side card slides to the centre,
+    /// the centred card plays (nothing when it is already playing).</summary>
+    internal void OnCardClicked(CoverFlowCard card)
+    {
+        if (_vm == null) return;
+        var index = Array.IndexOf(_slots, card);
+        if (index < 0) return;
+        var slot = SlotOf(index);
+        if (slot == 0) _vm.PlayFocusedCommand.Execute(null);
+        else _vm.BrowseBy(slot);
+    }
+
+    /// <summary>The caption's title link. Side card → slide it to the centre (as a click on
+    /// the card does); centred card → its album when it is playing, else play it.</summary>
     private void OnCardTitleClicked(object? sender, EventArgs e)
     {
         if (_vm == null || sender is not CoverFlowCard card) return;
         var slot = SlotOf(Array.IndexOf(_slots, card));
         if (slot == 0)
-            _vm.GoToAlbumCommand.Execute(null);
+            _vm.ActivateFocusedCommand.Execute(null);
         else
-            _vm.JumpToCommand.Execute(slot);
+            _vm.BrowseBy(slot);
+    }
+
+    private void OnFocusedSlotChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CoverFlowRowSlot.IsPlaying)) UpdateCenterTitleTip();
+    }
+
+    /// <summary>The centred title link opens the album of the playing track, plays a browsed one.</summary>
+    private void UpdateCenterTitleTip() =>
+        CenterCard.TitleToolTip = Localization.Loc.T(_vm?.FocusedSlot.IsPlaying != false
+            ? "PlaybackBar.ViewAlbumTip" : "PlaybackBar.Play");
+
+    /// <summary>A Collage up-next tile (GitHub #153): play that queue entry.</summary>
+    private void OnCollageTileClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null || e.Source is not Button { Tag: string tag } || !int.TryParse(tag, out var offset)) return;
+        e.Handled = true;
+        _vm.JumpToCommand.Execute(offset);
     }
 
     // ── Background ─────────────────────────────────────────────────────────────
