@@ -39,9 +39,15 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     private string? _menuCulture;
     private ListBoxItem? _menuOwnerItem;
 
+    /// <summary>The list's columns (GitHub #151), shared by the header and every row.</summary>
+    internal ColumnLayout Columns { get; } = LibraryColumns.CreateSongs();
+    private IDisposable? _columnsBinding;
+
     public LibrarySongsView()
     {
         InitializeComponent();
+        // Inherited by the header and every row's ColumnsPanel.
+        ColumnsPanel.SetLayout(this, Columns);
 
         // Double-click to play from here
         TrackList.DoubleTapped += OnTrackDoubleTapped;
@@ -345,6 +351,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelPendingScrollRestore();
+        _columnsBinding?.Dispose();
+        _columnsBinding = null;
 
         if (DataContext is LibrarySongsViewModel vm)
         {
@@ -376,6 +384,12 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
+        // Column visibility, order and widths live in Settings (no window VM in tests: defaults).
+        _columnsBinding?.Dispose();
+        _columnsBinding = TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel { Settings: { } settings }
+            ? LibraryColumns.BindSongs(Columns, settings)
+            : null;
 
         if (_vm != null)
         {

@@ -731,6 +731,10 @@ public partial class Track : ObservableObject
     [JsonIgnore]
     public string SampleRateFormatted => SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A";
 
+    /// <summary>Date added in the user's short date format (Songs list column, GitHub #151).</summary>
+    [JsonIgnore]
+    public string DateAddedFormatted => DateAdded == default ? string.Empty : DateAdded.ToLocalTime().ToString("d");
+
     /// <summary>Formatted bits per sample string.</summary>
     [JsonIgnore]
     public string BitsPerSampleFormatted => BitsPerSample > 0 ? $"{BitsPerSample} bit" : "N/A";
