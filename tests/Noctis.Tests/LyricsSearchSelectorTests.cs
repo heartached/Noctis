@@ -26,6 +26,19 @@ public class LyricsSearchSelectorTests
             Instrumental = instrumental,
         };
 
+    [Fact]
+    public void MalayalamTitle_WithTheVowelSignInItsTwoParts_StillMatches()
+    {
+        // GitHub #149: "കൊച്ചി" with "ൊ" (U+0D4A) locally, as "െ" + "ാ" (U+0D46 U+0D3E) online —
+        // canonically the same text.
+        var candidate = Result(track: "കൊച്ചി", artist: "ഗായകൻ", synced: "[00:01.00]x");
+
+        var pick = LyricsSearchSelector.PickFromSearchResults(
+            new[] { candidate }, "ഗായകൻ", "കൊച്ചി", 200);
+
+        Assert.Same(candidate, pick);
+    }
+
     // ── Duration validation ──
 
     [Fact]
