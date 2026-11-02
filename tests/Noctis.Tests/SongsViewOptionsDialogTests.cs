@@ -141,11 +141,12 @@ public class SongsViewOptionsDialogTests
                 Assert.True(Named<RadioButton>(win, "AllSongsSegment").IsChecked);
                 Assert.False(Named<RadioButton>(win, "OnlyFavoritesSegment").IsChecked);
 
-                // Columns: the pill pop-ups' round checkbox, 5 + 3 + 3 in three filled wells.
+                // Columns: the pill pop-ups' round checkbox, 8 + 4 + 4 in three filled wells
+                // (Year / Album Artist / Composer, Date Added and Format joined them in #151).
                 var wells = Named<Grid>(win, "ColumnWells").Children.OfType<Border>().ToList();
                 Assert.Equal(3, wells.Count);
                 Assert.All(wells, w => Assert.Contains("pill-well", w.Classes));
-                Assert.Equal(new[] { 5, 3, 3 }, wells.Select(w => w.GetVisualDescendants().OfType<CheckBox>().Count()).ToArray());
+                Assert.Equal(new[] { 8, 4, 4 }, wells.Select(w => w.GetVisualDescendants().OfType<CheckBox>().Count()).ToArray());
                 Assert.All(wells.SelectMany(w => w.GetVisualDescendants().OfType<CheckBox>()),
                     c => Assert.Contains("metadata-pill-checkbox", c.Classes));
                 // The Artwork toggle is the one bound to the artwork thumbnails.
@@ -551,7 +552,8 @@ public class SongsViewOptionsLocalizationTests : IDisposable
                     Assert.True(wanted <= presenter.Bounds.Width + 0.5, $"'{box.Content}' wants {wanted} in a {presenter.Bounds.Width} slot");
                 }
             }
-            var sampleRate = wells[2].GetVisualDescendants().OfType<CheckBox>().Last();
+            // Third in the FILE well (Format follows it since #151).
+            var sampleRate = wells[2].GetVisualDescendants().OfType<CheckBox>().ElementAt(2);
             Assert.Equal(Loc.T("SongsViewOptions.SampleRate"), sampleRate.Content);
             Assert.NotEqual("Sample Rate", sampleRate.Content);
         }
