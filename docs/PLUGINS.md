@@ -28,7 +28,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.5** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.6** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -45,6 +45,7 @@ API **1.5** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 | Library | Read-only search over the library, or all of it, and since 1.4 the playlists (copies, never live objects) | `library.read` |
 | BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
 | Add to library | Add audio files the plugin saved (downloads, conversions) to the library, and read the music folders (1.5) | `library.import` |
+| Decode audio | Decode a song file to mono PCM for offline analysis, with the ffmpeg Noctis ships (1.6) | `audio.decode` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
 | Track menu | Entries in the track context menu | `menu.commands` |
 | Notices | A short message in the app's notice pill | `notifications` |
@@ -265,6 +266,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `bool ShowAlbum(string albumId)` | 1.3 | | Shows the album's page (`TrackInfo.AlbumId`) in the main window and brings it forward. False for an unknown album. |
 | `IDisposable RegisterLyricsEffect(ILyricsEffect)` | 1.5 | | How word-synced lyrics move; see [Lyrics effects](#lyrics-effects). |
 | `ILibraryImport LibraryImport` | 1.5 | `library.import` | Adds audio files the plugin saved to the library; see [Adding files to the library](#adding-files-to-the-library). |
+| `IAudioDecoder AudioDecoder` | 1.6 | `audio.decode` | Decodes a song file to mono PCM; see [Decoding songs for analysis](#decoding-songs-for-analysis). |
 
 Using a hook without declaring its permission throws `PluginPermissionException`.
 
@@ -456,6 +458,30 @@ library across rescans even outside the music folders.
 - Waits for a running library scan, then imports on the UI thread. Callable from any thread. A
   stopped plugin's calls change nothing.
 
+### Decoding songs for analysis
+
+```csharp
+public interface IAudioDecoder
+{
+    bool IsAvailable { get; }
+    Task<DecodedAudio> DecodeMonoAsync(string filePath, int sampleRate, TimeSpan maxDuration, CancellationToken ct = default);
+}
+public sealed record DecodedAudio(float[] Samples, int SampleRate) { public TimeSpan Duration { get; } }
+```
+
+For plugins that look at the sound itself (chords, tempo, loudness) without shipping a decoder
+per plugin. Noctis decodes with the same ffmpeg its converter and its BPM/key analysis use, in a
+separate process, so any format Noctis plays works.
+
+- From the start of the file, the first audio stream, downmixed to one channel, resampled to
+  `sampleRate` (clamped to 8000–48000 Hz), floats in -1..1. `maxDuration` caps the length (20
+  minutes at most). Pick the lowest rate your analysis needs: 11025 Hz for 4 minutes is about 10 MB.
+- `IsAvailable` is false when Noctis found no ffmpeg (Settings → Advanced → Helper programs); then
+  `DecodeMonoAsync` throws `InvalidOperationException`, as it does for a file that is not audio and
+  for a decode that runs past 3 minutes. A missing file throws `FileNotFoundException`.
+- Runs off the UI thread; at most two decodes run at once across all plugins (the rest wait).
+  Cancelling the token stops ffmpeg at once. A stopped plugin's calls throw.
+
 ## Permissions
 
 | Name | Grants | Shown to the user as |
@@ -469,6 +495,7 @@ library across rescans even outside the music folders.
 | `notifications` | `Notify` | Show short notices |
 | `library.write.analysis` | `TrackAnalysis` (1.2) | Set the BPM and musical key of library tracks (in Noctis only, never in your files) |
 | `library.import` | `LibraryImport` (1.5) | Add audio files it saved (such as downloads) to your library |
+| `audio.decode` | `AudioDecoder` (1.6) | Decode songs to analyze their sound (nothing is changed or sent anywhere) |
 
 The first time a user switches a plugin on, Noctis shows exactly this list and asks. If an
 update asks for more, the plugin waits in *Needs approval* until the user switches it on again.
@@ -872,6 +899,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.3 | 1.6.6+ | Views (`RegisterView` / `OpenView`), `ShowAlbum`, `IPlaybackControl.PlayTracks`, `TrackInfo.AlbumId` / `ArtworkPath` / `ReleaseType` / `DateAdded` / `LastPlayed`. |
 | 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
 | 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`); `ILibraryImport` (`host.LibraryImport`) with the `library.import` permission: add audio files to the library, read the music folders; view window size (`IPluginViewProvider.PreferredWindowSize` / `MinWindowSize` / `WindowSizeToContent`). |
+| 1.6 | 1.6.6+ | `IAudioDecoder` (`host.AudioDecoder`) with the `audio.decode` permission: decode a song file to mono PCM for offline analysis. |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

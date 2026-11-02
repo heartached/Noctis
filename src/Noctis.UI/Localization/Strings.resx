@@ -2237,6 +2237,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Notifications</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Set BPM and key</value></data>
   <data name="Plugins.PermShort.LibraryImport" xml:space="preserve"><value>Add to library</value></data>
+  <data name="Plugins.PermShort.AudioDecode" xml:space="preserve"><value>Analyze audio</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Control playback: play, pause, skip and seek</value></data>
   <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Read your library and playlists (titles, artists, albums, file paths, play counts)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Connect to the internet</value></data>
@@ -2245,6 +2246,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Show short notices</value></data>
   <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Set the BPM and musical key of library tracks (in Noctis only, never in your files)</value></data>
   <data name="Plugins.Perm.LibraryImport" xml:space="preserve"><value>Add audio files it saved (such as downloads) to your library</value></data>
+  <data name="Plugins.Perm.AudioDecode" xml:space="preserve"><value>Decode songs to analyze their sound (nothing is changed or sent anywhere)</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Enable {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} asks to:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} by {2} asks to:</value></data>
@@ -2334,6 +2336,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermVerb.Notifications" xml:space="preserve"><value>show notices</value></data>
   <data name="Plugins.PermVerb.LibraryWriteAnalysis" xml:space="preserve"><value>set BPM and key</value></data>
   <data name="Plugins.PermVerb.LibraryImport" xml:space="preserve"><value>add files to your library</value></data>
+  <data name="Plugins.PermVerb.AudioDecode" xml:space="preserve"><value>analyze the sound of your songs</value></data>
   <data name="Plugins.Setting.Decrease" xml:space="preserve"><value>Decrease {0}</value></data>
   <data name="Plugins.Setting.Increase" xml:space="preserve"><value>Increase {0}</value></data>
 
