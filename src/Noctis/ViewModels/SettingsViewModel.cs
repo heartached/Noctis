@@ -1381,6 +1381,19 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showFavoritesColumn = true;
     [ObservableProperty] private bool _showPlaysColumn = true;
 
+    // GitHub #151: extra fields for the header menu / View Options (off by default), and the
+    // Songs and Artists list column order and dragged widths (see ColumnLayout).
+    [ObservableProperty] private bool _showYearColumn;
+    [ObservableProperty] private bool _showAlbumArtistColumn;
+    [ObservableProperty] private bool _showComposerColumn;
+    [ObservableProperty] private bool _showFormatColumn;
+    [ObservableProperty] private bool _showDateAddedColumn;
+    [ObservableProperty] private string _songsColumnOrder = string.Empty;
+    [ObservableProperty] private string _songsColumnWidths = string.Empty;
+    [ObservableProperty] private string _artistListColumnOrder = string.Empty;
+    [ObservableProperty] private string _artistListColumnWidths = string.Empty;
+    [ObservableProperty] private string _artistListHiddenColumns = string.Empty;
+
     partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1392,6 +1405,16 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnShowAlbumColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowFavoritesColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowPlaysColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowYearColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowAlbumArtistColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowComposerColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowFormatColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowDateAddedColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnSongsColumnOrderChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnSongsColumnWidthsChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistListColumnOrderChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistListColumnWidthsChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistListHiddenColumnsChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Songs page sort / filter, Albums grid sort ──
     //
@@ -3226,6 +3249,16 @@ public partial class SettingsViewModel : ViewModelBase
             ShowAlbumColumn = _settings.ShowAlbumColumn;
             ShowFavoritesColumn = _settings.ShowFavoritesColumn;
             ShowPlaysColumn = _settings.ShowPlaysColumn;
+            ShowYearColumn = _settings.ShowYearColumn;
+            ShowAlbumArtistColumn = _settings.ShowAlbumArtistColumn;
+            ShowComposerColumn = _settings.ShowComposerColumn;
+            ShowFormatColumn = _settings.ShowFormatColumn;
+            ShowDateAddedColumn = _settings.ShowDateAddedColumn;
+            SongsColumnOrder = _settings.SongsColumnOrder ?? string.Empty;
+            SongsColumnWidths = _settings.SongsColumnWidths ?? string.Empty;
+            ArtistListColumnOrder = _settings.ArtistListColumnOrder ?? string.Empty;
+            ArtistListColumnWidths = _settings.ArtistListColumnWidths ?? string.Empty;
+            ArtistListHiddenColumns = _settings.ArtistListHiddenColumns ?? string.Empty;
             SongsSortColumn = _settings.SongsSortColumn;
             SongsSortAscending = _settings.SongsSortAscending;
             SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
@@ -3720,6 +3753,16 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowAlbumColumn = ShowAlbumColumn;
         _settings.ShowFavoritesColumn = ShowFavoritesColumn;
         _settings.ShowPlaysColumn = ShowPlaysColumn;
+        _settings.ShowYearColumn = ShowYearColumn;
+        _settings.ShowAlbumArtistColumn = ShowAlbumArtistColumn;
+        _settings.ShowComposerColumn = ShowComposerColumn;
+        _settings.ShowFormatColumn = ShowFormatColumn;
+        _settings.ShowDateAddedColumn = ShowDateAddedColumn;
+        _settings.SongsColumnOrder = SongsColumnOrder;
+        _settings.SongsColumnWidths = SongsColumnWidths;
+        _settings.ArtistListColumnOrder = ArtistListColumnOrder;
+        _settings.ArtistListColumnWidths = ArtistListColumnWidths;
+        _settings.ArtistListHiddenColumns = ArtistListHiddenColumns;
         _settings.SongsSortColumn = SongsSortColumn;
         _settings.SongsSortAscending = SongsSortAscending;
         _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
@@ -7736,6 +7779,16 @@ public partial class SettingsViewModel : ViewModelBase
             ShowAlbumColumn = defaultSettings.ShowAlbumColumn;
             ShowFavoritesColumn = defaultSettings.ShowFavoritesColumn;
             ShowPlaysColumn = defaultSettings.ShowPlaysColumn;
+            ShowYearColumn = defaultSettings.ShowYearColumn;
+            ShowAlbumArtistColumn = defaultSettings.ShowAlbumArtistColumn;
+            ShowComposerColumn = defaultSettings.ShowComposerColumn;
+            ShowFormatColumn = defaultSettings.ShowFormatColumn;
+            ShowDateAddedColumn = defaultSettings.ShowDateAddedColumn;
+            SongsColumnOrder = defaultSettings.SongsColumnOrder;
+            SongsColumnWidths = defaultSettings.SongsColumnWidths;
+            ArtistListColumnOrder = defaultSettings.ArtistListColumnOrder;
+            ArtistListColumnWidths = defaultSettings.ArtistListColumnWidths;
+            ArtistListHiddenColumns = defaultSettings.ArtistListHiddenColumns;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
