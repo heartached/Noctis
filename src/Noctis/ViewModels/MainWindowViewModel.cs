@@ -448,6 +448,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (App.Services?.GetService<System.Net.Http.HttpClient>() is { } pluginHttp)
             Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
+        TrackContextMenuBuilder.CreateMixCommand = CreateMixFromSongCommand;
         // API 1.3: plugin views open in a window of their own; ShowAlbum opens the album page here.
         Plugins.ViewPresenter = Views.PluginViewWindow.Present;
         // API 1.4: plugins read the playlists the sidebar holds (copied by the adapter).
@@ -2373,7 +2374,8 @@ public partial class MainWindowViewModel : ViewModelBase
             SetupSongsTopBarActions();
         else if (key == "playlists")
             TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand,
-                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel);
+                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel,
+                _playlistsVm.QuickPlaylistCommand);
         else if (key == "favorites")
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (key == "folders")
@@ -2518,6 +2520,26 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenArtistDiscography(Track.GetPrimaryArtist(artistName));
     }
 
+
+    /// <summary>Makes a playlist of <paramref name="tracks"/> and opens it (quick playlists and mixes).</summary>
+    public async Task CreatePlaylistAndOpenAsync(string name, IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        var playlist = await Sidebar.CreatePlaylistFromTracksAsync(name, tracks);
+        Navigate($"playlist:{playlist.Id}");
+    }
+
+    /// <summary>
+    /// Song menu ▸ Create Mix from This Song (Discord, Cosmo 11-02): about 50 songs like it from
+    /// the library, built offline (<see cref="MixPlaylistBuilder"/>), saved as a playlist and opened.
+    /// </summary>
+    [RelayCommand]
+    private Task CreateMixFromSong(Track? song)
+    {
+        if (song is null) return Task.CompletedTask;
+        var seed = MixSeed.FromSong(song);
+        return CreatePlaylistAndOpenAsync(seed.PlaylistName, MixPlaylistBuilder.Build(seed, _library.Tracks));
+    }
 
     private void OnPlaylistOpened(object? sender, Playlist playlist)
     {
@@ -2931,7 +2953,8 @@ public partial class MainWindowViewModel : ViewModelBase
             SetupSongsTopBarActions();
         else if (ReferenceEquals(view, _playlistsVm))
             TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand,
-                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel);
+                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel,
+                _playlistsVm.QuickPlaylistCommand);
         else if (ReferenceEquals(view, _favoritesVm))
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (ReferenceEquals(view, _lyricsVm))

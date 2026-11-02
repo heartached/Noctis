@@ -85,6 +85,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Import.TidalSignIn" xml:space="preserve"><value>Войти в TIDAL</value></data>
   <data name="Import.PickerTitle" xml:space="preserve"><value>Выберите экспорт плейлиста</value></data>
   <data name="Import.PickerFilter" xml:space="preserve"><value>Экспорт плейлистов</value></data>
+  <data name="Import.AddSongWatermark" xml:space="preserve"><value>Добавить песню из медиатеки</value></data>
+  <data name="Import.RemoveAdded" xml:space="preserve"><value>Убрать</value></data>
+  <data name="Import.StatusAdded" xml:space="preserve"><value>добавлено: {0}</value><comment>{0} = songs added by hand from the library</comment></data>
+  <data name="Import.Change" xml:space="preserve"><value>Изменить</value></data>
+  <data name="Import.LeaveOut" xml:space="preserve"><value>Не включать в плейлист / вернуть</value></data>
+  <data name="Import.UseThisSong" xml:space="preserve"><value>Взять эту песню из медиатеки</value></data>
+  <data name="Import.SearchLibrary" xml:space="preserve"><value>Искать в медиатеке</value></data>
+  <data name="Import.SearchWatermark" xml:space="preserve"><value>Поиск в медиатеке</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Закрыть</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Создать</value></data>
   <data name="Common.Done" xml:space="preserve"><value>Готово</value></data>
@@ -1323,6 +1331,23 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.PickTracksYourself" xml:space="preserve"><value>Выберите треки сами</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.NewSmartPlaylist" xml:space="preserve"><value>Новый умный плейлист</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.FillsItselfFromRules" xml:space="preserve"><value>Заполняется сам по заданным правилам</value><comment>Text in MainWindow.axaml</comment></data>
+  <data name="Main.QuickPlaylist" xml:space="preserve"><value>Плейлист по жанру или исполнителю</value><comment>Playlists page New menu</comment></data>
+  <data name="Main.QuickPlaylistSub" xml:space="preserve"><value>Все его песни или микс из вашей медиатеки</value><comment>Playlists page New menu</comment></data>
+  <data name="QuickPlaylist.Title" xml:space="preserve"><value>Плейлист по жанру или исполнителю</value></data>
+  <data name="QuickPlaylist.Subtitle" xml:space="preserve"><value>Все его песни или микс похожих песен из вашей медиатеки. Собирается на этом ПК, ничего никуда не отправляется.</value></data>
+  <data name="QuickPlaylist.Genres" xml:space="preserve"><value>Жанры</value></data>
+  <data name="QuickPlaylist.Artists" xml:space="preserve"><value>Исполнители</value></data>
+  <data name="QuickPlaylist.SearchGenres" xml:space="preserve"><value>Поиск жанров</value></data>
+  <data name="QuickPlaylist.SearchArtists" xml:space="preserve"><value>Поиск исполнителей</value></data>
+  <data name="QuickPlaylist.AllSongs" xml:space="preserve"><value>Все песни</value></data>
+  <data name="QuickPlaylist.AllSongsTip" xml:space="preserve"><value>Плейлист со всеми песнями</value></data>
+  <data name="QuickPlaylist.Mix" xml:space="preserve"><value>Микс</value></data>
+  <data name="QuickPlaylist.MixTip" xml:space="preserve"><value>Около 50 песен: эта музыка и похожие песни из медиатеки, сначала избранное и самое прослушиваемое</value></data>
+  <data name="QuickPlaylist.OneSong" xml:space="preserve"><value>1 песня</value></data>
+  <data name="QuickPlaylist.Songs" xml:space="preserve"><value>Песен: {0:N0}</value><comment>{0} = number of songs</comment></data>
+  <data name="QuickPlaylist.NoneFound" xml:space="preserve"><value>Ничего не найдено</value></data>
+  <data name="QuickPlaylist.Nothing" xml:space="preserve"><value>Нет песен для плейлиста.</value></data>
+  <data name="QuickPlaylist.Failed" xml:space="preserve"><value>Не удалось создать плейлист: {0}</value><comment>{0} = error message</comment></data>
   <data name="Main.ImportPlaylist" xml:space="preserve"><value>Импорт плейлиста</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.FromM3uM3u8File" xml:space="preserve"><value>Из файла .m3u / .m3u8</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.ShuffleAllTip" xml:space="preserve"><value>Перемешать все</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
@@ -2457,6 +2482,18 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Тексты песен</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
+  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Также улучшать песни с обычным или построчным текстом (пословный текст не трогается)</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Снова искать для песен, уже проверенных раньше</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
+  <data name="BulkLyrics.Stop" xml:space="preserve"><value>Остановить</value><comment>Button: stops a bulk run</comment></data>
+  <data name="BulkArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value><comment>Dialog title (window)</comment></data>
+  <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Ищет в Apple Music каждый альбом без анимированной обложки и сохраняет её, только если альбом в магазине точно тот же. Неточные совпадения остаются вам для выбора в редакторе метаданных. По одному альбому за раз, поэтому большая медиатека займёт время; окно можно скрыть, а остановленный поиск продолжится с того же места.</value></data>
+  <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Снова искать для альбомов, для которых раньше ничего не нашлось</value><comment>Checkbox</comment></data>
+  <data name="BulkArtwork.Find" xml:space="preserve"><value>Найти</value><comment>Button: starts the run</comment></data>
+  <data name="Settings.FindLibraryLyrics" xml:space="preserve"><value>Найти тексты</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryLyricsSub" xml:space="preserve"><value>Искать тексты для всей медиатеки, сначала пословные, и улучшать обычные.</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryArtwork" xml:space="preserve"><value>Найти анимированные обложки</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryArtworkSub" xml:space="preserve"><value>Добавить альбомам анимированные обложки из Apple Music, только точные совпадения.</value><comment>Settings Tools row</comment></data>
 
   <data name="Import.Hint.Spotify" xml:space="preserve"><value>Spotify это блокирует. Экспортируйте плейлист через Exportify, затем выберите CSV-файл.</value><comment>Import Playlist: a Spotify link was pasted</comment></data>
   <data name="Import.Hint.AppleMusic" xml:space="preserve"><value>Apple Music нельзя прочитать напрямую. Сконвертируйте плейлист через TuneMyMusic, затем выберите файл.</value><comment>Import Playlist: an Apple Music link was pasted</comment></data>
@@ -2830,6 +2867,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Menu.LyricsStudio" xml:space="preserve"><value>Открыть в Студии текстов</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
   <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Выбрать видео для этой песни</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
   <data name="Menu.StartRadio" xml:space="preserve"><value>Запустить радио</value><comment>v2 right-click menu row</comment></data>
+  <data name="Menu.CreateMix" xml:space="preserve"><value>Создать микс из этой песни</value><comment>Song right-click menu, beside Start Radio</comment></data>
   <data name="Menu.Snooze" xml:space="preserve"><value>Отложить на месяц</value><comment>v2 right-click menu row: hide the song from suggestions for a month</comment></data>
   <data name="Menu.Badge" xml:space="preserve"><value>Значок</value><comment>v2 right-click menu submenu (colored song badges)</comment></data>
   <data name="Menu.NewBadge" xml:space="preserve"><value>Новый значок…</value><comment>v2 right-click menu, Badge submenu</comment></data>

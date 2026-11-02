@@ -588,6 +588,17 @@
                                             </StackPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
+                                    <MenuItem Command="{Binding PageQuickPlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineRadio}"/>
+                                        </MenuItem.Icon>
+                                        <MenuItem.Header>
+                                            <StackPanel Margin="0,5" Spacing="2">
+                                                <TextBlock Text="{loc:T Main.QuickPlaylist}" FontSize="13" FontWeight="SemiBold" />
+                                                <TextBlock Text="{loc:T Main.QuickPlaylistSub}" FontSize="11" Opacity="0.55" />
+                                            </StackPanel>
+                                        </MenuItem.Header>
+                                    </MenuItem>
                                     <Separator />
                                     <MenuItem Command="{Binding PageImportPlaylistCommand}">
                                         <MenuItem.Icon>

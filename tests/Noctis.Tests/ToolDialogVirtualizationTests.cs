@@ -88,6 +88,24 @@ public class ToolDialogVirtualizationTests
         AssertVirtualized(RealizedRows(new BulkLyricsDialog(vm), vm.Rows));
     }
 
+    private sealed class StubCovers : IAnimatedCoverService
+    {
+        public string? Resolve(Track track) => null;
+        public Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope) => Task.FromResult(sourcePath);
+        public Task RemoveAsync(Track track, AnimatedCoverScope scope) => Task.CompletedTask;
+    }
+
+    [AvaloniaFact]
+    public void BulkAnimatedArtwork_RealizesOnlyViewportRows()
+    {
+        EnsureAppResources();
+        var albums = Tracks().Select(t => { t.AlbumId = Guid.NewGuid(); return (IReadOnlyList<Track>)new[] { t }; }).ToList();
+        var service = new AnimatedArtworkBulkService((_, _) => throw new NotSupportedException(), (_, _) => throw new NotSupportedException(),
+            (_, _, _) => throw new NotSupportedException(), new StubCovers(), null);
+        var vm = new BulkAnimatedArtworkViewModel(albums, service);
+        AssertVirtualized(RealizedRows(new BulkAnimatedArtworkDialog(vm), vm.Rows));
+    }
+
     [AvaloniaFact]
     public void MetadataFinder_RealizesOnlyViewportRows()
     {

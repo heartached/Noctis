@@ -21,7 +21,7 @@ public sealed class RadioService : IRadioService
             .ToList();
     }
 
-    private static double Score(Track seed, string[] seedGenres, Track c)
+    internal static double Score(Track seed, string[] seedGenres, Track c)
     {
         double score = 0;
         // Any shared genre: "Rock; Pop" matches Rock and Pop (GitHub #123 follow-up, 2026-10-10).

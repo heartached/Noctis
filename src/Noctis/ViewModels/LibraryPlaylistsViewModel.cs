@@ -232,6 +232,10 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         await MetadataHelper.OpenPlaylistImportDialog();
     }
 
+    /// <summary>New ▸ Playlist from a Genre or Artist: all its songs, or a mix.</summary>
+    [RelayCommand]
+    private Task QuickPlaylist() => MetadataHelper.OpenQuickPlaylistDialog();
+
     [RelayCommand]
     private async Task ExportPlaylist(PlaylistNavItem item)
     {
