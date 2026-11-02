@@ -189,6 +189,14 @@ public interface IAudioPlayer : IDisposable
     /// </summary>
     void SetPlaybackFadeGain(double gain, int rampMs) { }
 
+    /// <summary>
+    /// Whether <paramref name="filePath"/> can be opened right now: false for a local file that
+    /// is not on disk (moved, deleted, its drive unplugged). Paths that are not files (streams,
+    /// audio CD) count as there. Asked fresh every time, so a file that comes back plays again
+    /// (GitHub #154).
+    /// </summary>
+    bool SourceExists(string filePath) => true;
+
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 

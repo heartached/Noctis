@@ -312,6 +312,10 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
     public bool KeepPlayedInQueue { get; set; }
 
+    /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
+    /// queue when playback passes over it; off (the default) keeps it there, marked missing.</summary>
+    public bool RemoveMissingFromQueue { get; set; }
+
     /// <summary>Queue panel width in DIPs (GitHub #147): its left edge drags, Settings ▸ Player ▸
     /// Queue has a slider. See <see cref="QueuePanelMetrics"/> for the range.</summary>
     public double QueuePanelWidth { get; set; } = QueuePanelMetrics.Default;

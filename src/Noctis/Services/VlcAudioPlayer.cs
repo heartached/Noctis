@@ -3166,6 +3166,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         return false;
     }
 
+    public bool SourceExists(string filePath) =>
+        !string.IsNullOrWhiteSpace(filePath) && (IsPathlessMedia(filePath) || File.Exists(filePath));
+
     public void Play(string filePath) => Play(filePath, null);
 
     public void Play(string filePath, string? fallbackPath)

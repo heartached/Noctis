@@ -13,6 +13,8 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public List<string?> PlayedFallbacks { get; } = new();
     public List<string> PreparedPaths { get; } = new();
     public List<TimeSpan> Seeks { get; } = new();
+    /// <summary>Play calls on a <see cref="MissingPaths"/> path (not in PlayedPaths).</summary>
+    public List<string> MissingPlayAttempts { get; } = new();
 
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
@@ -45,8 +47,19 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
 
     public void Play(string filePath) => Play(filePath, null);
 
+    /// <summary>Paths that are "not on disk": <see cref="SourceExists"/> says so and Play
+    /// reports "File not found" through PlaybackError, as VlcAudioPlayer does.</summary>
+    public HashSet<string> MissingPaths { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public bool SourceExists(string filePath) => !MissingPaths.Contains(filePath);
+
     public void Play(string filePath, string? fallbackPath)
     {
+        if (MissingPaths.Contains(filePath))
+        {
+            MissingPlayAttempts.Add(filePath);
+            PlaybackError?.Invoke(this, $"File not found: {filePath}");
+            return;
+        }
         PlayedPaths.Add(filePath);
         PlayedFallbacks.Add(fallbackPath);
         CurrentMediaPath = filePath;

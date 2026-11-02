@@ -419,6 +419,17 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue list, above the playing song, and the last song stays loaded when the queue ends.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>When a queued song's file was moved or deleted, playback skips to the next song that can play. Choose what happens to the missing song.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
+  <data name="Settings.MissingSongsRemove" xml:space="preserve"><value>Remove from Queue</value><comment>Missing Songs picker option: take the song off the queue</comment></data>
+  <data name="Queue.MissingBadge" xml:space="preserve"><value>Missing</value><comment>Badge on a queue row whose file can't be found</comment></data>
+  <data name="Queue.MissingTip" xml:space="preserve"><value>The file can't be found. It was moved or deleted, or its drive is not connected.</value><comment>Tooltip on the queue row Missing badge</comment></data>
+  <data name="Queue.MissingSkippedOne" xml:space="preserve"><value>Skipped “{0}”: its file can't be found</value><comment>Notice when one missing song was skipped; {0} = song title</comment></data>
+  <data name="Queue.MissingSkippedMany" xml:space="preserve"><value>Skipped {0} songs whose files can't be found</value><comment>Notice when several missing songs were skipped; {0} = count</comment></data>
+  <data name="Queue.MissingRemovedOne" xml:space="preserve"><value>Removed “{0}” from the queue: its file can't be found</value><comment>Notice when one missing song was removed from the queue; {0} = song title</comment></data>
+  <data name="Queue.MissingRemovedMany" xml:space="preserve"><value>Removed {0} songs from the queue: their files can't be found</value><comment>Notice when several missing songs were removed from the queue; {0} = count</comment></data>
+  <data name="Queue.MissingStopped" xml:space="preserve"><value>Playback stopped: no song left in the queue can be found</value><comment>Notice when every remaining queued song is missing</comment></data>
   <data name="Queue.Played" xml:space="preserve"><value>Played</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="MiniPlayer.Played" xml:space="preserve"><value>Played</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>

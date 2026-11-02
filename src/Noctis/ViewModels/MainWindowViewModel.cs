@@ -469,6 +469,9 @@ public partial class MainWindowViewModel : ViewModelBase
         TrackContextMenuBuilder.ArtistPhotoSource = name => HomeViewModel.CachedArtistPhoto(name, _library, _artistImageService);
         Plugins.NotificationRequested += (_, notice) =>
             TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, $"{notice.PluginName}: {notice.Message}", TimeSpan.FromSeconds(4));
+        // GitHub #154: songs passed over because their file is missing, in the same notice pill.
+        Player.MissingTracksNotice += (_, text) =>
+            TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text, TimeSpan.FromSeconds(4));
         // LoadAll walks the plugins folder, loads assemblies and reflects over their
         // types on the UI thread. Settings finish loading right after the window
         // shows, so running it inline there held the first frame hostage to however
