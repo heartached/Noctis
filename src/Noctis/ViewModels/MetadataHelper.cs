@@ -109,6 +109,16 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Playlist from a Genre or Artist (all its songs, or a mix), opened once made.</summary>
+    public static async Task OpenQuickPlaylistDialog()
+    {
+        var main = App.Services!.GetService<MainWindowViewModel>();
+        if (main is null) return;
+        var library = App.Services!.GetRequiredService<ILibraryService>().Tracks.ToList();
+        var vm = new QuickPlaylistViewModel(library, main.CreatePlaylistAndOpenAsync);
+        await ShowDialogOwned(new QuickPlaylistDialog(vm));
+    }
+
     /// <summary>Send to Folder (MusicBee-style copy) for a selection.</summary>
     public static async Task OpenSendToFolderDialog(IReadOnlyList<Track> tracks)
     {

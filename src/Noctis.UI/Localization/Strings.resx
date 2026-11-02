@@ -1316,6 +1316,23 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Main.PickTracksYourself" xml:space="preserve"><value>Pick the tracks yourself</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.NewSmartPlaylist" xml:space="preserve"><value>New Smart Playlist</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.FillsItselfFromRules" xml:space="preserve"><value>Fills itself from rules you set</value><comment>Text in MainWindow.axaml</comment></data>
+  <data name="Main.QuickPlaylist" xml:space="preserve"><value>Playlist from a Genre or Artist</value><comment>Playlists page New menu</comment></data>
+  <data name="Main.QuickPlaylistSub" xml:space="preserve"><value>All its songs, or a mix made from your library</value><comment>Playlists page New menu</comment></data>
+  <data name="QuickPlaylist.Title" xml:space="preserve"><value>Playlist from a Genre or Artist</value></data>
+  <data name="QuickPlaylist.Subtitle" xml:space="preserve"><value>All its songs, or a mix of similar songs from your library. Made on this PC, nothing is sent anywhere.</value></data>
+  <data name="QuickPlaylist.Genres" xml:space="preserve"><value>Genres</value></data>
+  <data name="QuickPlaylist.Artists" xml:space="preserve"><value>Artists</value></data>
+  <data name="QuickPlaylist.SearchGenres" xml:space="preserve"><value>Search genres</value></data>
+  <data name="QuickPlaylist.SearchArtists" xml:space="preserve"><value>Search artists</value></data>
+  <data name="QuickPlaylist.AllSongs" xml:space="preserve"><value>All Songs</value></data>
+  <data name="QuickPlaylist.AllSongsTip" xml:space="preserve"><value>A playlist with every song of this one</value></data>
+  <data name="QuickPlaylist.Mix" xml:space="preserve"><value>Mix</value></data>
+  <data name="QuickPlaylist.MixTip" xml:space="preserve"><value>About 50 songs: this one's music and similar songs from your library, favourites and most played first</value></data>
+  <data name="QuickPlaylist.OneSong" xml:space="preserve"><value>1 song</value></data>
+  <data name="QuickPlaylist.Songs" xml:space="preserve"><value>{0:N0} songs</value><comment>{0} = number of songs</comment></data>
+  <data name="QuickPlaylist.NoneFound" xml:space="preserve"><value>Nothing found</value></data>
+  <data name="QuickPlaylist.Nothing" xml:space="preserve"><value>No songs to put in it.</value></data>
+  <data name="QuickPlaylist.Failed" xml:space="preserve"><value>Couldn't make the playlist: {0}</value><comment>{0} = error message</comment></data>
   <data name="Main.ImportPlaylist" xml:space="preserve"><value>Import Playlist</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.FromM3uM3u8File" xml:space="preserve"><value>From an .m3u / .m3u8 file</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.ShuffleAllTip" xml:space="preserve"><value>Shuffle All</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
@@ -2819,6 +2836,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Menu.LyricsStudio" xml:space="preserve"><value>Open in Lyrics Studio</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
   <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Choose video for this song</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
   <data name="Menu.StartRadio" xml:space="preserve"><value>Start Radio</value><comment>v2 right-click menu row</comment></data>
+  <data name="Menu.CreateMix" xml:space="preserve"><value>Create Mix from This Song</value><comment>Song right-click menu, beside Start Radio</comment></data>
   <data name="Menu.Snooze" xml:space="preserve"><value>Snooze for a Month</value><comment>v2 right-click menu row: hide the song from suggestions for a month</comment></data>
   <data name="Menu.Badge" xml:space="preserve"><value>Badge</value><comment>v2 right-click menu submenu (colored song badges)</comment></data>
   <data name="Menu.NewBadge" xml:space="preserve"><value>New badge…</value><comment>v2 right-click menu, Badge submenu</comment></data>

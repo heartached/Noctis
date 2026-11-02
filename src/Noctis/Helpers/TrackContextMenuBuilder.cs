@@ -41,6 +41,9 @@ public sealed class TrackContextMenuBuilder
     public MenuItem PlayNext { get; private set; } = null!;
     public MenuItem AddToQueue { get; private set; } = null!;
     public MenuItem StartRadio { get; private set; } = null!;
+    /// <summary>"Create Mix from This Song" (Discord, Cosmo 11-02): shown beside Start Radio
+    /// when <see cref="CreateMixCommand"/> is set.</summary>
+    public MenuItem CreateMix { get; private set; } = null!;
     public MenuItem SnoozeForMonth { get; private set; } = null!;
     /// <summary>"View Album" / "View Artist" (GitHub #112). Hidden unless the view passes the
     /// commands; with several credited artists View Artist is a submenu, one entry per name.</summary>
@@ -77,6 +80,9 @@ public sealed class TrackContextMenuBuilder
     /// <summary>Commands plugins registered ("menu.commands"); set once by MainWindowViewModel.
     /// Read on every Bind so enabling/disabling a plugin shows up on the next menu open.</summary>
     public static Func<IReadOnlyList<Services.Plugins.PluginTrackCommand>>? PluginCommandSource { get; set; }
+
+    /// <summary>Makes a playlist mix from the clicked song; set once by MainWindowViewModel.</summary>
+    public static ICommand? CreateMixCommand { get; set; }
 
     /// <summary>App-wide artist picture lookup for View Artist ▸, set once by MainWindowViewModel
     /// (owner 10-10: the round pictures in every track menu, not only Home's charts). A Bind
@@ -143,6 +149,8 @@ public sealed class TrackContextMenuBuilder
         StartRadio = new MenuItem { Header = "Start Radio", IsVisible = false };
         StartRadio.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Shuffle%20ICON.png");
         items.Add(StartRadio);
+        CreateMix = new MenuItem { Header = Loc.T("Menu.CreateMix"), IsVisible = false };
+        items.Add(CreateMix);
 
         // Hidden unless the view supplies a snoozeCommand in Bind().
         SnoozeForMonth = new MenuItem { Header = "Snooze for a month", IsVisible = false };
@@ -342,6 +350,8 @@ public sealed class TrackContextMenuBuilder
         items.Add(ViewArtist);
         StartRadio = MenuV2.Row(host, Loc.T("Menu.StartRadio"), "MenuLineRadio", visible: false);
         items.Add(StartRadio);
+        CreateMix = MenuV2.Row(host, Loc.T("Menu.CreateMix"), "MenuLineSmartPlaylist", visible: false);
+        items.Add(CreateMix);
         SnoozeForMonth = MenuV2.Row(host, Loc.T("Menu.Snooze"), "MenuLineSnooze", visible: false);
         items.Add(SnoozeForMonth);
 
@@ -544,6 +554,10 @@ public sealed class TrackContextMenuBuilder
         {
             StartRadio.IsVisible = false;
         }
+        // Create Mix rides with Start Radio: the views that offer one song's radio offer its mix.
+        CreateMix.IsVisible = startRadioCommand != null && CreateMixCommand != null;
+        CreateMix.Command = CreateMixCommand;
+        CreateMix.CommandParameter = track;
 
         // Snooze for a month is optional — only views that pass a snoozeCommand surface it.
         if (snoozeCommand != null)

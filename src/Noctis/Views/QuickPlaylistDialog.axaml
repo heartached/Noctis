@@ -1,0 +1,117 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.QuickPlaylistDialog"
+        x:DataType="vm:QuickPlaylistViewModel"
+        Title="{loc:T QuickPlaylist.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.qp-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <!-- Genres / Artists switch: the active side is the accent pill. -->
+        <Style Selector="Button.qp-tab">
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="18,0" />
+            <Setter Property="FontSize" Value="12.5" />
+        </Style>
+        <Style Selector="Button.qp-row">
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Styles>
+
+    <!-- The rounded pill pop-up (PillDialogHost), as Import Playlist / Find Metadata. -->
+    <controls:PillDialogHost>
+
+    <Grid Width="560" Height="620" RowDefinitions="Auto,Auto,*,Auto">
+
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <controls:LineIcon Data="{DynamicResource LineCreatePlaylist}" Width="22" Height="22" Opacity="0.6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T QuickPlaylist.Title}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T QuickPlaylist.Subtitle}" FontSize="13" Opacity="0.7" TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="1" Spacing="10" Margin="28,16,28,6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="GenresTab" Classes="qp-tab" Classes.pill-primary="{Binding ShowGenres}"
+                        Classes.pill-secondary="{Binding ShowArtists}"
+                        Content="{loc:T QuickPlaylist.Genres}" Command="{Binding ShowGenreListCommand}" />
+                <Button x:Name="ArtistsTab" Classes="qp-tab" Classes.pill-primary="{Binding ShowArtists}"
+                        Classes.pill-secondary="{Binding ShowGenres}"
+                        Content="{loc:T QuickPlaylist.Artists}" Command="{Binding ShowArtistListCommand}" />
+            </StackPanel>
+            <TextBox x:Name="SearchBox" Classes="pill-field" Text="{Binding SearchText}"
+                     Watermark="{Binding SearchWatermark}"
+                     AutomationProperties.Name="{Binding SearchWatermark}" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" Text="{loc:T QuickPlaylist.NoneFound}" Opacity="0.5" FontSize="13"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmpty}" />
+
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      Padding="28,8,28,8" IsVisible="{Binding !IsEmpty}">
+            <ItemsControl x:Name="EntryList" ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:QuickPlaylistViewModel+Entry">
+                        <Border Classes="pill-well" CornerRadius="16" Padding="16,8,10,8" Margin="0,0,0,6">
+                            <Grid ColumnDefinitions="*,12,Auto,6,Auto">
+                                <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding CountText}" FontSize="11.5" Opacity="0.55" />
+                                </StackPanel>
+                                <Button Grid.Column="2" Classes="pill-secondary qp-row"
+                                        Content="{loc:T QuickPlaylist.AllSongs}"
+                                        ToolTip.Tip="{loc:T QuickPlaylist.AllSongsTip}"
+                                        Command="{Binding $parent[Window].((vm:QuickPlaylistViewModel)DataContext).AllSongsCommand}"
+                                        CommandParameter="{Binding}" />
+                                <Button Grid.Column="4" Classes="pill-primary qp-row"
+                                        Content="{loc:T QuickPlaylist.Mix}"
+                                        ToolTip.Tip="{loc:T QuickPlaylist.MixTip}"
+                                        Command="{Binding $parent[Window].((vm:QuickPlaylistViewModel)DataContext).MixCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Border Grid.Row="3"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Classes="qp-status" Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                <Button Grid.Column="1" Classes="pill-secondary" Content="{loc:T Metadata.Cancel}"
+                        Command="{Binding CloseCommand}" MinWidth="108" />
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
+</Window>

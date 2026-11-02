@@ -263,6 +263,8 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
+    /// <summary>Playlists page New ▸ "Playlist from a Genre or Artist" (Discord, Cosmo 11-02).</summary>
+    [ObservableProperty] private ICommand? _pageQuickPlaylistCommand;
 
     // Playlists grid sort, mirrored here for top-bar placement — same pattern as the
     // Albums sort chip above. Rides HasPlaylistActions so it appears and disappears with
@@ -387,8 +389,9 @@ public partial class TopBarViewModel : ViewModelBase
     }
 
     public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand,
-        ICommand importPlaylistCommand, ICommand sortCommand, string sortLabel)
+        ICommand importPlaylistCommand, ICommand sortCommand, string sortLabel, ICommand? quickPlaylistCommand = null)
     {
+        PageQuickPlaylistCommand = quickPlaylistCommand;
         PageCreatePlaylistCommand = createPlaylistCommand;
         PageCreateSmartPlaylistCommand = createSmartPlaylistCommand;
         PageImportPlaylistCommand = importPlaylistCommand;
@@ -403,6 +406,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageCreatePlaylistCommand = null;
         PageCreateSmartPlaylistCommand = null;
         PageImportPlaylistCommand = null;
+        PageQuickPlaylistCommand = null;
         PlaylistSortCommand = null;
     }
 
