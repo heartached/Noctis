@@ -85,6 +85,14 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Import.TidalSignIn" xml:space="preserve"><value>Sign in to TIDAL</value></data>
   <data name="Import.PickerTitle" xml:space="preserve"><value>Choose a playlist export</value></data>
   <data name="Import.PickerFilter" xml:space="preserve"><value>Playlist exports</value></data>
+  <data name="Import.AddSongWatermark" xml:space="preserve"><value>Add a song from your library</value></data>
+  <data name="Import.RemoveAdded" xml:space="preserve"><value>Remove</value></data>
+  <data name="Import.StatusAdded" xml:space="preserve"><value>{0} added</value><comment>{0} = songs added by hand from the library</comment></data>
+  <data name="Import.Change" xml:space="preserve"><value>Change</value></data>
+  <data name="Import.LeaveOut" xml:space="preserve"><value>Leave out of the playlist / put back</value></data>
+  <data name="Import.UseThisSong" xml:space="preserve"><value>Use this song from your library</value></data>
+  <data name="Import.SearchLibrary" xml:space="preserve"><value>Search library</value></data>
+  <data name="Import.SearchWatermark" xml:space="preserve"><value>Search your library</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Close</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Create</value></data>
   <data name="Common.Done" xml:space="preserve"><value>Done</value></data>

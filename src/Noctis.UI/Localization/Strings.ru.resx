@@ -85,6 +85,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Import.TidalSignIn" xml:space="preserve"><value>Войти в TIDAL</value></data>
   <data name="Import.PickerTitle" xml:space="preserve"><value>Выберите экспорт плейлиста</value></data>
   <data name="Import.PickerFilter" xml:space="preserve"><value>Экспорт плейлистов</value></data>
+  <data name="Import.AddSongWatermark" xml:space="preserve"><value>Добавить песню из медиатеки</value></data>
+  <data name="Import.RemoveAdded" xml:space="preserve"><value>Убрать</value></data>
+  <data name="Import.StatusAdded" xml:space="preserve"><value>добавлено: {0}</value><comment>{0} = songs added by hand from the library</comment></data>
+  <data name="Import.Change" xml:space="preserve"><value>Изменить</value></data>
+  <data name="Import.LeaveOut" xml:space="preserve"><value>Не включать в плейлист / вернуть</value></data>
+  <data name="Import.UseThisSong" xml:space="preserve"><value>Взять эту песню из медиатеки</value></data>
+  <data name="Import.SearchLibrary" xml:space="preserve"><value>Искать в медиатеке</value></data>
+  <data name="Import.SearchWatermark" xml:space="preserve"><value>Поиск в медиатеке</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Закрыть</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Создать</value></data>
   <data name="Common.Done" xml:space="preserve"><value>Готово</value></data>
