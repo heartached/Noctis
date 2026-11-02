@@ -3,7 +3,7 @@
   "name": "Chords",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "See the chords of the playing song, worked out from its audio.",
+  "description": "Shows the playing song's chords, found from its audio.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.Chords.dll",
   "apiVersion": "1.6",
@@ -13,9 +13,9 @@
   "icon": "icon.png",
   "settings": [
     { "key": "autoFind", "label": "Find chords automatically", "type": "bool", "default": true,
-      "description": "While the Chords window is open, work out each new song's chords when it starts." },
+      "description": "Work out each new song's chords while Chords is open." },
     { "key": "sevenths", "label": "Show seventh chords", "type": "bool", "default": false,
-      "description": "Also tell 7, maj7 and m7 chords apart. Less sure than plain major and minor." }
+      "description": "Also show 7, maj7 and m7 chords. These are less sure." }
   ],
   "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Chords"
 }
