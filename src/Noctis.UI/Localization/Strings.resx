@@ -3008,4 +3008,15 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.QueueSide.Position" xml:space="preserve"><value>Queue number</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
   <data name="Settings.QueueSide.Duration" xml:space="preserve"><value>Duration</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
   <data name="Settings.QueueSide.None" xml:space="preserve"><value>Nothing</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="AlbumCarousel.Name" xml:space="preserve"><value>Album carousel</value><comment>Album carousel (GitHub #149): screen reader name</comment></data>
+  <data name="AlbumCarousel.Counter" xml:space="preserve"><value>{0} of {1}</value><comment>Album carousel: position under the centred album</comment></data>
+  <data name="Main.AlbumView" xml:space="preserve"><value>View</value><comment>Albums page top-right view menu tooltip</comment></data>
+  <data name="Main.AlbumGrid" xml:space="preserve"><value>Grid</value><comment>Albums view menu: tile grid</comment></data>
+  <data name="Main.AlbumCarousel" xml:space="preserve"><value>Carousel</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.CarouselCover" xml:space="preserve"><value>Cover</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
+  <data name="Main.CarouselJewelCase" xml:space="preserve"><value>CD Jewel Case</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselVinyl" xml:space="preserve"><value>Vinyl</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselCassette" xml:space="preserve"><value>Cassette</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="ArtistDetail.ShowCarousel" xml:space="preserve"><value>Show as Carousel</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
+  <data name="ArtistDetail.ShowGrid" xml:space="preserve"><value>Show as Grid</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
 </root>

@@ -1290,8 +1290,34 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
+                    <!-- Grid / carousel (GitHub #149): one choice for every artist; the icon
+                         shows the layout a click switches to. -->
+                    <Button Classes="grey-pill"
+                            Width="34" Height="34"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            VerticalAlignment="Center"
+                            Cursor="Hand"
+                            ToolTip.Tip="{Binding AlbumsViewToggleLabel}"
+                            AutomationProperties.Name="{Binding AlbumsViewToggleLabel}"
+                            Command="{Binding ToggleAlbumsViewCommand}">
+                        <Panel>
+                            <PathIcon Data="{StaticResource AlbumCarouselIcon}" Width="16" Height="16"
+                                      IsVisible="{Binding !IsAlbumsCarousel}" />
+                            <PathIcon Data="{StaticResource GridViewIcon}" Width="16" Height="16"
+                                      IsVisible="{Binding IsAlbumsCarousel}" />
+                        </Panel>
+                    </Button>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding AlbumReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasAlbums}">
+                <ctrl:AlbumCarousel Height="440"
+                                    FocusOnShow="False"
+                                    IsVisible="{Binding ShowAlbumsCarousel}"
+                                    Albums="{Binding AlbumReleases}"
+                                    CaseStyle="{Binding CarouselStyle}"
+                                    CenterAlbum="{Binding CarouselCenterAlbum}"
+                                    OpenCommand="{Binding OpenAlbumCommand}" />
+                <ItemsControl ItemsSource="{Binding AlbumReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding ShowAlbumsGrid}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />

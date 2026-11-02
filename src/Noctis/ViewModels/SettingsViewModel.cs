@@ -1418,6 +1418,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _songsSortAscending;
     [ObservableProperty] private bool _songsShowOnlyFavorites;
     [ObservableProperty] private string _albumSortMode = "default";
+    /// <summary>Albums page layout: "grid" or "carousel" (GitHub #149).</summary>
+    [ObservableProperty] private string _albumViewMode = "grid";
+    /// <summary>Artist page Albums tab layout: "grid" or "carousel" (GitHub #149).</summary>
+    [ObservableProperty] private string _artistAlbumsViewMode = "grid";
+    /// <summary>Album carousel case style (<see cref="AlbumCarouselStyles"/>), both carousels.</summary>
+    [ObservableProperty] private string _albumCarouselStyle = AlbumCarouselStyles.DefaultSetting;
     [ObservableProperty] private bool _albumSortAscending = true;
     [ObservableProperty] private bool _albumSortNewestFirst;
     [ObservableProperty] private string _albumReleaseTypeFilter = "";
@@ -1435,6 +1441,9 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistAlbumsViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumCarouselStyleChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortNewestFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumReleaseTypeFilterChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -3279,6 +3288,9 @@ public partial class SettingsViewModel : ViewModelBase
             SongsSortAscending = _settings.SongsSortAscending;
             SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
             AlbumSortMode = _settings.AlbumSortMode;
+            AlbumViewMode = _settings.AlbumViewMode;
+            ArtistAlbumsViewMode = _settings.ArtistAlbumsViewMode;
+            AlbumCarouselStyle = _settings.AlbumCarouselStyle;
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             AlbumReleaseTypeFilter = _settings.AlbumReleaseTypeFilter;
@@ -3775,6 +3787,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongsSortAscending = SongsSortAscending;
         _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
         _settings.AlbumSortMode = AlbumSortMode;
+        _settings.AlbumViewMode = AlbumViewMode;
+        _settings.ArtistAlbumsViewMode = ArtistAlbumsViewMode;
+        _settings.AlbumCarouselStyle = AlbumCarouselStyle;
         _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.AlbumSortNewestFirst = AlbumSortNewestFirst;
         _settings.AlbumReleaseTypeFilter = AlbumReleaseTypeFilter;

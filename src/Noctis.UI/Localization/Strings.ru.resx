@@ -3008,4 +3008,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.QueueSide.Position" xml:space="preserve"><value>Номер в очереди</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
   <data name="Settings.QueueSide.Duration" xml:space="preserve"><value>Длительность</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
   <data name="Settings.QueueSide.None" xml:space="preserve"><value>Ничего</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="AlbumCarousel.Name" xml:space="preserve"><value>Карусель альбомов</value><comment>Album carousel (GitHub #149): screen reader name</comment></data>
+  <data name="AlbumCarousel.Counter" xml:space="preserve"><value>{0} из {1}</value><comment>Album carousel: position under the centred album</comment></data>
+  <data name="Main.AlbumView" xml:space="preserve"><value>Вид</value><comment>Albums page top-right view menu tooltip</comment></data>
+  <data name="Main.AlbumGrid" xml:space="preserve"><value>Сетка</value><comment>Albums view menu: tile grid</comment></data>
+  <data name="Main.AlbumCarousel" xml:space="preserve"><value>Карусель</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.CarouselCover" xml:space="preserve"><value>Обложка</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
+  <data name="Main.CarouselJewelCase" xml:space="preserve"><value>Коробка CD</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselVinyl" xml:space="preserve"><value>Винил</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselCassette" xml:space="preserve"><value>Кассета</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="ArtistDetail.ShowCarousel" xml:space="preserve"><value>Показать каруселью</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
+  <data name="ArtistDetail.ShowGrid" xml:space="preserve"><value>Показать сеткой</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
 </root>

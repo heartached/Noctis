@@ -47,6 +47,7 @@
         <Grid>
             <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out GridColumns per row -->
             <ListBox x:Name="AlbumListBox"
+                     IsVisible="{Binding IsGridView}"
                      ItemsSource="{Binding FilteredAlbumRows}"
                      Background="Transparent"
                      BorderThickness="0"
@@ -297,6 +298,17 @@
                     </DataTemplate>
                 </ListBox.DataTemplates>
             </ListBox>
+
+            <!-- Carousel layout (GitHub #149, top-bar View menu): the same filtered, sorted
+                 albums one at a time, Cover Flow style. Clicking the centred album opens it,
+                 like a grid tile. Bottom margin clears the floating playback bar. -->
+            <ctrl:AlbumCarousel x:Name="AlbumCarousel"
+                                IsVisible="{Binding IsCarouselView}"
+                                Albums="{Binding CarouselAlbums}"
+                                CaseStyle="{Binding CarouselStyle}"
+                                CenterAlbum="{Binding CarouselCenterAlbum}"
+                                OpenCommand="{Binding OpenAlbumCommand}"
+                                Margin="0,4,10,110" />
 
             <!-- Empty state overlay. With a search or a Type / Quality filter on, the library is
                  not empty: say nothing matches instead of "add music folders" (live check 10-10:
