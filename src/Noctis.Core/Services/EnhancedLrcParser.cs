@@ -258,9 +258,17 @@ public static partial class EnhancedLrcParser
     }
 
     // Letters/digits/apostrophes/hyphens below the CJK blocks join into one word;
-    // whitespace, punctuation and CJK characters keep segments separate.
+    // whitespace, punctuation and CJK characters keep segments separate. Combining marks
+    // (Indic vowel signs and viramas, Thai/Arabic marks) and the zero-width (non-)joiner are part
+    // of the word too (GitHub #149): Malayalam "പാ" + "ട്ട്" ends on a vowel sign, and split
+    // there each cell was shaped alone, breaking the conjuncts across the cell edge.
     private static bool IsJoinable(char c) =>
-        (char.IsLetterOrDigit(c) || c is '\'' or '’' or '-') && c < '⺀';
+        (char.IsLetterOrDigit(c) || IsMark(c) || c is '\'' or '’' or '-' or '‌' or '‍') && c < '⺀';
+
+    private static bool IsMark(char c) => char.GetUnicodeCategory(c) is
+        System.Globalization.UnicodeCategory.NonSpacingMark
+        or System.Globalization.UnicodeCategory.SpacingCombiningMark
+        or System.Globalization.UnicodeCategory.EnclosingMark;
 
     /// <summary>
     /// Folds fully-parenthesized word-timed lines — the common ELRC convention for
