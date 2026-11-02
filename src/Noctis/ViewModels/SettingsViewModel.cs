@@ -1207,6 +1207,8 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshFlowingStyleOptions();
         PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
+        MissingSongsOptions = BuildMissingSongsOptions();
+        OnPropertyChanged(nameof(SelectedMissingSongsOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
@@ -2318,6 +2320,40 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Keep played songs in the queue (GitHub #124). Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
 
+    /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
+    /// queue when it is passed over, instead of staying in it marked. Off by default.</summary>
+    [ObservableProperty] private bool _removeMissingFromQueue;
+
+    /// <summary>One row of the Missing Songs picker.</summary>
+    public sealed record MissingSongsOption(bool Remove, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<MissingSongsOption> MissingSongsOptions
+    {
+        get => _missingSongsOptions;
+        private set => SetProperty(ref _missingSongsOptions, value);
+    }
+    private IReadOnlyList<MissingSongsOption> _missingSongsOptions = BuildMissingSongsOptions();
+
+    private static IReadOnlyList<MissingSongsOption> BuildMissingSongsOptions() => new[]
+    {
+        new MissingSongsOption(false, Loc.T("Settings.MissingSongsMark")),
+        new MissingSongsOption(true, Loc.T("Settings.MissingSongsRemove")),
+    };
+
+    public MissingSongsOption? SelectedMissingSongsOption
+    {
+        get => MissingSongsOptions.FirstOrDefault(o => o.Remove == RemoveMissingFromQueue);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            RemoveMissingFromQueue = value.Remove;
+        }
+    }
+
     // ── Audio analysis (background BPM/key detection) ──
 
     [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
@@ -3290,6 +3326,7 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
+            RemoveMissingFromQueue = _settings.RemoveMissingFromQueue;
             var queueRows = QueueRowLayout.FromSettings(_settings);
             QueueRowLine1 = queueRows.Line1.ToString();
             QueueRowLine1Extra = queueRows.Line1Extra.ToString();
@@ -3774,6 +3811,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
+        _settings.RemoveMissingFromQueue = RemoveMissingFromQueue;
         var queueRows = CurrentQueueRowLayout;
         _settings.QueueRowLine1 = queueRows.Line1.ToString();
         _settings.QueueRowLine1Extra = queueRows.Line1Extra.ToString();
@@ -3988,6 +4026,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
+        _player.RemoveMissingFromQueue = RemoveMissingFromQueue;
         _player.QueueRowLayout = CurrentQueueRowLayout;
         _player.QueuePanelWidth = QueuePanelWidth;
         _player.AllowExplicitContent = AllowExplicitContent;
@@ -5768,6 +5807,14 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnKeepPlayedInQueueChanged(bool value)
     {
         if (_player != null) _player.KeepPlayedInQueue = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnRemoveMissingFromQueueChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SelectedMissingSongsOption));
+        if (_player != null) _player.RemoveMissingFromQueue = value;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -7754,6 +7801,7 @@ public partial class SettingsViewModel : ViewModelBase
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
+            RemoveMissingFromQueue = defaultSettings.RemoveMissingFromQueue;
             QueueRowLine1 = defaultSettings.QueueRowLine1;
             QueueRowLine1Extra = defaultSettings.QueueRowLine1Extra;
             QueueRowLine2 = defaultSettings.QueueRowLine2;

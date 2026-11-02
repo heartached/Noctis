@@ -1247,6 +1247,10 @@
                                     <Style Selector="ListBoxItem.queue-played controls|LineIcon.queue-played-mark">
                                         <Setter Property="IsVisible" Value="True"/>
                                     </Style>
+                                    <!-- GitHub #154: a song whose file is missing reads dimmed, marked. -->
+                                    <Style Selector="Grid.queue-row-content.queue-missing">
+                                        <Setter Property="Opacity" Value="0.45"/>
+                                    </Style>
                                     <!-- The playing row: the accent card the pinned Now Playing row uses,
                                          a speaker in the number slot. Last, so it wins over hover. -->
                                     <Style Selector="ListBoxItem.queue-current Border.queue-row">
@@ -1308,8 +1312,9 @@
                                                     </MenuItem>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="48"
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="48"
                                               Classes="queue-row-content"
+                                              Classes.queue-missing="{Binding IsFileMissing}"
                                               Background="Transparent">
 
                                             <!-- Album art thumbnail -->
@@ -1397,7 +1402,20 @@
                                                  recycles rows, so there is no per-item index to bind).
                                                  GitHub #134: played rows show a check, the playing row
                                                  a speaker, instead of a number. -->
-                                            <Panel Grid.Column="2" MinWidth="20" Margin="4,0,4,0"
+                                            <!-- GitHub #154: the file can't be found (moved, deleted, drive unplugged). -->
+                                            <Border Grid.Column="2"
+                                                    Classes="explicit-badge compact"
+                                                    Margin="0,0,4,0"
+                                                    IsVisible="{Binding IsFileMissing}"
+                                                    ToolTip.Tip="{loc:T Queue.MissingTip}"
+                                                    AutomationProperties.Name="{loc:T Queue.MissingTip}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:T Queue.MissingBadge}"
+                                                           Classes="explicit-badge-text compact"
+                                                           FontSize="8"
+                                                           Opacity="0.9" />
+                                            </Border>
+                                            <Panel Grid.Column="3" MinWidth="20" Margin="4,0,4,0"
                                                    VerticalAlignment="Center"
                                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsRight, FallbackValue=True}">
                                                 <TextBlock x:Name="QueueRowNumber"
