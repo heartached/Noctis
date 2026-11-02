@@ -450,6 +450,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Plugins.ViewPresenter = Views.PluginViewWindow.Present;
         // API 1.4: plugins read the playlists the sidebar holds (copied by the adapter).
         Plugins.PlaylistSource = () => Sidebar.Playlists.ToArray();
+        // API 1.6: plugins decode songs with the ffmpeg the converter and the BPM/key analysis use.
+        Plugins.FfmpegPathSource = () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath();
         Plugins.AlbumOpener = albumId =>
         {
             if (_library.GetAlbumById(albumId) is not { } album) return false;

@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.5"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.6"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 5;
+    public const int Minor = 6;
 
-    /// <summary>"1.5": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.6": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 
@@ -35,11 +35,13 @@ public static class PluginPermissions
     public const string LibraryWriteAnalysis = "library.write.analysis";
     /// <summary>API 1.5: <see cref="IPluginHost.LibraryImport"/> (add audio files to the library).</summary>
     public const string LibraryImport = "library.import";
+    /// <summary>API 1.6: <see cref="IPluginHost.AudioDecoder"/> (decode song files to PCM for analysis).</summary>
+    public const string AudioDecode = "audio.decode";
 
     /// <summary>Every permission this kit version knows.</summary>
     public static IReadOnlyList<string> All { get; } = new[]
     {
-        PlaybackRead, PlaybackControl, LibraryRead, Network, LyricsProvider, MenuCommands, Notifications, LibraryWriteAnalysis, LibraryImport,
+        PlaybackRead, PlaybackControl, LibraryRead, Network, LyricsProvider, MenuCommands, Notifications, LibraryWriteAnalysis, LibraryImport, AudioDecode,
     };
 }
 

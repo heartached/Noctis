@@ -45,8 +45,8 @@ public class PluginQueueApiTests : IDisposable
     [Fact]
     public void Kit_Is15()
     {
-        Assert.Equal("1.5", PluginApi.Version);
-        Assert.Equal((1, 5), (typeof(PluginApi).Assembly.GetName().Version!.Major, typeof(PluginApi).Assembly.GetName().Version!.Minor));
+        Assert.True(PluginApi.Minor >= 5); // 1.6 added audio.decode on top
+        Assert.Equal((1, PluginApi.Minor), (typeof(PluginApi).Assembly.GetName().Version!.Major, typeof(PluginApi).Assembly.GetName().Version!.Minor));
     }
 
     [Fact]

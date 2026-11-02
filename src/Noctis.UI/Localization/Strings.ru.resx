@@ -2237,6 +2237,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Уведомления</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Запись BPM и тональности</value></data>
   <data name="Plugins.PermShort.LibraryImport" xml:space="preserve"><value>Добавление в медиатеку</value></data>
+  <data name="Plugins.PermShort.AudioDecode" xml:space="preserve"><value>Анализ звука</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Управлять воспроизведением: запуск, пауза, переключение и перемотка</value></data>
   <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Читать медиатеку и плейлисты (названия, исполнители, альбомы, пути к файлам, число прослушиваний)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Подключаться к интернету</value></data>
@@ -2245,6 +2246,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Показывать короткие уведомления</value></data>
   <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Задавать BPM и тональность треков медиатеки (только в Noctis, никогда в ваших файлах)</value></data>
   <data name="Plugins.Perm.LibraryImport" xml:space="preserve"><value>Добавлять в медиатеку аудиофайлы, которые он сохранил (например, загрузки)</value></data>
+  <data name="Plugins.Perm.AudioDecode" xml:space="preserve"><value>Декодировать песни, чтобы анализировать их звучание (ничего не меняется и никуда не отправляется)</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Включить {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} запрашивает разрешение:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} от {2} запрашивает разрешение:</value></data>
@@ -2334,6 +2336,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.PermVerb.Notifications" xml:space="preserve"><value>показывать уведомления</value></data>
   <data name="Plugins.PermVerb.LibraryWriteAnalysis" xml:space="preserve"><value>задавать BPM и тональность</value></data>
   <data name="Plugins.PermVerb.LibraryImport" xml:space="preserve"><value>добавлять файлы в медиатеку</value></data>
+  <data name="Plugins.PermVerb.AudioDecode" xml:space="preserve"><value>анализировать звучание ваших песен</value></data>
   <data name="Plugins.Setting.Decrease" xml:space="preserve"><value>Уменьшить: {0}</value></data>
   <data name="Plugins.Setting.Increase" xml:space="preserve"><value>Увеличить: {0}</value></data>
 

@@ -43,6 +43,7 @@ public static class PluginPermissionText
         PluginPermissions.Notifications => "Notifications",
         PluginPermissions.LibraryWriteAnalysis => "LibraryWriteAnalysis",
         PluginPermissions.LibraryImport => "LibraryImport",
+        PluginPermissions.AudioDecode => "AudioDecode",
         _ => "",
     };
 
@@ -694,6 +695,10 @@ public sealed class PluginHost
     /// Set by the app; null (tests, headless) = no playlists. Plugins may call it off the UI
     /// thread, so the adapter copies what it reads.</summary>
     public Func<IReadOnlyList<Playlist>>? PlaylistSource { get; set; }
+
+    /// <summary>API 1.6: where ffmpeg is (<see cref="IAudioConverterService.GetFfmpegPath"/>), for
+    /// <see cref="IPluginHost.AudioDecoder"/>. Set by the app; null (tests, headless) = no decoder.</summary>
+    public Func<string?>? FfmpegPathSource { get; set; }
 
     /// <summary>A plain copy of a playlist for plugins: its library tracks in order (a smart
     /// playlist's current matches), ids the library no longer has left out.</summary>
@@ -1823,6 +1828,16 @@ public sealed class PluginHost
             {
                 Require(PluginPermissions.LibraryImport);
                 return _libraryImport ??= new PluginLibraryImporter(_library, _owner._settings, () => !_disposed && _plugin.Instance is not null, _plugin.Id);
+            }
+        }
+
+        private PluginAudioDecoder? _audioDecoder;
+        public IAudioDecoder AudioDecoder
+        {
+            get
+            {
+                Require(PluginPermissions.AudioDecode);
+                return _audioDecoder ??= new PluginAudioDecoder(() => _owner.FfmpegPathSource?.Invoke(), () => !_disposed && _plugin.Instance is not null, _plugin.Id);
             }
         }
 
