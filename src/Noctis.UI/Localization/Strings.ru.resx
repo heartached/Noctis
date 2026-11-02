@@ -388,7 +388,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Непрозрачность мини-плеера</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>Насколько плотным выглядит фон мини-плеера.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Матовый фон</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Размывать рабочий стол за мини-плеером (классический дизайн).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Размывать рабочий стол за мини-плеером.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>ВОСПРОИЗВЕДЕНИЕ</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Переходы между песнями</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongsBlendSmoothlyInto" xml:space="preserve"><value>Песни плавно перетекают друг в друга. Альбомы играют без переходов.</value><comment>Text in SettingsView.axaml</comment></data>
