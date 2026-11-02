@@ -258,6 +258,44 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void SetReleaseSort(string? mode) => ReleaseSortMode = mode is "oldest" or "name" ? mode : "newest";
 
+    // ── Albums tab layout: grid or album carousel (GitHub #149) ──
+    /// <summary>True when the Albums tab shows the carousel. One setting for every artist
+    /// (<see cref="SettingsViewModel.ArtistAlbumsViewMode"/>), like the sort.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAlbumsGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowAlbumsCarousel))]
+    [NotifyPropertyChangedFor(nameof(AlbumsViewToggleLabel))]
+    private bool _isAlbumsCarousel;
+
+    /// <summary>Tooltip / accessible name of the grid-carousel toggle: what a click switches to.</summary>
+    public string AlbumsViewToggleLabel => Loc.T(IsAlbumsCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
+
+    public bool ShowAlbumsGrid => HasAlbums && !IsAlbumsCarousel;
+    public bool ShowAlbumsCarousel => HasAlbums && IsAlbumsCarousel;
+
+    /// <summary>Case style, shared with the Albums page carousel (<see cref="SettingsViewModel.AlbumCarouselStyle"/>).</summary>
+    [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
+
+    /// <summary>The album the carousel last centred (kept while this page lives in history).</summary>
+    [ObservableProperty] private Album? _carouselCenterAlbum;
+
+    partial void OnIsAlbumsCarouselChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistAlbumsViewMode = value ? "carousel" : "grid";
+    }
+
+    [RelayCommand]
+    private void ToggleAlbumsView() => IsAlbumsCarousel = !IsAlbumsCarousel;
+
+    /// <summary>Re-reads the shared layout and style (a change made on another page while this
+    /// one sat in history applies on the way back).</summary>
+    private void AdoptAlbumsView()
+    {
+        if (_settings == null) return;
+        IsAlbumsCarousel = _settings.ArtistAlbumsViewMode == "carousel";
+        CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
+    }
+
     // ── Latest release (by release date, falling back to year) ──
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLatestRelease))]
@@ -405,6 +443,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _info = info;
         _similar = similar;
         IsOverviewSimilarExpanded = settings?.ArtistSimilarExpanded ?? true;
+        AdoptAlbumsView();
 
         Artist = library.Artists.FirstOrDefault(a => string.Equals(a.Name, ArtistName, StringComparison.OrdinalIgnoreCase))
                  ?? new Artist { Id = LibraryService.ComputeArtistId(ArtistName), Name = ArtistName };
@@ -592,6 +631,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             // while this one sat in history applies on the way back.
             if (value && _settings != null) ReleaseSortMode = _settings.ArtistReleaseSortMode;
             if (value && _settings != null) IsOverviewSimilarExpanded = _settings.ArtistSimilarExpanded;
+            if (value) AdoptAlbumsView();
         }
     }
 
@@ -711,6 +751,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         OnPropertyChanged(nameof(HasFavorites));
         OnPropertyChanged(nameof(HasReleases));
         OnPropertyChanged(nameof(HasAlbums));
+        OnPropertyChanged(nameof(ShowAlbumsGrid));
+        OnPropertyChanged(nameof(ShowAlbumsCarousel));
         OnPropertyChanged(nameof(HasSingles));
         OnPropertyChanged(nameof(HasOverviewAlbums));
         OnPropertyChanged(nameof(HasOverviewSingles));
