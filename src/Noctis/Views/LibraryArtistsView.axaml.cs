@@ -22,9 +22,14 @@ public partial class LibraryArtistsView : UserControl
     /// <summary>The VM FilterKey the grid last reset its scroll for (see OnArtistRowsChanged).</summary>
     private string? _scrollResetFilterKey;
 
+    /// <summary>The list view's columns (GitHub #151), shared by its header and every row.</summary>
+    internal ColumnLayout Columns { get; } = LibraryColumns.CreateArtists();
+    private IDisposable? _columnsBinding;
+
     public LibraryArtistsView()
     {
         InitializeComponent();
+        Noctis.Controls.ColumnsPanel.SetLayout(this, Columns);
 
         // List view (Discord, vari): double-click / Enter opens the artist, the arrow keys
         // move the selection, right-click anywhere on a row gives the tile's menu.
@@ -378,6 +383,8 @@ public partial class LibraryArtistsView : UserControl
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelPendingScrollRestore();
+        _columnsBinding?.Dispose();
+        _columnsBinding = null;
 
         if (DataContext is LibraryArtistsViewModel vm)
         {
@@ -423,6 +430,12 @@ public partial class LibraryArtistsView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         UpdateGridColumns(Bounds.Width);
+
+        // List view column order, widths and hidden columns persist in Settings.
+        _columnsBinding?.Dispose();
+        _columnsBinding = TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel { Settings: { } settings }
+            ? LibraryColumns.BindArtists(Columns, settings)
+            : null;
 
         // Re-subscribe to collection changes (unsubscribed in OnDetachedFromVisualTree)
         if (_vm != null)

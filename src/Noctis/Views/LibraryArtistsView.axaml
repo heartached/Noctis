@@ -155,34 +155,21 @@
                  row insets exactly as LibrarySongsView explains; the columns of the header
                  and the row template must stay identical. -->
             <DockPanel IsVisible="{Binding IsListView}">
-                <Grid DockPanel.Dock="Top" Margin="1,0,9,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="42" />
-                    </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="{loc:T LibraryArtists.ColumnArtist}" Command="{Binding SortByColumnCommand}" CommandParameter="name"
-                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
-                    <Border Grid.Column="1" Width="80">
-                        <Button Content="{loc:T LibraryArtists.ColumnAlbums}" Command="{Binding SortByColumnCommand}" CommandParameter="albums"
-                                Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="2" Width="80">
-                        <Button Content="{loc:T LibraryArtists.ColumnSongs}" Command="{Binding SortByColumnCommand}" CommandParameter="songs"
-                                Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="3" Width="90">
-                        <Button Content="{loc:T LibraryArtists.ColumnTime}" Command="{Binding SortByColumnCommand}" CommandParameter="time"
-                                Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
-                    </Border>
-                    <Border Grid.Column="4" Width="170">
-                        <Button Content="{loc:T LibraryArtists.ColumnGenre}" Command="{Binding SortByColumnCommand}" CommandParameter="genre"
-                                Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
-                    </Border>
-                </Grid>
+                <!-- Same column machinery as the Songs list (GitHub #151): resize, move, hide
+                     from the right-click menu, sort arrow; the layout is set in code-behind. -->
+                <ctrl:ColumnHeaderPanel x:Name="ArtistColumnHeader" DockPanel.Dock="Top" Margin="1,0,9,8"
+                                            SortKey="{Binding SortMode}" SortAscending="{Binding SortAscending}">
+                    <Button ctrl:ColumnsPanel.Column="Name" Content="{loc:T LibraryArtists.ColumnArtist}" Command="{Binding SortByColumnCommand}" CommandParameter="name"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Left" HorizontalAlignment="Left" />
+                    <Button ctrl:ColumnsPanel.Column="Albums" Content="{loc:T LibraryArtists.ColumnAlbums}" Command="{Binding SortByColumnCommand}" CommandParameter="albums"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
+                    <Button ctrl:ColumnsPanel.Column="Songs" Content="{loc:T LibraryArtists.ColumnSongs}" Command="{Binding SortByColumnCommand}" CommandParameter="songs"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
+                    <Button ctrl:ColumnsPanel.Column="Time" Content="{loc:T LibraryArtists.ColumnTime}" Command="{Binding SortByColumnCommand}" CommandParameter="time"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
+                    <Button ctrl:ColumnsPanel.Column="Genre" Content="{loc:T LibraryArtists.ColumnGenre}" Command="{Binding SortByColumnCommand}" CommandParameter="genre"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Left" HorizontalAlignment="Left" />
+                </ctrl:ColumnHeaderPanel>
 
                 <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
 
@@ -250,19 +237,11 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="m:ArtistListRow">
                             <Border Classes="row-body">
-                                <Grid Background="Transparent">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="42" />
-                                    </Grid.ColumnDefinitions>
+                                <ctrl:ColumnsPanel Background="Transparent">
 
                                     <!-- Round portrait + name. The favorite star rides the portrait's
                                          rim like the grid tile's, as a sibling of the clipped circle. -->
-                                    <Grid Grid.Column="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                    <Grid ctrl:ColumnsPanel.Column="Name" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                                         <Panel Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0" VerticalAlignment="Center">
                                             <Border Width="36" Height="36"
                                                     CornerRadius="18"
@@ -305,26 +284,26 @@
                                                                  TextTrimming="CharacterEllipsis" />
                                     </Grid>
 
-                                    <Border Grid.Column="1" Width="80">
+                                    <Border ctrl:ColumnsPanel.Column="Albums">
                                         <TextBlock Text="{Binding AlbumCount}" FontSize="12" Opacity="0.5"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
-                                    <Border Grid.Column="2" Width="80">
+                                    <Border ctrl:ColumnsPanel.Column="Songs">
                                         <TextBlock Text="{Binding TrackCount}" FontSize="12" Opacity="0.5"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
-                                    <Border Grid.Column="3" Width="90">
+                                    <Border ctrl:ColumnsPanel.Column="Time">
                                         <TextBlock Text="{Binding DurationFormatted}" FontSize="12" Opacity="0.5"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
-                                    <Border Grid.Column="4" Width="170">
+                                    <Border ctrl:ColumnsPanel.Column="Genre">
                                         <TextBlock Text="{Binding Genre}" FontSize="12" Opacity="0.5"
                                                    TextTrimming="CharacterEllipsis" Margin="0,0,10,0"
                                                    HorizontalAlignment="Left" VerticalAlignment="Center" />
                                     </Border>
 
                                     <!-- 3-dots: the artist tile's right-click menu, as on a Songs row. -->
-                                    <Button Grid.Column="5"
+                                    <Button ctrl:ColumnsPanel.Column="More"
                                             Background="Transparent"
                                             BorderThickness="0"
                                             Padding="0"
@@ -341,7 +320,7 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center" />
                                     </Button>
-                                </Grid>
+                                </ctrl:ColumnsPanel>
                             </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
