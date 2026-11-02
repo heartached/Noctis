@@ -5439,6 +5439,35 @@
                     </Button>
                 </Grid>
             </Border>
+            <!-- Discord (Cosmo, 11-02): lyrics and animated artwork for the whole library at once. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineLyrics}"/>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.FindLibraryLyrics}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.FindLibraryLyricsSub}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenLibraryLyricsCommand}"
+                            AutomationProperties.Name="{loc:T Settings.FindLibraryLyrics}"
+                            Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
+                    </Button>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineVideo}"/>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.FindLibraryArtwork}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.FindLibraryArtworkSub}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenLibraryAnimatedArtworkCommand}"
+                            AutomationProperties.Name="{loc:T Settings.FindLibraryArtwork}"
+                            Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
+                    </Button>
+                </Grid>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{DynamicResource LineFindMetadata}"/>

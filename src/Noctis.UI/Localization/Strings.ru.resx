@@ -2464,6 +2464,18 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Тексты песен</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
+  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Также улучшать песни с обычным или построчным текстом (пословный текст не трогается)</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Снова искать для песен, уже проверенных раньше</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
+  <data name="BulkLyrics.Stop" xml:space="preserve"><value>Остановить</value><comment>Button: stops a bulk run</comment></data>
+  <data name="BulkArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value><comment>Dialog title (window)</comment></data>
+  <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Ищет в Apple Music каждый альбом без анимированной обложки и сохраняет её, только если альбом в магазине точно тот же. Неточные совпадения остаются вам для выбора в редакторе метаданных. По одному альбому за раз, поэтому большая медиатека займёт время; окно можно скрыть, а остановленный поиск продолжится с того же места.</value></data>
+  <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Снова искать для альбомов, для которых раньше ничего не нашлось</value><comment>Checkbox</comment></data>
+  <data name="BulkArtwork.Find" xml:space="preserve"><value>Найти</value><comment>Button: starts the run</comment></data>
+  <data name="Settings.FindLibraryLyrics" xml:space="preserve"><value>Найти тексты</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryLyricsSub" xml:space="preserve"><value>Искать тексты для всей медиатеки, сначала пословные, и улучшать обычные.</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryArtwork" xml:space="preserve"><value>Найти анимированные обложки</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryArtworkSub" xml:space="preserve"><value>Добавить альбомам анимированные обложки из Apple Music, только точные совпадения.</value><comment>Settings Tools row</comment></data>
 
   <data name="Import.Hint.Spotify" xml:space="preserve"><value>Spotify это блокирует. Экспортируйте плейлист через Exportify, затем выберите CSV-файл.</value><comment>Import Playlist: a Spotify link was pasted</comment></data>
   <data name="Import.Hint.AppleMusic" xml:space="preserve"><value>Apple Music нельзя прочитать напрямую. Сконвертируйте плейлист через TuneMyMusic, затем выберите файл.</value><comment>Import Playlist: an Apple Music link was pasted</comment></data>

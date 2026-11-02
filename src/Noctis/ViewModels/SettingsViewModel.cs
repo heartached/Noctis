@@ -7249,6 +7249,14 @@ public partial class SettingsViewModel : ViewModelBase
     private async Task OpenDuplicateFinder()
         => await MetadataHelper.OpenDuplicateFinderDialog();
 
+    /// <summary>Tools ▸ Find Lyrics: the whole library through the bulk lyrics fetch.</summary>
+    [RelayCommand]
+    private Task OpenLibraryLyrics() => MetadataHelper.OpenLibraryLyricsDialog();
+
+    /// <summary>Tools ▸ Find Animated Artwork: every album without a loop.</summary>
+    [RelayCommand]
+    private Task OpenLibraryAnimatedArtwork() => MetadataHelper.OpenLibraryAnimatedArtworkDialog();
+
     [RelayCommand]
     private async Task OpenMetadataFinder()
         => await MetadataHelper.OpenMetadataFinderDialog();

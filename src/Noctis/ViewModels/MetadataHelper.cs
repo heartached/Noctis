@@ -129,13 +129,52 @@ public static class MetadataHelper
         await ShowDialogOwned(new SendToFolderDialog(vm));
     }
 
-    /// <summary>Bulk lyrics: fetch from LRCLIB and save, or remove app-written lyrics.</summary>
+    /// <summary>Bulk lyrics: fetch from the enabled sources and save, or remove app-written lyrics.</summary>
     public static async Task OpenBulkLyricsDialog(IReadOnlyList<Track> tracks, bool remove)
     {
         if (tracks == null || tracks.Count == 0) return;
         var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
-        var vm = new BulkLyricsViewModel(tracks, service, remove);
+        var vm = new BulkLyricsViewModel(tracks, service, remove, openStudio: OpenLyricsStudio);
         await ShowDialogOwned(new BulkLyricsDialog(vm));
+    }
+
+    // The whole-library runs live here, not in their dialogs: Hide closes the dialog and the
+    // run goes on; opening the tool again shows the same run instead of starting a second one.
+    private static BulkLyricsViewModel? _libraryLyricsRun;
+    private static BulkAnimatedArtworkViewModel? _libraryArtworkRun;
+
+    /// <summary>
+    /// Settings ▸ Tools ▸ Find Lyrics (Discord, Cosmo 11-02): every local song through the bulk
+    /// fetch, which skips songs that already have the preferred format and resumes a stopped run.
+    /// </summary>
+    public static async Task OpenLibraryLyricsDialog()
+    {
+        if (_libraryLyricsRun is not { IsRunning: true })
+        {
+            var tracks = App.Services!.GetRequiredService<ILibraryService>().Tracks
+                .Where(t => t.SourceType == SourceType.Local).ToList();
+            if (tracks.Count == 0) return;
+            var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
+            _libraryLyricsRun = new BulkLyricsViewModel(tracks, service, remove: false, library: true, openStudio: OpenLyricsStudio);
+        }
+        await ShowDialogOwned(new BulkLyricsDialog(_libraryLyricsRun));
+    }
+
+    /// <summary>Settings ▸ Tools ▸ Find Animated Artwork: every album without a loop, clear matches only.</summary>
+    public static async Task OpenLibraryAnimatedArtworkDialog()
+    {
+        if (_libraryArtworkRun is not { IsRunning: true })
+        {
+            var services = App.Services!;
+            var persistence = services.GetRequiredService<IPersistenceService>();
+            var service = AnimatedArtworkBulkService.For(
+                services.GetRequiredService<ITunesArtworkService>(),
+                new AnimatedCoverService(persistence),
+                Path.Combine(persistence.DataDirectory, "animated_artwork_bulk_ledger.json"));
+            var albums = AnimatedArtworkBulkService.GroupAlbums(services.GetRequiredService<ILibraryService>().Tracks);
+            _libraryArtworkRun = new BulkAnimatedArtworkViewModel(albums, service);
+        }
+        await ShowDialogOwned(new BulkAnimatedArtworkDialog(_libraryArtworkRun));
     }
 
     /// <summary>Search Lyrics with a source picker (issue #113), for the lyrics page's track.</summary>
