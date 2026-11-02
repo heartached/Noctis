@@ -59,6 +59,11 @@ public partial class CoverFlowCard : UserControl
     public static readonly StyledProperty<string?> TitleToolTipProperty =
         AvaloniaProperty.Register<CoverFlowCard, string?>(nameof(TitleToolTip));
 
+    /// <summary>Shows the "now playing" mark on the cover: the playing track's card when the
+    /// row has been browsed away from it (GitHub #152).</summary>
+    public static readonly StyledProperty<bool> IsPlayingProperty =
+        AvaloniaProperty.Register<CoverFlowCard, bool>(nameof(IsPlaying));
+
     /// <summary>The title link was clicked. The host decides what that means (the carousel
     /// opens the album for the centre card and plays the track for a side card).</summary>
     public event EventHandler? TitleClicked;
@@ -160,6 +165,7 @@ public partial class CoverFlowCard : UserControl
     public object? Overlay { get => GetValue(OverlayProperty); set => SetValue(OverlayProperty, value); }
     public ICommand? ArtistCommand { get => GetValue(ArtistCommandProperty); set => SetValue(ArtistCommandProperty, value); }
     public string? TitleToolTip { get => GetValue(TitleToolTipProperty); set => SetValue(TitleToolTipProperty, value); }
+    public bool IsPlaying { get => GetValue(IsPlayingProperty); set => SetValue(IsPlayingProperty, value); }
 
     private void OnTitleClick(object? sender, RoutedEventArgs e)
     {
