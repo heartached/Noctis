@@ -415,6 +415,17 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Когда очередь закончится, продолжать похожими песнями.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Сохранять прослушанные песни</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Прослушанные песни остаются в списке очереди над текущей, а последняя песня остаётся загруженной, когда очередь закончится.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongs" xml:space="preserve"><value>Отсутствующие песни</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Если файл песни в очереди перемещён или удалён, воспроизведение переходит к следующей песне, которую можно воспроизвести. Выберите, что делать с отсутствующей песней.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Отмечать как отсутствующие</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
+  <data name="Settings.MissingSongsRemove" xml:space="preserve"><value>Удалять из очереди</value><comment>Missing Songs picker option: take the song off the queue</comment></data>
+  <data name="Queue.MissingBadge" xml:space="preserve"><value>Нет файла</value><comment>Badge on a queue row whose file can't be found</comment></data>
+  <data name="Queue.MissingTip" xml:space="preserve"><value>Файл не найден. Он перемещён или удалён, либо его диск не подключён.</value><comment>Tooltip on the queue row Missing badge</comment></data>
+  <data name="Queue.MissingSkippedOne" xml:space="preserve"><value>Пропущено «{0}»: файл не найден</value><comment>Notice when one missing song was skipped; {0} = song title</comment></data>
+  <data name="Queue.MissingSkippedMany" xml:space="preserve"><value>Пропущено песен без файлов: {0}</value><comment>Notice when several missing songs were skipped; {0} = count</comment></data>
+  <data name="Queue.MissingRemovedOne" xml:space="preserve"><value>«{0}» удалена из очереди: файл не найден</value><comment>Notice when one missing song was removed from the queue; {0} = song title</comment></data>
+  <data name="Queue.MissingRemovedMany" xml:space="preserve"><value>Удалено из очереди песен без файлов: {0}</value><comment>Notice when several missing songs were removed from the queue; {0} = count</comment></data>
+  <data name="Queue.MissingStopped" xml:space="preserve"><value>Воспроизведение остановлено: ни одна оставшаяся песня в очереди не найдена</value><comment>Notice when every remaining queued song is missing</comment></data>
   <data name="Queue.Played" xml:space="preserve"><value>Прослушано</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="MiniPlayer.Played" xml:space="preserve"><value>Прослушано</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Ненормативный контент</value><comment>Text in SettingsView.axaml</comment></data>

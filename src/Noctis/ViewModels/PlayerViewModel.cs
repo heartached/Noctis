@@ -877,7 +877,7 @@ public partial class PlayerViewModel : ViewModelBase
             if (CurrentTrack != null) UpNext.Insert(0, CurrentTrack);
             var prev = _precedingInQueue[^1];
             _precedingInQueue.RemoveAt(_precedingInQueue.Count - 1);
-            PlayTrack(prev);
+            PlayTrack(prev, backward: true);
         }
         else if (History.Count > 0)
         {
@@ -2365,6 +2365,7 @@ public partial class PlayerViewModel : ViewModelBase
         // unknown to the library, so they are re-read from their saved files.
         var external = await ResolveSavedExternalTracksAsync(state);
         ApplyQueueState(state, id => _library.GetTrackById(id) ?? external.GetValueOrDefault(id));
+        _ = RefreshMissingMarksAsync(); // GitHub #154: songs whose file went while the app was closed
     }
 
     /// <summary>
@@ -2972,7 +2973,8 @@ public partial class PlayerViewModel : ViewModelBase
         ScheduleLibrarySave();
     }
 
-    private void PlayTrack(Track track)
+    /// <summary>Starts <paramref name="track"/>; its file was found just now (see <see cref="PlayTrack"/>).</summary>
+    private void PlayTrackCore(Track track)
     {
         var playTrackStart = Stopwatch.GetTimestamp();
         _seekDebounceTimer?.Dispose();
@@ -3348,42 +3350,11 @@ public partial class PlayerViewModel : ViewModelBase
             PlayTrack(next);
             RefillRadioIfNeeded();
         }
-        else if (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || PlayedInThisQueue > 0))
+        else if (BuildRepeatAllPass() is { } allTracks)
         {
-            // Repeat all: restart the full cycle. Prefer the uncapped cycle list; fall
-            // back to what this queue played only when there isn't one (e.g. songs queued
-            // onto the emptied player, or a queue restored without a cycle), and record it
-            // as the cycle so the next wrap does not read the longer History again.
-            if (_repeatCycleTracks.Count == 0)
-                _repeatCycleTracks = History.Take(PlayedInThisQueue).Reverse().ToList();
-            var allTracks = new List<Track>(_repeatCycleTracks);
-            if (!_allowExplicitContent)
-                allTracks.RemoveAll(IsBlockedExplicit);
-
-            // History stays (GitHub #124): it was cleared here, so Previous on the first
-            // song of a new pass did nothing. The pass just played stays this queue's.
-            _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
-
             if (allTracks.Count == 0) { StopAndClear("repeatAllNothingPlayable"); return; }
-
-            // Shuffle stays on across the wrap. The cycle holds the order the queue was
-            // started in, so replaying it as-is played every pass after the first in
-            // album order with Shuffle still lit. Reshuffle the new pass as ToggleShuffle
-            // does, keeping the in-order cycle as the un-shuffle target.
-            if (IsShuffleEnabled)
-            {
-                var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
-                    allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
-                if (shuffled.Count > 0)
-                {
-                    // shuffled[0] stays in: Shuffle off continues after it (GitHub #110).
-                    _originalQueue = new List<Track>(allTracks);
-                    allTracks = shuffled;
-                }
-            }
-
             UpNext.ReplaceAll(allTracks.Skip(1).ToList());
-            PlayTrack(allTracks[0]);
+            PlayTrack(allTracks[0], wrapped: true);
         }
         else
         {
@@ -3408,6 +3379,49 @@ public partial class PlayerViewModel : ViewModelBase
             // Keep what played (GitHub #124): Previous goes back to the last songs.
             StopAndClear("queueEnded", keepHistory: true);
         }
+    }
+
+    /// <summary>
+    /// Repeat All: the next pass of the cycle, in play order (empty when the explicit filter
+    /// leaves nothing), or null when Repeat All is off or there is no cycle to repeat.
+    /// </summary>
+    private List<Track>? BuildRepeatAllPass()
+    {
+        if (RepeatMode != RepeatMode.All || (_repeatCycleTracks.Count == 0 && PlayedInThisQueue == 0))
+            return null;
+
+        // Repeat all: restart the full cycle. Prefer the uncapped cycle list; fall
+        // back to what this queue played only when there isn't one (e.g. songs queued
+        // onto the emptied player, or a queue restored without a cycle), and record it
+        // as the cycle so the next wrap does not read the longer History again.
+        if (_repeatCycleTracks.Count == 0)
+            _repeatCycleTracks = History.Take(PlayedInThisQueue).Reverse().ToList();
+        var allTracks = new List<Track>(_repeatCycleTracks);
+        if (!_allowExplicitContent)
+            allTracks.RemoveAll(IsBlockedExplicit);
+
+        // History stays (GitHub #124): it was cleared here, so Previous on the first
+        // song of a new pass did nothing. The pass just played stays this queue's.
+        _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
+
+        if (allTracks.Count == 0) return allTracks;
+
+        // Shuffle stays on across the wrap. The cycle holds the order the queue was
+        // started in, so replaying it as-is played every pass after the first in
+        // album order with Shuffle still lit. Reshuffle the new pass as ToggleShuffle
+        // does, keeping the in-order cycle as the un-shuffle target.
+        if (IsShuffleEnabled)
+        {
+            var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
+                allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
+            if (shuffled.Count > 0)
+            {
+                // shuffled[0] stays in: Shuffle off continues after it (GitHub #110).
+                _originalQueue = new List<Track>(allTracks);
+                allTracks = shuffled;
+            }
+        }
+        return allTracks;
     }
 
     /// <summary>
@@ -3548,7 +3562,7 @@ public partial class PlayerViewModel : ViewModelBase
         var prev = History[0];
         History.RemoveAt(0);
         if (_queueHistoryDepth > 0) _queueHistoryDepth--;
-        PlayTrack(prev);
+        PlayTrack(prev, backward: true);
     }
 
     /// <summary>

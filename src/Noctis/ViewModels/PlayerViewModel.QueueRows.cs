@@ -59,6 +59,8 @@ public partial class PlayerViewModel
         UpNext.CollectionChanged += OnUpNextChangedForRows;
         History.CollectionChanged += OnHistoryChangedForRows;
         RebuildQueueRows();
+        // GitHub #154: rows added while the panel is open get their missing-file mark too.
+        QueueRows.CollectionChanged += (_, _) => { if (IsQueuePopupOpen) RefreshMissingMarksSoon(); };
     }
 
     public QueueRowKind GetQueueRowKind(int row)

@@ -229,6 +229,13 @@ public partial class Track : ObservableObject
     /// tiles show Pause on it and Play otherwise; PlayerViewModel keeps it in sync.</summary>
     [ObservableProperty] private bool _isCurrentlyPlaying;
 
+    /// <summary>Transient flag (GitHub #154): its file was not on disk when the player last
+    /// looked (moved, deleted, drive unplugged). The queue shows the row dimmed and marked;
+    /// cleared again once the file is found. Not persisted.</summary>
+    [ObservableProperty]
+    [property: System.Text.Json.Serialization.JsonIgnore]
+    private bool _isFileMissing;
+
     /// <summary>Transient 1-based position within the list view currently displaying this track
     /// (set by the Folders pane). Drives the leading row-number column. Not persisted.</summary>
     [ObservableProperty]
