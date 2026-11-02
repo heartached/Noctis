@@ -65,12 +65,22 @@
                     <Panel>
                         <Border Background="#2A2A31"/>
                         <ctrl:CachedImage SourcePath="{Binding AlbumArtworkPath}" Stretch="UniformToFill"/>
+                        <!-- Long names scroll like the player bar's (Cover Flow text-animation
+                             settings); the caption is hidden off-hover, which also pauses them. -->
                         <Border Classes="collage-caption">
                             <StackPanel Spacing="1">
-                                <TextBlock Text="{Binding TitleDisplay}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="White" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
-                                           Foreground="White" Opacity="0.8" TextTrimming="CharacterEllipsis"/>
+                                <ctrl:MarqueeTextBlock Text="{Binding TitleDisplay}" HorizontalAlignment="Left" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="White" IsCoverFlow="True">
+                                    <ctrl:MarqueeTextBlock.InlineContent>
+                                        <Border Classes="explicit-badge compact" VerticalAlignment="Center"
+                                                IsVisible="{Binding IsExplicit}">
+                                            <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9"/>
+                                        </Border>
+                                    </ctrl:MarqueeTextBlock.InlineContent>
+                                </ctrl:MarqueeTextBlock>
+                                <ctrl:MarqueeTextBlock Text="{Binding ArtistDisplay}" HorizontalAlignment="Left" FontSize="11"
+                                                       Foreground="White" Opacity="0.8"
+                                                       IsCoverFlow="True" IsForArtist="True"/>
                             </StackPanel>
                         </Border>
                         <!-- Size / Margin per tile size: the s* styles below -->
@@ -110,10 +120,27 @@
         <Style Selector="Button.collage-tile:pointerover ctrl|HeartIcon, Button.collage-tile:focus-visible ctrl|HeartIcon">
             <Setter Property="Opacity" Value="0"/>
         </Style>
+        <!-- Caption width per tile size (tile minus the caption's 8 px sides) -->
+        <Style Selector="Button.collage-tile ctrl|MarqueeTextBlock">
+            <Setter Property="MaxDisplayWidth" Value="154"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s200 ctrl|MarqueeTextBlock">
+            <Setter Property="MaxDisplayWidth" Value="184"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s140 ctrl|MarqueeTextBlock">
+            <Setter Property="MaxDisplayWidth" Value="124"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s110 ctrl|MarqueeTextBlock">
+            <Setter Property="MaxDisplayWidth" Value="94"/>
+        </Style>
+        <Style Selector="Button.collage-tile.s90 ctrl|MarqueeTextBlock">
+            <Setter Property="MaxDisplayWidth" Value="74"/>
+        </Style>
         <Style Selector="Border.collage-caption">
             <Setter Property="VerticalAlignment" Value="Bottom"/>
             <Setter Property="Padding" Value="8,20,8,7"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="IsVisible" Value="False"/>
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="Background">
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
@@ -128,6 +155,7 @@
             </Setter>
         </Style>
         <Style Selector="Border.collage-caption.playing, Button.collage-tile:pointerover Border.collage-caption, Button.collage-tile:focus-visible Border.collage-caption">
+            <Setter Property="IsVisible" Value="True"/>
             <Setter Property="Opacity" Value="1"/>
         </Style>
 
@@ -219,10 +247,18 @@
                             <!-- GitHub #153: the playing tile says so and names its song -->
                             <Border Classes="collage-caption playing">
                                 <StackPanel Spacing="1">
-                                    <TextBlock Text="{Binding CenterTrack.TitleDisplay, FallbackValue=''}" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="White" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding CenterTrack.ArtistDisplay, FallbackValue=''}" FontSize="12"
-                                               Foreground="White" Opacity="0.8" TextTrimming="CharacterEllipsis"/>
+                                    <ctrl:MarqueeTextBlock Text="{Binding CenterTrack.TitleDisplay, FallbackValue=''}" HorizontalAlignment="Left" FontSize="14" FontWeight="SemiBold"
+                                                           Foreground="White" MaxDisplayWidth="184" IsCoverFlow="True">
+                                        <ctrl:MarqueeTextBlock.InlineContent>
+                                            <Border Classes="explicit-badge compact" VerticalAlignment="Center"
+                                                    IsVisible="{Binding CenterTrack.IsExplicit, FallbackValue=False}">
+                                                <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9"/>
+                                            </Border>
+                                        </ctrl:MarqueeTextBlock.InlineContent>
+                                    </ctrl:MarqueeTextBlock>
+                                    <ctrl:MarqueeTextBlock Text="{Binding CenterTrack.ArtistDisplay, FallbackValue=''}" HorizontalAlignment="Left" FontSize="12"
+                                                           Foreground="White" Opacity="0.8" MaxDisplayWidth="184"
+                                                           IsCoverFlow="True" IsForArtist="True"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="8" Padding="7,2"

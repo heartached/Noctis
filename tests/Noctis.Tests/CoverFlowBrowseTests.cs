@@ -323,7 +323,8 @@ public class CoverFlowBrowseTests
         var tile2 = tiles.Single(b => (string?)b.Tag == "2");
         Assert.True(tile2.IsVisible);
         Assert.Same(t[4], tile2.Content);
-        var texts = tile2.GetVisualDescendants().OfType<TextBlock>().Select(x => x.Text).ToList();
+        var texts = tile2.GetVisualDescendants().OfType<MarqueeTextBlock>().Select(x => x.Text).ToList();
+        Assert.Contains(tile2.GetVisualDescendants().OfType<MarqueeTextBlock>(), m => m.InlineContent is Border b && b.Classes.Contains("explicit-badge"));
         Assert.Contains("t4", texts);
         Assert.Contains("artist4", texts);
 
@@ -342,7 +343,7 @@ public class CoverFlowBrowseTests
 
         // The playing tile names its song, always.
         var centre = view.FindControl<Border>("CollageCenterCover")!;
-        var centreTexts = centre.GetVisualDescendants().OfType<TextBlock>().Select(x => x.Text).ToList();
+        var centreTexts = centre.GetVisualDescendants().OfType<MarqueeTextBlock>().Select(x => x.Text).ToList();
         Assert.Contains("t2", centreTexts);
 
         var p = tile2.TranslatePoint(new Point(tile2.Bounds.Width / 2, tile2.Bounds.Height / 2), window)!.Value;

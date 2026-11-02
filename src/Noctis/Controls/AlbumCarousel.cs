@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -61,7 +62,12 @@ public sealed class AlbumCarousel : Panel
     public Album? CenterAlbum { get => GetValue(CenterAlbumProperty); set => SetValue(CenterAlbumProperty, value); }
 
     /// <summary>Height kept under the cards for the caption.</summary>
-    internal const double CaptionHeight = 74;
+    internal const double CaptionHeight = 98;
+
+    /// <summary>The album page's quality-badge waves (AlbumDetailView), same path.</summary>
+    private const string QualityWavesPath = "M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z";
+
+    private static readonly Avalonia.Data.Converters.IMultiValueConverter MetadataLine = new Noctis.Converters.MetadataLineConverter();
 
     /// <summary>Movement past this many px turns a press into a drag (no click).</summary>
     private const double DragThreshold = 6;
@@ -79,7 +85,12 @@ public sealed class AlbumCarousel : Panel
     private readonly Canvas _cardLayer = new() { ClipToBounds = false };
     private readonly StackPanel _caption;
     private readonly TextBlock _title;
+    private readonly Border _explicit;
     private readonly TextBlock _subtitle;
+    private readonly TextBlock _details;
+    private readonly TextBlock _qualityDot;
+    private readonly StackPanel _quality;
+    private readonly TextBlock _qualityText;
     private readonly TextBlock _counter;
 
     private double _coverSize = 240;
@@ -113,16 +124,55 @@ public sealed class AlbumCarousel : Panel
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             MaxLines = 1,
+            VerticalAlignment = VerticalAlignment.Center,
         };
+        // "E" beside the title, as on the album page (global explicit-badge styles).
+        _explicit = new Border
+        {
+            Classes = { "explicit-badge" },
+            Margin = new Thickness(8, 0, 0, 0),
+            IsVisible = false,
+            Child = new TextBlock { Text = "E", FontSize = 10, Opacity = 0.95, Classes = { "explicit-badge-text" } },
+        };
+        var titleRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Children = { _title, _explicit },
+        };
+        // Artist in the accent colour, like the album page's artist links.
         _subtitle = new TextBlock
         {
-            FontSize = 13,
+            FontSize = 14,
             FontWeight = FontWeight.SemiBold,
-            Opacity = 0.6,
             TextTrimming = TextTrimming.CharacterEllipsis,
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             MaxLines = 1,
+        };
+        _subtitle.Bind(TextBlock.ForegroundProperty, _subtitle.GetResourceObservable("AccentTextExactBrush"));
+        // Third row: genre · release date · tracks · length · quality badge (album page line).
+        _details = new TextBlock { FontSize = 12, FontWeight = FontWeight.SemiBold, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 };
+        _qualityDot = new TextBlock { Text = " · ", FontSize = 12, FontWeight = FontWeight.SemiBold, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center };
+        _qualityText = new TextBlock { FontSize = 12, FontWeight = FontWeight.SemiBold, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center };
+        var waves = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(QualityWavesPath) };
+        waves[!Shape.FillProperty] = _qualityText[!TextBlock.ForegroundProperty];
+        _quality = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new Viewbox { Width = 15, Height = 10, Opacity = 0.5, Margin = new Thickness(0, 1, 0, 0), VerticalAlignment = VerticalAlignment.Center, Child = waves },
+                _qualityText,
+            },
+        };
+        var detailsRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Children = { _details, _qualityDot, _quality },
         };
         _counter = new TextBlock
         {
@@ -135,7 +185,7 @@ public sealed class AlbumCarousel : Panel
         {
             Spacing = 2,
             IsHitTestVisible = false,
-            Children = { _title, _subtitle, _counter },
+            Children = { titleRow, _subtitle, detailsRow, _counter },
         };
         Children.Add(_cardLayer);
         Children.Add(_caption);
@@ -432,12 +482,21 @@ public sealed class AlbumCarousel : Panel
         _captionIndex = index;
         if (index < 0)
         {
-            _title.Text = _subtitle.Text = _counter.Text = string.Empty;
+            _title.Text = _subtitle.Text = _details.Text = _counter.Text = string.Empty;
+            _explicit.IsVisible = _qualityDot.IsVisible = _quality.IsVisible = false;
             return;
         }
         var album = _items[index];
         _title.Text = album.Name;
-        _subtitle.Text = album.TileSubtitle;
+        _explicit.IsVisible = album.IsExplicit;
+        _subtitle.Text = album.ArtistDisplay;
+        _details.Text = (string)MetadataLine.Convert(
+            new object?[] { album.GenreDisplay, album.ReleaseDateFormatted, album.TrackCountText, album.HeaderDurationFormatted },
+            typeof(string), null, System.Globalization.CultureInfo.CurrentCulture);
+        var badge = album.AudioQualityBadge;
+        _qualityText.Text = badge;
+        _quality.IsVisible = !string.IsNullOrEmpty(badge);
+        _qualityDot.IsVisible = _quality.IsVisible && !string.IsNullOrEmpty(_details.Text);
         _counter.Text = Loc.T("AlbumCarousel.Counter", index + 1, _items.Count);
     }
 
