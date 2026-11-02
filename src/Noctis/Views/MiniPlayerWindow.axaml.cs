@@ -384,6 +384,7 @@ public partial class MiniPlayerWindow : Window
         {
             _hookedVm.PropertyChanged -= OnVmPropertyChanged;
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
+            _hookedVm.Lyrics.LyricsSwapped -= OnLyricsSwapped;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
@@ -395,6 +396,7 @@ public partial class MiniPlayerWindow : Window
         _lastVmForm = _hookedVm.Form;
         _hookedVm.PropertyChanged += OnVmPropertyChanged;
         _hookedVm.Lyrics.PropertyChanged += OnLyricsPropertyChanged;
+        _hookedVm.Lyrics.LyricsSwapped += OnLyricsSwapped;
         _hookedVm.Player.PropertyChanged += OnPlayerPropertyChanged;
         _hookedVm.FormResizeRequested += OnFormResizeRequested;
         _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
@@ -474,6 +476,17 @@ public partial class MiniPlayerWindow : Window
                 UpdateFlowAnimationState();
                 break;
         }
+    }
+
+    /// <summary>New lines (a track change, lyrics fetched online): the ScrollLineIndex change
+    /// reached this window before they were laid out, so their containers had no place yet and
+    /// the list stayed where it was (GitHub #155). Jump once the layout pass has run.</summary>
+    private void OnLyricsSwapped(object? sender, EventArgs e)
+    {
+        if (Vm?.IsLyricsForm != true) return;
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => CenterActiveLyric(animated: false),
+            Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1251,6 +1264,7 @@ public partial class MiniPlayerWindow : Window
         {
             _hookedVm.PropertyChanged -= OnVmPropertyChanged;
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
+            _hookedVm.Lyrics.LyricsSwapped -= OnLyricsSwapped;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             // The settings VM outlives this window; a later toggle must not reach it.

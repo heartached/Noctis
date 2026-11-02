@@ -2732,6 +2732,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Start sync timer if synced lyrics and playing
         if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
             _lyricsSyncTimer.Start();
+
+        // New lines, as on a track change: views re-anchor once they are laid out (GitHub #155).
+        // The ScrollLineIndex change above reached them before layout, so the scroll measured
+        // lines not placed yet, landed at the top and counted as done — lyrics fetched late in
+        // a song sat at their first lines, the playing one far below, until the next line.
+        LyricsSwapped?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Clears all lyrics state when no track is playing.</summary>

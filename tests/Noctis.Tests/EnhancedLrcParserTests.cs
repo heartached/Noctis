@@ -189,6 +189,25 @@ public class EnhancedLrcParserTests
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2), $"MergeSyllables took {sw.Elapsed}");
     }
 
+    [Theory]
+    // GitHub #149, Malayalam: a syllable ending in a virama (U+0D4D) or a vowel sign (U+0D3E) is a
+    // combining mark, not a letter, so "പാ" + "ട്ട്" stayed two cells — the conjunct shaped apart.
+    [InlineData("[00:01.00]<00:01.00>പാ<00:01.30>ട്ട്<00:01.60> <00:01.70>എന്റെ", "പാട്ട്")]
+    // ...and a cell that starts with a mark ("ക" + "ണ്ണീ" + "ർ" is fine, "പ" + "ാട്ട്" is not).
+    [InlineData("[00:01.00]<00:01.00>പ<00:01.30>ാട്ട്<00:01.60> <00:01.70>എന്റെ", "പാട്ട്")]
+    // Devanagari: "न" + "म" + "स्" + "ते" (virama at a syllable end).
+    [InlineData("[00:01.00]<00:01.00>नम<00:01.30>स्<00:01.50>ते<00:01.60> <00:01.70>जी", "नमस्ते")]
+    // A zero-width joiner (chillu / conjunct control) at a syllable end.
+    [InlineData("[00:01.00]<00:01.00>ന്‍<00:01.30>റെ<00:01.60> <00:01.70>എ", "ന്‍റെ")]
+    public void ParseLine_IndicSyllables_JoinIntoOneWord(string line, string firstWord)
+    {
+        var (_, words) = EnhancedLrcParser.ParseLine(line[10..]);
+
+        Assert.NotNull(words);
+        Assert.Equal(firstWord, words![0].Text.Trim());
+        Assert.Equal(2, words.Count);
+    }
+
     [Fact]
     public void MergeSyllables_MixedRuns_KeepTextTimesAndSyllables()
     {

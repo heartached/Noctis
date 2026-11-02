@@ -101,14 +101,16 @@ public static partial class LyricsSearchSelector
     }
 
     /// <summary>Trimmed, case-insensitive containment either way — tolerates
-    /// "Title (Remastered)" vs "Title" without a fuzzy-matching dependency.</summary>
+    /// "Title (Remastered)" vs "Title" without a fuzzy-matching dependency. Both sides in
+    /// Unicode form C: a vowel sign typed as its two parts (Malayalam "ൊ" as "െ" + "ാ", GitHub
+    /// #149) or a decomposed "é" is the same name, and ordinal containment saw two.</summary>
     private static bool NamesMatch(string? candidate, string? local)
     {
         if (string.IsNullOrWhiteSpace(candidate) || string.IsNullOrWhiteSpace(local))
             return false;
 
-        var c = candidate.Trim();
-        var l = local.Trim();
+        var c = candidate.Trim().Normalize(System.Text.NormalizationForm.FormC);
+        var l = local.Trim().Normalize(System.Text.NormalizationForm.FormC);
         return c.Contains(l, StringComparison.OrdinalIgnoreCase)
             || l.Contains(c, StringComparison.OrdinalIgnoreCase);
     }
