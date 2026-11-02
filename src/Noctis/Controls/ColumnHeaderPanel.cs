@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
 using Path = Avalonia.Controls.Shapes.Path;
 using Avalonia.Input;
@@ -67,7 +68,9 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
         _dropMarker.Bind(Border.BackgroundProperty, _dropMarker.GetResourceObservable("AccentColorBrush"));
         VisualChildren.Add(_dropMarker);
         _sortArrow = new Path { Width = 7, Height = 4, Stretch = Stretch.None, IsHitTestVisible = false, Opacity = 0.7, IsVisible = false };
-        _sortArrow.Bind(Shape.FillProperty, _sortArrow.GetResourceObservable("SystemControlForegroundBaseHighBrush"));
+        // Same colour as the header labels (inherited text foreground); the Fluent brush key it used
+        // resolved to nothing here, so the arrow drew with no fill.
+        _sortArrow.Bind(Shape.FillProperty, this.GetObservable(TextElement.ForegroundProperty));
         VisualChildren.Add(_sortArrow);
 
         AddHandler(PointerPressedEvent, OnCellPointerPressed, RoutingStrategies.Tunnel);
@@ -181,6 +184,8 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
     /// Places the sort arrow just right of the sorted column's label (inside the cell), or
     /// hides it when the sort field has no shown column (Date Modified, a hidden column).
     /// </summary>
+    internal Path SortArrow => _sortArrow;
+
     private void ArrangeSortArrow()
     {
         var layout = Layout;
@@ -197,7 +202,15 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
         var x = label?.TranslatePoint(new Point(label.Bounds.Width, 0), this) is { } p
             ? p.X + 5
             : cell.Bounds.Right - 12;
-        x = Math.Max(cell.Bounds.Left, Math.Min(x, cell.Bounds.Right - 8));
+        // Clamp to the column's slot, not the cell: header buttons are only as wide as their
+        // label (left- or centre-aligned), so clamping to the cell put the arrow on the text.
+        var cols = layout!.Visible;
+        var i = -1;
+        for (var k = 0; k < cols.Count; k++) if (cols[k].Key == spec!.Key) { i = k; break; }
+        var (widths, offsets) = layout.Compute(Bounds.Width);
+        var slotLeft = i >= 0 ? offsets[i] : cell.Bounds.Left;
+        var slotRight = i >= 0 ? offsets[i] + widths[i] : cell.Bounds.Right;
+        x = Math.Max(slotLeft, Math.Min(x, slotRight - 8));
         var y = cell.Bounds.Top + (cell.Bounds.Height - 4) / 2;
         _sortArrow.Arrange(new Rect(x, y, 7, 4));
     }

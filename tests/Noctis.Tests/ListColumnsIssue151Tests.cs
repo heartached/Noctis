@@ -300,6 +300,27 @@ public class ListColumnsIssue151Tests : IDisposable
     }
 
     [AvaloniaFact]
+    public void SongsView_SortedColumn_ShowsItsArrowBesideTheLabel()
+    {
+        var (vm, view, win) = MountSongs(40);
+        try
+        {
+            vm.SortColumn = "Time";
+            vm.SortAscending = true;
+            Settle(win);
+            var header = Header(view);
+            var arrow = header.SortArrow;
+            var cell = Cell(header, "Time");
+            var probe = $"vis={arrow.IsVisible} eff={arrow.IsEffectivelyVisible} bounds={arrow.Bounds} cell={cell.Bounds} fill={arrow.Fill} data={arrow.Data != null} key={header.SortKey}";
+            Assert.True(arrow.IsEffectivelyVisible, probe);
+            Assert.NotNull(arrow.Fill);
+            Assert.True(arrow.Bounds.Width > 0 && arrow.Bounds.Height > 0, probe);
+            Assert.True(arrow.Bounds.Left >= cell.Bounds.Right, probe); // after the label, not on it
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
     public void SongsView_HeaderAndRowsShareTheLayout_HiddenColumnsHaveNoCells_ColumnsComeAndGo()
     {
         var (_, view, win) = MountSongs(40);
@@ -399,7 +420,7 @@ public class ListColumnsIssue151Tests : IDisposable
             Assert.True(vm.SortAscending);
             Assert.True(arrow.IsVisible);
             var arrowRect = InWindow(arrow, win);
-            Assert.InRange(arrowRect.X, genre.X, genre.Right);
+            Assert.InRange(arrowRect.X, genre.Right, genre.Right + 12); // just after the label, not on it
 
             win.MouseDown(p, MouseButton.Left);
             win.MouseUp(p, MouseButton.Left);
