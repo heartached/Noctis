@@ -3057,4 +3057,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Main.CarouselCassette" xml:space="preserve"><value>Cassette</value><comment>Albums view menu: carousel case style</comment></data>
   <data name="ArtistDetail.ShowCarousel" xml:space="preserve"><value>Show as Carousel</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
   <data name="ArtistDetail.ShowGrid" xml:space="preserve"><value>Show as Grid</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
+  <data name="LibrarySongs.Composer" xml:space="preserve"><value>Composer</value><comment>Songs list column header (GitHub #151)</comment></data>
+  <data name="LibrarySongs.Format" xml:space="preserve"><value>Format</value><comment>Songs list column header: short codec name (GitHub #151)</comment></data>
+  <data name="Columns.Reset" xml:space="preserve"><value>Reset Columns</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
+  <data name="Columns.ResizeName" xml:space="preserve"><value>Resize {0} column</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
 </root>

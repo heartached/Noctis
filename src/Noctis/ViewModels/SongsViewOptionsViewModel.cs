@@ -169,6 +169,11 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
         Settings.ShowBpmColumn = defaults.ShowBpmColumn;
         Settings.ShowBitrateColumn = defaults.ShowBitrateColumn;
         Settings.ShowSampleRateColumn = defaults.ShowSampleRateColumn;
+        Settings.ShowYearColumn = defaults.ShowYearColumn;
+        Settings.ShowAlbumArtistColumn = defaults.ShowAlbumArtistColumn;
+        Settings.ShowComposerColumn = defaults.ShowComposerColumn;
+        Settings.ShowFormatColumn = defaults.ShowFormatColumn;
+        Settings.ShowDateAddedColumn = defaults.ShowDateAddedColumn;
 
         if (defaults.SongsShowOnlyFavorites) _songs.SetShowOnlyFavoritesCommand.Execute(null);
         else _songs.SetShowAllItemsCommand.Execute(null);

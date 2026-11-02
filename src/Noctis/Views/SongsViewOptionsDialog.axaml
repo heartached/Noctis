@@ -209,6 +209,15 @@
                                 <CheckBox Classes="metadata-pill-checkbox vo-column"
                                           Content="{loc:T SongsViewOptions.Time}"
                                           IsChecked="{Binding Settings.ShowTimeColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T Main.Year}"
+                                          IsChecked="{Binding Settings.ShowYearColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T Main.AlbumArtist}"
+                                          IsChecked="{Binding Settings.ShowAlbumArtistColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T LibrarySongs.Composer}"
+                                          IsChecked="{Binding Settings.ShowComposerColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="2" Classes="pill-well" Padding="14,12,14,10">
@@ -223,6 +232,9 @@
                                 <CheckBox Classes="metadata-pill-checkbox vo-column"
                                           Content="{loc:T SongsViewOptions.Plays}"
                                           IsChecked="{Binding Settings.ShowPlaysColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T Main.DateAdded}"
+                                          IsChecked="{Binding Settings.ShowDateAddedColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="4" Classes="pill-well" Padding="14,12,14,10">
@@ -237,6 +249,9 @@
                                 <CheckBox Classes="metadata-pill-checkbox vo-column"
                                           Content="{loc:T SongsViewOptions.SampleRate}"
                                           IsChecked="{Binding Settings.ShowSampleRateColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T LibrarySongs.Format}"
+                                          IsChecked="{Binding Settings.ShowFormatColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
                     </Grid>
