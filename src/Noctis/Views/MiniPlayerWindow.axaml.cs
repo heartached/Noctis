@@ -1131,7 +1131,7 @@ public partial class MiniPlayerWindow : Window
         Win32Region.Set(handle.Handle, px);
     }
 
-    private static class Win32Region
+    internal static class Win32Region
     {
         [System.Runtime.InteropServices.DllImport("gdi32.dll")]
         private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);

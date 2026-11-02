@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
 using Avalonia.Threading;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -432,5 +434,59 @@ public class MiniPlayerFrostSettingTests : IDisposable
         Assert.Equal(2, MiniPlayerWindow.FrostRegionBleed);
         Assert.Equal((12, 27, 169, 109, 90, false), px[0]);
         Assert.Equal((-3, -3, 184, 184, 186, true), px[1]);
+    }
+
+    /// <summary>GitHub #150: the tray icon's right-click menu is Avalonia's own transparent
+    /// window (TrayPopupRoot, Name "AvaloniaTrayPopupRoot_…", a MenuFlyoutPresenter as its
+    /// content). While Liquid Glass is on it gets the OS blur and a translucent card; off, or
+    /// for any other window, nothing changes. This window stands in for Avalonia's private one.</summary>
+    [AvaloniaFact]
+    public void TrayMenu_IsFrostedOnlyWhileGlassIsOn()
+    {
+        var glass = true;
+        TrayMenuFrost.Register(() => glass, () => Color.Parse("#202030"));
+        Window Open(string name)
+        {
+            var w = new Window
+            {
+                Name = name,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowDecorations = WindowDecorations.None,
+                TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
+                Content = new MenuFlyoutPresenter { ItemsSource = new[] { "Open Noctis", "Quit" } },
+            };
+            w.Show();
+            Dispatcher.UIThread.RunJobs();
+            return w;
+        }
+
+        var tray = Open(TrayMenuFrost.TrayPopupNamePrefix + "Noctis");
+        var other = Open("SomeOtherWindow");
+        glass = false;
+        var trayNoGlass = Open(TrayMenuFrost.TrayPopupNamePrefix + "Noctis");
+        try
+        {
+            var card = (MenuFlyoutPresenter)tray.Content!;
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.Same(MiniPlayerWindow.TransparencyLevels(true), tray.TransparencyLevelHint);
+                var fill = Assert.IsAssignableFrom<ISolidColorBrush>(card.Background);
+                Assert.Equal(Color.Parse("#202030"), fill.Color);
+                Assert.Equal(TrayMenuFrost.CardTintOpacity, fill.Opacity);
+                // The region is cut from the card's own layout outline and corner radius.
+                var shape = Assert.IsType<MiniPlayerWindow.RegionShape>(TrayMenuFrost.CardShape(card));
+                Assert.Equal(card.Bounds.Size, shape.Rect.Size);
+                Assert.Equal(card.CornerRadius.TopLeft, shape.Radius);
+            }
+            Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, other.TransparencyLevelHint);
+            Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, trayNoGlass.TransparencyLevelHint);
+        }
+        finally
+        {
+            glass = false;
+            tray.Close();
+            other.Close();
+            trayNoGlass.Close();
+        }
     }
 }
