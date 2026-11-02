@@ -442,7 +442,25 @@ internal class Program
                 sp.GetRequiredService<Services.Lyrics.LyricsWriter>(),
                 sp.GetRequiredService<ILibraryService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
-                      ?? new Noctis.Models.AppSettings()));
+                      ?? new Noctis.Models.AppSettings(),
+                // The lyrics page's Auto sources, in its order; each asked only while on in Settings.
+                () =>
+                {
+                    var lrcLib = sp.GetRequiredService<ILrcLibService>();
+                    var netEase = sp.GetRequiredService<INetEaseService>();
+                    var list = new List<Services.Lyrics.LyricsBulkSource>
+                    {
+                        new("LRCLIB", s => s.LrcLibEnabled, (a, t, d, c) => LrcLibLookup.FetchAsync(lrcLib, a, t, d, c)),
+                        new("NetEase", s => s.NetEaseEnabled, netEase.SearchLyricsAsync),
+                    };
+                    list.AddRange(Services.Lyrics.OnlineLyricsSource.BuiltIns(
+                            sp.GetRequiredService<IMusixmatchService>(), sp.GetRequiredService<IKugouLyricsService>(),
+                            sp.GetRequiredService<IYouTubeMusicLyricsService>(), sp.GetRequiredService<ILrcRedLyricsService>(),
+                            sp.GetRequiredService<IUnisonLyricsService>())
+                        .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync)));
+                    return list;
+                },
+                Path.Combine(sp.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_bulk_ledger.json")));
         services.AddSingleton<Services.LyricsStudio.ILyricsStudioEngine>(sp =>
             new Services.LyricsStudio.LyricsStudioEngine(
                 sp.GetRequiredService<IAudioConverterService>(),
