@@ -65,9 +65,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         TitleText = remove ? $"Remove lyrics from {songs}" : IsLibrary ? $"Find lyrics for your library ({songs})" : $"Fetch lyrics for {songs}";
         SubtitleText = remove
             ? "Deletes the lyrics Noctis saved for these songs (its .lrc files and cached lyrics). Lyrics files you made yourself are left alone."
-            : "Looks each song up in the lyrics sources switched on in Settings ▸ Lyrics, word-synced first, and saves the best next to the file. "
-              + "Paced so the free lyrics services aren't flooded: a big library takes a while. You can hide this and keep listening; "
-              + "a stopped run picks up where it left off. Your own lyrics files are never replaced.";
+            : "Finds lyrics online, word-synced first, and saves them next to your songs. Your own lyrics files are never replaced.";
         foreach (var t in tracks)
         {
             var row = new Row(t);
@@ -223,6 +221,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
 
         public Track Track { get; }
         public string Title => Track.Title;
+        public bool IsExplicit => Track.IsExplicit;
         public string Subtitle => Track.ArtistDisplay;
         [ObservableProperty] private string _status = string.Empty;
         [ObservableProperty] private bool _done;

@@ -42,7 +42,7 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
         TitleText = n == 1 ? "Find animated artwork for 1 album" : $"Find animated artwork for {n:N0} albums";
         foreach (var album in albums)
         {
-            var row = new Row(album[0]);
+            var row = new Row(album[0], album.Any(t => t.IsExplicit));
             Rows.Add(row);
             _rowById.TryAdd(album[0].AlbumId, row);
         }
@@ -123,13 +123,15 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
 
     public sealed partial class Row : ObservableObject
     {
-        public Row(Track rep)
+        public Row(Track rep, bool isExplicit = false)
         {
             Title = rep.Album;
+            IsExplicit = isExplicit;
             Subtitle = AnimatedArtworkBulkService.AlbumArtist(rep);
         }
 
         public string Title { get; }
+        public bool IsExplicit { get; }
         public string Subtitle { get; }
         [ObservableProperty] private string _status = string.Empty;
         [ObservableProperty] private bool _done;

@@ -2482,12 +2482,12 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
-  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Also upgrade songs that have plain or line-synced lyrics (word-synced lyrics are never touched)</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Also upgrade songs with plain or line-synced lyrics</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Look again at songs an earlier run already checked</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Open Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Stop</value><comment>Button: stops a bulk run</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Dialog title (window)</comment></data>
-  <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Looks each album without a moving cover up on Apple Music and saves its loop when the store album is clearly the same one. Near misses are left for you to pick in the Metadata editor. One album at a time, so a big library takes a while; you can hide this and a stopped run picks up where it left off.</value></data>
+  <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Adds moving covers from Apple Music to albums that don't have one. Only clear matches are saved.</value></data>
   <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Look again at albums an earlier run found nothing for</value><comment>Checkbox</comment></data>
   <data name="BulkArtwork.Find" xml:space="preserve"><value>Find</value><comment>Button: starts the run</comment></data>
   <data name="Settings.FindLibraryLyrics" xml:space="preserve"><value>Find Lyrics</value><comment>Settings Tools row</comment></data>
