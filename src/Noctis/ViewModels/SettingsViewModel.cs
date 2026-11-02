@@ -7692,6 +7692,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsBackgroundPausesWithPlayback = defaultSettings.LyricsBackgroundPausesWithPlayback;
             MusicVideosEnabled = defaultSettings.MusicVideosEnabled;
             MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
+            MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
