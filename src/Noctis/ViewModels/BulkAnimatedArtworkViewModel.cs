@@ -79,7 +79,7 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
                 row.Done = true;
                 row.Found = p.Outcome == "animated artwork saved";
             }
-            StatusMessage = $"Looking up… {p.Done:N0} of {p.Total:N0}";
+            if (IsRunning) StatusMessage = $"Looking up… {p.Done:N0} of {p.Total:N0}";
         }));
         try
         {
