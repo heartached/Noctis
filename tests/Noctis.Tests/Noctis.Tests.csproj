@@ -45,6 +45,7 @@
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.TrueShuffle\Noctis.Plugins.TrueShuffle.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.LyricMotion\Noctis.Plugins.LyricMotion.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.YouTubeImport\Noctis.Plugins.YouTubeImport.csproj" />
+    <ProjectReference Include="..\..\plugins\Noctis.Plugins.Chords\Noctis.Plugins.Chords.csproj" />
   </ItemGroup>
 
   <!-- The plugin submission checker's logic (PluginSubmissionCheckTests), compiled in rather than
