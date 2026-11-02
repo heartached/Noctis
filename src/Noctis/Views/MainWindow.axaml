@@ -365,6 +365,40 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsAlbumSortActive}"/>
                         </Panel>
+
+                        <!-- View (GitHub #149): grid or album carousel, and the carousel's case
+                             style. The icon shows the current layout. -->
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
+                                ToolTip.Tip="{loc:T Main.AlbumView}">
+                            <Panel>
+                                <PathIcon Data="{StaticResource GridViewIcon}" IsVisible="{Binding !IsAlbumCarouselView}"/>
+                                <PathIcon Data="{StaticResource AlbumCarouselIcon}" IsVisible="{Binding IsAlbumCarouselView}"/>
+                            </Panel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="{loc:T Main.AlbumGrid}" Command="{Binding AlbumViewCommand}" CommandParameter="grid">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding !IsAlbumCarouselView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.AlbumCarousel}" Command="{Binding AlbumViewCommand}" CommandParameter="carousel">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumCarouselView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="{loc:T Main.CarouselCover}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cover">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cover}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.CarouselJewelCase}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="JewelCase">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=JewelCase}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.CarouselVinyl}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Vinyl">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Vinyl}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.CarouselCassette}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cassette">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cassette}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
                     </StackPanel>
 
                     <!-- Songs (and any page with page actions): filter · sort · view options ·

@@ -536,6 +536,18 @@ public class AppSettings : IJsonOnDeserializing
     /// "albumartist" or "year".</summary>
     public string AlbumSortMode { get; set; } = "default";
 
+    /// <summary>Albums page layout (GitHub #149): "grid" (tiles, the default) or "carousel"
+    /// (one album at a time, Cover Flow style).</summary>
+    public string AlbumViewMode { get; set; } = "grid";
+
+    /// <summary>Artist page Albums tab layout (GitHub #149): "grid" or "carousel". One
+    /// setting for every artist, like the release sort.</summary>
+    public string ArtistAlbumsViewMode { get; set; } = "grid";
+
+    /// <summary>How albums are dressed in the album carousel: "Cover" (default), "JewelCase",
+    /// "Vinyl" or "Cassette" (<see cref="AlbumCarouselStyles.Parse"/>). Shared by both carousels.</summary>
+    public string AlbumCarouselStyle { get; set; } = AlbumCarouselStyles.DefaultSetting;
+
     /// <summary>Artists grid sort: "name", "songs" (track count), "albums" (album count),
     /// "time" (total length) or "genre".</summary>
     public string ArtistSortMode { get; set; } = "name";

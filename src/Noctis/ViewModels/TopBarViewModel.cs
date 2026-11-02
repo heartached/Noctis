@@ -514,6 +514,14 @@ public partial class TopBarViewModel : ViewModelBase
     /// and "Random" is a shuffle — no direction applies to either.</summary>
     public bool AlbumSortDirectionEnabled => AlbumSortMode is not ("default" or "random");
 
+    // Albums View menu (GitHub #149): grid / carousel and the carousel's case style,
+    // mirrored from LibraryAlbumsViewModel like the sort.
+    [ObservableProperty] private ICommand? _albumViewCommand;
+    [ObservableProperty] private ICommand? _albumCarouselStyleCommand;
+    [ObservableProperty] private bool _isAlbumCarouselView;
+    /// <summary>Case style name ("Cover" / "JewelCase" / "Vinyl" / "Cassette") for the checkmarks.</summary>
+    [ObservableProperty] private string _albumCarouselStyle = "Cover";
+
     // Dropdown variants of the release-type / quality filters (albums grid top bar).
     [ObservableProperty] private ICommand? _releaseTypeFilterCommand;
     [ObservableProperty]

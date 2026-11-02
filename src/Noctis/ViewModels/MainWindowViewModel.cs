@@ -509,6 +509,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
                 TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumViewMode))
+                TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.CarouselStyle))
+                TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
         };
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
@@ -2841,6 +2845,10 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.AlbumSortNewestFirst = _albumsVm.AlbumSortNewestFirst;
             TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
+            TopBar.AlbumViewCommand = _albumsVm.SetAlbumViewCommand;
+            TopBar.AlbumCarouselStyleCommand = _albumsVm.SetCarouselStyleCommand;
+            TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
+            TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
         }
         else
         {

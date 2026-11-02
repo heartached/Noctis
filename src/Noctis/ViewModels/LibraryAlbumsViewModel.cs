@@ -276,6 +276,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             ReleaseTypeFilter = ParseReleaseTypeKey(_settings.AlbumReleaseTypeFilter);
+            AlbumViewMode = _settings.AlbumViewMode;
+            CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
         }
         finally
         {
@@ -284,6 +286,55 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
 
         RebuildFilteredRows();
+    }
+
+    // ── Layout: tile grid (default) or album carousel (GitHub #149) ──
+    // Persisted through SettingsViewModel like the sort; the carousel shows the same filtered,
+    // sorted albums as the grid (an artist-filtered page shows that artist's albums).
+
+    /// <summary>"grid" or "carousel".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCarouselView))]
+    [NotifyPropertyChangedFor(nameof(IsGridView))]
+    private string _albumViewMode = "grid";
+
+    public bool IsCarouselView => AlbumViewMode == "carousel";
+    public bool IsGridView => !IsCarouselView;
+
+    /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
+    [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
+
+    /// <summary>The album the carousel last centred, so coming back from an album page (or
+    /// switching away and back) lands on it again.</summary>
+    [ObservableProperty] private Album? _carouselCenterAlbum;
+
+    /// <summary>The albums the carousel browses: the grid's rows flattened, in grid order.</summary>
+    public IReadOnlyList<Album> CarouselAlbums { get; private set; } = Array.Empty<Album>();
+
+    partial void OnAlbumViewModeChanged(string value)
+    {
+        // Only "grid" and "carousel" exist; anything else (a hand-edited settings file) is the grid.
+        if (value is not ("grid" or "carousel")) { AlbumViewMode = "grid"; return; }
+        if (!_adoptingPersistedState) _settings.AlbumViewMode = value;
+    }
+
+    partial void OnCarouselStyleChanged(AlbumCarouselStyle value)
+    {
+        if (!_adoptingPersistedState) _settings.AlbumCarouselStyle = value.ToString();
+    }
+
+    /// <summary>Top-bar view menu: "grid" or "carousel".</summary>
+    [RelayCommand]
+    private void SetAlbumView(string? mode) => AlbumViewMode = mode == "carousel" ? "carousel" : "grid";
+
+    /// <summary>Top-bar view menu: carousel case style by name ("Cover" / "JewelCase" / "Vinyl" / "Cassette").</summary>
+    [RelayCommand]
+    private void SetCarouselStyle(string? name) => CarouselStyle = AlbumCarouselStyles.Parse(name);
+
+    private void OnFilteredAlbumRowsChangedForCarousel(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
+        OnPropertyChanged(nameof(CarouselAlbums));
     }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
@@ -396,6 +447,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             // Cover-size setting: recompute columns from the last known width.
             // UpdateGridMetrics no-ops before the view has ever measured and handles
             // its own dirty/active gating when the column count changes.
+            // Carousel case style is shared with the artist page's carousel: follow a change made there.
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumCarouselStyle))
+            {
+                CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
+            }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))
             {
@@ -403,6 +459,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
+        FilteredAlbumRows.CollectionChanged += OnFilteredAlbumRowsChangedForCarousel;
 
         // Settings load asynchronously and finish after this view model is built, so the
         // persisted sort is adopted when it lands rather than read here.
