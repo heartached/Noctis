@@ -162,6 +162,37 @@ public partial class SettingsViewModel
         PluginViewContent = null;
     }
 
+    // ── From the sidebar ──
+    // A plugin screen's sidebar entry opens it where "Open Album Town" does: in place of the
+    // plugin's page, so Back leads to the page and the sheet closes like any Settings visit.
+
+    /// <summary>
+    /// Readies Settings to show <paramref name="view"/> (Plugins tab, the plugin's page, the view
+    /// in its place). False when the caller should not open the sheet: the view is gone, or it is
+    /// already open in its own window (that window comes forward instead).
+    /// </summary>
+    internal bool ShowPluginViewFromSidebar(PluginViewEntry view)
+    {
+        if (Plugins is not { } host || view.IsWithdrawn) return false;
+        if (ReferenceEquals(OpenPluginViewEntry, view)) return true; // already up: just the sheet
+        if (view.Reactivate is { } reactivate && !ReferenceEquals(reactivate, _pluginViewReactivate) && reactivate()) return false;
+        if (!OpenPluginPageFor(view.Plugin)) return false;
+        LeavePluginView();
+        host.OpenView(view, ShowPluginViewInPlace);
+        return ReferenceEquals(OpenPluginViewEntry, view);
+    }
+
+    /// <summary>Settings › Plugins on <paramref name="plugin"/>'s page (the sidebar entry's Plugin
+    /// Settings). False when it has no card (not installed any more).</summary>
+    internal bool OpenPluginPageFor(LoadedPlugin plugin)
+    {
+        if (SelectedSettingsTab != TabPlugins) SelectedSettingsTab = TabPlugins;
+        if (_pluginCardOrder.FirstOrDefault(c => ReferenceEquals(c.Installed, plugin)) is not { } card) return false;
+        if (ReferenceEquals(SelectedPluginCard, card)) LeavePluginView();
+        else SelectedPluginCard = card;
+        return true;
+    }
+
     [RelayCommand]
     private void ClearPluginSearch() => PluginSearchText = string.Empty;
 
@@ -211,14 +242,19 @@ public partial class SettingsViewModel
         return card;
     }
 
-    /// <summary>Puts the matching cards in each section, in place (moves, no Clear).</summary>
+    /// <summary>Puts the matching cards in each section, in place (moves, no Clear). Installed
+    /// plugins lead each section (Discord feedback 11-03: new listings buried them); OrderBy is
+    /// stable, so within each half the list's order holds.</summary>
     private void ApplyPluginFilter()
     {
         var terms = PluginSearchText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        SyncList(OfficialCards, _pluginCardOrder.Where(c => c.IsOfficial && c.Matches(terms)).ToList());
-        // Community: listed ones first (the list's order), then what the user installed (the host's order).
+        SyncList(OfficialCards, _pluginCardOrder.Where(c => c.IsOfficial && c.Matches(terms))
+            .OrderBy(c => !c.IsInstalled).ToList());
+        // Community: listed ones (the list's order), then what the user added (the host's order);
+        // installed ones of both first.
         SyncList(CommunityCards, _pluginCardOrder.Where(c => !c.IsOfficial && c.IsListed && c.Matches(terms))
-            .Concat(_pluginCardOrder.Where(c => !c.IsOfficial && !c.IsListed && c.Matches(terms))).ToList());
+            .Concat(_pluginCardOrder.Where(c => !c.IsOfficial && !c.IsListed && c.Matches(terms)))
+            .OrderBy(c => !c.IsInstalled).ToList());
         foreach (var name in new[]
                  {
                      nameof(HasOfficialCards), nameof(HasCommunityCards), nameof(ShowOfficialEmpty), nameof(ShowCommunityEmpty),

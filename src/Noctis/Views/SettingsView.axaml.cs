@@ -289,6 +289,17 @@ public partial class SettingsView : UserControl
                 Command = vm.OpenPluginDirectoryCommand,
                 CommandParameter = plugin,
             });
+        // Uninstall here too (Discord feedback 11-03: "no way to remove plugins"): the red row at
+        // the bottom of the page is easy to miss on a plugin with many settings.
+        if (card.Installed is { } installed)
+            items.Add(new MenuItem
+            {
+                Name = "PluginPageUninstallItem",
+                Classes = { "danger" },
+                Header = Noctis.Localization.Loc.T("Plugins.Remove"),
+                Command = vm.RemovePluginCommand,
+                CommandParameter = installed,
+            });
         return items;
     }
 

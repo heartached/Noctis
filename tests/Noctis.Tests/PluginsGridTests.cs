@@ -119,7 +119,8 @@ public class PluginsGridTests : IDisposable
         // Author "Noctis" is the trust check; the card credits the maker (owner 10-29).
         Assert.Equal(Loc.T("Plugins.Get.By", PluginTrust.OfficialMaker), official.ByLine);
 
-        Assert.Equal(new[] { "dev.community.listed", "dev.test.anon", "dev.test.hand" }, m.Vm.CommunityCards.Select(c => c.Id));
+        // Installed ones first (Discord feedback 11-03: new listings buried them), then the listings.
+        Assert.Equal(new[] { "dev.test.anon", "dev.test.hand", "dev.community.listed" }, m.Vm.CommunityCards.Select(c => c.Id));
         Assert.All(m.Vm.CommunityCards, c => Assert.False(c.IsOfficial));
 
         // The Community switch off hides the whole Community section (owner 10-29).
@@ -127,7 +128,7 @@ public class PluginsGridTests : IDisposable
         m.Host.SetCommunityPluginsEnabled(false);
         Assert.False(m.Vm.ShowCommunitySection);
         Assert.True(m.Vm.ShowOfficialSection);
-        Assert.Equal(Loc.T("Plugins.Get.By", "Jafezy JD"), m.Vm.CommunityCards[0].ByLine);
+        Assert.Equal(Loc.T("Plugins.Get.By", "Jafezy JD"), m.Vm.CommunityCards.Single(c => c.Id == "dev.community.listed").ByLine);
         Assert.Equal(Loc.T("Plugins.Card.NoAuthor"), m.Vm.CommunityCards.Single(c => c.Id == "dev.test.anon").ByLine);
         Assert.Equal(Loc.T("Plugins.Get.By", "Someone"), m.Vm.CommunityCards.Single(c => c.Id == "dev.test.hand").ByLine);
         Assert.Equal("1", m.Vm.OfficialCountText);
@@ -136,7 +137,7 @@ public class PluginsGridTests : IDisposable
 
         // Screen readers hear what kind of plugin it is.
         Assert.Equal(Loc.T("Plugins.Card.A11yOfficial", "Test Plugin"), official.AccessibleName);
-        Assert.Equal(Loc.T("Plugins.Card.A11yCommunity", "Listed Town", "Jafezy JD"), m.Vm.CommunityCards[0].AccessibleName);
+        Assert.Equal(Loc.T("Plugins.Card.A11yCommunity", "Listed Town", "Jafezy JD"), m.Vm.CommunityCards.Single(c => c.Id == "dev.community.listed").AccessibleName);
     }
 
     [AvaloniaFact]
@@ -342,9 +343,17 @@ public class PluginsGridTests : IDisposable
             var more = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageMoreButton");
             Assert.True(more.IsEffectivelyVisible);
             Assert.Equal(Loc.T("Plugins.Detail.More"), AutomationProperties.GetName(more));
-            var folder = Assert.Single(SettingsView.PluginMoreMenuItems(m.Vm, cardData)); // no homepage: just the folder
+            // No homepage: the folder, then Uninstall (red, Discord feedback 11-03).
+            var moreItems = SettingsView.PluginMoreMenuItems(m.Vm, cardData);
+            Assert.Equal(new[] { "PluginPageFolderItem", "PluginPageUninstallItem" }, moreItems.Select(i => i.Name));
+            var folder = moreItems[0];
             Assert.Same(m.Vm.OpenPluginDirectoryCommand, folder.Command);
             Assert.Same(m.Host.FindById("dev.test.code"), folder.CommandParameter);
+            var uninstall = moreItems[1];
+            Assert.Same(m.Vm.RemovePluginCommand, uninstall.Command);
+            Assert.Same(m.Host.FindById("dev.test.code"), uninstall.CommandParameter);
+            Assert.Contains("danger", uninstall.Classes);
+            Assert.Equal(Loc.T("Plugins.Remove"), uninstall.Header);
 
             back.Command!.Execute(back.CommandParameter);
             Pump();
@@ -435,7 +444,9 @@ public class PluginsGridTests : IDisposable
             Pump();
             var menu = Assert.IsType<MenuFlyout>(view.PluginMoreMenu);
             Assert.True(Noctis.Helpers.MenuOpenAnimation.GetEnableFlyoutClose(menu)); // closes with the pop
-            Assert.All(menu.Items.OfType<MenuItem>(), i => Assert.Contains("accent-rows", i.Classes)); // accent rows
+            // Accent rows; Uninstall stays the red danger row like every destructive menu row.
+            Assert.All(menu.Items.OfType<MenuItem>().Where(i => !i.Classes.Contains("danger")), i => Assert.Contains("accent-rows", i.Classes));
+            Assert.Equal("PluginPageUninstallItem", menu.Items.OfType<MenuItem>().Last().Name);
             var homepage = Assert.IsType<MenuItem>(menu.Items[0]);
             Assert.Equal(Loc.T("Plugins.Detail.Homepage"), homepage.Header);
             Assert.Equal("https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx", ToolTip.GetTip(homepage));
@@ -815,12 +826,11 @@ public class PluginsGridTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task ReleaseBuild_ListedPluginsOnlySwitch_UserAddedOnesCanBeRemoved()
+    public async Task Uninstall_OfficialAndCommunityAlike_AndTheListedOneInstallsAgain()
     {
-        // Owner 10-29: on release builds the plugins in Noctis can't be removed; one the user
-        // added from a file can.
+        // Discord "Plugins feedback" 11-03: release builds had no way to remove a listed plugin
+        // (owner 10-29 kept those switch-only). Every installed plugin can be uninstalled now.
         using var m = Mount();
-        m.Vm.PluginRemovalAllowed = false;
         Publish(m, File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis")));
         _box.WriteFolder("dev.test.code", PluginSandbox.Manifest(id: "dev.test.code", name: "Code Thing", author: "Someone"),
             ("Test.Plugin.dll", new byte[] { 1 }));
@@ -831,19 +841,18 @@ public class PluginsGridTests : IDisposable
         var official = Assert.Single(m.Vm.OfficialCards);
         var added = m.Vm.CommunityCards.Single(c => c.Id == "dev.test.code");
         Assert.True(official.IsInstalled);
-        Assert.False(official.IsUserAdded);
-        Assert.True(added.IsUserAdded);
+        Assert.True(official.IsOfficial);
+        var officialDir = official.Installed!.Directory;
 
         m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
         var view = new SettingsView { DataContext = m.Vm };
         var window = new Window { Width = 1100, Height = 900, Content = view };
-        bool RemoveShown()
+        bool UninstallShown()
         {
             Pump();
             window.UpdateLayout();
             var detail = view.FindControl<StackPanel>("PluginDetailPage")!;
             Assert.True(detail.IsVisible);
-            Assert.NotNull(detail.GetVisualDescendants().OfType<Noctis.Controls.LottieToggle>().FirstOrDefault(t => t.Name == "PluginPageToggle"));
             return detail.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "PluginPageRemoveButton" && b.IsEffectivelyVisible);
         }
         try
@@ -851,22 +860,56 @@ public class PluginsGridTests : IDisposable
             window.Show();
             Pump();
             m.Vm.SelectedPluginCard = official;
-            Assert.False(RemoveShown());
+            Assert.True(UninstallShown());
             m.Vm.SelectedPluginCard = added;
-            Assert.True(RemoveShown());
+            Assert.True(UninstallShown());
         }
         finally { window.Close(); }
 
-        var asked = 0;
-        m.Vm.ShowPluginDialog = r => { asked++; return Task.FromResult(new ConfirmationResult(true, false)); };
-        // The listed one: nothing removes it, not even the command.
+        var asked = new List<ConfirmationRequest>();
+        m.Vm.ShowPluginDialog = r => { asked.Add(r); return Task.FromResult(new ConfirmationResult(true, false)); };
         await m.Vm.RemovePluginCommand.ExecuteAsync(listing.Installed);
-        Assert.Equal(0, asked);
-        Assert.NotNull(m.Host.FindById(OfficialId));
-        // The user's own: asks, then goes.
+        Assert.Equal(Loc.T("Plugins.RemoveTitle", "Test Plugin"), Assert.Single(asked).Title);
+        Assert.Null(m.Host.FindById(OfficialId));
+        Assert.False(Directory.Exists(officialDir));
+        // The official card stays (it is a listing) and offers Install again.
+        Assert.Same(official, Assert.Single(m.Vm.OfficialCards));
+        Assert.False(official.IsInstalled);
+        Assert.True(official.ShowCornerButton);
+        // The user's own goes too, and only its folder.
         await m.Vm.RemovePluginCommand.ExecuteAsync(m.Host.FindById("dev.test.code"));
-        Assert.Equal(1, asked);
+        Assert.Equal(2, asked.Count);
         Assert.Null(m.Host.FindById("dev.test.code"));
+        Assert.DoesNotContain(m.Vm.CommunityCards, c => c.Id == "dev.test.code");
+
+        // Installs again from its page, verified as before.
+        await m.Vm.InstallOfficialPluginAsync(listing);
+        Assert.NotNull(m.Host.FindById(OfficialId));
+        Assert.True(official.IsInstalled);
+        Assert.True(official.IsOfficial);
+    }
+
+    [AvaloniaFact]
+    public async Task Order_InstalledPluginsLeadTheirSection_SoNewListingsNeverBuryThem()
+    {
+        // Discord feedback 11-03: installed plugins pinned to the top of their section.
+        using var m = Mount();
+        const string secondUrl = "https://github.com/heartached/Noctis/releases/download/plugin-zip-v1/second.zip";
+        var zip = File.ReadAllBytes(Zip("second.zip", "dev.test.second", "1.0.0", "Noctis"));
+        m.Server[secondUrl] = zip;
+        m.Server[PluginCatalog.DefaultUrl] = System.Text.Encoding.UTF8.GetBytes(PluginCatalogTests.Index(
+            PluginCatalogTests.Entry(id: "dev.test.first", name: "First", download: OfficialUrl, minAppVersion: null),
+            PluginCatalogTests.Entry(id: "dev.test.second", name: "Second", download: secondUrl,
+                sha256: PluginCatalogTests.Hash(zip), size: zip.LongLength, minAppVersion: null)));
+        await m.Vm.LoadOfficialPluginsAsync();
+        Assert.Equal(new[] { "dev.test.first", "dev.test.second" }, m.Vm.OfficialCards.Select(c => c.Id));
+
+        var second = m.Vm.OfficialPlugins.Single(o => o.Entry.Id == "dev.test.second");
+        await m.Vm.InstallOfficialPluginAsync(second);
+        Assert.Equal(new[] { "dev.test.second", "dev.test.first" }, m.Vm.OfficialCards.Select(c => c.Id));
+
+        await m.Vm.RemovePluginCommand.ExecuteAsync(second.Installed);
+        Assert.Equal(new[] { "dev.test.first", "dev.test.second" }, m.Vm.OfficialCards.Select(c => c.Id));
     }
 
     [AvaloniaTheory]

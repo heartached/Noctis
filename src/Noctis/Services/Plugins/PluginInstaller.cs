@@ -140,6 +140,34 @@ public static class PluginInstaller
     }
 
     /// <summary>Deletes a folder, retrying briefly (a just-unloaded plugin may still hold a file for a moment).</summary>
+    /// <summary>Left in a plugin folder that could not be deleted on uninstall: the folder is
+    /// deleted at the next start (or install of the same id) and never loaded again.</summary>
+    internal const string UninstallMarker = ".noctis-uninstalled";
+
+    internal static void MarkUninstalled(string dir)
+    {
+        try
+        {
+            if (Directory.Exists(dir)) File.WriteAllText(Path.Combine(dir, UninstallMarker), "");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"mark {dir} uninstalled: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// True when <paramref name="dir"/> is a plugin the user uninstalled (it carries
+    /// <see cref="UninstallMarker"/>); deletes it again. With <paramref name="deleteOnly"/>, true
+    /// only when it is gone now (an install can then use the name).
+    /// </summary>
+    internal static bool FinishUninstall(string dir, bool deleteOnly = false)
+    {
+        if (!File.Exists(Path.Combine(dir, UninstallMarker))) return false;
+        var gone = TryDeleteDirectory(dir);
+        return gone || !deleteOnly;
+    }
+
     internal static bool TryDeleteDirectory(string path)
     {
         for (var attempt = 0; attempt < 5; attempt++)
