@@ -114,4 +114,26 @@ public class PluginSettingsFlowTests : IDisposable
         await vm.InstallPluginPackageAsync(_box.WriteZip("bad.zip", ("x.txt", new byte[1])));
         Assert.StartsWith(Loc.T("Plugins.InstallFailed", "").TrimEnd(), vm.PluginsStatus);
     }
+
+    [AvaloniaFact]
+    public async Task InstallFromFile_WhileCommunityIsOff_OffersToTurnItOn()
+    {
+        // With the switch off the Community section is hidden: a community plugin installed from a
+        // file landed nowhere on the page. Like Get plugins, it now offers to turn the switch on.
+        var (vm, host, dialogs, persistence) = Mount(_ => new ConfirmationResult(true, false));
+        using var _ = persistence;
+        host.LoadAll(); // fresh: Community off
+        var zip = _box.WriteZip("p.zip",
+            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: "dev.test.zip", version: "1.0.0"))),
+            ("Test.Plugin.dll", new byte[] { 1 }));
+        vm.PickPluginPackage = () => Task.FromResult<string?>(zip);
+
+        await vm.InstallPluginFromFileCommand.ExecuteAsync(null);
+
+        Assert.Equal("dev.test.zip", Assert.Single(host.Plugins).Id);
+        Assert.Equal(Loc.T("Plugins.TurnOnTitle"), Assert.Single(dialogs).Title);
+        Assert.True(host.CommunityPluginsEnabled);
+        Assert.True(vm.ShowCommunitySection);
+        Assert.Contains(vm.CommunityCards, c => c.Id == "dev.test.zip");
+    }
 }

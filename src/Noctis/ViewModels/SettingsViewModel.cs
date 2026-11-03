@@ -366,7 +366,13 @@ public partial class SettingsViewModel : ViewModelBase
             PluginInstallOutcome.Failed => Loc.T("Plugins.InstallFailed", result.Message),
             _ => result.Message,
         });
-        return result.Outcome is PluginInstallOutcome.Installed or PluginInstallOutcome.Updated;
+        var done = result.Outcome is PluginInstallOutcome.Installed or PluginInstallOutcome.Updated;
+        // Install from file, like Get plugins: a code plugin that ends up a community one while the
+        // switch is off offers to turn it on (the Community section, its card, is hidden while off).
+        if (done && official is null && result.Plugin is { IsCodePlugin: true } p && !Plugins.CommunityPluginsEnabled
+            && !Plugins.IsTrustedOfficial(p))
+            await ConfirmTurnOnCommunityPluginsAsync();
+        return done;
     }
 
     /// <summary>
