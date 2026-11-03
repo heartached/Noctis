@@ -63,6 +63,38 @@ public partial class HomeView : UserControl, ITrackSelectionSource
         }
     }
 
+    // ── Album row order (GitHub #159) ──
+
+    private HomeViewModel? _orderVm;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_orderVm != null) _orderVm.PropertyChanged -= OnVmPropertyChangedForOrder;
+        _orderVm = DataContext as HomeViewModel;
+        if (_orderVm != null) _orderVm.PropertyChanged += OnVmPropertyChangedForOrder;
+        ApplyAlbumSectionOrder();
+    }
+
+    private void OnVmPropertyChangedForOrder(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(HomeViewModel.NewAlbumsFirst)) ApplyAlbumSectionOrder();
+    }
+
+    /// <summary>Settings › Home › New in Library First: the two adjacent album rows swap
+    /// places in the page stack. Only touches the tree when the order actually flips.</summary>
+    internal void ApplyAlbumSectionOrder()
+    {
+        if (RecentAlbumsSection?.Parent is not Panel page) return;
+        var newFirst = _orderVm?.NewAlbumsFirst ?? false;
+        var kids = page.Children;
+        var recent = kids.IndexOf(RecentAlbumsSection);
+        var added = kids.IndexOf(NewInLibrarySection);
+        if (recent < 0 || added < 0 || (added < recent) == newFirst) return;
+        kids.RemoveAt(added);
+        kids.Insert(kids.IndexOf(RecentAlbumsSection) + (newFirst ? 0 : 1), NewInLibrarySection);
+    }
+
     /// <summary>
     /// Albums row covers follow the Albums-page tile size for the row's own width. The
     /// row measures itself rather than the page: the page width minus margins ignored the

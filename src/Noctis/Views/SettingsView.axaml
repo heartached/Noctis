@@ -2967,6 +2967,58 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #159: album row sizes (also on each row's own pill) and their order. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.HomeRecentAlbumsCount}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HomeRecentAlbumsCountDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="HomeRecentAlbumsCountCombo"
+                              AutomationProperties.Name="{loc:T Settings.HomeRecentAlbumsCount}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding HomeAlbumCountChoices}"
+                              SelectedItem="{Binding HomeRecentAlbumsCount}"
+                              MinWidth="96"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.HomeNewAlbumsCount}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HomeNewAlbumsCountDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="HomeNewAlbumsCountCombo"
+                              AutomationProperties.Name="{loc:T Settings.HomeNewAlbumsCount}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding HomeAlbumCountChoices}"
+                              SelectedItem="{Binding HomeNewAlbumsCount}"
+                              MinWidth="96"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.HomeNewAlbumsFirst}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HomeNewAlbumsFirstDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.HomeNewAlbumsFirst}"
+                                          IsChecked="{Binding HomeNewAlbumsFirst}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 

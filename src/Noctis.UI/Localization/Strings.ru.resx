@@ -1022,6 +1022,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Home.Plays" xml:space="preserve"><value>прослуш.</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.TopArtists" xml:space="preserve"><value>Топ исполнителей</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.Albums" xml:space="preserve"><value>Альбомы</value><comment>Home right-hand rail header (last played album)</comment></data>
+  <data name="Home.NewInLibrary" xml:space="preserve"><value>Новое в медиатеке</value><comment>Home section header: newest albums by date added (GitHub #159)</comment></data>
+  <data name="Home.ShowCount" xml:space="preserve"><value>Показать</value><comment>Home album row size pill, followed by the number ("Show 10")</comment></data>
+  <data name="Home.AlbumCountTip" xml:space="preserve"><value>Сколько альбомов показывает этот ряд</value><comment>Home album row size pill tooltip / accessible name</comment></data>
   <data name="Home.PlayTip" xml:space="preserve"><value>Слушать</value><comment>ToolTip.Tip in HomeView.axaml</comment></data>
   <data name="Home.HeavyRotation" xml:space="preserve"><value>В активной ротации</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.RepeatThesePastTwo" xml:space="preserve"><value>На повторе последние две недели</value><comment>Text in HomeView.axaml</comment></data>
@@ -2791,6 +2794,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Section.Artwork" xml:space="preserve"><value>Обложки</value><comment>Settings section label</comment></data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve"><value>В активной ротации</value><comment>Appearance › Home toggle</comment></data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve"><value>Показывать на главной ряд «На повторе последние две недели».</value><comment>Appearance › Home toggle description</comment></data>
+  <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>Недавно прослушанные альбомы</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeRecentAlbumsCountDesc" xml:space="preserve"><value>Сколько последних прослушанных альбомов показывает ряд «Альбомы».</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsCount" xml:space="preserve"><value>Новое в медиатеке</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeNewAlbumsCountDesc" xml:space="preserve"><value>Сколько самых новых альбомов по дате добавления показывать на главной, прослушанных или нет.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsFirst" xml:space="preserve"><value>Сначала «Новое в медиатеке»</value><comment>Appearance › Home toggle</comment></data>
+  <data name="Settings.HomeNewAlbumsFirstDesc" xml:space="preserve"><value>Показывать «Новое в медиатеке» над недавно прослушанными альбомами.</value><comment>Appearance › Home toggle description</comment></data>
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Панель задач</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Островок плеера</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Мини-плеер</value><comment>Settings section label</comment></data>
