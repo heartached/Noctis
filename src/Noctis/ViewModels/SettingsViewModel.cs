@@ -2649,7 +2649,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmStatusText = "Not connected";
 
     // ── ListenBrainz ──
-    [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
+    [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
     [ObservableProperty] private string _listenBrainzToken = "";
     [ObservableProperty] private string _listenBrainzUsername = "";
     [ObservableProperty]
