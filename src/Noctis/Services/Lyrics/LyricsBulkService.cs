@@ -127,7 +127,13 @@ public sealed class LyricsBulkService : ILyricsBulkService
             {
                 var have = Rank(formats[i]);
                 string outcome;
-                if (have >= target || (!options.Upgrade && have >= 2))
+                if (track.NoLyrics)
+                {
+                    // Marked as having no lyrics (GitHub #162): not searched, whatever it has.
+                    Interlocked.Increment(ref skipped);
+                    outcome = "marked as no lyrics";
+                }
+                else if (have >= target || (!options.Upgrade && have >= 2))
                 {
                     Interlocked.Increment(ref skipped);
                     outcome = have >= LyricsSearchSelector.WordSyncedRank ? "already word-synced" : have >= 2 ? "already synced" : "already has lyrics";

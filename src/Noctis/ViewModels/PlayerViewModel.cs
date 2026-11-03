@@ -610,7 +610,9 @@ public partial class PlayerViewModel : ViewModelBase
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 
-    [ObservableProperty] private bool _isLyricsPageActive;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanMarkNoLyrics))]
+    private bool _isLyricsPageActive;
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
@@ -625,6 +627,12 @@ public partial class PlayerViewModel : ViewModelBase
     private bool _canSaveLyricsAsTtml;
     /// <summary>Shows the Save Lyrics to File submenu: one of its formats can be saved.</summary>
     public bool HasSaveLyricsMenu => CanSaveLyricsToFile || CanSaveLyricsAsTtml;
+    /// <summary>The lyrics page's song is marked as having no lyrics (GitHub #162): the menu offers to unmark it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanMarkNoLyrics))]
+    private bool _isLyricsMarkedNoLyrics;
+    /// <summary>Lyrics ▸ Mark as No Lyrics: on the lyrics page, for a song not marked yet.</summary>
+    public bool CanMarkNoLyrics => IsLyricsPageActive && !IsLyricsMarkedNoLyrics;
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -645,6 +653,7 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _shareLyrics;
     private Action? _saveLyrics;
     private Action? _saveLyricsTtml;
+    private Action<bool>? _setNoLyrics;
 
     /// <summary>Also the play/pause button's accessible name (AccessibleNames), so localized.</summary>
     public string PlayPauseTooltip => Localization.Loc.T(State == PlaybackState.Playing ? "PlaybackBar.Pause" : "PlaybackBar.Play");
@@ -1529,6 +1538,12 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void SaveCurrentTrackLyricsAsTtml() => _saveLyricsTtml?.Invoke();
 
+    [RelayCommand]
+    private void MarkCurrentTrackNoLyrics() => _setNoLyrics?.Invoke(true);
+
+    [RelayCommand]
+    private void UnmarkCurrentTrackNoLyrics() => _setNoLyrics?.Invoke(false);
+
     /// <summary>
     /// Called by MainWindowViewModel when the lyrics view becomes the current view.
     /// Wires the three pass-through commands and seeds the active-state flags.
@@ -1546,8 +1561,12 @@ public partial class PlayerViewModel : ViewModelBase
         Action? saveLyrics = null,
         bool canSaveLyrics = false,
         Action? saveLyricsTtml = null,
-        bool canSaveLyricsTtml = false)
+        bool canSaveLyricsTtml = false,
+        Action<bool>? setNoLyrics = null,
+        bool isMarkedNoLyrics = false)
     {
+        _setNoLyrics = setNoLyrics;
+        IsLyricsMarkedNoLyrics = isMarkedNoLyrics;
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
         _openLyricsBackgroundColor = openBackgroundColor;
@@ -1576,6 +1595,8 @@ public partial class PlayerViewModel : ViewModelBase
         _shareLyrics = null;
         _saveLyrics = null;
         _saveLyricsTtml = null;
+        _setNoLyrics = null;
+        IsLyricsMarkedNoLyrics = false;
         IsLyricsPageActive = false;
         IsLyricsSyncedActive = false;
         IsLyricsPlainActive = false;
@@ -1590,8 +1611,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// or synced-availability changes, to keep the menu's checkmarks accurate.
     /// </summary>
     public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare, bool canSaveLyrics = false,
-        bool canSaveLyricsTtml = false)
+        bool canSaveLyricsTtml = false, bool isMarkedNoLyrics = false)
     {
+        IsLyricsMarkedNoLyrics = isMarkedNoLyrics;
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;

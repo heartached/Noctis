@@ -1213,6 +1213,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsColor.ArtworkHint" xml:space="preserve"><value>Меняется вместе с обложкой песни. Движение фона настраивается в настройках, в разделе «Тексты песен».</value><comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.VideoNote" xml:space="preserve"><value>Включено фоновое видео, и оно показывается поверх этого фона.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Найти текст</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.MarkedNoLyrics" xml:space="preserve"><value>Отмечено: без текста</value><comment>LyricsView.axaml / LyricsPanelView.axaml: the song is marked as having no lyrics (GitHub #162)</comment></data>
+  <data name="Lyrics.UndoNoLyrics" xml:space="preserve"><value>Отменить</value><comment>LyricsView.axaml: button taking the no-lyrics mark off</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Поиск текста</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="LyricsSearch.Title" xml:space="preserve"><value>Поиск текста</value><comment>LyricsSearchDialog.axaml title</comment></data>
   <data name="LyricsSearch.Hint" xml:space="preserve"><value>«Авто» ищет в источниках, включённых в настройках, и предпочитает синхронизацию по словам, затем по строкам, затем обычный текст.</value><comment>Tooltip on the info icon and the source picker in LyricsSearchDialog.axaml</comment></data>
@@ -1222,6 +1224,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsSearch.TitleWatermark" xml:space="preserve"><value>Название</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Search" xml:space="preserve"><value>Найти</value><comment>Button in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Use" xml:space="preserve"><value>Использовать текст</value><comment>Primary button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.MarkNoLyrics" xml:space="preserve"><value>Без текста</value><comment>LyricsSearchDialog.axaml footer: mark the song as having no lyrics</comment></data>
+  <data name="LyricsSearch.UnmarkNoLyrics" xml:space="preserve"><value>Есть текст</value><comment>LyricsSearchDialog.axaml footer: take the no-lyrics mark off</comment></data>
   <data name="LyricsSearch.Best" xml:space="preserve"><value>Лучший</value><comment>Badge on the Auto pick in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.SelectToPreview" xml:space="preserve"><value>Выберите источник, чтобы посмотреть его текст.</value><comment>Empty preview in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Searching" xml:space="preserve"><value>Поиск…</value><comment>Status in LyricsSearchViewModel</comment></data>
@@ -1816,6 +1820,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.SearchLyrics" xml:space="preserve"><value>Найти текст</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.LyricsPanel" xml:space="preserve"><value>Панель текста</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.RemoveLyrics" xml:space="preserve"><value>Удалить текст</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.MarkNoLyrics" xml:space="preserve"><value>Отметить: без текста</value><comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment></data>
+  <data name="PlaybackBar.UnmarkNoLyrics" xml:space="preserve"><value>Снять отметку «без текста»</value><comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment></data>
   <data name="PlaybackBar.ShowFolder" xml:space="preserve"><value>Показать папку</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SleepTimer" xml:space="preserve"><value>Таймер сна</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Chapters" xml:space="preserve"><value>Главы</value><comment>Submenu in the player bar's more menu (PlaybackBarView.axaml) listing the chapters of the playing audiobook (.m4b); a chapter jumps there</comment></data>

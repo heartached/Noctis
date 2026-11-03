@@ -91,6 +91,20 @@ public class LyricsBulkUpgradeTests : IDisposable
     }
 
     [Fact]
+    public async Task SongMarkedAsNoLyrics_IsNotSearched() // GitHub #162
+    {
+        var a = new Source("A", _ => Word());
+        var t = NewTrack();
+        t.NoLyrics = true;
+
+        var s = await Service(a).FetchAsync(new[] { t }, new LyricsBulkOptions(Recheck: true), null, CancellationToken.None);
+
+        Assert.Equal(0, a.Calls);
+        Assert.Equal((0, 1), (s.Synced, s.Skipped));
+        Assert.False(File.Exists(Side(t, ".elrc")));
+    }
+
+    [Fact]
     public async Task StopsAtTheFirstWordSyncedAnswer_LaterSourcesAreNotAsked()
     {
         var a = new Source("A", _ => Word());

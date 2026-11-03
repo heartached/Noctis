@@ -82,6 +82,36 @@ public static partial class LyricsSearchSelector
             ?? validated.FirstOrDefault(r => r.HasLyrics);
     }
 
+    /// <summary>
+    /// GitHub #162: lyrics that only say the song is instrumental. NetEase and Kugou answer an
+    /// instrumental song (or a wrong match pointing at one) with "纯音乐，请欣赏" ("instrumental,
+    /// please enjoy"), sometimes under credit lines ("作曲 : …"); shown as lyrics it was the
+    /// reporter's junk Chinese line. True when every lyric line is that notice or a credit.
+    /// </summary>
+    public static bool IsInstrumentalPlaceholder(string? lyrics)
+    {
+        if (string.IsNullOrWhiteSpace(lyrics)) return false;
+        var notice = false;
+        foreach (var raw in lyrics.Split('\n'))
+        {
+            var line = TimeTags().Replace(raw, string.Empty).Trim();
+            if (line.Length == 0) continue;
+            var letters = new string(line.Where(char.IsLetterOrDigit).ToArray());
+            if (letters.Contains("纯音乐") && letters.Contains("欣赏")) { notice = true; continue; }
+            if (CreditLine().IsMatch(line)) continue;
+            return false;
+        }
+        return notice;
+    }
+
+    // [mm:ss.xx] / <mm:ss.xx> timing tags and [ar:…]-style header tags.
+    [GeneratedRegex(@"\[[^\]]*\]|<\d{1,3}:\d{2}(?:[.:]\d{1,3})?>")]
+    private static partial Regex TimeTags();
+
+    // "作曲 : Name", "Composer: Name" — a short label, then a colon.
+    [GeneratedRegex(@"^[^:：]{1,12}\s*[:：]")]
+    private static partial Regex CreditLine();
+
     /// <summary>Rank of a word-synced answer — the top of <see cref="FormatRank"/>.</summary>
     public const int WordSyncedRank = 3;
 
