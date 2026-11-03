@@ -3920,14 +3920,6 @@
     <value>البحث عن غلاف متحرك</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>اسم الألبوم أو رابط Apple Music</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>اكتب اسم ألبوم واضغط Enter، أو الصق رابط Apple Music</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>اختيار غلاف متحرك</value>
     <comment>Text in MetadataWindow.axaml</comment>

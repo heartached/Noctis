@@ -3920,14 +3920,6 @@
     <value>Rechercher une pochette animée</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>Nom de l'album ou URL Apple Music</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>saisissez un nom d'album et appuyez sur Entrée, ou collez un lien Apple Music</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>Choisir une pochette animée</value>
     <comment>Text in MetadataWindow.axaml</comment>

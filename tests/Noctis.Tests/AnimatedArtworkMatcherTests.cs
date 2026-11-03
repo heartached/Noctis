@@ -151,6 +151,26 @@ public class AnimatedArtworkMatcherTests
     }
 
     [Fact]
+    public void Rank_TypedArtistName_KeepsThatArtistsAlbums()
+    {
+        // Owner 11-02: typing "selena gomez" in the chooser of a 4batz & Drake single found
+        // nothing — no album TITLE resembles an artist name, and the fallback only looked for
+        // the edited track's own artist.
+        var candidates = new[]
+        {
+            C(1, "Rare", "Selena Gomez"),
+            C(2, "Revival (Deluxe Edition)", "Selena Gomez"),
+            C(3, "I Said I Love You First", "Selena Gomez & benny blanco"),
+            C(4, "Totally Different", "Someone Else"),
+        };
+        var query = new ITunesArtworkService.AnimatedArtworkQuery("selena gomez", "", "4batz & Drake", Typed: true);
+
+        var ranked = ITunesArtworkService.RankAnimatedCandidates(candidates, query, max: 10);
+
+        Assert.Equal(new long[] { 1, 2, 3 }, ranked.Select(r => r.Candidate.CollectionId).Order());
+    }
+
+    [Fact]
     public void Rank_CapsHowManyAlbumsAreOpened()
     {
         var candidates = Enumerable.Range(1, 20).Select(i => C(i, "Same Title", "Artist")).ToList();

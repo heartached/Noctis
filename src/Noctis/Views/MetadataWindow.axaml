@@ -1204,23 +1204,6 @@
                                        TextAlignment="Center" />
                         </Button>
 
-                        <!-- Type an album name to search for, or paste a link to skip search -->
-                        <StackPanel Spacing="4" IsVisible="{Binding !HasAnimatedCover}">
-                            <TextBox Classes="pill-field"
-                                     AutomationProperties.Name="{loc:T Metadata.AlbumNameAppleMusic}"
-                                     Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
-                                     Watermark="{loc:T Metadata.AlbumNameAppleMusic}"
-                                     FontSize="12">
-                                <TextBox.KeyBindings>
-                                    <KeyBinding Gesture="Enter" Command="{Binding SearchAnimatedCoverCommand}" />
-                                </TextBox.KeyBindings>
-                            </TextBox>
-                            <TextBlock Text="{loc:T Metadata.TypeAlbumNamePress}"
-                                       FontSize="10"
-                                       Opacity="0.55"
-                                       TextWrapping="Wrap" />
-                        </StackPanel>
-
                         <Button Content="{loc:T Metadata.AddFromFile}"
                                 Command="{Binding AddAnimatedCoverCommand}"
                                 CommandParameter="{Binding $parent[Window]}"

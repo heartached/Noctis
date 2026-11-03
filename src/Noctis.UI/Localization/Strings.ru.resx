@@ -1551,8 +1551,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Metadata.NoArtwork" xml:space="preserve"><value>Нет обложки</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AnimatedArtwork" xml:space="preserve"><value>Анимированная обложка</value><comment>Header in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchAnimatedArtwork" xml:space="preserve"><value>Найти анимированную обложку</value><comment>Text in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve"><value>Название альбома или URL Apple Music</value><comment>Watermark in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve"><value>введите название альбома и нажмите Enter или вставьте ссылку Apple Music</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve"><value>Выбрать анимированную обложку</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.NoAnimatedArtwork" xml:space="preserve"><value>Нет анимированной обложки</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AnimSearchUnavailable" xml:space="preserve"><value>Служба поиска недоступна.</value><comment>Animated artwork chooser (MetadataWindow.axaml / MetadataViewModel)</comment></data>
