@@ -7,6 +7,10 @@ public interface ILastFmService
     bool IsAuthenticated { get; }
     string? Username { get; }
 
+    /// <summary>Raised on a worker thread when <see cref="Configure"/>'s session check has
+    /// resolved the account name.</summary>
+    event EventHandler<string>? UsernameResolved { add { } remove { } }
+
     void Configure(string? sessionKey);
     Task<string> GetAuthUrlAsync();
     Task<bool> CompleteAuthAsync();

@@ -3072,4 +3072,22 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Columns.Reset" xml:space="preserve"><value>Сбросить столбцы</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Изменить ширину столбца «{0}»</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
   <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
+  <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Импорт числа прослушиваний</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
+  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Прочитать историю прослушиваний и поднять до неё счётчики в Noctis. Ничего не отправляется обратно, а в статистике остаются только прослушивания в Noctis.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
+  <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Импорт</value><comment>Settings › Integrations: starts the play count import</comment></data>
+  <data name="Settings.PlayCountImport.Cancel" xml:space="preserve"><value>Отмена</value><comment>Settings › Integrations: stops a running play count import</comment></data>
+  <data name="Settings.PlayCountImport.ModeName" xml:space="preserve"><value>Если счётчики различаются</value><comment>Screen-reader name of the play count import mode list</comment></data>
+  <data name="Settings.PlayCountImport.Mode.KeepHigher" xml:space="preserve"><value>Оставить большее число</value><comment>Play count import mode (default): the higher of Noctis's and the imported count</comment></data>
+  <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>Взять импортированное число</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
+  <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>Запуск…</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Чтение истории прослушиваний… {0}</value><comment>Play count import progress; {0} = plays read so far</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Чтение истории прослушиваний… {0} из {1}</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>Сопоставление с песнями в медиатеке…</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>Готово. Обновлено песен: {0} · найдено: {1} · нет в медиатеке: {2}</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
+  <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>Импорт отменён. Ничего не изменено.</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.NotConnected" xml:space="preserve"><value>Сначала подключите {0}.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.UserNotFound" xml:space="preserve"><value>{0} не знает этот аккаунт.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>История прослушиваний {0} скрыта.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Не удалось связаться с {0}. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} прислал непонятный ответ. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
 </root>

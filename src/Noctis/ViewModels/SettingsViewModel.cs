@@ -3122,7 +3122,19 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetLoonClient(LoonClient loon) => _loon = loon;
 
     /// <summary>Sets the Last.fm service reference.</summary>
-    public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
+    public void SetLastFm(ILastFmService lastFm)
+    {
+        _lastFm = lastFm;
+        // A session restored from settings.json with no saved name (seen 11-03: key kept, name
+        // empty) read "connected" with no ACCOUNT line; take the name the session check finds.
+        lastFm.UsernameResolved += (_, name) => Dispatcher.UIThread.Post(() =>
+        {
+            if (!IsLastFmConnected || LastFmUsername == name) return;
+            LastFmUsername = name;
+            LastFmStatusText = $"Connected as {name}";
+            _ = SaveAsync();
+        });
+    }
     public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
 
     // ── TIDAL (playlist import sign-in) ───────────────────────
