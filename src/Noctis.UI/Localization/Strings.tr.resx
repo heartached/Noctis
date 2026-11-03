@@ -1745,6 +1745,11 @@
   <data name="Settings.Group.Connect" xml:space="preserve"><value>Bağlantı</value><comment>Settings rail</comment></data>
   <data name="Settings.Group.More" xml:space="preserve"><value>Daha Fazla</value><comment>Settings rail</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>Telefonundaki Noctis uygulamasında Ayarlar'ı, ardından Hesap'ı aç. Bu adresi gir ve e-posta adresin ya da kullanıcı adın ve parolanla oturum aç.</value><comment>Pairing block help above the address and fingerprint</comment></data>
+  <data name="AccountSync.PairQrHint" xml:space="preserve"><value>Telefonunuzdaki Noctis uygulamasında Ayarlar’a, ardından Hesap’a gidin ve QR Kodu Tara’ya dokunun. Bir şey yazmanız gerekmez.</value><comment>Pairing panel, beside the sign-in QR code</comment></data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>{0} içinde yeni kod</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Bu kodu tarayan herkes hesabınıza giriş yapabilir; bu yüzden yalnızca kendi telefonunuza gösterin. Bir kez çalışır ve iki dakikada bir değişir.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
+  <data name="AccountSync.PairManualHeader" xml:space="preserve"><value>VEYA PAROLANIZLA GİRİŞ YAPIN</value><comment>Pairing panel, above the address and security code (the typed sign-in)</comment></data>
+  <data name="AccountSync.PairQrName" xml:space="preserve"><value>Giriş QR kodu</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>TELEFONLARIN</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>Henüz bağlı telefon yok.</value><comment>Account card list empty state</comment></data>
   <data name="Settings.LocalApiDesc" xml:space="preserve"><value>Stream Deck veya OBS gibi bu bilgisayardaki uygulamaların çalanı görmesini ve Noctis'i yönetmesini sağlar.</value><comment>Text in SettingsView.axaml</comment></data>

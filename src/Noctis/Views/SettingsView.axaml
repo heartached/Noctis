@@ -6464,9 +6464,9 @@
 
                     <controls:CollapsibleContent x:Name="PhoneBody" IsOpen="{Binding IsPhoneCardOpen}" Lift="10" Motion="Glide">
                     <StackPanel Spacing="14" Margin="0,14,0,0">
-                        <!-- Connect a phone: the address and the security code. No QR here: the
-                             phone app types the address (it has no scanner), and a camera app
-                             would only open the server's address in a browser. -->
+                        <!-- Connect a phone: a one-time sign-in QR for the phone app's Scan QR Code
+                             (addresses, certificate pin, one-time secret; never a password or key),
+                             then the typed way: the address and the security code to compare. -->
                         <Button Classes="accent-btn account-action" Command="{Binding TogglePairingCommand}" HorizontalAlignment="Left"
                                 AutomationProperties.Name="{loc:T AccountSync.PairDevice}"
                                 Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
@@ -6478,6 +6478,22 @@
                         <controls:CollapsibleContent IsOpen="{Binding IsPairingVisible}" Lift="10" Motion="Glide">
                         <Border x:Name="PairingPanel" Background="#18000000" CornerRadius="12" Padding="14,12">
                             <StackPanel Spacing="10">
+                                <!-- The QR: on white with its quiet zone, so it scans on a dark theme too. -->
+                                <Grid x:Name="PairingQrBlock" ColumnDefinitions="Auto,*" ColumnSpacing="14" IsVisible="{Binding HasPairingQr}">
+                                    <Border Grid.Column="0" Background="White" CornerRadius="10" Padding="4" VerticalAlignment="Top">
+                                        <Image Source="{Binding PairingQr}" Width="176" Height="176"
+                                               RenderOptions.BitmapInterpolationMode="None"
+                                               AutomationProperties.Name="{loc:T AccountSync.PairQrName}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="{loc:T AccountSync.PairQrHint}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding PairingQrCountdown}" FontSize="12" FontWeight="SemiBold"
+                                                   FontFeatures="+tnum"/>
+                                        <TextBlock Text="{loc:T AccountSync.PairQrWarning}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{loc:T AccountSync.PairManualHeader}" FontSize="10" Opacity="0.5" Margin="0,6,0,0"
+                                           IsVisible="{Binding HasPairingQr}"/>
                                 <TextBlock Text="{loc:T AccountSync.PairPhoneHint}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="{loc:T Server.AddressLabel}" FontSize="10" Opacity="0.5"/>

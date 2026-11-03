@@ -6356,6 +6356,26 @@
     <value>在手機上的 Noctis 應用程式中，開啟「設定」，再進入「帳戶」。輸入這個位址，然後用您的電子郵件或使用者名稱和密碼登入。</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
+  <data name="AccountSync.PairQrHint" xml:space="preserve">
+    <value>在手機上的 Noctis App 中，依序前往「設定」和「帳號」，然後點一下「掃描 QR 碼」。不需要輸入任何內容。</value>
+    <comment>Pairing panel, beside the sign-in QR code</comment>
+  </data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve">
+    <value>{0} 後更新代碼</value>
+    <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
+  </data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve">
+    <value>任何掃描此代碼的人都能登入你的帳號，所以只給你自己的手機看。它只能使用一次，每兩分鐘更換一次。</value>
+    <comment>Under the sign-in QR code: who can use it and for how long</comment>
+  </data>
+  <data name="AccountSync.PairManualHeader" xml:space="preserve">
+    <value>或使用密碼登入</value>
+    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
+  </data>
+  <data name="AccountSync.PairQrName" xml:space="preserve">
+    <value>登入 QR 碼</value>
+    <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>您的手機</value>
     <comment>Account card list label</comment>

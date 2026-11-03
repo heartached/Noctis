@@ -109,6 +109,9 @@ public partial class SettingsViewModel
         OnPropertyChanged(nameof(PrimaryAccountSince));
         OnPropertyChanged(nameof(OtherAccounts));
         OnPropertyChanged(nameof(HasOtherAccounts));
+        // The first account made with the pairing panel open: its QR can show now; the main
+        // account removed: the code for it goes.
+        if (IsPairingVisible && HasPairingQr != HasPrimaryAccount) RefreshPairingQr();
     }
 
     partial void OnSyncEnabledChanged(bool value)

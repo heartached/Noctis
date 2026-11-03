@@ -6356,6 +6356,26 @@
     <value>في تطبيق Noctis على هاتفك، افتح الإعدادات ثم الحساب. أدخل هذا العنوان وسجّل الدخول ببريدك الإلكتروني أو اسم المستخدم وكلمة المرور.</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
+  <data name="AccountSync.PairQrHint" xml:space="preserve">
+    <value>في تطبيق Noctis على هاتفك، انتقل إلى الإعدادات ثم الحساب، واضغط على مسح رمز QR. لا حاجة إلى الكتابة.</value>
+    <comment>Pairing panel, beside the sign-in QR code</comment>
+  </data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve">
+    <value>رمز جديد خلال {0}</value>
+    <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
+  </data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve">
+    <value>يمكن لأي شخص يمسح هذا الرمز تسجيل الدخول إلى حسابك، لذا اعرضه لهاتفك فقط. يعمل مرة واحدة ويتغير كل دقيقتين.</value>
+    <comment>Under the sign-in QR code: who can use it and for how long</comment>
+  </data>
+  <data name="AccountSync.PairManualHeader" xml:space="preserve">
+    <value>أو سجّل الدخول بكلمة المرور</value>
+    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
+  </data>
+  <data name="AccountSync.PairQrName" xml:space="preserve">
+    <value>رمز QR لتسجيل الدخول</value>
+    <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>هواتفك</value>
     <comment>Account card list label</comment>

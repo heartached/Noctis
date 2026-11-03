@@ -466,6 +466,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedTabTitle));
         OnPropertyChanged(nameof(SelectedTabDescription));
         OnFeatureTabOpened(value);
+        // The pairing QR lives only on its own tab: leaving folds the panel and kills the code.
+        if (value != TabAccountDevices) IsPairingVisible = false;
         if (value == TabPlugins) OnPluginsPageOpened();
 
         // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
@@ -1680,6 +1682,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (!NoctisServerEnabled)
             {
+                StopPairingQr();
                 if (_noctisServer is not null) await _noctisServer.StopAsync();
                 NoctisServerUrl = string.Empty;
                 NoctisServerStartFailed = false;
@@ -1731,6 +1734,7 @@ public partial class SettingsViewModel : ViewModelBase
                 };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
                 _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevices);
+                _noctisServer.PairingCodeUsed += (_, _) => Dispatcher.UIThread.Post(OnPairingCodeUsed);
             }
             if (!_noctisServer.IsRunning)
             {
@@ -1744,9 +1748,12 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerStartFailed = false;
             NoctisServerError = string.Empty;
             SetNoctisServerQr(QrCodeBitmap.TryRender(NoctisServerUrl));
+            // A restart (new port) killed the old code; the panel open shows one for this run.
+            RefreshPairingQr();
         }
         catch (Exception ex)
         {
+            StopPairingQr();
             NoctisServerStartFailed = true;
             NoctisServerError = ex.Message;
             NoctisServerUrl = string.Empty;

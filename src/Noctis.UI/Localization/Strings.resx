@@ -2568,6 +2568,11 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Family and guests</value><comment>Other accounts card title</comment></data>
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Extra accounts that can sign in from their own devices.</value><comment>Other accounts card help</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>In the Noctis app on your phone, go to Settings, then Account. Enter this address and sign in with your email or username and password.</value><comment>Pairing block help above the address and fingerprint</comment></data>
+  <data name="AccountSync.PairQrHint" xml:space="preserve"><value>In the Noctis app on your phone, go to Settings, then Account, and tap Scan QR Code. No typing needed.</value><comment>Pairing panel, beside the sign-in QR code</comment></data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>New code in {0}</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Anyone who scans this code can sign in to your account, so only show it to your own phone. It works once and changes every two minutes.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
+  <data name="AccountSync.PairManualHeader" xml:space="preserve"><value>OR SIGN IN WITH YOUR PASSWORD</value><comment>Pairing panel, above the address and security code (the typed sign-in)</comment></data>
+  <data name="AccountSync.PairQrName" xml:space="preserve"><value>Sign-in QR code</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>YOUR PHONES</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>No phone connected yet.</value><comment>Account card list empty state</comment></data>
 

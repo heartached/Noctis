@@ -6356,6 +6356,26 @@
     <value>휴대폰의 Noctis 앱에서 설정을 열고 계정으로 이동하세요. 이 주소를 입력하고 이메일 또는 사용자 이름과 비밀번호로 로그인하세요.</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
+  <data name="AccountSync.PairQrHint" xml:space="preserve">
+    <value>휴대폰의 Noctis 앱에서 설정 &gt; 계정으로 이동한 다음 QR 코드 스캔을 탭하세요. 입력할 필요가 없습니다.</value>
+    <comment>Pairing panel, beside the sign-in QR code</comment>
+  </data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve">
+    <value>{0} 후 새 코드</value>
+    <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
+  </data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve">
+    <value>이 코드를 스캔하는 사람은 누구나 내 계정에 로그인할 수 있으니 내 휴대폰에만 보여 주세요. 한 번만 사용할 수 있으며 2분마다 바뀝니다.</value>
+    <comment>Under the sign-in QR code: who can use it and for how long</comment>
+  </data>
+  <data name="AccountSync.PairManualHeader" xml:space="preserve">
+    <value>또는 비밀번호로 로그인</value>
+    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
+  </data>
+  <data name="AccountSync.PairQrName" xml:space="preserve">
+    <value>로그인 QR 코드</value>
+    <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>내 휴대폰</value>
     <comment>Account card list label</comment>

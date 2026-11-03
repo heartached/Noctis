@@ -1752,6 +1752,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // Artist pages kept in history stay subscribed to LibraryUpdated; only the shown
         // one rebuilds, the rest catch up when navigated back to.
         if (oldValue is ArtistDetailViewModel leftArtistPage) leftArtistPage.IsActive = false;
+        // Settings left: its Connect a phone panel folds, so no sign-in QR stays live off screen.
+        if (ReferenceEquals(oldValue, Settings) && !ReferenceEquals(newValue, Settings)) Settings.OnSettingsLeft();
         if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
