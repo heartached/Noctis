@@ -133,7 +133,7 @@ const faqs = [
   },
   {
     q: 'Where do I find plugins?',
-    a: 'In Noctis: Settings → Plugins. Official Noctis plugins are made by Noctis, like Mixxx, Album Roulette, A-B Loop and Add from YouTube. Community plugins are made by people who use Noctis and credited by name, like Album Town by Jafezy JD, and True Shuffle and Lyric Motion by Alfamin. Click a card, then Install. The same list is at the top of this page.',
+    a: 'In Noctis: Settings → Plugins. Official Noctis plugins are made by Noctis, like Mixxx, Album Roulette, A-B Loop and Add from YouTube. Community plugins are made by people who use Noctis and credited by name, like Album Town by Jafezy JD, and True Shuffle and Lyric Motion by Alfamin. Click a card, then Install.',
   },
   {
     q: 'What does the blue check mean?',
@@ -239,12 +239,8 @@ const quickstart = [
   <section class="section pl" aria-labelledby="pl-title">
     <div class="container">
       <header class="pl__head">
-        <p class="eyebrow">Noctis 1.6.6 · Windows, macOS, Linux</p>
         <h1 class="display" id="pl-title">Extend <em>Noctis</em>.</h1>
-        <p class="lede pl__lede">
-          Three ways to make Noctis do more, from the safest to the most powerful. Pick the one that fits, and
-          only give code the trust it has earned.
-        </p>
+        <p class="lede pl__lede">Three ways to make Noctis do more. Pick the one that fits.</p>
       </header>
 
       <ol class="ways" role="list" id="ways" data-reveal-group aria-label="Three ways to extend Noctis">
@@ -276,9 +272,9 @@ const quickstart = [
           <section class="doc__sec" aria-labelledby="get">
             <h2 class="doc__h" id="get">Get plugins</h2>
             <p class="doc__lede">
-              These are the plugins listed in Noctis right now. A listed plugin has been reviewed by the Noctis team.
+              Made by the Noctis team. You’ll find these and plugins from the community in Noctis.
             </p>
-            <PluginDirectory submitHref={links.pluginSubmit} />
+            <PluginDirectory />
 
             <div class="share">
               <div>

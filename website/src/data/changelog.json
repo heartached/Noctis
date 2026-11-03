@@ -1,6 +1,68 @@
 {
   "releases": [
     {
+      "tag": "v1.6.5",
+      "version": "1.6.5",
+      "name": "v1.6.5",
+      "label": "1.6.5",
+      "publishedAt": "2026-10-19T23:14:37Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.5",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added word-synced lyrics from lrc.red on the lyrics page",
+            "Added word-synced lyrics from lrc.red in Search Lyrics",
+            "Added lrc.red sync in Lyrics Studio",
+            "Added lrc.red credit under lyrics",
+            "Added Dock menu with Play/Pause, Next, Previous and Favorite on Mac",
+            "Added Control Center time display that follows playback speed",
+            "Added Command key shortcuts on Mac for selection and search",
+            "Added Mac delete key for removing queue rows",
+            "Added Control-Command-F for full screen on Mac",
+            "Added Homebrew and MacPorts ffmpeg detection on Mac"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved lrc.red lookups to run once per song",
+            "Improved lrc.red busy handling with a retry",
+            "Improved lrc.red setting hint",
+            "Improved Mac tooltips and wording for shortcuts",
+            "Improved Mac monospace font",
+            "Improved Settings and Appearance layout on Mac and Linux"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed lrc.red translations and romaji not showing",
+            "Fixed gaps between words in Chinese and Japanese word-synced lyrics",
+            "Fixed duet credits not matching online lyrics",
+            "Fixed lrc.red showing a connection error when it was only busy",
+            "Fixed Search Lyrics rows being read incorrectly by screen readers",
+            "Fixed Lyrics Studio mislabeling saved lyrics",
+            "Fixed Settings crashing on Apple Silicon",
+            "Fixed wrong button shapes and missing slider tracks in Settings on Mac",
+            "Fixed black screen when opening the mini player from macOS full screen",
+            "Fixed mini player crash when switching designs on Mac",
+            "Fixed startup crashes on Apple Silicon while decoding artwork",
+            "Fixed songs being skipped during library scans",
+            "Fixed launch-at-login switch staying on after a failed registration",
+            "Fixed Copy image on Mac and Linux not reaching the clipboard",
+            "Fixed dialog dim layer staying behind when the window moves on Mac",
+            "Fixed \"Open in\" not accepting Mac apps",
+            "Fixed smart playlist tiles showing zero tracks",
+            "Fixed sidebar highlight not following shortcuts or the command palette",
+            "Fixed Settings search finding Windows-only options on Mac"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "v1.6.4",
       "version": "1.6.4",
       "name": "v1.6.4",
@@ -3663,6 +3725,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-10-19T02:21:48.401Z",
+  "updatedAt": "2026-10-19T23:14:54.791Z",
   "degraded": false
 }

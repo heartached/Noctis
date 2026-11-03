@@ -10,24 +10,24 @@ import index from '../../../plugins/index.json';
  * (.github/workflows/deploy-website.yml watches plugins/index.json and every
  * plugins/<name>/icon.png).
  *
- * Grouped the way Settings > Plugins groups them: author "Noctis" is an
- * Official Noctis plugin and wears the blue check; anyone else is a Community
- * plugin, credited by name. On the web that is only a label. The app's check
- * also verifies the zip against the list, which a website can't do.
+ * Only the Official Noctis plugins (author "Noctis") are shown here. Community
+ * plugins are listed in the app, not on the website. A card copies the app's:
+ * the name with the blue check, then "by heartached" (PluginTrust.OfficialMaker).
  *
  * Shared by /plugins and, when wanted, the home page: drop <PluginDirectory />
  * in. There is no install link: installing happens in the app.
  */
 
 interface Props {
-  /** Heading level for the two section titles. */
+  /** Heading level for the section title. */
   level?: 2 | 3;
-  /** Where "Share your plugin" points when the community list is empty. */
-  submitHref?: string;
 }
 
-const { level = 3, submitHref = '/plugins/submit' } = Astro.props;
+const { level = 3 } = Astro.props;
 const H = `h${level}` as 'h2' | 'h3';
+
+/* The name the app shows as the maker of official plugins. */
+const OFFICIAL_MAKER = 'heartached';
 
 type Entry = {
   id: string;
@@ -74,75 +74,56 @@ function tile(name: string) {
   return { letters, hue: h };
 }
 
-const cards = entries.map((p) => ({
-  ...p,
-  official: p.author.trim().toLowerCase() === 'noctis',
-  image: p.icon ? icons.get(p.icon.replace(/^\.?\//, '')) : undefined,
-  tile: tile(p.name),
-  platforms: (p.platforms?.length ? p.platforms : Object.keys(PLATFORM)).map((x) => PLATFORM[x] ?? x),
-  homepage: https(p.homepage),
-  authorUrl: https(p.authorUrl),
-}));
-
-const groups = [
-  { key: 'official', title: 'Official Noctis plugins', items: cards.filter((c) => c.official) },
-  { key: 'community', title: 'Community plugins', items: cards.filter((c) => !c.official) },
-];
+const cards = entries
+  .filter((p) => p.author.trim().toLowerCase() === 'noctis')
+  .map((p) => ({
+    ...p,
+    image: p.icon ? icons.get(p.icon.replace(/^\.?\//, '')) : undefined,
+    tile: tile(p.name),
+    platforms: (p.platforms?.length ? p.platforms : Object.keys(PLATFORM)).map((x) => PLATFORM[x] ?? x),
+    homepage: https(p.homepage),
+  }));
 ---
 
 <div class="pd">
-  {groups.map((g) => (
-    <section class="pd__group" aria-labelledby={`pd-${g.key}`}>
-      <H class="pd__title" id={`pd-${g.key}`}>{g.title}</H>
+  <section class="pd__group" aria-labelledby="pd-official">
+    <H class="pd__title" id="pd-official">Official Noctis plugins</H>
 
-      {g.items.length === 0 ? (
-        <p class="pd__empty">
-          {g.key === 'community'
-            ? <>None listed yet. Made one? <a href={submitHref}>Share your plugin</a>.</>
-            : 'None listed right now.'}
-        </p>
-      ) : (
-        <ul class="pd__grid" role="list">
-          {g.items.map((c) => (
-            <li class="pcard">
-              {c.image ? (
-                <Image class="pcard__icon" src={c.image} alt="" width={112} height={112} format="webp" loading="lazy" />
-              ) : (
-                <span class="pcard__icon pcard__tile" style={`--hue:${c.tile.hue}`} aria-hidden="true">{c.tile.letters}</span>
-              )}
+    {cards.length === 0 ? (
+      <p class="pd__empty">None listed right now.</p>
+    ) : (
+      <ul class="pd__grid" role="list">
+        {cards.map((c) => (
+          <li class="pcard">
+            {c.image ? (
+              <Image class="pcard__icon" src={c.image} alt="" width={112} height={112} format="webp" loading="lazy" />
+            ) : (
+              <span class="pcard__icon pcard__tile" style={`--hue:${c.tile.hue}`} aria-hidden="true">{c.tile.letters}</span>
+            )}
 
-              <div class="pcard__main">
-                <p class="pcard__name">{c.name}</p>
-                <p class="pcard__by">
-                  {c.official ? (
-                    <>
-                      Noctis
-                      <svg class="pcard__check" viewBox="0 0 24 24" role="img" aria-label="Official">
-                        <path fill="currentColor" d="M12 1.5l2.6 1.9 3.2-.2 1 3 2.7 1.8-1 3.1 1 3.1-2.7 1.8-1 3-3.2-.2L12 22.5l-2.6-1.9-3.2.2-1-3-2.7-1.8 1-3.1-1-3.1 2.7-1.8 1-3 3.2.2z" />
-                        <path fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.7 2.7L16.2 9.4" />
-                      </svg>
-                    </>
-                  ) : c.authorUrl ? (
-                    <>by <a href={c.authorUrl} target="_blank" rel="noopener">{c.author}</a></>
-                  ) : (
-                    <>by {c.author}</>
-                  )}
-                </p>
-                {c.description && <p class="pcard__desc">{c.description}</p>}
-                <p class="pcard__meta">
-                  {c.version && <span class="mono">v{c.version}</span>}
-                  <span>{c.platforms.join(', ')}</span>
-                  {c.homepage && (
-                    <a class="pcard__src" href={c.homepage} target="_blank" rel="noopener" aria-label={`Source for ${c.name}`}>Source</a>
-                  )}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  ))}
+            <div class="pcard__main">
+              <p class="pcard__name">
+                {c.name}
+                <svg class="pcard__check" viewBox="0 0 24 24" role="img" aria-label="Official">
+                  <path fill="currentColor" d="M12 1.5l2.6 1.9 3.2-.2 1 3 2.7 1.8-1 3.1 1 3.1-2.7 1.8-1 3-3.2-.2L12 22.5l-2.6-1.9-3.2.2-1-3-2.7-1.8 1-3.1-1-3.1 2.7-1.8 1-3 3.2.2z" />
+                  <path fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.7 2.7L16.2 9.4" />
+                </svg>
+              </p>
+              <p class="pcard__by">by {OFFICIAL_MAKER}</p>
+              {c.description && <p class="pcard__desc">{c.description}</p>}
+              <p class="pcard__meta">
+                {c.version && <span class="mono">v{c.version}</span>}
+                <span>{c.platforms.join(', ')}</span>
+                {c.homepage && (
+                  <a class="pcard__src" href={c.homepage} target="_blank" rel="noopener" aria-label={`Source for ${c.name}`}>Source</a>
+                )}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
 
   <p class="pd__how">Install any of these in Noctis: <strong>Settings → Plugins</strong>.</p>
 </div>
@@ -165,10 +146,6 @@ const groups = [
 
   .pd__empty {
     color: var(--ink-2);
-  }
-
-  .pd__empty a {
-    color: var(--accent-text);
   }
 
   .pd__grid {
@@ -217,32 +194,22 @@ const groups = [
   }
 
   .pcard__name {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     color: var(--ink-0);
     font-weight: 600;
     letter-spacing: -0.01em;
   }
 
   .pcard__by {
-    display: flex;
-    align-items: center;
-    gap: 4px;
     color: var(--ink-2);
     font-size: var(--step--1);
   }
 
-  .pcard__by a {
-    color: inherit;
-    text-decoration-color: var(--line);
-    text-underline-offset: 0.2em;
-  }
-
-  .pcard__by a:hover {
-    color: var(--ink-0);
-  }
-
   .pcard__check {
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
     flex: none;
     color: #1d9bf0;
   }
