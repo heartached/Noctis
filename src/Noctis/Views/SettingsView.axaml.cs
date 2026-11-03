@@ -762,6 +762,12 @@ public partial class SettingsView : UserControl
     internal static readonly HashSet<string> StyleProbeTabs = new(); // internal for tests
 
     /// <summary>
+    /// The probe is a macOS diagnostic: elsewhere it only walked the whole Settings tree on
+    /// each tab's first open and filled "Copy Logs" with lines nobody reads (owner 11-02).
+    /// </summary>
+    internal static bool StyleProbeEnabled = OperatingSystem.IsMacOS(); // tests turn it on
+
+    /// <summary>
     /// macOS diagnostics (owner's Mac, 09-26): styled values that came out wrong there —
     /// square pill buttons and text boxes, invisible section titles, slider tracks gone —
     /// while cards and locally set values drew fine. One line per session in "Copy Logs"
@@ -770,6 +776,7 @@ public partial class SettingsView : UserControl
     /// </summary>
     private void LogStyleProbe()
     {
+        if (!StyleProbeEnabled) return;
         var tab = (DataContext as SettingsViewModel)?.SelectedSettingsTab ?? "?";
         if (StyleProbeTabs.Contains(tab)) return;
         try
