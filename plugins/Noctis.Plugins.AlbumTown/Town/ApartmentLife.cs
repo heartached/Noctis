@@ -480,8 +480,10 @@ public sealed class ApartmentLife
         }
     }
 
-    // Pets on their way through a door pass the others (pushing them back could keep them from it).
-    private bool Free(Pet p) => p.Creature.State != CreatureState.Talk && !ReferenceEquals(p, Held) && p.Goal is null;
+    // Walkers pass through the others: two pets walking toward each other in a narrow room pushed
+    // each other back forever and stood stuck (Discord, Jafezy 11-02). Only pets standing about
+    // step aside; talkers and the held one stay put.
+    private bool Free(Pet p) => p.Creature.State is not (CreatureState.Talk or CreatureState.Wander) && !ReferenceEquals(p, Held) && p.Goal is null;
 
     private static float Approach(float value, float target, float delta)
         => value < target ? Math.Min(target, value + delta) : Math.Max(target, value - delta);

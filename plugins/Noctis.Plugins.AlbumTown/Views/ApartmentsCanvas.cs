@@ -342,6 +342,7 @@ public sealed class ApartmentsCanvas : Control
         // theme) changes. A frame blits it once instead of thirty room bitmaps.
         if (_mapVersion != Grid.Version) RebuildGeometry();
         DrawBuilding(ctx, bounds, scaling);
+        DrawScrollingNames(ctx);
 
         // Pets: feet in px, front to back.
         var pets = Life.Pets;
@@ -371,6 +372,27 @@ public sealed class ApartmentsCanvas : Control
         DrawGhost(ctx);
         if (Grid.Rooms.Count == 0) DrawHint(ctx, bounds);
         if (_frame % 240 == 0) PruneSprites();
+    }
+
+    /// <summary>Rooms whose name scrolls right now (tests).</summary>
+    public int ScrollingNames { get; private set; }
+
+    /// <summary>Names too long for their room scroll by (<see cref="RoomPainter.DrawMarquee"/>);
+    /// the rest are in the room bitmaps.</summary>
+    private void DrawScrollingNames(DrawingContext ctx)
+    {
+        ScrollingNames = 0;
+        var seconds = _clock.Elapsed.TotalSeconds;
+        foreach (var room in Grid.Rooms)
+        {
+            if (!_sprites.TryGetValue(room.Id, out var sprite) || sprite.Text is not { Scrolls: true } text) continue;
+            var rect = RoomRect(room.Cells);
+            if (sprite.Size != rect.Size) continue;
+            var origin = new Vector(Snap(rect.X, sprite.Scaling), Snap(rect.Y, sprite.Scaling));
+            if (text.TitleScrolls) RoomPainter.DrawMarquee(ctx, text.Title, text.TitleAt + origin, text.Width, seconds);
+            if (text.SubScrolls && text.Sub is { } sub) RoomPainter.DrawMarquee(ctx, sub, text.SubAt + origin, text.Width, seconds);
+            ScrollingNames++;
+        }
     }
 
     private CreaturePainter PainterFor(Pet p) => p.IsSong ? SongPainter : AlbumPainter;
@@ -504,9 +526,10 @@ public sealed class ApartmentsCanvas : Control
             }
             else openings.Add(new RoomOpening(PortalKind.Ladder, x, y, o.Length * Cell - Math.Min(o.AreaHeight * Cell * 0.16, Cell * 0.13)));
         }
-        var bitmap = RoomPainter.Build(size, scaling, Cell, _theme, frame, geo.Look, _scratchCovers, areas, openings);
+        var text = RoomPainter.Text(geo.Look, size, Cell, _theme, oneCell: room.Cells is { W: 1, H: 1 });
+        var bitmap = RoomPainter.Build(size, scaling, Cell, _theme, frame, geo.Look, _scratchCovers, areas, openings, text);
         _scratchCovers.Clear();
-        return new RoomSprite(bitmap, size, scaling, _theme, geo, ready, Cell);
+        return new RoomSprite(bitmap, size, scaling, _theme, geo, ready, Cell) { Text = text };
     }
 
     /// <summary>The room's colour: its (first) cover's, else the playlist's own, else one from its name.</summary>
@@ -911,5 +934,7 @@ public sealed class ApartmentsCanvas : Control
         public Rect Source { get; }
         public bool Stale { get; set; }
         public long UsedFrame { get; set; }
+        /// <summary>The name lines; the ones that scroll are drawn per frame.</summary>
+        public RoomText? Text { get; init; }
     }
 }

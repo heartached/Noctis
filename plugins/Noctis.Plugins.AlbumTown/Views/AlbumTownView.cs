@@ -201,7 +201,7 @@ public sealed partial class AlbumTownView : UserControl
         _cardArtist = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
         _cardStats = new TextBlock { FontSize = 12 };
         _cardReason = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = 230 };
-        var play = Pill("Play", () => { if (_cardAlbum is { } a) _host.Play(a); }, accent: true);
+        var play = Pill("Play", () => { if (_cardAlbum is { } a) PlayAlbum(a); }, accent: true);
         _cardShowAlbum = Pill("Go to album", () => { if (_cardAlbum is { } a) _host.ShowAlbum(a); });
         var close = Pill("Close", HideCard);
         var cardText = new StackPanel
@@ -371,11 +371,13 @@ public sealed partial class AlbumTownView : UserControl
     private string? NowPlayingKey()
         => _host.NowPlaying is { FilePath: { Length: > 0 } path } && _byFile.TryGetValue(path, out var key) ? key : null;
 
-    /// <summary>Picks a new crowd (keeps the called ones and the one playing).</summary>
+    /// <summary>Picks a crowd (keeps the called ones and the one playing). <paramref name="fresh"/>
+    /// ("New crowd"): everyone else is new, picked at random (<see cref="PlazaCast.ChooseFresh"/>).</summary>
     public void Recast(bool fresh)
     {
-        var random = fresh ? new Random(_random.Next()) : _random;
-        _cast = PlazaCast.Choose(_town, _host.CrowdSize, random, NowPlayingKey(), _called).ToList();
+        _cast = (fresh
+            ? PlazaCast.ChooseFresh(_town, _host.CrowdSize, new Random(_random.Next()), _cast.Select(m => m.Album.Key).ToList(), NowPlayingKey(), _called)
+            : PlazaCast.Choose(_town, _host.CrowdSize, _random, NowPlayingKey(), _called)).ToList();
         _plaza.World.SetCast(_cast);
         _plaza.World.SetNowPlaying(NowPlayingKey(), _host.IsPlaying);
         _plaza.Wake();
@@ -415,6 +417,18 @@ public sealed partial class AlbumTownView : UserControl
         _plaza.Wake();
         UpdateStatus();
     }
+
+    /// <summary>Plays <paramref name="album"/> without its snoozed songs: they stayed in the queue
+    /// when played from the town (Discord, Mistery 11-02), unlike Noctis's own shuffle.</summary>
+    public void PlayAlbum(TownAlbum album)
+    {
+        var ids = Playable(album.TrackIds);
+        _host.Play(ReferenceEquals(ids, album.TrackIds) ? album : album with { TrackIds = ids });
+    }
+
+    /// <summary>Song ids without the snoozed ones (<see cref="TownQueue.WithoutSnoozed"/>).</summary>
+    private IReadOnlyList<string> Playable(IReadOnlyList<string> ids)
+        => TownQueue.WithoutSnoozed(ids, id => _tracksById.GetValueOrDefault(id), DateTimeOffset.Now);
 
     private void OnNowPlayingChanged(object? sender, EventArgs e)
     {

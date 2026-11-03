@@ -129,6 +129,13 @@ public static class CoverColor
 /// and a colour to fall back on before (or without) a cover.</summary>
 public sealed record RoomLook(string Title, string Subtitle, IReadOnlyList<string> Covers, Color? Fallback);
 
+/// <summary>A room's name lines (<see cref="RoomPainter.Text"/>), room px. A line that does not
+/// fit scrolls: the canvas draws it every frame, the room's bitmap leaves it out.</summary>
+public sealed record RoomText(FormattedText Title, FormattedText? Sub, Point TitleAt, Point SubAt, double Width, bool TitleScrolls, bool SubScrolls)
+{
+    public bool Scrolls => TitleScrolls || SubScrolls;
+}
+
 /// <summary>A doorway or ladder to draw inside a room, in the room's own px.</summary>
 public readonly record struct RoomOpening(PortalKind Kind, double X, double Y, double Length);
 
@@ -169,8 +176,9 @@ public static class RoomPainter
     /// <param name="areas">The room's areas, in the room's px.</param>
     /// <param name="openings">Doorways (on walls) and ladders (in floors), in the room's px.</param>
     /// <param name="covers">Decoded backdrop covers: one, or up to four for a mosaic.</param>
+    /// <param name="text">The name lines (<see cref="Text"/>), null for none (a one-cell room).</param>
     public static RenderTargetBitmap Build(Size size, double scaling, double cell, TownTheme theme, Color frame, RoomLook look,
-        IReadOnlyList<Bitmap> covers, IReadOnlyList<Rect> areas, IReadOnlyList<RoomOpening> openings)
+        IReadOnlyList<Bitmap> covers, IReadOnlyList<Rect> areas, IReadOnlyList<RoomOpening> openings, RoomText? text = null)
     {
         var px = new PixelSize(Math.Max(1, (int)Math.Ceiling(size.Width * scaling)), Math.Max(1, (int)Math.Ceiling(size.Height * scaling)));
         var w = px.Width / scaling;
@@ -266,27 +274,15 @@ public static class RoomPainter
             // The frame: Jafezy's coloured border, flat and rounded.
             ctx.DrawRectangle(null, new ImmutablePen(new ImmutableSolidColorBrush(frame), fw), inner);
 
-            // Name and second line.
-            var head = HeaderHeight(cell);
-            var (menu, menuR) = MenuButton(rect.Size, cell);
-            var textLeft = fw + 8;
-            var textWidth = Math.Max(10, menu.X - menuR - 6 - textLeft);
-            var titleSize = Math.Clamp(cell * 0.1, 11, 14);
-            var title = new FormattedText(look.Title.Length == 0 ? "Untitled" : look.Title, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                TitleFace, titleSize, theme.Text)
+            // Name and second line: drawn here when they fit, by the canvas (scrolling) when not.
+            if (text is not null)
             {
-                MaxTextWidth = textWidth, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis,
-            };
-            var sub = new FormattedText(look.Subtitle, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, SubFace, Math.Max(9.5, titleSize - 2), theme.Muted)
-            {
-                MaxTextWidth = textWidth, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis,
-            };
-            var both = title.Height + (look.Subtitle.Length > 0 && h > cell * 0.8 ? sub.Height : 0);
-            var ty = fw + Math.Max(3, (head - both) / 2);
-            ctx.DrawText(title, new Point(textLeft, ty));
-            if (look.Subtitle.Length > 0 && h > cell * 0.8) ctx.DrawText(sub, new Point(textLeft, ty + title.Height));
+                if (!text.TitleScrolls) ctx.DrawText(text.Title, text.TitleAt);
+                if (text.Sub is { } subLine && !text.SubScrolls) ctx.DrawText(subLine, text.SubAt);
+            }
 
             // "..." (remove, play, choose songs) and the corner grip.
+            var (menu, menuR) = MenuButton(rect.Size, cell);
             ctx.DrawEllipse(theme.Chip, null, menu, menuR, menuR);
             var dot = menuR * 0.16;
             for (var i = -1; i <= 1; i++) ctx.DrawEllipse(theme.Text, null, new Point(menu.X + i * menuR * 0.42, menu.Y), dot, dot);
@@ -299,6 +295,78 @@ public static class RoomPainter
             }
         }
         return bitmap;
+    }
+
+    /// <summary>Smallest name size a long name shrinks to before it scrolls instead.</summary>
+    public const double MinTitleSize = 10;
+
+    /// <summary>
+    /// The room's name and second line, laid out in the name band (room px). Each line keeps
+    /// its size when it fits, shrinks a little when it almost does, and otherwise scrolls
+    /// (<see cref="RoomText.TitleScrolls"/>): long names ran out of the room or were cut
+    /// (Discord, Jafezy 11-02). Null for a one-cell room: too small for words.
+    /// </summary>
+    public static RoomText? Text(RoomLook look, Size size, double cell, TownTheme theme, bool oneCell)
+    {
+        if (oneCell) return null;
+        var fw = FrameWidth(cell);
+        var head = HeaderHeight(cell);
+        var (menu, menuR) = MenuButton(size, cell);
+        var textLeft = fw + 8;
+        var width = Math.Max(10, menu.X - menuR - 6 - textLeft);
+        var baseSize = Math.Clamp(cell * 0.1, 11, 14);
+        var (title, titleScrolls) = Fit(look.Title.Length == 0 ? "Untitled" : look.Title, TitleFace, baseSize, width, theme.Text);
+        var showSub = look.Subtitle.Length > 0 && size.Height > cell * 0.8;
+        var (sub, subScrolls) = showSub ? Fit(look.Subtitle, SubFace, Math.Max(9.5, baseSize - 2), width, theme.Muted) : (null, false);
+        var both = title.Height + (sub?.Height ?? 0);
+        var ty = fw + Math.Max(3, (head - both) / 2);
+        return new RoomText(title, sub, new Point(textLeft, ty), new Point(textLeft, ty + title.Height), width, titleScrolls, subScrolls);
+    }
+
+    private static (FormattedText Text, bool Scrolls) Fit(string text, Typeface face, double size, double width, IBrush brush)
+    {
+        var full = Line(text, face, size, brush);
+        if (full.WidthIncludingTrailingWhitespace <= width) return (full, false);
+        // Up to two px smaller when that makes it fit; else it scrolls at its own size.
+        for (var s = size - 1; s >= Math.Max(MinTitleSize - 0.5, size - 2); s -= 1)
+        {
+            var smaller = Line(text, face, s, brush);
+            if (smaller.WidthIncludingTrailingWhitespace <= width) return (smaller, false);
+        }
+        return (full, true);
+    }
+
+    private static FormattedText Line(string text, Typeface face, double size, IBrush brush)
+        => new(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, face, size, brush) { MaxLineCount = 1 };
+
+    /// <summary>Gap between the end of a scrolling name and its start coming round again (px).</summary>
+    public const double MarqueeGap = 36;
+    /// <summary>Scroll speed (px per second) and the pause at the start of each round (seconds).</summary>
+    public const double MarqueeSpeed = 26;
+    public const double MarqueePause = 1.8;
+
+    /// <summary>How far a scrolling line of <paramref name="textWidth"/> px has moved left after
+    /// <paramref name="seconds"/>: it rests at the start, scrolls until its start comes round
+    /// again (after the gap), rests, and so on.</summary>
+    public static double MarqueeOffset(double seconds, double textWidth)
+    {
+        var distance = textWidth + MarqueeGap;
+        var period = MarqueePause + distance / MarqueeSpeed;
+        var t = seconds % period;
+        return t < MarqueePause ? 0 : Math.Min(distance, (t - MarqueePause) * MarqueeSpeed);
+    }
+
+    /// <summary>Draws <paramref name="line"/> scrolled, clipped to <paramref name="width"/>, at
+    /// <paramref name="at"/> (px). Two copies so the start follows the end round.</summary>
+    public static void DrawMarquee(DrawingContext ctx, FormattedText line, Point at, double width, double seconds)
+    {
+        var w = line.WidthIncludingTrailingWhitespace;
+        var off = MarqueeOffset(seconds, w);
+        using (ctx.PushClip(new Rect(at.X, at.Y, width, line.Height)))
+        {
+            ctx.DrawText(line, new Point(at.X - off, at.Y));
+            if (off > 0) ctx.DrawText(line, new Point(at.X - off + w + MarqueeGap, at.Y));
+        }
     }
 
     private static void DrawFill(DrawingContext ctx, Bitmap image, Rect into)

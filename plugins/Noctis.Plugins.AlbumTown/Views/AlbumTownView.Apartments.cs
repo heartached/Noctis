@@ -259,7 +259,7 @@ public sealed partial class AlbumTownView
         if (!_tracksById.TryGetValue(trackId, out var t)) return null;
         _residentByTrack.TryGetValue(trackId, out var key);
         var resident = key is not null && _townByKey.TryGetValue(key, out var r) ? r : null;
-        song = new TownAlbum("song:" + t.Id, t.Title.Trim(), (string.IsNullOrWhiteSpace(t.Artist) ? t.AlbumArtist : t.Artist).Trim(), t.Year, t.Genre.Trim(),
+        song = new TownAlbum("song:" + t.Id, t.Title.Trim(), AlbumGrouping.DisplayArtist(t), t.Year, t.Genre.Trim(),
             new[] { t.Id }, t.AlbumId, SongCover(trackId), Math.Max(0, t.PlayCount), t.LastPlayed, t.DateAdded, resident?.IsSingle ?? false, t.IsFavorite);
         _songs[trackId] = song;
         return song;
@@ -348,13 +348,13 @@ public sealed partial class AlbumTownView
         if (room.Kind == RoomKind.Album)
         {
             var album = _townByKey.GetValueOrDefault(room.Source);
-            items.Add(("Play album", album is null ? null : () => _host.Play(album), false));
+            items.Add(("Play album", album is null ? null : () => PlayAlbum(album), false));
             items.Add(("Go to album", album is { AlbumId.Length: > 0 } ? () => _host.ShowAlbum(album) : null, false));
         }
         else
         {
             var playlist = _playlistById.GetValueOrDefault(room.Source);
-            items.Add(("Play playlist", playlist is { TrackIds.Count: > 0 } ? () => _host.PlayTracks(playlist.TrackIds) : null, false));
+            items.Add(("Play playlist", playlist is { TrackIds.Count: > 0 } ? () => _host.PlayTracks(Playable(playlist.TrackIds)) : null, false));
             items.Add(("Choose songs...", playlist is null ? null : () => ShowPicker(room), false));
             for (var n = 1; n <= RoomShapes.MaxSplits; n++)
             {
@@ -508,7 +508,7 @@ public sealed partial class AlbumTownView
                     Children =
                     {
                         new TextBlock { Text = Or(t.Title, "Untitled"), FontSize = 13, Foreground = _theme.Text, TextTrimming = TextTrimming.CharacterEllipsis },
-                        new TextBlock { Text = $"{Or(t.Artist, "Unknown artist")} · {(t.PlayCount == 1 ? "1 play" : t.PlayCount.ToString(CultureInfo.InvariantCulture) + " plays")}",
+                        new TextBlock { Text = $"{Or(AlbumGrouping.DisplayArtist(t), "Unknown artist")} · {(t.PlayCount == 1 ? "1 play" : t.PlayCount.ToString(CultureInfo.InvariantCulture) + " plays")}",
                             FontSize = 11, Foreground = _theme.Muted, TextTrimming = TextTrimming.CharacterEllipsis },
                     },
                 },
