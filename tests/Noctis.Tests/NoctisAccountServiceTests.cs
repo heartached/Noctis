@@ -836,6 +836,41 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     // ── Playlists ────────────────────────────────────────────────────────
 
     [Fact]
+    public async Task SignInAgain_BringsBackWhatThePhoneLastEdited()
+    {
+        // 11-03 on the S23: a playlist last edited on the phone was gone after sign out + sign in.
+        // The pull skipped the phone's own ledger entries ("echoes"), but sign-out had removed
+        // its copies, so nothing brought them back.
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+
+        var lists = await _phonePersistence.LoadPlaylistsAsync();
+        var mix = lists.Single(p => p.Id == _deskMixId);
+        mix.TrackIds.Add(_t2.Id);
+        mix.ModifiedAt = DateTime.UtcNow;
+        await _phonePersistence.SavePlaylistsAsync(lists);
+        var p1 = Phone(_t1);
+        p1.IsFavorite = true;
+        await _phoneLibrary.SaveTrackUserStateAsync(new[] { p1 });
+        await Until(() => svc.PendingTrackCount == 1);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(new[] { _t1.Id, _t3.Id, _t2.Id }, _deskPersistence.Playlists.Single(p => p.Id == _deskMixId).TrackIds);
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+        Assert.DoesNotContain(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+
+        var again = await SignedInAsync();
+        var result = await again.SyncNowAsync(ct);
+
+        Assert.Equal(1, result.Playlists);
+        Assert.Equal(new[] { _t1.Id, _t3.Id, _t2.Id },
+            (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId).TrackIds);
+        Assert.True(Phone(_t1).IsFavorite);
+        Assert.Equal(0, (await again.SyncNowAsync(ct)).StateChangesPushed);   // applying them queued nothing
+    }
+
+    [Fact]
     public async Task Playlists_RoundTrip_DesktopToPhone_PhoneEditsBack_DesktopRenameAndDelete()
     {
         await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { new() { Name = "Phone only" } });

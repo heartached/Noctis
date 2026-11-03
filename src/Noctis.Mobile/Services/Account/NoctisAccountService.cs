@@ -806,6 +806,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     {
         long since;
         lock (_gate) since = _sync.Seq;
+        // From the start (first sign-in, or again after a sign-out removed the desktop's songs
+        // and playlists): our own entries are the only copy of what this phone last edited, so
+        // they apply too. Later pulls skip them: the phone already has what it pushed.
+        var fromStart = since == 0;
         var applied = 0;
         for (var round = 0; round < 1000; round++)
         {
@@ -816,7 +820,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 maxSeq = Math.Max(maxSeq, item.Seq);
                 // Our own pushes echo back: nothing to apply.
-                if (string.Equals(item.Device, _deviceId, StringComparison.Ordinal)) continue;
+                if (!fromStart && string.Equals(item.Device, _deviceId, StringComparison.Ordinal)) continue;
                 if (!NoctisRemoteIds.TryParseSyncId(item.Id, out var id)) continue;
                 switch (item.Kind)
                 {
