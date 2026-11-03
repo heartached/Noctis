@@ -41,8 +41,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-abloop-v1.0.0/Noctis.Plugins.ABLoop-1.0.0.zip",
-      "sha256": "d51ea10cd1b98c7339b27501a17db5acca920da90c8f49d265e6f07836f08dde",
-      "size": 33395,
+      "sha256": "c644ae4136a34aab80ac52006e03e063868eadc3563b1ebb27c4e18233ed5d97",
+      "size": 33445,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.ABLoop",
       "icon": "Noctis.Plugins.ABLoop/icon.png"
     },
@@ -56,8 +56,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-youtubeimport-v1.0.0/Noctis.Plugins.YouTubeImport-1.0.0.zip",
-      "sha256": "6532517dbbd356109c8b95a0fc912908272a415b1d9408ac1e048706be5af1b6",
-      "size": 73524,
+      "sha256": "a3d41a2ca6f12c6ab70eb7db0aa2e4fdab040c315d9aaeccabab918671a75582",
+      "size": 73526,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.YouTubeImport",
       "icon": "Noctis.Plugins.YouTubeImport/icon.png"
     },
@@ -86,8 +86,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-albumtown-v1.0.1/Noctis.Plugins.AlbumTown-1.0.1.zip",
-      "sha256": "eb2a7d0c1466886984934627f810eb8db864f74295436bfd55f81b8a42f0c2b1",
-      "size": 113020,
+      "sha256": "4ff6ba1a1175438fd00104412047ab4753ca80a4acbe4bbb0bde6dd1c0b7cf50",
+      "size": 113002,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
       "icon": "Noctis.Plugins.AlbumTown/icon.png"
     },

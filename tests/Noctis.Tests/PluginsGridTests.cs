@@ -140,14 +140,16 @@ public class PluginsGridTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void Sections_WithNothingInstalled_CommunitySaysWhereTheyComeFrom()
+    public void Sections_WithNothingInstalled_ShowTheBuiltInList()
     {
         using var m = Mount(withClient: false);
-        m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins; // the built-in list: Mixxx
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins; // the built-in list
 
+        var builtIn = PluginCatalog.LoadEmbedded().Plugins;
         Assert.Contains(m.Vm.OfficialCards, c => c.Id == "dev.noctis.plugins.mixxx" && c.IsOfficial);
-        Assert.Empty(m.Vm.CommunityCards);
-        Assert.True(m.Vm.ShowCommunityEmpty);
+        Assert.Equal(builtIn.Where(e => !e.IsOfficial).Select(e => e.Id).OrderBy(id => id),
+            m.Vm.CommunityCards.Select(c => c.Id).OrderBy(id => id));
+        Assert.Equal(builtIn.Any(e => !e.IsOfficial), !m.Vm.ShowCommunityEmpty);
         Assert.True(m.Vm.ShowCommunitySection);
     }
 
@@ -368,13 +370,13 @@ public class PluginsGridTests : IDisposable
         _box.WriteFolder("dev.test.code", PluginSandbox.Manifest(id: "dev.test.code", name: "Code Thing"), ("Test.Plugin.dll", new byte[] { 1 }));
         m.Host.LoadAll();
         m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
-        m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single());
+        m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == "dev.test.code"));
         Assert.True(m.Vm.IsPluginDetailOpen);
 
         m.Host.Remove(m.Host.FindById("dev.test.code")!, deleteData: true);
 
         Assert.False(m.Vm.IsPluginDetailOpen);
-        Assert.Empty(m.Vm.CommunityCards);
+        Assert.DoesNotContain(m.Vm.CommunityCards, c => c.Id == "dev.test.code");
     }
 
     [AvaloniaFact]

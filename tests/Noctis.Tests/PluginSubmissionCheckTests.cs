@@ -385,7 +385,8 @@ public class PluginSubmissionCheckTests : IDisposable
         entry["version"] = "9.0.0";
         var updated = PluginIndexFile.Upsert(text, entry, out var replaced);
         Assert.True(replaced);
-        Assert.Equal(text.Replace("\"version\": \"1.0.1\"", "\"version\": \"9.0.0\""), updated);
+        var first = text.IndexOf("\"version\": \"1.0.1\"", StringComparison.Ordinal); // the first entry's
+        Assert.Equal(text[..first] + "\"version\": \"9.0.0\"" + text[(first + "\"version\": \"1.0.1\"".Length)..], updated);
     }
 
     [Theory]
