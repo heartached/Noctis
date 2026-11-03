@@ -472,4 +472,114 @@ public class ListColumnsIssue151Tests : IDisposable
         }
         finally { win.Close(); }
     }
+
+    // ── ReplayGain column ─────────────────────────────────────────────────
+
+    private static List<string?> VisibleTexts(Control row) =>
+        row.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+
+    private static void WaitForOrder(LibrarySongsViewModel vm, Window win, Func<IReadOnlyList<Track>, bool> done)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!done(vm.FilteredTracks.ToList()) && DateTime.UtcNow < deadline)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(5);
+        }
+        Settle(win);
+    }
+
+    [AvaloniaFact]
+    public void SongsView_ReplayGainColumn_OffByDefault_ShowsTheTrackGain_BlankWithoutOne_UpdatesLive()
+    {
+        var (vm, view, win) = MountSongs(6);
+        try
+        {
+            Assert.False(view.Columns.IsVisible("ReplayGain"));
+            Assert.False(Cell(Header(view), "ReplayGain").IsVisible);
+            var labels = Header(view).BuildMenu(view.Columns).Items.OfType<MenuItem>().Select(i => i.Header as string).ToList();
+            Assert.Contains(Noctis.Localization.Loc.T("LibrarySongs.ReplayGain"), labels);
+
+            var first = vm.FilteredTracks[0];
+            first.ApplyReplayGain(new ReplayGainValues(-7.23, 0.98, -6.5));
+            view.Columns.SetVisible("ReplayGain", true);
+            Settle(win);
+            AssertAligned(view, win);
+
+            var rows = view.TrackList.GetRealizedContainers().OfType<ListBoxItem>().ToList();
+            var firstRow = rows.Single(r => ReferenceEquals(r.DataContext, first));
+            var firstCell = (Border)Cell(firstRow.GetVisualDescendants().OfType<ColumnsPanel>().First(), "ReplayGain");
+            Assert.Equal((-7.2).ToString("+0.0;-0.0;0.0") + " dB", ((TextBlock)firstCell.Child!).Text);
+            var otherRow = rows.First(r => !ReferenceEquals(r.DataContext, first));
+            var otherCell = (Border)Cell(otherRow.GetVisualDescendants().OfType<ColumnsPanel>().First(), "ReplayGain");
+            Assert.True(string.IsNullOrEmpty(((TextBlock)otherCell.Child!).Text)); // no gain: blank
+
+            // The backfill and the ReplayGain scan set it off the UI thread.
+            var other = (Track)otherRow.DataContext!;
+            Task.Run(() => other.ApplyReplayGain(new ReplayGainValues(2.04, null, null))).Wait();
+            Settle(win);
+            Assert.Equal(2.0.ToString("+0.0;-0.0;0.0") + " dB", ((TextBlock)otherCell.Child!).Text);
+
+            view.Columns.SetVisible("ReplayGain", false);
+            Settle(win);
+            Assert.False(firstCell.IsVisible);
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void SongsView_ReplayGainColumn_SortsByTrackGain_SongsWithoutOneLast()
+    {
+        var (vm, view, win) = MountSongs(5);
+        try
+        {
+            var tracks = vm.FilteredTracks.ToList();
+            tracks[0].ApplyReplayGain(new ReplayGainValues(-3.0, null, null));
+            tracks[1].ApplyReplayGain(new ReplayGainValues(-9.5, null, null));
+            tracks[2].ApplyReplayGain(ReplayGainValues.None);
+            tracks[3].ApplyReplayGain(new ReplayGainValues(1.5, null, null));
+            // tracks[4]: never read
+
+            vm.SortCommand.Execute("ReplayGain"); // header click: ascending first
+            Assert.True(vm.SortAscending);
+            WaitForOrder(vm, win, l => l.Count == 5 && ReferenceEquals(l[0], tracks[1]));
+            var asc = vm.FilteredTracks.ToList();
+            Assert.Equal(new double?[] { -9.5, -3.0, 1.5, null, null }, asc.Select(t => t.ReplayGainTrackDb));
+
+            vm.SortCommand.Execute("ReplayGain"); // again: flips
+            Assert.False(vm.SortAscending);
+            WaitForOrder(vm, win, l => l.Count == 5 && ReferenceEquals(l[0], tracks[3]));
+            Assert.Equal(new double?[] { 1.5, -3.0, -9.5, null, null }, vm.FilteredTracks.Select(t => t.ReplayGainTrackDb));
+
+            // The header arrow follows the sort once the column is shown.
+            view.Columns.SetVisible("ReplayGain", true);
+            Settle(win);
+            Assert.Equal("ReplayGain", Header(view).SortKey);
+            Assert.True(Header(view).SortArrow.IsEffectivelyVisible);
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task SongsLayout_ReplayGainColumn_FollowsItsSettingsFlag_AndPersists()
+    {
+        var settings = NewSettings();
+        await settings.LoadAsync();
+        var layout = LibraryColumns.CreateSongs();
+        using (LibraryColumns.BindSongs(layout, settings))
+        {
+            Assert.False(layout.IsVisible("ReplayGain"));
+            layout.RequestVisibility("ReplayGain", true);
+            Assert.True(settings.ShowReplayGainColumn);
+            Assert.True(layout.IsVisible("ReplayGain"));
+            settings.ShowReplayGainColumn = false;
+            Assert.False(layout.IsVisible("ReplayGain"));
+            settings.ShowReplayGainColumn = true;
+            await settings.SaveAsync();
+        }
+        var reloaded = NewSettings();
+        await reloaded.LoadAsync();
+        Assert.True(reloaded.ShowReplayGainColumn);
+        Assert.Contains(LibraryColumns.CreateSongs().Specs, c => c.Key == "ReplayGain" && c.SortKey == "ReplayGain" && !c.DefaultVisible);
+    }
 }

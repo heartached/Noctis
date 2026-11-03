@@ -379,6 +379,18 @@ public class ReplayGainAutoScanTests : IDisposable
         // The album is dominated by the loud old song, so its gain is far below the quiet
         // new song's own track gain.
         Assert.True(trackGain - albumGain > 10, $"track {trackGain} dB, album {albumGain} dB");
+
+        // GitHub #151: the written values are on the track (Songs list ReplayGain column),
+        // exactly as a re-read of the file gives them; the measured-only song is untouched.
+        var reread = new MetadataService().ReadTrackMetadata(newSong.FilePath)!;
+        Assert.True(newSong.ReplayGainChecked);
+        Assert.Equal(trackGain, newSong.ReplayGainTrackDb);
+        Assert.Equal(albumGain, newSong.ReplayGainAlbumDb);
+        Assert.Equal(reread.ReplayGainTrackDb, newSong.ReplayGainTrackDb);
+        Assert.Equal(reread.ReplayGainTrackPeak, newSong.ReplayGainTrackPeak);
+        Assert.Equal(reread.ReplayGainAlbumDb, newSong.ReplayGainAlbumDb);
+        Assert.False(oldSong.ReplayGainChecked);
+        Assert.Null(oldSong.ReplayGainTrackDb);
     }
 
     [Fact]
