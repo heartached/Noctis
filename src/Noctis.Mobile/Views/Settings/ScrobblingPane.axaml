@@ -104,7 +104,7 @@
     </UserControl.Styles>
 
     <StackPanel Classes="grouped-content">
-        <StackPanel>
+        <StackPanel IsVisible="{Binding HasComputerRoute}">
             <Border Name="RouteCard" Classes="group-card">
                 <StackPanel Margin="16,18,16,16" Spacing="18">
                     <Grid ColumnDefinitions="Auto,*,Auto,*,Auto">

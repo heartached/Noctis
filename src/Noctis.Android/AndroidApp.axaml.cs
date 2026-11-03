@@ -138,7 +138,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             VersionText = DescribeVersion(context),
             Account = account,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
-            Scrobbler = new PhoneScrobbler(persistence, new HttpClient()),
+            // Without an account there is no computer to send plays through: the phone sends them.
+            Scrobbler = new PhoneScrobbler(persistence, new HttpClient()) { HasComputerRoute = account != null },
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
             // when an album page opens (Settings → About says so).
             AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
@@ -187,13 +188,14 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     }
 
     /// <summary>
-    /// The phone's link to the owner's Noctis desktop (Settings → Account). Null only if it
-    /// cannot be built: Settings then shows no Account section, the sheet no download actions,
-    /// and the player never streams.
+    /// The phone's link to the owner's Noctis desktop (Settings → Account). Null while the
+    /// feature is parked (<see cref="PhoneAccountFeatures"/>) or if it cannot be built: Settings
+    /// then shows no Account section, the sheet no download actions, and the player never streams.
     /// </summary>
     private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library,
         IPersistenceService persistence, NoctisStateRecorder stateRecorder, Task libraryReady)
     {
+        if (!PhoneAccountFeatures.Enabled) return null;
         // The service's TLS: its pin check wired into AndroidMessageHandler.
         NoctisHandlerFactory handlerFactory = AndroidNoctisHttp.CreateHandler;
         // Both directories under NoBackupFilesDir, so neither the device key nor the

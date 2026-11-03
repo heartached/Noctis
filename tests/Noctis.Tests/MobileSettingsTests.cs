@@ -530,7 +530,7 @@ public class MobileSettingsTests
                          ("BackgroundRow", "Background"), ("ThemeRow", "Theme"), ("AccentRow", "Accent"), ("PlayerBarRow", "Player Bar"),
                          ("FoldersRow", "Music Folders"), ("RescanButton", "Rescan Library"),
                          ("LyricsRow", "Lyrics"), ("ScrobblingRow", "Scrobbling"), ("HistoryRow", "Listening History"),
-                         ("ReportRow", "Report a Problem"), ("ExportLogsButton", "Export Logs"), ("WebsiteRow", "Noctis Website"),
+                         ("ReportRow", "Report a Problem"), ("ExportLogsButton", "Export Logs"), ("WebsiteRow", "Noctis Website"), ("PrivacyRow", "Privacy Policy"),
                      })
             {
                 var row = MobileFixtures.Named<Button>(page, name);
@@ -719,11 +719,11 @@ public class MobileSettingsTests
                 Settle(window);
                 lines.AddRange(page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("row-separator") && b.IsEffectivelyVisible));
             }
-            // 10 on the top level (3 Appearance, 1 Library with Downloads away, 2 Listening, 2 Help,
+            // 11 on the top level (3 Appearance, 1 Library with Downloads away, 2 Listening, 3 Help,
             // 2 About), 1 between two folders, none on Accent, 1 between the Player Bar's two
             // switches, 3 in Lyrics (two between its three switches, one between its two
             // sliders): none above a list's first row.
-            Assert.Equal(15, lines.Count);
+            Assert.Equal(16, lines.Count);
             Assert.All(lines, line =>
             {
                 var card = line.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("group-card"));
@@ -1085,7 +1085,8 @@ public class MobileSettingsTests
         var page = await OpenSettings(ShellWithAccount(rig, null, links));
         page.ReportProblemCommand.Execute(null);
         page.OpenWebsiteCommand.Execute(null);
-        Assert.Equal(new[] { "https://github.com/heartached/Noctis/issues/new", "https://noctisapp.cc/" }, links.Opened);
+        page.OpenPrivacyPolicyCommand.Execute(null);
+        Assert.Equal(new[] { "https://github.com/heartached/Noctis/issues/new", "https://noctisapp.cc/", "https://noctisapp.cc/privacy/android" }, links.Opened);
     }
 
     /// <summary>About: What's New and Open-Source Licenses have content; the licences name the

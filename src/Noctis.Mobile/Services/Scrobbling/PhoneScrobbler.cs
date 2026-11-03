@@ -82,6 +82,10 @@ public sealed class PhoneScrobbler
     /// <summary>Tests turn the timer off and call <see cref="FlushAsync"/> themselves.</summary>
     public bool AutoFlush { get; init; } = true;
 
+    /// <summary>False where the phone has no account service (none built, or parked): there is no
+    /// computer to send plays through, so the phone sends them itself whatever the saved route says.</summary>
+    public bool HasComputerRoute { get; init; } = true;
+
     /// <summary>Raised (any thread) when the settings, a connection or the queue changed.</summary>
     public event EventHandler? Changed;
 
@@ -114,7 +118,7 @@ public sealed class PhoneScrobbler
         Excluded = new HashSet<string>(s.ScrobbleExcludedKeys ?? new List<string>()),
     };
 
-    public bool FromPhone => _cfg.FromPhone;
+    public bool FromPhone => _cfg.FromPhone || !HasComputerRoute;
     public bool SendPlays => _cfg.SendPlays;
     public bool ShowNowPlaying => _cfg.NowPlaying;
     public bool LastFmConnected => _cfg.LastFmKey.Length > 0;
@@ -232,7 +236,7 @@ public sealed class PhoneScrobbler
         _track = track;
         _counted = false;
         _clock.Start(UtcNow);
-        if (!_cfg.FromPhone || !_cfg.SendPlays || !_cfg.NowPlaying || IsExcluded(track)) return;
+        if (!FromPhone || !_cfg.SendPlays || !_cfg.NowPlaying || IsExcluded(track)) return;
         if (!Sendable(track)) return;
         var entry = ToEntry(track, 0);
         var key = _cfg.LastFmKey;
@@ -252,8 +256,8 @@ public sealed class PhoneScrobbler
         _counted = true;
         // Through Computer: the account sync carries the play and the computer sends it on; this
         // class sends nothing. From This Phone: this class sends it (or Send Plays is off), never the computer.
-        PlayDecided?.Invoke(track, _cfg.FromPhone ? PlayScrobble.Phone : PlayScrobble.Computer);
-        if (!_cfg.FromPhone || !_cfg.SendPlays) return;
+        PlayDecided?.Invoke(track, FromPhone ? PlayScrobble.Phone : PlayScrobble.Computer);
+        if (!FromPhone || !_cfg.SendPlays) return;
         Enqueue(track, _clock.StartedAt);
     }
 

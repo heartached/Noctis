@@ -509,9 +509,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     internal const string ReportProblemUrl = "https://github.com/heartached/Noctis/issues/new";
     internal const string WebsiteUrl = "https://noctisapp.cc/";
+    /// <summary>The published copy of store/android/privacy-policy.md (the Play listing's link too).</summary>
+    internal const string PrivacyPolicyUrl = "https://noctisapp.cc/privacy/android";
 
     [RelayCommand] private void ReportProblem() => Shell.Links?.Open(ReportProblemUrl);
     [RelayCommand] private void OpenWebsite() => Shell.Links?.Open(WebsiteUrl);
+    [RelayCommand] private void OpenPrivacyPolicy() => Shell.Links?.Open(PrivacyPolicyUrl);
 
     // ── About ──
 
@@ -519,13 +522,14 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string VersionValue => VersionText.StartsWith("Noctis ", StringComparison.Ordinal) ? VersionText["Noctis ".Length..] : VersionText;
     public string VersionRowName => Named("Version", VersionValue);
 
-    /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings holds.</summary>
-    public IReadOnlyList<string> WhatsNewItems { get; } = new[]
+    /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings
+    /// holds; the Downloads line only where there is an account (and so a Downloads page).</summary>
+    public IReadOnlyList<string> WhatsNewItems => new[]
     {
         "Settings is redesigned: your profile and library numbers on top, then Appearance, Library, Listening, Help and About.",
-        "Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads.",
+        Shell.HasAccount ? "Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads." : null,
         "Open-Source Licenses lists what Noctis is built with.",
-    };
+    }.OfType<string>().ToArray();
 
     /// <summary>Open-Source Licenses: the bundled decoder and the main libraries the phone app is built on.</summary>
     public IReadOnlyList<LicenseEntry> Licenses { get; } = new LicenseEntry[]
