@@ -240,8 +240,25 @@ public class ArtistImageService
     /// Calls onImageReady for each artist that gets a new (or replaced) image; the shared
     /// bitmap cache is invalidated for a replaced file so live tiles repaint it.
     /// </summary>
+    // Bumped by StopFetchesAsync: a sweep started before it (or still queued for the gate) ends.
+    private int _sweepGeneration;
+
+    /// <summary>
+    /// Settings › Reset Everything: ends every sweep over the old library and waits for the one
+    /// in flight, so no portrait lands in the artwork folder after it is emptied (the Artists
+    /// tab's whole-library sweep kept downloading for minutes after the reset).
+    /// </summary>
+    public async Task StopFetchesAsync()
+    {
+        Interlocked.Increment(ref _sweepGeneration);
+        await _fetchGate.WaitAsync().ConfigureAwait(false);
+        _failedArtistCooldownUntil.Clear();
+        _fetchGate.Release();
+    }
+
     public async Task FetchAndCacheAsync(IReadOnlyList<Artist> artists, Action<Artist, string>? onImageReady = null)
     {
+        var generation = Volatile.Read(ref _sweepGeneration);
         // Get off the caller's thread before doing anything.
         //
         // The Artists tab calls this fire-and-forget from Refresh(). With an uncontended
@@ -273,6 +290,7 @@ public class ArtistImageService
 
             foreach (var artist in artists)
             {
+                if (generation != Volatile.Read(ref _sweepGeneration)) break;
                 var cachedPath = GetCachedImagePath(artist.Id);
 
                 // Honor an explicit user removal: keep the portrait blank instead of

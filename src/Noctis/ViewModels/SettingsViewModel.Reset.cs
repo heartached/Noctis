@@ -100,6 +100,8 @@ public partial class SettingsViewModel
 
         // The whole-library lyrics / animated artwork tools save a ledger as they go.
         await Step("bulk runs", MetadataHelper.StopLibraryRunsAsync);
+        // The Artists tab's portrait sweep walks the old artist list for minutes.
+        await Step("artist pictures", () => App.Services?.GetService<ArtistImageService>()?.StopFetchesAsync() ?? Task.CompletedTask);
 
         // Stop playback now, and write the play counts / positions the player still holds, so
         // they land in the journal before it is emptied rather than in the new one after it.
