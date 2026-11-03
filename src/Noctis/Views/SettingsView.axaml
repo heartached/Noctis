@@ -1664,12 +1664,12 @@
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <!-- Bitmap rail icons take the row's text colour: theme foreground at rest, accent foreground when active. -->
-        <Style Selector="Border.rail-bitmap">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Style Selector="controls|MaskIcon.rail-bitmap">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             <Setter Property="Opacity" Value="0.85"/>
         </Style>
-        <Style Selector="Button.rail-item.active Border.rail-bitmap">
-            <Setter Property="Background" Value="{DynamicResource AccentForegroundBrush}"/>
+        <Style Selector="Button.rail-item.active controls|MaskIcon.rail-bitmap">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <!-- One card per section; the cards that moved into it are hairline-separated rows. -->
@@ -2039,13 +2039,9 @@
                                                     <PathIcon Classes="rail-icon"
                                                               Data="{Binding IconKey, Converter={x:Static helpers:IconKeyConverter.Instance}}"
                                                               Width="16" Height="16"/>
-                                                    <Border Classes="rail-bitmap" Width="16" Height="16"
-                                                            RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                            IsVisible="{Binding IconKey, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}">
-                                                        <Border.OpacityMask>
-                                                            <ImageBrush Source="{Binding IconKey, Converter={x:Static helpers:IconKeyConverter.Bitmap}}" Stretch="Uniform"/>
-                                                        </Border.OpacityMask>
-                                                    </Border>
+                                                    <controls:MaskIcon Classes="rail-bitmap" Width="16" Height="16"
+                                                            Source="{Binding IconKey, Converter={x:Static helpers:IconKeyConverter.Bitmap}}"
+                                                            IsVisible="{Binding IconKey, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}"/>
                                                 </Panel>
                                                 <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
                                                            VerticalAlignment="Center"/>
