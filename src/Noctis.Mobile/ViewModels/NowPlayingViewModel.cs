@@ -279,6 +279,11 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
                 // always clears the error streak, even one the breaker itself just stopped.
                 _consecutiveErrors = 0;
                 _computerUnreachable = false;
+                // A queue that ran out keeps its last track for the mini bar only (the queue has
+                // none current, it is the newest in History): take it back, or Previous restarted
+                // it and the queue saved meanwhile had no song to restore.
+                if (_queue.Current == null && _queue.History.Count > 0 && ReferenceEquals(_queue.History[0], CurrentTrack))
+                    _queue.Back();
                 StartTrack(CurrentTrack, fromPosition: Position);
                 break;
         }

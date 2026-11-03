@@ -540,4 +540,34 @@ public class MobileNowPlayingViewModelTests : IDisposable
         Assert.False(vm.IsPlaying);
         Assert.Equal(new[] { t[1], t[3] }, vm.UpNext);
     }
+
+    /// <summary>
+    /// Bug: an album played to its end keeps its last song in the mini bar, but the queue itself
+    /// has nothing current. Play on it played the song while the queue still had nothing, so
+    /// Previous restarted the same song instead of going back, and the queue saved meanwhile had
+    /// no current song: after the app was killed the mini player did not come back.
+    /// </summary>
+    [Fact]
+    public async Task PlayAfterTheQueueRanOut_TakesTheLastSongBackIntoTheQueue()
+    {
+        var t = Tracks(3);
+        var (vm, player, library, persistence) = Make(t);
+        vm.PlayTracks(t, 1);
+        player.RaiseTrackEnded();
+        player.RaiseTrackEnded();                           // ran out: t2 stays loaded, stopped
+        Assert.Same(t[2], vm.CurrentTrack);
+        Assert.False(vm.IsPlaying);
+
+        vm.TogglePlayPauseCommand.Execute(null);            // play it again
+        Assert.True(vm.IsPlaying);
+        Assert.Equal("Track 2 of 2", vm.QueuePositionText);
+        await vm.SaveStateAsync();
+
+        var restored = new NowPlayingViewModel(new FakeAudioPlayer(), library, persistence, marshal: a => a());
+        await restored.RestoreStateAsync();
+        Assert.Same(t[2], restored.CurrentTrack);
+
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(t[1], vm.CurrentTrack);
+    }
 }
