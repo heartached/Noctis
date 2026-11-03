@@ -3066,4 +3066,29 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Columns.Reset" xml:space="preserve"><value>Reset Columns</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Resize {0} column</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
   <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
+  <data name="Features.Section" xml:space="preserve"><value>Built-in Features</value><comment>Plugins page: section title above the switches for features that ship with Noctis</comment></data>
+  <data name="Features.SectionLine" xml:space="preserve"><value>Part of Noctis and on from the start, like plugins you can switch off. Turned back on, each comes back as you left it.</value><comment>Plugins page: line under the Built-in Features title</comment></data>
+  <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Mini Player</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.MiniPlayer.Line" xml:space="preserve"><value>The small always-on-top player: its button, the artwork click and the shortcut.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AnimatedArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AnimatedArtwork.Line" xml:space="preserve"><value>Moving album covers on the Now Playing, lyrics and album pages.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AlbumCarousel.Title" xml:space="preserve"><value>Album Carousel</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AlbumCarousel.Line" xml:space="preserve"><value>Browse albums one at a time, as covers, jewel cases, vinyl or cassettes.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Visualizer.Title" xml:space="preserve"><value>Audio Visualizer</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Visualizer.Line" xml:space="preserve"><value>The Visualizer page and the spectrum behind the lyrics.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.NewBadge.Title" xml:space="preserve"><value>NEW Badge</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.NewBadge.Line" xml:space="preserve"><value>Marks songs added to a playlist in the last 7 days.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Inbox.Title" xml:space="preserve"><value>Inbox for New Music</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Inbox.Line" xml:space="preserve"><value>New songs wait in the Inbox until you add them to your library.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Discord.Title" xml:space="preserve"><value>Discord Rich Presence</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Discord.Line" xml:space="preserve"><value>Show what you are listening to on your Discord profile.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Scrobbling.Title" xml:space="preserve"><value>Scrobbling</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Scrobbling.Line" xml:space="preserve"><value>Send your plays to Last.fm and ListenBrainz.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Scrobbling.NeedsAccount" xml:space="preserve"><value>Connect Last.fm or ListenBrainz in Integrations first.</value><comment>Settings › Plugins › Built-in Features: line while no scrobbling account is connected (the switch is disabled)</comment></data>
+  <data name="Features.PlaylistSideRail.Title" xml:space="preserve"><value>Featured Artists &amp; Suggestions</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.PlaylistSideRail.Line" xml:space="preserve"><value>The panel on the right of a playlist with its artists and suggested songs.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Settings.PlaylistSideRail" xml:space="preserve"><value>Featured Artists &amp; Suggestions</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
+  <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Show the panel with the playlist's artists and suggested songs on the right.</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
+  <data name="Playlist.HideSideRail" xml:space="preserve"><value>Hide Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: hides the right-hand panel</comment></data>
+  <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Show Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: shows the right-hand panel again</comment></data>
 </root>

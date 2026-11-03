@@ -207,6 +207,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
 
         if (DataContext is not MainWindowViewModel vm) return;
+        // Mini Player switched off (Settings › Plugins › Built-in Features): the album-art click
+        // and the shortcut open nothing. It can only be switched off from the main window, so
+        // there is never an open one to close here.
+        if (!vm.Settings.MiniPlayerEnabled) return;
 
         // macOS: Hide() below on a native-fullscreen window leaves its Space up and empty — a
         // black screen with no menu bar or Dock, only the mini player floating on it. Leave

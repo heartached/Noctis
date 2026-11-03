@@ -1301,6 +1301,7 @@
                             Cursor="Hand"
                             ToolTip.Tip="{Binding AlbumsViewToggleLabel}"
                             AutomationProperties.Name="{Binding AlbumsViewToggleLabel}"
+                            IsVisible="{Binding IsCarouselAvailable}"
                             Command="{Binding ToggleAlbumsViewCommand}">
                         <Panel>
                             <PathIcon Data="{StaticResource AlbumCarouselIcon}" Width="16" Height="16"

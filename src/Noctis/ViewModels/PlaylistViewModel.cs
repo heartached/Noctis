@@ -212,8 +212,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
     public PlaylistViewModel(Playlist playlist, PlayerViewModel player,
         ILibraryService library, IPersistenceService persistence, SidebarViewModel sidebar,
-        ArtistImageService? artistImageService = null)
+        ArtistImageService? artistImageService = null, bool showSideRail = true)
     {
+        _showSideRail = showSideRail; // before LoadTracks: a hidden rail fetches nothing
         _player = player;
         _library = library;
         _persistence = persistence;
@@ -461,6 +462,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private void RebuildSuggestions(bool force = false)
     {
         if (IsSmartPlaylist) return;
+        // Rail hidden: no scan. Forget the key so showing it again builds fresh picks.
+        if (!ShowSideRail) { _lastSuggestionKey = null; return; }
 
         var key = string.Join(",", _playlist.TrackIds);
         if (!force && key == _lastSuggestionKey) return;
@@ -516,6 +519,44 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private void RefreshSuggestions() => RebuildSuggestions(force: true);
 
+    // ── Rail on/off (Discord, DendyAly 11-02) ──────────────────
+
+    /// <summary>The Featured Artists / Suggested rail shows (Settings PlaylistShowSideRail).
+    /// Hidden, the track list takes its width and neither list is built.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SideRailMenuLabel))]
+    private bool _showSideRail = true;
+
+    /// <summary>The tracks the rail was last built from, so showing it again needs no reload.</summary>
+    private IReadOnlyList<Track> _railTracks = Array.Empty<Track>();
+
+    private Action<bool>? _sideRailAction;
+
+    /// <summary>The app's setter for the shared setting; the page follows it back through <see cref="ShowSideRail"/>.</summary>
+    public void SetSideRailAction(Action<bool> action) => _sideRailAction = action;
+
+    /// <summary>The playlist options menu entry: what a click does.</summary>
+    public string SideRailMenuLabel => Noctis.Localization.Loc.T(ShowSideRail ? "Playlist.HideSideRail" : "Playlist.ShowSideRail");
+
+    partial void OnShowSideRailChanged(bool value)
+    {
+        RebuildFeaturedArtists(_railTracks);
+        if (value) RebuildSuggestions(force: true);
+        else if (SuggestedTracks.Count > 0)
+        {
+            Interlocked.Increment(ref _suggestionGeneration); // drop a scan still running
+            SuggestedTracks.Clear();
+            OnPropertyChanged(nameof(HasSuggestions));
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleSideRail()
+    {
+        if (_sideRailAction is { } action) action(!ShowSideRail);
+        else ShowSideRail = !ShowSideRail;
+    }
+
     [RelayCommand]
     private async Task AddSuggested(Track track)
     {
@@ -558,6 +599,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
     private void RebuildFeaturedArtists(IReadOnlyList<Track> tracks)
     {
+        _railTracks = tracks;
+        // Rail hidden: no list and no artist-picture downloads until it is shown again.
+        if (!ShowSideRail)
+        {
+            if (FeaturedArtists.Count == 0) return;
+            FeaturedArtists.Clear();
+            OnPropertyChanged(nameof(HasFeaturedArtists));
+            OnPropertyChanged(nameof(FirstFeaturedArtistName));
+            OnPropertyChanged(nameof(TopFeaturedArtists));
+            return;
+        }
         var artistCounts = tracks
             .SelectMany(t => Track.ParseArtistTokens(t.Artist))
             .Where(name => !string.Equals(name, "Unknown Artist", StringComparison.OrdinalIgnoreCase))

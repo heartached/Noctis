@@ -270,8 +270,13 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Tooltip / accessible name of the grid-carousel toggle: what a click switches to.</summary>
     public string AlbumsViewToggleLabel => Loc.T(IsAlbumsCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
 
-    public bool ShowAlbumsGrid => HasAlbums && !IsAlbumsCarousel;
-    public bool ShowAlbumsCarousel => HasAlbums && IsAlbumsCarousel;
+    public bool ShowAlbumsGrid => HasAlbums && !ShowsCarouselLayout;
+    public bool ShowAlbumsCarousel => HasAlbums && ShowsCarouselLayout;
+
+    /// <summary>The Album Carousel built-in feature is on; off hides the toggle and shows the grid.</summary>
+    public bool IsCarouselAvailable => _settings?.AlbumCarouselEnabled ?? true;
+
+    private bool ShowsCarouselLayout => IsAlbumsCarousel && IsCarouselAvailable;
 
     /// <summary>Case style, shared with the Albums page carousel (<see cref="SettingsViewModel.AlbumCarouselStyle"/>).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
@@ -293,6 +298,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         if (_settings == null) return;
         IsAlbumsCarousel = _settings.ArtistAlbumsViewMode == "carousel";
+        OnPropertyChanged(nameof(IsCarouselAvailable));
+        OnPropertyChanged(nameof(ShowAlbumsGrid));
+        OnPropertyChanged(nameof(ShowAlbumsCarousel));
         CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
     }
 

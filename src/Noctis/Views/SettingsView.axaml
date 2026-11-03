@@ -3155,6 +3155,7 @@
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.MiniPlayerButton}"
                                               IsChecked="{Binding PlaybackBarShowMiniPlayer}"
+                                              IsEnabled="{Binding MiniPlayerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
@@ -3577,8 +3578,9 @@
             </Border>
 
             <!-- Owner 11-02: the Albums page's default design. The same AlbumViewMode /
-                 AlbumCarouselStyle settings the Albums page View menu writes. -->
-            <Border Classes="setting-card group-card" Margin="0,14,0,10">
+                 AlbumCarouselStyle settings the Albums page View menu writes. Hidden while the
+                 Album Carousel built-in feature is off (the grid is the only layout then). -->
+            <Border Classes="setting-card group-card" Margin="0,14,0,10" IsVisible="{Binding AlbumCarouselEnabled}">
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
@@ -3920,6 +3922,7 @@
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.AudioVisualizer}"
                                               IsChecked="{Binding LyricsVisualizerEnabled}"
+                                              IsEnabled="{Binding VisualizerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <!-- Artwork colour row + style picker share a spacing-free panel so the 12px gap folds
@@ -5145,6 +5148,20 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
                                           IsChecked="{Binding PlaylistShowNewBadge}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistSideRail}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistSideRailHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1" x:Name="PlaylistSideRailToggle"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistSideRail}"
+                                          IsChecked="{Binding PlaylistShowSideRail}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -7327,6 +7344,42 @@
                           Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
                            VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Built-in Features (Discord, Mistery 11-02): parts of Noctis behind one switch each, like
+                 plugins that ship on. A row is the feature's own setting where one existed (Discord,
+                 scrobbling, Inbox, animated artwork, NEW badge). Hidden while searching plugins. -->
+            <StackPanel x:Name="BuiltInFeaturesSection" IsVisible="{Binding ShowBuiltInFeatures}">
+                <StackPanel Spacing="2" Margin="4,12,0,10">
+                    <TextBlock Classes="section-title" Text="{loc:T Features.Section}" Margin="0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{loc:T Features.SectionLine}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Border Classes="setting-card group-card" Margin="0,0,0,4">
+                    <ItemsControl x:Name="BuiltInFeaturesList" Classes="row-list" ItemsSource="{Binding BuiltInFeatures}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BuiltInFeatureRow">
+                                <Border Classes="setting-row">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="9" Margin="0,0,14,0"
+                                                Background="#22808080" VerticalAlignment="Center">
+                                            <PathIcon Data="{Binding IconKey, Converter={x:Static helpers:IconKeyConverter.Instance}}"
+                                                      Width="17" Height="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Line}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <controls:LottieToggle Grid.Column="2"
+                                                              AutomationProperties.Name="{Binding Title}"
+                                                              IsChecked="{Binding IsOn, Mode=TwoWay}"
+                                                              IsEnabled="{Binding CanToggle}"
+                                                              VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
             </StackPanel>
 
             <!-- Official Noctis plugins: the list's plugins by Noctis (plugins/index.json, fetched when

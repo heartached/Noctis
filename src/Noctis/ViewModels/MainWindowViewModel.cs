@@ -517,7 +517,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
                 TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
-            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumViewMode))
+            else if (e.PropertyName is nameof(LibraryAlbumsViewModel.AlbumViewMode) or nameof(LibraryAlbumsViewModel.IsCarouselView))
                 TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.CarouselStyle))
                 TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
@@ -601,6 +601,23 @@ public partial class MainWindowViewModel : ViewModelBase
             if (ReferenceEquals(CurrentView, _inboxVm) && !Sidebar.IsInboxSectionVisible)
                 Navigate("home");
         });
+        // Built-in Features: the Visualizer entry follows the Audio Visualizer switch, and an open
+        // playlist page follows the Featured Artists & Suggestions one.
+        void SyncVisualizerSection()
+        {
+            Sidebar.SetVisualizerSectionVisible(Settings.VisualizerEnabled);
+            if (ReferenceEquals(CurrentView, _visualizerVm) && !Settings.VisualizerEnabled)
+                Navigate("home");
+        }
+        if (Settings.IsSettingsLoaded) SyncVisualizerSection();
+        else Settings.SettingsLoaded += (_, _) => Dispatcher.UIThread.Post(SyncVisualizerSection);
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.VisualizerEnabled))
+                Dispatcher.UIThread.Post(SyncVisualizerSection);
+            else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
+                openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
+        };
         // Folders sort (GitHub #89): mirror into the top bar and persist, adopting the
         // saved choice once settings load — same shape as the Artists sort above.
         var adoptingFoldersSort = false;
@@ -2267,6 +2284,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Navigate(string key)
     {
+        // Audio Visualizer switched off (Built-in Features): its page is gone with its entry.
+        if (key == "visualizer" && !Settings.VisualizerEnabled) key = "home";
         var navigateStart = Stopwatch.GetTimestamp();
         DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
         // Section switches join the browser-style history (instead of clearing it)
@@ -2552,7 +2571,9 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.SearchText = string.Empty;
         TopBar.CurrentTabName = "Playlist";
 
-        var detail = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService);
+        var detail = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService,
+            Settings.PlaylistShowSideRail);
+        detail.SetSideRailAction(show => Settings.PlaylistShowSideRail = show);
         detail.BackRequested += (_, _) => GoBackInHistory();
         detail.ViewAlbumRequested += OnViewAlbumFromTrack;
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
@@ -2669,7 +2690,9 @@ public partial class MainWindowViewModel : ViewModelBase
         var playlist = Sidebar.GetPlaylist(id);
         if (playlist == null) return _homeVm;
 
-        var playlistVm = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService);
+        var playlistVm = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService,
+            Settings.PlaylistShowSideRail);
+        playlistVm.SetSideRailAction(show => Settings.PlaylistShowSideRail = show);
         playlistVm.ViewAlbumRequested += OnViewAlbumFromTrack;
         playlistVm.BackRequested += (_, _) => Navigate("playlists");
         playlistVm.SetSearchLyricsAction(SearchLyricsForTrack);

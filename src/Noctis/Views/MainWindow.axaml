@@ -370,9 +370,11 @@
                         </Panel>
 
                         <!-- View (GitHub #149): grid or album carousel, and the carousel's case
-                             style. The shared View glyph, like every page's view control. -->
+                             style. The shared View glyph, like every page's view control. Gone with the Album
+                             Carousel built-in feature: the grid is then the only layout. -->
                         <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
-                                ToolTip.Tip="{loc:T Main.AlbumView}">
+                                ToolTip.Tip="{loc:T Main.AlbumView}"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.AlbumCarouselEnabled, FallbackValue=True}">
                             <PathIcon Data="{StaticResource ViewIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
