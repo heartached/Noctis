@@ -451,6 +451,15 @@ public partial class MainWindowViewModel : ViewModelBase
         TrackContextMenuBuilder.CreateMixCommand = CreateMixFromSongCommand;
         // API 1.3: plugin views open in a window of their own; ShowAlbum opens the album page here.
         Plugins.ViewPresenter = Views.PluginViewWindow.Present;
+        // The sidebar's Plugins section follows the running plugins' views (loads and unloads
+        // raise VisualLayersChanged; registrations and Show in sidebar raise ViewsChanged).
+        void SyncPluginSidebar() => Dispatcher.UIThread.Post(() => Sidebar.SyncPluginItems(Plugins.Views));
+        Plugins.VisualLayersChanged += (_, _) => SyncPluginSidebar();
+        Plugins.ViewsChanged += (_, _) => SyncPluginSidebar();
+        Sidebar.PluginSettingsRequested += (_, item) =>
+        {
+            if (Settings.OpenPluginPageFor(item.View.Plugin)) OpenSettings();
+        };
         // API 1.4: plugins read the playlists the sidebar holds (copied by the adapter).
         Plugins.PlaylistSource = () => Sidebar.Playlists.ToArray();
         // API 1.6: plugins decode songs with the ffmpeg the converter and the BPM/key analysis use.
@@ -2249,6 +2258,15 @@ public partial class MainWindowViewModel : ViewModelBase
         // Settings is a modal popup rather than a page — intercept and open the overlay,
         // then restore the sidebar selection to the actual current section so the highlight
         // doesn't lie about where the user is. Use Post so the click's selection has settled.
+        // A plugin's screen (sidebar Plugins section) opens in Settings in place of its page;
+        // like Settings, the row never takes the selection (SidebarView handles OpensSheet).
+        if (key.StartsWith(PluginNavItem.KeyPrefix, StringComparison.Ordinal))
+        {
+            if (Sidebar.PluginItems.FirstOrDefault(i => i.Key == key) is { } pluginItem
+                && Settings.ShowPluginViewFromSidebar(pluginItem.View))
+                OpenSettings();
+            return;
+        }
         if (key == "settings")
         {
             OpenSettings();

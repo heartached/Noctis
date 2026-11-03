@@ -207,7 +207,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>True for an entry that opens a sheet over the current page instead of going
     /// to a page (Settings): its row never takes the selection, so the highlight stays on the
     /// section the user is in.</summary>
-    public static bool OpensSheet(NavItem item) => item.Key == "settings";
+    public static bool OpensSheet(NavItem item) => item.Key == "settings" || item is PluginNavItem;
 
     /// <summary>
     /// Toggles a folder header the user clicked, easing its rows (see <see cref="FoldFolderRows"/>

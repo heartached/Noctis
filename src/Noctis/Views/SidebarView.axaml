@@ -216,6 +216,29 @@
                 </ContextMenu>
             </Setter>
         </Style>
+
+        <!-- Right-click menu for a plugin screen's row: its plugin page, or off the sidebar.
+             Opened from code-behind on right-press, like the playlist rows' menu. -->
+        <Style Selector="ListBox#PluginList ListBoxItem">
+            <Setter Property="ContextMenu">
+                <ContextMenu x:DataType="vm:PluginNavItem" Classes="v2">
+                    <MenuItem Header="{loc:T Sidebar.PluginSettings}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).OpenPluginItemSettingsCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineTools}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{loc:T Sidebar.HidePlugin}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).HidePluginItemCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEyeOff}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </Setter>
+        </Style>
     </UserControl.Styles>
 
     <Border CornerRadius="20">
@@ -623,6 +646,55 @@
                             Background="{DynamicResource IslandForeground}"
                             Opacity="0.1"
                             Margin="8,2,8,8" />
+
+                    <!-- Plugins: one row per screen a running plugin added (Album Town, A-B Loop),
+                         above the playlists so it is one click away (Discord feedback 11-03). A row
+                         opens the screen in Settings in place of its plugin's page and never takes
+                         the selection (SidebarViewModel.OpensSheet). Right-click: Plugin Settings,
+                         Hide from Sidebar. The whole block goes when no plugin adds a screen. -->
+                    <StackPanel x:Name="PluginSection" IsVisible="{Binding HasPluginItems}">
+                        <TextBlock Margin="18,4,12,4"
+                                   IsVisible="{Binding IsExpanded}"
+                                   Text="{loc:T Sidebar.PLUGINS}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.5"
+                                   VerticalAlignment="Center" />
+                        <ListBox Classes="sidebar"
+                                 x:Name="PluginList"
+                                 ItemsSource="{Binding PluginItems}"
+                                 SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                                 SelectionChanged="OnNavListSelectionChanged"
+                                 Margin="6,0,6,4">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PluginNavItem">
+                                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                                ToolTip.Tip="{Binding Label}"
+                                                HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                        <!-- The plugin's icon (as on its Settings card), else its letter tile. -->
+                                        <Panel Width="28" Height="28" VerticalAlignment="Center">
+                                            <Border CornerRadius="8" Background="{Binding MonogramBrush}" IsVisible="{Binding ShowMonogram}">
+                                                <TextBlock Text="{Binding Monogram}" FontSize="11" FontWeight="Bold" Foreground="White"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="28" Height="28"
+                                                   RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                        </Panel>
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="130"
+                                                   IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border Height="1"
+                                Background="{DynamicResource IslandForeground}"
+                                Opacity="0.1"
+                                Margin="8,2,8,8" />
+                    </StackPanel>
 
                     <!-- Playlists header (only visible when expanded) -->
                     <TextBlock Margin="18,4,12,4"

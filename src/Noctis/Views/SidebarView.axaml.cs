@@ -107,11 +107,11 @@ public partial class SidebarView : UserControl
     {
         // Right-click on a playlist row / folder header opens its context menu without
         // the ListBox also selecting (= navigating to) the row underneath the menu.
-        if (sender is ListBox rightList && ReferenceEquals(rightList, PlaylistList)
+        if (sender is ListBox rightList && (ReferenceEquals(rightList, PlaylistList) || ReferenceEquals(rightList, PluginList))
             && e.GetCurrentPoint(rightList).Properties.IsRightButtonPressed)
         {
             var target = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>();
-            if (target?.DataContext is PlaylistNavItem && target.ContextMenu is { } menu)
+            if (target?.DataContext is PlaylistNavItem or PluginNavItem && target.ContextMenu is { } menu)
             {
                 e.Handled = true;
                 menu.DataContext = target.DataContext;
@@ -735,7 +735,7 @@ public partial class SidebarView : UserControl
         return false;
     }
 
-    private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, PlaylistList };
+    private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, PluginList, PlaylistList };
 
     // ── Rail search capsule ──
     // A non-light-dismiss overlay Popup (it stays open while the user works with the
