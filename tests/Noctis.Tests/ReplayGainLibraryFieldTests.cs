@@ -172,8 +172,15 @@ public class ReplayGainLibraryFieldTests : IDisposable
     private sealed class CountingMetadata : MetadataService, IMetadataService
     {
         public readonly List<string> Reads = new();
+        public readonly List<string> LabelReads = new();
         public int CancelOnRead;
         public LibraryService? Library;
+
+        string IMetadataService.ReadLabel(string filePath)
+        {
+            lock (Reads) LabelReads.Add(Path.GetFileName(filePath) + "@" + Reads.Count);
+            return ReadLabel(filePath);
+        }
 
         ReplayGainValues? IMetadataService.ReadReplayGain(string filePath)
         {
@@ -271,6 +278,63 @@ public class ReplayGainLibraryFieldTests : IDisposable
 
         var third = await LaunchAsync();
         Assert.Empty(third.Reads);
+    }
+
+    /// <summary>GitHub #158: the pass ran last, behind the label and genre passes (each a read
+    /// of most of the library), so the column stayed blank for most songs until both were done.</summary>
+    [Fact]
+    public async Task Backfill_RunsBeforeTheLabelPass()
+    {
+        _persistence.Settings.MetadataSchemaVersion = 10; // label (v11) and genre (v12) passes pending
+        var tracks = new[] { Row(Flac("a.flac", "-3.00 dB")), Row(Flac("b.flac", "-5.50 dB")) };
+        _persistence.LibraryTracks.AddRange(tracks);
+
+        var run = await LaunchAsync();
+
+        Assert.Equal(new[] { "a.flac", "b.flac" }, run.Reads);
+        Assert.Equal(new double?[] { -3.0, -5.5 }, tracks.Select(t => t.ReplayGainTrackDb));
+        // Every label read came after both ReplayGain reads.
+        Assert.Equal(new[] { "a.flac@2", "b.flac@2" }, run.LabelReads);
+        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
+    }
+
+    /// <summary>GitHub #158: rows on screen are read at once (no wait for the pass), once each,
+    /// and the pass then skips them instead of opening the file again.</summary>
+    [Fact]
+    public async Task ReadReplayGainSoon_ReadsUnreadRowsNow_ThePassSkipsThemAfter()
+    {
+        _persistence.Settings.MetadataSchemaVersion = 12;
+        var shown = Row(Flac("a.flac", "-7.84 dB", "0.98", "-6.10 dB"));
+        var plain = Row(Flac("b.flac"));
+        var known = Row(Flac("c.flac", "-1.00 dB"));
+        known.ApplyReplayGain(new ReplayGainValues(-4.0, null, null)); // read earlier: left alone
+        var streamed = Row("http://server/rest/stream?id=1");
+        var later = Row(Flac("d.flac", "+1.25 dB"));
+        _persistence.LibraryTracks.AddRange(new[] { shown, plain, known, streamed, later });
+
+        var metadata = new CountingMetadata();
+        var library = new LibraryService(metadata, _persistence, new SqliteLibraryIndexService(_persistence),
+            new FolderMetadataBackfillTests.FakeAuditTrail());
+        library.ReadReplayGainSoon(new[] { shown, plain, known, streamed, shown });
+        await library.ReplayGainSoonTask.WaitAsync(TimeSpan.FromSeconds(10));
+        library.ReadReplayGainSoon(new[] { shown, plain }); // scrolled back: already read
+        await library.ReplayGainSoonTask.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(new[] { "a.flac", "b.flac" }, metadata.Reads);
+        Assert.Equal(-7.84, shown.ReplayGainTrackDb);
+        Assert.Equal(0.98, shown.ReplayGainTrackPeak);
+        Assert.Equal(-6.10, shown.ReplayGainAlbumDb);
+        Assert.True(plain.ReplayGainChecked);
+        Assert.Null(plain.ReplayGainTrackDb);
+        Assert.Equal(-4.0, known.ReplayGainTrackDb);
+        Assert.False(streamed.ReplayGainChecked);
+
+        // The startup pass opens only what is still unread.
+        await library.LoadAsync();
+        await library.BackgroundInit;
+        await library.LabelBackfill;
+        Assert.Equal(new[] { "a.flac", "b.flac", "d.flac" }, metadata.Reads);
+        Assert.Equal(1.25, later.ReplayGainTrackDb);
     }
 
     [Fact]

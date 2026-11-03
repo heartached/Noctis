@@ -527,6 +527,44 @@ public class ListColumnsIssue151Tests : IDisposable
         finally { win.Close(); }
     }
 
+    /// <summary>GitHub #158: a library from before the column showed blank cells until the
+    /// startup pass reached each file. Shown, the column asks for the unread rows on screen;
+    /// hidden, it asks for nothing.</summary>
+    [AvaloniaFact]
+    public void SongsView_ReplayGainColumnShown_AsksForTheUnreadRowsOnScreen()
+    {
+        var (vm, view, win) = MountSongs(200);
+        try
+        {
+            var lib = (FakeLibraryService)typeof(LibrarySongsViewModel)
+                .GetField("_library", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                .GetValue(vm)!;
+            Assert.Empty(lib.ReplayGainSoonRequests); // column hidden by default: no reads
+
+            view.Columns.SetVisible("ReplayGain", true);
+            Settle(win);
+            var onScreen = view.TrackList.GetRealizedContainers().Select(c => c.DataContext).OfType<Track>().ToList();
+            Assert.NotEmpty(onScreen);
+            Assert.True(onScreen.Count < 200);
+            Assert.Subset(lib.ReplayGainSoonRequests.ToHashSet(), onScreen.ToHashSet());
+
+            // Rows scrolled into view are asked for as they come.
+            lib.ReplayGainSoonRequests.Clear();
+            view.TrackList.ScrollIntoView(199);
+            Settle(win);
+            Assert.Contains(vm.FilteredTracks[199], lib.ReplayGainSoonRequests);
+            Assert.DoesNotContain(vm.FilteredTracks[0], lib.ReplayGainSoonRequests);
+
+            view.Columns.SetVisible("ReplayGain", false);
+            Settle(win);
+            lib.ReplayGainSoonRequests.Clear();
+            view.TrackList.ScrollIntoView(0);
+            Settle(win);
+            Assert.Empty(lib.ReplayGainSoonRequests);
+        }
+        finally { win.Close(); }
+    }
+
     [AvaloniaFact]
     public void SongsView_ReplayGainColumn_SortsByTrackGain_SongsWithoutOneLast()
     {

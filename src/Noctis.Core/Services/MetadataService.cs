@@ -151,45 +151,7 @@ public class MetadataService : IMetadataService
     /// <see cref="ReadLabel"/>. Null when the file can't be read (try again later);
     /// <see cref="ReplayGainValues.None"/> when it has no ReplayGain tags.
     /// </summary>
-    public ReplayGainValues? ReadReplayGain(string filePath)
-    {
-        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
-            return null;
-        var ext = Path.GetExtension(filePath);
-        // DSDIFF has no TagLib reader; ReadDsdiffTrack reads no ReplayGain either.
-        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
-            return ReplayGainValues.None;
-        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                if (ReplayGainTags.TryReadFlac(stream, out var flac))
-                    return flac;
-            }
-            catch (Exception)
-            {
-                // Locked or vanished: let the TagLib path decide.
-            }
-        }
-        try
-        {
-            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
-            return ReplayGainTags.Read(file);
-        }
-        catch (TagLib.CorruptFileException)
-        {
-            return ReplayGainValues.None; // never readable: don't retry every launch
-        }
-        catch (TagLib.UnsupportedFormatException)
-        {
-            return ReplayGainValues.None;
-        }
-        catch (Exception)
-        {
-            return null; // locked, vanished, I/O error: the next pass tries again
-        }
-    }
+    public ReplayGainValues? ReadReplayGain(string filePath) => ReplayGainTags.ReadFile(filePath);
 
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {

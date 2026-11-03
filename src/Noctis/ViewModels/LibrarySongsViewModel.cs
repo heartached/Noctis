@@ -407,6 +407,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
 
+    /// <summary>The ReplayGain column's rows on screen whose tags were never read (GitHub #158).</summary>
+    public void ReadReplayGainSoon(IEnumerable<Track> tracks) => _library.ReadReplayGainSoon(tracks);
+
     [RelayCommand]
     private async Task ScanReplayGain(Track track)
     {
