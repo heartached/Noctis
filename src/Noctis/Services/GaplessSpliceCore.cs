@@ -52,10 +52,18 @@ public sealed class GaplessTrackSegment
     private long _basePositionMs;    // media position of the first frame after creation/flush
     private float _gain = 1f;        // amplitude the render side reads at (see Gain)
     private float _renderGain = 1f;  // gain applied to the last sample read; slews to _gain
+    private long _lastWriteTick;     // when a block last landed (Environment.TickCount64)
+    private bool _writerWaiting;     // the writer is blocked on a full ring (healthy back-pressure)
+    private int _writeFadeTotal;     // samples of the write-side fade-in in progress (see TrimDamagedTail)
+    private int _writeFadeDone;
+    private bool _dropLeadingSilence; // see DropLeadingSilence
 
     // A mid-play Gain change (ReplayGain setting moved) slews over this long per
     // 1.0 of amplitude, so a pre-amp drag never steps the waveform.
     private const int GainSlewMs = 20;
+    // Below 8 16-bit steps: what a decoder writes for a frame it could not decode, or while it
+    // primes after a mid-stream open (zeros, plus the resampler's ringing next to real audio).
+    private const float SilentSample = 8f / 32768f;
 
     public int SampleRate { get; }
     public int Channels { get; }
@@ -78,6 +86,82 @@ public sealed class GaplessTrackSegment
     public bool Abandoned { get { lock (_gate) return _abandoned; } }
     public bool IsFinished { get { lock (_gate) return (_endOfStream || _abandoned) && _count == 0; } }
     public int BufferedSamples { get { lock (_gate) return _count; } }
+
+    /// <summary>
+    /// How long the writer has gone without landing a block while not waiting on a full
+    /// ring: a decoder that stopped producing mid-track. -1 before any write.
+    /// </summary>
+    public long WriteIdleMs
+    {
+        get
+        {
+            lock (_gate)
+                return _lastWriteTick == 0 || _writerWaiting ? -1 : Environment.TickCount64 - _lastWriteTick;
+        }
+    }
+
+    /// <summary>
+    /// Drop the (near-)zeros a decoder emits before its first real sample, then fade the first
+    /// <paramref name="fadeInFrames"/> in. For an input reopened mid-stream after a decoder
+    /// failure (VLC's avcodec primes ~57 ms of zeros, then the music starts at full level;
+    /// the renderer's short fade-in would be spent on the zeros). The dropped zeros count as
+    /// consumed, so <see cref="PositionMs"/> stays media time. Set before the first write.
+    /// </summary>
+    public void DropLeadingSilence(int fadeInFrames)
+    {
+        lock (_gate)
+        {
+            _dropLeadingSilence = true;
+            _writeFadeTotal = Math.Max(0, fadeInFrames) * Channels;
+            _writeFadeDone = 0;
+        }
+    }
+
+    /// <summary>
+    /// The decoder failed on damaged data right after the last block it wrote (it hit the
+    /// damage, then stopped producing): the newest audio is the frame decoded from the damaged
+    /// bytes. Drops the silence a decoder writes for frames it could not decode (up to
+    /// <paramref name="maxSilentFrames"/>), then the newest <paramref name="dropFrames"/> of
+    /// audio, and fades the <paramref name="fadeFrames"/> before them down to silence, so the
+    /// ring runs dry on a fade instead of junk and a hard edge. Anything written after this
+    /// fades in.
+    /// Returns the media position (ms) of the write end before the trim — where the damage
+    /// starts — or -1 when the input already ended.
+    /// </summary>
+    public long TrimDamagedTail(int dropFrames, int fadeFrames, int maxSilentFrames = 0)
+    {
+        lock (_gate)
+        {
+            if (_endOfStream || _abandoned) return -1;
+            var damageMs = _basePositionMs + (_consumedFrames + _count / Channels) * 1000 / SampleRate;
+            // Harness (a run of undecodable frames before the junk): mpg123 wrote ~130 ms of
+            // zeros after the last audio, so a fade over the newest samples faded silence and
+            // the audio still stopped dead before it.
+            var silent = 0;
+            var maxSilent = Math.Min(_count, Math.Max(0, maxSilentFrames) * Channels);
+            while (silent < maxSilent &&
+                   Math.Abs(_ring[(_writeIdx - silent - 1 + _ring.Length) % _ring.Length]) < SilentSample)
+                silent++;
+            var drop = Math.Min(_count, silent + Math.Max(0, dropFrames) * Channels);
+            drop -= drop % Channels;
+            _count -= drop;
+            _writeIdx = (_writeIdx - drop + _ring.Length) % _ring.Length;
+            var fade = Math.Min(_count / Channels, Math.Max(0, fadeFrames));
+            for (var f = 0; f < fade; f++)
+            {
+                // f = 0 is the newest frame: silent; the oldest faded frame keeps ~all its level.
+                var gain = (float)f / fade;
+                for (var c = 1; c <= Channels; c++)
+                {
+                    var i = (_writeIdx - f * Channels - c + 2 * _ring.Length) % _ring.Length;
+                    _ring[i] *= gain;
+                }
+            }
+            _writeFadeTotal = Math.Max(0, fadeFrames) * Channels;
+            _writeFadeDone = 0;
+            return damageMs;
+        }
+    }
 
     /// <summary>
     /// Amplitude gain applied as the render side reads this segment (ReplayGain on
@@ -124,6 +208,18 @@ public sealed class GaplessTrackSegment
             lock (_gate)
             {
                 _hadAudio = true;
+                _lastWriteTick = Environment.TickCount64;
+                if (_dropLeadingSilence)
+                {
+                    // Priming zeros: never staged, counted as consumed (see DropLeadingSilence).
+                    var zeros = 0;
+                    while (offset + zeros < pcm.Length && Math.Abs(pcm[offset + zeros] / 32768f) < SilentSample) zeros++;
+                    zeros -= zeros % Channels;
+                    offset += zeros;
+                    _consumedFrames += zeros / Channels;
+                    if (offset < pcm.Length) _dropLeadingSilence = false;
+                    else continue;
+                }
                 if (_discardSamples > 0)
                 {
                     // Stale head after a flush (see Flush): never staged, but
@@ -139,11 +235,12 @@ public sealed class GaplessTrackSegment
                     if (_abandoned || _endOfStream)
                         return false;
                     var remaining = deadline - Environment.TickCount64;
-                    if (remaining <= 0 || !Monitor.Wait(_gate, (int)Math.Min(remaining, 100)))
-                    {
-                        if (Environment.TickCount64 >= deadline)
-                            return false;
-                    }
+                    _writerWaiting = true;
+                    var signalled = remaining > 0 && Monitor.Wait(_gate, (int)Math.Min(remaining, 100));
+                    _writerWaiting = false;
+                    _lastWriteTick = Environment.TickCount64;
+                    if (!signalled && Environment.TickCount64 >= deadline)
+                        return false;
                 }
                 if (_abandoned || _endOfStream)
                     return false;
@@ -152,7 +249,10 @@ public sealed class GaplessTrackSegment
                 var toCopy = Math.Min(free, pcm.Length - offset);
                 for (var i = 0; i < toCopy; i++)
                 {
-                    _ring[_writeIdx] = pcm[offset + i] / 32768f;
+                    var v = pcm[offset + i] / 32768f;
+                    if (_writeFadeDone < _writeFadeTotal)
+                        v *= (float)(_writeFadeDone++ / Channels * Channels) / _writeFadeTotal;
+                    _ring[_writeIdx] = v;
                     _writeIdx = (_writeIdx + 1) % _ring.Length;
                 }
                 _count += toCopy;
@@ -243,6 +343,7 @@ public sealed class GaplessTrackSegment
             _consumedFrames = 0;
             _basePositionMs = Math.Max(0, newBasePositionMs);
             _discardSamples = _hadAudio ? Math.Max(0, discardFrames) * Channels : 0;
+            _writeFadeTotal = 0; // a damaged-tail fade-in belongs to the audio this flush dropped
             // Re-arm the pre-buffer gate: post-seek delivery ramps exactly like
             // input start, and a once-per-life gate let the first trickle blocks
             // render against silence — the post-seek chop the gate exists to stop.
