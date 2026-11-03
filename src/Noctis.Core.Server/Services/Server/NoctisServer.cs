@@ -30,6 +30,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
     private readonly ServerUserStore _users;
     private readonly string _serverVersion;
     private readonly LoginThrottle _throttle = new();
+    private readonly PairingCodes _pairing = new();
     private WebApplication? _app;
 
     /// <summary>
@@ -159,6 +160,8 @@ public sealed partial class NoctisServer : IAsyncDisposable
 
     public async Task StopAsync()
     {
+        // A QR code shown for this run dies with it, even if the server is never started again.
+        _pairing.Revoke();
         if (_app is null) return;
         var app = _app;
         _app = null;
@@ -190,7 +193,38 @@ public sealed partial class NoctisServer : IAsyncDisposable
     public bool DeviceSignInEnabled { get; set; } = true;
 
     private static bool IsDeviceSignInMethod(string method)
-        => method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase) || method.Equals("noctisSignOut", StringComparison.OrdinalIgnoreCase);
+        => method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase) || method.Equals("noctisSignOut", StringComparison.OrdinalIgnoreCase)
+           || method.Equals(PairSignInMethod, StringComparison.OrdinalIgnoreCase);
+
+    // ── QR sign-in (see PairingCodes for the threat model) ──
+
+    /// <summary>Trades the one-time code from the desktop's QR for a device key (form POST:
+    /// <c>code</c>, <c>deviceId</c>, <c>deviceName</c>; no other credential).</summary>
+    public const string PairSignInMethod = "noctisPairSignIn";
+
+    /// <summary>The login brake's bucket for QR codes: one per address. No account name can hold
+    /// a control character, so it never shares a bucket with a password login.</summary>
+    internal const string PairingThrottleName = "\u0001pairing";
+
+    /// <summary>Raised (from a worker thread) when a phone signed in with the QR code, which is
+    /// then used up: the desktop shows a new one.</summary>
+    public event EventHandler? PairingCodeUsed;
+
+    /// <summary>
+    /// A new one-time code for <paramref name="user"/>'s QR, valid for <see cref="PairingCodes.Lifetime"/>;
+    /// any code issued before stops working. Only while running with phone sign-in on.
+    /// </summary>
+    public string IssuePairingCode(string user, out DateTime expiresUtc)
+    {
+        if (_app is null || !DeviceSignInEnabled) throw new InvalidOperationException("The server is not signing phones in.");
+        return _pairing.Issue(user, out expiresUtc);
+    }
+
+    /// <summary>Kills the live QR code (the panel showing it closed).</summary>
+    public void RevokePairingCode() => _pairing.Revoke();
+
+    /// <summary>Tests: whether a QR code is live.</summary>
+    internal bool HasLivePairingCode => _pairing.IsLive;
 
     /// <summary>Request header that carries an API key, so stream/cover URLs never contain one. Wins over <c>apiKey=</c>.</summary>
     public const string KeyHeader = "X-Noctis-Key";
@@ -219,7 +253,8 @@ public sealed partial class NoctisServer : IAsyncDisposable
     {
         if (method.EndsWith(".view", StringComparison.OrdinalIgnoreCase)) method = method[..^5];
         // The sign-in reply carries a new key: no cache (or proxy) may keep it.
-        if (method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase)) ctx.Response.Headers.CacheControl = "no-store";
+        if (method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase) || method.Equals(PairSignInMethod, StringComparison.OrdinalIgnoreCase))
+            ctx.Response.Headers.CacheControl = "no-store";
         string? format = null;
         try
         {
@@ -231,6 +266,13 @@ public sealed partial class NoctisServer : IAsyncDisposable
             if (!DeviceSignInEnabled && IsDeviceSignInMethod(method))
             {
                 await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrGeneric, $"Unknown method '{method}'", format, _serverVersion), 200).ConfigureAwait(false);
+                return;
+            }
+
+            // The QR code is its own credential: handled whole here, before password/key auth.
+            if (method.Equals(PairSignInMethod, StringComparison.OrdinalIgnoreCase))
+            {
+                await PairSignInAsync(ctx, p, format).ConfigureAwait(false);
                 return;
             }
 
@@ -347,6 +389,89 @@ public sealed partial class NoctisServer : IAsyncDisposable
 
     private static SubsonicException Missing(string name) => new(SubsonicResponse.ErrMissingParameter, $"Required parameter '{name}' is missing");
     private static SubsonicException NotFound() => new(SubsonicResponse.ErrNotFound, "The requested data was not found");
+
+    // ── Device sign-in (password or QR code) ────────────────────────────────
+
+    /// <summary>The phone's id and name from a sign-in, validated (error 10 otherwise).</summary>
+    private static (string DeviceId, string DeviceName) DeviceFields(Params p)
+    {
+        var deviceId = p.Get("deviceId") ?? throw Missing("deviceId");
+        if (!DeviceIdPattern.IsMatch(deviceId))
+            throw new SubsonicException(SubsonicResponse.ErrMissingParameter, "Parameter 'deviceId' must be 8–64 letters, digits, '-' or '_'");
+        var deviceName = CleanDeviceName(p.Get("deviceName"))
+            ?? throw new SubsonicException(SubsonicResponse.ErrMissingParameter, "Parameter 'deviceName' must be 1–64 characters");
+        return (deviceId, deviceName);
+    }
+
+    /// <summary>Issues the device's key and the reply both sign-ins give (<c>noctisSignIn</c>):
+    /// one path, so the device list, Remove and sign-out treat a QR phone like any other.</summary>
+    private JsonObject SignInReply(ServerUser user, string deviceId, string deviceName)
+    {
+        var key = _users.IssueDeviceKey(user.Name, deviceId, deviceName);
+        DebugLogger.Info(DebugLogger.Category.State, "Server", $"device signed in: {deviceName}");
+        DevicesChanged?.Invoke(this, EventArgs.Empty);
+        var signIn = new JsonObject
+        {
+            ["apiKey"] = key,
+            ["user"] = user.Name,
+            ["server"] = _sync?.DeviceName ?? Environment.MachineName,
+            ["syncEnabled"] = _sync is { IsEnabled: true },
+        };
+        if (DisplayName() is { } displayName) signIn["displayName"] = displayName;
+        return new JsonObject { ["noctisSignIn"] = signIn };
+    }
+
+    /// <summary>
+    /// noctisPairSignIn: the QR code's secret for a device key. The code must come in the form
+    /// body (never the URL, which proxies and logs keep) and alone: a key, a user or a password
+    /// with it is refused. Every attempt goes through the login brake for the caller's address,
+    /// reserved before the code is checked, as a password is. A wrong, used or expired code all
+    /// answer the same error 40, so nothing tells a guesser which.
+    /// </summary>
+    private async Task PairSignInAsync(HttpContext ctx, Params p, string? format)
+    {
+        if (ApiKeyOf(ctx, p) is not null || p.Get("u") is not null || p.Get("p") is not null || p.Get("t") is not null)
+        {
+            await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrAuthMechanismNotSupported,
+                "Sign in with the QR code alone.", format, _serverVersion), 200).ConfigureAwait(false);
+            return;
+        }
+        if (ctx.Request.Query.ContainsKey("code") || !ctx.Request.HasFormContentType)
+        {
+            await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrMissingParameter,
+                "Send the code in a form POST.", format, _serverVersion), 200).ConfigureAwait(false);
+            return;
+        }
+        // Checked before the code, so a malformed request never uses it up.
+        var (deviceId, deviceName) = DeviceFields(p);
+
+        var client = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var throttleKey = LoginThrottle.Key(client, PairingThrottleName);
+        if (!_throttle.TryReserve(throttleKey, out var retryAfter, out var lockedNow))
+        {
+            ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+            await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrWrongCredentials,
+                "Too many failed sign-ins. Try again later.", format, _serverVersion), 429).ConfigureAwait(false);
+            return;
+        }
+
+        var user = _pairing.TryRedeem(p.Get("code"), out var userName)
+            ? _users.List().FirstOrDefault(u => string.Equals(u.Name, userName, StringComparison.OrdinalIgnoreCase))
+            : null;
+        if (user is null)
+        {
+            // Never the code itself in the log, only that a pairing failed.
+            if (lockedNow) DebugLogger.Warn(DebugLogger.Category.State, "Server", $"QR sign-in lockout for {client}");
+            await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrWrongCredentials,
+                "This sign-in code is not valid. Show a new one on the computer.", format, _serverVersion), 200).ConfigureAwait(false);
+            return;
+        }
+        _throttle.RecordSuccess(throttleKey);
+        ClientAuthenticated?.Invoke(this, user.Name);
+        var reply = SignInReply(user, deviceId, deviceName);
+        PairingCodeUsed?.Invoke(this, EventArgs.Empty);
+        await WriteAsync(ctx, SubsonicResponse.Ok(reply, format, _serverVersion), 200).ConfigureAwait(false);
+    }
 
     // ── Auth ────────────────────────────────────────────────────────────────
 
@@ -575,23 +700,8 @@ public sealed partial class NoctisServer : IAsyncDisposable
             {
                 // Reached only with a verified password (a key was refused before auth, error 42).
                 var user = (ServerUser)ctx.Items["user"]!;
-                var deviceId = p.Get("deviceId") ?? throw Missing("deviceId");
-                if (!DeviceIdPattern.IsMatch(deviceId))
-                    throw new SubsonicException(SubsonicResponse.ErrMissingParameter, "Parameter 'deviceId' must be 8–64 letters, digits, '-' or '_'");
-                var deviceName = CleanDeviceName(p.Get("deviceName"))
-                    ?? throw new SubsonicException(SubsonicResponse.ErrMissingParameter, "Parameter 'deviceName' must be 1–64 characters");
-                var key = _users.IssueDeviceKey(user.Name, deviceId, deviceName);
-                DebugLogger.Info(DebugLogger.Category.State, "Server", $"device signed in: {deviceName}");
-                DevicesChanged?.Invoke(this, EventArgs.Empty);
-                var signIn = new JsonObject
-                {
-                    ["apiKey"] = key,
-                    ["user"] = user.Name,
-                    ["server"] = _sync?.DeviceName ?? Environment.MachineName,
-                    ["syncEnabled"] = _sync is { IsEnabled: true },
-                };
-                if (DisplayName() is { } displayName) signIn["displayName"] = displayName;
-                return new JsonObject { ["noctisSignIn"] = signIn };
+                var (deviceId, deviceName) = DeviceFields(p);
+                return SignInReply(user, deviceId, deviceName);
             }
             // Songs sent from the phone (NoctisServer.Upload.cs): body streamed to disk, not to a snapshot.
             case "noctisuploadtrack":
