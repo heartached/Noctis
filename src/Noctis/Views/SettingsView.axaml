@@ -6884,6 +6884,7 @@
 
                     <!-- Enable Scrobbling (when connected) -->
                     <controls:CollapsibleContent IsOpen="{Binding IsLastFmConnected}" Lift="6">
+                    <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
@@ -6894,6 +6895,53 @@
                                               IsChecked="{Binding LastFmScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #160: one-way play count import from LastFm (SettingsViewModel.PlayCountImport.cs). -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                            <TextBlock Text="{Binding LastFmImportStatus}"
+                                       IsVisible="{Binding LastFmImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.PlayCountImport.ModeName}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding PlayCountImportModeOptions}"
+                                  SelectedItem="{Binding SelectedPlayCountImportModeOption}"
+                                  IsEnabled="{Binding !IsPlayCountImportRunning}"
+                                  MinWidth="160"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"
+                                  Margin="0,0,8,0"/>
+                        <Button Grid.Column="2"
+                                AutomationProperties.Name="{loc:T Settings.PlayCountImport.Title}"
+                                IsVisible="{Binding !IsLastFmImportRunning}"
+                                Command="{Binding ImportLastFmPlayCountsCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Button}" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button Grid.Column="2"
+                                AutomationProperties.Name="{loc:T Settings.PlayCountImport.Cancel}"
+                                IsVisible="{Binding IsLastFmImportRunning}"
+                                Command="{Binding CancelPlayCountImportCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+                    </StackPanel>
                     </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
@@ -7012,6 +7060,7 @@
 
                     <!-- Enable Scrobbling (when connected) -->
                     <controls:CollapsibleContent IsOpen="{Binding IsListenBrainzConnected}" Lift="6">
+                    <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
@@ -7022,6 +7071,53 @@
                                               IsChecked="{Binding ListenBrainzScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #160: one-way play count import from ListenBrainz (SettingsViewModel.PlayCountImport.cs). -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                            <TextBlock Text="{Binding ListenBrainzImportStatus}"
+                                       IsVisible="{Binding ListenBrainzImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.PlayCountImport.ModeName}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding PlayCountImportModeOptions}"
+                                  SelectedItem="{Binding SelectedPlayCountImportModeOption}"
+                                  IsEnabled="{Binding !IsPlayCountImportRunning}"
+                                  MinWidth="160"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"
+                                  Margin="0,0,8,0"/>
+                        <Button Grid.Column="2"
+                                AutomationProperties.Name="{loc:T Settings.PlayCountImport.Title}"
+                                IsVisible="{Binding !IsListenBrainzImportRunning}"
+                                Command="{Binding ImportListenBrainzPlayCountsCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Button}" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button Grid.Column="2"
+                                AutomationProperties.Name="{loc:T Settings.PlayCountImport.Cancel}"
+                                IsVisible="{Binding IsListenBrainzImportRunning}"
+                                Command="{Binding CancelPlayCountImportCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+                    </StackPanel>
                     </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
