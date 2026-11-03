@@ -198,6 +198,28 @@ public class OfficialPluginsFlowTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task Replace_IsNotOffered_ForAListingThisNoctisCannotRun()
+    {
+        // A copy that was not checked against the list (here: a hand-installed zip of the same id
+        // and version, not credited to Noctis) gets "Replace". The listing needs a newer Noctis,
+        // so Replace would swap a working copy for one that cannot run.
+        using var m = Mount(_ => new ConfirmationResult(true, false), appVersion: "1.5.8");
+        _box.Settings.CommunityPluginsEnabled = true;
+        m.Host.LoadAll();
+        m.Host.InstallPackage(_box.WriteZip("hand.zip",
+            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: "dev.test.zip", version: "1.0.0"))),
+            ("Test.Plugin.dll", new byte[] { 2 })), allowUpdate: false);
+        Publish(m, ZipBytes("1.0.0"), "1.0.0", minApp: "1.5.9");
+
+        await m.Vm.LoadOfficialPluginsAsync();
+        var item = m.Vm.OfficialPlugins[0];
+        Assert.True(item.HasUnverifiedCopy);
+        Assert.False(item.CanInstall);
+        Assert.Equal(OfficialPluginState.NeedsNewerApp, item.State);
+        Assert.Equal(Loc.T("Plugins.Get.RequiresApp", "1.5.9"), item.ButtonText);
+    }
+
+    [AvaloniaFact]
     public async Task OpeningThePluginsPage_FetchesOnce_StartupDoesNot()
     {
         using var m = Mount(_ => new ConfirmationResult(true, false));

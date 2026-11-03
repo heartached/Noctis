@@ -168,7 +168,7 @@ public sealed class ABLoopView : UserControl
         base.OnAttachedToVisualTree(e);
         ApplyTheme(LoopTheme.From(this));
         ActualThemeVariantChanged += OnThemeChanged;
-        if (TopLevel.GetTopLevel(this) is Window w) w.Topmost = _session.Store.OnTop;
+        if (OwnWindow() is { } w) w.Topmost = _session.Store.OnTop;
         _frame.Start();
         Refresh();
     }
@@ -195,9 +195,13 @@ public sealed class ABLoopView : UserControl
     {
         var on = !_session.Store.OnTop;
         _session.Store.SetOnTop(on);
-        if (TopLevel.GetTopLevel(this) is Window w) w.Topmost = on;
+        if (OwnWindow() is { } w) w.Topmost = on;
         Refresh();
     }
+
+    /// <summary>The view's own window; null when it is shown inside another one (Settings shows it
+    /// in place, in Noctis's main window, which "Keep on top" must never pin).</summary>
+    private Window? OwnWindow() => TopLevel.GetTopLevel(this) is Window w && ReferenceEquals(w.Content, this) ? w : null;
 
     private void ToggleStep()
     {

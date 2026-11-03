@@ -478,6 +478,26 @@ public class ABLoopPluginTests
         window.Close();
     }
 
+    [AvaloniaFact]
+    public void View_ShownInSettings_NeverPinsTheMainWindowOnTop()
+    {
+        // Settings shows the view in place inside Noctis's main window; "Keep on top" is for the
+        // view's own window and must not pin the main one.
+        var sim = new SimPlayer();
+        sim.Start(S(30));
+        using var session = new LoopSession(sim, () => sim.Now, useTimer: false);
+        session.Store.SetOnTop(true);
+        var view = new ABLoopView(session);
+        var window = new Window { Content = new Border { Child = new ContentControl { Content = view } }, Width = 1200, Height = 800 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(window.Topmost);
+        Click(view, "Keep on top"); // off
+        Click(view, "Keep on top"); // on again
+        Assert.False(window.Topmost);
+        window.Close();
+    }
+
     private static void Click(Control root, string name)
         => Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(root).OfType<Button>()
             .First(b => Avalonia.Automation.AutomationProperties.GetName(b) == name)

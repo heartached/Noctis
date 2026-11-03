@@ -113,8 +113,16 @@ public partial class SettingsViewModel
                 var verified = copy is not null && (!item.IsOfficial || Plugins.IsVerifiedOfficial(copy, item.Entry));
                 item.Installed = verified ? copy : null;
                 item.HasUnverifiedCopy = copy is not null && !verified;
-                item.State = PluginCatalog.GetState(item.Entry, copy?.Version,
+                var state = PluginCatalog.GetState(item.Entry, copy?.Version,
                     Plugins.AppVersion, PluginManifest.CurrentPlatform);
+                // Replace installs the listed zip: only when this Noctis can run it (an unverified
+                // copy as new as the list skipped the OS and minAppVersion checks).
+                if (state == OfficialPluginState.Installed && item.HasUnverifiedCopy)
+                {
+                    var listed = PluginCatalog.GetState(item.Entry, null, Plugins.AppVersion, PluginManifest.CurrentPlatform);
+                    if (listed is OfficialPluginState.NeedsNewerApp or OfficialPluginState.NotForThisOs) state = listed;
+                }
+                item.State = state;
             }
         }
         SyncCustomPlugins();

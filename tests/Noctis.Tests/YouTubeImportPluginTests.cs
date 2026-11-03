@@ -205,6 +205,30 @@ public class YouTubeImportPluginTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void Esc_InTheViewShownInSettings_LeavesTheMainWindowOpen()
+    {
+        // Settings shows a plugin's view in place (PluginViewHost) inside Noctis's main window:
+        // Esc there must not close that window, only the view's own window.
+        EnsureAppStyles();
+        var view = new YouTubeImportView(new YouTubeImportViewModel(new FakeImporter(MakeTool(installed: true)), new HttpClient(), State()));
+        var host = new ContentControl { Name = "PluginViewHost", Content = view };
+        var win = new Window { Width = 1200, Height = 800, Content = new Border { Child = host } };
+        win.Show();
+        try
+        {
+            var closed = 0;
+            win.Closed += (_, _) => closed++;
+            Dispatcher.UIThread.RunJobs();
+            view.Focus();
+            win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            PumpUntil(() => closed > 0, 300);
+            Assert.Equal(0, closed);
+            Assert.True(win.IsVisible);
+        }
+        finally { Close(win); }
+    }
+
+    [AvaloniaFact]
     public void WithoutFfmpeg_OnlyM4aIsOffered_EvenWhenMp3WasRemembered()
     {
         EnsureAppStyles();

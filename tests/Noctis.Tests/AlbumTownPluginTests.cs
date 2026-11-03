@@ -427,6 +427,31 @@ public class AlbumTownPluginTests
     }
 
     [AvaloniaFact]
+    public void SearchBox_EscWithNothingTyped_ReachesTheWindow()
+    {
+        // Shown in Settings, Esc goes back to the plugin's page (MainWindow's KeyDown). The search
+        // box clears its text on Esc, but with nothing typed it must let the key through.
+        var (view, _) = NewView(5, crowd: 5);
+        var window = new Window { Content = new Border { Child = new ContentControl { Content = view } }, Width = 900, Height = 600 };
+        var reached = 0;
+        window.KeyDown += (_, e) => { if (e.Key == Avalonia.Input.Key.Escape) reached++; };
+        window.Show();
+        try
+        {
+            var search = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(view).OfType<TextBox>()
+                .First(t => Avalonia.Automation.AutomationProperties.GetName(t) == "Call an album to the plaza");
+            search.Focus();
+            search.Text = "x";
+            window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Escape, Avalonia.Input.RawInputModifiers.None);
+            Assert.Equal("", search.Text);
+            Assert.Equal(0, reached);
+            window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Escape, Avalonia.Input.RawInputModifiers.None);
+            Assert.Equal(1, reached);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void View_CallsACrowd_AndCallingKeepsItWithinTheLimit()
     {
         var (view, host) = NewView(300, crowd: 60);
