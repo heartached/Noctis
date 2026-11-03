@@ -135,6 +135,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Theme = this,
             Logs = new AndroidLogExporter(context),
             Links = new AndroidUrlLauncher(context),
+            // Account → Scan QR Code: Google's code scanner (no camera permission, see the class).
+            QrScanner = new AndroidQrScanner(),
             VersionText = DescribeVersion(context),
             Account = account,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).

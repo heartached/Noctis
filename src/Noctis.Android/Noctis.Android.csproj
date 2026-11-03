@@ -91,6 +91,10 @@
          (AnimatorKt$addListener$1) and R8 fails with "defined multiple times". Pin
          Core.Ktx to the same 1.19.0.1 release to keep the pair in lockstep. -->
     <PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" Version="1.19.0.1" />
+    <!-- Sign in by QR code (AndroidQrScanner): Google's code scanner. Google Play services
+         runs the camera and the decoder in its own process and hands back only the decoded
+         text, so the app needs no CAMERA permission and never sees a camera frame. -->
+    <PackageReference Include="Xamarin.GooglePlayServices.Code.Scanner" Version="116.1.0.17" />
   </ItemGroup>
 
   <ItemGroup>
