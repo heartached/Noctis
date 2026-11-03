@@ -22,7 +22,7 @@
       "description": "Fewer frames are easier on older computers." },
     { "key": "menuBar", "label": "Menu bar", "type": "choice", "choices": ["Top (horizontal)", "Side (vertical)"],
       "default": "Top (horizontal)",
-      "description": "Along the top or down the side. Its little triangle folds it away." }
+      "description": "Along the top or down the side. Its triangle folds it." }
   ],
   "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
   "icon": "icon.png"
