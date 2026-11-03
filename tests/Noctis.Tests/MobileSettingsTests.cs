@@ -522,6 +522,12 @@ public class MobileSettingsTests
             Assert.False(MobileFixtures.Named<Button>(page, "BackButton").IsVisible);
             Assert.False(MobileFixtures.Named<Button>(page, "AccountRow").IsVisible);     // no account service in this rig
             Assert.True(MobileFixtures.Named<Border>(page, "StatsStrip").IsEffectivelyVisible);
+            // No account, no downloads: Albums and Artists stand in for Downloaded and On Phone.
+            Assert.True(MobileFixtures.Named<TextBlock>(page, "AlbumsStatLabel").IsEffectivelyVisible);
+            Assert.True(MobileFixtures.Named<TextBlock>(page, "ArtistsStatLabel").IsEffectivelyVisible);
+            Assert.False(MobileFixtures.Named<TextBlock>(page, "DownloadedStatLabel").IsEffectivelyVisible);
+            Assert.False(MobileFixtures.Named<TextBlock>(page, "OnPhoneStatLabel").IsEffectivelyVisible);
+            Assert.Equal(rig.Shell.Library.AlbumCount.ToString("N0"), vm.AlbumsStat);
             Assert.Equal(new[] { "Appearance", "Library", "Listening", "Help", "About" },
                 visible.OfType<TextBlock>().Where(t => t.Classes.Contains("group-caption")).Select(t => t.Text));
 
@@ -576,14 +582,14 @@ public class MobileSettingsTests
             Assert.Equal("Plain", MobileFixtures.Named<TextBlock>(page, "PlayerBarValueLabel").Text);
             Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "BackgroundValueLabel").Text);
             Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "ScrobblingValueLabel").Text);
-            Assert.Equal("Translations, Romanization", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
+            Assert.Equal("Both on", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
             Assert.Equal("Theme, System", NameOf("ThemeRow"));
             Assert.Equal("Accent, Crimson", NameOf("AccentRow"));
             Assert.Equal("Player Bar, Plain", NameOf("PlayerBarRow"));
             Assert.Equal("Background, Off", NameOf("BackgroundRow"));
             Assert.Equal("Scrobbling, Off", NameOf("ScrobblingRow"));
             Assert.Equal("Listening History", NameOf("HistoryRow"));               // no summary, no comma
-            Assert.Equal("Lyrics, Translations, Romanization", NameOf("LyricsRow"));
+            Assert.Equal("Lyrics, Both on", NameOf("LyricsRow"));
             Assert.Equal("Export Logs, Keys and passwords removed", NameOf("ExportLogsButton"));
             Assert.StartsWith("Rescan Library, ", NameOf("RescanButton"));
 

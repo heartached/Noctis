@@ -72,9 +72,11 @@
         <Style Selector="Border.row-separator.plain">
             <Setter Property="Margin" Value="16,0" />
         </Style>
+        <!-- 160, not 220: on a 393 dp phone a 220 dp value left the label (the * column) no room at
+             all ("Lyrics" vanished behind "Translations, Romanization", 11-02). -->
         <Style Selector="TextBlock.row-value">
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="MaxWidth" Value="220" />
+            <Setter Property="MaxWidth" Value="160" />
         </Style>
         <!-- A small grey caption over a card on a pushed page ("Dark Style"). -->
         <Style Selector="TextBlock.group-caption">
@@ -403,14 +405,23 @@
                                                 <TextBlock Classes="stat-label" Text="Songs" />
                                             </StackPanel>
                                             <Border Grid.Column="1" Classes="stat-divider" />
-                                            <StackPanel Grid.Column="2">
+                                            <StackPanel Grid.Column="2" IsVisible="{Binding Shell.HasAccount}">
                                                 <TextBlock Name="DownloadedStatLabel" Classes="stat-value" Text="{Binding DownloadedStat}" />
                                                 <TextBlock Classes="stat-label" Text="Downloaded" />
                                             </StackPanel>
+                                            <!-- No account, no downloads: the library's albums and artists instead. -->
+                                            <StackPanel Grid.Column="2" IsVisible="{Binding !Shell.HasAccount}">
+                                                <TextBlock Name="AlbumsStatLabel" Classes="stat-value" Text="{Binding AlbumsStat}" />
+                                                <TextBlock Classes="stat-label" Text="Albums" />
+                                            </StackPanel>
                                             <Border Grid.Column="3" Classes="stat-divider" />
-                                            <StackPanel Grid.Column="4">
+                                            <StackPanel Grid.Column="4" IsVisible="{Binding Shell.HasAccount}">
                                                 <TextBlock Name="OnPhoneStatLabel" Classes="stat-value" Text="{Binding OnPhoneStat}" />
                                                 <TextBlock Classes="stat-label" Text="On Phone" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4" IsVisible="{Binding !Shell.HasAccount}">
+                                                <TextBlock Name="ArtistsStatLabel" Classes="stat-value" Text="{Binding ArtistsStat}" />
+                                                <TextBlock Classes="stat-label" Text="Artists" />
                                             </StackPanel>
                                         </Grid>
                                     </Border>

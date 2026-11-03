@@ -345,7 +345,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The Lyrics row's value: which extra lines show.</summary>
     public string LyricsValue => (Shell.Lyrics.ShowTranslation, Shell.Lyrics.ShowRomanization) switch
     {
-        (true, true) => "Translations, Romanization",
+        (true, true) => "Both on",
         (true, false) => "Translations on",
         (false, true) => "Romanization on",
         _ => "Off",
@@ -458,9 +458,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     // ── The profile card's stats ──
 
-    /// <summary>Songs, Downloaded and On Phone under the profile. "—" until read: the song count is
-    /// the library's; the downloads' count and bytes are summed off the UI thread.</summary>
+    /// <summary>Songs, Downloaded and On Phone under the profile (Songs, Albums and Artists with no
+    /// account, so no downloads). "—" until read: the counts are the library's; the downloads'
+    /// count and bytes are summed off the UI thread.</summary>
     [ObservableProperty] private string _songsStat = "—";
+    [ObservableProperty] private string _albumsStat = "—";
+    [ObservableProperty] private string _artistsStat = "—";
     [ObservableProperty] private string _downloadedStat = "—";
     [ObservableProperty] private string _onPhoneStat = "—";
 
@@ -473,6 +476,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private void RefreshStats()
     {
         SongsStat = Shell.Library.IsLoaded ? Shell.Library.SongCount.ToString("N0") : "—";
+        AlbumsStat = Shell.Library.IsLoaded ? Shell.Library.AlbumCount.ToString("N0") : "—";
+        ArtistsStat = Shell.Library.IsLoaded ? Shell.Library.ArtistCount.ToString("N0") : "—";
         if (Shell.Account is not { } account)
         {
             ShowDownloadStats(0, 0);
