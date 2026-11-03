@@ -187,6 +187,12 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (Plugins is null) return;
         Plugins.LoadAll();
+        ShowPluginsReloaded();
+    }
+
+    private void ShowPluginsReloaded()
+    {
+        if (Plugins is null) return;
         // Was a hard-coded English line ("Reloaded · 2 plugins found."): Russian showed it as is.
         var n = Plugins.Plugins.Count;
         TransientStatus.Show(nameof(PluginsStatus), v => PluginsStatus = v,
@@ -195,11 +201,26 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>The Plugins header's one refresh button: reads the plugins folder again and fetches
     /// the list again.</summary>
+    /// <summary>True while the refresh button works; the button shows a spinner instead of its icon.</summary>
+    [ObservableProperty] private bool _isRefreshingPlugins;
+
     [RelayCommand]
     private async Task RefreshPlugins()
     {
-        ReloadPlugins();
-        await LoadOfficialPluginsAsync();
+        if (IsRefreshingPlugins) return;
+        IsRefreshingPlugins = true;
+        var started = Environment.TickCount64;
+        try
+        {
+            PluginsStatus = string.Empty;
+            Plugins?.LoadAll();
+            await LoadOfficialPluginsAsync();
+            // Long enough to read as a refresh, not a flicker.
+            var left = 600 - (Environment.TickCount64 - started);
+            if (left > 0) await Task.Delay((int)left);
+        }
+        finally { IsRefreshingPlugins = false; }
+        ShowPluginsReloaded(); // the check line once the spinner is done
     }
 
     /// <summary>The "Community plugins" switch; off = restricted mode for community plugins (official ones still run).</summary>

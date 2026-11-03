@@ -2342,9 +2342,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Search" xml:space="preserve"><value>Search plugins</value></data>
   <data name="Plugins.SearchEmpty" xml:space="preserve"><value>No plugins match your search.</value></data>
   <data name="Plugins.Refresh" xml:space="preserve"><value>Refresh plugins</value></data>
-  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>Reloaded. No plugins found.</value></data>
-  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Reloaded. 1 plugin found.</value></data>
-  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Reloaded. {0} plugins found.</value></data>
+  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>No plugins installed</value></data>
+  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Refreshed · 1 plugin</value></data>
+  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Refreshed · {0} plugins</value></data>
   <data name="Plugins.Get.Replace" xml:space="preserve"><value>Replace with official</value></data>
   <data name="Plugins.Card.NoAuthor" xml:space="preserve"><value>Community plugin</value></data>
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Installing</value></data>

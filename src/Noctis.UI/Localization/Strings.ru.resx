@@ -2342,9 +2342,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Search" xml:space="preserve"><value>Поиск плагинов</value></data>
   <data name="Plugins.SearchEmpty" xml:space="preserve"><value>Нет плагинов по вашему запросу.</value></data>
   <data name="Plugins.Refresh" xml:space="preserve"><value>Обновить плагины</value></data>
-  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>Перезагружено. Плагины не найдены.</value></data>
-  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Перезагружено. Найден 1 плагин.</value></data>
-  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Перезагружено. Найдено плагинов: {0}.</value></data>
+  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>Плагины не установлены</value></data>
+  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Обновлено · 1 плагин</value></data>
+  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Обновлено · плагинов: {0}</value></data>
   <data name="Plugins.Get.Replace" xml:space="preserve"><value>Заменить официальным</value></data>
   <data name="Plugins.Card.NoAuthor" xml:space="preserve"><value>Плагин сообщества</value></data>
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Установка</value></data>

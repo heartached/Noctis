@@ -2088,7 +2088,7 @@
                                  on a card too narrow for five the toggles step aside (SyncPillToggles). -->
                             <Grid Grid.Row="2" x:Name="PillTransport" ColumnDefinitions="Auto,*,Auto" MaxWidth="240"
                                   VerticalAlignment="Center" Margin="0,4,0,0">
-                            <Button Grid.Column="0" x:Name="PillShuffleButton" Classes="mini-transport" Width="26" Height="26"
+                            <Button Grid.Column="0" x:Name="PillShuffleButton" Classes="mini-transport glass-circle" Width="26" Height="26"
                                     HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                                 <Panel>
@@ -2124,7 +2124,7 @@
                                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Button>
                             </StackPanel>
-                            <Button Grid.Column="2" x:Name="PillRepeatButton" Classes="mini-transport" Width="26" Height="26"
+                            <Button Grid.Column="2" x:Name="PillRepeatButton" Classes="mini-transport glass-circle" Width="26" Height="26"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
                                     Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                                 <Panel>
@@ -2256,7 +2256,7 @@
                             <!-- Transport: shuffle | prev play next | repeat, as on the Pill (see there);
                                  the row spans the seek row, so the toggles line up under its times. -->
                             <Grid x:Name="SleeveTransport" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
-                            <Button Grid.Column="0" x:Name="SleeveShuffleButton" Classes="mini-transport" Width="30" Height="30"
+                            <Button Grid.Column="0" x:Name="SleeveShuffleButton" Classes="mini-transport glass-circle" Width="30" Height="30"
                                     HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                                 <Panel>
@@ -2291,7 +2291,7 @@
                                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Button>
                             </StackPanel>
-                            <Button Grid.Column="2" x:Name="SleeveRepeatButton" Classes="mini-transport" Width="30" Height="30"
+                            <Button Grid.Column="2" x:Name="SleeveRepeatButton" Classes="mini-transport glass-circle" Width="30" Height="30"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
                                     Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                                 <Panel>

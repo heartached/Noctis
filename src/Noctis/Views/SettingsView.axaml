@@ -7186,17 +7186,28 @@
                             AutomationProperties.Name="{loc:T Plugins.Refresh}"
                             ToolTip.Tip="{loc:T Plugins.Refresh}" Command="{Binding RefreshPluginsCommand}"
                             IsEnabled="{Binding !IsOfficialPluginsLoading}">
-                        <Viewbox Width="15" Height="15">
-                            <Canvas Width="24" Height="24">
-                                <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
-                                      StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                            </Canvas>
-                        </Viewbox>
+                        <Panel>
+                            <Viewbox Width="15" Height="15" IsVisible="{Binding !IsRefreshingPlugins}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
+                                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                </Canvas>
+                            </Viewbox>
+                            <controls:LoadingSpinner Width="15" Height="15" Thickness="2"
+                                                     Foreground="{Binding $parent[Button].Foreground}"
+                                                     IsVisible="{Binding IsRefreshingPlugins}" IsActive="{Binding IsRefreshingPlugins}"/>
+                        </Panel>
                     </Button>
                 </WrapPanel>
             </Grid>
-            <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="14,2,0,4"
-                       IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <!-- After a refresh: a check and "Refreshed · 8 plugins", gone again after a few seconds. -->
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="14,2,0,4"
+                        IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="11" Height="11"
+                          Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
+                           VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
 
             <!-- Official Noctis plugins: the list's plugins by Noctis (plugins/index.json, fetched when
                  this page opens). Always the verified mark. -->
