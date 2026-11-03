@@ -94,6 +94,34 @@ public class LanguageLiveSwitchTests
         finally { Reset(window); try { Directory.Delete(root, true); } catch { } }
     }
 
+    /// <summary>Slider readouts the view-model builds with Loc.T ("Center" under Balance, "Off"
+    /// under Background Blur) must re-read on a language switch, not only when the slider moves.</summary>
+    [AvaloniaFact]
+    public async Task PickingRussian_RelabelsBalanceAndBlurReadouts()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        Window? window = null;
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.BackgroundBlurAmount = 0; // readout "Off"
+            var raised = new System.Collections.Generic.List<string?>();
+            vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+            Assert.Equal("Center", vm.AudioBalanceLabel);
+            Assert.Equal("Off", vm.BackgroundBlurLabel);
+
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "ru");
+            _output.WriteLine($"ru: '{vm.AudioBalanceLabel}' / '{vm.BackgroundBlurLabel}'");
+            Assert.Equal("Центр", vm.AudioBalanceLabel);
+            Assert.Equal("Выкл.", vm.BackgroundBlurLabel);
+            Assert.Contains(nameof(SettingsViewModel.AudioBalanceLabel), raised);
+            Assert.Contains(nameof(SettingsViewModel.BackgroundBlurLabel), raised);
+            Assert.Contains(nameof(SettingsViewModel.ChannelMixNote), raised);
+        }
+        finally { Reset(window); try { Directory.Delete(root, true); } catch { } }
+    }
+
     [Theory]
     [InlineData("en", "English")]
     [InlineData("es", "Español (Spanish)")]

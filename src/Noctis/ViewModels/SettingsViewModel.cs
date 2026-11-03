@@ -1252,6 +1252,11 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedQueueLine2Option));
         OnPropertyChanged(nameof(SelectedQueueLine2ExtraOption));
         OnPropertyChanged(nameof(SelectedQueueRightOption));
+        // Slider readouts and notes built with Loc.T: raised only when their source moved,
+        // so "Off" / "Center" stayed in the old language until the slider was touched.
+        OnPropertyChanged(nameof(BackgroundBlurLabel));
+        OnPropertyChanged(nameof(AudioBalanceLabel));
+        RefreshChannelMixAvailability();
         // Endpoint list is live, but its labels (default marker, disconnected row)
         // are localized — rebuild it with the same selection.
         RebuildOutputDeviceOptions(_selectedOutputDeviceId);
