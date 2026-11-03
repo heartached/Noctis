@@ -85,6 +85,8 @@ public partial class SettingsViewModel
     /// <summary>The account this computer's owner uses on their devices: the first admin, else the first account.</summary>
     public ServerUser? PrimaryAccount => ServerUsersList.FirstOrDefault(u => u.IsAdmin) ?? ServerUsersList.FirstOrDefault();
     public bool HasPrimaryAccount => PrimaryAccount is not null;
+    /// <summary>The account's name, empty without one (PrimaryAccount.Name logged a binding warning then).</summary>
+    public string PrimaryAccountName => PrimaryAccount?.Name ?? string.Empty;
     public string PrimaryAccountInitial => PrimaryAccount is { Name.Length: > 0 } u ? u.Name[..1].ToUpperInvariant() : "?";
     public string PrimaryAccountSince => PrimaryAccount is { } u ? $"Since {u.CreatedUtc.ToLocalTime():MMMM yyyy}" : string.Empty;
     public IReadOnlyList<ServerUser> OtherAccounts => ServerUsersList.Where(u => !ReferenceEquals(u, PrimaryAccount)).ToList();
@@ -99,6 +101,7 @@ public partial class SettingsViewModel
     {
         OnPropertyChanged(nameof(PrimaryAccount));
         OnPropertyChanged(nameof(HasPrimaryAccount));
+        OnPropertyChanged(nameof(PrimaryAccountName));
         OnPropertyChanged(nameof(PrimaryAccountInitial));
         OnPropertyChanged(nameof(PrimaryAccountSince));
         OnPropertyChanged(nameof(OtherAccounts));
