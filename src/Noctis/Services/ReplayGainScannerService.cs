@@ -218,7 +218,19 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
                 AlbumGainDb = aGainDb ?? 0.0,
             });
 
-            if (ok) summary.Scanned++;
+            if (ok)
+            {
+                summary.Scanned++;
+                // The Songs list's ReplayGain column (GitHub #151): what was just written, as a
+                // re-read of the tag would give it (2 decimals for gain, 6 for peak). Album gain
+                // is only written in album mode; otherwise the file keeps its old one.
+                static double AsWritten(double v, string format) =>
+                    double.Parse(v.ToString(format, CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+                t.ApplyReplayGain(new ReplayGainValues(
+                    AsWritten(trackGainDb, "F2"),
+                    AsWritten(trackPeakLinear, "F6"),
+                    aGainDb is { } a ? AsWritten(a, "F2") : t.ReplayGainAlbumDb));
+            }
             else summary.Failed++;
         }
 

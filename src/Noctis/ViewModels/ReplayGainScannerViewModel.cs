@@ -251,8 +251,13 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
             progress.Drain();
             StatusMessage = L("ReplayGainScanner.Finished", summary.Scanned)
                 + (summary.Failed > 0 ? " · " + L("ReplayGainScanner.FinishedFailed", summary.Failed) : string.Empty);
-            // Refresh the library so any in-app view (e.g. metadata window) that
-            // reads RG tags picks up the new values.
+            // The scan put the written gains on the tracks (Songs list ReplayGain column,
+            // GitHub #151): save them. Then refresh the library so any in-app view (e.g.
+            // metadata window) that reads RG tags picks up the new values.
+            if (summary.Scanned > 0)
+            {
+                try { await _library.SaveAsync(); } catch { /* the next save catches up */ }
+            }
             _library.NotifyMetadataChanged();
             ScanCompleted?.Invoke(this, EventArgs.Empty);
             HasFinished = true;

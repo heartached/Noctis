@@ -243,6 +243,9 @@ public sealed class ReplayGainAutoScanService : IDisposable
 
         if (summary.Scanned > 0)
         {
+            // The scan put the written gains on the tracks (Songs list ReplayGain column,
+            // GitHub #151); keep them across a restart.
+            try { await _library.SaveAsync().ConfigureAwait(false); } catch { /* best effort */ }
             try { _onTagsWritten?.Invoke(); } catch { /* best effort */ }
         }
     }
