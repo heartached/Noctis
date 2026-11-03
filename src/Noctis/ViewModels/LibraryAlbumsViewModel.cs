@@ -327,6 +327,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void SetAlbumView(string? mode) => AlbumViewMode = mode == "carousel" ? "carousel" : "grid";
 
+    /// <summary>Top-right view icon (GitHub #164): grid to carousel and back, like the artist page.</summary>
+    [RelayCommand]
+    private void ToggleAlbumView() => AlbumViewMode = IsCarouselView ? "grid" : "carousel";
+
     /// <summary>Top-bar view menu: carousel case style by name ("Cover" / "JewelCase" / "Vinyl" / "Cassette").</summary>
     [RelayCommand]
     private void SetCarouselStyle(string? name) => CarouselStyle = AlbumCarouselStyles.Parse(name);

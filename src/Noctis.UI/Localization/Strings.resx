@@ -3054,6 +3054,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Main.AlbumView" xml:space="preserve"><value>View</value><comment>Albums page top-right view menu tooltip</comment></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Grid</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Carousel</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Now Playing Cover Flow</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>List</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Cover</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>CD Jewel Case</value><comment>Albums view menu: carousel case style</comment></data>

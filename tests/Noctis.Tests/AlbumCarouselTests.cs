@@ -380,6 +380,44 @@ public class AlbumCarouselTests
         window.Close();
     }
 
+    private static void WaitUntil(Func<bool> done)
+    {
+        for (var i = 0; i < 300 && !done(); i++)
+        {
+            Thread.Sleep(10);
+            Dispatcher.UIThread.RunJobs();
+        }
+    }
+
+    /// <summary>GitHub #164: the Albums page's top-right icon flips grid and carousel, with
+    /// nothing playing, and the carousel holds every album (not the playing album's tracks)
+    /// in the grid's sort and filter.</summary>
+    [AvaloniaFact]
+    public void AlbumsPage_Toggle_ShowsEveryAlbumWithNothingPlaying_InTheGridsSortAndFilter()
+    {
+        var (vm, settings) = AlbumsVm(Alb("Bad", 1987), Alb("Thriller", 1982), Alb("Invincible", 2001));
+        vm.IsActive = true;
+        WaitUntil(() => vm.CarouselAlbums.Count == 3);
+
+        vm.ToggleAlbumViewCommand.Execute(null);
+        Assert.True(vm.IsCarouselView);
+        Assert.Equal("carousel", settings.AlbumViewMode);
+        Assert.Equal(3, vm.CarouselAlbums.Count);
+
+        vm.SetAlbumSortCommand.Execute("year");
+        vm.SetAlbumSortCommand.Execute("ascending");
+        WaitUntil(() => vm.CarouselAlbums.Select(a => a.Name).SequenceEqual(new[] { "Thriller", "Bad", "Invincible" }));
+        Assert.Equal(new[] { "Thriller", "Bad", "Invincible" }, vm.CarouselAlbums.Select(a => a.Name));
+
+        vm.ApplyFilter("thr");
+        WaitUntil(() => vm.CarouselAlbums.Count == 1);
+        Assert.Equal("Thriller", Assert.Single(vm.CarouselAlbums).Name);
+
+        vm.ToggleAlbumViewCommand.Execute(null);
+        Assert.True(vm.IsGridView);
+        Assert.Equal("grid", settings.AlbumViewMode);
+    }
+
     [AvaloniaFact]
     public void ArtistPage_AlbumsViewToggle_IsSharedByEveryArtist()
     {

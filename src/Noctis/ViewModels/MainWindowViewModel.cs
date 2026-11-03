@@ -2876,6 +2876,7 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
             TopBar.AlbumViewCommand = _albumsVm.SetAlbumViewCommand;
             TopBar.AlbumCarouselStyleCommand = _albumsVm.SetCarouselStyleCommand;
+            TopBar.AlbumViewToggleCommand = _albumsVm.ToggleAlbumViewCommand;
             TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
             TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
         }

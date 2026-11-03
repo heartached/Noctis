@@ -40,6 +40,31 @@ public class TopBarCoverFlowGatingTests
         Assert.True(bar.FavoritesActionsVisible);
     }
 
+    /// <summary>GitHub #164: on Albums the top-right view icon is the grid / album carousel
+    /// toggle (the queue's Cover Flow showed the playing album's tracks, or nothing); every
+    /// other page keeps the Cover Flow icon.</summary>
+    [Fact]
+    public void Albums_page_swaps_the_cover_flow_icon_for_the_album_carousel_toggle()
+    {
+        var bar = new TopBarViewModel();
+        bar.ShowViewModeToggle(Noop, Noop, isCoverFlowMode: false);
+        Assert.True(bar.CoverFlowToggleVisible);
+        Assert.False(bar.AlbumsViewToggleVisible);
+
+        bar.ShowReleaseTypeChips(new(), Noop);
+        Assert.False(bar.CoverFlowToggleVisible);
+        Assert.True(bar.AlbumsViewToggleVisible);
+
+        // Cover Flow (opened from the View menu) shows neither; leaving the page restores the icon.
+        bar.ShowViewModeToggle(Noop, Noop, isCoverFlowMode: true);
+        Assert.False(bar.CoverFlowToggleVisible);
+        Assert.False(bar.AlbumsViewToggleVisible);
+        bar.ShowViewModeToggle(Noop, Noop, isCoverFlowMode: false);
+        bar.HideReleaseTypeChips();
+        Assert.True(bar.CoverFlowToggleVisible);
+        Assert.False(bar.AlbumsViewToggleVisible);
+    }
+
     [Fact]
     public void Album_quality_pill_segments_follow_the_label()
     {
