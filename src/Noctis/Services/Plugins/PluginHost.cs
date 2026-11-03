@@ -2063,6 +2063,25 @@ public sealed class PluginHost
             return snapshot.Select(ToTrackInfo).ToArray();
         }
 
+        public IReadOnlyList<string> GetLyricLines(string trackId)
+        {
+            if (_disposed || _library is null || !Guid.TryParse(trackId, out var id) || _library.GetTrackById(id) is not { } track)
+                return Array.Empty<string>();
+            try
+            {
+                // What Lyrics Studio and the lyrics page read: .ttml/.elrc/.lrc beside the song, then the
+                // stored synced lyrics; else the plain lyrics. Nothing online.
+                IEnumerable<string> lines = Services.LyricsStudio.ExistingLyricsLoader.Load(track) is { } timed
+                    ? timed.Lines.Select(l => l.Text)
+                    : string.IsNullOrWhiteSpace(track.Lyrics) ? Array.Empty<string>() : LrcParser.SplitPlain(track.Lyrics);
+                return lines.Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return Array.Empty<string>();
+            }
+        }
+
         public IReadOnlyList<PlaylistInfo> GetPlaylists()
         {
             if (_disposed || _owner.PlaylistSource is not { } source) return Array.Empty<PlaylistInfo>();
