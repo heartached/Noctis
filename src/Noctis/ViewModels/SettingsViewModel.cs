@@ -1485,9 +1485,31 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
-    partial void OnAlbumViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumViewModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsAlbumViewGrid));
+        OnPropertyChanged(nameof(IsAlbumViewCarousel));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
     partial void OnArtistAlbumsViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
-    partial void OnAlbumCarouselStyleChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumCarouselStyleChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsAlbumCaseCover));
+        OnPropertyChanged(nameof(IsAlbumCaseJewelCase));
+        OnPropertyChanged(nameof(IsAlbumCaseVinyl));
+        OnPropertyChanged(nameof(IsAlbumCaseCassette));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    // Settings › Player "Albums View" card (owner 11-02): the same AlbumViewMode /
+    // AlbumCarouselStyle the Albums page View menu writes, so either place moves the other.
+    public bool IsAlbumViewGrid { get => AlbumViewMode != "carousel"; set { if (value) AlbumViewMode = "grid"; } }
+    public bool IsAlbumViewCarousel { get => AlbumViewMode == "carousel"; set { if (value) AlbumViewMode = "carousel"; } }
+    public bool IsAlbumCaseCover { get => AlbumCarouselStyles.Parse(AlbumCarouselStyle) == Models.AlbumCarouselStyle.Cover; set { if (value) AlbumCarouselStyle = nameof(Models.AlbumCarouselStyle.Cover); } }
+    public bool IsAlbumCaseJewelCase { get => AlbumCarouselStyles.Parse(AlbumCarouselStyle) == Models.AlbumCarouselStyle.JewelCase; set { if (value) AlbumCarouselStyle = nameof(Models.AlbumCarouselStyle.JewelCase); } }
+    public bool IsAlbumCaseVinyl { get => AlbumCarouselStyles.Parse(AlbumCarouselStyle) == Models.AlbumCarouselStyle.Vinyl; set { if (value) AlbumCarouselStyle = nameof(Models.AlbumCarouselStyle.Vinyl); } }
+    public bool IsAlbumCaseCassette { get => AlbumCarouselStyles.Parse(AlbumCarouselStyle) == Models.AlbumCarouselStyle.Cassette; set { if (value) AlbumCarouselStyle = nameof(Models.AlbumCarouselStyle.Cassette); } }
+
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortNewestFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumReleaseTypeFilterChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }

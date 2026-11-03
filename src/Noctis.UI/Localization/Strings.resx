@@ -253,6 +253,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Cassette</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover Flow Layout</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>How the Cover Flow page arranges the queue's covers.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumsView" xml:space="preserve"><value>Albums View</value><comment>Settings › Player card title</comment></data>
+  <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>How the Albums page shows your albums, and how the carousel dresses each one.</value><comment>Settings › Player Albums View card subtitle</comment></data>
+  <data name="Settings.CarouselCase" xml:space="preserve"><value>Carousel case</value><comment>Settings › Player Albums View card: case style row label</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>The classic row: playing cover centred, history and up next to each side</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Carousel</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Tilted covers on a diagonal path with the track details beside them</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

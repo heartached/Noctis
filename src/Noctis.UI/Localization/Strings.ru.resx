@@ -253,6 +253,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Кассета</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Макет Cover Flow</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Как страница Cover Flow располагает обложки из очереди.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumsView" xml:space="preserve"><value>Вид альбомов</value><comment>Settings › Player card title</comment></data>
+  <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>Как страница «Альбомы» показывает альбомы и как карусель оформляет каждый из них.</value><comment>Settings › Player Albums View card subtitle</comment></data>
+  <data name="Settings.CarouselCase" xml:space="preserve"><value>Оформление карусели</value><comment>Settings › Player Albums View card: case style row label</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>Классический ряд: текущая обложка по центру, история и следующие треки по сторонам</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Карусель</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Наклонённые обложки по диагонали, рядом сведения о треке</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

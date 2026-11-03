@@ -3576,6 +3576,126 @@
             </StackPanel>
             </Border>
 
+            <!-- Owner 11-02: the Albums page's default design. The same AlbumViewMode /
+                 AlbumCarouselStyle settings the Albums page View menu writes. -->
+            <Border Classes="setting-card group-card" Margin="0,14,0,10">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumsView}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumsViewDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.AlbumGrid}"
+                                     GroupName="AlbumsView"
+                                     IsChecked="{Binding IsAlbumViewGrid, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.AlbumGrid}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="15" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="2" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="15" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.AlbumGrid}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.AlbumCarousel}"
+                                     GroupName="AlbumsView"
+                                     IsChecked="{Binding IsAlbumViewCarousel, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.AlbumCarousel}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="1" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="21" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="8" Canvas.Top="5" Width="12" Height="18" RadiusX="2.5" RadiusY="2.5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.AlbumCarousel}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                    <TextBlock Text="{loc:T Settings.CarouselCase}" FontSize="12" Opacity="0.5"/>
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselCover}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseCover, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselCover}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="3" Canvas.Top="3" Width="22" Height="22" RadiusX="5" RadiusY="5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselCover}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselJewelCase}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseJewelCase, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselJewelCase}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="4" Width="24" Height="20" RadiusX="2.5" RadiusY="2.5"
+                                               Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2.5"/>
+                                    <Rectangle Canvas.Left="6" Canvas.Top="4" Width="2.5" Height="20"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="11" Canvas.Top="8" Width="12" Height="12" RadiusX="1.5" RadiusY="1.5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselJewelCase}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselVinyl}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseVinyl, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselVinyl}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Ellipse Canvas.Left="10" Canvas.Top="6" Width="16" Height="16"
+                                             Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="5"/>
+                                    <Rectangle Canvas.Left="2" Canvas.Top="5" Width="18" Height="18" RadiusX="3" RadiusY="3"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselVinyl}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="3" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselCassette}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseCassette, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselCassette}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="6" Width="24" Height="16" RadiusX="4" RadiusY="4"
+                                               Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2.5"/>
+                                    <Ellipse Canvas.Left="7" Canvas.Top="11.5" Width="5" Height="5"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Ellipse Canvas.Left="16" Canvas.Top="11.5" Width="5" Height="5"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselCassette}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
+
             <!-- GitHub #147: the Queue panel's rows and width. -->
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.Queue}" Margin="0,16,0,8"/>
             <Border Classes="setting-card group-card">
