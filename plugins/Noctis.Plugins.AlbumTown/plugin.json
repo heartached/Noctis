@@ -19,7 +19,10 @@
       "description": "Albums chat about what they share." },
     { "key": "motion", "label": "Motion", "type": "choice", "choices": ["Smooth (60 fps)", "Balanced (30 fps)", "Battery saver (15 fps)"],
       "default": "Balanced (30 fps)",
-      "description": "Fewer frames are easier on older computers." }
+      "description": "Fewer frames are easier on older computers." },
+    { "key": "menuBar", "label": "Menu bar", "type": "choice", "choices": ["Top (horizontal)", "Side (vertical)"],
+      "default": "Top (horizontal)",
+      "description": "Along the top or down the side. Its triangle folds it." }
   ],
   "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
   "icon": "icon.png"

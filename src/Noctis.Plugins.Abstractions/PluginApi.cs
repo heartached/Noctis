@@ -188,6 +188,14 @@ public interface ILibraryReader
     /// <see cref="IPlaybackControl.PlayTracks"/> and its <see cref="PlaylistInfo.TrackIds"/>.</summary>
     IReadOnlyList<PlaylistInfo> GetPlaylists()
         => throw new NotSupportedException("This Noctis build does not implement plugin API 1.4. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.7. The lyric lines Noctis already has for a library track (<see cref="TrackInfo.Id"/>),
+    /// in order, without timestamps: from a .ttml/.elrc/.lrc file beside the song (what Lyrics
+    /// Studio saves), the lyrics Noctis stored for it, or its plain lyrics tag. Never goes online;
+    /// reads a few small files, so call it off the UI thread. Empty when the song has none (or
+    /// the id is unknown).</summary>
+    IReadOnlyList<string> GetLyricLines(string trackId)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.7. Set minAppVersion in plugin.json.");
 }
 
 /// <summary>

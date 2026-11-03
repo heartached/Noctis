@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Noctis.Plugins.AlbumTown.Town;
 
-public enum CreatureState { Idle, Wander, LookAtCursor, Wave, Talk, Dance }
+public enum CreatureState { Idle, Wander, LookAtCursor, Wave, Talk, Dance, Leave }
 
 /// <summary>One creature in the plaza. Plain data the world steps and the canvas draws.</summary>
 public sealed class Creature
@@ -47,6 +47,10 @@ public sealed class Creature
     /// <summary>Speed in px/s at <see cref="PlazaWorld.BaseSize"/>, a little different per creature
     /// (the world scales it with the body size so big creatures do not crawl).</summary>
     public float Speed = 42;
+    /// <summary>Seconds left for a line said on the way (arriving, leaving), or 0.</summary>
+    public float SayTimer;
+    /// <summary>Walking in from outside the plaza (not held inside its edges yet).</summary>
+    public bool Entering { get; internal set; }
 }
 
 /// <summary>
@@ -85,6 +89,8 @@ public sealed class PlazaWorld
     /// <summary>Pointer position in plaza coordinates, or null when it is outside.</summary>
     public Vector2? Cursor { get; set; }
     public DateTimeOffset Now { get; set; } = DateTimeOffset.Now;
+    /// <summary>A lyric line of the album's songs to quote, or null (the view knows the lyrics).</summary>
+    public Func<TownAlbum, string?>? Lyric { get; set; }
 
     /// <summary>Width of a creature's cover face in px (the canvas sets it from the window and zoom).</summary>
     public float BodySize
@@ -150,20 +156,70 @@ public sealed class PlazaWorld
         Version++;
     }
 
-    /// <summary>Adds one resident (a called album) walking in from the nearest edge.</summary>
+    /// <summary>
+    /// Adds one resident (a called album): it walks in from outside the top, bottom, left or
+    /// right edge and says hello to everyone on the way (Discord, Jafezy 11-02).
+    /// </summary>
     public Creature Call(CastMember member)
     {
-        var existing = _creatures.FirstOrDefault(c => c.Album.Key == member.Album.Key);
+        var existing = _creatures.FirstOrDefault(c => c.Album.Key == member.Album.Key && c.State != CreatureState.Leave);
         if (existing is not null) { Wave(existing); return existing; }
         var spot = RandomSpot();
-        var edge = new Vector2(spot.X, _random.Next(2) == 0 ? TopMargin : Height - Margin);
-        var c = new Creature(member, edge);
+        var off = _bodySize * 1.2f;
+        var start = _random.Next(4) switch
+        {
+            0 => new Vector2(spot.X, -off),
+            1 => new Vector2(spot.X, Height + off),
+            2 => new Vector2(-off, spot.Y),
+            _ => new Vector2(Width + off, spot.Y),
+        };
+        var c = new Creature(member, start);
         Prime(c);
         c.Target = spot;
         c.State = CreatureState.Wander;
+        c.Entering = true;
+        c.Bubble = TalkLines.Arrival(member.Album);
+        c.SayTimer = 3.2f;
+        c.TalkCooldown = Math.Max(c.TalkCooldown, 4);
         _creatures.Add(c);
         Version++;
         return c;
+    }
+
+    /// <summary>The resident of <paramref name="key"/> says bye and walks out of the nearest edge,
+    /// then leaves the plaza (a called album took its place). False when it is not here.</summary>
+    public bool SendAway(string key)
+    {
+        var c = _creatures.FirstOrDefault(x => x.Album.Key == key && x.State != CreatureState.Leave);
+        if (c is null) return false;
+        EndTalk(c);
+        if (ReferenceEquals(Held, c)) Held = null;
+        var p = c.Position;
+        var off = _bodySize * 1.5f;
+        var (left, right, top, bottom) = (p.X, Width - p.X, p.Y, Height - p.Y);
+        var nearest = Math.Min(Math.Min(left, right), Math.Min(top, bottom));
+        c.Target = nearest == left ? new Vector2(-off, p.Y)
+            : nearest == right ? new Vector2(Width + off, p.Y)
+            : nearest == top ? new Vector2(p.X, -off)
+            : new Vector2(p.X, Height + off);
+        c.State = CreatureState.Leave;
+        c.IsPlaying = false;
+        c.Bubble = TalkLines.Leaving;
+        c.SayTimer = 1.8f;
+        Version++;
+        return true;
+    }
+
+    /// <summary>Residents on their way out (still drawn until they are gone).</summary>
+    public int LeavingCount
+    {
+        get
+        {
+            var n = 0;
+            foreach (var c in _creatures)
+                if (c.State == CreatureState.Leave) n++;
+            return n;
+        }
     }
 
     private void Prime(Creature c)
@@ -181,7 +237,7 @@ public sealed class PlazaWorld
     {
         foreach (var c in _creatures)
         {
-            var now = playing && key is not null && c.Album.Key == key;
+            var now = playing && key is not null && c.Album.Key == key && c.State != CreatureState.Leave;
             if (now == c.IsPlaying) continue;
             c.IsPlaying = now;
             if (now)
@@ -242,7 +298,7 @@ public sealed class PlazaWorld
     {
         foreach (var c in _creatures)
         {
-            if (c.State is not (CreatureState.Idle or CreatureState.LookAtCursor)) return false;
+            if (c.State is not (CreatureState.Idle or CreatureState.LookAtCursor) || c.SayTimer > 0) return false;
             if (c.Stride > 0.001f || c.Bubble is not null || c.IsPlaying || c.Age < 0.5f) return false;
         }
         return true;
@@ -290,10 +346,11 @@ public sealed class PlazaWorld
     /// <summary>Click: the creature stops, waves and says hello.</summary>
     public void Wave(Creature c)
     {
+        if (c.State == CreatureState.Leave) return; // on its way out
         EndTalk(c);
         c.State = CreatureState.Wave;
         c.StateTimer = 1.8f;
-        c.Bubble = TalkLines.Greeting(c.Album, Now);
+        c.Bubble = TalkLines.Hello(c.Album, Now, _random, Lyric);
         if (Cursor is { } cur) FaceToward(c, cur);
         else c.Gaze = new Vector2(0, 1);
     }
@@ -303,9 +360,15 @@ public sealed class PlazaWorld
     public void Step(float dt, float pulse = 0)
     {
         dt = Math.Clamp(dt, 0, 0.1f);
+        var gone = false;
         foreach (var c in _creatures)
         {
             c.Age += dt;
+            if (c.SayTimer > 0)
+            {
+                c.SayTimer -= dt;
+                if (c.SayTimer <= 0 && c.State is not (CreatureState.Talk or CreatureState.Wave)) c.Bubble = null;
+            }
             c.TalkCooldown -= dt;
             c.BlinkTimer -= dt;
             if (c.BlinkTimer < -0.12f) c.BlinkTimer = 1.5f + (float)(_random.NextDouble() * 4);
@@ -328,10 +391,35 @@ public sealed class PlazaWorld
                     c.Stride = Approach(c.Stride, 0, dt * 4);
                     c.Gaze = new Vector2(0, 1);
                     break;
+                case CreatureState.Leave: gone |= StepLeave(c, dt); break;
             }
-            if (c.State != CreatureState.Wander) c.Stride = Approach(c.Stride, 0, dt * 4);
+            if (c.State is not (CreatureState.Wander or CreatureState.Leave)) c.Stride = Approach(c.Stride, 0, dt * 4);
+        }
+        if (gone)
+        {
+            _creatures.RemoveAll(c => c.State == CreatureState.Leave && c.Target == c.Position);
+            Version++;
         }
         Separate(dt);
+    }
+
+    /// <summary>Walks out; true once it is past the edge (then it is removed).</summary>
+    private bool StepLeave(Creature c, float dt)
+    {
+        var to = c.Target - c.Position;
+        var dist = to.Length();
+        if (dist < 2)
+        {
+            c.Position = c.Target;
+            return true;
+        }
+        var dir = to / dist;
+        c.Position += dir * Math.Min(dist, c.Speed * 1.3f * Scale * dt);
+        if (Math.Abs(dir.X) > 0.15f) c.Facing = Math.Sign(dir.X);
+        c.Gaze = Vector2.Lerp(c.Gaze, dir, Math.Min(1, dt * 6));
+        c.Stride = Approach(c.Stride, 1, dt * 4);
+        c.WalkPhase += dt * c.Speed * 0.28f;
+        return false;
     }
 
     private void StepIdle(Creature c, float dt)
@@ -360,6 +448,7 @@ public sealed class PlazaWorld
         var step = Math.Min(dist, c.Speed * Scale * dt);
         var dir = to / dist;
         c.Position += dir * step;
+        if (c.Entering && Clamp(c.Position) == c.Position) c.Entering = false;
         if (Math.Abs(dir.X) > 0.15f) c.Facing = Math.Sign(dir.X);
         c.Gaze = Vector2.Lerp(c.Gaze, dir, Math.Min(1, dt * 6));
         c.Stride = Approach(c.Stride, 1, dt * 4);
@@ -421,7 +510,7 @@ public sealed class PlazaWorld
             if (d < bestDist) { best = o; bestDist = d; }
         }
         if (best is null) return false;
-        var chat = TalkLines.Between(c.Album, best.Album, Now, _random);
+        var chat = TalkLines.Meet(c.Album, best.Album, Now, _random, Lyric);
         var seconds = 2 * LineSeconds + 0.6f;
         BeginTalk(c, best, opened: true, chat, seconds);
         BeginTalk(best, c, opened: false, chat, seconds);
@@ -479,9 +568,11 @@ public sealed class PlazaWorld
         for (var i = 0; i < _creatures.Count; i++)
         {
             var a = _creatures[i];
+            if (a.State == CreatureState.Leave || a.Entering) continue; // walking in or out: off the plaza's edges
             for (var j = i + 1; j < _creatures.Count; j++)
             {
                 var b = _creatures[j];
+                if (b.State == CreatureState.Leave || b.Entering) continue;
                 var d = b.Position - a.Position;
                 var len = d.Length();
                 if (len >= min) continue;

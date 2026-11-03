@@ -67,6 +67,59 @@ public static class PlazaCast
         return picked;
     }
 
+    /// <summary>
+    /// "New crowd": the albums the user called and the one playing stay, everyone else is picked
+    /// at random, newcomers before anyone from <paramref name="previous"/> (the crowd being sent
+    /// home). <see cref="Choose"/> fills two thirds with the recent and most played, the same
+    /// albums every time, so New crowd kept them and played the same songs again (Discord,
+    /// Mistery 11-02).
+    /// </summary>
+    public static IReadOnlyList<CastMember> ChooseFresh(
+        IReadOnlyList<TownAlbum> town,
+        int crowd,
+        Random random,
+        IReadOnlyCollection<string> previous,
+        string? nowPlayingKey = null,
+        IReadOnlyCollection<string>? called = null)
+    {
+        crowd = Math.Clamp(crowd, MinCrowd, MaxCrowd);
+        var picked = new List<CastMember>(crowd);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var byKey = new Dictionary<string, TownAlbum>(town.Count, StringComparer.Ordinal);
+        foreach (var a in town) byKey.TryAdd(a.Key, a);
+        void Add(TownAlbum a, CastReason why)
+        {
+            if (picked.Count < crowd && seen.Add(a.Key)) picked.Add(new CastMember(a, why));
+        }
+        if (called is not null)
+            foreach (var key in called)
+                if (byKey.TryGetValue(key, out var a)) Add(a, CastReason.Called);
+        if (nowPlayingKey is not null && byKey.TryGetValue(nowPlayingKey, out var playing)) Add(playing, CastReason.NowPlaying);
+
+        var before = new HashSet<string>(previous, StringComparer.Ordinal);
+        foreach (var pool in new[] { town.Where(a => !before.Contains(a.Key)), town.Where(a => before.Contains(a.Key)) })
+        {
+            var rest = pool.Where(a => !seen.Contains(a.Key)).ToArray();
+            for (var i = 0; i < rest.Length && picked.Count < crowd; i++)
+            {
+                var j = random.Next(i, rest.Length);
+                (rest[i], rest[j]) = (rest[j], rest[i]);
+                Add(rest[i], CastReason.Random);
+            }
+        }
+        return picked;
+    }
+
+    /// <summary>Albums to offer in "Call an album" before anything is typed: recently played
+    /// first, then most played, none already in the plaza (<paramref name="here"/>).</summary>
+    public static IReadOnlyList<TownAlbum> Suggest(IReadOnlyList<TownAlbum> town, IReadOnlySet<string> here, int limit = 6)
+        => town.Where(a => !here.Contains(a.Key))
+            .OrderByDescending(a => a.LastPlayed ?? DateTimeOffset.MinValue)
+            .ThenByDescending(a => a.PlayCount)
+            .ThenBy(a => a.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(limit)
+            .ToList();
+
     /// <summary>Residents whose title or artist contain every word of <paramref name="query"/>,
     /// best first (title starts with it, then most played).</summary>
     public static IReadOnlyList<TownAlbum> Find(IReadOnlyList<TownAlbum> town, string query, int limit = 8)
