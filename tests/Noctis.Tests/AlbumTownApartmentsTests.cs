@@ -786,6 +786,47 @@ public class AlbumTownApartmentsTests
         }
     }
 
+    /// <summary>The Discord feedback features in one set of shots: resize handles on hover, an
+    /// edge drag, ladders and stairs, names that fit or scroll, the side menu bar, folded away.</summary>
+    [AvaloniaFact]
+    public void Apartments_WriteTheFeedbackPreview_HandlesLaddersMenuBar()
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_TEST_SKIA") != "1")
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        var dir = PreviewDir();
+        var (view, window, host) = ExampleBuilding(dir, 1600, 1000, 1, big: false);
+        try
+        {
+            var canvas = view.ApartmentsView;
+            using var tiny = new RenderTargetBitmap(new PixelSize(8, 8));
+            for (var i = 0; i < 60 * 12; i++) canvas.Step(1 / 60f);
+            var room = view.Building.Rooms.OrderByDescending(r => r.Cells.Area).First();
+            var rect = canvas.RoomRect(room.Cells);
+            canvas.Move(new Point(rect.Right - 4, rect.Center.Y));
+            for (var i = 0; i < 20; i++) { canvas.Step(1 / 60f); Render(canvas, tiny); }
+            Shot(window, Path.Combine(dir, "feedback-apartments-handles.png"));
+
+            Assert.True(canvas.Press(new Point(rect.Right - 3, rect.Center.Y)));
+            canvas.Move(new Point(rect.Right + canvas.Cell * 1.6, rect.Center.Y));
+            for (var i = 0; i < 5; i++) { canvas.Step(1 / 60f); Render(canvas, tiny); }
+            Shot(window, Path.Combine(dir, "feedback-apartments-edge-drag.png"));
+            canvas.Release(new Point(rect.Right + canvas.Cell * 1.6, rect.Center.Y));
+
+            host.MenuBar = AlbumTownView.MenuSide;
+            host.RaiseSettings();
+            for (var i = 0; i < 10; i++) { canvas.Step(1 / 60f); Render(canvas, tiny); }
+            Shot(window, Path.Combine(dir, "feedback-apartments-side-menu.png"));
+            view.SetMenuCollapsed(true);
+            for (var i = 0; i < 10; i++) { canvas.Step(1 / 60f); Render(canvas, tiny); }
+            Shot(window, Path.Combine(dir, "feedback-apartments-menu-folded.png"));
+            Assert.True(File.Exists(Path.Combine(dir, "feedback-apartments-menu-folded.png")));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     /// <summary>The window as the compositor draws it (a real frame, 2560x1440 for the preview).</summary>
     private static void Shot(Window window, string path)
     {

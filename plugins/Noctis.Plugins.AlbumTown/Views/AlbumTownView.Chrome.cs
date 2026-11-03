@@ -88,6 +88,7 @@ public sealed partial class AlbumTownView
             _tools.VerticalAlignment = VerticalAlignment.Top;
             _gridBox.Orientation = Orientation.Vertical;
             _gridBox.Margin = default;
+            _columns.HorizontalAlignment = _rows.HorizontalAlignment = HorizontalAlignment.Left;
             _zoomBox.Margin = default;
             _search.Width = SideBarWidth - 36;
             foreach (var b in buttons) { b.Margin = default; b.HorizontalAlignment = HorizontalAlignment.Left; }
@@ -111,6 +112,7 @@ public sealed partial class AlbumTownView
             _tools.VerticalAlignment = VerticalAlignment.Center;
             _gridBox.Orientation = Orientation.Horizontal;
             _gridBox.Margin = new Thickness(0, 0, 6, 0);
+            _columns.HorizontalAlignment = _rows.HorizontalAlignment = HorizontalAlignment.Stretch;
             _zoomBox.Margin = new Thickness(0, 0, 14, 0);
             _search.Width = 240;
             foreach (var b in buttons) { b.Margin = new Thickness(8, 0, 0, 0); b.HorizontalAlignment = HorizontalAlignment.Stretch; }
