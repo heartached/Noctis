@@ -534,7 +534,8 @@ public sealed partial class AlbumTownView : UserControl
 
     private void OnSearchKey(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
+        // With nothing typed, Esc goes on to the window (in Settings: back to the plugin's page).
+        if (e.Key == Key.Escape && !string.IsNullOrEmpty(_search.Text))
         {
             _search.Text = "";
             e.Handled = true;
