@@ -754,7 +754,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public async Task RestoreStateAsync()
     {
         var state = await _persistence.LoadQueueStateAsync();
-        if (state == null) return;
+        // A song tapped while the start was still loading (the songs list before the restore)
+        // already plays: the saved queue must not replace it under the running engine.
+        if (state == null || CurrentTrack != null) return;
 
         _queue = PlaybackQueue.Restore(
             new PlaybackQueueState(state.CurrentTrackId, state.UpNextIds, state.HistoryIds, state.RepeatCycleIds,

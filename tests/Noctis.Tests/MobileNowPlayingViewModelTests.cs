@@ -570,4 +570,27 @@ public class MobileNowPlayingViewModelTests : IDisposable
         vm.PreviousCommand.Execute(null);
         Assert.Same(t[1], vm.CurrentTrack);
     }
+
+    /// <summary>
+    /// Bug: at a cold start the songs list shows before the saved queue is restored (the shell
+    /// still reads its settings in between). A song tapped in that gap played, then the restore
+    /// put the old queue's song in the player bar, paused, over the song still playing.
+    /// </summary>
+    [Fact]
+    public async Task Restore_LeavesASongStartedBeforeIt_Playing()
+    {
+        var t = Tracks(3);
+        var (vm, _, library, persistence) = Make(t);
+        vm.PlayTracks(t, 2);
+        await vm.SaveStateAsync();                          // last session's queue
+
+        var player = new FakeAudioPlayer();
+        var next = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
+        next.PlayTracks(t, 0);                              // tapped before the restore ran
+        await next.RestoreStateAsync();
+
+        Assert.Same(t[0], next.CurrentTrack);
+        Assert.True(next.IsPlaying);
+        Assert.Equal(new[] { t[1], t[2] }, next.UpNext);
+    }
 }
