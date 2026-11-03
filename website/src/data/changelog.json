@@ -1,6 +1,83 @@
 {
   "releases": [
     {
+      "tag": "plugin-lyricmotion-v1.0.0",
+      "version": "plugin-lyricmotion-v1.0.0",
+      "name": "Lyric Motion plugin 1.0.0",
+      "label": "Lyric Motion",
+      "publishedAt": "2026-11-03T02:43:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-lyricmotion-v1.0.0",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Lyrics that grow letter by letter as they are sung. Community plugin by Alfamin . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
+      "tag": "plugin-trueshuffle-v1.0.0",
+      "version": "plugin-trueshuffle-v1.0.0",
+      "name": "True Shuffle plugin 1.0.0",
+      "label": "True Shuffle",
+      "publishedAt": "2026-11-03T02:43:30Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-trueshuffle-v1.0.0",
+      "prerelease": true,
+      "sections": [],
+      "summary": "A fairer shuffle with modes like No repeats. Community plugin by Alfamin . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
+      "tag": "plugin-albumtown-v1.0.1",
+      "version": "plugin-albumtown-v1.0.1",
+      "name": "Album Town plugin 1.0.1",
+      "label": "Album Town",
+      "publishedAt": "2026-11-03T02:43:28Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.1",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Your albums come to life in a little town. Community plugin by Jafezy JD . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
+      "tag": "plugin-chords-v1.0.0",
+      "version": "plugin-chords-v1.0.0",
+      "name": "Chords plugin 1.0.0",
+      "label": "Chords",
+      "publishedAt": "2026-11-03T02:43:26Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-chords-v1.0.0",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Shows the playing song's chords, found from its audio. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
+      "tag": "plugin-youtubeimport-v1.0.0",
+      "version": "plugin-youtubeimport-v1.0.0",
+      "name": "Add from YouTube plugin 1.0.0",
+      "label": "Add from YouTube",
+      "publishedAt": "2026-11-03T02:43:23Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-youtubeimport-v1.0.0",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Save audio from a YouTube link to your library. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
+      "tag": "plugin-abloop-v1.0.0",
+      "version": "plugin-abloop-v1.0.0",
+      "name": "A-B Loop plugin 1.0.0",
+      "label": "A-B Loop",
+      "publishedAt": "2026-11-03T02:43:21Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-abloop-v1.0.0",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Loop any part of a song and save your loops. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
+      "tag": "plugin-albumroulette-v1.0.0",
+      "version": "plugin-albumroulette-v1.0.0",
+      "name": "Album Roulette plugin 1.0.0",
+      "label": "Album Roulette",
+      "publishedAt": "2026-11-03T02:43:19Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumroulette-v1.0.0",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Spin a reel of your albums and let it pick what to play. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+    },
+    {
       "tag": "v1.6.5",
       "version": "1.6.5",
       "name": "v1.6.5",
@@ -3725,6 +3802,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-10-19T23:14:54.791Z",
+  "updatedAt": "2026-11-03T02:43:37.506Z",
   "degraded": false
 }
