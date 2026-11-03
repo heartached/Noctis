@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
+using Noctis.Models;
 using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
@@ -248,7 +249,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
         if (FolderToRemove is not { } folder) return;
         FolderToRemove = null;
         DropQuestion();
-        await Shell.Library.RemoveFolderAsync(folder.Root);
+        // Its songs leave the queue with it: the access goes now, and each would otherwise fail in
+        // turn as "lost access, add the folder again" (a SAF song's path starts with its folder's).
+        var root = folder.Root;
+        Shell.Player.DropTracks(t => t.SourceType != SourceType.NoctisServer
+            && (t.FilePath == root || t.FilePath.StartsWith(root + "/", StringComparison.Ordinal)));
+        await Shell.Library.RemoveFolderAsync(root);
     }
 
     /// <summary>Under Add Folder: why a pick was refused, or the scan's status, else what the

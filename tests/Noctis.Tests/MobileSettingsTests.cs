@@ -15,6 +15,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
+using Noctis.Models;
 using Noctis.Services;
 using Xunit;
 
@@ -861,6 +862,41 @@ public class MobileSettingsTests
             window.Close();
             app.Resources.MergedDictionaries.Remove(icons);
         }
+    }
+
+    /// <summary>
+    /// Bug: removing a folder gives up the phone's access to it, but its songs stayed in the queue.
+    /// Each one then failed in turn with "Noctis lost access to this song's folder. Add the folder
+    /// again", until five in a row stopped playback. They leave the queue with the folder now.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Settings_RemovingAFolder_TakesItsSongsOutOfTheQueue()
+    {
+        Track In(string root, string name) => new()
+        {
+            Id = Guid.NewGuid(), Title = name, Duration = TimeSpan.FromSeconds(90),
+            FilePath = root + "/document/" + Uri.EscapeDataString("primary:Music/" + name),
+        };
+        var keep = new[] { In(Beats, "b1"), In(Beats, "b2") };
+        var gone = new[] { In(Tones, "t1"), In(Tones, "t2") };
+        using var rig = MobileFixtures.MakeRig(new[] { keep[0], gone[0], keep[1], gone[1] }, seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MusicFolders.AddRange(new[] { Tones, Beats });
+            await p.SaveSettingsAsync(s);
+        });
+        var player = rig.Shell.Player;
+        player.PlayTracks(new[] { keep[0], gone[0], keep[1], gone[1] }, 0);
+
+        rig.Shell.OpenSettingsCommand.Execute(null);
+        var vm = (SettingsPageViewModel)rig.Shell.CurrentPage!;
+        await vm.Loaded;
+        vm.AskRemoveFolderCommand.Execute(vm.FolderRows.Single(r => r.Root == Tones));
+        await rig.Shell.Prompt!.Actions[0].RunCommand.ExecuteAsync(null);
+
+        Assert.Same(keep[0], player.CurrentTrack);
+        Assert.True(player.IsPlaying);
+        Assert.Equal(new[] { keep[1] }, player.UpNext);
     }
 
     /// <summary>Rescan Library is one accent row on the top level. With no folder it is greyed,
