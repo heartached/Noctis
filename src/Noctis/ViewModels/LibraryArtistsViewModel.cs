@@ -602,6 +602,9 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// in-memory set this grid stamps its tiles from, so the two never disagree.</summary>
     public bool IsFavoriteArtist(string? artistName) => _favoriteArtists.IsFavorite(artistName);
 
+    /// <summary>Settings › Reset Everything (the library is emptied with it, so no artist shows a heart).</summary>
+    public void ClearFavoriteArtists() => _favoriteArtists.Clear();
+
     /// <summary>
     /// Sets a user-picked image as the artist's portrait. Evicts any stale cached
     /// bitmap and rebuilds the row so the tile (bound to a non-observable Artist)

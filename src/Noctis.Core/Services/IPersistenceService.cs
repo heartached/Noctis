@@ -119,4 +119,10 @@ public interface IPersistenceService
 
     /// <summary>Ensures the animated_covers directory exists. Idempotent.</summary>
     void EnsureAnimatedCoverDir();
+
+    /// <summary>
+    /// Deletes every stored per-track lyric text (lyrics_store) and forgets the ones held in
+    /// memory (Settings › Reset Everything). The default does nothing (test doubles).
+    /// </summary>
+    void ClearLyricsStore() { }
 }

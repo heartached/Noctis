@@ -44,6 +44,10 @@ public interface IWrapArchiveService
     /// before the capped play log trims those events away.</summary>
     void EnsureArchived(IReadOnlyList<PlayHistoryEvent> events,
                         IReadOnlyDictionary<Guid, Track> tracksById, int currentYear);
+
+    /// <summary>Forgets every archived year and deletes the file (Settings › Reset Everything).
+    /// The default does nothing (test doubles).</summary>
+    void Clear() { }
 }
 
 /// <summary>
@@ -149,6 +153,18 @@ public sealed class WrapArchiveService : IWrapArchiveService
             }
 
             if (changed) Save();
+        }
+    }
+
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            // Held in memory once loaded, so deleting only the file kept the old years (and the
+            // next archive pass wrote them back).
+            _entries = new List<ArchivedWrap>();
+            try { File.Delete(_filePath); }
+            catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.Error, "WrapArchive.Clear", ex.Message); }
         }
     }
 

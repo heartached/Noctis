@@ -249,6 +249,8 @@ public class LastFmService : ILastFmService
         return _albumDescriptions.SetOverrideAsync(artistName, albumName, description, ct);
     }
 
+    public Task ClearAlbumDescriptionsAsync() => _albumDescriptions.ClearAsync();
+
     public Task ClearAlbumDescriptionOverrideAsync(string artistName, string albumName, CancellationToken ct = default)
     {
         return SetAlbumDescriptionOverrideAsync(artistName, albumName, null, ct);

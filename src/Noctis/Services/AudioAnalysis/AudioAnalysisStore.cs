@@ -86,4 +86,14 @@ public sealed class AudioAnalysisStore : IAudioAnalysisStore
         cmd.Parameters.AddWithValue("$a", record.AnalyzedUtc);
         await cmd.ExecuteNonQueryAsync(ct);
     }
+
+    public async Task ClearAsync(CancellationToken ct = default)
+    {
+        await InitAsync(ct);
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM track_analysis;";
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
 }

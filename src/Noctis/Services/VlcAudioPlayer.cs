@@ -1805,6 +1805,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// </summary>
     public static string? DecoderFallbackListPathAtLaunch { get; set; }
 
+    /// <summary>Settings › Reset Everything: no file is remembered as needing FFmpeg's MP3 decoder.</summary>
+    internal void ForgetDecoderFallbacks() => _avcodecMp3Paths.Clear();
+
     /// <inheritdoc />
     public bool HeadphoneSurroundActive { get; }
 

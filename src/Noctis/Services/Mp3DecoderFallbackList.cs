@@ -51,6 +51,18 @@ internal sealed class Mp3DecoderFallbackList
         }
     }
 
+    /// <summary>Forgets every entry and deletes the store (Settings › Reset Everything).</summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _entries = new Dictionary<string, (long, long)>(StringComparer.FromComparison(Helpers.PathComparison.Comparison));
+            if (_storePath == null) return;
+            try { File.Delete(_storePath); }
+            catch { /* best effort, as Add */ }
+        }
+    }
+
     private Dictionary<string, (long, long)> Load()
     {
         if (_entries != null) return _entries;

@@ -63,6 +63,8 @@ public class PersistenceService : IPersistenceService
     private readonly LyricsStore _lyricsStore;
     internal LyricsStore LyricsStore => _lyricsStore;
 
+    public void ClearLyricsStore() => _lyricsStore.Clear();
+
     // Test seam: points the service at an isolated data root so the real
     // save/load/protect logic is exercisable against a temp directory.
     internal PersistenceService(string dataRoot)

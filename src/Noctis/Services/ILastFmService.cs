@@ -23,4 +23,8 @@ public interface ILastFmService
     Task<string?> GetAlbumDescriptionFullAsync(string artistName, string albumName, CancellationToken ct = default);
     Task SetAlbumDescriptionOverrideAsync(string artistName, string albumName, string? description, CancellationToken ct = default);
     Task ClearAlbumDescriptionOverrideAsync(string artistName, string albumName, CancellationToken ct = default);
+
+    /// <summary>Forgets every cached album description and user override, in memory and on disk
+    /// (Settings › Reset Everything). The default does nothing (test doubles).</summary>
+    Task ClearAlbumDescriptionsAsync() => Task.CompletedTask;
 }

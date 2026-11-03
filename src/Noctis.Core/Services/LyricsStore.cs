@@ -123,6 +123,21 @@ public sealed class LyricsStore
         return true;
     }
 
+    /// <summary>
+    /// Deletes every stored entry and empties the in-memory LRU (Settings › Reset Everything).
+    /// The LRU alone handed the old text back to a rescanned track with the same id.
+    /// </summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _cache.Clear();
+            _lru.Clear();
+        }
+        if (Directory.Exists(_directory))
+            Directory.Delete(_directory, recursive: true);
+    }
+
     private LyricsPair ReadFromDisk(Guid trackId)
     {
         try

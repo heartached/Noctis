@@ -65,6 +65,21 @@ public static class PinnedShortcutIcon
         });
     }
 
+    /// <summary>
+    /// Settings › Reset Everything: deletes the icon copies once the classic icon is back (the
+    /// reset's AppIcon change queued that <see cref="Sync"/> first; the same gate keeps them in
+    /// order). A pinned shortcut of another Noctis on this data folder that still points here
+    /// gets its copy rewritten by that app's next start (it syncs at launch).
+    /// </summary>
+    public static Task ClearIconCopiesAsync(string dataRoot) => Task.Run(() =>
+    {
+        lock (s_gate)
+        {
+            var dir = Path.Combine(dataRoot, "app-icons");
+            if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        }
+    });
+
     private static void SyncCore(string id, byte[]? icoBytes, string? exe)
     {
         var folder = PinnedFolder;
