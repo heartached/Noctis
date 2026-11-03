@@ -3054,6 +3054,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.AlbumView" xml:space="preserve"><value>Вид</value><comment>Albums page top-right view menu tooltip</comment></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Сетка</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Карусель</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Cover Flow: сейчас играет</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>Список</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Обложка</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>Коробка CD</value><comment>Albums view menu: carousel case style</comment></data>
