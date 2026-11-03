@@ -284,7 +284,7 @@
          It also swallows clicks/wheel on the dim area like the old overlay Border. -->
     <controls:PillDialogHost x:Name="DialogHost">
 
-    <Grid Margin="0" Width="852" Height="740" RowDefinitions="Auto,*,Auto">
+    <Grid x:Name="EditorCard" Margin="0" Width="852" Height="740" RowDefinitions="Auto,*,Auto">
 
         <!-- Header: artwork + track title, artist, album. No band of its own: the card is
              one surface, split only by soft hairlines. -->

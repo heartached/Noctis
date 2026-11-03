@@ -171,6 +171,8 @@ public partial class MetadataWindow : Window
                 else
                     _artworkSearchMotion?.Hide();
             }
+            else return;
+            SetEditorBlurred(viewModel.IsArtworkSearchOpen || viewModel.IsAnimatedArtworkSearchOpen);
         };
         // Closing the editor with a search pop-up up: it plays its exit alongside the card's
         // (both CloseDuration on CloseEase), and is gone for good once the window is.
@@ -312,6 +314,25 @@ public partial class MetadataWindow : Window
         {
             if (DataContext is MetadataViewModel vm) vm.IsAnimatedArtworkSearchOpen = false;
         });
+    }
+
+    /// <summary>Owner 11-03: the editor card blurs behind an artwork search pop-up, like the
+    /// app does behind the card. A still blur (the card doesn't animate under it), eased in
+    /// and out with the pop-up's own timing.</summary>
+    internal static readonly double SearchBackdropBlurRadius = 14;
+
+    private void SetEditorBlurred(bool on)
+    {
+        if (EditorCard is null) return;
+        EditorCard.Transitions ??= new Avalonia.Animation.Transitions
+        {
+            new Avalonia.Animation.EffectTransition
+            {
+                Property = EffectProperty,
+                Duration = TimeSpan.FromMilliseconds(220),
+            },
+        };
+        EditorCard.Effect = new Avalonia.Media.BlurEffect { Radius = on ? SearchBackdropBlurRadius : 0 };
     }
 
     private void ShowArtworkSearchFlyout() => ArtworkSearchMotion?.Show();

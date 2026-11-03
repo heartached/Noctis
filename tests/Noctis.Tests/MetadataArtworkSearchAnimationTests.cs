@@ -368,6 +368,46 @@ public class MetadataArtworkSearchAnimationTests
     }
 
     [AvaloniaFact]
+    public void AnimatedArtworkChooser_TypingASpace_KeepsWhatWasTyped()
+    {
+        // The chooser's box is now the only search box (the tab's own one went 11-03): an
+        // artist name with a space must type through, not reach Space = Play/Pause.
+        var apple = new AnimatedArtworkChooserTests.Apple();
+        var http = new System.Net.Http.HttpClient(new AnimatedArtworkChooserTests.StubHandler(apple.Respond));
+        var track = new Track
+        {
+            Id = Guid.NewGuid(), Title = "Taste", Artist = "Sabrina Carpenter", AlbumArtist = "Sabrina Carpenter",
+            Album = "Short n' Sweet", AlbumId = Guid.NewGuid(), FilePath = "C:/m/does-not-exist/taste.flac",
+        };
+        var lib = new FakeLibraryService();
+        lib.TrackList.Add(track);
+        var vm = new MetadataViewModel(track, new SearchPopupsShotsTests.OkTags(), lib, new TestPersistenceService(),
+            new FakeAnimatedCoverService(), itunes: new Noctis.Services.ITunesArtworkService(http),
+            metadataSearch: new MetadataSearchPanelTests.FakeSearch());
+        var (_, win) = Editor("Animated Artwork", vm);
+        try
+        {
+            var search = vm.SearchAnimatedCoverCommand.ExecuteAsync(null);
+            Assert.True(PumpUntil(() => search.IsCompleted, 5000), "search never finished");
+            var motion = win.AnimatedSearchMotion!;
+            var content = motion.Content!;
+            Assert.True(PumpUntil(() => motion.IsOpen && Settled(content)), "chooser never settled open");
+            var box = content.GetVisualDescendants().OfType<TextBox>().Single(b => b.Name == "AnimatedChooserSearchBox");
+            box.Focus();
+            Assert.True(PumpUntil(() => box.IsFocused));
+            win.KeyTextInput("selena");
+            win.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            win.KeyTextInput(" ");
+            win.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            win.KeyTextInput("gomez");
+            PumpUntil(() => false, 50);
+            Assert.Equal("selena gomez", box.Text);
+            Assert.Equal("selena gomez", vm.AnimatedSearchInput);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
     public void AnimatedArtworkChooser_ShowsAGridOfAlbums_WithWorkingButtons_AndSearchesAgainFromItsOwnBox()
     {
         // Was: one album, labelled with the edited track's tags, and no way to refine the query
