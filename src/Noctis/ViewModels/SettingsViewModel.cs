@@ -7991,6 +7991,7 @@ public partial class SettingsViewModel : ViewModelBase
             HomeHeavyRotationExpanded = defaultSettings.HomeHeavyRotationExpanded;
             HomeRediscoveredExpanded = defaultSettings.HomeRediscoveredExpanded;
             HomeLastPlayedExpanded = defaultSettings.HomeLastPlayedExpanded;
+            HomeNewAlbumsExpanded = defaultSettings.HomeNewAlbumsExpanded;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
