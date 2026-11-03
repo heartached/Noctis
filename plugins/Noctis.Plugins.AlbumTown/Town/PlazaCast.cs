@@ -110,6 +110,16 @@ public static class PlazaCast
         return picked;
     }
 
+    /// <summary>Albums to offer in "Call an album" before anything is typed: recently played
+    /// first, then most played, none already in the plaza (<paramref name="here"/>).</summary>
+    public static IReadOnlyList<TownAlbum> Suggest(IReadOnlyList<TownAlbum> town, IReadOnlySet<string> here, int limit = 6)
+        => town.Where(a => !here.Contains(a.Key))
+            .OrderByDescending(a => a.LastPlayed ?? DateTimeOffset.MinValue)
+            .ThenByDescending(a => a.PlayCount)
+            .ThenBy(a => a.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(limit)
+            .ToList();
+
     /// <summary>Residents whose title or artist contain every word of <paramref name="query"/>,
     /// best first (title starts with it, then most played).</summary>
     public static IReadOnlyList<TownAlbum> Find(IReadOnlyList<TownAlbum> town, string query, int limit = 8)

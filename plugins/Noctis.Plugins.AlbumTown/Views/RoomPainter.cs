@@ -129,6 +129,9 @@ public static class CoverColor
 /// and a colour to fall back on before (or without) a cover.</summary>
 public sealed record RoomLook(string Title, string Subtitle, IReadOnlyList<string> Covers, Color? Fallback);
 
+/// <summary>Where a room is being resized from: its right edge (wider), bottom edge (taller) or corner (both).</summary>
+public enum RoomEdge { None, Right, Bottom, Corner }
+
 /// <summary>A room's name lines (<see cref="RoomPainter.Text"/>), room px. A line that does not
 /// fit scrolls: the canvas draws it every frame, the room's bitmap leaves it out.</summary>
 public sealed record RoomText(FormattedText Title, FormattedText? Sub, Point TitleAt, Point SubAt, double Width, bool TitleScrolls, bool SubScrolls)
@@ -166,6 +169,21 @@ public static class RoomPainter
     {
         var s = Math.Clamp(cell * 0.16, 14, 22);
         return new Rect(room.Width - s, room.Height - s, s, s);
+    }
+
+    /// <summary>A resize handle on the room's right edge, bottom edge or corner (room px): a small
+    /// bump straddling the frame.</summary>
+    public static Rect Handle(Size room, double cell, RoomEdge edge)
+    {
+        var t = Math.Clamp(cell * 0.07, 6, 9);
+        var len = Math.Clamp(cell * 0.34, 20, 40);
+        return edge switch
+        {
+            RoomEdge.Right => new Rect(room.Width - t * 0.75, (room.Height - len) / 2, t, len),
+            RoomEdge.Bottom => new Rect((room.Width - len) / 2, room.Height - t * 0.75, len, t),
+            RoomEdge.Corner => new Rect(room.Width - t * 1.4, room.Height - t * 1.4, t * 1.6, t * 1.6),
+            _ => default,
+        };
     }
 
     public static double FrameWidth(double cell) => Math.Clamp(cell * 0.04, 3, 6);
@@ -256,9 +274,25 @@ public static class RoomPainter
                         var top = new RoundedRect(door, dw / 2, dw / 2, 1, 1);
                         ctx.DrawRectangle(doorBrush, doorPen, top);
                     }
+                    else if (o.Kind == PortalKind.Stairs)
+                    {
+                        // A ladder up the wall to the doorway onto the higher floor next door.
+                        var lw = Math.Max(10, cell * 0.1);
+                        var bottom = o.Y + o.Length;
+                        ctx.DrawLine(rungPen, new Point(o.X - lw / 2, o.Y), new Point(o.X - lw / 2, bottom));
+                        ctx.DrawLine(rungPen, new Point(o.X + lw / 2, o.Y), new Point(o.X + lw / 2, bottom));
+                        for (var y = o.Y + 5; y < bottom - 2; y += 8)
+                            ctx.DrawLine(rungPen, new Point(o.X - lw / 2, y), new Point(o.X + lw / 2, y));
+                    }
+                    else if (o.Kind == PortalKind.TrapDoor)
+                    {
+                        // The hatch down to the room below.
+                        var lw = Math.Max(10, cell * 0.1) + 8;
+                        ctx.DrawRectangle(doorBrush, doorPen, new RoundedRect(new Rect(o.X - lw / 2, o.Y + 1, lw, Math.Max(3, o.Length - 2)), 2));
+                    }
                     else
                     {
-                        // A ladder up to the opening in the floor above.
+                        // A ladder up to the opening in the floor (or ceiling) above.
                         var lw = Math.Max(10, cell * 0.1);
                         var gap = new Rect(o.X - lw / 2 - 3, o.Y - fw, lw + 6, fw * 2);
                         ctx.FillRectangle(doorBrush, gap);

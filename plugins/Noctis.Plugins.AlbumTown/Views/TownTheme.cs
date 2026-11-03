@@ -56,6 +56,8 @@ public sealed class TownTheme
         Chip = Solid(dark ? Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x10, 0x00, 0x00, 0x00));
         TabOn = Solid(dark ? Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x1C, 0x00, 0x00, 0x00));
         ShelfEdge = new ImmutablePen((IImmutableBrush)Solid(CoverEdge), 1);
+        HandleFill = Solid(dark ? Color.FromArgb(0xE6, 0xF2, 0xF2, 0xF4) : Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF));
+        HandlePen = new ImmutablePen((IImmutableBrush)Solid(dark ? Color.FromArgb(0x60, 0x00, 0x00, 0x00) : Color.FromArgb(0x50, 0x00, 0x00, 0x00)), 1);
         GhostFill = Solid(Color.FromArgb(0x30, accent.R, accent.G, accent.B));
         GhostPen = new ImmutablePen((IImmutableBrush)AccentBrush, 2, new ImmutableDashStyle(new double[] { 3, 2 }, 0));
         var blocked = Color.FromRgb(0xE7, 0x48, 0x56);
@@ -99,6 +101,9 @@ public sealed class TownTheme
     public IBrush Chip { get; }
     public IBrush TabOn { get; }
     public IPen ShelfEdge { get; }
+    /// <summary>A room's resize handles (the hot one is the accent).</summary>
+    public IBrush HandleFill { get; }
+    public IPen HandlePen { get; }
     /// <summary>Where a dragged room would land (fits / blocked).</summary>
     public IBrush GhostFill { get; }
     public IPen GhostPen { get; }

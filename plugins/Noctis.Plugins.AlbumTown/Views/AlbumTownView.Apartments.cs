@@ -52,7 +52,22 @@ public sealed partial class AlbumTownView
     private Room? _pickerRoom;
     private readonly List<string> _pickerPicks = new();
 
+    // The building's size (Discord, Jafezy 11-02: sliders up to 18 x 9) and "Clear building".
+    private StackPanel _gridBox = null!;
+    private Slider _columns = null!;
+    private Slider _rows = null!;
+    private TextBlock _columnsLabel = null!;
+    private TextBlock _rowsLabel = null!;
+    private bool _syncingSize;
+    private const string ResetLabel = "Clear building";
+    private const string ResetConfirmLabel = "Click again to clear";
+
     public ApartmentGrid Building => _grid;
+    /// <summary>The building's width and height sliders (tests).</summary>
+    public Slider ColumnsSlider => _columns;
+    public Slider RowsSlider => _rows;
+    /// <summary>"Clear building" asks once more before it clears (tests).</summary>
+    public bool IsResetArmed => _resetTimer.IsEnabled;
     public ApartmentLife Life => _life;
     public ShelfStrip Shelf => _shelf;
     /// <summary>Soft backdrop covers of the rooms.</summary>
@@ -66,7 +81,7 @@ public sealed partial class AlbumTownView
     private Control BuildApartments()
     {
         _softCovers = new CoverCache(capacity: 200, thumbSize: 48);
-        _life = new ApartmentLife(new Random(_random.Next())) { Chatty = _host.Chatty };
+        _life = new ApartmentLife(new Random(_random.Next())) { Chatty = _host.Chatty, Lyric = LyricFor };
         _apartments = new ApartmentsCanvas(_residentCovers, _softCovers, _grid, _life)
         {
             Beat = () => _host.TryReadBeat(out var p) ? p : null,
@@ -119,7 +134,7 @@ public sealed partial class AlbumTownView
         _shelfSearch.TextChanged += (_, _) => FillShelf();
         _shelfHint = new TextBlock
         {
-            Text = "Drag a cover into the building to give it a room. Drag a room to move it, its corner to resize it.",
+            Text = "Drag a cover into the building to give it a room. Drag a room to move it, its edges or corner to resize it.",
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             Width = 200,
@@ -142,8 +157,91 @@ public sealed partial class AlbumTownView
         return _apartmentsPage;
     }
 
+    private StackPanel BuildGridBox()
+    {
+        _columns = SizeSlider(ApartmentGrid.MinColumns, ApartmentGrid.MaxColumns, _grid.Columns, "Building width (rooms across)");
+        _rows = SizeSlider(ApartmentGrid.MinRows, ApartmentGrid.MaxRows, _grid.Rows, "Building height (floors)");
+        _columnsLabel = new TextBlock { FontSize = 12, VerticalAlignment = VerticalAlignment.Center, MinWidth = 40 };
+        _rowsLabel = new TextBlock { FontSize = 12, VerticalAlignment = VerticalAlignment.Center, MinWidth = 40 };
+        _columns.PropertyChanged += (_, e) => { if (e.Property == RangeBase.ValueProperty) ResizeBuilding(); };
+        _rows.PropertyChanged += (_, e) => { if (e.Property == RangeBase.ValueProperty) ResizeBuilding(); };
+        _gridBox = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { _columnsLabel, _columns, _rowsLabel, _rows },
+            IsVisible = false,
+        };
+        SyncSizeSliders();
+        return _gridBox;
+    }
+
+    private static Slider SizeSlider(int min, int max, int value, string name)
+    {
+        var s = new Slider
+        {
+            Minimum = min, Maximum = max, Value = value,
+            SmallChange = 1, LargeChange = 1, TickFrequency = 1, IsSnapToTickEnabled = true,
+            Width = 90, VerticalAlignment = VerticalAlignment.Center,
+        };
+        AutomationName(s, name);
+        ToolTip.SetTip(s, name);
+        return s;
+    }
+
+    /// <summary>A slider moved: the building takes that size, never smaller than its rooms need
+    /// (the slider stops there).</summary>
+    private void ResizeBuilding()
+    {
+        if (_syncingSize) return;
+        var (minC, minR) = _grid.MinSize();
+        _grid.TrySetSize(Math.Max(minC, (int)Math.Round(_columns.Value)), Math.Max(minR, (int)Math.Round(_rows.Value)));
+        SyncSizeSliders();
+    }
+
+    private void SyncSizeSliders()
+    {
+        _syncingSize = true;
+        _columns.Value = _grid.Columns;
+        _rows.Value = _grid.Rows;
+        _syncingSize = false;
+        _columnsLabel.Text = "Wide " + _grid.Columns.ToString(CultureInfo.InvariantCulture);
+        _rowsLabel.Text = "High " + _grid.Rows.ToString(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>"Clear building": the first click asks, a second within three seconds empties the building.</summary>
+    private void ResetRoomsClicked()
+    {
+        if (!_resetTimer.IsEnabled)
+        {
+            if (_grid.Rooms.Count == 0) return;
+            SetResetLabel(ResetConfirmLabel);
+            _resetTimer.Start();
+            return;
+        }
+        DisarmReset();
+        HidePicker();
+        _grid.Clear();
+    }
+
+    private void DisarmReset()
+    {
+        _resetTimer.Stop();
+        SetResetLabel(ResetLabel);
+    }
+
+    private void SetResetLabel(string text)
+    {
+        if (_resetRooms.Content is TextBlock label) label.Text = text;
+        AutomationName(_resetRooms, text);
+    }
+
     private void ApplyApartmentsTheme(TownTheme theme)
     {
+        _columnsLabel.Foreground = theme.Muted;
+        _rowsLabel.Foreground = theme.Muted;
         _apartments.Palette = theme;
         _shelf.Palette = theme;
         _shelfBar.Background = theme.Chrome;
@@ -191,6 +289,7 @@ public sealed partial class AlbumTownView
         _grid = grid;
         _grid.Changed += OnGridChanged;
         _apartments.SetGrid(_grid);
+        SyncSizeSliders();
         RebuildLife();
         FillShelf();
         UpdateStatus();

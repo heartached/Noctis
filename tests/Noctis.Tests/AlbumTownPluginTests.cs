@@ -345,7 +345,9 @@ public class AlbumTownPluginTests
         var newcomer = world.Call(new CastMember(A("b"), CastReason.Called));
         Assert.Equal(2, world.Creatures.Count);
         Assert.Equal(CreatureState.Wander, newcomer.State);
-        Assert.True(newcomer.Position.Y <= world.Margin + 24.1f || newcomer.Position.Y >= world.Height - world.Margin - 0.1f);
+        var p = newcomer.Position; // outside an edge, walking in (Discord, Jafezy 11-02)
+        Assert.True(p.X < 0 || p.X > world.Width || p.Y < 0 || p.Y > world.Height);
+        Assert.StartsWith("Hi everyone!", newcomer.Bubble);
 
         var again = world.Call(new CastMember(A("a"), CastReason.Called));
         Assert.Equal(2, world.Creatures.Count);
@@ -412,6 +414,9 @@ public class AlbumTownPluginTests
         public int LayoutSaves;
         public ApartmentLayout? LoadApartments() => ApartmentLayout.FromJson(Layout?.ToJson());
         public void SaveApartments(ApartmentLayout layout) { Layout = layout; LayoutSaves++; }
+        public string MenuBar { get; set; } = "Top (horizontal)";
+        public Dictionary<string, string[]> Lyrics { get; } = new();
+        public IReadOnlyList<string> LoadLyricLines(string trackId) => Lyrics.GetValueOrDefault(trackId) ?? Array.Empty<string>();
     }
 
     private static (AlbumTownView View, FakeTownHost Host) NewView(int albums, int crowd = 40)
@@ -1581,7 +1586,7 @@ public class AlbumTownPluginTests
         Assert.NotNull(manifest.CheckCompatibility("1.6.5")); // before API 1.3/1.4
         Assert.Equal("1.6.6", manifest.MinAppVersion); // 1.6.6 ships API 1.4
         Assert.Null(manifest.CheckCompatibility("1.6.6"));
-        Assert.Equal(new[] { "crowdSize", "showNames", "chatty", "motion" }, manifest.Settings.Select(s => s.Key));
+        Assert.Equal(new[] { "crowdSize", "showNames", "chatty", "motion", "menuBar" }, manifest.Settings.Select(s => s.Key));
         var motion = manifest.Settings.Single(s => s.Key == "motion");
         Assert.Equal(new[] { Motion.Smooth, Motion.Balanced, Motion.BatterySaver }, motion.Choices);
         Assert.Equal(Motion.Balanced, motion.Default);

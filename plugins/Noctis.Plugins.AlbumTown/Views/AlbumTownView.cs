@@ -34,6 +34,9 @@ public sealed partial class AlbumTownView : UserControl
     private readonly TextBlock _byline;
     private readonly TextBlock _credit;
     private readonly Slider _zoom;
+    private readonly Button _newCrowd;
+    private readonly Button _resetRooms;
+    private readonly DispatcherTimer _resetTimer;
     private readonly StackPanel _zoomBox;
     private readonly DispatcherTimer _zoomSave;
     private TownTheme _theme = TownTheme.Dark;
@@ -74,6 +77,9 @@ public sealed partial class AlbumTownView : UserControl
         };
         world.Chatty = host.Chatty;
         _plaza.CreatureClicked += (_, c) => ShowCard(c.Album, c.Member.Reason);
+        // A click in the plaza closes the "Call an album" list.
+        _plaza.AddHandler(PointerPressedEvent, (_, _) => _suggestionsBox!.IsVisible = false, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+        world.Lyric = LyricFor;
         _plaza.Zoom = host.LoadZoom();
         _covers.CoverReady += (_, _) =>
         {
@@ -108,10 +114,16 @@ public sealed partial class AlbumTownView : UserControl
         };
         AutomationName(_search, "Call an album to the plaza");
         _search.TextChanged += (_, _) => UpdateSuggestions();
+        _search.GotFocus += (_, _) => UpdateSuggestions();
         _search.KeyDown += OnSearchKey;
 
-        var newCrowd = Pill("New crowd", () => Recast(fresh: true));
-        newCrowd.Margin = new Thickness(8, 0, 0, 0);
+        _newCrowd = Pill("New crowd", () => Recast(fresh: true));
+        _newCrowd.Margin = new Thickness(8, 0, 0, 0);
+        _resetRooms = Pill(ResetLabel, ResetRoomsClicked);
+        _resetRooms.Margin = new Thickness(8, 0, 0, 0);
+        _resetTimer = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, (_, _) => DisarmReset());
+        _fullscreen = Pill("Full screen", ToggleFullScreen);
+        _fullscreen.Margin = new Thickness(8, 0, 0, 0);
 
         // Creature size: the same zoom as Ctrl+wheel on the plaza, remembered between sessions.
         _zoom = new Slider
@@ -152,12 +164,12 @@ public sealed partial class AlbumTownView : UserControl
 
         _titleText = new TextBlock { Text = "Album Town", FontSize = 18, FontWeight = FontWeight.Bold };
         _byline = new TextBlock { Text = Byline, FontSize = 11 };
-        var title = new StackPanel
+        var title = _titleBox = new StackPanel
         {
             VerticalAlignment = VerticalAlignment.Center,
             Children = { _titleText, _byline },
         };
-        var tabs = new StackPanel
+        var tabs = _tabs = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 4,
@@ -165,8 +177,8 @@ public sealed partial class AlbumTownView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Children = { _plazaTab, _apartmentsTab },
         };
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { _zoomBox, _search, newCrowd } };
-        var headerGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var tools = _tools = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { _zoomBox, BuildGridBox(), _search, _newCrowd, _resetRooms, _fullscreen } };
+        var headerGrid = _headerGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         Grid.SetColumn(tabs, 1);
         Grid.SetColumn(tools, 2);
         headerGrid.Children.Add(title);
@@ -229,8 +241,8 @@ public sealed partial class AlbumTownView : UserControl
         };
 
         var apartments = BuildApartments();
-        var stage = new Panel { Children = { _plaza, apartments, _message, _card, _suggestionsBox, _pickerLayer } };
-        var root = new DockPanel();
+        var stage = new Panel { Children = { _plaza, apartments, _message, _card, _suggestionsBox, BuildMenuHandle(), _pickerLayer } };
+        var root = _root = new DockPanel();
         DockPanel.SetDock(_header, Dock.Top);
         DockPanel.SetDock(_footer, Dock.Bottom);
         root.Children.Add(_header);
@@ -238,6 +250,8 @@ public sealed partial class AlbumTownView : UserControl
         root.Children.Add(stage);
         Content = root;
 
+        SetMenuVertical(IsSide(host.MenuBar));
+        AddHandler(KeyDownEvent, OnChromeKey, Avalonia.Interactivity.RoutingStrategies.Bubble);
         ApplyTheme(TownTheme.Dark);
         ShowTab(plaza: true);
         UpdateStatus();
@@ -263,6 +277,7 @@ public sealed partial class AlbumTownView : UserControl
         _host.SettingsChanged += OnSettingsChanged;
         ActualThemeVariantChanged += OnThemeChanged;
         ApplyTheme(TownTheme.From(this));
+        AttachChrome();
         if (!_loadStarted)
         {
             _loadStarted = true;
@@ -275,6 +290,7 @@ public sealed partial class AlbumTownView : UserControl
         _host.NowPlayingChanged -= OnNowPlayingChanged;
         _host.SettingsChanged -= OnSettingsChanged;
         ActualThemeVariantChanged -= OnThemeChanged;
+        DetachChrome();
         if (_zoomSave.IsEnabled)
         {
             _zoomSave.Stop();
@@ -322,6 +338,7 @@ public sealed partial class AlbumTownView : UserControl
         _plazaTab.Background = _plaza.IsVisible ? theme.TabOn : Brushes.Transparent;
         _apartmentsTab.Background = _plaza.IsVisible ? Brushes.Transparent : theme.TabOn;
         ApplyApartmentsTheme(theme);
+        ApplyChromeTheme(theme);
     }
 
     /// <summary>Reads the library, the playlists and the saved building off the UI thread, then
@@ -403,13 +420,14 @@ public sealed partial class AlbumTownView : UserControl
         }
         if (_cast.Count >= Math.Clamp(_host.CrowdSize, PlazaCast.MinCrowd, PlazaCast.MaxCrowd))
         {
-            // Someone who was only out for a walk goes home to make room.
+            // Someone who was only out for a walk says bye and walks out to make room.
             var leave = _cast.FindLastIndex(m => m.Reason == CastReason.Random);
             if (leave < 0) leave = _cast.FindLastIndex(m => m.Reason != CastReason.Called && m.Reason != CastReason.NowPlaying);
             if (leave >= 0)
             {
+                var gone = _cast[leave].Album.Key;
                 _cast.RemoveAt(leave);
-                _plaza.World.SetCast(_cast);
+                if (!_plaza.World.SendAway(gone)) _plaza.World.SetCast(_cast);
             }
         }
         _cast.Add(member);
@@ -463,6 +481,7 @@ public sealed partial class AlbumTownView : UserControl
         _apartments.ShowNames = _host.ShowNames;
         _life.Chatty = _host.Chatty;
         _plaza.Motion = _apartments.Motion = Noctis.Plugins.AlbumTown.Town.Motion.Parse(_host.Motion);
+        if (IsSide(_host.MenuBar) != _menuVertical) SetMenuVertical(!_menuVertical);
         if (_cast.Count != Math.Clamp(_host.CrowdSize, PlazaCast.MinCrowd, Math.Min(PlazaCast.MaxCrowd, Math.Max(1, _town.Count))))
             Recast(fresh: false);
         _plaza.Wake();
@@ -477,6 +496,10 @@ public sealed partial class AlbumTownView : UserControl
         _apartmentsTab.Background = plaza ? Brushes.Transparent : _theme.TabOn;
         _search.IsVisible = plaza;
         _zoomBox.IsVisible = plaza;
+        _newCrowd.IsVisible = plaza;
+        _gridBox.IsVisible = !plaza;
+        _resetRooms.IsVisible = !plaza;
+        DisarmReset();
         _suggestionsBox.IsVisible = false;
         if (!plaza) _apartments.Refresh();
         UpdateStatus();
@@ -518,7 +541,10 @@ public sealed partial class AlbumTownView : UserControl
     private void UpdateSuggestions()
     {
         _suggestions.Children.Clear();
-        var found = PlazaCast.Find(_town, _search.Text ?? "", 6);
+        // Nothing typed yet: a few albums to call (recently played first) that are not in the plaza.
+        var found = string.IsNullOrWhiteSpace(_search.Text)
+            ? (_search.IsFocused ? PlazaCast.Suggest(_town, _cast.Select(m => m.Album.Key).ToHashSet(StringComparer.Ordinal), 6) : Array.Empty<TownAlbum>())
+            : PlazaCast.Find(_town, _search.Text ?? "", 6);
         foreach (var a in found)
         {
             var album = a;

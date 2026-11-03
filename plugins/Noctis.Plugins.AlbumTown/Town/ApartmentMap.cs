@@ -14,10 +14,13 @@ public sealed record Area(int Index, Room Room, int Part, CellRect Rect)
 /// it is the doorway in an interior wall.</para>
 /// <para><see cref="Ladder"/>: the opening in a divided room's interior floor.</para>
 /// <para><see cref="TrapDoor"/>: two rooms stacked on each other (one's floor is the other's
-/// ceiling). Found and kept here so the trap doors Jafezy described can be added later; v1
-/// neither draws nor uses them (agreed with Jafezy).</para>
+/// ceiling): a hatch in the upper floor and a ladder down into the room below.</para>
+/// <para><see cref="Stairs"/>: two rooms side by side whose floors are at different heights: a
+/// ladder up the lower room's wall to a doorway onto the higher floor.</para>
+/// Since the Discord feedback (Jafezy 11-02: "albums with 1 room have nowhere to go") pets use
+/// all four, so a one-cell room above, below or beside another is no longer a cell they never leave.
 /// </summary>
-public enum PortalKind { Door, Ladder, TrapDoor }
+public enum PortalKind { Door, Ladder, TrapDoor, Stairs }
 
 /// <summary>
 /// A way between <see cref="From"/> and <see cref="To"/>: a pet in <see cref="From"/> walks to
@@ -29,6 +32,17 @@ public sealed record Portal(PortalKind Kind, Area From, Area To, double Line, do
 {
     /// <summary>True between two different rooms (a visit), false inside one divided room.</summary>
     public bool BetweenRooms => !ReferenceEquals(From.Room, To.Room);
+
+    /// <summary>The way a pet walks (feet, cell units): <see cref="FromPoint"/>, any steps on the
+    /// way (up or down a ladder), <see cref="ToPoint"/>. Null: straight from one to the other.</summary>
+    public IReadOnlyList<(double X, double Y)>? Via { get; init; }
+
+    /// <summary>The point of <see cref="Path"/> where the pet is in <see cref="To"/> (1 = after the first step).</summary>
+    public int CrossAt { get; init; } = 1;
+
+    /// <summary>Every point the pet walks to, in order (at least <see cref="FromPoint"/> and <see cref="ToPoint"/>).</summary>
+    public IReadOnlyList<(double X, double Y)> Path => Via ?? (_path ??= new[] { FromPoint, ToPoint });
+    private (double X, double Y)[]? _path;
 }
 
 /// <summary>
@@ -42,8 +56,10 @@ public sealed class ApartmentMap
     public const double DoorStep = 0.16;
     private const double Eps = 1e-6;
 
-    /// <summary>Trap doors are found but not used yet (v1, agreed with Jafezy).</summary>
-    public const bool UseTrapDoors = false;
+    /// <summary>Trap doors (rooms stacked on each other) are used: pets climb between them.</summary>
+    public const bool UseTrapDoors = true;
+    /// <summary>The least headroom (cells) a doorway at the top of stairs needs.</summary>
+    public const double StairsHeadroom = 0.3;
 
     private readonly List<Area> _areas = new();
     private readonly List<Portal> _portals = new();
@@ -55,7 +71,7 @@ public sealed class ApartmentMap
 
     public IReadOnlyList<Area> AreasOf(Room room) => _byRoom.TryGetValue(room, out var list) ? list : Array.Empty<Area>();
 
-    /// <summary>Portals leading out of <paramref name="area"/> that pets use (trap doors left out in v1).</summary>
+    /// <summary>Portals leading out of <paramref name="area"/> that pets use.</summary>
     public IReadOnlyList<Portal> Exits(Area area) => _from.TryGetValue(area, out var list) ? list : Array.Empty<Portal>();
 
     public static ApartmentMap Build(IReadOnlyList<Room> rooms)
@@ -90,6 +106,10 @@ public sealed class ApartmentMap
                     if (a.Floor - top > Eps) map.AddBothWays(PortalKind.Door, a, b, a.Rect.Right, top, a.Floor,
                         (a.Rect.Right - DoorStep, a.Floor), (b.Rect.X + DoorStep, b.Floor));
                 }
+                // Stairs: side by side, floors at different heights, and the higher floor meets the
+                // lower room's wall with room above it to step through.
+                else if (Near(a.Rect.Right, b.Rect.X) && !Near(a.Floor, b.Floor))
+                    map.AddStairs(a, b);
                 // Stacked: a above b. Inside one room a ladder, between rooms a trap door.
                 if (Near(a.Floor, b.Rect.Y))
                 {
@@ -104,6 +124,29 @@ public sealed class ApartmentMap
                 }
             }
         return map;
+    }
+
+    /// <summary>Stairs between <paramref name="left"/> and <paramref name="right"/> (side by side, floors apart):
+    /// on the lower floor's side a pet climbs the wall to the higher floor, then steps through.</summary>
+    private void AddStairs(Area left, Area right)
+    {
+        var (high, low) = left.Floor < right.Floor ? (left, right) : (right, left);
+        var wall = left.Rect.Right;
+        var top = Math.Max(left.Rect.Y, right.Rect.Y);
+        // The higher floor must reach into the lower room's wall, with headroom above it.
+        if (high.Floor <= low.Rect.Y + Eps || high.Floor - top < StairsHeadroom) return;
+        var highX = ReferenceEquals(high, left) ? wall - DoorStep : wall + DoorStep;
+        var lowX = ReferenceEquals(low, left) ? wall - DoorStep : wall + DoorStep;
+        var up = new[] { (lowX, low.Floor), (lowX, high.Floor), (highX, high.Floor) };
+        var down = new[] { (highX, high.Floor), (lowX, high.Floor), (lowX, low.Floor) };
+        Add(new Portal(PortalKind.Stairs, low, high, wall, top, high.Floor, up[0], up[2]) { Via = up, CrossAt = 2 });
+        Add(new Portal(PortalKind.Stairs, high, low, wall, top, high.Floor, down[0], down[2]) { Via = down, CrossAt = 1 });
+
+        void Add(Portal p)
+        {
+            _portals.Add(p);
+            _from[p.From].Add(p);
+        }
     }
 
     private void AddBothWays(PortalKind kind, Area a, Area b, double line, double from, double to, (double, double) pa, (double, double) pb)

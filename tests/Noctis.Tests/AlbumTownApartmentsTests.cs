@@ -30,21 +30,17 @@ public class AlbumTownApartmentsTests
     [InlineData(2.3, 1.1, 2, 1)]
     [InlineData(0.8, 2.2, 1, 2)]
     [InlineData(1.9, 1.7, 2, 2)]
-    [InlineData(3.4, 2.4, 4, 2)]
-    [InlineData(2.1, 3.8, 2, 4)]
-    [InlineData(9, 9, 4, 2)] // never past eight cells
+    [InlineData(3.4, 2.4, 3, 2)] // any shape now (Discord, Jafezy 11-02)
+    [InlineData(2.5, 3.8, 3, 4)]
+    [InlineData(30, 30, 18, 9)] // never past the biggest building
     [InlineData(0.2, 0.2, 1, 1)]
-    public void Shapes_SnapToOneTwoFourOrEightCells(double w, double h, int sw, int sh)
+    public void Shapes_SnapToWholeCells_OfAnyShape(double w, double h, int sw, int sh)
     {
         Assert.Equal((sw, sh), RoomShapes.Snap(w, h));
-        foreach (var (x, y) in RoomShapes.All)
-        {
-            Assert.Contains(x * y, new[] { 1, 2, 4, 8 });
-            Assert.True(x * y <= RoomShapes.MaxCells);
-        }
-        Assert.False(RoomShapes.IsValid(3, 1));
-        Assert.False(RoomShapes.IsValid(4, 4));
-        Assert.False(RoomShapes.IsValid(8, 1));
+        Assert.True(RoomShapes.IsValid(3, 1));
+        Assert.True(RoomShapes.IsValid(5, 3));
+        Assert.False(RoomShapes.IsValid(0, 1));
+        Assert.False(RoomShapes.IsValid(19, 1));
     }
 
     [Fact]
@@ -61,7 +57,7 @@ public class AlbumTownApartmentsTests
         Assert.Equal((new Cells(0, 0, 2, 1), true), grid.ResizeTarget(a, 2.2, 1.1));
         Assert.Equal((new Cells(0, 0, 4, 2), false), grid.ResizeTarget(a, 3.8, 2.2)); // b is in the way
         Assert.False(grid.TryResize(a, 4, 2));
-        Assert.False(grid.TryResize(a, 3, 1)); // not an allowed size
+        Assert.False(grid.TryResize(a, 3, 1)); // b is in the way
         Assert.True(grid.TryResize(a, 2, 2));
         Assert.Equal(new Cells(0, 0, 2, 2), a.Cells);
 
@@ -170,7 +166,7 @@ public class AlbumTownApartmentsTests
                 new SavedRoom { Id = "3", Kind = "playlist", Source = "gone", X = 2, Y = 0 },
                 new SavedRoom { Id = "4", Kind = "playlist", Source = "p", X = 3, Y = 0, W = 2, H = 2, Splits = 9, Picks = new() { "a", "b", "c", "d", "e", "f" } },
                 new SavedRoom { Id = "5", Kind = "album", Source = "a:overlap", X = 4, Y = 1 }, // inside room 4
-                new SavedRoom { Id = "6", Kind = "album", Source = "a:shape", X = 6, Y = 0, W = 3, H = 1 },
+                new SavedRoom { Id = "6", Kind = "album", Source = "a:shape", X = 6, Y = 0, W = 0, H = 1 }, // no size
                 new SavedRoom { Id = "7", Kind = "album", Source = "a:out", X = 40, Y = 0 },
                 new SavedRoom { Id = "1", Kind = "album", Source = "a:kept", X = 9, Y = 0 }, // a second room for one album
                 new SavedRoom { Id = "1", Kind = "album", Source = "a:other", X = 10, Y = 0 }, // repeated id
@@ -274,7 +270,7 @@ public class AlbumTownApartmentsTests
         var grid = new ApartmentGrid();
         var a = grid.TryAdd(RoomKind.Album, "a", 0, 1)!;
         var b = grid.TryAdd(RoomKind.Album, "b", 1, 1)!;           // right of a: a door
-        var c = grid.TryAdd(RoomKind.Album, "c", 0, 0)!;           // on top of a: a trap door (not in v1)
+        var c = grid.TryAdd(RoomKind.Album, "c", 0, 0)!;           // on top of a: a trap door (a ladder)
         var d = grid.TryAdd(RoomKind.Album, "d", 6, 1)!;           // apart: nothing
         var p = grid.TryAdd(RoomKind.Playlist, "p", 2, 0)!;        // right of b, 2x2: floor at y = 2
         grid.TryResize(p, 2, 2);
@@ -283,7 +279,7 @@ public class AlbumTownApartmentsTests
         var map = ApartmentMap.Build(grid.Rooms);
         Area A(Room r, int part = 0) => map.AreasOf(r)[part];
 
-        var ab = map.Exits(A(a)).Single(x => x.BetweenRooms);
+        var ab = map.Exits(A(a)).Single(x => x.BetweenRooms && x.Kind == PortalKind.Door);
         Assert.Same(A(b), ab.To);
         Assert.Equal(PortalKind.Door, ab.Kind);
         Assert.Equal(1, ab.Line);
@@ -294,11 +290,11 @@ public class AlbumTownApartmentsTests
         var bp = map.Exits(A(b)).Where(x => x.BetweenRooms && ReferenceEquals(x.To.Room, p)).ToList();
         Assert.Equal(new[] { 2 }, bp.Select(x => x.To.Part));
 
-        // Stacked rooms: found as a trap door for later, never used in v1.
-        var trap = map.Portals.Single(x => x.Kind == PortalKind.TrapDoor && ReferenceEquals(x.From.Room, c));
+        // Stacked rooms: a trap door with a ladder, used both ways (Discord, Jafezy 11-02).
+        var trap = Assert.Single(map.Exits(A(c)));
+        Assert.Equal(PortalKind.TrapDoor, trap.Kind);
         Assert.Same(a, trap.To.Room);
-        Assert.DoesNotContain(map.Exits(A(c)), x => x.Kind == PortalKind.TrapDoor);
-        Assert.Empty(map.Exits(A(c)));
+        Assert.Contains(map.Exits(A(a)), x => x.Kind == PortalKind.TrapDoor && ReferenceEquals(x.To.Room, c));
         Assert.Empty(map.Exits(A(d)));
         Assert.Equal(2, map.RoomDoors().Count()); // a|b and b|p
     }
@@ -340,7 +336,7 @@ public class AlbumTownApartmentsTests
                     $"{p.Album.Title} wandered off to {p.Area.Room.Source}");
                 var r = p.Area.Rect;
                 if (p.Goal is null) Assert.InRange(p.X, r.X, r.Right);
-                Assert.InRange(p.Y, r.Y, r.Bottom);
+                if (p.Goal is null) Assert.InRange(p.Y, r.Y, r.Bottom); // on a ladder it is between floors
                 if (p.Visiting && !wasVisiting[p]) visits++;
                 if (!p.Visiting && wasVisiting[p]) homecomings++;
                 if (p.Visiting && p.Creature.State == CreatureState.Talk) visitTalks++;
@@ -535,8 +531,8 @@ public class AlbumTownApartmentsTests
         canvas.Release(canvas.ToPx(5.1, 4.1));
         Assert.Equal(new Cells(3, 2, 2, 2), a.Cells);
         Assert.True(canvas.Press(new Point(canvas.RoomRect(a.Cells).Right - 4, canvas.RoomRect(a.Cells).Bottom - 4)));
-        canvas.Move(canvas.ToPx(7, 2.5));
-        canvas.Release(canvas.ToPx(7, 2.5));
+        canvas.Move(canvas.ToPx(7, 4.2));
+        canvas.Release(canvas.ToPx(7, 4.2));
         Assert.Equal(new Cells(3, 2, 4, 2), a.Cells); // 4x2 fits beside b (b is on row 1)
         window.Close();
     }
