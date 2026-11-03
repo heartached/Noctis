@@ -9,7 +9,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-lyricmotion-v1.0.0",
       "prerelease": true,
       "sections": [],
-      "summary": "Lyrics that grow letter by letter as they are sung. Community plugin by Alfamin . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "Lyrics that grow letter by letter as they are sung."
     },
     {
       "tag": "plugin-trueshuffle-v1.0.0",
@@ -20,7 +20,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-trueshuffle-v1.0.0",
       "prerelease": true,
       "sections": [],
-      "summary": "A fairer shuffle with modes like No repeats. Community plugin by Alfamin . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "A fairer shuffle with modes like No repeats."
     },
     {
       "tag": "plugin-albumtown-v1.0.1",
@@ -31,7 +31,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.1",
       "prerelease": true,
       "sections": [],
-      "summary": "Your albums come to life in a little town. Community plugin by Jafezy JD . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "Your albums come to life in a little town."
     },
     {
       "tag": "plugin-chords-v1.0.0",
@@ -42,7 +42,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-chords-v1.0.0",
       "prerelease": true,
       "sections": [],
-      "summary": "Shows the playing song's chords, found from its audio. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "Shows the playing song's chords, found from its audio."
     },
     {
       "tag": "plugin-youtubeimport-v1.0.0",
@@ -53,7 +53,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-youtubeimport-v1.0.0",
       "prerelease": true,
       "sections": [],
-      "summary": "Save audio from a YouTube link to your library. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "Save audio from a YouTube link to your library."
     },
     {
       "tag": "plugin-abloop-v1.0.0",
@@ -64,7 +64,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-abloop-v1.0.0",
       "prerelease": true,
       "sections": [],
-      "summary": "Loop any part of a song and save your loops. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "Loop any part of a song and save your loops."
     },
     {
       "tag": "plugin-albumroulette-v1.0.0",
@@ -75,7 +75,7 @@
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumroulette-v1.0.0",
       "prerelease": true,
       "sections": [],
-      "summary": "Spin a reel of your albums and let it pick what to play. Community plugin by Noctis . Needs Noctis 1.6.6 or newer. Install it from Settings → Plugins."
+      "summary": "Spin a reel of your albums and let it pick what to play."
     },
     {
       "tag": "v1.6.5",
@@ -3802,6 +3802,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-03T02:43:37.506Z",
+  "updatedAt": "2026-11-03T02:50:51.134Z",
   "degraded": false
 }
