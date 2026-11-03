@@ -199,7 +199,7 @@ public class ListColumnsIssue151Tests : IDisposable
 
     // ── Songs view (headless) ─────────────────────────────────────────────
 
-    private static void EnsureAppStyles()
+    internal static void EnsureAppStyles()
     {
         var app = Application.Current!;
         if (app.Resources.TryGetResource("HeartFillIcon", null, out _)) return;
@@ -208,7 +208,7 @@ public class ListColumnsIssue151Tests : IDisposable
         app.Styles.Add(new StyleInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml") });
     }
 
-    private static void Settle(Window window, int passes = 6)
+    internal static void Settle(Window window, int passes = 6)
     {
         for (var i = 0; i < passes; i++)
         {
@@ -218,7 +218,7 @@ public class ListColumnsIssue151Tests : IDisposable
         }
     }
 
-    private static (LibrarySongsViewModel Vm, LibrarySongsView View, Window Win) MountSongs(int count)
+    internal static (LibrarySongsViewModel Vm, LibrarySongsView View, Window Win) MountSongs(int count)
     {
         EnsureAppStyles();
         var lib = new FakeLibraryService();
@@ -249,15 +249,15 @@ public class ListColumnsIssue151Tests : IDisposable
         return (vm, view, win);
     }
 
-    private static ColumnHeaderPanel Header(LibrarySongsView view) => view.FindControl<ColumnHeaderPanel>("ColumnHeader")!;
+    internal static ColumnHeaderPanel Header(LibrarySongsView view) => view.FindControl<ColumnHeaderPanel>("ColumnHeader")!;
 
-    private static List<ColumnsPanel> RowPanels(LibrarySongsView view) =>
+    internal static List<ColumnsPanel> RowPanels(LibrarySongsView view) =>
         view.TrackList.GetRealizedContainers().OfType<ListBoxItem>()
             .Select(i => i.GetVisualDescendants().OfType<ColumnsPanel>().First()).ToList();
 
-    private static Control Cell(Panel panel, string key) => panel.Children.First(c => ColumnsPanel.GetColumn(c) == key);
+    internal static Control Cell(Panel panel, string key) => panel.Children.First(c => ColumnsPanel.GetColumn(c) == key);
 
-    private static Rect InWindow(Control c, Window win)
+    internal static Rect InWindow(Control c, Window win)
     {
         var p = c.TranslatePoint(default, win)!.Value;
         return new Rect(p, c.Bounds.Size);
@@ -285,8 +285,10 @@ public class ListColumnsIssue151Tests : IDisposable
                 Assert.True(c.IsVisible, spec.Key);
                 if (c is Border)
                 {
-                    Assert.Equal(offsets[i], c.Bounds.X, 0.5);
-                    Assert.Equal(widths[i], c.Bounds.Width, 0.5);
+                    // The slot less the column padding (GitHub #157).
+                    var (l, r) = view.Columns.CellInsets(i);
+                    Assert.Equal(offsets[i] + l, c.Bounds.X, 0.5);
+                    Assert.Equal(widths[i] - l - r, c.Bounds.Width, 0.5);
                 }
                 // The header cell sits inside the same slot.
                 if (!spec.Pinned)
@@ -361,7 +363,8 @@ public class ListColumnsIssue151Tests : IDisposable
             Assert.All(rows, r => Assert.Same(view.Columns, ColumnsPanel.GetLayout(r)));
             view.Columns.SetWidth("Title", 400);
             Settle(win);
-            Assert.All(RowPanels(view), r => Assert.Equal(400, Cell(r, "Title").Bounds.Width, 0.5));
+            // The first column has no left padding, only the right (GitHub #157).
+            Assert.All(RowPanels(view), r => Assert.Equal(400 - view.Columns.CellPadding, Cell(r, "Title").Bounds.Width, 0.5));
             AssertAligned(view, win);
         }
         finally { win.Close(); }

@@ -1305,6 +1305,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.Ascending" xml:space="preserve"><value>По возрастанию</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Сначала новые альбомы</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>По убыванию</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.ResetSortToDateAdded" xml:space="preserve"><value>Сбросить: по дате добавления</value><comment>Songs Sort menu: back to the default order, newest additions first; shown while the sort button has its dot (GitHub #156)</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Перемешать</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Параметры</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.AllSongs" xml:space="preserve"><value>Все песни</value><comment>Header in MainWindow.axaml</comment></data>

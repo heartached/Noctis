@@ -102,6 +102,13 @@ public class ColumnsPanel : Panel
         return -1;
     }
 
+    /// <summary>Where the cell of shown column <paramref name="i"/> goes: its slot, less the column padding (GitHub #157).</summary>
+    protected static Rect CellRect(ColumnLayout layout, int i, double[] widths, double[] offsets, double height)
+    {
+        var (l, r) = layout.CellInsets(i);
+        return new Rect(offsets[i] + l, 0, Math.Max(0, widths[i] - l - r), height);
+    }
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var layout = Layout;
@@ -118,7 +125,8 @@ public class ColumnsPanel : Panel
                 if (GetColumn(child) == null) child.Measure(availableSize);
                 continue;
             }
-            child.Measure(new Size(widths[i], availableSize.Height));
+            var (l, r) = layout.CellInsets(i);
+            child.Measure(new Size(Math.Max(0, widths[i] - l - r), availableSize.Height));
             height = Math.Max(height, child.DesiredSize.Height);
         }
         var width = double.IsFinite(availableSize.Width) ? availableSize.Width : right;
@@ -135,7 +143,7 @@ public class ColumnsPanel : Panel
         {
             var key = GetColumn(child);
             var i = IndexOf(layout, key);
-            if (i >= 0) child.Arrange(new Rect(offsets[i], 0, widths[i], finalSize.Height));
+            if (i >= 0) child.Arrange(CellRect(layout, i, widths, offsets, finalSize.Height));
             else if (key == null) child.Arrange(new Rect(finalSize));
         }
         return finalSize;

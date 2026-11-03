@@ -1305,6 +1305,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Main.Ascending" xml:space="preserve"><value>Ascending</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Newest Albums First</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>Descending</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.ResetSortToDateAdded" xml:space="preserve"><value>Reset to Date Added</value><comment>Songs Sort menu: back to the default order, newest additions first; shown while the sort button has its dot (GitHub #156)</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Options</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.AllSongs" xml:space="preserve"><value>All Songs</value><comment>Header in MainWindow.axaml</comment></data>

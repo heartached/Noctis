@@ -344,7 +344,9 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSongsFilterActive))]
     private bool _pageShowOnlyFavorites;
-    [ObservableProperty] private bool _pageSortAscending = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSongsSortActive))]
+    private bool _pageSortAscending = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSongsSortActive))]
     private string _pageSortColumn = string.Empty;
@@ -586,8 +588,17 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>The quality part only counts where the quality items are offered (Songs page);
     /// the filter string is not reset when another page hides them.</summary>
     public bool IsSongsFilterActive => PageShowOnlyFavorites || (HasSongsFilters && SongsQualityFilter != "All");
-    /// <summary>Songs default order is "Date Added" (LibrarySongsViewModel); empty = not reported yet.</summary>
-    public bool IsSongsSortActive => PageSortColumn is not ("" or "Date Added");
+    /// <summary>
+    /// Songs default order is "Date Added", newest first (LibrarySongsViewModel); empty = not
+    /// reported yet. Oldest first counts as changed too, so the dot always means "Reset to
+    /// Date Added" in the Sort menu has something to do (GitHub #156).
+    /// </summary>
+    public bool IsSongsSortActive => PageSortColumn switch
+    {
+        "" => false,
+        "Date Added" => PageSortAscending,
+        _ => true,
+    };
     public bool IsArtistSortActive => ArtistSortMode != "name";
     public bool IsPlaylistSortActive => PlaylistSortMode != "default";
     public bool IsFoldersSortActive => FoldersSortMode != "default";
