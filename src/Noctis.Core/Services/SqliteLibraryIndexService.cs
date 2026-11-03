@@ -387,4 +387,14 @@ public sealed class SqliteLibraryIndexService : ISqliteLibraryIndexService
 
         await UpsertUserStateAsync(tracks, ct);
     }
+
+    public async Task ClearUserStateAsync(CancellationToken ct = default)
+    {
+        await InitializeAsync(ct);
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM track_user_state;";
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
 }

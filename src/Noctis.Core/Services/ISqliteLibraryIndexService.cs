@@ -41,6 +41,12 @@ public interface ISqliteLibraryIndexService
     /// No-op when any row exists.
     /// </summary>
     Task SeedUserStateIfEmptyAsync(IEnumerable<Track> tracks, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes every journal row (Settings › Reset Everything). Without it a rescan after the
+    /// reset brought every rating, favorite, play count and snooze straight back.
+    /// </summary>
+    Task ClearUserStateAsync(CancellationToken ct = default);
 }
 
 /// <summary>

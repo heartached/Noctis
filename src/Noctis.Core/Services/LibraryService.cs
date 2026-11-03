@@ -796,6 +796,13 @@ public class LibraryService : ILibraryService
     /// </summary>
     private readonly CancellationTokenSource _shutdownCts = new();
 
+    /// <summary>
+    /// Cancelled (and replaced) by <see cref="ClearAsync"/>: the startup artwork heal and the tag
+    /// backfills walk a snapshot of the old library, so after Reset Everything they kept writing
+    /// covers into the emptied artwork folder and appending to a .progress file being deleted.
+    /// </summary>
+    private CancellationTokenSource _backfillStop = new();
+
     // Serializes "Merge Featured Artists" toggle passes: a newer flip cancels the
     // in-flight pass so rapid on/off flips can't interleave writes.
     private readonly object _mergeFeatApplyLock = new();
@@ -2105,7 +2112,8 @@ public class LibraryService : ILibraryService
                     // any interruption or unreadable file left an album artless for
                     // good — rescans skip unchanged files by mtime and never retry.
                     // Cheap when every album already has art (one probe per album).
-                    await BackfillMissingArtworkAsync(_shutdownCts.Token);
+                    using (var heal = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, _backfillStop.Token))
+                        await BackfillMissingArtworkAsync(heal.Token);
 
                     // Last and on its own task: the v11 label and v12 genre passes can take many minutes on a
                     // hard disk and nothing above should wait for it.
@@ -2394,6 +2402,10 @@ public class LibraryService : ILibraryService
 
     public async Task ClearAsync()
     {
+        // Reset Everything: stop the passes over the old library first, so none writes after this.
+        Interlocked.Exchange(ref _backfillStop, new CancellationTokenSource()).Cancel();
+        try { await LabelBackfill.ConfigureAwait(false); } catch { /* it logs its own failure */ }
+
         // Copy-and-swap (see RemoveTrackAsync) — concurrent readers keep the old lists.
         _tracks = new List<Track>();
         _albums = new List<Album>();
@@ -2403,6 +2415,19 @@ public class LibraryService : ILibraryService
         lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
         await _persistence.SaveLibraryAsync(_tracks);
         await _sqliteIndex.ClearAsync();
+        // The ratings / favorites / play counts journal too: it outlives scans on purpose (a
+        // returning file gets its state back), so a rescan after the reset restored all of it.
+        await _sqliteIndex.ClearUserStateAsync();
+        // A stopped backfill's resume log (replaygain-, label-, genre-backfill.progress).
+        await Task.Run(() =>
+        {
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(_persistence.DataDirectory, "*-backfill.progress"))
+                    File.Delete(file);
+            }
+            catch (Exception ex) { DebugLog.Write("Library", $"Clear: backfill progress not deleted: {ex.Message}"); }
+        });
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
@@ -3225,7 +3250,8 @@ public class LibraryService : ILibraryService
     /// </summary>
     private async Task<bool> RunTagBackfillAsync(TagBackfill pass)
     {
-        var token = _shutdownCts.Token;
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, _backfillStop.Token);
+        var token = stop.Token;
         var progressPath = Path.Combine(_persistence.DataDirectory, pass.ProgressFileName);
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var snapshot = _tracks;
