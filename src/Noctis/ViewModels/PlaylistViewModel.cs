@@ -725,6 +725,13 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             _playlist.TrackIds.Remove(t.Id);
             if (!_playlist.TrackIds.Contains(t.Id)) _playlist.TrackAddedAt.Remove(t.Id);
         }
+        // The whole-playlist list a search-play continues with must lose them too.
+        if (_unfilteredTracks != null)
+        {
+            var unfiltered = _unfilteredTracks.ToList();
+            foreach (var t in tracks) unfiltered.Remove(t);
+            _unfilteredTracks = unfiltered;
+        }
         _playlist.ModifiedAt = DateTime.UtcNow;
         TrackCount = Tracks.Count;
 
