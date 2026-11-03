@@ -7927,6 +7927,34 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistListColumnOrder = defaultSettings.ArtistListColumnOrder;
             ArtistListColumnWidths = defaultSettings.ArtistListColumnWidths;
             ArtistListHiddenColumns = defaultSettings.ArtistListHiddenColumns;
+            // Page view state (sorts, layouts, folded sections): SyncToSettings writes these
+            // back too, so a reset left them as they were. ViewStateLoaded below hands the
+            // defaults to the pages, as at launch.
+            SongsSortColumn = defaultSettings.SongsSortColumn;
+            SongsSortAscending = defaultSettings.SongsSortAscending;
+            SongsShowOnlyFavorites = defaultSettings.SongsShowOnlyFavorites;
+            AlbumSortMode = defaultSettings.AlbumSortMode;
+            AlbumViewMode = defaultSettings.AlbumViewMode;
+            ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
+            AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
+            AlbumSortAscending = defaultSettings.AlbumSortAscending;
+            AlbumSortNewestFirst = defaultSettings.AlbumSortNewestFirst;
+            AlbumReleaseTypeFilter = defaultSettings.AlbumReleaseTypeFilter;
+            ArtistSortMode = defaultSettings.ArtistSortMode;
+            ArtistSortAscending = defaultSettings.ArtistSortAscending;
+            ArtistViewMode = defaultSettings.ArtistViewMode;
+            FoldersSortMode = defaultSettings.FoldersSortMode;
+            ArtistReleaseSortMode = defaultSettings.ArtistReleaseSortMode;
+            ArtistSimilarExpanded = defaultSettings.ArtistSimilarExpanded;
+            AlbumOtherVersionsExpanded = defaultSettings.AlbumOtherVersionsExpanded;
+            AlbumMoreByExpanded = defaultSettings.AlbumMoreByExpanded;
+            HomeTopSongsExpanded = defaultSettings.HomeTopSongsExpanded;
+            HomeTopArtistsExpanded = defaultSettings.HomeTopArtistsExpanded;
+            HomeRecentlyPlayedExpanded = defaultSettings.HomeRecentlyPlayedExpanded;
+            HomeTimeRotationExpanded = defaultSettings.HomeTimeRotationExpanded;
+            HomeHeavyRotationExpanded = defaultSettings.HomeHeavyRotationExpanded;
+            HomeRediscoveredExpanded = defaultSettings.HomeRediscoveredExpanded;
+            HomeLastPlayedExpanded = defaultSettings.HomeLastPlayedExpanded;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
@@ -8057,6 +8085,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Apply accent
             AccentChanged?.Invoke(this, ActiveAccentHex);
+
+            // The pages adopt the defaulted sorts and layouts the way they do after LoadAsync.
+            ViewStateLoaded?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
