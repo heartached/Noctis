@@ -5743,7 +5743,7 @@
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>تبقى المفضلة والتقييمات وعدد مرات التشغيل وقوائم التشغيل متطابقة على هاتفك وهذا الكمبيوتر.</value>
+    <value>تبقى المفضلة والتقييمات وعدد مرات التشغيل وقوائم تشغيل هذا الكمبيوتر متطابقة على هاتفك وهذا الكمبيوتر. قوائم التشغيل التي تنشئها على الهاتف تبقى على الهاتف.</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">

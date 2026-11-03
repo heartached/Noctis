@@ -2572,7 +2572,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>Телефоны пока не подключены.</value><comment>Account card list empty state</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Синхронизация с телефоном</value><comment>Sync card title</comment></data>
-  <data name="Sync.Description" xml:space="preserve"><value>Избранное, оценки, счётчики прослушиваний и плейлисты одинаковы на телефоне и на этом ПК.</value><comment>Sync card description</comment></data>
+  <data name="Sync.Description" xml:space="preserve"><value>Избранное, оценки, счётчики прослушиваний и плейлисты этого ПК одинаковы на телефоне и на этом ПК. Плейлисты, созданные на телефоне, остаются на телефоне.</value><comment>Sync card description</comment></data>
   <data name="Sync.DeviceName" xml:space="preserve"><value>Имя этого ПК</value><comment>Sync card row label</comment></data>
   <data name="Sync.WhatSyncs" xml:space="preserve"><value>Музыкальные файлы остаются на месте. Нужен включённый сервер Noctis.</value><comment>Sync card footnote</comment></data>
 

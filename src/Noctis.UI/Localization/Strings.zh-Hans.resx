@@ -5743,7 +5743,7 @@
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>收藏、评分、播放次数和播放列表会在手机和这台电脑上保持一致。</value>
+    <value>收藏、评分、播放次数和这台电脑的播放列表会在手机和这台电脑上保持一致。在手机上创建的播放列表只保留在手机上。</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">

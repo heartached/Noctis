@@ -5743,7 +5743,7 @@
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>Tus favoritos, valoraciones, reproducciones y listas de reproducción son iguales en tu teléfono y en este equipo.</value>
+    <value>Tus favoritos, valoraciones, reproducciones y las listas de este equipo son iguales en tu teléfono y en este equipo. Las listas que crees en el teléfono se quedan en el teléfono.</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">

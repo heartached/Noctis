@@ -5743,7 +5743,7 @@
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>お気に入り、評価、再生回数、プレイリストがスマートフォンとこのPCで同じになります。</value>
+    <value>お気に入り、評価、再生回数、このPCのプレイリストがスマートフォンとこのPCで同じになります。スマートフォンで作ったプレイリストはスマートフォンだけに残ります。</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">

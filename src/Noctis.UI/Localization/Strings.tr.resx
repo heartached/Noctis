@@ -1585,7 +1585,7 @@
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Kendi cihazlarından oturum açabilen ek hesaplar.</value><comment>Other accounts card help</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Telefonunla eşitle</value><comment>Sync card title</comment></data>
-  <data name="Sync.Description" xml:space="preserve"><value>Favoriler, puanlar, çalma sayıları ve çalma listeleri telefonunda ve bu bilgisayarda aynı kalır.</value><comment>Sync card description</comment></data>
+  <data name="Sync.Description" xml:space="preserve"><value>Favoriler, puanlar, çalma sayıları ve bu bilgisayarın çalma listeleri telefonunda ve bu bilgisayarda aynı kalır. Telefonda oluşturduğun çalma listeleri telefonda kalır.</value><comment>Sync card description</comment></data>
   <data name="Sync.DeviceName" xml:space="preserve"><value>Bu bilgisayarın adı</value><comment>Sync card row label</comment></data>
   <data name="Sync.WhatSyncs" xml:space="preserve"><value>Müzik dosyaları olduğu yerde kalır. Noctis Sunucusunun açık olması gerekir.</value><comment>Sync card footnote</comment></data>
 

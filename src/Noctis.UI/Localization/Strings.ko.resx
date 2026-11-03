@@ -5743,7 +5743,7 @@
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>즐겨찾기, 평점, 재생 횟수, 재생목록이 휴대폰과 이 PC에서 똑같이 유지됩니다.</value>
+    <value>즐겨찾기, 평점, 재생 횟수, 이 PC의 재생목록이 휴대폰과 이 PC에서 똑같이 유지됩니다. 휴대폰에서 만든 재생목록은 휴대폰에만 남습니다.</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">
