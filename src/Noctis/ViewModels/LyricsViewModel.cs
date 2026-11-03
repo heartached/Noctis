@@ -1411,7 +1411,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var preferred = LyricsSaveOptions.ParsePreferredType(_player.LyricsPreferredType);
             if (primary != null) primary = ApplyPreferredType(primary, preferred);
             if (alternate != null) alternate = ApplyPreferredType(alternate, preferred);
-            var pluginInstrumental = pluginResults.Any(r => r is { Instrumental: true, HasLyrics: false })
+            var pluginInstrumental = netEaseResult is { Instrumental: true, HasLyrics: false }
+                                     || pluginResults.Any(r => r is { Instrumental: true, HasLyrics: false })
                                      || extraResults.Any(r => r is { Instrumental: true, HasLyrics: false });
             // An extra source that never answered in time counts as errored for the message below.
             var extrasAllErrored = extraTasks.Select((t, i) => !t.IsCompleted || extraErrored[i]).All(e => e);

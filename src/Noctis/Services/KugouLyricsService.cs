@@ -56,7 +56,14 @@ public class KugouLyricsService : IKugouLyricsService
             }
 
             var elrc = await DownloadElrcAsync(candidate.Value.Id, candidate.Value.AccessKey, ct);
-            var result = elrc == null ? null : new LrcLibResult
+            // "纯音乐，请欣赏" is Kugou saying the song is instrumental, not its lyrics (GitHub #162).
+            var result = LyricsSearchSelector.IsInstrumentalPlaceholder(elrc) ? new LrcLibResult
+            {
+                TrackName = song.Value.Name,
+                ArtistName = song.Value.Singer,
+                Duration = song.Value.DurationSeconds,
+                Instrumental = true,
+            } : elrc == null ? null : new LrcLibResult
             {
                 TrackName = song.Value.Name,
                 ArtistName = song.Value.Singer,
@@ -142,10 +149,16 @@ public class KugouLyricsService : IKugouLyricsService
         var durationMs = Math.Round(durationSeconds * 1000).ToString(CultureInfo.InvariantCulture);
         var json = await GetStringAsync(
             $"{LyricsSearchUrl}?ver=1&man=yes&client=mobi&keyword=&duration={durationMs}&hash={Uri.EscapeDataString(hash)}", ct);
-        return PickCandidate(json);
+        return PickCandidate(json, durationSeconds);
     }
 
-    internal static (string Id, string AccessKey)? PickCandidate(string json)
+    /// <summary>
+    /// The first lyrics candidate as long as the length it was timed for is the song's. Kugou lists
+    /// lyrics of other recordings under a hash too (GitHub #162, checked 2026-11-03: Kid Wise
+    /// "pablo" listed only arkady sevidov's 5:20 "June - Barcarole", whose lyrics are the
+    /// instrumental notice "纯音乐，请欣赏"); those were taken as the song's own.
+    /// </summary>
+    internal static (string Id, string AccessKey)? PickCandidate(string json, double durationSeconds = 0)
     {
         using var doc = JsonDocument.Parse(json);
         if (!doc.RootElement.TryGetProperty("candidates", out var candidates) || candidates.ValueKind != JsonValueKind.Array)
@@ -154,8 +167,12 @@ public class KugouLyricsService : IKugouLyricsService
         {
             var id = Str(c, "id");
             var key = Str(c, "accesskey");
-            if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(key))
-                return (id, key);
+            if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(key)) continue;
+            var candidateSeconds = Num(c, "duration") / 1000.0;
+            if (durationSeconds > 0 && candidateSeconds > 0 &&
+                Math.Abs(candidateSeconds - durationSeconds) > LyricsSearchSelector.DurationToleranceSeconds)
+                continue;
+            return (id, key);
         }
         return null;
     }
