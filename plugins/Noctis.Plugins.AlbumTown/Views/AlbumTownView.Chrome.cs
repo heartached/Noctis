@@ -121,6 +121,12 @@ public sealed partial class AlbumTownView
             _headerGrid.Children.Add(_tools);
             _header.Child = _headerGrid;
             _header.Width = double.NaN;
+            if (!_fitHooked)
+            {
+                _fitHooked = true;
+                _header.SizeChanged += (_, _) => FitTopBar();
+            }
+            FitTopBar();
             _header.Padding = new Thickness(18, 10);
             DockPanel.SetDock(_header, Dock.Top);
             _suggestionsBox.HorizontalAlignment = HorizontalAlignment.Right;
@@ -130,6 +136,32 @@ public sealed partial class AlbumTownView
         _root.Children.Remove(_header);
         _root.Children.Insert(0, _header);
         PlaceMenuHandle();
+    }
+
+    private bool _fitHooked;
+
+    /// <summary>
+    /// A top bar narrower than title + tabs + tools (Album Town inside Settings on a ~1700 px
+    /// window, 11-03 live) used to draw them over each other: the Auto columns overflowed
+    /// into the centre. The tools then drop to a second row, right-aligned.
+    /// </summary>
+    internal void FitTopBar()
+    {
+        if (_menuVertical || _headerGrid is null || _header.Child != _headerGrid) return;
+        var room = _header.Bounds.Width - _header.Padding.Left - _header.Padding.Right;
+        if (room <= 0) return;
+        _titleBox.Measure(Size.Infinity);
+        _tabs.Measure(Size.Infinity);
+        _tools.Measure(Size.Infinity);
+        var need = _titleBox.DesiredSize.Width + _tabs.DesiredSize.Width + _tools.DesiredSize.Width + 24;
+        var wrap = need > room;
+        if (wrap == (Grid.GetRow(_tools) == 1)) return;
+        _headerGrid.RowDefinitions = wrap ? new RowDefinitions("Auto,Auto") : new RowDefinitions();
+        Grid.SetRow(_tools, wrap ? 1 : 0);
+        Grid.SetColumn(_tools, wrap ? 0 : 2);
+        Grid.SetColumnSpan(_tools, wrap ? 3 : 1);
+        _tools.HorizontalAlignment = wrap ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+        _tools.Margin = wrap ? new Thickness(0, 8, 0, 0) : default;
     }
 
     private static void Detach(Control c)
