@@ -1971,6 +1971,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="ReplayGainScanner.Stop" xml:space="preserve"><value>Stop</value><comment>Cancel button while a scan runs, ReplayGainScannerDialog</comment></data>
   <data name="ReplayGainScanner.NoFfmpeg" xml:space="preserve"><value>ffmpeg not found — set the path in Settings → Advanced → Helper programs.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.TickOne" xml:space="preserve"><value>Tick at least one track to scan.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.AllTagged" xml:space="preserve"><value>Every song here already has ReplayGain. Tick one to scan it again.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Scanning" xml:space="preserve"><value>Scanning…</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Finished" xml:space="preserve"><value>Finished · {0} scanned</value><comment>Status in ReplayGainScannerViewModel; {0} tracks tagged</comment></data>
   <data name="ReplayGainScanner.FinishedFailed" xml:space="preserve"><value>{0} failed</value><comment>Status suffix in ReplayGainScannerViewModel; {0} tracks failed</comment></data>

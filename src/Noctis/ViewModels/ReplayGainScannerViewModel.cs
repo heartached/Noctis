@@ -94,6 +94,7 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
         // Flag tracks that already carry ReplayGain tags so the user can tell a
         // re-scan from a first scan. Reading tags is file IO, so do it off the UI thread.
+        ShowAllTaggedHint();
         _ = MarkAlreadyScannedAsync();
     }
 
@@ -109,6 +110,10 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
             if (_rowsByTrack.ContainsKey(t) || !_paths.Add(t.FilePath ?? string.Empty))
                 continue;
             var row = new RgJobRow { Track = t, Status = "Pending" };
+            // GitHub #161: a song the library already holds a ReplayGain value for starts
+            // unticked; only songs without one are pre-selected. The rest are read below.
+            if (t.ReplayGainChecked && t.ReplayGainTrackDb != null)
+                row.PreselectTagged();
             row.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName != nameof(RgJobRow.IsIncluded)) return;
@@ -154,7 +159,9 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
     }
 
     /// <summary>Reads each track's tags and labels rows that already have a
-    /// REPLAYGAIN_TRACK_GAIN value as "Already scanned" (re-scanning still works).</summary>
+    /// REPLAYGAIN_TRACK_GAIN value as "Already scanned" and unticks them (GitHub #161; ticking
+    /// one back in re-scans it). Songs whose value the library already knows were settled in
+    /// <see cref="AddRows"/> without a read.</summary>
     private async Task MarkAlreadyScannedAsync(IReadOnlyList<Track>? tracks = null)
     {
         // Wrapped whole. This is started fire-and-forget, and Start() cancels _initCts —
@@ -179,24 +186,40 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         foreach (var t in tracks)
         {
             if (ct.IsCancellationRequested) return;
+            if (t.ReplayGainChecked) continue; // the library read it: AddRows used that
 
             bool scanned = false;
             await Task.Run(() =>
             {
-                try { scanned = !string.IsNullOrWhiteSpace(AdvancedTagIO.ReadAll(t.FilePath).ReplayGainTrackGain); }
-                catch { /* unreadable file — treat as not scanned */ }
+                // The reader the Songs list's column and the player use: a tag the player
+                // can't parse is no value here either. It used to be any non-blank text.
+                if (ReplayGainTags.ReadFile(t.FilePath) is not { } rg) return; // unreadable: not scanned
+                scanned = rg.TrackGainDb != null;
+                // GitHub #158: the dialog said "Already scanned" while the column was still
+                // blank (not read yet); what was just read fills the column too.
+                if (!t.ReplayGainChecked) t.ApplyReplayGain(rg);
             }, ct).ConfigureAwait(false);
 
             if (!scanned || ct.IsCancellationRequested) continue;
             Dispatcher.UIThread.Post(() =>
             {
                 if (!_rowsByTrack.TryGetValue(t, out var row)) return;
-                row.HadTags = true;
-                // Only relabel the idle "Pending" state — never overwrite an
-                // in-progress or finished scan from this session.
-                if (row.State == RgState.Pending) row.ResetIdle();
+                // Only for the idle "Pending" state — never an in-progress or finished scan
+                // from this session.
+                if (row.State == RgState.Pending && !IsScanning && !HasFinished) row.PreselectTagged();
+                else row.HadTags = true;
             });
         }
+        Dispatcher.UIThread.Post(ShowAllTaggedHint);
+    }
+
+    /// <summary>Every song already has ReplayGain, so nothing is ticked (GitHub #161): say why
+    /// Scan is off rather than leave the user guessing.</summary>
+    private void ShowAllTaggedHint()
+    {
+        if (_isAvailable && !IsScanning && !HasFinished && string.IsNullOrEmpty(StatusMessage)
+            && Jobs.Count > 0 && Jobs.All(j => j.HadTags && !j.IsIncluded))
+            StatusMessage = L("ReplayGainScanner.AllTagged");
     }
 
     public bool CanStart => HasFinished || (!IsScanning && _isAvailable && Jobs.Any(j => j.IsIncluded));
@@ -322,6 +345,29 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         [ObservableProperty] private bool _hasAlbumGain;
         /// <summary>The file carried ReplayGain tags when the dialog opened.</summary>
         public bool HadTags { get; set; }
+
+        /// <summary>The user ticked or unticked the row: the tag read leaves it as they set it.</summary>
+        internal bool SelectionTouched { get; private set; }
+        private bool _preselecting;
+
+        partial void OnIsIncludedChanged(bool value)
+        {
+            if (!_preselecting) SelectionTouched = true;
+        }
+
+        /// <summary>GitHub #161: the file already has a ReplayGain value. Labelled "Already
+        /// scanned" and unticked, unless the user already set the box; ticking it re-scans.</summary>
+        internal void PreselectTagged()
+        {
+            HadTags = true;
+            if (!SelectionTouched)
+            {
+                _preselecting = true;
+                try { IsIncluded = false; }
+                finally { _preselecting = false; }
+            }
+            if (State == RgState.Pending) ResetIdle();
+        }
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(ChipText), nameof(IsWorking), nameof(IsSucceeded), nameof(IsSkipped),

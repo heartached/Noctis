@@ -242,4 +242,11 @@ public interface ILibraryService
     /// pass is running returns 0. Returns the number of albums that gained a cover.
     /// </summary>
     Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Reads the ReplayGain tags of those of <paramref name="tracks"/> never read yet, now, on
+    /// a background thread, instead of when the startup pass reaches them (GitHub #158: the
+    /// Songs list's ReplayGain column asks for the rows on screen). No-op for the rest.
+    /// </summary>
+    void ReadReplayGainSoon(IEnumerable<Track> tracks) { }
 }

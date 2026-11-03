@@ -61,6 +61,53 @@ public static class ReplayGainTags
     }
 
     /// <summary>
+    /// The ReplayGain tags of a file on disk, read light: the FLAC comment block alone,
+    /// otherwise TagLib with no audio properties and lazy pictures. Null when the file can't be
+    /// read now (try again later); <see cref="ReplayGainValues.None"/> when it has no ReplayGain
+    /// tags. The column's backfill (MetadataService.ReadReplayGain) and the ReplayGain dialog's
+    /// "already scanned" check (GitHub #161) both use it, so they agree on what has a value.
+    /// </summary>
+    public static ReplayGainValues? ReadFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return null;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack reads no ReplayGain either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return ReplayGainValues.None;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (TryReadFlac(stream, out var flac))
+                    return flac;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return Read(file);
+        }
+        catch (TagLib.CorruptFileException)
+        {
+            return ReplayGainValues.None; // never readable: don't retry every launch
+        }
+        catch (TagLib.UnsupportedFormatException)
+        {
+            return ReplayGainValues.None;
+        }
+        catch (Exception)
+        {
+            return null; // locked, vanished, I/O error: the next pass tries again
+        }
+    }
+
+    /// <summary>
     /// The same three fields from a plain FLAC's comment block alone (<see cref="ExtendedTagIO"/>'s
     /// block walker, which skips the cover bytes TagLib# always loads). False means "ask TagLib":
     /// no 'fLaC' at offset 0, a malformed block, or a trailing APEv2/ID3v2 tag.
