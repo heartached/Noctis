@@ -355,9 +355,11 @@
             <ScrollViewer Name="PageScroll" Classes="page-scroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Name="PageContent" Classes="grouped-content">
 
-                    <!-- Signed out: why, then Scan QR Code (the computer's Connect a phone shows the
-                         code), then the typed way: how, the address, name and password. The
-                         address stays a field: the computer is not discoverable on the network. -->
+                    <!-- Signed out: why, then the two ways in, each as short numbered steps. First
+                         Scan QR Code (the computer's Connect a phone shows the code; no typing, no
+                         code to compare: the QR carries the pin), then Enter manually: the
+                         address, email and password. The address stays a field: the computer is
+                         not discoverable on the network. -->
                     <StackPanel Name="SignInForm" Spacing="28" IsVisible="{Binding IsFormVisible}">
                         <StackPanel Name="SignInHero" Margin="0,4,0,0">
                             <Border Classes="hero-disc">
@@ -367,9 +369,27 @@
                             <TextBlock Classes="hero-text" Text="Stream and download the music on your computer, right here." />
                         </StackPanel>
 
-                        <!-- The quick way: no typing, no code to compare (the QR carries the pin). -->
                         <StackPanel Name="ScanQrSection" IsVisible="{Binding CanScanQr}">
-                            <Button Name="ScanQrButton" Classes="primary-action" Classes.busy="{Binding IsSigningInByQr}"
+                            <TextBlock Classes="group-caption" Text="Scan QR code" />
+                            <Border Classes="group-card">
+                                <StackPanel>
+                                    <Grid Classes="step-row" ColumnDefinitions="Auto,*">
+                                        <Border Classes="step-number"><TextBlock Text="1" /></Border>
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="On your computer, open Noctis › Settings › Account &amp; Devices" />
+                                    </Grid>
+                                    <Border Classes="row-separator step" />
+                                    <Grid Classes="step-row" ColumnDefinitions="Auto,*">
+                                        <Border Classes="step-number"><TextBlock Text="2" /></Border>
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Turn on Noctis on your phone and click Connect a phone" />
+                                    </Grid>
+                                    <Border Classes="row-separator step" />
+                                    <Grid Classes="step-row" ColumnDefinitions="Auto,*">
+                                        <Border Classes="step-number"><TextBlock Text="3" /></Border>
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Tap Scan QR Code and point the camera at the code" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Button Name="ScanQrButton" Classes="primary-action" Classes.busy="{Binding IsSigningInByQr}" Margin="0,22,0,0"
                                     Command="{Binding ScanQrCodeCommand}" IsEnabled="{Binding IsIdle}" AutomationProperties.Name="Scan QR Code">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Classes="spinner" IsVisible="{Binding IsSigningInByQr}">
@@ -380,32 +400,28 @@
                                     <TextBlock Text="{Binding StatusText}" IsVisible="{Binding IsSigningInByQr}" />
                                 </StackPanel>
                             </Button>
-                            <TextBlock Classes="group-footnote" Margin="16,10,16,0"
-                                       Text="On your computer, open Settings › Account &amp; Devices and tap Connect a phone, then scan the code it shows." />
-                            <TextBlock Classes="group-caption" Margin="16,28,16,0" Text="Or sign in with your password" />
                         </StackPanel>
 
                         <StackPanel Name="HowToConnect">
-                            <TextBlock Classes="group-caption" Text="How to connect" />
+                            <TextBlock Classes="group-caption" Text="Enter manually" />
                             <Border Classes="group-card">
                                 <StackPanel>
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="1" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Open Noctis on your computer" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="On your computer, click Connect a phone, then Enter manually" />
                                     </Grid>
                                     <Border Classes="row-separator step" />
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="2" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Go to Settings › Account &amp; Devices" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Type the address it shows, your email and your password" />
                                     </Grid>
                                     <Border Classes="row-separator step" />
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="3" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Turn on Noctis on your phone, then tap Connect a phone" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Check that the security code matches" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Classes="group-footnote" Text="Your computer then shows its address and a security code." />
                         </StackPanel>
 
                         <StackPanel>

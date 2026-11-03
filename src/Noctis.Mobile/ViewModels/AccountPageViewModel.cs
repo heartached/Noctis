@@ -810,13 +810,8 @@ public sealed partial class AccountPageViewModel : MobilePage
         return $"https://{uri.Host}:{port}";
     }
 
-    /// <summary>"AB:CD:…" as lines of eight bytes; anything else as it came.</summary>
-    internal static string FormatFingerprint(string? fingerprint)
-    {
-        if (string.IsNullOrEmpty(fingerprint)) return string.Empty;
-        var bytes = fingerprint.Split(':');
-        return bytes.Length < 2 ? fingerprint : string.Join("\n", bytes.Chunk(8).Select(line => string.Join(":", line)));
-    }
+    /// <summary>The computer's security code, grouped exactly as the computer shows it (SecurityCode).</summary>
+    internal static string FormatFingerprint(string? fingerprint) => SecurityCode.Format(fingerprint);
 
     /// <summary>"Sending 3 of 40" (the song going out now); "Checking what your computer has…" before.</summary>
     internal static string DescribeUploadProgress(NoctisUploadProgress progress) =>
