@@ -1580,10 +1580,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPhoneCardOpen))] private string _noctisServerUrl = string.Empty;
     /// <summary>SHA-256 fingerprint of the server certificate — what a phone pins when it accepts the self-signed cert.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(NoctisServerFingerprintDisplay))] private string _noctisServerFingerprint = string.Empty;
-    /// <summary>Eight bytes to a line, the way the phone shows it, so the two read line by line
-    /// (wrapped to the card's width it broke inside a byte: "57:1" / "6:CC").</summary>
-    public string NoctisServerFingerprintDisplay =>
-        string.Join("\n", NoctisServerFingerprint.Split(':').Chunk(8).Select(line => string.Join(":", line)));
+    /// <summary>Four lines of four-digit groups, exactly as the phone shows it (SecurityCode), so
+    /// the two read line by line without a wall of colons.</summary>
+    public string NoctisServerFingerprintDisplay => SecurityCode.Format(NoctisServerFingerprint);
     [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _noctisServerQr;
     [ObservableProperty] private bool _noctisServerStartFailed;
     [ObservableProperty] private string _noctisServerError = string.Empty;
@@ -1628,6 +1627,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         // Cleared straight (the account removed, the tab left): the panel closes with it.
         IsIssuedApiKeyOpen = value.Length > 0;
+        // The key shows in the phone card's Advanced row: open it, or the key would be folded away.
+        if (value.Length > 0) IsPhoneAdvancedOpen = true;
         IsIssuedApiKeyRevealed = false;
         IssuedApiKeyCopied = false;
         OnPropertyChanged(nameof(HasIssuedApiKey));

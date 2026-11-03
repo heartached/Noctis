@@ -6356,10 +6356,6 @@
     <value>휴대폰의 Noctis 앱에서 설정을 열고 계정으로 이동하세요. 이 주소를 입력하고 이메일 또는 사용자 이름과 비밀번호로 로그인하세요.</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
-  <data name="AccountSync.PairQrHint" xml:space="preserve">
-    <value>휴대폰의 Noctis 앱에서 설정 &gt; 계정으로 이동한 다음 QR 코드 스캔을 탭하세요. 입력할 필요가 없습니다.</value>
-    <comment>Pairing panel, beside the sign-in QR code</comment>
-  </data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve">
     <value>{0} 후 새 코드</value>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
@@ -6368,13 +6364,61 @@
     <value>이 코드를 스캔하는 사람은 누구나 내 계정에 로그인할 수 있으니 내 휴대폰에만 보여 주세요. 한 번만 사용할 수 있으며 2분마다 바뀝니다.</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
-  <data name="AccountSync.PairManualHeader" xml:space="preserve">
-    <value>또는 비밀번호로 로그인</value>
-    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
-  </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
     <value>로그인 QR 코드</value>
     <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
+  <data name="Pair.Subtitle" xml:space="preserve">
+    <value>몇 초 만에 휴대폰의 Noctis에 로그인하세요.</value>
+    <comment>Phone app card, Connect a phone row subtitle</comment>
+  </data>
+  <data name="Pair.ModeQr" xml:space="preserve">
+    <value>QR 코드 스캔</value>
+    <comment>Connect a phone: switch segment for the QR code way</comment>
+  </data>
+  <data name="Pair.ModeManual" xml:space="preserve">
+    <value>직접 입력</value>
+    <comment>Connect a phone: switch segment for typing the address and password</comment>
+  </data>
+  <data name="Pair.QrStep1" xml:space="preserve">
+    <value>휴대폰에서 Noctis를 엽니다.</value>
+    <comment>Connect a phone, QR way, step 1</comment>
+  </data>
+  <data name="Pair.QrStep2" xml:space="preserve">
+    <value>설정 › 계정으로 이동해 QR 코드 스캔을 탭합니다.</value>
+    <comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment>
+  </data>
+  <data name="Pair.QrStep3" xml:space="preserve">
+    <value>카메라를 이 코드에 맞춥니다.</value>
+    <comment>Connect a phone, QR way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep1" xml:space="preserve">
+    <value>휴대폰에서 Noctis를 열고 설정 › 계정으로 이동합니다.</value>
+    <comment>Connect a phone, manual way, step 1</comment>
+  </data>
+  <data name="Pair.ManualStep2" xml:space="preserve">
+    <value>직접 입력에서 이 주소를 입력합니다:</value>
+    <comment>Connect a phone, manual way, step 2; the address follows below it</comment>
+  </data>
+  <data name="Pair.ManualStep3" xml:space="preserve">
+    <value>계정의 이메일과 비밀번호로 로그인합니다.</value>
+    <comment>Connect a phone, manual way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep4" xml:space="preserve">
+    <value>휴대폰에 이 보안 코드가 표시되는지 확인합니다:</value>
+    <comment>Connect a phone, manual way, step 4; the security code follows below it</comment>
+  </data>
+  <data name="Pair.NewCode" xml:space="preserve">
+    <value>새 코드</value>
+    <comment>Small link under the QR code: replace it with a new one now</comment>
+  </data>
+  <data name="Pair.QrUnavailable" xml:space="preserve">
+    <value>지금은 QR 코드를 표시할 수 없습니다. 위에서 계정을 만들거나 직접 입력을 사용하세요.</value>
+    <comment>Connect a phone, QR way, when no code can be shown</comment>
+  </data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve">
+    <value>이 PC의 이름과 다른 음악 앱의 접근.</value>
+    <comment>Phone app card, Advanced row subtitle (folded by default)</comment>
   </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>내 휴대폰</value>

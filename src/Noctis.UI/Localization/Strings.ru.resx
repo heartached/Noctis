@@ -2568,11 +2568,22 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Семья и гости</value><comment>Other accounts card title</comment></data>
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Дополнительные аккаунты, которые могут входить со своих устройств.</value><comment>Other accounts card help</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>В приложении Noctis на телефоне откройте «Настройки», затем «Аккаунт». Введите этот адрес и войдите, указав email или имя пользователя и пароль.</value><comment>Pairing block help above the address and fingerprint</comment></data>
-  <data name="AccountSync.PairQrHint" xml:space="preserve"><value>В приложении Noctis на телефоне откройте «Настройки», затем «Аккаунт» и нажмите «Сканировать QR-код». Ничего вводить не нужно.</value><comment>Pairing panel, beside the sign-in QR code</comment></data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>Новый код через {0}</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
   <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Любой, кто отсканирует этот код, сможет войти в ваш аккаунт, поэтому показывайте его только своему телефону. Код работает один раз и меняется каждые две минуты.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
-  <data name="AccountSync.PairManualHeader" xml:space="preserve"><value>ИЛИ ВОЙДИТЕ С ПАРОЛЕМ</value><comment>Pairing panel, above the address and security code (the typed sign-in)</comment></data>
   <data name="AccountSync.PairQrName" xml:space="preserve"><value>QR-код для входа</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
+  <data name="Pair.Subtitle" xml:space="preserve"><value>Войдите в Noctis на телефоне за пару секунд.</value><comment>Phone app card, Connect a phone row subtitle</comment></data>
+  <data name="Pair.ModeQr" xml:space="preserve"><value>Сканировать QR-код</value><comment>Connect a phone: switch segment for the QR code way</comment></data>
+  <data name="Pair.ModeManual" xml:space="preserve"><value>Ввести вручную</value><comment>Connect a phone: switch segment for typing the address and password</comment></data>
+  <data name="Pair.QrStep1" xml:space="preserve"><value>Откройте Noctis на телефоне.</value><comment>Connect a phone, QR way, step 1</comment></data>
+  <data name="Pair.QrStep2" xml:space="preserve"><value>Откройте «Настройки» › «Аккаунт» и нажмите «Сканировать QR-код».</value><comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment></data>
+  <data name="Pair.QrStep3" xml:space="preserve"><value>Наведите камеру на этот код.</value><comment>Connect a phone, QR way, step 3</comment></data>
+  <data name="Pair.ManualStep1" xml:space="preserve"><value>На телефоне откройте Noctis и перейдите в «Настройки» › «Аккаунт».</value><comment>Connect a phone, manual way, step 1</comment></data>
+  <data name="Pair.ManualStep2" xml:space="preserve"><value>В разделе «Ввести вручную» введите этот адрес:</value><comment>Connect a phone, manual way, step 2; the address follows below it</comment></data>
+  <data name="Pair.ManualStep3" xml:space="preserve"><value>Войдите с адресом эл. почты и паролем вашего аккаунта.</value><comment>Connect a phone, manual way, step 3</comment></data>
+  <data name="Pair.ManualStep4" xml:space="preserve"><value>Убедитесь, что телефон показывает этот код безопасности:</value><comment>Connect a phone, manual way, step 4; the security code follows below it</comment></data>
+  <data name="Pair.NewCode" xml:space="preserve"><value>Новый код</value><comment>Small link under the QR code: replace it with a new one now</comment></data>
+  <data name="Pair.QrUnavailable" xml:space="preserve"><value>Сейчас QR-код показать нельзя. Создайте аккаунт выше или выберите «Ввести вручную».</value><comment>Connect a phone, QR way, when no code can be shown</comment></data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve"><value>Имя этого компьютера и доступ для других музыкальных приложений.</value><comment>Phone app card, Advanced row subtitle (folded by default)</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>ВАШИ ТЕЛЕФОНЫ</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>Телефоны пока не подключены.</value><comment>Account card list empty state</comment></data>
 

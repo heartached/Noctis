@@ -6356,10 +6356,6 @@
     <value>在手機上的 Noctis 應用程式中，開啟「設定」，再進入「帳戶」。輸入這個位址，然後用您的電子郵件或使用者名稱和密碼登入。</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
-  <data name="AccountSync.PairQrHint" xml:space="preserve">
-    <value>在手機上的 Noctis App 中，依序前往「設定」和「帳號」，然後點一下「掃描 QR 碼」。不需要輸入任何內容。</value>
-    <comment>Pairing panel, beside the sign-in QR code</comment>
-  </data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve">
     <value>{0} 後更新代碼</value>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
@@ -6368,13 +6364,61 @@
     <value>任何掃描此代碼的人都能登入你的帳號，所以只給你自己的手機看。它只能使用一次，每兩分鐘更換一次。</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
-  <data name="AccountSync.PairManualHeader" xml:space="preserve">
-    <value>或使用密碼登入</value>
-    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
-  </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
     <value>登入 QR 碼</value>
     <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
+  <data name="Pair.Subtitle" xml:space="preserve">
+    <value>幾秒鐘就能在手機上登入 Noctis。</value>
+    <comment>Phone app card, Connect a phone row subtitle</comment>
+  </data>
+  <data name="Pair.ModeQr" xml:space="preserve">
+    <value>掃描 QR 碼</value>
+    <comment>Connect a phone: switch segment for the QR code way</comment>
+  </data>
+  <data name="Pair.ModeManual" xml:space="preserve">
+    <value>手動輸入</value>
+    <comment>Connect a phone: switch segment for typing the address and password</comment>
+  </data>
+  <data name="Pair.QrStep1" xml:space="preserve">
+    <value>在手機上開啟 Noctis。</value>
+    <comment>Connect a phone, QR way, step 1</comment>
+  </data>
+  <data name="Pair.QrStep2" xml:space="preserve">
+    <value>前往「設定」›「帳號」，點一下「掃描 QR 碼」。</value>
+    <comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment>
+  </data>
+  <data name="Pair.QrStep3" xml:space="preserve">
+    <value>將相機對準此代碼。</value>
+    <comment>Connect a phone, QR way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep1" xml:space="preserve">
+    <value>在手機上開啟 Noctis，前往「設定」›「帳號」。</value>
+    <comment>Connect a phone, manual way, step 1</comment>
+  </data>
+  <data name="Pair.ManualStep2" xml:space="preserve">
+    <value>在「手動輸入」下，輸入此位址：</value>
+    <comment>Connect a phone, manual way, step 2; the address follows below it</comment>
+  </data>
+  <data name="Pair.ManualStep3" xml:space="preserve">
+    <value>使用帳號的電子郵件和密碼登入。</value>
+    <comment>Connect a phone, manual way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep4" xml:space="preserve">
+    <value>確認手機顯示的安全碼與此一致：</value>
+    <comment>Connect a phone, manual way, step 4; the security code follows below it</comment>
+  </data>
+  <data name="Pair.NewCode" xml:space="preserve">
+    <value>新代碼</value>
+    <comment>Small link under the QR code: replace it with a new one now</comment>
+  </data>
+  <data name="Pair.QrUnavailable" xml:space="preserve">
+    <value>目前無法顯示 QR 碼。請先在上方建立帳號，或使用「手動輸入」。</value>
+    <comment>Connect a phone, QR way, when no code can be shown</comment>
+  </data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve">
+    <value>此電腦的名稱以及其他音樂 App 的存取。</value>
+    <comment>Phone app card, Advanced row subtitle (folded by default)</comment>
   </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>您的手機</value>

@@ -6356,10 +6356,6 @@
     <value>Dans l'application Noctis de votre téléphone, ouvrez Paramètres, puis Compte. Saisissez cette adresse et connectez-vous avec votre e-mail ou nom d'utilisateur et votre mot de passe.</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
-  <data name="AccountSync.PairQrHint" xml:space="preserve">
-    <value>Dans l'application Noctis de votre téléphone, ouvrez Paramètres, puis Compte, et touchez Scanner le code QR. Rien à saisir.</value>
-    <comment>Pairing panel, beside the sign-in QR code</comment>
-  </data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve">
     <value>Nouveau code dans {0}</value>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
@@ -6368,13 +6364,61 @@
     <value>Toute personne qui scanne ce code peut se connecter à votre compte : ne le montrez qu'à votre propre téléphone. Il ne fonctionne qu'une fois et change toutes les deux minutes.</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
-  <data name="AccountSync.PairManualHeader" xml:space="preserve">
-    <value>OU CONNECTEZ-VOUS AVEC VOTRE MOT DE PASSE</value>
-    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
-  </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
     <value>Code QR de connexion</value>
     <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
+  <data name="Pair.Subtitle" xml:space="preserve">
+    <value>Connectez Noctis sur votre téléphone en quelques secondes.</value>
+    <comment>Phone app card, Connect a phone row subtitle</comment>
+  </data>
+  <data name="Pair.ModeQr" xml:space="preserve">
+    <value>Scanner le code QR</value>
+    <comment>Connect a phone: switch segment for the QR code way</comment>
+  </data>
+  <data name="Pair.ModeManual" xml:space="preserve">
+    <value>Saisir manuellement</value>
+    <comment>Connect a phone: switch segment for typing the address and password</comment>
+  </data>
+  <data name="Pair.QrStep1" xml:space="preserve">
+    <value>Ouvrez Noctis sur votre téléphone.</value>
+    <comment>Connect a phone, QR way, step 1</comment>
+  </data>
+  <data name="Pair.QrStep2" xml:space="preserve">
+    <value>Allez dans Paramètres › Compte et touchez Scanner le code QR.</value>
+    <comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment>
+  </data>
+  <data name="Pair.QrStep3" xml:space="preserve">
+    <value>Pointez l'appareil photo vers ce code.</value>
+    <comment>Connect a phone, QR way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep1" xml:space="preserve">
+    <value>Sur votre téléphone, ouvrez Noctis et allez dans Paramètres › Compte.</value>
+    <comment>Connect a phone, manual way, step 1</comment>
+  </data>
+  <data name="Pair.ManualStep2" xml:space="preserve">
+    <value>Sous Saisir manuellement, tapez cette adresse :</value>
+    <comment>Connect a phone, manual way, step 2; the address follows below it</comment>
+  </data>
+  <data name="Pair.ManualStep3" xml:space="preserve">
+    <value>Connectez-vous avec l'e-mail et le mot de passe de votre compte.</value>
+    <comment>Connect a phone, manual way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep4" xml:space="preserve">
+    <value>Vérifiez que votre téléphone affiche ce code de sécurité :</value>
+    <comment>Connect a phone, manual way, step 4; the security code follows below it</comment>
+  </data>
+  <data name="Pair.NewCode" xml:space="preserve">
+    <value>Nouveau code</value>
+    <comment>Small link under the QR code: replace it with a new one now</comment>
+  </data>
+  <data name="Pair.QrUnavailable" xml:space="preserve">
+    <value>Le code QR ne peut pas être affiché pour l'instant. Créez votre compte ci-dessus, ou utilisez Saisir manuellement.</value>
+    <comment>Connect a phone, QR way, when no code can be shown</comment>
+  </data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve">
+    <value>Le nom de ce PC et l'accès pour les autres applications de musique.</value>
+    <comment>Phone app card, Advanced row subtitle (folded by default)</comment>
   </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>VOS TÉLÉPHONES</value>

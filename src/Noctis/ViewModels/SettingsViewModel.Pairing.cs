@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Services;
 using Noctis.Services.Server;
@@ -20,6 +21,39 @@ public partial class SettingsViewModel
 
     public bool HasPairingQr => PairingQr is not null;
 
+    /// <summary>Connect a phone shows "Enter manually" (address, password, security code)
+    /// instead of the QR. No code is live meanwhile: it is not on screen.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsQrPairing), nameof(ShowsQrUnavailable))] private bool _isManualPairing;
+
+    public bool IsQrPairing => !IsManualPairing;
+
+    /// <summary>QR mode, but no code can be shown (no account yet, no LAN address): say so.</summary>
+    public bool ShowsQrUnavailable => !IsManualPairing && !HasPairingQr;
+
+    /// <summary>The phone card's quieter corner: this PC's name, the API key for other apps.</summary>
+    [ObservableProperty] private bool _isPhoneAdvancedOpen;
+
+    [RelayCommand]
+    private void ShowQrPairing() => IsManualPairing = false;
+
+    [RelayCommand]
+    private void ShowManualPairing() => IsManualPairing = true;
+
+    [RelayCommand]
+    private void TogglePhoneAdvanced() => IsPhoneAdvancedOpen = !IsPhoneAdvancedOpen;
+
+    /// <summary>New code: the shown one stops working and a fresh one takes its place.</summary>
+    [RelayCommand]
+    private void RenewPairingQr() => RefreshPairingQr();
+
+    partial void OnIsManualPairingChanged(bool value)
+    {
+        if (value) StopPairingQr();
+        else RefreshPairingQr();
+    }
+
+    partial void OnPairingQrChanged(Avalonia.Media.Imaging.Bitmap? value) => OnPropertyChanged(nameof(ShowsQrUnavailable));
+
     /// <summary>"New code in 1:42" under the QR.</summary>
     [ObservableProperty] private string _pairingQrCountdown = string.Empty;
 
@@ -32,7 +66,12 @@ public partial class SettingsViewModel
     partial void OnIsPairingVisibleChanged(bool value)
     {
         if (value) RefreshPairingQr();
-        else StopPairingQr();
+        else
+        {
+            StopPairingQr();
+            // Next time it opens on the quick way again.
+            IsManualPairing = false;
+        }
     }
 
     /// <summary>
@@ -41,7 +80,7 @@ public partial class SettingsViewModel
     /// </summary>
     internal void RefreshPairingQr()
     {
-        if (!IsPairingVisible || _noctisServer is not { IsRunning: true } server || !AccountFeatures.Enabled
+        if (!IsPairingVisible || IsManualPairing || _noctisServer is not { IsRunning: true } server || !AccountFeatures.Enabled
             || PrimaryAccount is not { } account || NoctisServerFingerprint.Length == 0)
         {
             StopPairingQr();

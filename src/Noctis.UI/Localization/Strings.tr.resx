@@ -1745,11 +1745,22 @@
   <data name="Settings.Group.Connect" xml:space="preserve"><value>Bağlantı</value><comment>Settings rail</comment></data>
   <data name="Settings.Group.More" xml:space="preserve"><value>Daha Fazla</value><comment>Settings rail</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>Telefonundaki Noctis uygulamasında Ayarlar'ı, ardından Hesap'ı aç. Bu adresi gir ve e-posta adresin ya da kullanıcı adın ve parolanla oturum aç.</value><comment>Pairing block help above the address and fingerprint</comment></data>
-  <data name="AccountSync.PairQrHint" xml:space="preserve"><value>Telefonunuzdaki Noctis uygulamasında Ayarlar’a, ardından Hesap’a gidin ve QR Kodu Tara’ya dokunun. Bir şey yazmanız gerekmez.</value><comment>Pairing panel, beside the sign-in QR code</comment></data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>{0} içinde yeni kod</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
   <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Bu kodu tarayan herkes hesabınıza giriş yapabilir; bu yüzden yalnızca kendi telefonunuza gösterin. Bir kez çalışır ve iki dakikada bir değişir.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
-  <data name="AccountSync.PairManualHeader" xml:space="preserve"><value>VEYA PAROLANIZLA GİRİŞ YAPIN</value><comment>Pairing panel, above the address and security code (the typed sign-in)</comment></data>
   <data name="AccountSync.PairQrName" xml:space="preserve"><value>Giriş QR kodu</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
+  <data name="Pair.Subtitle" xml:space="preserve"><value>Telefonunuzdaki Noctis’e birkaç saniyede giriş yapın.</value><comment>Phone app card, Connect a phone row subtitle</comment></data>
+  <data name="Pair.ModeQr" xml:space="preserve"><value>QR kodu tara</value><comment>Connect a phone: switch segment for the QR code way</comment></data>
+  <data name="Pair.ModeManual" xml:space="preserve"><value>Elle gir</value><comment>Connect a phone: switch segment for typing the address and password</comment></data>
+  <data name="Pair.QrStep1" xml:space="preserve"><value>Telefonunuzda Noctis’i açın.</value><comment>Connect a phone, QR way, step 1</comment></data>
+  <data name="Pair.QrStep2" xml:space="preserve"><value>Ayarlar › Hesap’a gidin ve QR Kodu Tara’ya dokunun.</value><comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment></data>
+  <data name="Pair.QrStep3" xml:space="preserve"><value>Kamerayı bu koda doğrultun.</value><comment>Connect a phone, QR way, step 3</comment></data>
+  <data name="Pair.ManualStep1" xml:space="preserve"><value>Telefonunuzda Noctis’i açıp Ayarlar › Hesap’a gidin.</value><comment>Connect a phone, manual way, step 1</comment></data>
+  <data name="Pair.ManualStep2" xml:space="preserve"><value>Elle gir bölümünde bu adresi yazın:</value><comment>Connect a phone, manual way, step 2; the address follows below it</comment></data>
+  <data name="Pair.ManualStep3" xml:space="preserve"><value>Hesabınızın e-postası ve parolasıyla giriş yapın.</value><comment>Connect a phone, manual way, step 3</comment></data>
+  <data name="Pair.ManualStep4" xml:space="preserve"><value>Telefonunuzun bu güvenlik kodunu gösterdiğini kontrol edin:</value><comment>Connect a phone, manual way, step 4; the security code follows below it</comment></data>
+  <data name="Pair.NewCode" xml:space="preserve"><value>Yeni kod</value><comment>Small link under the QR code: replace it with a new one now</comment></data>
+  <data name="Pair.QrUnavailable" xml:space="preserve"><value>QR kodu şu anda gösterilemiyor. Yukarıda hesabınızı oluşturun veya Elle gir’i kullanın.</value><comment>Connect a phone, QR way, when no code can be shown</comment></data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve"><value>Bu bilgisayarın adı ve diğer müzik uygulamalarının erişimi.</value><comment>Phone app card, Advanced row subtitle (folded by default)</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>TELEFONLARIN</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>Henüz bağlı telefon yok.</value><comment>Account card list empty state</comment></data>
   <data name="Settings.LocalApiDesc" xml:space="preserve"><value>Stream Deck veya OBS gibi bu bilgisayardaki uygulamaların çalanı görmesini ve Noctis'i yönetmesini sağlar.</value><comment>Text in SettingsView.axaml</comment></data>

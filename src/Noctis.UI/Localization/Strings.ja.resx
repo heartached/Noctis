@@ -6356,10 +6356,6 @@
     <value>スマートフォンのNoctisアプリで「設定」から「アカウント」を開きます。このアドレスを入力し、メールアドレスまたはユーザー名とパスワードでログインしてください。</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
-  <data name="AccountSync.PairQrHint" xml:space="preserve">
-    <value>スマートフォンの Noctis アプリで［設定］→［アカウント］を開き、［QR コードをスキャン］をタップします。入力は不要です。</value>
-    <comment>Pairing panel, beside the sign-in QR code</comment>
-  </data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve">
     <value>{0} 後に新しいコード</value>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
@@ -6368,13 +6364,61 @@
     <value>このコードをスキャンした人は誰でもあなたのアカウントにサインインできます。自分のスマートフォンにだけ見せてください。1 回だけ使え、2 分ごとに変わります。</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
-  <data name="AccountSync.PairManualHeader" xml:space="preserve">
-    <value>またはパスワードでサインイン</value>
-    <comment>Pairing panel, above the address and security code (the typed sign-in)</comment>
-  </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
     <value>サインイン用 QR コード</value>
     <comment>Screen-reader name of the sign-in QR code image</comment>
+  </data>
+  <data name="Pair.Subtitle" xml:space="preserve">
+    <value>数秒でスマートフォンの Noctis にサインインできます。</value>
+    <comment>Phone app card, Connect a phone row subtitle</comment>
+  </data>
+  <data name="Pair.ModeQr" xml:space="preserve">
+    <value>QR コードをスキャン</value>
+    <comment>Connect a phone: switch segment for the QR code way</comment>
+  </data>
+  <data name="Pair.ModeManual" xml:space="preserve">
+    <value>手動で入力</value>
+    <comment>Connect a phone: switch segment for typing the address and password</comment>
+  </data>
+  <data name="Pair.QrStep1" xml:space="preserve">
+    <value>スマートフォンで Noctis を開きます。</value>
+    <comment>Connect a phone, QR way, step 1</comment>
+  </data>
+  <data name="Pair.QrStep2" xml:space="preserve">
+    <value>［設定］›［アカウント］を開き、［QR コードをスキャン］をタップします。</value>
+    <comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment>
+  </data>
+  <data name="Pair.QrStep3" xml:space="preserve">
+    <value>このコードにカメラを向けます。</value>
+    <comment>Connect a phone, QR way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep1" xml:space="preserve">
+    <value>スマートフォンで Noctis を開き、［設定］›［アカウント］に移動します。</value>
+    <comment>Connect a phone, manual way, step 1</comment>
+  </data>
+  <data name="Pair.ManualStep2" xml:space="preserve">
+    <value>［手動で入力］で、このアドレスを入力します:</value>
+    <comment>Connect a phone, manual way, step 2; the address follows below it</comment>
+  </data>
+  <data name="Pair.ManualStep3" xml:space="preserve">
+    <value>アカウントのメールアドレスとパスワードでサインインします。</value>
+    <comment>Connect a phone, manual way, step 3</comment>
+  </data>
+  <data name="Pair.ManualStep4" xml:space="preserve">
+    <value>スマートフォンにこのセキュリティコードが表示されていることを確認します:</value>
+    <comment>Connect a phone, manual way, step 4; the security code follows below it</comment>
+  </data>
+  <data name="Pair.NewCode" xml:space="preserve">
+    <value>新しいコード</value>
+    <comment>Small link under the QR code: replace it with a new one now</comment>
+  </data>
+  <data name="Pair.QrUnavailable" xml:space="preserve">
+    <value>今は QR コードを表示できません。上でアカウントを作成するか、［手動で入力］を使ってください。</value>
+    <comment>Connect a phone, QR way, when no code can be shown</comment>
+  </data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve">
+    <value>この PC の名前と、ほかの音楽アプリからのアクセス。</value>
+    <comment>Phone app card, Advanced row subtitle (folded by default)</comment>
   </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
     <value>お使いのスマートフォン</value>
