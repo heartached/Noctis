@@ -1,4 +1,6 @@
-using Android.Gms.Tasks;
+using IOnCanceledListener = Android.Gms.Tasks.IOnCanceledListener;
+using IOnFailureListener = Android.Gms.Tasks.IOnFailureListener;
+using IOnSuccessListener = Android.Gms.Tasks.IOnSuccessListener;
 using Noctis.Mobile.Services;
 using Noctis.Services;
 using Xamarin.Google.MLKit.Vision.Barcode.Common;
@@ -19,7 +21,7 @@ public sealed class AndroidQrScanner : IQrScanner
     public Task<QrScanResult> ScanAsync(CancellationToken ct = default)
     {
         var activity = MainActivity.Current;
-        if (activity is null) return System.Threading.Tasks.Task.FromResult(new QrScanResult(QrScanOutcome.Unavailable));
+        if (activity is null) return Task.FromResult(new QrScanResult(QrScanOutcome.Unavailable));
         var done = new TaskCompletionSource<QrScanResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         try
         {
