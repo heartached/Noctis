@@ -517,7 +517,8 @@ public class SongsViewOptionsLocalizationTests : IDisposable
             ["Album Artist"] = "Main.AlbumByArtist", ["Genre"] = "Main.Genre", ["Time"] = "Main.Time",
             ["Plays"] = "Main.Plays", ["IsFavorite"] = "Main.Favorite", ["Rating"] = "Main.Rating",
             ["Year"] = "Main.Year", ["Bpm"] = "Main.BPM", ["Bitrate"] = "Main.Bitrate",
-            ["SampleRate"] = "Main.SampleRate", ["Date Added"] = "Main.DateAdded", ["Date Modified"] = "Main.DateModified",
+            ["SampleRate"] = "Main.SampleRate", ["ReplayGain"] = "LibrarySongs.ReplayGain",
+            ["Date Added"] = "Main.DateAdded", ["Date Modified"] = "Main.DateModified",
         };
         Assert.Equal(menuKeys.Keys.ToHashSet(), vm.SortOptions.Select(o => o.Key).ToHashSet());
         foreach (var option in vm.SortOptions)
