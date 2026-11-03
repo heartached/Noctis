@@ -95,6 +95,9 @@ public enum NoctisErrorKind
     Outdated,
     /// <summary>Downloads are set to Wi-Fi only and the phone is on mobile data.</summary>
     WifiRequired,
+    /// <summary>QR sign-in: the code is not (or no longer) valid — expired, already used, or
+    /// replaced by a newer one. The server does not say which.</summary>
+    PairingExpired,
 }
 
 public sealed class NoctisServerException(NoctisErrorKind kind, string message, Exception? inner = null)
@@ -162,6 +165,13 @@ public interface INoctisAccountService
     /// <summary>Signs in with the fingerprint the user confirmed; stores the device key.</summary>
     Task SignInAsync(string serverUrl, string userName, string password, string confirmedFingerprint,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Signs in with the desktop's QR code: tries its addresses in order, each through a client
+    /// pinned to the code's fingerprint, so the one-time secret is only ever sent over a TLS
+    /// connection to that certificate. Stores the device key and pin as a password sign-in does.
+    /// </summary>
+    Task SignInWithPairingAsync(Noctis.Services.Server.PairingPayload pairing, CancellationToken ct = default);
 
     /// <summary>Revokes this device's key on the server (best effort), forgets the account,
     /// removes the desktop's songs from the phone library and, if asked, the downloads.</summary>

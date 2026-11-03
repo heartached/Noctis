@@ -27,6 +27,8 @@
         <!-- The desktop's account card glyphs (SettingsView.axaml), the same keys and shapes:
              the phone of its Connect a phone button, the eye on its passwords. -->
         <StreamGeometry x:Key="AccountPhoneIcon">M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z</StreamGeometry>
+        <!-- Scan QR Code: Material's qr_code_scanner (Apache-2.0), on the same 24-grid. -->
+        <StreamGeometry x:Key="AccountQrIcon">M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5zM22 7h-2V4h-3V2h5v5zm0 15v-5h-2v3h-3v2h5zM2 22h5v-2H4v-3H2v5zM2 2v5h2V4h3V2H2z</StreamGeometry>
         <StreamGeometry x:Key="AccountEyeIcon">M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z</StreamGeometry>
         <StreamGeometry x:Key="AccountEyeOffIcon">M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z</StreamGeometry>
     </UserControl.Resources>
@@ -213,6 +215,13 @@
             <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
             <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
         </Style>
+        <Style Selector="Button.primary-action views|GridIcon">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
         <Style Selector="Button.primary-action TextBlock">
             <Setter Property="FontSize" Value="17" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -346,9 +355,9 @@
             <ScrollViewer Name="PageScroll" Classes="page-scroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Name="PageContent" Classes="grouped-content">
 
-                    <!-- Signed out: why, how, then the address, name and password. The address
-                         stays a field: the computer is not discoverable on the network and
-                         shows no code to scan, only its address. -->
+                    <!-- Signed out: why, then Scan QR Code (the computer's Connect a phone shows the
+                         code), then the typed way: how, the address, name and password. The
+                         address stays a field: the computer is not discoverable on the network. -->
                     <StackPanel Name="SignInForm" Spacing="28" IsVisible="{Binding IsFormVisible}">
                         <StackPanel Name="SignInHero" Margin="0,4,0,0">
                             <Border Classes="hero-disc">
@@ -356,6 +365,24 @@
                             </Border>
                             <TextBlock Classes="hero-title" Text="Sign in to your computer" />
                             <TextBlock Classes="hero-text" Text="Stream and download the music on your computer, right here." />
+                        </StackPanel>
+
+                        <!-- The quick way: no typing, no code to compare (the QR carries the pin). -->
+                        <StackPanel Name="ScanQrSection" IsVisible="{Binding CanScanQr}">
+                            <Button Name="ScanQrButton" Classes="primary-action" Classes.busy="{Binding IsSigningInByQr}"
+                                    Command="{Binding ScanQrCodeCommand}" IsEnabled="{Binding IsIdle}" AutomationProperties.Name="Scan QR Code">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Classes="spinner" IsVisible="{Binding IsSigningInByQr}">
+                                        <Ellipse.RenderTransform><RotateTransform /></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <views:GridIcon Data="{StaticResource AccountQrIcon}" IsVisible="{Binding !IsSigningInByQr}" />
+                                    <TextBlock Text="Scan QR Code" IsVisible="{Binding !IsSigningInByQr}" />
+                                    <TextBlock Text="{Binding StatusText}" IsVisible="{Binding IsSigningInByQr}" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Classes="group-footnote" Margin="16,10,16,0"
+                                       Text="On your computer, open Settings › Account &amp; Devices and tap Connect a phone, then scan the code it shows." />
+                            <TextBlock Classes="group-caption" Margin="16,28,16,0" Text="Or sign in with your password" />
                         </StackPanel>
 
                         <StackPanel Name="HowToConnect">
@@ -425,14 +452,14 @@
                                 </StackPanel>
                             </Border>
 
-                            <Button Name="SignInButton" Classes="primary-action" Classes.busy="{Binding IsBusy}" Margin="0,22,0,0"
+                            <Button Name="SignInButton" Classes="primary-action" Classes.busy="{Binding IsFormBusy}" Margin="0,22,0,0"
                                     Command="{Binding SignInCommand}" IsEnabled="{Binding CanSignIn}" AutomationProperties.Name="Sign In">
                                 <StackPanel Orientation="Horizontal">
-                                    <Ellipse Classes="spinner" IsVisible="{Binding IsBusy}">
+                                    <Ellipse Classes="spinner" IsVisible="{Binding IsFormBusy}">
                                         <Ellipse.RenderTransform><RotateTransform /></Ellipse.RenderTransform>
                                     </Ellipse>
-                                    <TextBlock Name="SignInLabel" Text="Sign In" IsVisible="{Binding IsIdle}" />
-                                    <TextBlock Name="SignInStatus" Text="{Binding StatusText}" IsVisible="{Binding IsBusy}" />
+                                    <TextBlock Name="SignInLabel" Text="Sign In" IsVisible="{Binding !IsFormBusy}" />
+                                    <TextBlock Name="SignInStatus" Text="{Binding StatusText}" IsVisible="{Binding IsFormBusy}" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>

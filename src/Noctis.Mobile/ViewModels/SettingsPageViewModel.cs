@@ -555,6 +555,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
         new("Microsoft.Data.Sqlite and SQLitePCLRaw", "MIT and Apache-2.0", "The library's database; SQLite itself is public domain."),
         new("SkiaSharp", "MIT", "Drawing."),
         new("Xamarin.AndroidX bindings", "Apache-2.0", "Android's support libraries for .NET."),
+        new("Google code scanner (ML Kit, Google Play services)", "Android Software Development Kit License; .NET binding MIT",
+            "Scan QR Code on the Account page. Google Play services runs the camera and returns only the code's text."),
     };
 
     // ── Logs, version ──

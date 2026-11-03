@@ -226,6 +226,47 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         using (var client = new NoctisServerClient(_handlerFactory, url, fingerprint, deviceKey: null))
             result = await Task.Run(() => client.SignInAsync(user, password, _deviceId, DeviceName, ct), ct).ConfigureAwait(false);
 
+        CompleteSignIn(url, fingerprint, result, user);
+    }
+
+    public async Task SignInWithPairingAsync(Noctis.Services.Server.PairingPayload pairing, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(pairing);
+        var fingerprint = NoctisServerClient.NormalizeFingerprint(pairing.Fingerprint);
+        NoctisServerException? unreachable = null, otherCertificate = null;
+        foreach (var url in pairing.ServerUrls)
+        {
+            try
+            {
+                SignInResult result;
+                // Pinned to the code's fingerprint: a computer at this address with any other
+                // certificate fails the TLS handshake, before the secret is written.
+                using (var client = new NoctisServerClient(_handlerFactory, url, fingerprint, deviceKey: null))
+                    result = await Task.Run(() => client.PairSignInAsync(pairing.Secret, _deviceId, DeviceName, ct), ct).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(result.User))
+                    throw new NoctisServerException(NoctisErrorKind.Server, "The server did not say which account signed in.");
+                CompleteSignIn(url, fingerprint, result, result.User!);
+                return;
+            }
+            // Nothing reached a server that holds the pin there: the next address may.
+            catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.CertificateChanged)
+            {
+                otherCertificate = ex;
+            }
+            catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.Unreachable or NoctisErrorKind.NotNoctis or NoctisErrorKind.UnknownHost)
+            {
+                unreachable ??= ex;
+            }
+        }
+        // Something at the code's address that is not the computer which showed it says so;
+        // else the computer could not be reached at any of its addresses.
+        throw otherCertificate ?? unreachable
+              ?? new NoctisServerException(NoctisErrorKind.Unreachable, "Can't reach the desktop.");
+    }
+
+    /// <summary>A sign-in the server accepted (password or QR): the account is stored, with its pin.</summary>
+    private void CompleteSignIn(string url, string fingerprint, SignInResult result, string user)
+    {
         var account = new NoctisAccount
         {
             ServerUrl = url,
