@@ -81,7 +81,8 @@ public static class ReplayGainTags
         return ParseDb(frame?.Text.FirstOrDefault());
     }
 
-    /// <summary>"-7.84 dB" → -7.84; a peak ("0.988123") parses the same way. Null when blank or not a number.</summary>
+    /// <summary>"-7.84 dB" → -7.84; a peak ("0.988123") parses the same way. Null when blank, not a
+    /// number, or not finite: a "nan dB" tag made the player's gain NaN instead of no gain.</summary>
     public static double? ParseDb(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return null;
@@ -89,7 +90,7 @@ public static class ReplayGainTags
         // RG values are stored like "-7.84 dB". Strip the unit.
         var spaceIdx = token.IndexOf(' ');
         if (spaceIdx > 0) token = token.Substring(0, spaceIdx);
-        return double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
+        return double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) && double.IsFinite(d)
             ? d
             : null;
     }

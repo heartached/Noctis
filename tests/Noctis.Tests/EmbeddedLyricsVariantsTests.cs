@@ -141,4 +141,20 @@ public class EmbeddedLyricsVariantsTests : IDisposable
         var probe = Probe(path);
         Assert.Equal(Malayalam.Split('\n'), probe.Lines!.Where(l => l.IsSynced && l.Text.Length > 0 && l.Text != "...").Select(l => l.Text));
     }
+
+    [Fact]
+    public void UnrelatedTagSave_OfARowHoldingTheFirstLyricsComment_KeepsEveryComment()
+    {
+        // A song scanned before every LYRICS comment was read holds the first one alone (what
+        // TagLib's Tag.Lyrics returns). A title fix must not save that one line over the rest.
+        var path = EmbeddedLyricsTagTests.Copy(_dir, "flac", f => Xiph(f).SetField("LYRICS", "first line", "second line"));
+        var row = Scan(path);
+        row.Lyrics = "first line";
+        row.Title = "Retitled";
+
+        Assert.True(new MetadataService().WriteTrackMetadata(row));
+
+        Assert.Equal(Plain, Lf(Scan(path).Lyrics));
+        Assert.Equal("Retitled", Scan(path).Title);
+    }
 }

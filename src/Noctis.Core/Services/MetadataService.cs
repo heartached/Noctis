@@ -711,7 +711,10 @@ public class MetadataService : IMetadataService
             // file's lyrics with their timestamps stripped when those are LRC (Edit Info shows
             // them so), and rewriting it put plain text over timed lyrics in the tag on any
             // unrelated save, such as a title fix. Alias fields (UNSYNCEDLYRICS, …) count too.
-            if (!PlainLyricsMatch(EmbeddedLyrics.ReadText(file), track.Lyrics, track.SyncedLyrics))
+            // The main field alone counts as unchanged too: a row scanned before every LYRICS
+            // comment was read (#149) holds the first one, and writing it back dropped the rest.
+            if (!PlainLyricsMatch(EmbeddedLyrics.ReadText(file), track.Lyrics, track.SyncedLyrics)
+                && !PlainLyricsMatch(MainLyricsField(file), track.Lyrics, track.SyncedLyrics))
                 WritePlainLyrics(file, track.Lyrics);
             tag.Comment = string.IsNullOrWhiteSpace(track.Comment) ? null : track.Comment;
             tag.Grouping = string.IsNullOrWhiteSpace(track.Grouping) ? null : track.Grouping;
@@ -750,6 +753,11 @@ public class MetadataService : IMetadataService
     /// would otherwise keep the old text readable. An empty row clears only the main field, as
     /// before: a row scanned before aliases were read is empty while its file is not, and an
     /// unrelated save must not erase lyrics the app never showed (removals go through WriteLyrics).</summary>
+    private static string MainLyricsField(TagLib.File file)
+    {
+        try { return file.Tag.Lyrics ?? string.Empty; } catch { return string.Empty; }
+    }
+
     private static void WritePlainLyrics(TagLib.File file, string? plain)
     {
         var value = string.IsNullOrWhiteSpace(plain) ? null : plain;

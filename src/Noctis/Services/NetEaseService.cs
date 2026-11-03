@@ -76,7 +76,8 @@ public class NetEaseService : INetEaseService
 
     private async Task<long?> FindSongIdAsync(string artist, string trackName, double durationSeconds, CancellationToken ct)
     {
-        var query = $"{trackName} {artist}";
+        // "Unknown Artist" is the library's placeholder: searching for it poisons the results.
+        var query = LyricsSearchSelector.IsUnknownArtist(artist) ? trackName : $"{trackName} {artist}";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, SearchUrl);
         request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
