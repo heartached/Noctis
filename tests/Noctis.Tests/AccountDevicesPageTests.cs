@@ -174,6 +174,30 @@ public class AccountDevicesPageTests : IDisposable
         finally { await vm.StopNoctisServerAsync(); }
     }
 
+    // 11-03 audit. HEAD: "Since November 2026" in every language (hard-coded English, OS month
+    // names), and with no account the line's name was bound through a null PrimaryAccount.
+    [AvaloniaFact]
+    public async Task IdentityLine_IsInTheAppLanguage_AndEmptyWithoutAnAccount()
+    {
+        var persistence = new PersistenceService(_root);
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+        Assert.Equal(("", ""), (vm.PrimaryAccountName, vm.PrimaryAccountSince));
+
+        new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db")).Create("me@example.com", "correct horse", isAdmin: true);
+        try
+        {
+            Noctis.Localization.Loc.Instance.SetCulture("ru");
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            Assert.Equal("me@example.com", vm.PrimaryAccountName);
+            var ru = System.Globalization.CultureInfo.GetCultureInfo("ru");
+            Assert.Equal("Создан: " + DateTime.UtcNow.ToLocalTime().ToString("MMMM yyyy", ru), vm.PrimaryAccountSince);
+        }
+        finally { Noctis.Localization.Loc.Instance.SetCulture("en"); }
+    }
+
     [AvaloniaFact]
     public void SecurityCode_ShowsEightBytesALine_LikeThePhone()
     {
