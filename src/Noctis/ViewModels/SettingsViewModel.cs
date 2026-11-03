@@ -2646,7 +2646,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmStatusText = "Not connected";
 
     // ── ListenBrainz ──
-    [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
+    [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
     [ObservableProperty] private string _listenBrainzToken = "";
     [ObservableProperty] private string _listenBrainzUsername = "";
     [ObservableProperty]
@@ -3468,6 +3468,7 @@ public partial class SettingsViewModel : ViewModelBase
             UnisonEnabled = _settings.UnisonEnabled;
             YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
+            LoadBuiltInFeatureSettings();
 
             // Equalizer
             _suppressEqNotify = true;
@@ -3956,6 +3957,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.QueuePanelWidth = QueuePanelMetrics.Clamp(QueuePanelWidth);
         _settings.AllowExplicitContent = AllowExplicitContent;
         SaveFeatureSettings();
+        SaveBuiltInFeatureSettings();
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.AutoReplayGainScanEnabled = AutoReplayGainScanEnabled;
@@ -4176,7 +4178,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowEqualizer = PlaybackBarShowEqualizer;
         _player.IslandShowRepeat = PlaybackBarShowRepeat;
         _player.IslandShowFavorite = PlaybackBarShowFavorite;
-        _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer;
+        _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -4191,7 +4193,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsDriftMovement = LyricsDriftMovement;
         _player.LyricsDriftSaturation = LyricsDriftSaturation;
         _player.LyricsDriftBlur = LyricsDriftBlur;
-        _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
+        _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled && VisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
         _player.SetLyricsBackgroundSources(LyricsBackgroundMediaPath ?? string.Empty,
@@ -8012,6 +8014,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Upmix, sync and Lyrics Studio: re-read from the defaulted
             // _settings the same way LoadAsync does (ApplyAudioSettings below pushes upmix).
             LoadFeatureSettings();
+            LoadBuiltInFeatureSettings();
 
             // Lyrics providers
             LrcLibEnabled = true;

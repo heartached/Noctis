@@ -609,6 +609,14 @@
                                             <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- Discord (DendyAly 11-02): hide or show the Featured Artists / Suggested
+                                         rail. One setting for every playlist (Settings › Library › Playlist Page). -->
+                                    <MenuItem Header="{Binding SideRailMenuLabel}"
+                                              Command="{Binding ToggleSideRailCommand}">
+                                        <MenuItem.Icon>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineLyricsPanel}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <Separator />
                                     <MenuItem Header="{loc:T Playlist.DeletePlaylist}" Classes="danger"
                                               Command="{Binding DeletePlaylistCommand}">
@@ -1156,7 +1164,10 @@
                 </Grid>
 
                 <!-- ───────── Right rail: Featured Artists + Suggested ───────── -->
+                <!-- Hideable (options menu, Settings): the Auto column folds and the list takes the width. -->
                 <Border Grid.Column="1"
+                        x:Name="PlaylistSideRail"
+                        IsVisible="{Binding ShowSideRail}"
                         Width="292"
                         Margin="0,12,0,0"
                         Padding="20,0,20,0"

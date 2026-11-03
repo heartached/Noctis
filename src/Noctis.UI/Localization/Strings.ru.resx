@@ -3096,4 +3096,29 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>История прослушиваний {0} скрыта.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Не удалось связаться с {0}. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} прислал непонятный ответ. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Features.Section" xml:space="preserve"><value>Встроенные функции</value></data>
+  <data name="Features.SectionLine" xml:space="preserve"><value>Часть Noctis, включены с самого начала — как плагины, которые можно отключить. После повторного включения всё возвращается как было.</value></data>
+  <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Мини-плеер</value></data>
+  <data name="Features.MiniPlayer.Line" xml:space="preserve"><value>Маленький плеер поверх окон: его кнопка, щелчок по обложке и сочетание клавиш.</value></data>
+  <data name="Features.AnimatedArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value></data>
+  <data name="Features.AnimatedArtwork.Line" xml:space="preserve"><value>Движущиеся обложки на экранах «Сейчас играет», текста и альбома.</value></data>
+  <data name="Features.AlbumCarousel.Title" xml:space="preserve"><value>Карусель альбомов</value></data>
+  <data name="Features.AlbumCarousel.Line" xml:space="preserve"><value>Листайте альбомы по одному: обложки, коробки CD, винил или кассеты.</value></data>
+  <data name="Features.Visualizer.Title" xml:space="preserve"><value>Визуализатор</value></data>
+  <data name="Features.Visualizer.Line" xml:space="preserve"><value>Страница визуализатора и спектр за текстом песни.</value></data>
+  <data name="Features.NewBadge.Title" xml:space="preserve"><value>Значок NEW</value></data>
+  <data name="Features.NewBadge.Line" xml:space="preserve"><value>Отмечает песни, добавленные в плейлист за последние 7 дней.</value></data>
+  <data name="Features.Inbox.Title" xml:space="preserve"><value>Входящие для новой музыки</value></data>
+  <data name="Features.Inbox.Line" xml:space="preserve"><value>Новые песни ждут во «Входящих», пока вы не добавите их в медиатеку.</value></data>
+  <data name="Features.Discord.Title" xml:space="preserve"><value>Статус в Discord</value></data>
+  <data name="Features.Discord.Line" xml:space="preserve"><value>Показывать в профиле Discord, что вы слушаете.</value></data>
+  <data name="Features.Scrobbling.Title" xml:space="preserve"><value>Скробблинг</value></data>
+  <data name="Features.Scrobbling.Line" xml:space="preserve"><value>Отправлять прослушивания в Last.fm и ListenBrainz.</value></data>
+  <data name="Features.Scrobbling.NeedsAccount" xml:space="preserve"><value>Сначала подключите Last.fm или ListenBrainz в разделе «Интеграции».</value></data>
+  <data name="Features.PlaylistSideRail.Title" xml:space="preserve"><value>Исполнители и рекомендации</value></data>
+  <data name="Features.PlaylistSideRail.Line" xml:space="preserve"><value>Панель справа в плейлисте с его исполнителями и предложенными песнями.</value></data>
+  <data name="Settings.PlaylistSideRail" xml:space="preserve"><value>Исполнители и рекомендации</value></data>
+  <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Показывать справа панель с исполнителями плейлиста и предложенными песнями.</value></data>
+  <data name="Playlist.HideSideRail" xml:space="preserve"><value>Скрыть исполнителей и рекомендации</value></data>
+  <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Показать исполнителей и рекомендации</value></data>
 </root>

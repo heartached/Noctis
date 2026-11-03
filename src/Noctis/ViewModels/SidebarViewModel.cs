@@ -147,6 +147,16 @@ public partial class SidebarViewModel : ViewModelBase
         => SetOptionalSectionVisible(visible, "server", Loc.T("Nav.Server"), "ServerIcon", after: null, before: "cd");
 
     /// <summary>
+    /// Shows or hides the "Visualizer" entry (Settings › Plugins › Built-in Features › Audio
+    /// Visualizer). It goes back to its place after Playlists.
+    /// </summary>
+    public void SetVisualizerSectionVisible(bool visible)
+        => SetOptionalSectionVisible(visible, "visualizer", Loc.T("Nav.Visualizer"), "SidebarVisualizerIcon", after: "playlists", before: "lyricsstudio");
+
+    /// <summary>True while the sidebar has a Visualizer entry.</summary>
+    public bool IsVisualizerSectionVisible => NavItems.Any(i => i.Key == "visualizer");
+
+    /// <summary>
     /// Shows or hides the "Audio CD" entry. It sits after Server (when present),
     /// otherwise directly above Settings, and only exists while an optical drive does.
     /// </summary>
