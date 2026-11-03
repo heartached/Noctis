@@ -66,6 +66,11 @@ public class AppSettings : IJsonOnDeserializing
     /// plugin host rewrites those to ids on load.</summary>
     public List<string> DisabledPlugins { get; set; } = new();
 
+    /// <summary>Plugin ids whose screens the user took off the sidebar (Settings → Plugins → the
+    /// plugin's "Show in sidebar", or the row's Hide from sidebar). Every other running plugin
+    /// that adds a screen gets a sidebar entry.</summary>
+    public List<string> SidebarHiddenPlugins { get; set; } = new();
+
     /// <summary>
     /// "Community plugins" switch (Settings → Plugins). False = restricted mode: no
     /// third-party plugin code is loaded. Null = never decided (a settings.json from before

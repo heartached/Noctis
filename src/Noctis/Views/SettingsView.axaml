@@ -318,6 +318,22 @@
                                     </ContentControl>
                                 </Grid>
                             </Border>
+                            <!-- A plugin that adds a screen: its sidebar entry (Discord feedback 11-03). -->
+                            <Border x:Name="PluginPageSidebarRow" Classes="plugin-row"
+                                    IsVisible="{Binding Installed.HasViews, FallbackValue=False}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="plugin-row-label" Text="{loc:T Plugins.Detail.ShowInSidebar}" Margin="0,0,16,0"
+                                               VerticalAlignment="Center"/>
+                                    <ContentControl Grid.Column="1" Content="{Binding Installed}" VerticalAlignment="Center">
+                                        <ContentControl.ContentTemplate>
+                                            <DataTemplate x:DataType="plugins:LoadedPlugin">
+                                                <controls:LottieToggle x:Name="PluginPageSidebarToggle" IsChecked="{Binding ShowInSidebar, Mode=TwoWay}"
+                                                                      AutomationProperties.Name="{loc:T Plugins.Detail.ShowInSidebar}"/>
+                                            </DataTemplate>
+                                        </ContentControl.ContentTemplate>
+                                    </ContentControl>
+                                </Grid>
+                            </Border>
                             <ItemsControl x:Name="PluginPageSettings" ItemsSource="{Binding Installed.SettingItems, FallbackValue={x:Null}}"
                                           IsVisible="{Binding Installed.HasSettings, FallbackValue=False}"
                                           IsEnabled="{Binding !IsRestricted}"
@@ -368,16 +384,9 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Remove plugin: one red row of its own (asks first, data kept unless chosen).
-                         Release builds: only plugins the user added; the ones listed in Noctis just switch
-                         on and off. Dev builds: every plugin (owner 10-29). -->
+                    <!-- Uninstall plugin: one red row of its own (asks first, data kept unless chosen).
+                         Every installed plugin, official and community (Discord feedback 11-03). -->
                     <Panel x:Name="PluginPageRemoveHost">
-                        <Panel.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                                <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).PluginRemovalAllowed"/>
-                                <Binding Path="IsUserAdded"/>
-                            </MultiBinding>
-                        </Panel.IsVisible>
                         <Border x:Name="PluginPageRemovePanel" Classes="plugin-panel plugin-group" IsVisible="{Binding IsInstalled}">
                             <Button x:Name="PluginPageRemoveButton" Classes="plugin-row-button plugin-danger-row"
                                     AutomationProperties.Name="{loc:T Plugins.Detail.RemoveRow}"

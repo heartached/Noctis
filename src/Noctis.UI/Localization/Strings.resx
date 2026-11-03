@@ -2014,6 +2014,9 @@ Tags: title: artist: albumartist: album: genre: composer: year:
 Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
+  <data name="Sidebar.PLUGINS" xml:space="preserve"><value>PLUGINS</value><comment>Sidebar section header above the screens plugins add</comment></data>
+  <data name="Sidebar.HidePlugin" xml:space="preserve"><value>Hide from Sidebar</value><comment>Right-click menu of a plugin's sidebar entry</comment></data>
+  <data name="Sidebar.PluginSettings" xml:space="preserve"><value>Plugin Settings</value><comment>Right-click menu of a plugin's sidebar entry: opens its page in Settings</comment></data>
   <data name="Sidebar.RightClickNewPlaylistTip" xml:space="preserve"><value>Right-click for New Playlist</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylist" xml:space="preserve"><value>New Playlist…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewSmartPlaylist" xml:space="preserve"><value>New Smart Playlist…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -2243,7 +2246,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
   <data name="Plugins.OpenView" xml:space="preserve"><value>Open {0}</value></data>
-  <data name="Plugins.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Plugins.Remove" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Plugins.Permissions" xml:space="preserve"><value>Permissions</value></data>
   <data name="Plugins.NoPermissionsShort" xml:space="preserve"><value>None beyond seeing what is playing</value></data>
   <data name="Plugins.NoPermissions" xml:space="preserve"><value>Nothing beyond seeing what is playing</value></data>
@@ -2298,10 +2301,10 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.TurnOnTitle" xml:space="preserve"><value>Turn on community plugins?</value></data>
   <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Community plugins are made by other people, not by Noctis. A plugin can do anything Noctis can on your computer, so only use ones from people you trust.</value></data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve"><value>Turn on</value></data>
-  <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Remove {0}?</value></data>
-  <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's folder is deleted. Its data and settings are kept unless you turn on the switch below, so a reinstall picks up where it left off.</value></data>
+  <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Uninstall {0}?</value></data>
+  <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's files are deleted. Its data and settings are kept unless you turn on the switch below, so installing it again picks up where it left off.</value></data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve"><value>Also delete its data and settings</value></data>
-  <data name="Plugins.Removed" xml:space="preserve"><value>Removed {0}.</value></data>
+  <data name="Plugins.Removed" xml:space="preserve"><value>Uninstalled {0}.</value></data>
   <data name="Plugins.RemoveFailed" xml:space="preserve"><value>Some files could not be deleted. Close Noctis and delete {0} by hand.</value></data>
   <data name="Plugins.UpdateTitle" xml:space="preserve"><value>Update {0} from {1} to {2}?</value></data>
   <data name="Plugins.UpdateBody" xml:space="preserve"><value>The plugin folder is replaced with the new version. Its data and settings are kept.</value></data>
@@ -2368,7 +2371,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Detail.More" xml:space="preserve"><value>More</value></data>
   <data name="Plugins.View.Back" xml:space="preserve"><value>Back to {0}</value></data>
   <data name="Plugins.View.PopOut" xml:space="preserve"><value>Open in its own window</value></data>
-  <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Remove plugin</value></data>
+  <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Uninstall plugin</value></data>
+  <data name="Plugins.Detail.ShowInSidebar" xml:space="preserve"><value>Show in sidebar</value><comment>Plugin page row: the plugin's screen gets a sidebar entry</comment></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Can {0}</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
   <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>control playback</value></data>

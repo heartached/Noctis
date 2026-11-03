@@ -376,23 +376,15 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Owner 10-29: on release builds the plugins listed in Noctis (official and community) can
-    /// only be switched on and off; only a plugin the user added from a file or the folder can be
-    /// removed there. Debug (dev) builds remove anything. Tests set it.
+    /// Uninstall, for every installed plugin, official and community alike (Discord "Plugins
+    /// feedback" 11-03: release builds could only switch the listed ones off). Its views close
+    /// (Stop withdraws them), its folder goes; data stays unless the switch says otherwise, and
+    /// a listed plugin can be installed again from its page.
     /// </summary>
-    public bool PluginRemovalAllowed { get; internal set; } =
-#if DEBUG
-        true;
-#else
-        false;
-#endif
-
     [RelayCommand]
     private async Task RemovePluginAsync(LoadedPlugin? plugin)
     {
-        if (Plugins is null || plugin is null) return;
-        // A listed plugin (any listing's installed copy) stays unless this is a dev build.
-        if (!PluginRemovalAllowed && OfficialPlugins.Any(o => ReferenceEquals(o.Installed, plugin))) return;
+        if (Plugins is null || plugin is null || !Plugins.Plugins.Contains(plugin)) return;
         var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Plugins.RemoveBody"),
             Title: Loc.T("Plugins.RemoveTitle", plugin.Name),
@@ -3684,6 +3676,7 @@ public partial class SettingsViewModel : ViewModelBase
         // plugin settings, the community-plugins switch). Pulling them back from disk
         // before the save undid every plugin toggle.
         nameof(AppSettings.DisabledPlugins),
+        nameof(AppSettings.SidebarHiddenPlugins),
         nameof(AppSettings.CommunityPluginsEnabled),
         nameof(AppSettings.PluginPermissionGrants),
         nameof(AppSettings.PluginSettingValues),

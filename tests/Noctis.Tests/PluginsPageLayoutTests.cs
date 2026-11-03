@@ -296,7 +296,7 @@ public class PluginsPageLayoutTests : IDisposable
                 Assert.False(values[key].TrimEnd().EndsWith('…') || values[key].TrimEnd().EndsWith("...", StringComparison.Ordinal),
                     $"{file}: {key} ends in an ellipsis: \"{values[key]}\"");
         }
-        Assert.Equal("Remove plugin", Loc.T("Plugins.Detail.RemoveRow"));
+        Assert.Equal("Uninstall plugin", Loc.T("Plugins.Detail.RemoveRow"));
 
         // Read the Guide opens website/src/pages/plugins/make.astro (Astro serves it at /plugins/make).
         Assert.Equal("https://noctisapp.cc/plugins/make", SettingsViewModel.PluginGuideUrl);
