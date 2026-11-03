@@ -7003,7 +7003,6 @@ public partial class SettingsViewModel : ViewModelBase
         int losslessCount = 0;
         int hiResCount = 0;
         int likedCount = 0;
-        var tracksById = new Dictionary<Guid, Track>(tracks.Count);
         foreach (var t in tracks)
         {
             totalBytes += t.FileSize;
@@ -7011,12 +7010,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
             if (t.IsFavorite) likedCount++;
-            tracksById[t.Id] = t;
         }
-
-        // Listening time / average reflect what was actually played (skips excluded),
-        // computed from the play log — see ListeningStatsCalculator.
-        var listening = ListeningStatsCalculator.Compute(events, tracksById);
 
         // Plays, time listened and the top lists come from the same all-time report as the
         // Statistics page and the Wrap (the play log, each play placed on its library track,
@@ -7035,11 +7029,10 @@ public partial class SettingsViewModel : ViewModelBase
             TotalListeningTime: FormatDuration(TimeSpan.FromTicks(totalDurationTicks)),
             TotalPlays: FormatCount(report.Plays),
             TimeListened: FormatDuration(TimeSpan.FromTicks(report.ListenedTicks)),
-            AvgTrackLength: listening.AvgListenedTrackLengthTicks > 0
-                ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
-                : tracks.Count > 0
-                    ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
-                    : "0:00",
+            // The library's average, like the Statistics page's tile of the same name. It was
+            // the average logged play, where a play of a song no longer in the library counts
+            // as 3.5 min (ListeningStatsCalculator), so the two tiles disagreed.
+            AvgTrackLength: tracks.Count > 0 ? FormatClock(TimeSpan.FromTicks(totalDurationTicks / tracks.Count)) : "0:00",
             LikedTracks: likedCount,
             LosslessCount: losslessCount,
             LossyCount: tracks.Count - losslessCount,
@@ -7098,6 +7091,10 @@ public partial class SettingsViewModel : ViewModelBase
         for (var i = 0; i < items.Count; i++)
             items[i].Rank = i + 1;
     }
+
+    /// <summary>"4:00", or "1:15:00" from an hour up (m\:ss alone dropped the hours).</summary>
+    private static string FormatClock(TimeSpan span) =>
+        span.TotalHours >= 1 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
 
     private static string FormatCount(long count)
     {
