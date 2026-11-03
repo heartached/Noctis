@@ -118,7 +118,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         if (!CanStart) return;
         IsRunning = true;
         Progress = 0;
-        StatusMessage = IsRemove ? "Removing…" : "Fetching…";
+        StatusMessage = IsRemove ? "Removing" : "Fetching";
         _cts = new CancellationTokenSource();
         var progress = new Progress<LyricsBulkProgress>(p => Dispatcher.UIThread.Post(() =>
         {
@@ -126,7 +126,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
             var row = _rowById.GetValueOrDefault(p.TrackId)
                       ?? Rows.FirstOrDefault(r => r.Track.Title == p.CurrentTitle && !r.Done) ?? Rows.FirstOrDefault(r => !r.Done);
             if (row is not null) { row.Status = p.Outcome; row.Done = true; row.Failed = p.Outcome is "failed" or "not found" or "sources busy"; }
-            if (IsRunning) StatusMessage = $"{(IsRemove ? "Removing" : "Looking up")}… {p.Done:N0} of {p.Total:N0}";
+            if (IsRunning) StatusMessage = $"{(IsRemove ? "Removing" : "Looking up")} {p.Done:N0} of {p.Total:N0}";
         }));
         try
         {

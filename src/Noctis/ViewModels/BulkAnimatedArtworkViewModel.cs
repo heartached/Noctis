@@ -68,7 +68,7 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
         if (!CanStart) return;
         IsRunning = true;
         Progress = 0;
-        StatusMessage = "Looking up…";
+        StatusMessage = "Looking up";
         _cts = new CancellationTokenSource();
         var progress = new Progress<AnimatedArtworkBulkProgress>(p => Dispatcher.UIThread.Post(() =>
         {
@@ -79,7 +79,7 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
                 row.Done = true;
                 row.Found = p.Outcome == "animated artwork saved";
             }
-            if (IsRunning) StatusMessage = $"Looking up… {p.Done:N0} of {p.Total:N0}";
+            if (IsRunning) StatusMessage = $"Looking up {p.Done:N0} of {p.Total:N0}";
         }));
         try
         {
