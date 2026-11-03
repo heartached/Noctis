@@ -452,6 +452,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             {
                 CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
             }
+            // Grid / Carousel picked in Settings › Player › Albums View: follow it too.
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumViewMode))
+            {
+                AlbumViewMode = _settings.AlbumViewMode;
+            }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))
             {

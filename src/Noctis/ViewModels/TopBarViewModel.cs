@@ -260,6 +260,16 @@ public partial class TopBarViewModel : ViewModelBase
         ArtistSortCommand = null;
         ToggleArtistViewCommand = null;
     }
+
+    /// <summary>Artists View menu (Grid / List): picks a layout, toggling only when it differs,
+    /// so choosing the checked item is a no-op rather than a flip.</summary>
+    [RelayCommand]
+    private void SetArtistView(string? mode)
+    {
+        var wantList = string.Equals(mode, "list", StringComparison.OrdinalIgnoreCase);
+        if (wantList != IsArtistListView)
+            ToggleArtistViewCommand?.Execute(null);
+    }
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;

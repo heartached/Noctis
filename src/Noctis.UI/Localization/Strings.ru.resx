@@ -253,6 +253,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Кассета</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Макет Cover Flow</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Как страница Cover Flow располагает обложки из очереди.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumsView" xml:space="preserve"><value>Вид альбомов</value><comment>Settings › Player card title</comment></data>
+  <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>Как страница «Альбомы» показывает альбомы и как карусель оформляет каждый из них.</value><comment>Settings › Player Albums View card subtitle</comment></data>
+  <data name="Settings.CarouselCase" xml:space="preserve"><value>Оформление карусели</value><comment>Settings › Player Albums View card: case style row label</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>Классический ряд: текущая обложка по центру, история и следующие треки по сторонам</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Карусель</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Наклонённые обложки по диагонали, рядом сведения о треке</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -3051,6 +3054,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.AlbumView" xml:space="preserve"><value>Вид</value><comment>Albums page top-right view menu tooltip</comment></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Сетка</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Карусель</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.ViewList" xml:space="preserve"><value>Список</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Обложка</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>Коробка CD</value><comment>Albums view menu: carousel case style</comment></data>
   <data name="Main.CarouselVinyl" xml:space="preserve"><value>Винил</value><comment>Albums view menu: carousel case style</comment></data>
