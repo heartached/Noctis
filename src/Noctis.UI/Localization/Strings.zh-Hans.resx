@@ -488,7 +488,7 @@
     <value>即将开始</value>
     <comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.Beta" xml:space="preserve">
+  <data name="Settings.BetaBadge" xml:space="preserve">
     <value>测试版</value>
   </data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve">

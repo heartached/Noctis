@@ -6257,7 +6257,7 @@
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,8">
                 <TextBlock Classes="section-title" Text="{loc:T Settings.Section.YourAccount}" Margin="0" VerticalAlignment="Center"/>
                 <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="7,2" VerticalAlignment="Center">
-                    <TextBlock Text="{loc:T Settings.Beta}" FontSize="10" FontWeight="SemiBold"
+                    <TextBlock Text="{loc:T Settings.BetaBadge}" FontSize="10" FontWeight="SemiBold"
                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                 </Border>
             </StackPanel>
@@ -6449,7 +6449,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="{loc:T Phone.Title}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="7,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T Settings.Beta}" FontSize="10" FontWeight="SemiBold"
+                                    <TextBlock Text="{loc:T Settings.BetaBadge}" FontSize="10" FontWeight="SemiBold"
                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                 </Border>
                             </StackPanel>
