@@ -136,4 +136,26 @@ public class SongsSearchPlayContextTests
         Assert.Equal("Through The Fire", s.player.CurrentTrack?.Title);
         Assert.Equal(new[] { "Three", "Four" }, s.player.UpNext.Select(t => t.Title));
     }
+
+    [AvaloniaFact]
+    public async Task Playlist_SongRemovedDuringASearch_IsNotQueuedByTheNextSearchPlay()
+    {
+        var s = CreateVm();
+        var tracks = new[] { Trk("Fire One"), Trk("Fire Two"), Trk("Three") };
+        s.lib.TrackList.AddRange(tracks);
+        var persistence = new TestPersistenceService();
+        var sidebar = new SidebarViewModel(persistence, s.lib);
+        var playlist = new Playlist { Name = "P", TrackIds = tracks.Select(t => t.Id).ToList() };
+        sidebar.Playlists.Add(playlist);
+        var vm = new PlaylistViewModel(playlist, s.player, s.lib, persistence, sidebar);
+        await PumpUntil(() => vm.Tracks.Count == 3);
+
+        vm.ApplyFilter("fire");
+        await PumpUntil(() => vm.Tracks.Count == 2);
+        await vm.RemoveTrackCommand.ExecuteAsync(vm.Tracks.Single(t => t.Title == "Fire Two"));
+        vm.PlayFromCommand.Execute(vm.Tracks.Single(t => t.Title == "Fire One"));
+
+        Assert.Equal("Fire One", s.player.CurrentTrack?.Title);
+        Assert.Equal(new[] { "Three" }, s.player.UpNext.Select(t => t.Title));
+    }
 }
