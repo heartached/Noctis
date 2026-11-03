@@ -501,6 +501,13 @@
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding PageSortCommand}" CommandParameter="Descending">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortDescending}"/></MenuItem.Icon>
                                         </MenuItem>
+                                        <!-- GitHub #156: shown exactly while the corner dot is, so the dot
+                                             always has a visible way back to the default order. -->
+                                        <Separator IsVisible="{Binding IsSongsSortActive}" />
+                                        <MenuItem Header="{loc:T Main.ResetSortToDateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Reset"
+                                                  IsVisible="{Binding IsSongsSortActive}">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineHistory}"/></MenuItem.Icon>
+                                        </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>

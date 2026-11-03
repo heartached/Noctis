@@ -248,6 +248,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     /// direction the user had picked without them ever touching it.
     /// </para>
     /// </summary>
+    /// <summary><see cref="SelectSort"/> option: back to the default order (Date Added, newest first).</summary>
+    public const string ResetSortOption = "Reset";
+
     [RelayCommand]
     private void SelectSort(string option)
     {
@@ -257,6 +260,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 SortAscending = true;
                 break;
             case "Descending":
+                SortAscending = false;
+                break;
+            case ResetSortOption:
+                // The Songs default: newest additions first (GitHub #156, Sort menu reset).
+                SortColumn = "Date Added";
                 SortAscending = false;
                 break;
             default:
