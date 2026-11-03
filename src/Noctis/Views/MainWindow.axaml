@@ -202,9 +202,12 @@
                      an accent dot on an icon means the control is away from its default,
                      the section's single primary action keeps its words as a red pill, and
                      the Library / Cover Flow segment is one icon showing the mode you would
-                     switch TO. Order, left to right: filter · sort · view options · primary
-                     · view mode. Corner width is now the same band on every section. -->
-                <StackPanel Grid.Column="1"
+                     switch TO. Order, left to right (11-02, every section): page option
+                     (Folders: Manage Folders) · filter (FilterIcon) · sort (SortIcon) · view
+                     (ViewIcon menu or View Options) · shuffle icon + primary pill · Cover Flow.
+                     Corner width is now the same band on every section. -->
+                <StackPanel x:Name="CornerActions"
+                            Grid.Column="1"
                             x:DataType="vm:TopBarViewModel"
                             DataContext="{Binding TopBar}"
                             Orientation="Horizontal"
@@ -222,11 +225,11 @@
                                 <Binding Path="!IsPageTitleVisible"/>
                             </MultiBinding>
                         </Panel.IsVisible>
-                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Type}">
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                             <ToolTip.Tip>
-                                <TextBlock><Run Text="{loc:T Main.Type}"/><Run Text=" "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
+                                <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
                             </ToolTip.Tip>
-                            <PathIcon Data="{StaticResource ReleaseTypeIcon}"/>
+                            <PathIcon Data="{StaticResource FilterIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
@@ -267,11 +270,11 @@
                         </StackPanel.IsVisible>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Type}">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                                 <ToolTip.Tip>
-                                    <TextBlock><Run Text="{loc:T Main.Type}"/><Run Text=" "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
+                                    <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
                                 </ToolTip.Tip>
-                                <PathIcon Data="{StaticResource ReleaseTypeIcon}"/>
+                                <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
@@ -367,13 +370,10 @@
                         </Panel>
 
                         <!-- View (GitHub #149): grid or album carousel, and the carousel's case
-                             style. The icon shows the current layout. -->
+                             style. The shared View glyph, like every page's view control. -->
                         <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
                                 ToolTip.Tip="{loc:T Main.AlbumView}">
-                            <Panel>
-                                <PathIcon Data="{StaticResource GridViewIcon}" IsVisible="{Binding !IsAlbumCarouselView}"/>
-                                <PathIcon Data="{StaticResource AlbumCarouselIcon}" IsVisible="{Binding IsAlbumCarouselView}"/>
-                            </Panel>
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
@@ -406,7 +406,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding PageActionsVisible}">
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" ToolTip.Tip="{loc:T Main.FilterTip}">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
                                 <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
@@ -506,8 +506,9 @@
 
                         <Button Classes="corner-icon"
                                 Command="{Binding PageViewOptionsCommand}"
+                                AutomationProperties.Name="{loc:T Main.ShowViewOptions}"
                                 ToolTip.Tip="{loc:T Main.ShowViewOptions}">
-                            <PathIcon Data="{StaticResource ViewOptionsIcon}"/>
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
                         </Button>
 
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
@@ -634,8 +635,7 @@
                     </StackPanel>
 
                     <!-- Artists page: sort popover (Name / Songs / Albums / Time / Genre + direction)
-                         and the grid ↔ list icon, which like the view-mode icon shows the
-                         layout you would switch TO. Both hide under Cover Flow. -->
+                         and the View menu (Grid / List). Both hide under Cover Flow. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding ArtistSortVisible}">
                         <Panel VerticalAlignment="Center">
@@ -674,17 +674,21 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsArtistSortActive}"/>
                         </Panel>
-                        <Button Classes="corner-icon" IsVisible="{Binding !IsArtistListView}"
-                                Command="{Binding ToggleArtistViewCommand}"
-                                AutomationProperties.Name="{loc:T Main.SwitchToArtistList}"
-                                ToolTip.Tip="{loc:T Main.SwitchToArtistList}">
-                            <PathIcon Data="{StaticResource ListViewIcon}"/>
-                        </Button>
-                        <Button Classes="corner-icon" IsVisible="{Binding IsArtistListView}"
-                                Command="{Binding ToggleArtistViewCommand}"
-                                AutomationProperties.Name="{loc:T Main.SwitchToArtistGrid}"
-                                ToolTip.Tip="{loc:T Main.SwitchToArtistGrid}">
-                            <PathIcon Data="{StaticResource GridViewIcon}"/>
+                        <!-- View: Grid / List, the same View glyph and menu shape as Albums. -->
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
+                                ToolTip.Tip="{loc:T Main.AlbumView}">
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="{loc:T Main.AlbumGrid}" Command="{Binding SetArtistViewCommand}" CommandParameter="grid">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding !IsArtistListView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.ViewList}" Command="{Binding SetArtistViewCommand}" CommandParameter="list">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsArtistListView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
                         </Button>
                     </StackPanel>
 
@@ -705,9 +709,13 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Folders: sort popover · manage icon · shuffle icon · Play (primary). -->
+                    <!-- Folders: manage folders (page option, opens Settings > Library) · sort popover ·
+                         shuffle icon · Play (primary). Same shuffle-icon + Play pair as Favorites. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FoldersActionsVisible}">
+                        <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
+                            <PathIcon Data="{StaticResource FolderIcon}"/>
+                        </Button>
                         <Panel VerticalAlignment="Center">
                             <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
@@ -731,9 +739,6 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsFoldersSortActive}"/>
                         </Panel>
-                        <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
-                            <PathIcon Data="{StaticResource SettingsIcon}"/>
-                        </Button>
                         <Button Classes="corner-icon" Command="{Binding PageShuffleFolderCommand}" ToolTip.Tip="{loc:T Main.ShuffleFolderTip}">
                             <PathIcon Data="{StaticResource ShuffleIcon}"/>
                         </Button>
@@ -756,7 +761,7 @@
                             <ToolTip.Tip>
                                 <TextBlock><Run Text="{loc:T Main.Layout}"/><Run Text=" "/><Run Text="{Binding CoverFlowLayoutLabel}"/></TextBlock>
                             </ToolTip.Tip>
-                            <PathIcon Data="{StaticResource LayoutIcon}"/>
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
