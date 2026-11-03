@@ -294,4 +294,41 @@ public class HomeNewInLibraryTests
         Assert.Equal("Added", ((Album)row.Items[0]!).Name);
         win.Close();
     }
+
+    [AvaloniaFact]
+    public async Task View_CountPillMenu_SetsTheRowSize()
+    {
+        EnsureAppStyles();
+        var (home, settings, lib, log, _) = Build();
+        for (var i = 0; i < 25; i++) log.RecordPlay(AddAlbum(lib, $"A{i:00}", DateTime.UtcNow.AddDays(-i)).Tracks[0]);
+        await home.RefreshAsync();
+
+        var view = new HomeView { DataContext = home };
+        var win = new Window { Width = 1300, Height = 900, Content = view };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        foreach (var (pillName, pick, read) in new (string, string, Func<int>)[]
+                 {
+                     ("NewAlbumsCountPill", "20", () => settings.HomeNewAlbumsCount),
+                     ("RecentAlbumsCountPill", "10", () => settings.HomeRecentAlbumsCount),
+                 })
+        {
+            var pill = view.FindControl<Button>(pillName)!;
+            var menu = (MenuFlyout)pill.Flyout!;
+            menu.ShowAt(pill);
+            Dispatcher.UIThread.RunJobs();
+            var item = menu.Items.OfType<MenuItem>().Single(m => (string?)m.Header == pick);
+            Assert.NotNull(item.Command);
+            Assert.True(item.Command!.CanExecute(item.CommandParameter));
+            item.Command.Execute(item.CommandParameter);
+            Assert.Equal(int.Parse(pick), read());
+            menu.Hide();
+        }
+        await Task.Delay(50);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(20, home.NewInLibraryAlbums.Count);
+        Assert.Equal(10, home.RecentlyPlayedAlbums.Count);
+        win.Close();
+    }
 }

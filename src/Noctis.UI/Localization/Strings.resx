@@ -2784,7 +2784,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.HomeHeavyRotation" xml:space="preserve"><value>Heavy Rotation</value><comment>Appearance › Home toggle</comment></data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve"><value>Show the "On repeat these past two weeks" row on the Home page.</value><comment>Appearance › Home toggle description</comment></data>
   <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>Recently Played Albums</value><comment>Appearance › Home picker</comment></data>
-  <data name="Settings.HomeRecentAlbumsCountDesc" xml:space="preserve"><value>How many of the albums you played last the Albums row shows.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeRecentAlbumsCountDesc" xml:space="preserve"><value>How many of your most recently played albums the Albums row shows.</value><comment>Appearance › Home picker description</comment></data>
   <data name="Settings.HomeNewAlbumsCount" xml:space="preserve"><value>New in Library</value><comment>Appearance › Home picker</comment></data>
   <data name="Settings.HomeNewAlbumsCountDesc" xml:space="preserve"><value>How many of your newest albums by date added Home shows, played or not.</value><comment>Appearance › Home picker description</comment></data>
   <data name="Settings.HomeNewAlbumsFirst" xml:space="preserve"><value>New in Library First</value><comment>Appearance › Home toggle</comment></data>
