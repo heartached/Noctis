@@ -223,6 +223,9 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         if (_disposed || State != PlaybackState.Paused) return;
         _player.Play();
         State = PlaybackState.Playing;
+        // OnTaskRemoved stops the service when the app is swiped away paused; resuming after a
+        // reopen needs it back as much as Play() does (see EnsureServiceStarted).
+        EnsureServiceStarted();
         StartPositionPump();
     }
 
