@@ -85,6 +85,17 @@ public class MobileAccountTests
             return Task.CompletedTask;
         }
 
+        public List<Noctis.Services.Server.PairingPayload> PairingSignIns { get; } = new();
+
+        public Task SignInWithPairingAsync(Noctis.Services.Server.PairingPayload pairing, CancellationToken ct = default)
+        {
+            PairingSignIns.Add(pairing);
+            if (SignInError != null) return Task.FromException(SignInError);
+            Account = SignedInAs("owner") with { ServerUrl = pairing.ServerUrls.First(), Fingerprint = pairing.Fingerprint };
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
         public Task SignOutAsync(bool removeDownloads, CancellationToken ct = default)
         {
             SignOuts.Add(removeDownloads);

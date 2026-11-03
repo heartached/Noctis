@@ -174,6 +174,86 @@ public class AccountDevicesPageTests : IDisposable
         finally { await vm.StopNoctisServerAsync(); }
     }
 
+    [AvaloniaFact]
+    public async Task ConnectAPhone_ShowsAOneTimeQr_ThatDiesWithThePanelTheTabAndTheServer()
+    {
+        Assert.SkipUnless(AccountFeatures.Enabled, "account features are parked (AccountFeatures off)");
+        Assert.SkipWhen(LanAddresses.ForPairing(WebRemoteServer.GetLocalAddress()).Count == 0, "no private LAN address on this machine");
+        var persistence = new PersistenceService(_root);
+        new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db")).Create("me@example.com", "correct horse", isAdmin: true);
+        await persistence.SaveSettingsAsync(new AppSettings { NoctisServerEnabled = true, NoctisServerPort = FreePort() });
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        try
+        {
+            await vm.LoadAsync();
+            await ServerSettled(vm);
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            Assert.False(vm.HasPairingQr);
+
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            Assert.Matches(@"^New code in [12]:\d\d$", vm.PairingQrCountdown);
+
+            // Closing the panel takes the code away; reopening shows a new one.
+            vm.TogglePairingCommand.Execute(null);
+            Assert.False(vm.HasPairingQr);
+            Assert.Equal("", vm.PairingQrCountdown);
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+
+            // Leaving the tab folds the panel and kills the code.
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            Assert.False(vm.IsPairingVisible);
+            Assert.False(vm.HasPairingQr);
+
+            // Leaving Settings does too.
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            vm.OnSettingsLeft();
+            Assert.False(vm.HasPairingQr);
+
+            // So does the server going off.
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            vm.NoctisServerEnabled = false;
+            Assert.False(vm.HasPairingQr);
+        }
+        finally { await vm.StopNoctisServerAsync(); }
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectAPhone_TheQrRenewsItselfBeforeItExpires()
+    {
+        Assert.SkipUnless(AccountFeatures.Enabled, "account features are parked (AccountFeatures off)");
+        Assert.SkipWhen(LanAddresses.ForPairing(WebRemoteServer.GetLocalAddress()).Count == 0, "no private LAN address on this machine");
+        var persistence = new PersistenceService(_root);
+        new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db")).Create("me@example.com", "correct horse", isAdmin: true);
+        await persistence.SaveSettingsAsync(new AppSettings { NoctisServerEnabled = true, NoctisServerPort = FreePort() });
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        try
+        {
+            await vm.LoadAsync();
+            await ServerSettled(vm);
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            vm.TogglePairingCommand.Execute(null);
+            var first = vm.PairingQr;
+            Assert.NotNull(first);
+
+            // Two minutes on: the countdown's tick replaces the code (and its bitmap).
+            vm.PairingClock = () => DateTime.UtcNow + PairingCodes.Lifetime;
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (ReferenceEquals(vm.PairingQr, first) && DateTime.UtcNow < deadline)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                await Task.Delay(50);
+            }
+            Assert.NotNull(vm.PairingQr);
+            Assert.NotSame(first, vm.PairingQr);
+        }
+        finally { await vm.StopNoctisServerAsync(); }
+    }
+
     // 11-03 audit. HEAD: "Since November 2026" in every language (hard-coded English, OS month
     // names), and with no account the line's name was bound through a null PrimaryAccount.
     [AvaloniaFact]
