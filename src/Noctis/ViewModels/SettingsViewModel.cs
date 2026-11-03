@@ -7594,9 +7594,9 @@ public partial class SettingsViewModel : ViewModelBase
         await RefreshPlaylistCountAsync();
         ResetConfirmDetail = TotalPlaylists switch
         {
-            0 => "This clears your library, queue, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
-            1 => "This permanently deletes 1 playlist, and clears your library, queue, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
-            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, playlist covers, cached lyrics and artwork. Every setting returns to its default."
+            0 => "This clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
+            1 => "This permanently deletes 1 playlist, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
+            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default."
         };
         IsResetConfirmVisible = true;
     }
@@ -7612,154 +7612,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         IsResetConfirmVisible = false;
 
-        // Clear library, playlists, queue
-        try
-        {
-            await _library.ClearAsync();
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear library: {ex.Message}");
-        }
-
-        try
-        {
-            await _persistence.SavePlaylistsAsync(new List<Playlist>());
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear playlists: {ex.Message}");
-        }
-
-        try
-        {
-            await _persistence.SaveQueueStateAsync(new QueueState());
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear queue state: {ex.Message}");
-        }
-
-        // Clear artwork cache (albums + artists). Task.Run for every recursive
-        // delete below: they run back-to-back on the UI context and blocked the
-        // dispatcher for their whole duration on large libraries or slow disks.
-        try
-        {
-            var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(artworkDir))
-                {
-                    Directory.Delete(artworkDir, true);
-                    Directory.CreateDirectory(artworkDir);
-                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-                }
-            });
-            _dirSizeCache.TryRemove(artworkDir, out _);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear artwork cache: {ex.Message}");
-        }
-
-        // Clear lyrics cache
-        try
-        {
-            var lyricsDir = Path.Combine(Helpers.AppPaths.DataRoot, "lyrics_cache");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(lyricsDir))
-                {
-                    Directory.Delete(lyricsDir, true);
-                    Directory.CreateDirectory(lyricsDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear lyrics cache: {ex.Message}");
-        }
-
-        // Clear playlist covers
-        try
-        {
-            var coversDir = Path.Combine(_persistence.DataDirectory, "playlist_covers");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(coversDir))
-                {
-                    Directory.Delete(coversDir, true);
-                    Directory.CreateDirectory(coversDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear playlist covers: {ex.Message}");
-        }
-
-        // Clear offline / streaming cache
-        try
-        {
-            var cacheDir = Path.Combine(_persistence.DataDirectory, "cache");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(cacheDir))
-                {
-                    Directory.Delete(cacheDir, true);
-                    Directory.CreateDirectory(cacheDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear offline cache: {ex.Message}");
-        }
-
-        // Clear audit trail
-        try
-        {
-            var auditDir = Path.Combine(_persistence.DataDirectory, "audit");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(auditDir))
-                {
-                    Directory.Delete(auditDir, true);
-                    Directory.CreateDirectory(auditDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear audit trail: {ex.Message}");
-        }
-
-        // Clear crash log
-        try
-        {
-            var crashPath = Path.Combine(_persistence.DataDirectory, "crash.log");
-            if (File.Exists(crashPath))
-                File.Delete(crashPath);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear crash log: {ex.Message}");
-        }
-
-        // Preserved crash-session logs go with it.
-        CrashJournal.ClearPreserved();
-
-        // Clear index cache
-        try
-        {
-            var indexPath = Path.Combine(_persistence.DataDirectory, "indexes.json");
-            if (File.Exists(indexPath))
-                File.Delete(indexPath);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear index cache: {ex.Message}");
-        }
+        // Library, playlists, queue, listening history, caches and ledgers: see SettingsViewModel.Reset.cs.
+        await ClearSavedDataAsync();
 
         // Reset settings to defaults and save. The plugins folder survives the reset, so the
         // community-plugins switch is decided (restricted) rather than left null, which the
@@ -7784,6 +7638,7 @@ public partial class SettingsViewModel : ViewModelBase
         finally { _suppressLaunchAtStartupHandler = false; }
 
         ResetSettingsToDefaults(defaultSettings);
+        await ClearSavedDataAfterSettingsResetAsync();
 
         SetScanStatus("All settings and data have been reset.", autoClear: true);
         RefreshLibraryStats();
@@ -8154,6 +8009,8 @@ public partial class SettingsViewModel : ViewModelBase
                     // silently stopped caching until the app was restarted. ConfirmResetLibrary
                     // already got this right.
                     Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+                    // SimilarArtistsService likewise (artwork/similar): its pictures stopped saving.
+                    Directory.CreateDirectory(Path.Combine(artworkDir, "similar"));
                 }
             });
             _dirSizeCache.TryRemove(artworkDir, out _);

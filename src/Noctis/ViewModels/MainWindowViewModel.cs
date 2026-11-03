@@ -397,6 +397,8 @@ public partial class MainWindowViewModel : ViewModelBase
             tagWriter.InUsePath = () => Player.CurrentTrack?.FilePath;
         Settings.SettingsReset += async (_, _) =>
         {
+            // Loaded once by the Artists page; the reset deleted the file under it.
+            _artistsVm.ClearFavoriteArtists();
             // Guarded: an unhandled throw from an async-void handler crashes the app.
             try { await Sidebar.LoadPlaylistsAsync(); }
             catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.Error, "SettingsReset.ReloadPlaylists", ex.Message); }
