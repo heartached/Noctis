@@ -141,7 +141,8 @@ public class TopBarCornerOrderTests
     [AvaloniaTheory]
     [InlineData("Home", "CoverFlow")]
     [InlineData("Songs", "Filter|Sort|View|Pill:Shuffle|CoverFlow")]
-    [InlineData("Albums", "Filter|Sort|View|CoverFlow")]
+    // GitHub #164: Albums wears the grid / album carousel toggle in the Cover Flow icon's place.
+    [InlineData("Albums", "Filter|Sort|View|AlbumCarousel")]
     [InlineData("Artists", "Sort|View|CoverFlow")]
     [InlineData("Folders", "Folder|Sort|Shuffle|Pill:Play|CoverFlow")]
     [InlineData("Favorites", "Shuffle|Pill:Play|CoverFlow")]

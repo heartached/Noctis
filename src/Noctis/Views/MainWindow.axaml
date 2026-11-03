@@ -396,6 +396,10 @@
                                     <MenuItem Header="{loc:T Main.CarouselCassette}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cassette">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cassette}"/></MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- GitHub #164: the top-right icon is the album carousel here, so the
+                                         queue's Cover Flow is reached from this menu on Albums. -->
+                                    <Separator/>
+                                    <MenuItem Header="{loc:T Main.NowPlayingCoverFlow}" Command="{Binding SetCoverFlowModeCommand}"/>
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
@@ -778,9 +782,33 @@
                                 Command="{Binding SetLibraryModeCommand}" ToolTip.Tip="{loc:T Main.SwitchToLibrary}">
                             <PathIcon Data="{StaticResource GridViewIcon}"/>
                         </Button>
-                        <Button Classes="corner-icon" IsVisible="{Binding !IsCoverFlowMode}"
+                        <Button Classes="corner-icon" IsVisible="{Binding CoverFlowToggleVisible}"
                                 Command="{Binding SetCoverFlowModeCommand}" ToolTip.Tip="{loc:T Main.SwitchToCoverFlow}">
                             <PathIcon Data="{StaticResource CoverFlowIcon}"/>
+                        </Button>
+                        <!-- Albums (GitHub #164): grid / album carousel, like the artist page's
+                             toggle; the icon shows the layout a click switches to. -->
+                        <Button Classes="corner-icon" Command="{Binding AlbumViewToggleCommand}"
+                                ToolTip.Tip="{loc:T ArtistDetail.ShowCarousel}"
+                                AutomationProperties.Name="{loc:T ArtistDetail.ShowCarousel}">
+                            <Button.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="AlbumsViewToggleVisible"/>
+                                    <Binding Path="!IsAlbumCarouselView"/>
+                                </MultiBinding>
+                            </Button.IsVisible>
+                            <PathIcon Data="{StaticResource AlbumCarouselIcon}"/>
+                        </Button>
+                        <Button Classes="corner-icon" Command="{Binding AlbumViewToggleCommand}"
+                                ToolTip.Tip="{loc:T ArtistDetail.ShowGrid}"
+                                AutomationProperties.Name="{loc:T ArtistDetail.ShowGrid}">
+                            <Button.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="AlbumsViewToggleVisible"/>
+                                    <Binding Path="IsAlbumCarouselView"/>
+                                </MultiBinding>
+                            </Button.IsVisible>
+                            <PathIcon Data="{StaticResource GridViewIcon}"/>
                         </Button>
                     </StackPanel>
 
