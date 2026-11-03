@@ -14,8 +14,9 @@ namespace Noctis.Services;
 /// </summary>
 public static partial class EnhancedLrcParser
 {
-    // Inline word tag: <mm:ss.xx>, <mm:ss:xx> or <mm:ss>. Captures the time body.
-    [GeneratedRegex(@"<(\d{1,3}:\d{2}(?:[.:]\d{1,3})?)>")]
+    // Inline word tag: <mm:ss.xx>, <mm:ss:xx> or <mm:ss>; the seconds may run past 59 as in
+    // LrcParser's line stamps (<00:168.80>). Captures the time body.
+    [GeneratedRegex(@"<(\d{1,3}:\d{2,3}(?:[.:]\d{1,3})?)>")]
     private static partial Regex WordTagRegex();
 
     /// <summary>
@@ -257,9 +258,17 @@ public static partial class EnhancedLrcParser
     }
 
     // Letters/digits/apostrophes/hyphens below the CJK blocks join into one word;
-    // whitespace, punctuation and CJK characters keep segments separate.
+    // whitespace, punctuation and CJK characters keep segments separate. Combining marks
+    // (Indic vowel signs and viramas, Thai/Arabic marks) and the zero-width (non-)joiner are part
+    // of the word too (GitHub #149): Malayalam "പാ" + "ട്ട്" ends on a vowel sign, and split
+    // there each cell was shaped alone, breaking the conjuncts across the cell edge.
     private static bool IsJoinable(char c) =>
-        (char.IsLetterOrDigit(c) || c is '\'' or '’' or '-') && c < '⺀';
+        (char.IsLetterOrDigit(c) || IsMark(c) || c is '\'' or '’' or '-' or '‌' or '‍') && c < '⺀';
+
+    private static bool IsMark(char c) => char.GetUnicodeCategory(c) is
+        System.Globalization.UnicodeCategory.NonSpacingMark
+        or System.Globalization.UnicodeCategory.SpacingCombiningMark
+        or System.Globalization.UnicodeCategory.EnclosingMark;
 
     /// <summary>
     /// Folds fully-parenthesized word-timed lines — the common ELRC convention for
@@ -401,14 +410,21 @@ public static partial class EnhancedLrcParser
             if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var seconds))
                 return null;
-            return TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
+            return Exact(minutes, seconds);
         }
 
         if (!int.TryParse(parts[1], out var wholeSeconds)) return null;
         if (!int.TryParse(parts[2], out var fractionalUnit)) return null;
 
         var divisor = Math.Pow(10, parts[2].Length);
-        return TimeSpan.FromMinutes(minutes) +
-               TimeSpan.FromSeconds(wholeSeconds + fractionalUnit / divisor);
+        return Exact(minutes, wholeSeconds + fractionalUnit / divisor);
     }
+
+    /// <summary>
+    /// The tag's time in whole milliseconds (tags carry at most three decimals). TimeSpan.FromSeconds
+    /// truncates to ticks, so "00:00.41" came back as 0.40999… s and was written out again as
+    /// "00:00.40": a Studio save of a loaded .elrc moved ~6 % of its word tags 10 ms earlier.
+    /// </summary>
+    private static TimeSpan Exact(int minutes, double seconds) =>
+        TimeSpan.FromMinutes(minutes) + TimeSpan.FromMilliseconds(Math.Round(seconds * 1000));
 }

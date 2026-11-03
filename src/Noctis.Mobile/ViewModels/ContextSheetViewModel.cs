@@ -23,8 +23,10 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         Tracks = tracks;
     }
 
-    public static ContextSheetViewModel ForTrack(ShellViewModel shell, Track track) =>
-        new(shell, track.Title, track.Artist, track.AlbumArtworkPath, new[] { track }) { Track = track };
+    /// <summary>A song's menu; <paramref name="inPlaylist"/> is the playlist whose page it was opened
+    /// on, for Remove from Playlist.</summary>
+    public static ContextSheetViewModel ForTrack(ShellViewModel shell, Track track, Playlist? inPlaylist = null) =>
+        new(shell, track.Title, track.Artist, track.AlbumArtworkPath, new[] { track }) { Track = track, InPlaylist = inPlaylist };
 
     public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album) =>
         new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album };
@@ -51,6 +53,39 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public Playlist? Playlist { get; private init; }
     public Artist? Artist { get; private init; }
 
+    /// <summary>The playlist page a song's menu was opened on.</summary>
+    public Playlist? InPlaylist { get; private init; }
+
+    // ── Playlist editing (desktop parity) ──
+
+    /// <summary>A song on its playlist's page: Remove from Playlist (a smart playlist's songs
+    /// come from its rules, so not there).</summary>
+    public bool CanRemoveFromPlaylist => Track != null && InPlaylist is { IsSmartPlaylist: false } p
+        && _shell.CurrentPlaylist(p).TrackIds.Contains(Track.Id);
+
+    /// <summary>A playlist's menu: Rename and Delete Playlist.</summary>
+    public bool CanEditPlaylist => Playlist != null;
+
+    [RelayCommand]
+    private async Task RemoveFromPlaylistAsync()
+    {
+        var playlist = InPlaylist;
+        _shell.CloseSheet();
+        if (playlist != null) await _shell.RemoveFromPlaylistAsync(playlist, Tracks);
+    }
+
+    [RelayCommand]
+    private void RenamePlaylist()
+    {
+        if (Playlist is { } playlist) _shell.AskRenamePlaylist(playlist);
+    }
+
+    [RelayCommand]
+    private void DeletePlaylist()
+    {
+        if (Playlist is { } playlist) _shell.AskDeletePlaylist(playlist);
+    }
+
     /// <summary>An artist sheet is about the artist (play, queue, pin), not a heart on every song.</summary>
     public bool CanFavourite => Artist == null;
 
@@ -63,18 +98,25 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The quick-action tile's short label: what the heart shows now.</summary>
     public string FavouriteTileLabel => IsFavourite ? "Favorited" : "Favorite";
 
-    /// <summary>Anything can be pinned to Library → Pinned: albums, artists, playlists and songs.</summary>
+    /// <summary>Anything can be pinned to Home → Pinned: albums, artists, playlists and songs.</summary>
     public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;
     public bool IsPinned =>
         Album != null ? _shell.Library.IsAlbumPinned(Album.Id)
         : Artist != null ? _shell.Library.IsArtistPinned(Artist.Name)
         : Playlist != null ? Playlist.IsPinned
         : Track != null && _shell.Library.IsTrackPinned(Track.Id);
-    public string PinLabel => IsPinned ? "Unpin" : "Pin to Library";
+    // Pins show on Home (its Pinned rail) since Home became the start tab: "Pin to Library"
+    // sent people looking for them in the Library tab.
+    public string PinLabel => IsPinned ? "Unpin" : "Pin to Home";
     public string PinTileLabel => IsPinned ? "Pinned" : "Pin";
 
-    public bool CanGoToAlbum => Track != null;
-    public bool CanGoToArtist => Track != null || Album != null;
+    // Not on that album's or artist's own page (it pushed the same page again), unless the
+    // player covers it: then the row uncovers the page.
+    public bool CanGoToAlbum => Track != null && (_shell.IsPlayerUp || !_shell.IsShowingAlbum(Track.AlbumId));
+    public bool CanGoToArtist => (Track != null || Album != null)
+        && (_shell.IsPlayerUp || ArtistTarget is not { } name || !_shell.IsShowingArtist(name));
+
+    private string? ArtistTarget => Track?.GroupingArtist ?? Album?.Artist;
 
     // ── Desktop songs (Settings → Account): offline copies ──
 
@@ -135,8 +177,9 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
     [RelayCommand] private void ShowPlaylists() => IsPickingPlaylist = true;
 
-    /// <summary>Lyrics are the playing song's page: the row shows only on that song's menu.</summary>
-    public bool CanShowLyrics => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id;
+    /// <summary>Lyrics are the playing song's page: the row shows only on that song's menu, and
+    /// not on the menu opened from the lyrics page itself (where it did nothing).</summary>
+    public bool CanShowLyrics => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id && !_shell.IsLyricsOpen;
 
     /// <summary>The menu's Lyrics: the lyrics page, over the player or a list (the Queue, which
     /// would sit over it, gives way).</summary>
@@ -156,8 +199,16 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     {
         if (playlist == null) return;
         _shell.CloseSheet();
+        var current = _shell.CurrentPlaylist(playlist);
+        var already = Tracks.Count > 0 && Tracks.All(t => current.TrackIds.Contains(t.Id));
         await _shell.Library.AddToPlaylistAsync(playlist, Tracks);
+        Added(current.Name, already);
     }
+
+    /// <summary>The short glass banner after Add to Playlist (the player's notice banner), as
+    /// Apple's "Added to …": says so too when every song was there already (nothing was added).</summary>
+    private void Added(string name, bool already) =>
+        _shell.Player.Notice = already ? $"Already in {name}" : $"Added to {name}";
 
     [RelayCommand]
     private async Task CreatePlaylistAsync()
@@ -167,6 +218,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         _shell.CloseSheet();
         var playlist = await _shell.Library.CreatePlaylistAsync(name);
         await _shell.Library.AddToPlaylistAsync(playlist, Tracks);
+        Added(name, already: false);
     }
 
     [RelayCommand]
@@ -191,7 +243,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [RelayCommand]
     private void GoToArtist()
     {
-        var name = Track?.GroupingArtist ?? Album?.Artist;
+        var name = ArtistTarget;
         _shell.CloseSheet();
         if (!string.IsNullOrWhiteSpace(name)) _shell.OpenArtistCommand.Execute(name);
     }
@@ -204,10 +256,13 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks);
     }
 
+    /// <summary>Every desktop song here, not only the downloaded ones: the service removes the
+    /// copies and withdraws the rest from a download still running (an album's batch went on to
+    /// fetch the songs it had not reached yet).</summary>
     [RelayCommand]
     private async Task RemoveDownloadAsync()
     {
-        var tracks = Downloaded.ToList();
+        var tracks = Downloaded.Any() ? RemoteTracks.ToList() : new List<Track>();
         _shell.CloseSheet();
         if (tracks.Count > 0) await _shell.RemoveDownloadsAsync(tracks);
     }

@@ -137,6 +137,21 @@ public class LrcRedUnisonProviderTests
         Assert.Equal("USUM72409273", song?.Isrc);
     }
 
+    [Theory]
+    [InlineData("ACRU, DANDARA")]
+    [InlineData("Acru & DANDARA")]
+    [InlineData("Acru")]
+    [InlineData("DANDARA")]
+    public void LrcRed_PickSong_AcruDandara_EveryCreditTheReportTried_IsTheSong(string localArtist)
+    {
+        // The lookup's real row (curl 2026-10-24, /api/v1?track=PENSANDO%20EN%20MI&artist=ACRU%2C%20DANDARA&duration=217),
+        // and the same row as CÁPSULA — which lrc.red does not have (its ISRC UYB282651340 is a 404).
+        const string pensando = "{\"results\":[{\"album_name\":\"GÉMINIS - EP\",\"artist_name\":\"Acru & DANDARA\",\"duration\":217,\"id\":\"UYB282620945\",\"isrc\":\"UYB282620945\",\"lyricsUrl\":\"https://lrc.red/s/UYB282620945.ttml\",\"timing_type\":\"line\",\"track_name\":\"PENSANDO EN MI\"}],\"source\":\"HIT-LRC-RED\",\"total\":1}";
+        Assert.Equal("UYB282620945", LrcRedLyricsService.PickSong(pensando, localArtist, "PENSANDO EN MI", 217.288)?.Isrc);
+        var capsula = pensando.Replace("PENSANDO EN MI", "CÁPSULA").Replace("\"duration\":217", "\"duration\":198");
+        Assert.Equal("UYB282620945", LrcRedLyricsService.PickSong(capsula, localArtist, "CÁPSULA", 198.27)?.Isrc);
+    }
+
     [Fact]
     public void LrcRed_PickSong_AnotherArtistSharingNoSinger_IsStillAMiss()
     {

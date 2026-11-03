@@ -78,6 +78,25 @@ public class MobileLibraryRailsTests
         Assert.All(rig.Shell.Library.RecentlyAddedRail, r => Assert.Equal(RailItemKind.Album, r.Kind));
     }
 
+    /// <summary>The rail's › opens what the rail shows: its albums' songs, newest album first and
+    /// each in track order. It took the last 30 days only (a full rail over "No songs" once
+    /// nothing was new) and listed an album backwards (its last file scanned is the newest).</summary>
+    [Fact]
+    public void RecentlyAddedPage_ListsTheRailsAlbums_InTrackOrder_HoweverOld()
+    {
+        var one = MobileFixtures.Song("One", daysAgo: 61); one.TrackNumber = 1;
+        var two = MobileFixtures.Song("Two", daysAgo: 60); two.TrackNumber = 2;
+        var solo = MobileFixtures.Song("Solo", daysAgo: 90); solo.TrackNumber = 1;
+        var albums = new[] { MobileFixtures.MakeAlbum("Pair", "X", one, two), MobileFixtures.MakeAlbum("Single", "Y", solo) };
+        using var rig = MobileFixtures.MakeRig(new[] { solo, two, one }, albums);
+        Assert.Equal(new[] { "Pair", "Single" }, rig.Shell.Library.RecentlyAddedRail.Select(r => r.Title));
+
+        rig.Shell.OpenRecentlyAddedCommand.Execute(null);
+
+        var page = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        Assert.Equal(new[] { "One", "Two", "Solo" }, page.Songs.Select(t => t.Title));
+    }
+
     [Fact]
     public void OnRepeatRail_IsTheDesktopsHeavyRotation()
     {
@@ -95,6 +114,27 @@ public class MobileLibraryRailsTests
         Assert.Equal(RailItemKind.Track, item.Kind);
         Assert.Same(hot, item.Payload);
         Assert.True(rig.Shell.Library.HasOnRepeat);
+    }
+
+    /// <summary>The rail keeps a tile whose song a rescan re-read (a new Track object, same id):
+    /// its › list must list the library's song, not the old object (whose heart and play
+    /// count no longer reach the library).</summary>
+    [Fact]
+    public void OnRepeatPage_ListsTheLibrarysSongs_AfterARescanReReadOne()
+    {
+        var hot = MobileFixtures.Song("Hot");
+        using var rig = MobileFixtures.MakeRig(new[] { hot }, log: h =>
+        {
+            foreach (var d in new[] { 1, 2, 3 }) h.Seed(hot, Now.AddDays(-d));
+        });
+        var reread = new Track { Id = hot.Id, Title = "Hot", Artist = hot.Artist, AlbumArtist = hot.AlbumArtist, Album = hot.Album, FilePath = hot.FilePath, Duration = hot.Duration };
+        rig.Library.TrackList[0] = reread;
+        rig.Library.RaiseLibraryUpdated();
+
+        rig.Shell.OpenOnRepeatCommand.Execute(null);
+
+        var page = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        Assert.Same(reread, Assert.Single(page.Songs));
     }
 
     [Fact]

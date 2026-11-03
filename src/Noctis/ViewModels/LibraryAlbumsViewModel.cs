@@ -276,6 +276,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             ReleaseTypeFilter = ParseReleaseTypeKey(_settings.AlbumReleaseTypeFilter);
+            AlbumViewMode = _settings.AlbumViewMode;
+            CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
         }
         finally
         {
@@ -284,6 +286,55 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
 
         RebuildFilteredRows();
+    }
+
+    // ── Layout: tile grid (default) or album carousel (GitHub #149) ──
+    // Persisted through SettingsViewModel like the sort; the carousel shows the same filtered,
+    // sorted albums as the grid (an artist-filtered page shows that artist's albums).
+
+    /// <summary>"grid" or "carousel".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCarouselView))]
+    [NotifyPropertyChangedFor(nameof(IsGridView))]
+    private string _albumViewMode = "grid";
+
+    public bool IsCarouselView => AlbumViewMode == "carousel";
+    public bool IsGridView => !IsCarouselView;
+
+    /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
+    [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
+
+    /// <summary>The album the carousel last centred, so coming back from an album page (or
+    /// switching away and back) lands on it again.</summary>
+    [ObservableProperty] private Album? _carouselCenterAlbum;
+
+    /// <summary>The albums the carousel browses: the grid's rows flattened, in grid order.</summary>
+    public IReadOnlyList<Album> CarouselAlbums { get; private set; } = Array.Empty<Album>();
+
+    partial void OnAlbumViewModeChanged(string value)
+    {
+        // Only "grid" and "carousel" exist; anything else (a hand-edited settings file) is the grid.
+        if (value is not ("grid" or "carousel")) { AlbumViewMode = "grid"; return; }
+        if (!_adoptingPersistedState) _settings.AlbumViewMode = value;
+    }
+
+    partial void OnCarouselStyleChanged(AlbumCarouselStyle value)
+    {
+        if (!_adoptingPersistedState) _settings.AlbumCarouselStyle = value.ToString();
+    }
+
+    /// <summary>Top-bar view menu: "grid" or "carousel".</summary>
+    [RelayCommand]
+    private void SetAlbumView(string? mode) => AlbumViewMode = mode == "carousel" ? "carousel" : "grid";
+
+    /// <summary>Top-bar view menu: carousel case style by name ("Cover" / "JewelCase" / "Vinyl" / "Cassette").</summary>
+    [RelayCommand]
+    private void SetCarouselStyle(string? name) => CarouselStyle = AlbumCarouselStyles.Parse(name);
+
+    private void OnFilteredAlbumRowsChangedForCarousel(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
+        OnPropertyChanged(nameof(CarouselAlbums));
     }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
@@ -396,6 +447,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             // Cover-size setting: recompute columns from the last known width.
             // UpdateGridMetrics no-ops before the view has ever measured and handles
             // its own dirty/active gating when the column count changes.
+            // Carousel case style is shared with the artist page's carousel: follow a change made there.
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumCarouselStyle))
+            {
+                CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
+            }
+            // Grid / Carousel picked in Settings › Player › Albums View: follow it too.
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumViewMode))
+            {
+                AlbumViewMode = _settings.AlbumViewMode;
+            }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))
             {
@@ -403,6 +464,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
+        FilteredAlbumRows.CollectionChanged += OnFilteredAlbumRowsChangedForCarousel;
 
         // Settings load asynchronously and finish after this view model is built, so the
         // persisted sort is adopted when it lands rather than read here.
@@ -435,9 +497,22 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("AlbumsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // An artist's Songs section and the Most Played sort rank by plays, and a counted play
+        // raises no LibraryUpdated: re-rank once the song is over (FinishedPlays), like Songs.
+        _finishedPlays = new FinishedPlays(player, finished =>
+        {
+            var ranksByPlays = AlbumSortMode == "mostplayed" ||
+                (IsArtistFiltered && finished.Any(t => ContainsArtistToken(t.Artist, ArtistFilterName)));
+            if (!ranksByPlays) return true;
+            if (_isActive) RebuildFilteredRows(onlyIfChanged: true);
+            else _isDirty = true;
+            return true;
+        });
     }
 
     private EventHandler? _libraryUpdatedHandler;
+    private readonly FinishedPlays _finishedPlays;
 
     /// <summary>
     /// Set by MainWindowViewModel when Albums becomes (or stops being) the current view.
@@ -573,7 +648,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
-    private void RebuildFilteredRows(bool refreshFromLibrary = false)
+    /// <param name="onlyIfChanged">Leave the rows alone when the rebuild shows the same thing
+    /// (a re-rank after a counted play usually moves nothing).</param>
+    private void RebuildFilteredRows(bool refreshFromLibrary = false, bool onlyIfChanged = false)
     {
         // Capture state for the background task
         var generation = Interlocked.Increment(ref _rebuildGeneration);
@@ -608,6 +685,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                         return;
                     }
                     if (library != null) _allAlbums = albums;
+                    if (onlyIfChanged && SameRows(FilteredAlbumRows, rows)) return;
                     FilteredAlbumRows.ReplaceAll(rows);
                 });
             else if (library != null)
@@ -615,6 +693,24 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 _isDirty = true;
             }
         });
+    }
+
+    /// <summary>Same rows showing the same albums and ranked songs (rows are rebuilt per pass).</summary>
+    private static bool SameRows(IList<object> current, IList<object> next)
+    {
+        if (current.Count != next.Count) return false;
+        for (var i = 0; i < current.Count; i++)
+        {
+            var same = (current[i], next[i]) switch
+            {
+                (AlbumRow a, AlbumRow b) => a.Albums.SequenceEqual(b.Albums),
+                (ArtistSongsRow a, ArtistSongsRow b) => a.Songs.Select(s => s.Track).SequenceEqual(b.Songs.Select(s => s.Track)),
+                (ArtistSectionHeader a, ArtistSectionHeader b) => a.Title == b.Title,
+                _ => false,
+            };
+            if (!same) return false;
+        }
+        return true;
     }
 
     private List<object> BuildFilteredRows(
@@ -1470,6 +1566,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             _library.LibraryUpdated -= _libraryUpdatedHandler;
             _libraryUpdatedHandler = null;
         }
+        _finishedPlays.Dispose();
     }
 
     // Normalizes a value into a comparable search key: strips whitespace, punctuation

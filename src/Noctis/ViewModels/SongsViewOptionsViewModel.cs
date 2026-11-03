@@ -55,6 +55,7 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
         new SongSortOption("Bpm", Loc.T("Main.BPM")),
         new SongSortOption("Bitrate", Loc.T("Main.Bitrate")),
         new SongSortOption("SampleRate", Loc.T("Main.SampleRate")),
+        new SongSortOption("ReplayGain", Loc.T("LibrarySongs.ReplayGain")),
         new SongSortOption("Date Added", Loc.T("Main.DateAdded")),
         new SongSortOption("Date Modified", Loc.T("Main.DateModified")),
     };
@@ -169,6 +170,12 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
         Settings.ShowBpmColumn = defaults.ShowBpmColumn;
         Settings.ShowBitrateColumn = defaults.ShowBitrateColumn;
         Settings.ShowSampleRateColumn = defaults.ShowSampleRateColumn;
+        Settings.ShowYearColumn = defaults.ShowYearColumn;
+        Settings.ShowAlbumArtistColumn = defaults.ShowAlbumArtistColumn;
+        Settings.ShowComposerColumn = defaults.ShowComposerColumn;
+        Settings.ShowFormatColumn = defaults.ShowFormatColumn;
+        Settings.ShowDateAddedColumn = defaults.ShowDateAddedColumn;
+        Settings.ShowReplayGainColumn = defaults.ShowReplayGainColumn;
 
         if (defaults.SongsShowOnlyFavorites) _songs.SetShowOnlyFavoritesCommand.Execute(null);
         else _songs.SetShowAllItemsCommand.Execute(null);

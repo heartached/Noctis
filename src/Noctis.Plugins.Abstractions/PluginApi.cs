@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.2"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.6"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 2;
+    public const int Minor = 6;
 
-    /// <summary>"1.2": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.6": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 
@@ -33,11 +33,15 @@ public static class PluginPermissions
     public const string Notifications = "notifications";
     /// <summary>API 1.2: <see cref="IPluginHost.TrackAnalysis"/> (BPM and key of library tracks).</summary>
     public const string LibraryWriteAnalysis = "library.write.analysis";
+    /// <summary>API 1.5: <see cref="IPluginHost.LibraryImport"/> (add audio files to the library).</summary>
+    public const string LibraryImport = "library.import";
+    /// <summary>API 1.6: <see cref="IPluginHost.AudioDecoder"/> (decode song files to PCM for analysis).</summary>
+    public const string AudioDecode = "audio.decode";
 
     /// <summary>Every permission this kit version knows.</summary>
     public static IReadOnlyList<string> All { get; } = new[]
     {
-        PlaybackRead, PlaybackControl, LibraryRead, Network, LyricsProvider, MenuCommands, Notifications, LibraryWriteAnalysis,
+        PlaybackRead, PlaybackControl, LibraryRead, Network, LyricsProvider, MenuCommands, Notifications, LibraryWriteAnalysis, LibraryImport, AudioDecode,
     };
 }
 
@@ -73,6 +77,36 @@ public sealed record TrackInfo(
     /// <summary>API 1.2. Musical key as Noctis stores it ("A minor", "8A", whatever the tags
     /// said); empty = unknown.</summary>
     public string MusicalKey { get; init; } = "";
+
+    /// <summary>API 1.3. The album this track belongs to, as Noctis groups it (the id
+    /// <see cref="IPluginHost.ShowAlbum"/> takes); empty = unknown.</summary>
+    public string AlbumId { get; init; } = "";
+
+    /// <summary>API 1.3. Path of the cover image Noctis shows for this track (its album's cover,
+    /// or its own when it differs), or null when it has none. Read-only: never write to it.</summary>
+    public string? ArtworkPath { get; init; }
+
+    /// <summary>API 1.3. Release type of the track's album: "Album", "Single", "EP",
+    /// "Compilation", "Live", "Remix", "Soundtrack" or "Other".</summary>
+    public string ReleaseType { get; init; } = "Album";
+
+    /// <summary>API 1.3. When the track was added to the library.</summary>
+    public DateTimeOffset? DateAdded { get; init; }
+
+    /// <summary>API 1.3. When the track was last played, or null for never.</summary>
+    public DateTimeOffset? LastPlayed { get; init; }
+
+    /// <summary>API 1.5. Marked "not liked".</summary>
+    public bool IsDisliked { get; init; }
+
+    /// <summary>API 1.5. Marked explicit.</summary>
+    public bool IsExplicit { get; init; }
+
+    /// <summary>API 1.5. "Skip when shuffling" is on: Noctis's own shuffle leaves it out.</summary>
+    public bool SkipWhenShuffling { get; init; }
+
+    /// <summary>API 1.5. Snoozed until this time (Noctis's shuffle leaves it out until then), or null.</summary>
+    public DateTimeOffset? SnoozedUntil { get; init; }
 }
 
 /// <summary>Transport control ("playback.control"). Calls from any thread are marshalled to the UI thread.</summary>
@@ -85,6 +119,53 @@ public interface IPlaybackControl
     void Previous();
     /// <summary>Seeks within the current track (clamped to its length).</summary>
     void Seek(TimeSpan position);
+
+    /// <summary>API 1.3. Replaces the queue with these library tracks (<see cref="TrackInfo.Id"/>,
+    /// in this order) and plays from <paramref name="startIndex"/>. Unknown ids are skipped.</summary>
+    void PlayTracks(IReadOnlyList<string> trackIds, int startIndex = 0)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.3. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.5. What is playing and what is up next (track ids, in order). Exact on the
+    /// UI thread; from another thread a best-effort copy.</summary>
+    PlaybackQueue GetQueue()
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.5. Replaces the songs up next with these library tracks (<see cref="TrackInfo.Id"/>,
+    /// in this order) without touching the song that is playing. Unknown ids are skipped, and
+    /// explicit songs are left out while Settings hides them. Noctis's own Shuffle is switched off:
+    /// the order is now the caller's (switching it on again shuffles what is up next, as always).</summary>
+    void SetUpNext(IReadOnlyList<string> trackIds)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.5. The user put songs in the queue themselves (Play Next or Add to Queue).
+    /// Raised on the UI thread, after the queue changed.</summary>
+    event EventHandler<TracksQueuedEventArgs>? TracksQueued
+    {
+        add => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
+        remove { }
+    }
+}
+
+/// <summary>API 1.5. A copy of the play queue (<see cref="IPlaybackControl.GetQueue"/>).</summary>
+/// <param name="CurrentTrackId">The current track's <see cref="TrackInfo.Id"/>, or null.</param>
+/// <param name="UpNext">The tracks up next, in order.</param>
+public sealed record PlaybackQueue(string? CurrentTrackId, IReadOnlyList<string> UpNext);
+
+/// <summary>API 1.5. Songs the user queued themselves (<see cref="IPlaybackControl.TracksQueued"/>).</summary>
+public sealed class TracksQueuedEventArgs : EventArgs
+{
+    /// <summary>Raised by Noctis; plugins only read it.</summary>
+    public TracksQueuedEventArgs(IReadOnlyList<string> trackIds, bool playNext)
+    {
+        TrackIds = trackIds;
+        PlayNext = playNext;
+    }
+
+    /// <summary>The queued tracks, in the order they now stand in the queue.</summary>
+    public IReadOnlyList<string> TrackIds { get; }
+
+    /// <summary>True for Play Next (they went to the front), false for Add to Queue (the end).</summary>
+    public bool PlayNext { get; }
 }
 
 /// <summary>Read-only library access ("library.read"). Returns copies, never live objects.</summary>
@@ -101,6 +182,30 @@ public interface ILibraryReader
     /// such as matching by <see cref="TrackInfo.FilePath"/>; call it off the UI thread for big libraries.</summary>
     IReadOnlyList<TrackInfo> GetAll()
         => throw new NotSupportedException("This Noctis build does not implement plugin API 1.2. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.4. The user's playlists, in sidebar order (copies). Smart playlists come
+    /// with the tracks their rules match right now. Play one with
+    /// <see cref="IPlaybackControl.PlayTracks"/> and its <see cref="PlaylistInfo.TrackIds"/>.</summary>
+    IReadOnlyList<PlaylistInfo> GetPlaylists()
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.4. Set minAppVersion in plugin.json.");
+}
+
+/// <summary>
+/// API 1.4. A plain copy of one of the user's playlists (<see cref="ILibraryReader.GetPlaylists"/>).
+/// </summary>
+/// <param name="Id">Stable id of the playlist.</param>
+/// <param name="Name">The name the user gave it.</param>
+/// <param name="CoverPath">The playlist's own cover image, or null when it has none (Noctis then
+/// shows a mosaic of its songs' covers). Read it, never write it.</param>
+/// <param name="TrackIds">Its library tracks (<see cref="TrackInfo.Id"/>), in playlist order.
+/// Ids the library no longer has are left out.</param>
+public sealed record PlaylistInfo(string Id, string Name, string? CoverPath, IReadOnlyList<string> TrackIds)
+{
+    /// <summary>The playlist's colour in Noctis ("#RRGGBB"), the tile colour it shows without a cover.</summary>
+    public string Color { get; init; } = "";
+
+    /// <summary>True for a smart (rule-based) playlist.</summary>
+    public bool IsSmart { get; init; }
 }
 
 /// <summary>One track's tempo and key for <see cref="ITrackAnalysisWriter.SetTrackAnalysisAsync"/>.

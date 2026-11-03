@@ -108,7 +108,14 @@ public class SettingsStorageRefreshTests : IDisposable
 
         var body = method.Groups["body"].Value;
         Assert.DoesNotContain("RefreshStorageInfo()", body);
-        Assert.Contains("RefreshStorageInfoAsync()", body);
+        // GitHub #139: the path refreshes only the shown tab, which takes the async walk.
+        Assert.Contains("RefreshShownTabData()", body);
+        var settings = File.ReadAllText(Path.Combine(
+            FindRepoRoot(), "src", "Noctis", "ViewModels", "SettingsViewModel.cs"));
+        var tabData = Regex.Match(settings, @"private void RefreshTabData\(string tab\)\s*\{(?<body>.*?)\n    \}", RegexOptions.Singleline);
+        Assert.True(tabData.Success, "RefreshTabData not found — update this test");
+        Assert.DoesNotContain("RefreshStorageInfo()", tabData.Groups["body"].Value);
+        Assert.Contains("RefreshStorageInfoAsync()", tabData.Groups["body"].Value);
     }
 
     private static string FindRepoRoot()

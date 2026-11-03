@@ -31,6 +31,7 @@ namespace Noctis.Services;
 public sealed class ArtistInfoService
 {
     private const string MusicBrainzBase = "https://musicbrainz.org/ws/2/artist/";
+    private const string MusicBrainzUrlLookup = "https://musicbrainz.org/ws/2/url";
     private const string WikidataApi = "https://www.wikidata.org/w/api.php";
     private const string WikipediaSummary = "https://en.wikipedia.org/api/rest_v1/page/summary/";
     /// <summary>A hit refreshes weekly; a confirmed "no such artist" is retried daily.
@@ -86,7 +87,7 @@ public sealed class ArtistInfoService
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var info = await FetchAsync(artistName, ct).ConfigureAwait(false)
+            var info = await FetchAsync(artistName, ct, GetPinnedMusicBrainzId(artistId)).ConfigureAwait(false)
                        ?? new ArtistInfo { Name = artistName, Found = false };
             info.FetchedAtUtc = DateTime.UtcNow;
             info.Schema = CurrentSchema;
@@ -104,6 +105,93 @@ public sealed class ArtistInfoService
         {
             _gate.Release();
         }
+    }
+
+    // ── Manual pick (GitHub #141: "Search Artist Info" on the artist page) ──
+
+    private string PinPath(Guid artistId) => Path.Combine(_dir, $"{artistId}.mbid");
+
+    /// <summary>The MusicBrainz artist the user's pick resolved to, or null (automatic: found by name).</summary>
+    public string? GetPinnedMusicBrainzId(Guid artistId)
+    {
+        try
+        {
+            var path = PinPath(artistId);
+            if (!File.Exists(path)) return null;
+            var mbid = File.ReadAllText(path).Trim();
+            return Guid.TryParse(mbid, out _) ? mbid : null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Pins the artist's facts to a MusicBrainz id (null: back to the name search) and
+    /// drops the cached entry, so the next <see cref="GetAsync"/> fetches the chosen artist.</summary>
+    public void SetPinnedMusicBrainzId(Guid artistId, string? mbid)
+    {
+        try
+        {
+            if (mbid != null && Guid.TryParse(mbid, out _)) File.WriteAllText(PinPath(artistId), mbid);
+            else if (File.Exists(PinPath(artistId))) File.Delete(PinPath(artistId));
+            var cache = Path.Combine(_dir, $"{artistId}.json");
+            if (File.Exists(cache)) File.Delete(cache);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// The MusicBrainz artist behind a Deezer account: MusicBrainz's own link to the Deezer
+    /// page, else the Wikidata item carrying that Deezer id (P2722) and a MusicBrainz id
+    /// (P434). Null when neither knows it. Network failures propagate.
+    /// </summary>
+    public async Task<string?> FindMusicBrainzIdForDeezerAsync(long deezerId, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var id = deezerId.ToString(CultureInfo.InvariantCulture);
+            var urlJson = await GetMusicBrainzAsync(
+                $"{MusicBrainzUrlLookup}?resource={Uri.EscapeDataString("https://www.deezer.com/artist/" + id)}&inc=artist-rels&fmt=json",
+                MusicBrainzLookupAttempts, ct).ConfigureAwait(false);
+            if (urlJson != null)
+            {
+                using var doc = JsonDocument.Parse(urlJson);
+                if (ParseUrlArtist(doc.RootElement) is { } mbid) return mbid;
+            }
+
+            var searchJson = await GetTextAsync(
+                $"{WikidataApi}?action=query&list=search&srsearch={Uri.EscapeDataString("haswbstatement:P2722=" + id)}&srlimit=1&format=json", ct)
+                .ConfigureAwait(false);
+            if (searchJson == null) return null;
+            string? qid;
+            using (var doc = JsonDocument.Parse(searchJson))
+                qid = ParseWikidataSearch(doc.RootElement);
+            if (qid == null) return null;
+            var entityJson = await GetTextAsync(
+                $"{WikidataApi}?action=wbgetentities&ids={qid}&props=claims&format=json", ct).ConfigureAwait(false);
+            if (entityJson == null) return null;
+            using var entity = JsonDocument.Parse(entityJson);
+            return ParseMusicBrainzClaim(entity.RootElement, qid);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>The artist a MusicBrainz <c>url</c> lookup (inc=artist-rels) links to, or null.
+    /// Several artists sharing one page (a duo's account) is no answer.</summary>
+    internal static string? ParseUrlArtist(JsonElement root)
+    {
+        if (!root.TryGetProperty("relations", out var rels) || rels.ValueKind != JsonValueKind.Array) return null;
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in rels.EnumerateArray())
+        {
+            if (r.ValueKind == JsonValueKind.Object && r.TryGetProperty("artist", out var a) && a.ValueKind == JsonValueKind.Object
+                && a.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String
+                && Guid.TryParse(idEl.GetString(), out _))
+                ids.Add(idEl.GetString()!);
+        }
+        return ids.Count == 1 ? ids.First() : null;
     }
 
     internal static bool IsStale(ArtistInfo info)
@@ -131,12 +219,14 @@ public sealed class ArtistInfoService
         catch { }
     }
 
-    private async Task<ArtistInfo?> FetchAsync(string artistName, CancellationToken ct)
+    private async Task<ArtistInfo?> FetchAsync(string artistName, CancellationToken ct, string? pinnedMbid = null)
     {
         // 1. Identify: MusicBrainz search (one retry through its load-shedding), else
         //    Wikidata's name search accepted only for an item that carries a MusicBrainz
         //    artist id (P434) — both give the id; the second also gives the article.
-        string? mbid = null, qid = null;
+        //    An artist the user picked (GitHub #141) skips the search.
+        string? mbid = pinnedMbid, qid = null;
+        if (mbid == null)
         try
         {
             var searchJson = await GetMusicBrainzAsync(

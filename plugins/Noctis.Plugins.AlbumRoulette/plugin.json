@@ -1,0 +1,25 @@
+{
+  "id": "dev.noctis.plugins.albumroulette",
+  "name": "Album Roulette",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "Spin a reel of your albums and let it pick what to play.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.AlbumRoulette.dll",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["library.read", "playback.control", "notifications", "menu.commands"],
+  "icon": "icon.png",
+  "settings": [
+    { "key": "albumOfTheDay", "label": "Album of the Day", "type": "bool", "default": false,
+      "description": "Get one album picked for you each day." },
+    { "key": "dailyHour", "label": "Daily pick hour", "type": "number", "default": 9, "min": 0, "max": 23,
+      "description": "When the daily pick shows up (0 to 23)." },
+    { "key": "skipCompilations", "label": "Leave out compilations", "type": "bool", "default": true,
+      "description": "Keep compilations off the reel." },
+    { "key": "animation", "label": "Animation", "type": "choice", "choices": ["Full", "Reduced"], "default": "Full",
+      "description": "Reduced is a short, gentle spin." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumRoulette"
+}

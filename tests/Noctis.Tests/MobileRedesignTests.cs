@@ -14,7 +14,7 @@ using Xunit;
 namespace Noctis.Tests;
 
 /// <summary>
-/// The phone redesign batch: a heart on every song row, the sheet's quick-action tiles, Search's
+/// The phone redesign batch: the song rows (no heart since 10-19), the sheet's quick-action tiles, Search's
 /// scopes / featured artist / sort / playlists, the song lists' sort, filters and in-list search,
 /// and the mini player's elapsed fill.
 /// </summary>
@@ -22,8 +22,10 @@ public class MobileRedesignTests
 {
     // ── Song rows ──
 
+    /// <summary>Owner 10-19: no heart on a song row (Songs, Favorites, Recently Added, playlists,
+    /// Search), only ⋯, whose menu favourites the song without playing it and says so after.</summary>
     [AvaloniaFact]
-    public void SongRow_Heart_TogglesTheFavourite_WithoutPlayingTheSong()
+    public void SongRow_HasNoHeart_AndItsMenuFavouritesTheSong_WithoutPlayingIt()
     {
         var a = MobileFixtures.Song("Alpha");
         using var rig = MobileFixtures.MakeRig(new[] { a });
@@ -31,17 +33,20 @@ public class MobileRedesignTests
         rig.Shell.OpenSongsCommand.Execute(null);
         window.UpdateLayout();
 
-        var heart = MobileFixtures.Named<Button>(view, "HeartButton");
-        Assert.False(heart.Classes.Contains("on"));
-        heart.Command!.Execute(heart.CommandParameter);
+        var row = MobileFixtures.Find<SongRow>(view);
+        Assert.Equal(new[] { "MoreButton" }, row.GetVisualDescendants().OfType<Button>().Select(b => b.Name));
+        var more = MobileFixtures.Named<Button>(row, "MoreButton");
+        more.Command!.Execute(more.CommandParameter);
+        Assert.Equal("Favorite", rig.Shell.Sheet!.FavouriteTileLabel);
+        rig.Shell.Sheet.ToggleFavouriteCommand.Execute(null);
         window.UpdateLayout();
 
         Assert.True(a.IsFavorite);
-        // The heart toggle refreshes the open list (FavoritesChanged): read the row's new button.
-        heart = MobileFixtures.Named<Button>(view, "HeartButton");
-        Assert.True(heart.Classes.Contains("on"));
         Assert.Equal(1, rig.Shell.Library.FavoriteCount);
         Assert.Null(rig.Shell.Player.CurrentTrack);
+        more = MobileFixtures.Named<Button>(MobileFixtures.Find<SongRow>(view), "MoreButton");
+        more.Command!.Execute(more.CommandParameter);
+        Assert.Equal("Favorited", rig.Shell.Sheet!.FavouriteTileLabel);
         window.Close();
     }
 

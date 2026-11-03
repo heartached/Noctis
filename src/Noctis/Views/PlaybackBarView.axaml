@@ -137,6 +137,11 @@
             <Setter Property="RenderTransform" Value="scale(1)"/>
             <Setter Property="Opacity" Value="0.45"/>
         </Style>
+        <!-- Previous / Play-Pause / Next press with Apple Music's feel instead (TransportGlyph:
+             a circle behind the glyph, the glyph dips and springs back), so no opacity dip. -->
+        <Style Selector="Button.transport-btn.tx:pressed">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
         <!-- Next with nothing after it (end of queue): dimmed, not a lit button that does
              nothing. Fluent's disabled grey fill is kept off the transparent pill. -->
         <Style Selector="Button.transport-btn:disabled">
@@ -678,57 +683,35 @@
                     </Button>
 
                     <!-- Previous button -->
-                    <Button Classes="pill-btn transport-btn"
+                    <Button Classes="pill-btn transport-btn tx"
                             Command="{Binding PreviousCommand}"
                             ToolTip.Tip="{loc:T PlaybackBar.PreviousTip}"
                             Width="34" Height="34">
-                        <Viewbox Width="18" Height="18">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="{DynamicResource IslandIconFill}"
-                                      Data="{StaticResource RewindIcon}" />
-                            </Canvas>
-                        </Viewbox>
+                        <controls:TransportGlyph Kind="Previous" Width="18" Height="18"
+                                                 Foreground="{DynamicResource IslandIconFill}" />
                     </Button>
 
                     <!-- Play/Pause button (prominent). No extra Margin: the panel's 2px
                          Spacing alone keeps the prev/play/next/repeat cluster tight,
                          Apple-Music style — gaps shrink, hit targets stay full size. -->
-                    <Button Classes="pill-btn-play transport-btn"
+                    <Button Classes="pill-btn-play transport-btn tx"
                             Command="{Binding PlayPauseCommand}"
                             ToolTip.Tip="{Binding PlayPauseTooltip}"
                             Width="40"
                             Height="40">
-                        <Panel>
-                            <!-- Play icon (shown when not playing) -->
-                            <Viewbox Width="20" Height="20"
-                                     IsVisible="{Binding State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconFill}"
-                                          Data="{StaticResource PlayIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                            <!-- Pause icon (shown when playing) -->
-                            <Viewbox Width="20" Height="20"
-                                     IsVisible="{Binding State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconFill}"
-                                          Data="{StaticResource PauseIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
+                        <!-- Play when not playing, Pause while playing; morphs between them. -->
+                        <controls:TransportGlyph Kind="PlayPause" Width="20" Height="20"
+                                                 Foreground="{DynamicResource IslandIconFill}"
+                                                 IsPlaying="{Binding State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}" />
                     </Button>
 
                     <!-- Forward button -->
-                    <Button Classes="pill-btn transport-btn"
+                    <Button Classes="pill-btn transport-btn tx"
                             Command="{Binding NextCommand}"
                             ToolTip.Tip="{loc:T PlaybackBar.ForwardTip}"
                             Width="34" Height="34">
-                        <Viewbox Width="18" Height="18">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="{DynamicResource IslandIconFill}"
-                                      Data="{StaticResource FastForwardIcon}" />
-                            </Canvas>
-                        </Viewbox>
+                        <controls:TransportGlyph Kind="Next" Width="18" Height="18"
+                                                 Foreground="{DynamicResource IslandIconFill}" />
                     </Button>
 
                     <!-- Skip forward N seconds (island extra) -->
@@ -838,7 +821,7 @@
                          Buttons → Repeat). -->
                     <Button Classes="pill-btn transport-btn"
                             Command="{Binding CycleRepeatCommand}"
-                            ToolTip.Tip="{loc:T PlaybackBar.RepeatTip}"
+                            ToolTip.Tip="{Binding RepeatModeTip}"
                             IsVisible="{Binding IslandShowRepeat}"
                             Width="34" Height="34">
                         <Panel Width="34" Height="34">
@@ -1622,6 +1605,15 @@
                                           IsVisible="{Binding CurrentTrackHasMusicVideoFile}">
                                     <MenuItem.Icon>
                                         <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideoUseVideoAudio}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <!-- The lyrics page's Audio / Video switch, from the island: shown on the
+                                     lyrics page while the song's clip is on screen. -->
+                                <MenuItem Header="{loc:T PlaybackBar.WatchMusicVideo}"
+                                          Command="{Binding ToggleWatchMusicVideoCommand}"
+                                          IsVisible="{Binding HasMusicVideo}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsWatchingMusicVideo}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />

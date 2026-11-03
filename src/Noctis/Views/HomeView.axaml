@@ -206,7 +206,9 @@
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
-        <Style Selector="Button.home-history-pill:pointerover">
+        <!-- On the template's presenter, as the chart rows: Fluent masks a Button.Background
+             setter on :pointerover (HomeChartRowBehaviourTests). -->
+        <Style Selector="Button.home-history-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
         </Style>
 
@@ -332,7 +334,7 @@
         <!-- Hover fill goes on the template's ContentPresenter: the Fluent Button theme
              paints that presenter itself on :pointerover, so a Button.Background setter
              is masked (HomeChartRowBehaviourTests pins this). -->
-        <Style Selector="Button.home-chart-row /template/ ContentPresenter#PART_ContentPresenter, Button.home-rail-track /template/ ContentPresenter#PART_ContentPresenter, Button.home-rail-album /template/ ContentPresenter#PART_ContentPresenter, Button.home-rail-card /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.home-chart-row /template/ ContentPresenter#PART_ContentPresenter, Button.home-history-pill /template/ ContentPresenter#PART_ContentPresenter, Button.home-rail-track /template/ ContentPresenter#PART_ContentPresenter, Button.home-rail-album /template/ ContentPresenter#PART_ContentPresenter, Button.home-rail-card /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="Background" Duration="0:0:0.08"/>
@@ -342,7 +344,7 @@
         <!-- A theme switch changes the same Background through HomeCardBackground; without
              this the hover transition lerps #18FFFFFF → an opaque fill through a lighter grey
              (the Ink flash). App.SetTheme puts theme-switching on the window for the swap. -->
-        <Style Selector=":is(Window).theme-switching Button.home-chart-row /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-rail-track /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-rail-album /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-rail-card /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector=":is(Window).theme-switching Button.home-chart-row /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-history-pill /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-rail-track /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-rail-album /template/ ContentPresenter#PART_ContentPresenter, :is(Window).theme-switching Button.home-rail-card /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Transitions">
                 <Transitions/>
             </Setter>
@@ -359,7 +361,7 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.home-chart-row:pointerover Button.art-play-overlay">
+        <Style Selector="Button.home-chart-row:pointerover Button.art-play-overlay, Button.home-history-pill:pointerover Button.art-play-overlay">
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="Button.art-play-overlay:pointerover, Button.art-play-overlay:pressed">
@@ -941,6 +943,25 @@
                                                                           Stretch="UniformToFill"
                                                                           RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <!-- Hover Play / Pause over the art, as on the Most Played / Last Played rows. -->
+                                                    <Button Classes="art-play-overlay"
+                                                            Background="#66000000"
+                                                            BorderThickness="0"
+                                                            Padding="0"
+                                                            CornerRadius="6,0,0,6"
+                                                            HorizontalAlignment="Stretch"
+                                                            VerticalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Cursor="Hand"
+                                                            ToolTip.Tip="{loc:T LibrarySongs.PlayFromHereTip}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).TogglePlayTimeRotationCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <Panel>
+                                                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsCurrentlyPlaying}"><Path Data="{StaticResource PlayIcon}" /></Viewbox>
+                                                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsCurrentlyPlaying}"><Path Data="{StaticResource PauseIcon}" /></Viewbox>
+                                                        </Panel>
+                                                    </Button>
                                                 </Panel>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
@@ -1003,6 +1024,24 @@
                                                                           Stretch="UniformToFill"
                                                                           RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <Button Classes="art-play-overlay"
+                                                            Background="#66000000"
+                                                            BorderThickness="0"
+                                                            Padding="0"
+                                                            CornerRadius="6,0,0,6"
+                                                            HorizontalAlignment="Stretch"
+                                                            VerticalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Cursor="Hand"
+                                                            ToolTip.Tip="{loc:T LibrarySongs.PlayFromHereTip}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).TogglePlayHeavyRotationCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <Panel>
+                                                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsCurrentlyPlaying}"><Path Data="{StaticResource PlayIcon}" /></Viewbox>
+                                                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsCurrentlyPlaying}"><Path Data="{StaticResource PauseIcon}" /></Viewbox>
+                                                        </Panel>
+                                                    </Button>
                                                 </Panel>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
@@ -1065,6 +1104,24 @@
                                                                           Stretch="UniformToFill"
                                                                           RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <Button Classes="art-play-overlay"
+                                                            Background="#66000000"
+                                                            BorderThickness="0"
+                                                            Padding="0"
+                                                            CornerRadius="6,0,0,6"
+                                                            HorizontalAlignment="Stretch"
+                                                            VerticalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Cursor="Hand"
+                                                            ToolTip.Tip="{loc:T LibrarySongs.PlayFromHereTip}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).TogglePlayRediscoveredCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <Panel>
+                                                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsCurrentlyPlaying}"><Path Data="{StaticResource PlayIcon}" /></Viewbox>
+                                                            <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsCurrentlyPlaying}"><Path Data="{StaticResource PauseIcon}" /></Viewbox>
+                                                        </Panel>
+                                                    </Button>
                                                 </Panel>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">

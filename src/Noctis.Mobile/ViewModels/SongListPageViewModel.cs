@@ -46,7 +46,29 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     public ShellViewModel Shell { get; }
 
-    public override string Title => _title;
+    /// <summary>A playlist's page reads the name the library holds now (a rename shows at once).</summary>
+    public override string Title => Playlist?.Name ?? _title;
+
+    /// <summary>The playlist this page shows, as the library holds it now; null for other lists.</summary>
+    public Playlist? Playlist => _playlist == null ? null : Shell.CurrentPlaylist(_playlist);
+
+    /// <summary>A playlist's page has its own ⋯ (Rename, Delete Playlist and the playlist's actions).</summary>
+    public bool IsPlaylist => _playlist != null;
+
+    /// <summary>The title row's ⋯ on a playlist's page: the playlist's glass menu.</summary>
+    [RelayCommand]
+    private void ShowPlaylistMenu()
+    {
+        if (Playlist is { } playlist) Shell.OpenPlaylistSheetCommand.Execute(playlist);
+    }
+
+    /// <summary>A row's ⋯ (or a long press): the song's menu, which on a playlist's page also
+    /// offers Remove from Playlist.</summary>
+    [RelayCommand]
+    private void OpenSongMenu(Track? track)
+    {
+        if (track != null) Shell.OpenTrackMenu(track, Playlist);
+    }
 
     /// <summary>The rows shown: the source, filtered and sorted.</summary>
     public BulkObservableCollection<Track> Songs { get; } = new();
@@ -101,9 +123,20 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     public bool IsFiltered => OnlyFavourites || OnlyDownloaded;
 
     /// <summary>Downloaded means a desktop song's offline copy: offered while signed in to a
-    /// computer, or while copies are kept from one. Signed out with none, the filter could only
-    /// empty the list (it offered itself whenever the account service existed: "0 of 11", 10-14).</summary>
-    public bool CanFilterDownloaded => Shell.Account is { } account && (account.IsSignedIn || account.DownloadedCount > 0);
+    /// computer, or while a song in this list is one (the computer revoked this phone: its songs
+    /// and copies stay). Signed out with none, the filter could only empty the list (it offered
+    /// itself whenever the account service existed: "0 of 11", 10-14), and so it did after a sign
+    /// out that kept the downloads: their songs leave the library, the files wait for a sign-in.</summary>
+    public bool CanFilterDownloaded => OffersDownloadedFilter && Shell.Account is { } account
+        && (account.IsSignedIn || _all.Any(account.IsDownloaded));
+
+    // A list that is already one of the filters does not offer it: the Favorites list's filter
+    // menu offered Favorites, the Downloaded list's Downloaded, and both did nothing.
+    public bool OffersFavouritesFilter { get; init; } = true;
+    public bool OffersDownloadedFilter { get; init; } = true;
+
+    /// <summary>The filter button: only with a filter to offer.</summary>
+    public bool HasFilters => OffersFavouritesFilter || CanFilterDownloaded;
 
     // ── Sort ──
 
@@ -152,6 +185,16 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         _all = _source().ToList();
         TotalCount = _all.Count;
+        if (_playlist != null) OnPropertyChanged(nameof(Title));   // renamed since
+        OnPropertyChanged(nameof(HasFilters));   // signed in or out since
+        // A filter no longer offered does not stay on: with the filter button gone too (a
+        // Favorites list) nothing could turn it off, and the list stayed empty.
+        if (OnlyDownloaded && !CanFilterDownloaded)
+        {
+            _onlyDownloaded = false;
+            OnPropertyChanged(nameof(OnlyDownloaded));
+            OnPropertyChanged(nameof(IsFiltered));
+        }
         Apply();
     }
 
@@ -175,6 +218,8 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         var names = StringComparer.CurrentCultureIgnoreCase;
         if (Sort == SongSort.Default) return IsDescending ? rows.Reverse() : rows;
+        // The playlist as the library holds it now: an edit re-reads it into a new object.
+        var playlist = _playlist == null ? null : Shell.CurrentPlaylist(_playlist);
         IOrderedEnumerable<Track> By<TKey>(Func<Track, TKey> key, IComparer<TKey>? comparer = null) =>
             IsDescending ? rows.OrderByDescending(key, comparer) : rows.OrderBy(key, comparer);
         var ordered = Sort switch
@@ -182,7 +227,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             SongSort.Title => By(t => t.Title, names),
             SongSort.Artist => By(t => t.Artist, names),
             SongSort.Album => By(t => t.Album, names),
-            SongSort.DateAdded => By(t => _playlist?.AddedDateFor(t.Id, t.DateAdded) ?? t.DateAdded),
+            SongSort.DateAdded => By(t => playlist?.AddedDateFor(t.Id, t.DateAdded) ?? t.DateAdded),
             SongSort.Year => By(t => t.Year),
             SongSort.Duration => By(t => t.Duration),
             SongSort.MostPlayed => By(t => t.PlayCount),

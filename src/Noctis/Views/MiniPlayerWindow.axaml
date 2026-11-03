@@ -4,6 +4,7 @@
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
         xmlns:controls="using:Noctis.Controls"
+        controls:LyricsWordEffect.Surface="MiniPlayer"
         xmlns:conv="using:Noctis.Converters"
         xmlns:helpers="using:Noctis.Helpers"
         x:Class="Noctis.Views.MiniPlayerWindow"
@@ -13,11 +14,17 @@
         MinWidth="160" MinHeight="140"
         MaxWidth="960" MaxHeight="840"
         CanResize="True"
+        helpers:UiScale.Exclude="True"
         Topmost="True"
         WindowDecorations="None"
         Background="Transparent"
         WindowStartupLocation="Manual">
 
+    <!-- Interface Size (GitHub #145) leaves this window at 100% (UiScale.Exclude): its code
+         sizes the WINDOW from its content's own sizes — each design's canonical size, the
+         form picked from ClientSize, the queue/lyrics drawer animating Window.Height, the
+         rounded window region cut from control bounds — all in the same DIPs. A scaled
+         content layer would put those two unit systems apart. -->
     <Window.Resources>
         <!-- Lossless waveform mark. Hoisted to a resource now that two forms (Card and
              Large icon) draw the quality badge — kept local to this window rather than
@@ -52,6 +59,7 @@
         <!-- Duet layout (ELRC v1:/v2:/v3: voice markers) — mini copy of the lyrics
              page keys; keep in sync. -->
         <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign"/>
+        <conv:LyricLineAlignmentConverter x:Key="LyricLineAlign"/>
         <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign"/>
         <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign"/>
         <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin"/>
@@ -89,7 +97,8 @@
                                               EmphasisMs="{Binding EmphasisMs}"
                                               HeldDurationMs="{Binding HeldDurationMs}"
                                               IsLastInLine="{Binding IsLastInLine}"
-                                              Lift="{Binding Lift}">
+                                              Lift="{Binding Lift}"
+                                              RightToLeft="{Binding IsRightToLeft}">
                         <controls:KaraokeWordText.Opacity>
                             <MultiBinding Converter="{StaticResource EmphasisGlow}">
                                 <Binding Path="EmphasisMs"/>
@@ -112,7 +121,8 @@
                                           EmphasisMs="{Binding EmphasisMs}"
                                           HeldDurationMs="{Binding HeldDurationMs}"
                                           IsLastInLine="{Binding IsLastInLine}"
-                                          Lift="{Binding Lift}"/>
+                                          Lift="{Binding Lift}"
+                                              RightToLeft="{Binding IsRightToLeft}"/>
                 </Panel>
                 </Viewbox>
             </Panel>
@@ -177,6 +187,15 @@
         </Style>
         <Style Selector="Button.mini-transport:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#40FFFFFF"/>
+        </Style>
+        <!-- Previous / Play-Pause / Next (tx) press with Apple Music's feel instead: the
+             TransportGlyph fades its own circle in over the hover circle (same diameter) and
+             dips the glyph, so no opacity dip and no instant #40 circle. -->
+        <Style Selector="Button.mini-transport.tx:pressed">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.mini-transport.tx:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#28FFFFFF"/>
         </Style>
         <!-- Next at the end of the queue: dimmed, without Fluent's disabled grey circle. -->
         <Style Selector="Button.mini-transport:disabled">
@@ -833,24 +852,13 @@
                                 Click="OnCloseClick">
                             <controls:LineIcon Data="{StaticResource MenuLineExpand}" Width="14" Height="14" Foreground="White"/>
                         </Button>
-                        <Button Classes="mini-transport" Width="46" Height="46"
+                        <Button Classes="mini-transport tx" Width="46" Height="46"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Command="{Binding Player.PlayPauseCommand}"
                                 ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                            <Panel>
-                                <Viewbox Width="24" Height="24"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource PlayIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="24" Height="24"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource PauseIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
+                            <controls:TransportGlyph Kind="PlayPause" Width="24" Height="24" HighlightSize="46"
+                                                     Foreground="White"
+                                                     IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                         </Button>
                     </Panel>
                 </Border>
@@ -958,42 +966,25 @@
                             </Viewbox>
                         </Panel>
                     </Button>
-                    <Button Classes="mini-transport" Width="34" Height="34"
+                    <Button Classes="mini-transport tx" Width="34" Height="34"
                             Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                        <Viewbox Width="19" Height="19">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="White" Data="{StaticResource RewindIcon}"/>
-                            </Canvas>
-                        </Viewbox>
+                        <controls:TransportGlyph Kind="Previous" Width="19" Height="19" HighlightSize="34"
+                                                 Foreground="White"/>
                     </Button>
-                    <Button Classes="mini-transport" Width="38" Height="38"
+                    <Button Classes="mini-transport tx" Width="38" Height="38"
                             Command="{Binding Player.PlayPauseCommand}"
                             ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                        <Panel>
-                            <Viewbox Width="22" Height="22"
-                                     IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource PlayIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="22" Height="22"
-                                     IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource PauseIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
+                        <controls:TransportGlyph Kind="PlayPause" Width="22" Height="22" HighlightSize="38"
+                                                 Foreground="White"
+                                                 IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                     </Button>
-                    <Button Classes="mini-transport" Width="34" Height="34"
+                    <Button Classes="mini-transport tx" Width="34" Height="34"
                             Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                        <Viewbox Width="19" Height="19">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="White" Data="{StaticResource FastForwardIcon}"/>
-                            </Canvas>
-                        </Viewbox>
+                        <controls:TransportGlyph Kind="Next" Width="19" Height="19" HighlightSize="34"
+                                                 Foreground="White"/>
                     </Button>
                     <Button Classes="mini-transport glass-circle" Width="34" Height="34"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel>
                             <Viewbox Width="18" Height="18"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1156,46 +1147,29 @@
                     </Button>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                        <Button Classes="mini-transport" Width="40" Height="40"
+                        <Button Classes="mini-transport tx" Width="40" Height="40"
                                 Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                            <Viewbox Width="21" Height="21">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource RewindIcon}"/>
-                                </Canvas>
-                            </Viewbox>
+                            <controls:TransportGlyph Kind="Previous" Width="21" Height="21" HighlightSize="40"
+                                                     Foreground="White"/>
                         </Button>
-                        <Button Classes="mini-transport" Width="46" Height="46"
+                        <Button Classes="mini-transport tx" Width="46" Height="46"
                                 Command="{Binding Player.PlayPauseCommand}"
                                 ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                            <Panel>
-                                <Viewbox Width="25" Height="25"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource PlayIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="25" Height="25"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource PauseIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
+                            <controls:TransportGlyph Kind="PlayPause" Width="25" Height="25" HighlightSize="46"
+                                                     Foreground="White"
+                                                     IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                         </Button>
-                        <Button Classes="mini-transport" Width="40" Height="40"
+                        <Button Classes="mini-transport tx" Width="40" Height="40"
                                 Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                            <Viewbox Width="21" Height="21">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource FastForwardIcon}"/>
-                                </Canvas>
-                            </Viewbox>
+                            <controls:TransportGlyph Kind="Next" Width="21" Height="21" HighlightSize="40"
+                                                     Foreground="White"/>
                         </Button>
                     </StackPanel>
 
                     <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
                             Command="{Binding Player.CycleRepeatCommand}"
-                            ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                            ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1411,44 +1385,27 @@
                         </Panel>
                     </Button>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
-                    <Button Classes="mini-transport" Width="40" Height="40"
+                    <Button Classes="mini-transport tx" Width="40" Height="40"
                             Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                        <Viewbox Width="21" Height="21">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="White" Data="{StaticResource RewindIcon}"/>
-                            </Canvas>
-                        </Viewbox>
+                        <controls:TransportGlyph Kind="Previous" Width="21" Height="21" HighlightSize="40"
+                                                 Foreground="White"/>
                     </Button>
-                    <Button Classes="mini-transport" Width="46" Height="46"
+                    <Button Classes="mini-transport tx" Width="46" Height="46"
                             Command="{Binding Player.PlayPauseCommand}"
                             ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                        <Panel>
-                            <Viewbox Width="25" Height="25"
-                                     IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource PlayIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="25" Height="25"
-                                     IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource PauseIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
+                        <controls:TransportGlyph Kind="PlayPause" Width="25" Height="25" HighlightSize="46"
+                                                 Foreground="White"
+                                                 IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                     </Button>
-                    <Button Classes="mini-transport" Width="40" Height="40"
+                    <Button Classes="mini-transport tx" Width="40" Height="40"
                             Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                        <Viewbox Width="21" Height="21">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="White" Data="{StaticResource FastForwardIcon}"/>
-                            </Canvas>
-                        </Viewbox>
+                        <controls:TransportGlyph Kind="Next" Width="21" Height="21" HighlightSize="40"
+                                                 Foreground="White"/>
                     </Button>
                     </StackPanel>
                     <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1675,42 +1632,25 @@
                                 </Viewbox>
                             </Panel>
                         </Button>
-                        <Button Classes="mini-transport" Width="32" Height="32"
+                        <Button Classes="mini-transport tx" Width="32" Height="32"
                                 Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                            <Viewbox Width="17" Height="17">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource RewindIcon}"/>
-                                </Canvas>
-                            </Viewbox>
+                            <controls:TransportGlyph Kind="Previous" Width="17" Height="17" HighlightSize="32"
+                                                     Foreground="White"/>
                         </Button>
-                        <Button Classes="mini-transport" Width="38" Height="38"
+                        <Button Classes="mini-transport tx" Width="38" Height="38"
                                 Command="{Binding Player.PlayPauseCommand}"
                                 ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                            <Panel>
-                                <Viewbox Width="21" Height="21"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource PlayIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="21" Height="21"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource PauseIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
+                            <controls:TransportGlyph Kind="PlayPause" Width="21" Height="21" HighlightSize="38"
+                                                     Foreground="White"
+                                                     IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                         </Button>
-                        <Button Classes="mini-transport" Width="32" Height="32"
+                        <Button Classes="mini-transport tx" Width="32" Height="32"
                                 Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                            <Viewbox Width="17" Height="17">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource FastForwardIcon}"/>
-                                </Canvas>
-                            </Viewbox>
+                            <controls:TransportGlyph Kind="Next" Width="17" Height="17" HighlightSize="32"
+                                                     Foreground="White"/>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="30" Height="30"
-                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                             <Panel>
                                 <Viewbox Width="16" Height="16"
                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1847,7 +1787,6 @@
                                                 Padding="0"
                                                 Margin="0,9"
                                                 MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                                HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                 RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                                 HorizontalContentAlignment="Left"
                                                 Cursor="Hand"
@@ -1855,6 +1794,12 @@
                                                 Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.SeekToLineCommand}"
                                                 CommandParameter="{Binding}"
                                                 Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
+                                                <Button.HorizontalAlignment>
+                                                    <MultiBinding Converter="{StaticResource LyricLineAlign}">
+                                                        <Binding Path="Voice"/>
+                                                        <Binding Path="IsRightToLeft"/>
+                                                    </MultiBinding>
+                                                </Button.HorizontalAlignment>
                                             <StackPanel HorizontalAlignment="Left"
                                                         MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                             <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
@@ -1870,11 +1815,12 @@
                                                            IsVisible="{Binding ShowLineText}"
                                                            TextWrapping="Wrap"/>
 
-                                                <!-- Word-level karaoke layer -->
-                                                <ItemsControl ItemsSource="{Binding Words}"
+                                                <!-- Word-level karaoke layer (long lyrics: near the sung line only,
+                                                     the resting stand-in below elsewhere) -->
+                                                <ItemsControl ItemsSource="{Binding LiveWords}"
                                                               Classes="word-layer"
                                                               Classes.active="{Binding IsSweepFocused}"
-                                                              IsVisible="{Binding ShowWords}"
+                                                              IsVisible="{Binding ShowLiveWords}"
                                                               Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                               HorizontalAlignment="Left"
                                                               ClipToBounds="False"
@@ -1887,10 +1833,24 @@
                                                     </ItemsControl.Transitions>
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
-                                                            <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                            <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
                                                         </ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
                                                 </ItemsControl>
+                                                <controls:KaraokeRestingWords Words="{Binding Words}"
+                                                                      RightToLeft="{Binding IsRightToLeft}"
+                                                                              IsVisible="{Binding ShowRestingWords}"
+                                                                              Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                                              Foreground="White"
+                                                                              ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"
+                                                                              HorizontalAlignment="Left"
+                                                                              MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                                    <controls:KaraokeRestingWords.Transitions>
+                                                        <Transitions>
+                                                            <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                        </Transitions>
+                                                    </controls:KaraokeRestingWords.Transitions>
+                                                </controls:KaraokeRestingWords>
 
                                                 <!-- Intro dots: first dot sits over the first letter -->
                                                 <StackPanel Orientation="Horizontal"
@@ -1932,7 +1892,7 @@
                                                 </ItemsControl.Transitions>
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                        <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                             </ItemsControl>
@@ -1962,7 +1922,7 @@
                                                 </ItemsControl.Transitions>
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                        <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                             </ItemsControl>
@@ -2128,7 +2088,7 @@
                                  on a card too narrow for five the toggles step aside (SyncPillToggles). -->
                             <Grid Grid.Row="2" x:Name="PillTransport" ColumnDefinitions="Auto,*,Auto" MaxWidth="240"
                                   VerticalAlignment="Center" Margin="0,4,0,0">
-                            <Button Grid.Column="0" x:Name="PillShuffleButton" Classes="mini-transport" Width="26" Height="26"
+                            <Button Grid.Column="0" x:Name="PillShuffleButton" Classes="mini-transport glass-circle" Width="26" Height="26"
                                     HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                                 <Panel>
@@ -2146,44 +2106,27 @@
                             </Button>
                             <StackPanel Grid.Column="1" x:Name="PillTransportCenter" Orientation="Horizontal" Spacing="18"
                                         HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Button Classes="mini-transport" Width="30" Height="30"
+                                <Button Classes="mini-transport tx" Width="30" Height="30"
                                         Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                                    <Viewbox Width="17" Height="17">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource RewindIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
+                                    <controls:TransportGlyph Kind="Previous" Width="17" Height="17" HighlightSize="30"
+                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Button>
-                                <Button Classes="mini-transport" Width="32" Height="32"
+                                <Button Classes="mini-transport tx" Width="32" Height="32"
                                         Command="{Binding Player.PlayPauseCommand}"
                                         ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                                    <Panel>
-                                        <Viewbox Width="20" Height="20"
-                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                            <Canvas Width="24" Height="24">
-                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PlayIcon}"/>
-                                            </Canvas>
-                                        </Viewbox>
-                                        <Viewbox Width="20" Height="20"
-                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                            <Canvas Width="24" Height="24">
-                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PauseIcon}"/>
-                                            </Canvas>
-                                        </Viewbox>
-                                    </Panel>
+                                    <controls:TransportGlyph Kind="PlayPause" Width="20" Height="20" HighlightSize="32"
+                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                             IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                                 </Button>
-                                <Button Classes="mini-transport" Width="30" Height="30"
+                                <Button Classes="mini-transport tx" Width="30" Height="30"
                                         Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                                    <Viewbox Width="17" Height="17">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource FastForwardIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
+                                    <controls:TransportGlyph Kind="Next" Width="17" Height="17" HighlightSize="30"
+                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Button>
                             </StackPanel>
-                            <Button Grid.Column="2" x:Name="PillRepeatButton" Classes="mini-transport" Width="26" Height="26"
+                            <Button Grid.Column="2" x:Name="PillRepeatButton" Classes="mini-transport glass-circle" Width="26" Height="26"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                                 <Panel>
                                     <Viewbox Width="15" Height="15"
                                              IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -2313,7 +2256,7 @@
                             <!-- Transport: shuffle | prev play next | repeat, as on the Pill (see there);
                                  the row spans the seek row, so the toggles line up under its times. -->
                             <Grid x:Name="SleeveTransport" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
-                            <Button Grid.Column="0" x:Name="SleeveShuffleButton" Classes="mini-transport" Width="30" Height="30"
+                            <Button Grid.Column="0" x:Name="SleeveShuffleButton" Classes="mini-transport glass-circle" Width="30" Height="30"
                                     HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                                 <Panel>
@@ -2330,44 +2273,27 @@
                                 </Panel>
                             </Button>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Button Classes="mini-transport" Width="32" Height="32"
+                                <Button Classes="mini-transport tx" Width="32" Height="32"
                                         Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                                    <Viewbox Width="18" Height="18">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource RewindIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
+                                    <controls:TransportGlyph Kind="Previous" Width="18" Height="18" HighlightSize="32"
+                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Button>
-                                <Button Classes="mini-transport" Width="36" Height="36"
+                                <Button Classes="mini-transport tx" Width="36" Height="36"
                                         Command="{Binding Player.PlayPauseCommand}"
                                         ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                                    <Panel>
-                                        <Viewbox Width="22" Height="22"
-                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                            <Canvas Width="24" Height="24">
-                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PlayIcon}"/>
-                                            </Canvas>
-                                        </Viewbox>
-                                        <Viewbox Width="22" Height="22"
-                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                            <Canvas Width="24" Height="24">
-                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PauseIcon}"/>
-                                            </Canvas>
-                                        </Viewbox>
-                                    </Panel>
+                                    <controls:TransportGlyph Kind="PlayPause" Width="22" Height="22" HighlightSize="36"
+                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                             IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
                                 </Button>
-                                <Button Classes="mini-transport" Width="32" Height="32"
+                                <Button Classes="mini-transport tx" Width="32" Height="32"
                                         Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                                    <Viewbox Width="18" Height="18">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource FastForwardIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
+                                    <controls:TransportGlyph Kind="Next" Width="18" Height="18" HighlightSize="32"
+                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Button>
                             </StackPanel>
-                            <Button Grid.Column="2" x:Name="SleeveRepeatButton" Classes="mini-transport" Width="30" Height="30"
+                            <Button Grid.Column="2" x:Name="SleeveRepeatButton" Classes="mini-transport glass-circle" Width="30" Height="30"
                                     HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
+                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
                                 <Panel>
                                     <Viewbox Width="17" Height="17"
                                              IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">

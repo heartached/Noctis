@@ -37,7 +37,9 @@ public partial class LyricsView : UserControl
     }
     // Lines currently carrying a transient cascade translate (Apple Music-style
     // staggered glide); cleared whenever the scroll animation ends or is cancelled.
-    private List<(Control Control, double DelayMs)>? _cascadeLines;
+    private HashSet<Control>? _cascadeLines;
+    // The glide in flight (or last run): a new line change hands its velocities on.
+    private LineGlide? _glide;
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
 
@@ -647,8 +649,11 @@ public partial class LyricsView : UserControl
     // hide the colour the user picked.
     private void UpdateFlowAnimationState(LyricsViewModel vm)
     {
+        // A music video behind the lyrics or full size covers the artwork stack the same way.
         var flowing = vm.Player.LyricsFlowingLightEnabled
-                      && string.IsNullOrEmpty(vm.Player.LyricsBackgroundMediaPath);
+                      && string.IsNullOrEmpty(vm.Player.LyricsBackgroundMediaPath)
+                      && !vm.Player.ShowsMusicVideoBackdrop
+                      && !vm.Player.ShowsMusicVideoFullSize;
         var style = FlowingStyles.Normalize(vm.Player.LyricsFlowingStyle);
         var kawarp = flowing && vm.IsColorModeArtwork && FlowingStyles.IsKawarp(style);
         var plugin = flowing && vm.IsColorModeArtwork && !kawarp ? SelectedPluginLayer(vm) : null;
@@ -677,7 +682,9 @@ public partial class LyricsView : UserControl
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
                 or nameof(PlayerViewModel.LyricsFlowingStyle)
                 or nameof(PlayerViewModel.LyricsDriftMovement)
-                or nameof(PlayerViewModel.LyricsBackgroundMediaPath) &&
+                or nameof(PlayerViewModel.LyricsBackgroundMediaPath)
+                or nameof(PlayerViewModel.ShowsMusicVideoBackdrop)
+                or nameof(PlayerViewModel.ShowsMusicVideoFullSize) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);
     }
@@ -832,6 +839,7 @@ public partial class LyricsView : UserControl
         _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
         _chaseRunning = false;
+        _glide = null;
         ClearCascadeTransforms();
     }
 
@@ -979,7 +987,7 @@ public partial class LyricsView : UserControl
     private void ClearCascadeTransforms()
     {
         if (_cascadeLines == null) return;
-        foreach (var (control, _) in _cascadeLines)
+        foreach (var control in _cascadeLines)
         {
             if (control.RenderTransform is TranslateTransform tt)
                 tt.Y = 0;
@@ -1108,13 +1116,17 @@ public partial class LyricsView : UserControl
     }
 
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.
-    // UnsyncedLines mirrors LyricLines minus the optional "..." intro placeholder at index 0.
+    // UnsyncedLines mirrors LyricLines minus the "..." placeholders (the intro at index 0
+    // and any instrumental interludes), so every placeholder up to the line is skipped.
     private static int MapSyncedToUnsyncedIndex(LyricsViewModel vm)
     {
         if (vm.ActiveLineIndex < 0 || vm.LyricLines.Count == 0 || vm.UnsyncedLines.Count == 0)
             return -1;
-        var hasIntro = vm.LyricLines[0].Text == "...";
-        var idx = vm.ActiveLineIndex - (hasIntro ? 1 : 0);
+        var placeholders = 0;
+        for (var i = 0; i <= vm.ActiveLineIndex && i < vm.LyricLines.Count; i++)
+            if (vm.LyricLines[i].IsIntroPlaceholder || i == 0 && vm.LyricLines[0].Text == "...")
+                placeholders++;
+        var idx = vm.ActiveLineIndex - placeholders;
         if (idx < 0) idx = 0;
         if (idx >= vm.UnsyncedLines.Count) idx = vm.UnsyncedLines.Count - 1;
         return idx;
@@ -1154,13 +1166,18 @@ public partial class LyricsView : UserControl
             {
                 Trace($"scroll→{index} chase to {scrubTarget:0} (sinceLast {sinceLastMs:0}ms, sinceSeek {sinceSeekMs:0}ms)");
                 _scrollAnimationGeneration++;   // supersede the eased glide, keep the chase
+                _glide = null;
                 ClearCascadeTransforms();
                 ChaseTo(LyricsScrollViewer, scrubTarget);
                 return;
             }
         }
 
-        CancelScrollAnimation();
+        // Stop the frame loop of a glide in flight but keep its state: the new glide
+        // starts from exactly what is on screen — offset, cascade translates and their
+        // velocities (LineGlide). Every early return below cancels properly instead.
+        _scrollAnimationGeneration++;
+        var started = false;
 
         // Start the glide NOW, on the same frame the line's scale/opacity transitions
         // start. It used to wait on a 10ms DispatcherTimer "for layout to settle" —
@@ -1204,22 +1221,29 @@ public partial class LyricsView : UserControl
             var currentOffset = LyricsScrollViewer.Offset.Y;
             var diff = targetOffset - currentOffset;
 
-            if (Math.Abs(diff) < 2)
+            if (Math.Abs(diff) < 2 && _glide == null)
             {
                 Trace($"scroll→{index} snap {currentOffset:0}→{targetOffset:0}");
                 ApplyScrollOffset(LyricsScrollViewer, targetOffset);
                 return;
             }
 
-            // A line-to-line advance runs exactly LineMotion.DurationMs so it lands
-            // together with the line's own scale transition; only seek-sized jumps
-            // stretch beyond it.
-            var distance = Math.Abs(diff);
-            var durationMs = (int)Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
-            Trace($"scroll→{index} glide {currentOffset:0}→{targetOffset:0} ({diff:+0;-0}px) {durationMs}ms");
-            AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs, panel, index);
+            // The spring follows the tempo: how long this line stays the target (its start
+            // to the next line's start). Fast rap lines land quickly, slow lines glide.
+            var hold = DataContext is LyricsViewModel lvm
+                ? Noctis.Services.LyricsTimeline.HoldMs(lvm.LyricLines, index)
+                : double.NaN;
+            var spring = LineMotion.ForHold(hold);
+            Trace($"scroll→{index} glide {currentOffset:0}→{targetOffset:0} ({diff:+0;-0}px) hold {hold:0}ms " +
+                  $"spring ζ{spring.Zeta:0.00} ωn{spring.NaturalFrequency:0.0}{(_glide != null ? " carried" : "")}");
+            AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, spring, panel, index);
+            started = true;
         }
         catch { }
+        finally
+        {
+            if (!started) CancelScrollAnimation();
+        }
     }
 
     private void JumpToActiveLineWhenReady(int index)
@@ -1280,15 +1304,15 @@ public partial class LyricsView : UserControl
     /// Frame-clock scroll animation: each step is scheduled via TopLevel.RequestAnimationFrame,
     /// so movement is vsync-locked instead of a 16ms DispatcherTimer beating against the
     /// compositor's ~16.7ms frame interval (which dropped/doubled a frame about once a second).
-    /// Uses smootherstep easing so lyric movement glides in and out instead of jumping.
-    /// When the lines panel and active index are supplied, lines below the active line
-    /// lag the base glide with a per-line stagger (transient translate that relaxes to
-    /// zero), so the stack settles top-down instead of moving as one rigid slab.
+    /// The offset and every line follow one <see cref="LineGlide"/> on <paramref name="spring"/>;
+    /// lines below the active one set off a stagger later each (a transient translate that
+    /// relaxes to zero), so the stack settles top-down instead of moving as one rigid slab.
+    /// A glide still in flight (<see cref="_glide"/>) hands over positions and velocities.
     /// </summary>
-    private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, int durationMs,
+    private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, LineSpring spring,
         Panel? linesPanel = null, int activeIndex = -1)
     {
-        CancelScrollAnimation();
+        _scrollAnimationGeneration++;
         _isProgrammaticScroll = true;
 
         var delta = to - from;
@@ -1301,27 +1325,22 @@ public partial class LyricsView : UserControl
         // as an equal jump DOWN. That is why seeking backwards ran visibly heavier than
         // seeking forwards. Past a viewport and a half, glide cleanly with no cascade.
         var seekSized = Math.Abs(delta) > scrollViewer.Viewport.Height * 1.5;
+        var cascade = linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8 && !seekSized;
 
-        var cascade = new List<(Control Control, double DelayMs)>();
-        if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8 && !seekSized)
-        {
-            // Every line below the active one takes part; only the DELAY is capped.
-            // Cutting the list at CascadeMaxLines left the first excluded line static
-            // while the last included one lagged a full line height onto it — lyrics
-            // overlapped mid-glide wherever that boundary was on screen (worst in the
-            // side panel; see LyricsPanelView.AnimateScroll).
-            for (int i = activeIndex + 1; i < linesPanel.Children.Count; i++)
-            {
-                cascade.Add((linesPanel.Children[i],
-                    Math.Min(i - activeIndex, CascadeMaxLines) * CascadeDelayPerLineMs));
-            }
-        }
-        _cascadeLines = cascade.Count > 0 ? cascade : null;
+        // Every line below the active one takes part; only the DELAY is capped. Cutting
+        // the list at CascadeMaxLines left the first excluded line static while the last
+        // included one lagged a full line height onto it — lyrics overlapped mid-glide
+        // wherever that boundary was on screen (see LyricsPanelView.AnimateScroll).
+        var lines = linesPanel?.Children;
+        var lineCount = lines?.Count ?? 0;
+        var glide = LineGlide.Begin(_glide, NowMs(), from, to, spring, lineCount, activeIndex,
+            cascade ? CascadeDelayPerLineMs : 0, CascadeMaxLines,
+            i => lines![i].RenderTransform is TranslateTransform tt ? tt.Y : 0);
+        _glide = glide;
+        var touched = _cascadeLines ??= new HashSet<Control>();
 
         var generation = _scrollAnimationGeneration;
-        var sw = Stopwatch.StartNew();
-        var totalMs = (double)durationMs;
-        var maxDelayMs = cascade.Count > 0 ? cascade[^1].DelayMs : 0;
+        var startMs = glide.StartMs;
 
         // Frame-pacing diagnostic: a dropped frame during the glide is a visible skip
         // (positions are time-based, so the next frame catches up in one step). One
@@ -1337,8 +1356,8 @@ public partial class LyricsView : UserControl
             // Superseded or cancelled: the canceller already reset flags/transforms.
             if (generation != _scrollAnimationGeneration) return;
 
-            var elapsed = sw.Elapsed.TotalMilliseconds;
-            var t = Math.Min(1.0, elapsed / totalMs);
+            var now = NowMs();
+            var elapsed = now - startMs;
 
             frames++;
             if (!double.IsNaN(lastFrameMs))
@@ -1349,66 +1368,65 @@ public partial class LyricsView : UserControl
             }
             lastFrameMs = elapsed;
 
-            // Scroll easing: the shared line-motion curve (ζ=0.85 spring: sub-pixel
-            // overshoot — the old wobbly SpringEase read as "jumped past, then snapped
-            // back"; a critically damped one crept for 3px after the eye saw it stop).
-            // Same curve as the line's scale transition, so size and position arrive
-            // together; smootherstep sat nearly still for its first quarter while the
-            // scale had already popped.
-            var eased = LineMotion.Ease(t);
-            ApplyScrollOffset(scrollViewer, from + delta * eased);
+            var scrollY = glide.Offset(now);
+            ApplyScrollOffset(scrollViewer, scrollY);
 
-            // Stagger: each cascade line is displaced by the gap between the base ease
-            // and its own delayed ease — positive while catching up, zero when settled.
-            // Chained clamp: on large scroll deltas the raw stagger between neighbours
-            // exceeds the inter-line gap, so bound each line's lag to its predecessor's
-            // (the list is in top-to-bottom order) — lines can never cross.
-            // The lag chain must be walked in full — each line's clamp depends on the one
-            // above it — but only lines near the viewport need the transform WRITTEN.
-            // A write costs a visual invalidation plus a re-render of that line's blur
-            // effect, and "every line below the active one" means a backward seek (which
-            // lands on a low index) enrolled most of the song while an equally long
-            // forward seek enrolled a handful — several times the per-frame cost for the
-            // same travel, which is why scrolling up felt sluggish and scrolling down
-            // did not. Off-screen lines render identically at any lag, so skipping them
-            // changes nothing visible.
+            // Each line is displaced by the gap between the offset and its own course —
+            // positive while catching up, zero when settled. Chained clamp below the active
+            // line: on large scroll deltas the raw stagger between neighbours exceeds the
+            // inter-line gap, so each line's lag is bound to its predecessor's (the list is
+            // top-to-bottom) — lines can never cross. The chain is walked in full — each
+            // line's clamp depends on the one above it — but only lines near the viewport
+            // need the transform WRITTEN: a write costs a visual invalidation plus a
+            // re-render of that line's blur effect, and a backward seek (which lands on a
+            // low index) enrolls most of the song. Off-screen lines render identically at
+            // any lag. Bounds is layout-only, so the transforms written here don't move it;
+            // the band is a viewport of slack either side of the visible area.
             var viewportHeight = scrollViewer.Viewport.Height;
-            var scrollY = from + delta * eased;
             var bandTop = scrollY - viewportHeight;
             var bandBottom = scrollY + viewportHeight * 2;
 
-            var prevLag = 0.0;
-            foreach (var (control, delayMs) in cascade)
+            if (lines != null)
             {
-                var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
-                var lag = LineMotion.CascadeStep(
-                    delta * (eased - LineMotion.Ease(tLine)), prevLag, MaxCascadeLagStepPx);
-                prevLag = lag;
-
-                // Bounds is layout-only, so it is not disturbed by the transforms written
-                // here. The band is a viewport of slack either side of the visible area,
-                // so a line is already being driven well before it can be seen.
-                var top = control.Bounds.Top + lag;
-                var target = top + control.Bounds.Height >= bandTop && top <= bandBottom ? lag : 0.0;
-
-                if (control.RenderTransform is TranslateTransform tt)
+                var prevLag = 0.0;
+                var n = Math.Min(lineCount, lines.Count);
+                for (var i = 0; i < n; i++)
                 {
-                    // ReSharper disable once CompareOfFloatsByEqualityOperator
-                    if (tt.Y != target) tt.Y = target;
-                }
-                else if (target != 0.0)
-                {
-                    control.RenderTransform = new TranslateTransform(0, target);
+                    var lag = glide.LineLag(i, now);
+                    if (i > activeIndex)
+                    {
+                        lag = LineMotion.CascadeStep(lag, prevLag, MaxCascadeLagStepPx);
+                        prevLag = lag;
+                    }
+                    var control = lines[i];
+                    var top = control.Bounds.Top + lag;
+                    var target = top + control.Bounds.Height >= bandTop && top <= bandBottom ? lag : 0.0;
+
+                    if (control.RenderTransform is TranslateTransform tt)
+                    {
+                        // ReSharper disable once CompareOfFloatsByEqualityOperator
+                        if (tt.Y != target)
+                        {
+                            tt.Y = target;
+                            touched.Add(control);
+                        }
+                    }
+                    else if (Math.Abs(target) > 0.01)
+                    {
+                        control.RenderTransform = new TranslateTransform(0, target);
+                        touched.Add(control);
+                    }
                 }
             }
 
-            if (t >= 1.0 && elapsed >= totalMs + maxDelayMs)
+            if (glide.IsDone(now))
             {
                 ApplyScrollOffset(scrollViewer, to);
                 ClearCascadeTransforms();
+                _glide = null;
                 _isProgrammaticScroll = false;
-                Trace($"glide end at {elapsed:0}ms (planned {durationMs}+{maxDelayMs:0}): {frames} frames, " +
-                      $"{droppedFrames} gap(s) >30ms, worst {maxGapMs:0}ms at {maxGapAtMs:0}ms, {cascade.Count} cascade lines, offset {to:0}");
+                Trace($"glide end at {elapsed:0}ms (planned {glide.EndMs - startMs:0}): {frames} frames, " +
+                      $"{droppedFrames} gap(s) >30ms, worst {maxGapMs:0}ms at {maxGapAtMs:0}ms, cascade {cascade}, offset {to:0}");
                 return;
             }
 
@@ -1417,6 +1435,8 @@ public partial class LyricsView : UserControl
 
         RequestScrollFrame(Frame, scrollViewer, to);
     }
+
+    private static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
     /// <summary>Schedules the next animation frame. If the view left the visual tree
     /// mid-animation (no TopLevel → no frame callbacks), snaps to the target instead

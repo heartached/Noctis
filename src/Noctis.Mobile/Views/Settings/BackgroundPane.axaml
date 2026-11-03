@@ -1,0 +1,261 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.BackgroundPane"
+             x:DataType="vm:BackgroundSettingsViewModel">
+
+    <!-- Settings › Background (the approved mockup): a live preview of the page over the chosen
+         background, Slow Motion and Strength, then the choices. Swatches are rounded squares, four
+         across, the name under each; the chosen one takes an accent ring and a check. The sheet's
+         header and back button are the Settings host's; scrolling is its too. Shared look:
+         GroupedStyles.axaml (the same classes the other Settings pages use). -->
+
+    <UserControl.Styles>
+        <Style Selector="Button.swatch">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16">
+                        <TransformOperationsTransition.Easing><CubicEaseOut /></TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.swatch:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.95)" />
+        </Style>
+        <Style Selector="Button.swatch:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.swatch:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- The ring: clear until chosen, then the accent; the swatch sits 4 dp inside it. -->
+        <Style Selector="Button.swatch Border.ring">
+            <Setter Property="Width" Value="76" />
+            <Setter Property="Height" Value="76" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="BorderThickness" Value="2.5" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.swatch.selected Border.ring">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentTextExactBrush}" />
+        </Style>
+        <Style Selector="Button.swatch Border.face">
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="BorderThickness" Value="0.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PhoneChromeOutlineBrush}" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+        <Style Selector="Button.swatch Border.check">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="0,0,7,7" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.swatch.selected Border.check">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="Button.swatch TextBlock.swatch-name">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,5,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        </Style>
+        <Style Selector="Button.swatch.selected TextBlock.swatch-name">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <!-- The two choice rows (Now Playing, Off): a tile, the name, a check when chosen. -->
+        <Style Selector="Button.choice-row">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.choice-row:pressed">
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="Button.choice-row:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.choice-row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.choice-tile">
+            <Setter Property="Width" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="BorderThickness" Value="0.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PhoneChromeOutlineBrush}" />
+        </Style>
+        <Style Selector="Path.pane-glyph">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Stretch" Value="None" />
+            <Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Stroke" Value="{DynamicResource AccentTextExactBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- The preview: the page's own background, a Home with three tiles and a mini player. -->
+        <Style Selector="Border.pv-line">
+            <Setter Property="Height" Value="7" />
+            <Setter Property="CornerRadius" Value="3.5" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource PhoneFillBrush}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.DataTemplates>
+        <DataTemplate x:DataType="vm:BackgroundSwatch">
+            <Button Classes="swatch" Classes.selected="{Binding IsSelected}"
+                    Command="{Binding $parent[UserControl].((vm:BackgroundSettingsViewModel)DataContext).PickCommand}"
+                    CommandParameter="{Binding}"
+                    AutomationProperties.Name="{Binding Name}">
+                <StackPanel>
+                    <Panel>
+                        <Border Classes="ring">
+                            <Border Classes="face" Background="{Binding Brush}" />
+                        </Border>
+                        <Border Classes="check" Margin="0,0,5,5">
+                            <Path Data="M5 12.5l4.2 4.2L19 7" Stroke="White" StrokeThickness="2.4" StrokeLineCap="Round" StrokeJoin="Round"
+                                  Width="22" Height="22" Stretch="None" RenderTransform="scale(0.78)" />
+                        </Border>
+                    </Panel>
+                    <TextBlock Classes="swatch-name" Text="{Binding Name}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <StackPanel Margin="16,6,16,24">
+
+        <!-- Live preview: what a page looks like over the chosen background. -->
+        <Border Name="PreviewCard" CornerRadius="28" ClipToBounds="True" Height="232"
+                Background="{DynamicResource PhoneBackgroundBrush}"
+                BorderThickness="0.5" BorderBrush="{DynamicResource PhoneChromeOutlineBrush}">
+            <Panel>
+                <StackPanel Margin="20,18,20,0" Spacing="10" VerticalAlignment="Top">
+                    <TextBlock Text="Home" FontSize="30" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <StackPanel Spacing="6">
+                            <Border Width="78" Height="78" CornerRadius="12" Background="#F0C43C" />
+                            <Border Classes="pv-line" Width="62" />
+                            <Border Classes="pv-line" Width="42" Margin="0,-2,0,0" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                            <Border Width="78" Height="78" CornerRadius="12" Background="#2A2A2A" />
+                            <Border Classes="pv-line" Width="62" />
+                            <Border Classes="pv-line" Width="42" Margin="0,-2,0,0" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                            <Border Width="78" Height="78" CornerRadius="12" Background="#9B7A52" />
+                            <Border Classes="pv-line" Width="62" />
+                            <Border Classes="pv-line" Width="42" Margin="0,-2,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+                <!-- The mini player over it: translucent glass, as the real one. -->
+                <Border VerticalAlignment="Bottom" Margin="12,0,12,12" Height="44" CornerRadius="22"
+                        Background="{DynamicResource PhoneChromeBrush}" BorderThickness="0.5"
+                        BorderBrush="{DynamicResource PhoneChromeOutlineBrush}">
+                    <StackPanel Orientation="Horizontal" Margin="8,0" Spacing="10" VerticalAlignment="Center">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#E9C14F" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PreviewTitle}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding PreviewArtist}" FontSize="12" Foreground="{DynamicResource PhoneSecondaryTextBrush}" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0" Padding="12,6" CornerRadius="16"
+                        Background="{DynamicResource PhoneChromeBrush}">
+                    <TextBlock Name="PreviewTag" Text="{Binding PreviewTag}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                </Border>
+            </Panel>
+        </Border>
+
+        <!-- Slow Motion and Strength. -->
+        <Border Classes="group-card" Margin="0,14,0,0">
+            <StackPanel>
+                <ToggleButton Name="MotionSwitch" Classes="switch-row" AutomationProperties.Name="Slow Motion" IsChecked="{Binding Motion}">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Path Classes="pane-glyph" Data="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="row-label" Text="Slow Motion" />
+                            <TextBlock Classes="row-sub" Text="The colours drift gently" />
+                        </StackPanel>
+                    </StackPanel>
+                </ToggleButton>
+                <Border Classes="row-separator" Margin="54,0,0,0" />
+                <Grid Classes="setting-row" ColumnDefinitions="Auto,*,150" Margin="16,0,9,0">
+                    <Path Classes="pane-glyph" Data="M12 3c3 4 6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 3-6 6-10z" />
+                    <TextBlock Grid.Column="1" Classes="row-label" Text="Strength" Margin="14,0,0,0" VerticalAlignment="Center" />
+                    <controls:SmoothSlider Grid.Column="2" Name="StrengthSlider" Classes="accent-slider"
+                                           Minimum="0.2" Maximum="1" Step="0.05" SteppedValue="{Binding Strength}"
+                                           AutomationProperties.Name="Strength" />
+                </Grid>
+            </StackPanel>
+        </Border>
+        <TextBlock Name="MotionFootnote" Classes="group-footnote" Text="{Binding Footnote}" />
+
+        <!-- From Artwork, and Off. -->
+        <TextBlock Classes="group-title" Text="From Artwork" Margin="16,26,0,7" />
+        <Border Classes="group-card">
+            <StackPanel>
+                <Button Name="ArtworkChoice" Classes="choice-row" Command="{Binding PickArtworkCommand}" AutomationProperties.Name="Now Playing">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="choice-tile" Background="{Binding ArtworkBrush}" />
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Classes="row-label" Text="Now Playing" />
+                            <TextBlock Classes="row-sub" Text="Changes with each song's cover" />
+                        </StackPanel>
+                        <Path Grid.Column="2" Classes="pane-glyph" Data="M5 12.5l4.2 4.2L19 7" IsVisible="{Binding IsArtwork}" />
+                    </Grid>
+                </Button>
+                <Border Classes="row-separator" Margin="86,0,0,0" />
+                <Button Name="OffChoice" Classes="choice-row" Command="{Binding PickOffCommand}" AutomationProperties.Name="Off">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="choice-tile" Background="{DynamicResource PhoneGroupedBackgroundBrush}" />
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Classes="row-label" Text="Off" />
+                            <TextBlock Classes="row-sub" Text="The plain theme colour" />
+                        </StackPanel>
+                        <Path Grid.Column="2" Classes="pane-glyph" Data="M5 12.5l4.2 4.2L19 7" IsVisible="{Binding IsOff}" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- Neutral and Colour: rounded squares, four across. -->
+        <Grid ColumnDefinitions="*,Auto" Margin="16,26,16,8">
+            <TextBlock Classes="group-title" Margin="0" Text="Neutral" />
+            <TextBlock Grid.Column="1" Classes="row-value" Text="{Binding NeutralCount}" />
+        </Grid>
+        <ItemsControl Name="NeutralGrid" ItemsSource="{Binding Neutrals}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+        <Grid ColumnDefinitions="*,Auto" Margin="16,20,16,8">
+            <TextBlock Classes="group-title" Margin="0" Text="Colour" />
+            <TextBlock Grid.Column="1" Classes="row-value" Text="{Binding ColourCount}" />
+        </Grid>
+        <ItemsControl Name="ColourGrid" ItemsSource="{Binding Colours}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

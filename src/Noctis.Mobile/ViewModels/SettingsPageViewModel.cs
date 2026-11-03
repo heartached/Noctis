@@ -42,42 +42,21 @@ public sealed record SettingsFolder(string Root, string Name, bool AccessLost)
     public bool Unavailable { get; init; }
 }
 
+/// <summary>One open-source component in Settings → About → Open-Source Licenses.</summary>
+public sealed record LicenseEntry(string Name, string License, string Detail);
+
 /// <summary>Settings is one sheet: its top level, or one of the pages pushed inside it.</summary>
-public enum SettingsPane { Main, Folders, Appearance, Lyrics }
-
-/// <summary>What a Look tile's mini preview paints: a theme's grouped page, its card and its
-/// hairline grey (MobileTheme.BuildPalette's PhoneGroupedBackgroundBrush, PhoneCardBrush and
-/// PhoneSeparatorBrush; a test keeps the two in step).</summary>
-public sealed record LookPreview(IBrush Page, IBrush Card, IBrush Line)
-{
-    private static LookPreview Of(string page, string card, string line) => new(
-        new ImmutableSolidColorBrush(Color.Parse(page)),
-        new ImmutableSolidColorBrush(Color.Parse(card)),
-        new ImmutableSolidColorBrush(Color.Parse(line)));
-
-    public static LookPreview Light { get; } = Of("#F2F2F7", "#FFFFFF", "#D8D8DC");
-
-    private static readonly LookPreview Ink = Of("#1C1C1E", "#2C2C2E", "#38383A");
-    private static readonly LookPreview Smoke = Of("#2A2D38", "#343844", "#3E4250");
-    private static readonly LookPreview Midnight = Of("#161D31", "#1E2740", "#2A3552");
-
-    /// <summary>A dark style's preview: Smoke and Midnight have their own greys; Ink and Dark share Apple's.</summary>
-    public static LookPreview Dark(string? darkTheme) => darkTheme switch
-    {
-        "Smoke" => Smoke,
-        "Midnight" => Midnight,
-        _ => Ink,
-    };
-}
+public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses }
 
 /// <summary>
 /// Phone Settings. Changes apply at once (theme through the host, text size on the lyrics
 /// page) and are saved in order through one queued chain, so two quick changes cannot
 /// interleave their load-modify-save of settings.json. Gapless playback has no setting here:
 /// the phone is always gapless (NowPlayingViewModel), and the saved desktop value is left as is.
-/// The top level holds little (the profile, the Look tiles, three rows into the pages, two
-/// actions); Music Folders, Appearance and Lyrics are pages pushed inside the sheet
-/// (<see cref="Pane"/>), and Back leaves one of them before it closes Settings.
+/// The top level is Apple Music's account sheet: the profile card with its stats, then rows in
+/// five sections (Appearance, Library, Listening, Help, About), each a value and a chevron into a
+/// page pushed inside the sheet (<see cref="Pane"/>), a menu (Theme) or an action; Back leaves
+/// a page before it closes Settings.
 /// </summary>
 public sealed partial class SettingsPageViewModel : MobilePage
 {
@@ -93,6 +72,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private const string SignInTitle = "Sign in to your computer";
 
     private bool _loading;
+    // Set once the saved values were read (or the read failed): a change before it is kept
+    // and saved after the load instead of being overwritten by it.
+    private bool _loaded;
+    private SavedFields _setBeforeLoad;
     private string _accentHex = MobileTheme.DefaultAccent;
     // The saved accent's name when it is not one of the nine ("Scarlet", picked on an earlier
     // phone build or on the desktop): kept, shown and saved back as it was.
@@ -101,16 +84,30 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public SettingsPageViewModel(ShellViewModel shell)
     {
         Shell = shell;
+        Background = new BackgroundSettingsViewModel(shell);
+        Scrobbling = new ScrobblingSettingsViewModel(shell);
+        History = new ListeningHistoryViewModel(shell);
         Shell.Library.Folders.CollectionChanged += OnFoldersChanged;
         Shell.Library.PropertyChanged += OnLibraryChanged;
         Shell.Lyrics.PropertyChanged += OnLyricsChanged;
+        Shell.PropertyChanged += OnShellChanged;
+        Background.PropertyChanged += OnSubPageChanged;
+        Scrobbling.PropertyChanged += OnSubPageChanged;
+        History.PropertyChanged += OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged += OnAccountChanged;
+        RefreshStats();
     }
 
     public ShellViewModel Shell { get; }
     public override string Title => Loc.T("Nav.Settings");
 
-    /// <summary>The clock behind the profile card's "synced 5 min ago"; tests pin it.</summary>
+    /// <summary>The pages other agents' view models drive (Background, Scrobbling, Listening
+    /// History); the sheet's rows show their <c>Summary</c>.</summary>
+    public BackgroundSettingsViewModel Background { get; }
+    public ScrobblingSettingsViewModel Scrobbling { get; }
+    public ListeningHistoryViewModel History { get; }
+
+    /// <summary>The clock behind the profile row's "Synced 5 min ago"; tests pin it.</summary>
     internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
 
     public IReadOnlyList<string> Appearances => MobileTheme.Appearances;
@@ -126,28 +123,48 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>The pushed page's content, kept while it slides back out after Back.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsAppearancePane), nameof(ShowsLyricsPane))]
+    [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
+        nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
+        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
     public bool IsSubPane => !IsMainPane;
     public bool ShowsFoldersPane => ShownSubPane == SettingsPane.Folders;
-    public bool ShowsAppearancePane => ShownSubPane == SettingsPane.Appearance;
     public bool ShowsLyricsPane => ShownSubPane == SettingsPane.Lyrics;
+    public bool ShowsBackgroundPane => ShownSubPane == SettingsPane.Background;
+    public bool ShowsScrobblingPane => ShownSubPane == SettingsPane.Scrobbling;
+    public bool ShowsHistoryPane => ShownSubPane == SettingsPane.History;
+    public bool ShowsAccentPane => ShownSubPane == SettingsPane.Accent;
+    public bool ShowsPlayerBarPane => ShownSubPane == SettingsPane.PlayerBar;
+    public bool ShowsDownloadsPane => ShownSubPane == SettingsPane.Downloads;
+    public bool ShowsWhatsNewPane => ShownSubPane == SettingsPane.WhatsNew;
+    public bool ShowsLicensesPane => ShownSubPane == SettingsPane.Licenses;
 
     /// <summary>The header's title: "Settings", or the pushed page's name.</summary>
     public string HeaderTitle => Pane switch
     {
         SettingsPane.Folders => "Music Folders",
-        SettingsPane.Appearance => "Appearance",
         SettingsPane.Lyrics => "Lyrics",
+        SettingsPane.Background => "Background",
+        SettingsPane.Scrobbling => "Scrobbling",
+        SettingsPane.History => "Listening History",
+        SettingsPane.Accent => "Accent",
+        SettingsPane.PlayerBar => "Player Bar",
+        SettingsPane.Downloads => "Downloads",
+        SettingsPane.WhatsNew => "What's New",
+        SettingsPane.Licenses => "Open-Source Licenses",
         _ => Title,
     };
 
     partial void OnPaneChanged(SettingsPane value)
     {
         if (value != SettingsPane.Main) ShownSubPane = value;
-        else FolderToRemove = null;   // a question left open on Music Folders does not wait there
+        else
+        {
+            FolderToRemove = null;   // a question left open on Music Folders does not wait there
+            DropQuestion();
+        }
     }
 
     [RelayCommand] private void OpenPane(SettingsPane pane) => Pane = pane;
@@ -193,15 +210,44 @@ public sealed partial class SettingsPageViewModel : MobilePage
         ? $"Remove “{folder.Title}”? Its songs leave your library on this phone. The files stay where they are."
         : string.Empty;
 
-    [RelayCommand] private void AskRemoveFolder(SettingsFolder folder) => FolderToRemove = folder;
+    // The question up now (the shell's glass prompt).
+    private PromptViewModel? _question;
 
-    [RelayCommand] private void CancelRemoveFolder() => FolderToRemove = null;
+    /// <summary>Asks on the glass prompt (owner 10-20: no more cards inside the page).</summary>
+    [RelayCommand]
+    private void AskRemoveFolder(SettingsFolder folder)
+    {
+        DropQuestion();
+        FolderToRemove = folder;
+        var question = new PromptViewModel(Shell, $"Remove “{folder.Title}”?",
+            "Its songs leave your library on this phone. The files stay where they are.",
+            new[] { new PromptAction("Remove Folder", _ => ConfirmRemoveFolderCommand.ExecuteAsync(null), isDestructive: true) },
+            cancelled: () => { if (ReferenceEquals(FolderToRemove, folder)) FolderToRemove = null; });
+        _question = question;
+        Shell.ShowPrompt(question);
+    }
 
     [RelayCommand]
+    private void CancelRemoveFolder()
+    {
+        FolderToRemove = null;
+        DropQuestion();
+    }
+
+    private void DropQuestion()
+    {
+        if (_question is { } q) Shell.ClosePrompt(q);
+        _question = null;
+    }
+
+    /// <summary>Concurrent: it awaits the rescan, and the next folder's Remove stayed greyed out
+    /// for all of it (the confirm runs once per ask: <see cref="FolderToRemove"/> clears first).</summary>
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task ConfirmRemoveFolderAsync()
     {
         if (FolderToRemove is not { } folder) return;
         FolderToRemove = null;
+        DropQuestion();
         await Shell.Library.RemoveFolderAsync(folder.Root);
     }
 
@@ -218,8 +264,29 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// row carries a warning dot.</summary>
     public bool HasLostFolder => FolderRows.Any(f => f.AccessLost || f.Unavailable);
 
+    /// <summary>The Music Folders row as the screen reader says it: the count, then the warning a dot shows.</summary>
+    public string FoldersRowName => HasLostFolder
+        ? $"Music Folders, {FoldersValue}, a folder lost its access or can't be reached"
+        : $"Music Folders, {FoldersValue}";
+
     /// <summary>Rescan only with a folder to scan and no scan running.</summary>
     public bool CanRescan => Shell.Library.HasFolders && !Shell.Library.IsScanning;
+
+    /// <summary>The grey line in the Rescan Library row: when the last scan finished, else what it does.</summary>
+    public string RescanSubtitle => Shell.Library.LastScanLocal is { } scanned
+        ? $"Last scan {ScanTime(scanned, UtcNow().ToLocalTime())}"
+        : "Looks for new songs in your folders";
+
+    public string RescanRowName => $"Rescan Library, {RescanSubtitle}";
+
+    /// <summary>"today, 10:42", "yesterday, 22:10", "4 Oct, 09:05".</summary>
+    internal static string ScanTime(DateTime scanned, DateTime now)
+    {
+        var time = scanned.ToString("t");
+        if (scanned.Date == now.Date) return $"today, {time}";
+        if (scanned.Date == now.Date.AddDays(-1)) return $"yesterday, {time}";
+        return $"{scanned:d MMM}, {time}";
+    }
 
     /// <summary>Under Rescan Library: the scan's status ("Scanning…", a failure), else why it is off.</summary>
     public string RescanFootnote =>
@@ -229,13 +296,18 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     // ── Appearance ──
 
-    /// <summary>The dark style only matters when the app can go dark: greyed under Light.</summary>
-    public bool ShowsDarkThemes => Appearance != "Light";
+    /// <summary>The Theme row's value: System, Light or Dark.</summary>
+    public string ThemeValue => Appearance;
 
-    /// <summary>The note under Dark Style: when it is used, or why it is greyed.</summary>
-    public string DarkStyleFootnote => ShowsDarkThemes
-        ? "Used whenever Noctis is dark."
-        : "Dark Style applies when Look is System or Dark.";
+    /// <summary>A row as the screen reader says it: its label, then its value.</summary>
+    private static string Named(string label, string? value) => string.IsNullOrEmpty(value) ? label : $"{label}, {value}";
+
+    public string BackgroundRowName => Named("Background", Background.Summary);
+    public string ThemeRowName => Named("Theme", ThemeValue);
+    public string AccentRowName => Named("Accent", AccentName);
+
+    /// <summary>The accent's dot on the Accent row.</summary>
+    public IBrush AccentBrush => Color.TryParse(_accentHex, out var colour) ? new ImmutableSolidColorBrush(colour) : Accents[0].Brush;
 
     /// <summary>The accent's preset name ("Crimson"); a saved accent outside the nine keeps the
     /// name it was saved with ("Scarlet"), else "Custom" (a colour picked on the desktop).</summary>
@@ -243,20 +315,30 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase))?.Name
         ?? (string.IsNullOrWhiteSpace(_savedAccentName) || Accents.Any(a => a.Name == _savedAccentName) ? "Custom" : _savedAccentName);
 
-    /// <summary>The Appearance row's value: the dark style where it applies, then the accent ("Ink · Crimson").</summary>
-    public string AppearanceValue => ShowsDarkThemes ? $"{DarkTheme} · {AccentName}" : AccentName;
+    /// <summary>The Player Bar row's value: which progress the mini player shows.</summary>
+    public string PlayerBarValue => (Shell.ShowMiniProgressFill, Shell.ShowMiniProgressLine) switch
+    {
+        (true, true) => "Colour and Line",
+        (true, false) => "Progress Colour",
+        (false, true) => "Progress Line",
+        _ => "Plain",
+    };
 
-    /// <summary>The Look tiles: which one is chosen.</summary>
-    public bool IsSystemLook => Appearance == "System";
-    public bool IsLightLook => Appearance == "Light";
-    public bool IsDarkLook => Appearance == "Dark";
+    public string PlayerBarRowName => Named("Player Bar", PlayerBarValue);
 
-    public LookPreview LightPreview => LookPreview.Light;
+    /// <summary>The Theme row: System / Light / Dark on the glass pop menu (the one ticked is
+    /// exposed as selected), then the dark style, which a tap steps to the next.</summary>
+    [RelayCommand]
+    private void ShowThemeMenu()
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var look in new[] { "System", "Light", "Dark" })
+            items.Add(new OptionsMenuItem(Shell, look, Appearance == look, () => Appearance = look));
+        items.Add(new OptionsMenuItem(Shell, $"Dark style: {DarkTheme}", false, NextDarkTheme) { StartsGroup = true });
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
 
-    /// <summary>The Dark tile (and the System tile's dark half), in the chosen dark style.</summary>
-    public LookPreview DarkPreview => LookPreview.Dark(DarkTheme);
-
-    [RelayCommand] private void ChooseAppearance(string appearance) => Appearance = appearance;
+    private void NextDarkTheme() => DarkTheme = DarkThemes[(DarkThemes.ToList().IndexOf(DarkTheme) + 1) % DarkThemes.Count];
 
     // ── Lyrics ──
 
@@ -269,12 +351,203 @@ public sealed partial class SettingsPageViewModel : MobilePage
         _ => "Off",
     };
 
+    public string LyricsRowName => Named("Lyrics", LyricsValue);
+
+    // ── Listening ──
+
+    public string ScrobblingRowName => Named("Scrobbling", Scrobbling.Summary);
+    public string HistoryRowName => Named("Listening History", History.Summary);
+
+    /// <summary>Pick Up on Computer and its footnote: only while signed in (the queue goes to the
+    /// account's computer; signed out there is none, though the account service is there).</summary>
+    public bool ShowPickUp => IsSignedIn;
+
+    /// <summary>Under Pick Up on Computer: what the switch does, naming the computer.</summary>
+    public string PickUpFootnote => $"When you open Noctis on {(IsSignedIn ? AccountPageViewModel.ServerLabel(Shell.Account!.Account!) : "your computer")}, it offers to carry on from the song you were playing here.";
+
+    // ── Downloads ──
+
+    /// <summary>Settings → Downloads → Download on Wi-Fi Only (on by default): a download asked for on
+    /// mobile data is refused (NoctisAccountService.IsOnWifi). Saved at once, on its own, beside the
+    /// theme's save chain.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DownloadsValue), nameof(DownloadsRowName))]
+    private bool _downloadWifiOnly = true;
+
+    public string DownloadsValue => DownloadWifiOnly ? "Wi-Fi Only" : "Any Network";
+    public string DownloadsRowName => Named("Downloads", DownloadsValue);
+
+    /// <summary>The settings.json write of the Wi-Fi switch; tests await it.</summary>
+    internal Task PendingWifiSave { get; private set; } = Task.CompletedTask;
+
+    // Set by a tap before the load read the file: the load then keeps it (as LoadCoreAsync does).
+    private bool _wifiSetBeforeLoad;
+
+    partial void OnDownloadWifiOnlyChanged(bool value)
+    {
+        if (_loading) return;
+        _wifiSetBeforeLoad = true;
+        PendingWifiSave = SaveWifiOnlyAsync(value);
+    }
+
+    private async Task SaveWifiOnlyAsync(bool value)
+    {
+        try
+        {
+            await Shell.Library.Persistence.UpdateSettingsAsync(settings => settings.MobileDownloadWifiOnly = value);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Settings", $"Save failed: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDownloadSettingsAsync()
+    {
+        Noctis.Models.AppSettings settings;
+        try
+        {
+            settings = await Shell.Library.Persistence.LoadSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            // As LoadCoreAsync: the switch keeps its default, and the page still loads.
+            DebugLog.Write("Settings", $"Load failed: {ex.Message}");
+            return;
+        }
+        if (_wifiSetBeforeLoad) return;
+        _loading = true;
+        try { DownloadWifiOnly = settings.MobileDownloadWifiOnly; }
+        finally { _loading = false; }
+    }
+
+    /// <summary>The Downloads page's storage line: "312 songs · 4.2 GB".</summary>
+    [ObservableProperty] private string _storageUsedText = "—";
+
+    /// <summary>Remove All Downloads shows when there is a computer link and something downloaded.</summary>
+    [ObservableProperty] private bool _canRemoveDownloads;
+
+    [RelayCommand]
+    private void AskRemoveDownloads()
+    {
+        if (!CanRemoveDownloads) return;
+        DropQuestion();
+        var question = new PromptViewModel(Shell, "Remove all downloads?",
+            $"{StorageUsedText} leave this phone. They stay on your computer and still stream.",
+            new[] { new PromptAction("Remove Downloads", _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) });
+        _question = question;
+        Shell.ShowPrompt(question);
+    }
+
+    /// <summary>Concurrent: the prompt's action awaits it, and a second ask must not wait behind it.</summary>
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    private async Task ConfirmRemoveDownloadsAsync()
+    {
+        DropQuestion();
+        if (Shell.Account is not { } account) return;
+        try
+        {
+            await account.RemoveAllDownloadsAsync();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Settings", $"Remove downloads failed: {ex.Message}");
+        }
+        RefreshStats();
+    }
+
+    // ── The profile card's stats ──
+
+    /// <summary>Songs, Downloaded and On Phone under the profile. "—" until read: the song count is
+    /// the library's; the downloads' count and bytes are summed off the UI thread.</summary>
+    [ObservableProperty] private string _songsStat = "—";
+    [ObservableProperty] private string _downloadedStat = "—";
+    [ObservableProperty] private string _onPhoneStat = "—";
+
+    /// <summary>The last downloads read; tests await it.</summary>
+    internal Task StatsLoaded { get; private set; } = Task.CompletedTask;
+
+    private int _statsBusy;
+    private volatile bool _statsDirty;
+
+    private void RefreshStats()
+    {
+        SongsStat = Shell.Library.IsLoaded ? Shell.Library.SongCount.ToString("N0") : "—";
+        if (Shell.Account is not { } account)
+        {
+            ShowDownloadStats(0, 0);
+            return;
+        }
+        if (Interlocked.Exchange(ref _statsBusy, 1) == 1)
+        {
+            _statsDirty = true;   // the running read starts over once it has landed
+            return;
+        }
+        StatsLoaded = Task.Run(() =>
+        {
+            do
+            {
+                _statsDirty = false;
+                var (count, bytes) = (account.DownloadedCount, account.DownloadedBytes);
+                Shell.Marshal(() => ShowDownloadStats(count, bytes));
+            }
+            while (_statsDirty);
+            Volatile.Write(ref _statsBusy, 0);
+            if (_statsDirty) RefreshStats();
+        });
+    }
+
+    private void ShowDownloadStats(int count, long bytes)
+    {
+        DownloadedStat = count.ToString("N0");
+        OnPhoneStat = AccountPageViewModel.FormatBytes(bytes);
+        StorageUsedText = $"{count:N0} {(count == 1 ? "song" : "songs")} · {OnPhoneStat}";
+        CanRemoveDownloads = Shell.Account != null && count > 0;
+    }
+
+    // ── Help ──
+
+    internal const string ReportProblemUrl = "https://github.com/heartached/Noctis/issues/new";
+    internal const string WebsiteUrl = "https://noctisapp.cc/";
+
+    [RelayCommand] private void ReportProblem() => Shell.Links?.Open(ReportProblemUrl);
+    [RelayCommand] private void OpenWebsite() => Shell.Links?.Open(WebsiteUrl);
+
+    // ── About ──
+
+    /// <summary>"Noctis 1.2.3" → "1.2.3" for the Version row.</summary>
+    public string VersionValue => VersionText.StartsWith("Noctis ", StringComparison.Ordinal) ? VersionText["Noctis ".Length..] : VersionText;
+    public string VersionRowName => Named("Version", VersionValue);
+
+    /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings holds.</summary>
+    public IReadOnlyList<string> WhatsNewItems { get; } = new[]
+    {
+        "Settings is redesigned: your profile and library numbers on top, then Appearance, Library, Listening, Help and About.",
+        "Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads.",
+        "Open-Source Licenses lists what Noctis is built with.",
+    };
+
+    /// <summary>Open-Source Licenses: the bundled decoder and the main libraries the phone app is built on.</summary>
+    public IReadOnlyList<LicenseEntry> Licenses { get; } = new LicenseEntry[]
+    {
+        new("FFmpeg (libavcodec, libavutil, libswresample)", "LGPL-2.1-or-later",
+            "The bundled ALAC decoder, built from the unmodified FFmpeg 6.0 source without GPL or non-free parts: git.ffmpeg.org/ffmpeg.git"),
+        new("AndroidX Media3 (ExoPlayer, Session, FFmpeg decoder extension)", "Apache-2.0", "Playback, media session and the decoder's JNI wrapper."),
+        new("Avalonia", "MIT", "The user interface framework."),
+        new("Inter", "SIL Open Font License 1.1", "The typeface, through Avalonia.Fonts.Inter."),
+        new("CommunityToolkit.Mvvm", "MIT", "The view models' plumbing."),
+        new("TagLib#", "LGPL-2.1", "Reads song tags and covers."),
+        new("Microsoft.Data.Sqlite and SQLitePCLRaw", "MIT and Apache-2.0", "The library's database; SQLite itself is public domain."),
+        new("SkiaSharp", "MIT", "Drawing."),
+        new("Xamarin.AndroidX bindings", "Apache-2.0", "Android's support libraries for .NET."),
+    };
+
     // ── Logs, version ──
 
-    /// <summary>Under Export Logs: the last export's outcome, else what it does.</summary>
-    public string ExportFootnote => ExportStatus.Length > 0
-        ? ExportStatus
-        : "Saves the app's log for a bug report, with keys and passwords removed.";
+    /// <summary>The Export Logs row's grey line: the last export's outcome, else what it does.</summary>
+    public string ExportSubtitle => ExportStatus.Length > 0 ? ExportStatus : "Keys and passwords removed";
+
+    public string ExportRowName => Named("Export Logs", ExportSubtitle);
 
     public string VersionText => Shell.VersionText;
 
@@ -290,15 +563,23 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The card's bold line: the account's name, or the invitation to sign in.</summary>
     public string AccountTitle => IsSignedIn ? AccountPageViewModel.ShownName(Shell.Account!.Account!) : SignInTitle;
 
-    /// <summary>The card's grey line: the computer and when it last synced, or what signing in brings.</summary>
+    /// <summary>The card's grey line: "Synced with" the computer (the green dot's text), or what
+    /// signing in brings; before the first sync, the computer and that it has not synced yet.</summary>
     public string AccountSubtitle => IsSignedIn
-        ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · {SyncedText(Shell.Account!.Account!.LastSyncUtc, UtcNow())}"
+        ? Shell.Account!.Account!.LastSyncUtc is null
+            ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · Not synced yet"
+            : $"Synced with {AccountPageViewModel.ServerLabel(Shell.Account!.Account!)}"
         : "Sync your library with Noctis on your PC";
 
-    /// <summary>The grey line under the card: what syncing does.</summary>
-    public string AccountFootnote => IsSignedIn
-        ? "Playlists, favourites and plays stay in step with your computer."
-        : "Your computer's songs and playlists on this phone, to stream or download.";
+    /// <summary>The green dot before the grey line: signed in and synced at least once.</summary>
+    public bool ShowSyncedDot => IsSignedIn && Shell.Account!.Account!.LastSyncUtc != null;
+
+    /// <summary>The profile row as the screen reader says it: who, the computer, and how long ago.</summary>
+    public string AccountRowName => IsSignedIn ? $"{AccountRowText}, {AccountPageViewModel.SyncedText(Shell.Account!.Account!.LastSyncUtc, UtcNow())}" : AccountRowText;
+
+    /// <summary>"Synced 5 min ago" goes stale while the sheet stays open: the page re-reads it
+    /// once a minute (SettingsPage's ticker, stopped when the page leaves).</summary>
+    public void RefreshSyncTime() => OnPropertyChanged(nameof(AccountRowName));
 
     /// <summary>The desktop's profile picture (a cached local file), or null.</summary>
     public string? AccountAvatarPath => IsSignedIn ? Shell.Account!.AvatarPath : null;
@@ -311,33 +592,14 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowAccountInitials => !HasAccountAvatar && AccountInitials.Length > 0;
     public bool ShowAccountGlyph => !HasAccountAvatar && AccountInitials.Length == 0;
 
-    /// <summary>"synced just now", "synced 5 min ago", "synced 3 hr ago", "synced yesterday",
-    /// "synced 4 days ago", "synced 2 Oct"; "not synced yet" before the first sync.</summary>
-    internal static string SyncedText(DateTime? syncedUtc, DateTime nowUtc)
-    {
-        if (syncedUtc is not { } synced) return "not synced yet";
-        var ago = nowUtc - synced;
-        if (ago < TimeSpan.FromMinutes(1)) return "synced just now";
-        if (ago < TimeSpan.FromHours(1)) return $"synced {(int)ago.TotalMinutes} min ago";
-        var day = synced.ToLocalTime().Date;
-        var today = nowUtc.ToLocalTime().Date;
-        if (day == today) return $"synced {(int)ago.TotalHours} hr ago";
-        if (day == today.AddDays(-1)) return "synced yesterday";
-        if (day > today.AddDays(-7)) return $"synced {(today - day).Days} days ago";
-        return $"synced {day:d MMM}";
-    }
-
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsDarkThemes), nameof(DarkStyleFootnote), nameof(AppearanceValue),
-        nameof(IsSystemLook), nameof(IsLightLook), nameof(IsDarkLook))]
+    [NotifyPropertyChangedFor(nameof(ThemeValue), nameof(ThemeRowName))]
     private string _appearance = "System";
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AppearanceValue), nameof(DarkPreview))]
-    private string _darkTheme = "Ink";
+    [ObservableProperty] private string _darkTheme = "Ink";
     [ObservableProperty] private AccentSwatch? _selectedAccent;
     [ObservableProperty] private double _lyricsTextScale = 1.0;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExportFootnote))]
+    [NotifyPropertyChangedFor(nameof(ExportSubtitle), nameof(ExportRowName))]
     private string _exportStatus = string.Empty;
 
     /// <summary>The initial read of settings.json; tests await it.</summary>
@@ -352,42 +614,75 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private int _textScaleSaveGeneration;
     private Task _saveChain = Task.CompletedTask;
 
-    public Task LoadAsync() => Loaded = LoadCoreAsync();
+    public Task LoadAsync() => Loaded = LoadAllAsync();
+
+    private async Task LoadAllAsync()
+    {
+        await LoadCoreAsync();
+        await LoadDownloadSettingsAsync();
+        RefreshStats();
+    }
 
     private async Task LoadCoreAsync()
     {
-        var settings = await Shell.Library.Persistence.LoadSettingsAsync();
-        _loading = true;
+        Noctis.Models.AppSettings? settings = null;
         try
         {
-            Appearance = MobileTheme.Appearances.Contains(settings.MobileAppearance) ? settings.MobileAppearance : "System";
-            DarkTheme = MobileTheme.DarkThemes.Contains(settings.Theme) ? settings.Theme : "Ink";
-            _accentHex = string.IsNullOrWhiteSpace(settings.AccentColorHex) ? MobileTheme.DefaultAccent : settings.AccentColorHex;
-            _savedAccentName = settings.AccentPresetName;
-            AccentChanged();
-            SelectedAccent = Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase));
-            LyricsTextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+            settings = await Shell.Library.Persistence.LoadSettingsAsync();
         }
-        finally
+        catch (Exception ex)
         {
-            _loading = false;
+            // The page keeps its defaults, and later changes still save (each only its own field).
+            DebugLog.Write("Settings", $"Load failed: {ex.Message}");
         }
+        if (settings != null)
+        {
+            // A value changed while this load ran (OpenSettings does not await it) is kept.
+            var kept = _setBeforeLoad;
+            _loading = true;
+            try
+            {
+                if (!kept.HasFlag(SavedFields.Appearance))
+                    Appearance = MobileTheme.Appearances.Contains(settings.MobileAppearance) ? settings.MobileAppearance : "System";
+                if (!kept.HasFlag(SavedFields.DarkTheme))
+                    DarkTheme = MobileTheme.DarkThemes.Contains(settings.Theme) ? settings.Theme : "Ink";
+                if (!kept.HasFlag(SavedFields.Accent))
+                {
+                    _accentHex = string.IsNullOrWhiteSpace(settings.AccentColorHex) ? MobileTheme.DefaultAccent : settings.AccentColorHex;
+                    _savedAccentName = settings.AccentPresetName;
+                    AccentChanged();
+                    SelectedAccent = Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase));
+                }
+                if (!kept.HasFlag(SavedFields.TextScale))
+                    LyricsTextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+        _loaded = true;
+        if (_setBeforeLoad == SavedFields.None) return;
+        // The early change re-themed over the defaults: once more with the loaded rest.
+        if ((_setBeforeLoad & ~SavedFields.TextScale) != SavedFields.None) Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
+        QueueSave(_setBeforeLoad);
     }
 
-    partial void OnAppearanceChanged(string value) => ThemeChanged();
-    partial void OnDarkThemeChanged(string value) => ThemeChanged();
+    partial void OnAppearanceChanged(string value) => ThemeChanged(SavedFields.Appearance);
+    partial void OnDarkThemeChanged(string value) => ThemeChanged(SavedFields.DarkTheme);
 
     partial void OnSelectedAccentChanged(AccentSwatch? value)
     {
         if (value != null) _accentHex = value.Hex;
         AccentChanged();
-        ThemeChanged();
+        ThemeChanged(SavedFields.Accent);
     }
 
     private void AccentChanged()
     {
         OnPropertyChanged(nameof(AccentName));
-        OnPropertyChanged(nameof(AppearanceValue));
+        OnPropertyChanged(nameof(AccentRowName));
+        OnPropertyChanged(nameof(AccentBrush));
     }
 
     /// <summary>The lyrics follow each step at once; settings.json is written once the slider
@@ -396,6 +691,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         Shell.Lyrics.TextScale = value;
         if (_loading) return;
+        if (!_loaded)
+        {
+            _setBeforeLoad |= SavedFields.TextScale;
+            return;
+        }
         var generation = ++_textScaleSaveGeneration;
         PendingSave = SaveAfterSliderSettlesAsync(generation);
     }
@@ -404,34 +704,49 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         await Task.Delay(LyricsPageViewModel.SliderSaveDelay);
         if (generation != Volatile.Read(ref _textScaleSaveGeneration)) return;   // a later step saves
-        await QueueSave();
+        await QueueSave(SavedFields.TextScale);
     }
 
-    private void ThemeChanged()
+    private void ThemeChanged(SavedFields field)
     {
         if (_loading) return;
         Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
-        QueueSave();
+        if (!_loaded) _setBeforeLoad |= field;
+        else QueueSave(field);
     }
+
+    /// <summary>The settings.json fields a save writes: only those the user changed.</summary>
+    [Flags]
+    private enum SavedFields { None = 0, Appearance = 1, DarkTheme = 2, Accent = 4, TextScale = 8 }
 
     /// <summary>Saves one after another. Its own chain, not <see cref="PendingSave"/>: a slider's
     /// delayed save is PendingSave while it waits, and must not queue behind itself.</summary>
-    private Task QueueSave() =>
-        PendingSave = _saveChain = _saveChain.ContinueWith(_ => SaveAsync(), TaskScheduler.Default).Unwrap();
+    private Task QueueSave(SavedFields fields) =>
+        PendingSave = _saveChain = _saveChain.ContinueWith(_ => SaveAsync(fields), TaskScheduler.Default).Unwrap();
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(SavedFields fields)
     {
         try
         {
-            var settings = await Shell.Library.Persistence.LoadSettingsAsync();
-            settings.MobileAppearance = Appearance;
-            settings.Theme = DarkTheme;
-            // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
-            settings.ThemeV2Migrated = true;
-            settings.AccentColorHex = _accentHex;
-            settings.AccentPresetName = AccentName;
-            settings.MobileLyricsTextScale = LyricsTextScale;
-            await Shell.Library.Persistence.SaveSettingsAsync(settings);
+            // One update: a plain load-then-save let another phone save (a lyrics switch, a pin)
+            // land in between, and this stale copy undid it. Only the changed fields: writing all
+            // of them put "Ink" over a desktop-only theme ("Gray") when only the text size moved.
+            await Shell.Library.Persistence.UpdateSettingsAsync(settings =>
+            {
+                if (fields.HasFlag(SavedFields.Appearance)) settings.MobileAppearance = Appearance;
+                if (fields.HasFlag(SavedFields.DarkTheme))
+                {
+                    settings.Theme = DarkTheme;
+                    // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
+                    settings.ThemeV2Migrated = true;
+                }
+                if (fields.HasFlag(SavedFields.Accent))
+                {
+                    settings.AccentColorHex = _accentHex;
+                    settings.AccentPresetName = AccentName;
+                }
+                if (fields.HasFlag(SavedFields.TextScale)) settings.MobileLyricsTextScale = LyricsTextScale;
+            });
             Interlocked.Increment(ref SaveCount);
         }
         catch (Exception ex)
@@ -449,8 +764,17 @@ public sealed partial class SettingsPageViewModel : MobilePage
             return;
         }
         // Redacted: the file leaves the app, and account errors can carry key or password text.
-        var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", LogRedactor.Redact(DebugLog.Snapshot()));
-        ExportStatus = saved ? "Log saved" : "Export cancelled";
+        try
+        {
+            var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", LogRedactor.Redact(DebugLog.Snapshot()));
+            ExportStatus = saved ? "Log saved" : "Export cancelled";
+        }
+        catch (Exception ex)
+        {
+            // A failed write said "Export cancelled", as if the user had backed out.
+            DebugLog.Write("Settings", $"Log export failed: {ex.Message}");
+            ExportStatus = "Couldn't save the log";
+        }
     }
 
     /// <summary>"content://…/tree/primary%3AMusic%2FTones" → "Music/Tones": the tree document
@@ -472,6 +796,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         OnPropertyChanged(nameof(FolderRows));
         OnPropertyChanged(nameof(FoldersValue));
         OnPropertyChanged(nameof(HasLostFolder));
+        OnPropertyChanged(nameof(FoldersRowName));
     }
 
     private void OnLibraryChanged(object? sender, PropertyChangedEventArgs e)
@@ -486,6 +811,13 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 OnPropertyChanged(nameof(RescanFootnote));
                 OnPropertyChanged(nameof(FoldersFootnote));
                 break;
+            case nameof(LibraryViewModel.SongCount):
+                RefreshStats();
+                break;
+            case nameof(LibraryViewModel.LastScanLocal):
+                OnPropertyChanged(nameof(RescanSubtitle));
+                OnPropertyChanged(nameof(RescanRowName));
+                break;
             // A scan stopped on a dead grant: ask each folder again whether it is readable.
             case nameof(LibraryViewModel.NeedsReconnect):
                 FoldersChanged();
@@ -496,21 +828,56 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private void OnLyricsChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(LyricsPageViewModel.ShowTranslation) or nameof(LyricsPageViewModel.ShowRomanization))
+        {
             OnPropertyChanged(nameof(LyricsValue));
+            OnPropertyChanged(nameof(LyricsRowName));
+        }
     }
 
-    private void OnAccountChanged(object? sender, EventArgs e) => Shell.Marshal(() =>
+    private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
-        foreach (var name in new[] { nameof(AccountRowText), nameof(AccountTitle), nameof(AccountSubtitle), nameof(AccountFootnote),
-                     nameof(AccountAvatarPath), nameof(HasAccountAvatar), nameof(AccountInitials), nameof(ShowAccountInitials), nameof(ShowAccountGlyph) })
-            OnPropertyChanged(name);
-    });
+        if (e.PropertyName is nameof(ShellViewModel.ShowMiniProgressFill) or nameof(ShellViewModel.ShowMiniProgressLine))
+        {
+            OnPropertyChanged(nameof(PlayerBarValue));
+            OnPropertyChanged(nameof(PlayerBarRowName));
+        }
+    }
+
+    /// <summary>A page's summary changed (the Background, Scrobbling and History view models): its row says the new value.</summary>
+    private void OnSubPageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != "Summary") return;
+        OnPropertyChanged(nameof(BackgroundRowName));
+        OnPropertyChanged(nameof(ScrobblingRowName));
+        OnPropertyChanged(nameof(HistoryRowName));
+    }
+
+    private void OnAccountChanged(object? sender, EventArgs e)
+    {
+        RefreshStats();   // the downloads' read runs off the UI thread
+        Shell.Marshal(() =>
+        {
+            foreach (var name in new[] { nameof(AccountRowText), nameof(AccountRowName), nameof(AccountTitle), nameof(AccountSubtitle),
+                         nameof(ShowSyncedDot), nameof(PickUpFootnote), nameof(ShowPickUp), nameof(AccountAvatarPath), nameof(HasAccountAvatar), nameof(AccountInitials),
+                         nameof(ShowAccountInitials), nameof(ShowAccountGlyph) })
+                OnPropertyChanged(name);
+        });
+    }
 
     public override void OnClosed()
     {
+        // A Remove Folder question does not outlive the sheet (DismissSheet does not close prompts).
+        FolderToRemove = null;
+        DropQuestion();
         Shell.Library.Folders.CollectionChanged -= OnFoldersChanged;
         Shell.Library.PropertyChanged -= OnLibraryChanged;
         Shell.Lyrics.PropertyChanged -= OnLyricsChanged;
+        Shell.PropertyChanged -= OnShellChanged;
+        Background.PropertyChanged -= OnSubPageChanged;
+        Background.Detach();
+        Scrobbling.PropertyChanged -= OnSubPageChanged;
+        Scrobbling.Detach();
+        History.PropertyChanged -= OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
     }
 }

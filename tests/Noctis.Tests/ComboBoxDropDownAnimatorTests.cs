@@ -15,7 +15,7 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// The drop-down animator looks for the Fluent template's PART_Popup and writes the
-/// open animation's start state onto its child. If the template ever renames the popup
+/// open animation's start state (the menus' pop) onto its child. If the template ever renames the popup
 /// the animation silently disappears, so pin the lookup and the start → rest write.
 /// </summary>
 public class ComboBoxDropDownAnimatorTests
@@ -44,11 +44,14 @@ public class ComboBoxDropDownAnimatorTests
             popup.Closed += (_, _) => closed++;
             box.IsDropDownOpen = true;
             var body = (Control)popup.Child!;
-            // Start state is written synchronously; transitions are set for the glide.
-            Assert.NotNull(body.Transitions);
-            Assert.Equal(2, body.Transitions!.Count);
+            // The menus' pop (owner 10-29): the start state (clear, 90 %) is written synchronously,
+            // the transitions that carry it to rest a frame later.
+            Assert.Equal(0, body.Opacity);
+            Assert.Equal(0.9, ((Avalonia.Media.Transformation.TransformOperations)body.RenderTransform!).Value.M11, 3);
 
             Dispatcher.UIThread.RunJobs();
+            Assert.NotNull(body.Transitions);
+            Assert.Equal(2, body.Transitions!.Count);
             // In flight: the posted rest state is being transitioned to, not snapped.
             Assert.True(body.Opacity < 1, $"opacity {body.Opacity} should still be fading in");
 
@@ -56,7 +59,7 @@ public class ComboBoxDropDownAnimatorTests
             // the transform (so no hard edge shows mid-motion), so wait for both.
             Tick(() => body.Opacity >= 1, TimeSpan.FromSeconds(2));
             Assert.Equal(1, body.Opacity);
-            var rest = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1) translateY(0px)");
+            var rest = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
             static bool AtRest(Control c, Avalonia.Matrix target)
             {
                 var m = ((Avalonia.Media.Transformation.TransformOperations)c.RenderTransform!).Value;

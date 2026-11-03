@@ -101,10 +101,19 @@ internal class Program
             // resolve and delays first paint. DI serializes singleton creation,
             // so the UI-thread resolve either finds it ready or waits exactly as
             // it does today — the instance is never built twice.
-            // Headphone surround is a LibVLC instance option, so it has to be known
-            // before the player exists — ahead of the settings load.
+            // Headphone surround is a LibVLC instance option, and the output device
+            // pins both the LibVLC instance arg and every sink the player opens, so
+            // both have to be known before the player exists — ahead of the settings
+            // load.
             VlcAudioPlayer.HeadphoneSurroundAtLaunch = PersistenceService.ReadBoolSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.HeadphoneSurround));
+            VlcAudioPlayer.OutputDeviceAtLaunch = PersistenceService.ReadStringSettingAtLaunch(
+                AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.AudioOutputDeviceId));
+            // The interface size (GitHub #145) before the main window is built, so it opens at
+            // its size instead of jumping there when the settings load lands.
+            Noctis.Helpers.UiScale.SetFactor(Noctis.Models.AppSettings.SnapUiScale(
+                PersistenceService.ReadIntSettingAtLaunch(AppPaths.DataRoot,
+                    nameof(Noctis.Models.AppSettings.UiScalePercent), 100)) / 100.0);
             _ = Task.Run(() =>
             {
                 try { provider.GetRequiredService<IAudioPlayer>(); }
@@ -364,6 +373,7 @@ internal class Program
         services.AddSingleton<IUnisonLyricsService, UnisonLyricsService>();
         services.AddSingleton<IYouTubeMusicLyricsService, YouTubeMusicLyricsService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
+        services.AddSingleton<PhoneHandoffInbox>();
         // Singleton so the startup archive pass and the Wrap dialog share one instance
         // (and one lock over wrap_archive.json).
         services.AddSingleton<IWrapArchiveService, WrapArchiveService>();
@@ -432,7 +442,25 @@ internal class Program
                 sp.GetRequiredService<Services.Lyrics.LyricsWriter>(),
                 sp.GetRequiredService<ILibraryService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
-                      ?? new Noctis.Models.AppSettings()));
+                      ?? new Noctis.Models.AppSettings(),
+                // The lyrics page's Auto sources, in its order; each asked only while on in Settings.
+                () =>
+                {
+                    var lrcLib = sp.GetRequiredService<ILrcLibService>();
+                    var netEase = sp.GetRequiredService<INetEaseService>();
+                    var list = new List<Services.Lyrics.LyricsBulkSource>
+                    {
+                        new("LRCLIB", s => s.LrcLibEnabled, (a, t, d, c) => LrcLibLookup.FetchAsync(lrcLib, a, t, d, c)),
+                        new("NetEase", s => s.NetEaseEnabled, netEase.SearchLyricsAsync),
+                    };
+                    list.AddRange(Services.Lyrics.OnlineLyricsSource.BuiltIns(
+                            sp.GetRequiredService<IMusixmatchService>(), sp.GetRequiredService<IKugouLyricsService>(),
+                            sp.GetRequiredService<IYouTubeMusicLyricsService>(), sp.GetRequiredService<ILrcRedLyricsService>(),
+                            sp.GetRequiredService<IUnisonLyricsService>())
+                        .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync)));
+                    return list;
+                },
+                Path.Combine(sp.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_bulk_ledger.json")));
         services.AddSingleton<Services.LyricsStudio.ILyricsStudioEngine>(sp =>
             new Services.LyricsStudio.LyricsStudioEngine(
                 sp.GetRequiredService<IAudioConverterService>(),
@@ -444,21 +472,13 @@ internal class Program
         services.AddSingleton<ISendToFolderService>(sp => new SendToFolderService(
             sp.GetRequiredService<ILibraryService>(), sp.GetService<ILibraryWatcherService>()));
 
-        // YouTube → library: yt-dlp as an external tool, tagged with TagLib, imported like a drop.
+        // yt-dlp as an external tool, for lyrics background videos from YouTube. (Adding songs from
+        // YouTube to the library is the official "Add from YouTube" plugin since 10-29.)
         services.AddSingleton<Services.YouTube.YtDlpTool>(sp =>
             new Services.YouTube.YtDlpTool(
                 sp.GetRequiredService<HttpClient>(),
                 sp.GetRequiredService<IPersistenceService>().DataDirectory,
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty));
-        services.AddSingleton<Services.YouTube.IYouTubeImportService>(sp =>
-            new Services.YouTube.YouTubeImportService(
-                sp.GetRequiredService<Services.YouTube.YtDlpTool>(),
-                sp.GetRequiredService<IAudioConverterService>(),
-                sp.GetRequiredService<IMetadataService>(),
-                sp.GetRequiredService<ILibraryService>(),
-                sp.GetRequiredService<HttpClient>(),
-                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
-                      ?? new Noctis.Models.AppSettings()));
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
@@ -485,6 +505,21 @@ internal class Program
                 sp.GetRequiredService<ILibraryService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
+
+        // GitHub #148: measures and tags new files once their album has finished copying.
+        // Inert until Settings → Audio → Output → ReplayGain → "Scan new files automatically" is on.
+        services.AddSingleton<ReplayGainAutoScanService>(sp =>
+        {
+            var player = sp.GetRequiredService<IAudioPlayer>();
+            return new ReplayGainAutoScanService(
+                sp.GetRequiredService<IReplayGainScannerService>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings(),
+                playingPath: () => player.CurrentMediaPath,
+                // The player caches the playing file's tags (see OpenReplayGainScannerDialog).
+                onTagsWritten: () => Avalonia.Threading.Dispatcher.UIThread.Post(player.ReloadReplayGainTags));
+        });
 
         // ViewModels — MainWindowViewModel is the root, created once
         services.AddSingleton<MainWindowViewModel>();

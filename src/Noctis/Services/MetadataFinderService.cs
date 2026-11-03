@@ -32,8 +32,12 @@ public sealed class MetadataFinderService : IMetadataFinderService
     {
         var settings = _settings();
         var results = new List<TagSuggestion>();
+        Exception? failure = null;
 
         // 1. Deezer text search — primary source (keyless, fast, reliable for popular music).
+        //    Only the caller's cancel is a cancel: HttpClient's 15 s timeout also throws an
+        //    OperationCanceledException, and rethrowing it ended the whole Find Metadata run as
+        //    "Cancelled" with the row stuck on "Identifying…".
         if (settings.DeezerEnabled)
         {
             try
@@ -45,7 +49,7 @@ public sealed class MetadataFinderService : IMetadataFinderService
                 // it (raw API order auto-applied wrong-track tags at "0%").
                 results.AddRange(Rescore(track, hits));
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { /* fall through to MusicBrainz */ }
         }
 
@@ -64,9 +68,14 @@ public sealed class MetadataFinderService : IMetadataFinderService
                 // auto-applies any hit at "100%".
                 results.AddRange(Rescore(track, MusicBrainzApi.ParseRecordingSearch(json)));
             }
-            catch (OperationCanceledException) { throw; }
-            catch { /* no source produced a match */ }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex) { failure = ex; }
         }
+
+        // Nothing found and the last source failed: say so, rather than "No match" for a
+        // search that never ran (offline, MusicBrainz 503, timeout).
+        if (results.Count == 0 && failure is not null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(failure);
 
         return results.OrderByDescending(h => h.Confidence).ToList();
     }

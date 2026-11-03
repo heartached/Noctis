@@ -116,6 +116,10 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     [ObservableProperty] private bool _isFavorite;
 
+    /// <summary>GitHub #141: the user picked this artist's Deezer account by hand (Search Artist
+    /// Info); the Options menu then offers "Use Automatic Artist Info".</summary>
+    [ObservableProperty] private bool _hasArtistInfoPick;
+
     /// <summary>Deezer fan count for the hero ("7,994,069 fans", 09-15); -1 until known.
     /// The cached number paints at once, the weekly re-check swaps in behind it.</summary>
     [ObservableProperty]
@@ -253,6 +257,44 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     [RelayCommand]
     private void SetReleaseSort(string? mode) => ReleaseSortMode = mode is "oldest" or "name" ? mode : "newest";
+
+    // ── Albums tab layout: grid or album carousel (GitHub #149) ──
+    /// <summary>True when the Albums tab shows the carousel. One setting for every artist
+    /// (<see cref="SettingsViewModel.ArtistAlbumsViewMode"/>), like the sort.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAlbumsGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowAlbumsCarousel))]
+    [NotifyPropertyChangedFor(nameof(AlbumsViewToggleLabel))]
+    private bool _isAlbumsCarousel;
+
+    /// <summary>Tooltip / accessible name of the grid-carousel toggle: what a click switches to.</summary>
+    public string AlbumsViewToggleLabel => Loc.T(IsAlbumsCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
+
+    public bool ShowAlbumsGrid => HasAlbums && !IsAlbumsCarousel;
+    public bool ShowAlbumsCarousel => HasAlbums && IsAlbumsCarousel;
+
+    /// <summary>Case style, shared with the Albums page carousel (<see cref="SettingsViewModel.AlbumCarouselStyle"/>).</summary>
+    [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
+
+    /// <summary>The album the carousel last centred (kept while this page lives in history).</summary>
+    [ObservableProperty] private Album? _carouselCenterAlbum;
+
+    partial void OnIsAlbumsCarouselChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistAlbumsViewMode = value ? "carousel" : "grid";
+    }
+
+    [RelayCommand]
+    private void ToggleAlbumsView() => IsAlbumsCarousel = !IsAlbumsCarousel;
+
+    /// <summary>Re-reads the shared layout and style (a change made on another page while this
+    /// one sat in history applies on the way back).</summary>
+    private void AdoptAlbumsView()
+    {
+        if (_settings == null) return;
+        IsAlbumsCarousel = _settings.ArtistAlbumsViewMode == "carousel";
+        CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
+    }
 
     // ── Latest release (by release date, falling back to year) ──
     [ObservableProperty]
@@ -401,10 +443,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _info = info;
         _similar = similar;
         IsOverviewSimilarExpanded = settings?.ArtistSimilarExpanded ?? true;
+        AdoptAlbumsView();
 
         Artist = library.Artists.FirstOrDefault(a => string.Equals(a.Name, ArtistName, StringComparison.OrdinalIgnoreCase))
                  ?? new Artist { Id = LibraryService.ComputeArtistId(ArtistName), Name = ArtistName };
         IsFavorite = _artistsVm?.IsFavoriteArtist(ArtistName) ?? false;
+        HasArtistInfoPick = _images?.GetPinnedDeezerId(Artist.Id) != null;
 
         Rebuild();
         ResolveImage();
@@ -428,7 +472,16 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         // must follow the set, so re-derive the lists when favourites change anywhere.
         _favoritesChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplyLists);
         _library.FavoritesChanged += _favoritesChangedHandler;
+        // Top Songs and Most Played rank by plays, and a counted play raises no LibraryUpdated:
+        // re-rank once the song is over (FinishedPlays), like Songs sorted by Plays.
+        _finishedPlays = new FinishedPlays(player, finished =>
+        {
+            if (finished.Any(t => _allSongs.Any(s => s.Id == t.Id))) OnLibraryUpdated();
+            return true;
+        });
     }
+
+    private readonly FinishedPlays _finishedPlays;
 
     // ── Data ──
 
@@ -578,6 +631,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             // while this one sat in history applies on the way back.
             if (value && _settings != null) ReleaseSortMode = _settings.ArtistReleaseSortMode;
             if (value && _settings != null) IsOverviewSimilarExpanded = _settings.ArtistSimilarExpanded;
+            if (value) AdoptAlbumsView();
         }
     }
 
@@ -697,6 +751,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         OnPropertyChanged(nameof(HasFavorites));
         OnPropertyChanged(nameof(HasReleases));
         OnPropertyChanged(nameof(HasAlbums));
+        OnPropertyChanged(nameof(ShowAlbumsGrid));
+        OnPropertyChanged(nameof(ShowAlbumsCarousel));
         OnPropertyChanged(nameof(HasSingles));
         OnPropertyChanged(nameof(HasOverviewAlbums));
         OnPropertyChanged(nameof(HasOverviewSingles));
@@ -1170,6 +1226,74 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _artistsVm?.MarkDirty();
     }
 
+    // ── Search Artist Info (GitHub #141) ──
+
+    /// <summary>The picker for this artist, or null without the artist services.</summary>
+    public ArtistInfoSearchViewModel? CreateArtistInfoSearch(Func<string, CancellationToken, Task<Avalonia.Media.Imaging.Bitmap?>>? thumbnail)
+    {
+        if (_images == null) return null;
+        var images = _images;
+        return new ArtistInfoSearchViewModel(ArtistName, images.GetPinnedDeezerId(Artist.Id),
+            (query, ct) => images.SearchArtistsAsync(query, ct), thumbnail, ApplyArtistPickAsync);
+    }
+
+    /// <summary>
+    /// Keeps the picked Deezer account for this artist: its photo and fan count now, and the
+    /// About card from the MusicBrainz artist linked to that account (MusicBrainz or Wikidata
+    /// know the link for most artists; without one the About card stays automatic).
+    /// </summary>
+    public async Task ApplyArtistPickAsync(DeezerArtistPhotos.SearchHit pick)
+    {
+        if (_images == null) return;
+        var old = ImagePath;
+        var path = await _images.PinDeezerArtistAsync(Artist, pick, _cts.Token);
+        HasArtistInfoPick = true;
+        FanCount = pick.Fans;
+        ShowPortrait(old, path);
+
+        if (_info == null) return;
+        string? mbid = null;
+        try { mbid = await _info.FindMusicBrainzIdForDeezerAsync(pick.Id, _cts.Token); }
+        catch (OperationCanceledException) { return; }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.UI, "Artist.Pick", ex.Message); }
+        if (mbid == null) return;
+        _info.SetPinnedMusicBrainzId(Artist.Id, mbid);
+        About = null;
+        _ = LoadAboutAsync();
+    }
+
+    /// <summary>"Use Automatic Artist Info": forgets the pick and looks the artist up by name again.</summary>
+    public async Task ResetArtistPickAsync()
+    {
+        if (_images == null) return;
+        var old = ImagePath;
+        var pinnedFacts = _info?.GetPinnedMusicBrainzId(Artist.Id) != null;
+        _info?.SetPinnedMusicBrainzId(Artist.Id, null);
+        var path = await _images.ClearDeezerPinAsync(Artist);
+        HasArtistInfoPick = false;
+        if (path != null) ShowPortrait(old, path);
+        _ = LoadFansAsync();
+        if (pinnedFacts)
+        {
+            About = null;
+            _ = LoadAboutAsync();
+        }
+    }
+
+    /// <summary>Swaps the hero portrait for a re-written (or removed) file.</summary>
+    private void ShowPortrait(string? old, string? path)
+    {
+        if (!string.IsNullOrEmpty(old)) ArtworkCache.Invalidate(old);
+        if (!string.IsNullOrEmpty(path))
+        {
+            ArtworkCache.Invalidate(path);
+            DominantColorExtractor.InvalidateEdgeColor(path);
+        }
+        ImagePath = null; // bounce so CachedImage reloads the same path
+        ImagePath = path;
+        _artistsVm?.MarkDirty();
+    }
+
     public void RemovePicture()
     {
         if (_images == null) return;
@@ -1187,6 +1311,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _songsGeneration++; // stops an in-flight Songs-tab slice fill
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;
+        _finishedPlays.Dispose();
     }
 }
 

@@ -413,7 +413,7 @@
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>اختر فيديو لهذا الألبوم…</value>
+    <value>اختر فيديو لهذا الألبوم</value>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
@@ -1144,6 +1144,34 @@
     <value>خارج تخطي الأغاني الصريحة ما لم تقم بتشغيلها مباشرة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.OutputDevice" xml:space="preserve">
+    <value>جهاز الإخراج</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve">
+    <value>حيث يشغّل Noctis الصوت. يفتح الوضع الحصري الجهاز المحدد مباشرة، لذا يتبع إخراج bit-perfect هذا الإعداد بدلاً من الإعداد الافتراضي في Windows.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve">
+    <value>افتراضي النظام</value>
+    <comment>Output Device picker: follow-the-Windows-default entry</comment>
+  </data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve">
+    <value>افتراضي</value>
+    <comment>Suffix marking the current Windows default endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve">
+    <value>الجهاز المحدد</value>
+    <comment>Output Device picker: disconnected pinned endpoint</comment>
+  </data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve">
+    <value>غير متصل</value>
+    <comment>Suffix for a disconnected endpoint in the picker</comment>
+  </data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
+    <value>الجهاز المحدد غير متصل حالياً. سيستخدم التشغيل الجهاز الافتراضي للنظام حتى يعود.</value>
+    <comment>Shown under Output Device when the pin is missing</comment>
+  </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
     <value>الوضع الحصري</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1254,6 +1282,14 @@
   </data>
   <data name="Settings.PreAmpDB" xml:space="preserve">
     <value>التضخيم المسبق (dB)</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve">
+    <value>فحص الملفات الجديدة تلقائيًا</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve">
+    <value>يكتب وسوم ReplayGain في الأغاني الجديدة بعد اكتمال نسخ ألبومها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve">
@@ -5575,94 +5611,6 @@
     <value>أغلق</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>إضافة من يوتيوب</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>البحث عن رابط أو لصقه - التنزيلات في مكتبتك</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>إضافة من يوتيوب</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>ابحث عن رابط أو لصقه. تم حفظه في مكتبتك مع فن الغلاف.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>البحث في يوتيوب أو لصق رابط…</value>
-    <comment>Search box watermark</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>البحث</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>إعداد لمرة واحدة</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Noctis يستخدم yt-dlp (مجاني، المصدر المفتوح) للتحدث إلى يوتيوب. يتم تنزيله مرة واحدة في مجلد Noctis الخاص ويتم تحديثه من هنا.</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>تثبيت yt-dlp</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>تنزيل</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>يحفظ إلى</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>تظهر النتائج هنا. تحميل الأرض في مجلد مكتبتك، موسومة مع فن الغلاف</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>أغلق</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>التحميل الخاص بك</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>إضافة أغاني من اليوتيوب</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>البحث أو لصق رابط للتنزيل.</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>فتح التحميل</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>مجلد التحميل</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>فراغ يستخدم مجلد &quot;YouTube&quot; داخل مجلد الموسيقى الأول الخاص بك.</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve">
-    <value>زلادة</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>تثبيت / تحديث</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>مسار مخصص إلى yt-dlp (اختياري)</value>
-    <comment>Path watermark</comment>
-  </data>
   <data name="Upmix.Title" xml:space="preserve">
     <value>متعدد القنوات المزيج</value>
     <comment>Audio card title</comment>
@@ -6723,5 +6671,113 @@
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve">
     <value>الانتقال إلى الفنانين</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
+  </data>
+  <data name="ArtistDetail.SearchArtistInfo" xml:space="preserve">
+    <value>البحث عن معلومات الفنان</value>
+    <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
+  </data>
+  <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
+    <value>استخدام المعلومات التلقائية</value>
+    <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Title" xml:space="preserve">
+    <value>البحث عن معلومات الفنان</value>
+    <comment>ArtistInfoSearchDialog.axaml title</comment>
+  </data>
+  <data name="ArtistInfoSearch.Subtitle" xml:space="preserve">
+    <value>اختر الفنان الصحيح. تتبع الصورة والمعجبون والنبذة اختيارك.</value>
+    <comment>ArtistInfoSearchDialog.axaml subtitle</comment>
+  </data>
+  <data name="ArtistInfoSearch.Searching" xml:space="preserve">
+    <value>جارٍ البحث…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.NothingFound" xml:space="preserve">
+    <value>لم يتم العثور على فنانين.</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.Failed" xml:space="preserve">
+    <value>فشل البحث: {0}</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml; {0} = error message</comment>
+  </data>
+  <data name="ArtistInfoSearch.Applying" xml:space="preserve">
+    <value>جارٍ الحفظ…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
+  </data>
+  <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
+    <value>{0} ألبوم</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
+    <value>ألبوم واحد</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
+    <value>مشجع واحد</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Current" xml:space="preserve">
+    <value>الحالي</value>
+    <comment>Badge on the row the artist is pinned to</comment>
+  </data>
+  <data name="ArtistInfoSearch.Use" xml:space="preserve">
+    <value>استخدام هذا الفنان</value>
+    <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>التكرار: إيقاف</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>تكرار الكل: تتكرر قائمة الانتظار</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>تكرار أغنية: تتكرر هذه الأغنية</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>إظهار الأغاني المشغّلة</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
+  <data name="Settings.AppIcon" xml:space="preserve">
+    <value>أيقونة التطبيق</value>
+    <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
+  </data>
+  <data name="Settings.AppIconDesc" xml:space="preserve">
+    <value>تغيّر الأيقونة في شريط العنوان وشريط المهام وعلبة النظام فورًا. يحتفظ اختصار سطح المكتب وملف ‎.exe بالأيقونة الكلاسيكية.</value>
+    <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
+  </data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve">
+    <value>كلاسيكي</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve">
+    <value>وردي</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve">
+    <value>سماء</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve">
+    <value>غروب</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve">
+    <value>بنفسجي</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve">
+    <value>شفق</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve">
+    <value>منتصف الليل</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve">
+    <value>ياقوتي</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
 </root>

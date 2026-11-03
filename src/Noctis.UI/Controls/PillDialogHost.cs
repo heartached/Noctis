@@ -101,6 +101,8 @@ public class PillDialogHost : ContentControl
     private Bitmap? _backdropBitmap;
     private int _backdropGeneration;
     private Window? _window;
+    // Where the owner's client area sits, in this window's DIPs (unscaled).
+    private Rect? _backdropPlacement;
 
     private DoubleTransition? _backdropFade;
     private DoubleTransition? _cardFade;
@@ -191,6 +193,8 @@ public class PillDialogHost : ContentControl
         window.Opened += OnWindowOpened;
         window.Closing += OnWindowClosing;
         window.Closed += OnWindowClosed;
+        window.PropertyChanged += OnWindowPropertyChanged;
+        UpdateFitSize(window);
         // Mounted into a window that is already up: open once the current work is done.
         // Not synchronously — Show() attaches the content while IsVisible is already true
         // but before Owner is set and Opened is raised; Opened then runs first and this
@@ -217,7 +221,37 @@ public class PillDialogHost : ContentControl
         window.Opened -= OnWindowOpened;
         window.Closing -= OnWindowClosing;
         window.Closed -= OnWindowClosed;
+        window.PropertyChanged -= OnWindowPropertyChanged;
         _window = null;
+    }
+
+    /// <summary>Room kept free around the card when Interface Size decides how far it can scale.</summary>
+    private const double FitGutter = 24;
+
+    /// <summary>
+    /// Interface Size (GitHub #145): the card's designed size is what has to stay on screen,
+    /// so the window scales only as far as the card still fits it (UiScale.FitSize). The
+    /// designed size is the content's Width/Height, else its MaxWidth/MaxHeight; an
+    /// auto-sized side is left out.
+    /// </summary>
+    private void UpdateFitSize(Window window)
+    {
+        if (Content is not Avalonia.Layout.Layoutable card) return;
+        static double Side(double size, double max) =>
+            !double.IsNaN(size) ? size : double.IsFinite(max) ? max : 0;
+        var w = Side(card.Width, card.MaxWidth);
+        var h = Side(card.Height, card.MaxHeight);
+        var pad = Padding;
+        var margin = card.Margin;
+        UiScale.SetFitSize(window, new Size(
+            w > 0 ? w + pad.Left + pad.Right + margin.Left + margin.Right + 2 * FitGutter : 0,
+            h > 0 ? h + pad.Top + pad.Bottom + margin.Top + margin.Bottom + 2 * FitGutter : 0));
+    }
+
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        // The backdrop is laid out in this host's (scaled) units: re-place it at the new scale.
+        if (e.Property == UiScale.AppliedProperty) PlaceBackdrop();
     }
 
     private async void OnWindowOpened(object? sender, EventArgs e)
@@ -341,6 +375,27 @@ public class PillDialogHost : ContentControl
     }
 
     /// <summary>
+    /// Lays the snapshot over the owner's client area. The placement is in window DIPs; this
+    /// host sits under the window's Interface Size scale (GitHub #145), so it is divided by
+    /// it — at 150% an unscaled owner-sized image would be drawn 1.5× too large and offset.
+    /// </summary>
+    internal void PlaceBackdrop(Rect placement)
+    {
+        _backdropPlacement = placement;
+        PlaceBackdrop();
+    }
+
+    private void PlaceBackdrop()
+    {
+        if (_backdrop is null || _backdropPlacement is not { } r) return;
+        var f = _window is { } w ? UiScale.GetApplied(w) : 1.0;
+        if (!(f > 0)) f = 1.0;
+        _backdrop.Margin = new Thickness(r.X / f, r.Y / f, 0, 0);
+        _backdrop.Width = r.Width / f;
+        _backdrop.Height = r.Height / f;
+    }
+
+    /// <summary>
     /// Blurred copy of the owner window (BackdropSnapshot), laid exactly over where the
     /// owner sits.
     /// </summary>
@@ -366,11 +421,9 @@ public class PillDialogHost : ContentControl
         var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         var ownerOrigin = owner.PointToScreen(new Point(0, 0));
         var hostOrigin = this.PointToScreen(new Point(0, 0));
-        _backdrop.Margin = new Thickness(
+        PlaceBackdrop(new Rect(
             (ownerOrigin.X - hostOrigin.X) / scaling,
-            (ownerOrigin.Y - hostOrigin.Y) / scaling, 0, 0);
-        _backdrop.Width = size.Width;
-        _backdrop.Height = size.Height;
+            (ownerOrigin.Y - hostOrigin.Y) / scaling, size.Width, size.Height));
 
         // Swap, then free the old one a frame later: the last frame drawn may still use it.
         var old = _backdropBitmap;

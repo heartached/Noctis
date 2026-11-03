@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.BulkLyricsDialog"
         x:DataType="vm:BulkLyricsViewModel"
         Title="{loc:T BulkLyrics.Title}"
@@ -15,80 +16,111 @@
     <Window.Styles>
         <Style Selector="Border.job-row">
             <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Background" Value="#10FFFFFF" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="CornerRadius" Value="14" />
         </Style>
         <Style Selector="TextBlock.status.failed">
             <Setter Property="Foreground" Value="#FF8A80" />
         </Style>
+        <Style Selector="CheckBox.bl-option">
+            <Setter Property="FontSize" Value="12.5" />
+        </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="620"
-                MaxHeight="720"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="4">
-                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="{Binding SubtitleText}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                </StackPanel>
+    <!-- The rounded pill pop-up (PillDialogHost), as Import Playlist / Find Metadata: it draws the
+         dimmed app behind and animates every close path. MaxHeight so the list virtualizes. -->
+    <controls:PillDialogHost>
 
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
-                    <StackPanel Spacing="10">
-                        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
-                                     IsVisible="{Binding IsRunning}" />
-                        <Grid ColumnDefinitions="*,Auto,Auto">
-                            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                            <Button Grid.Column="1" Content="{loc:T BulkLyrics.Close}" Command="{Binding CancelCommand}"
-                                    Width="100" Padding="0,8" FontWeight="Bold" HorizontalContentAlignment="Center"
-                                    CornerRadius="999" Margin="0,0,8,0" Cursor="Hand" />
-                            <Button Grid.Column="2" Content="{Binding ActionText}" Command="{Binding StartCommand}"
-                                    IsEnabled="{Binding CanStart}"
-                                    Width="110" Padding="0,8" Classes="accent-btn"
-                                    Background="{DynamicResource AccentButtonBackground}"
-                                    Foreground="{DynamicResource AccentForegroundBrush}"
-                                    FontWeight="SemiBold" HorizontalContentAlignment="Center"
-                                    CornerRadius="999" Cursor="Hand" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
+    <Grid Width="640" MaxHeight="720" RowDefinitions="Auto,Auto,*,Auto">
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,4,24,8">
-                    <ItemsControl ItemsSource="{Binding Rows}">
-                        <!-- Virtualized: one row per selected track, so a Ctrl+A selection built every
-                             row on open. VirtualizingStackPanel has no Spacing; the 4px gap is the
-                             job-row's bottom margin. -->
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:BulkLyricsViewModel+Row">
-                                <Border Classes="job-row">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <StackPanel Grid.Column="0" Spacing="1">
-                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding Status}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
-                                                      Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </DockPanel>
+        <Border Grid.Row="0" Padding="28,22,28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" />
+                <TextBlock Text="{Binding SubtitleText}" FontSize="12.5" Opacity="0.65" TextWrapping="Wrap" />
+            </StackPanel>
         </Border>
-    </Border>
+
+        <!-- Fetch options, before a run starts. -->
+        <StackPanel Grid.Row="1" Spacing="2" Margin="28,12,28,4" IsVisible="{Binding IsFetch}">
+            <CheckBox x:Name="UpgradeBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding UpgradeExisting}"
+                      IsEnabled="{Binding CanChangeOptions}"
+                      Content="{loc:T BulkLyrics.Upgrade}" />
+            <CheckBox x:Name="RecheckBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding Recheck}"
+                      IsEnabled="{Binding CanChangeOptions}"
+                      Content="{loc:T BulkLyrics.Recheck}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="28,8,28,8">
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <!-- Virtualized: one row per track, so a whole library builds only what shows.
+                     VirtualizingStackPanel has no Spacing; the gap is the job-row's bottom margin. -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BulkLyricsViewModel+Row">
+                        <Border Classes="job-row pill-well">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="1">
+                                    <!-- Badge docked after the title; Left-aligned so it hugs short titles and long ones still trim -->
+                                    <DockPanel HorizontalAlignment="Left">
+                                        <Border DockPanel.Dock="Right" Classes="explicit-badge compact" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsExplicit}">
+                                            <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding Status}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
+                                              Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Border Grid.Row="3" Padding="28,12,28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Spacing="10">
+                <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
+                             IsVisible="{Binding IsRunning}" />
+                <!-- After a run: plain-only songs can be timed in Lyrics Studio (opt-in, slow, reviewed). -->
+                <Border Classes="pill-well" CornerRadius="18" Padding="16,10,10,10" IsVisible="{Binding CanTimeInStudio}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <TextBlock Grid.Column="0" Text="{Binding StudioOfferText}" FontSize="12" Opacity="0.85"
+                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <Button x:Name="StudioButton" Grid.Column="1" Classes="pill-primary" MinHeight="34" Padding="16,0" FontSize="12.5"
+                                Content="{loc:T BulkLyrics.OpenStudio}" Command="{Binding OpenStudioCommand}" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                    <!-- "Fetching" then a spinner while a run works; Left-aligned so the spinner hugs
+                         the text and a long status still trims. -->
+                    <DockPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center" HorizontalAlignment="Left">
+                        <controls:LoadingSpinner DockPanel.Dock="Right" Width="14" Height="14" Margin="8,0,0,0"
+                                                 Foreground="{DynamicResource AccentColorBrush}"
+                                                 IsVisible="{Binding IsRunning}" IsActive="{Binding IsRunning}" />
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12.5" Opacity="0.65"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding StatusMessage}" />
+                    </DockPanel>
+                    <Button x:Name="StopButton" Grid.Column="1" Classes="pill-secondary" Content="{loc:T BulkLyrics.Stop}"
+                            Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}"
+                            MinWidth="92" Margin="0,0,10,0" />
+                    <Button x:Name="CloseButton" Grid.Column="2" Classes="pill-secondary" Content="{Binding CloseText}"
+                            Command="{Binding CancelCommand}" MinWidth="100" Margin="0,0,10,0" />
+                    <Button x:Name="StartButton" Grid.Column="3" Classes="pill-primary" Content="{Binding ActionText}"
+                            Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" MinWidth="108" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

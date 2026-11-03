@@ -114,7 +114,6 @@ public class CoverFlowLayoutMorphTests
         Assert.Equal(new[] { CoverFlowView.LayerCarousel }, VisibleLayers(view));
         Assert.Null(Layer(view, CoverFlowView.LayerCarousel).RenderTransform);
         Assert.True(view.FindControl<Panel>("BlurredBackground")!.IsVisible);
-        Assert.False(view.FindControl<Panel>("CollageBackground")!.IsVisible);
     }
 
     [AvaloniaFact]
@@ -161,30 +160,26 @@ public class CoverFlowLayoutMorphTests
         Assert.True(cascade.IsHitTestVisible && carousel.IsHitTestVisible);
     }
 
+    /// <summary>GitHub #153: the Collage sat on a flat charcoal; it now has the blurred
+    /// cover behind it like the other layouts, through the switch and at rest.</summary>
     [AvaloniaFact]
-    public void ToCollage_FadesTheBlurredBackdropOverTheCharcoal_ThenStopsDrawingIt()
+    public void ToCollage_KeepsTheBlurredBackdrop()
     {
         var (view, vm, _) = Open();
         var blurred = view.FindControl<Panel>("BlurredBackground")!;
-        var charcoal = view.FindControl<Panel>("CollageBackground")!;
+        Assert.Null(view.FindControl<Panel>("CollageBackground"));
 
         vm.Layout = CoverFlowLayout.Collage;
         view.ApplyMorphFrame(0.3);
-        var collage = Layer(view, CoverFlowView.LayerCollage);
-        Assert.True(charcoal.IsVisible && blurred.IsVisible);
-        Assert.Equal(1 - collage.Opacity, blurred.Opacity, 6);
+        Assert.True(blurred.IsVisible);
+        Assert.Equal(1, blurred.Opacity);
         AssertSameRect(HeroOnScreen(view, CoverFlowView.LayerCarousel), HeroOnScreen(view, CoverFlowView.LayerCollage));
 
         view.FinishLayoutMorph();
         Assert.Equal(new[] { CoverFlowView.LayerCollage }, VisibleLayers(view));
-        Assert.True(charcoal.IsVisible);
-        Assert.False(blurred.IsVisible); // no blur rendered behind the collage at rest
-
-        vm.Layout = CoverFlowLayout.Carousel;
-        view.FinishLayoutMorph();
         Assert.True(blurred.IsVisible);
         Assert.Equal(1, blurred.Opacity);
-        Assert.False(charcoal.IsVisible);
+        Assert.True(Layer(view, CoverFlowView.LayerCollage).IsHitTestVisible);
     }
 
     [AvaloniaFact]

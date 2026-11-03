@@ -59,6 +59,55 @@ public static class HttpSafety
     }
 
     /// <summary>
+    /// Deserializes the response body as JSON straight off the wire, failing once
+    /// <paramref name="maxBytes"/> is exceeded. For large payloads (the GitHub release list
+    /// is ~1.5 MB): reading it into bytes and then a string first put ~7 MB of short-lived
+    /// large-object-heap buffers behind every fetch, enough to set off a gen2 collection.
+    /// </summary>
+    public static async Task<T?> ReadJsonBoundedAsync<T>(HttpContent content, long maxBytes = MaxTextBytes, CancellationToken ct = default)
+    {
+        var declared = content.Headers.ContentLength;
+        if (declared.HasValue && declared.Value > maxBytes)
+            throw new HttpRequestException($"Response body ({declared.Value} bytes) exceeds the {maxBytes}-byte limit.");
+
+        await using var stream = await content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using var bounded = new BoundedReadStream(stream, maxBytes);
+        return await System.Text.Json.JsonSerializer.DeserializeAsync<T>(bounded, cancellationToken: ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Read-only pass-through that throws once more than the cap has been read.</summary>
+    private sealed class BoundedReadStream(Stream inner, long maxBytes) : Stream
+    {
+        private long _read;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => _read; set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => Count(inner.Read(buffer, offset, count));
+        public override int Read(Span<byte> buffer) => Count(inner.Read(buffer));
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct) =>
+            Count(await inner.ReadAsync(buffer.AsMemory(offset, count), ct).ConfigureAwait(false));
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default) =>
+            Count(await inner.ReadAsync(buffer, ct).ConfigureAwait(false));
+
+        private int Count(int read)
+        {
+            _read += read;
+            if (_read > maxBytes)
+                throw new HttpRequestException($"Response body exceeds the {maxBytes}-byte limit.");
+            return read;
+        }
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    /// <summary>
     /// True when the data starts with a known raster-image signature
     /// (JPEG, PNG, GIF, WebP, BMP). Rejects HTML/SVG/error pages so they
     /// never land in the artwork cache as ".jpg".

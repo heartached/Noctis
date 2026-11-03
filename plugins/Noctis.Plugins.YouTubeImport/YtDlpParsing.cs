@@ -1,0 +1,458 @@
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace Noctis.Plugins.YouTubeImport;
+
+/// <summary>One YouTube video as yt-dlp describes it, reduced to what a music library needs.</summary>
+public sealed record YouTubeTrackInfo(
+    string Id,
+    string Url,
+    string Title,
+    string Channel,
+    TimeSpan? Duration,
+    string? ThumbnailUrl,
+    string? Track,
+    string? Artist,
+    string? Album,
+    int? Year,
+    string? Ext)
+{
+    public string DurationText => Duration is { } d
+        ? (d.TotalHours >= 1 ? d.ToString(@"h\:mm\:ss") : d.ToString(@"m\:ss"))
+        : string.Empty;
+}
+
+/// <summary>
+/// Pure helpers around the yt-dlp command line and its JSON: argument lists, result
+/// parsing, tag inference and file naming. No process or network I/O lives here so every
+/// rule is unit-testable.
+/// </summary>
+public static partial class YtDlpParsing
+{
+    public const string ReleaseBaseUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/";
+
+    /// <summary>Official release asset for this OS/architecture.</summary>
+    public static string ReleaseAssetName(OSPlatform? platform = null, Architecture? arch = null)
+    {
+        var isWindows = platform is null ? OperatingSystem.IsWindows() : platform == OSPlatform.Windows;
+        var isMac = platform is null ? OperatingSystem.IsMacOS() : platform == OSPlatform.OSX;
+        var a = arch ?? RuntimeInformation.OSArchitecture;
+        if (isWindows) return "yt-dlp.exe";
+        if (isMac) return "yt-dlp_macos";
+        return a == Architecture.Arm64 ? "yt-dlp_linux_aarch64" : "yt-dlp_linux";
+    }
+
+    public static string ReleaseDownloadUrl() => ReleaseBaseUrl + ReleaseAssetName();
+
+    /// <summary>The SHA-256 list yt-dlp publishes with every release ("&lt;hex&gt;  &lt;asset&gt;" per line).</summary>
+    public static string ChecksumsUrl() => ReleaseBaseUrl + "SHA2-256SUMS";
+
+    /// <summary>The lowercase SHA-256 the checksum list gives <paramref name="assetName"/>, or null.</summary>
+    public static string? ParseChecksum(string? sums, string assetName)
+    {
+        if (string.IsNullOrWhiteSpace(sums)) return null;
+        foreach (var raw in sums.Split('\n'))
+        {
+            var line = raw.Trim();
+            var space = line.IndexOf(' ');
+            if (space != 64) continue;
+            var name = line[space..].Trim().TrimStart('*');
+            if (!string.Equals(name, assetName, StringComparison.Ordinal)) continue;
+            var hex = line[..64];
+            return hex.All(Uri.IsHexDigit) ? hex.ToLowerInvariant() : null;
+        }
+        return null;
+    }
+
+    [GeneratedRegex(@"^(?:https?://)?(?:www\.|m\.|music\.)?(?:youtube\.com/(?:watch\?.*v=|shorts/|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})", RegexOptions.IgnoreCase)]
+    private static partial Regex YouTubeUrlRegex();
+
+    public static bool LooksLikeYouTubeUrl(string? text) =>
+        !string.IsNullOrWhiteSpace(text) && YouTubeUrlRegex().IsMatch(text.Trim());
+
+    public static string? ExtractVideoId(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var m = YouTubeUrlRegex().Match(url.Trim());
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    public static string WatchUrl(string id) => "https://www.youtube.com/watch?v=" + id;
+
+    // ── Arguments ─────────────────────────────────────────────────────────────
+
+    public static IReadOnlyList<string> VersionArgs() => new[] { "--version" };
+
+    public static IReadOnlyList<string> SearchArgs(string query, int limit, string? jsRuntime = null)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+        var args = new List<string>
+        {
+            "--dump-json", "--flat-playlist", "--no-warnings", "--skip-download", "--ignore-errors",
+            "--no-playlist",
+        };
+        AddJsRuntime(args, jsRuntime);
+        args.Add($"ytsearch{limit}:{query.Trim()}");
+        return args;
+    }
+
+    public static IReadOnlyList<string> InfoArgs(string url, string? jsRuntime = null)
+    {
+        var args = new List<string> { "--dump-json", "--no-playlist", "--no-warnings", "--skip-download" };
+        AddJsRuntime(args, jsRuntime);
+        args.Add(url);
+        return args;
+    }
+
+    /// <summary>
+    /// Download args. M4A (the default, as before the plugin): best m4a stream, else best audio;
+    /// with ffmpeg available the result is remuxed/converted to m4a so every download plays and
+    /// tags the same way (yt-dlp copies the stream when it is already AAC-in-m4a). MP3 and Opus
+    /// always convert, so they need ffmpeg (<see cref="AudioFormat.NeedsFfmpeg"/>); without it
+    /// yt-dlp would leave whatever it downloaded.
+    /// </summary>
+    public static IReadOnlyList<string> DownloadArgs(string url, string outputTemplate, string? ffmpegPath, string? jsRuntime = null, AudioFormat? format = null)
+    {
+        format ??= AudioFormat.Default;
+        var args = new List<string>
+        {
+            "--no-playlist", "--no-warnings", "--newline", "--no-mtime", "--no-part",
+            "-f", format.Selector,
+            "-o", outputTemplate,
+        };
+        if (!string.IsNullOrWhiteSpace(ffmpegPath))
+        {
+            args.AddRange(new[] { "--ffmpeg-location", ffmpegPath, "-x", "--audio-format", format.Codec, "--audio-quality", format.Quality });
+        }
+        AddJsRuntime(args, jsRuntime);
+        args.Add(url);
+        return args;
+    }
+
+    private static void AddJsRuntime(List<string> args, string? jsRuntime)
+    {
+        if (!string.IsNullOrWhiteSpace(jsRuntime)) args.AddRange(new[] { "--js-runtimes", jsRuntime });
+    }
+
+    // ── JS runtime ────────────────────────────────────────────────────────────
+
+    /// <summary>First yt-dlp release that understands <c>--js-runtimes</c>; older copies reject it.</summary>
+    public const string JsRuntimesMinVersion = "2025.11.12";
+
+    /// <summary>
+    /// yt-dlp only enables deno by default and warns that YouTube extraction without a JS
+    /// runtime is deprecated. When deno is missing but node is on PATH, name node explicitly.
+    /// Null = pass nothing (deno found, no node, or a yt-dlp too old/unknown for the flag).
+    /// </summary>
+    public static string? PickJsRuntime(bool hasDeno, bool hasNode, string? ytDlpVersion)
+    {
+        if (hasDeno || !hasNode) return null;
+        if (ParseVersion(ytDlpVersion) is null || CompareVersions(ytDlpVersion, JsRuntimesMinVersion) < 0) return null;
+        return "node";
+    }
+
+    // ── Versions / updates ────────────────────────────────────────────────────
+
+    public const string LatestReleaseApiUrl = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest";
+    public static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(24);
+
+    /// <summary>"2026.08.19" / "2026.08.19.1" (also a leading "v" or a trailing nightly suffix) → numeric parts; null when not a yt-dlp version.</summary>
+    public static int[]? ParseVersion(string? version)
+    {
+        if (string.IsNullOrWhiteSpace(version)) return null;
+        var m = VersionRegex().Match(version.Trim());
+        if (!m.Success) return null;
+        var parts = new List<int>();
+        foreach (var p in m.Groups[1].Value.Split('.'))
+            if (int.TryParse(p, NumberStyles.None, CultureInfo.InvariantCulture, out var n)) parts.Add(n);
+            else return null;
+        return parts.Count >= 3 ? parts.ToArray() : null;
+    }
+
+    [GeneratedRegex(@"^v?(\d{4}\.\d{1,2}\.\d{1,2}(?:\.\d+)?)")]
+    private static partial Regex VersionRegex();
+
+    /// <summary>Orders yt-dlp versions; an unparseable/missing version sorts below any real one.</summary>
+    public static int CompareVersions(string? a, string? b)
+    {
+        var x = ParseVersion(a);
+        var y = ParseVersion(b);
+        if (x is null) return y is null ? 0 : -1;
+        if (y is null) return 1;
+        for (var i = 0; i < Math.Max(x.Length, y.Length); i++)
+        {
+            var xi = i < x.Length ? x[i] : 0;
+            var yi = i < y.Length ? y[i] : 0;
+            if (xi != yi) return xi.CompareTo(yi);
+        }
+        return 0;
+    }
+
+    /// <summary>True when <paramref name="latest"/> is a real version newer than <paramref name="installed"/>.</summary>
+    public static bool IsNewer(string? latest, string? installed) =>
+        ParseVersion(latest) is not null && CompareVersions(latest, installed) > 0;
+
+    /// <summary>24 h throttle for the automatic check; a forced check (after a 403) always runs.</summary>
+    public static bool ShouldCheckForUpdate(DateTime? lastCheckUtc, DateTime nowUtc, bool force) =>
+        force || lastCheckUtc is not { } last || nowUtc - last >= UpdateCheckInterval || last > nowUtc;
+
+    /// <summary><c>tag_name</c> of GitHub's releases/latest JSON, when it is a yt-dlp version.</summary>
+    public static string? ParseLatestTag(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var tag = doc.RootElement.ValueKind == JsonValueKind.Object ? Str(doc.RootElement, "tag_name") : null;
+            return ParseVersion(tag) is null ? null : tag!.Trim().TrimStart('v');
+        }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// YouTube refused the request (403, bot check, formats withheld). A stale yt-dlp is the
+    /// usual cause, so these failures are worth an update and one retry.
+    /// </summary>
+    public static bool IsBlockedError(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return false;
+        return stderr.Contains("HTTP Error 403", StringComparison.OrdinalIgnoreCase)
+               || stderr.Contains("403: Forbidden", StringComparison.OrdinalIgnoreCase)
+               || stderr.Contains("Sign in to confirm you", StringComparison.OrdinalIgnoreCase)
+               || stderr.Contains("Requested format is not available", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// What a still-blocked download says instead of yt-dlp's raw ERROR line. The wording
+    /// depends on whether an update could still help.
+    /// </summary>
+    public static string BlockedMessage(string? installedVersion, string? latestVersion)
+    {
+        var installed = string.IsNullOrWhiteSpace(installedVersion) ? "?" : installedVersion.Trim();
+        if (IsNewer(latestVersion, installedVersion))
+            return $"YouTube blocked this download. Your yt-dlp (version {installed}) is out of date; version {latestVersion} is available. Use Update below, or clear the custom yt-dlp path in this plugin's settings so it is kept up to date.";
+        if (ParseVersion(latestVersion) is not null)
+            return $"YouTube blocked this download. yt-dlp is up to date (version {installed}). Try again later, try a different video, or check your connection/VPN.";
+        return $"YouTube blocked this download (yt-dlp version {installed}). Try again later, try a different video, or check your connection/VPN.";
+    }
+
+    /// <summary>
+    /// Last <paramref name="maxLines"/> non-empty stderr lines, for the log. Stream URLs
+    /// (googlevideo.com) carry the user's IP, so they are replaced before the text can leave
+    /// the machine via "Copy Logs"; each line is capped.
+    /// </summary>
+    public static string StderrTail(string? stderr, int maxLines = 8)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return string.Empty;
+        var lines = stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(l => StreamUrlRegex().Replace(l, "<stream-url>"))
+            .Select(l => l.Length > 300 ? l[..300] + "…" : l)
+            .ToArray();
+        return string.Join(" | ", lines.Skip(Math.Max(0, lines.Length - maxLines)));
+    }
+
+    [GeneratedRegex(@"https?://[^\s""']*googlevideo\.com[^\s""']*", RegexOptions.IgnoreCase)]
+    private static partial Regex StreamUrlRegex();
+
+    /// <summary>"yt-dlp 2026.08.19" plus " · update available" when a newer release is known.</summary>
+    public static string VersionLabel(string? installedVersion, string? latestVersion)
+    {
+        if (string.IsNullOrWhiteSpace(installedVersion)) return string.Empty;
+        var text = "yt-dlp " + installedVersion.Trim();
+        return IsNewer(latestVersion, installedVersion) ? text + " · update available" : text;
+    }
+
+    // ── JSON ──────────────────────────────────────────────────────────────────
+
+    /// <summary>Parses one <c>--dump-json</c> object; null when it is not a video entry.</summary>
+    public static YouTubeTrackInfo? ParseInfo(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return FromElement(doc.RootElement);
+        }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>Parses newline-delimited <c>--dump-json</c> output (one entry per line).</summary>
+    public static List<YouTubeTrackInfo> ParseSearch(string ndjson)
+    {
+        var list = new List<YouTubeTrackInfo>();
+        if (string.IsNullOrWhiteSpace(ndjson)) return list;
+        foreach (var raw in ndjson.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line[0] != '{') continue;
+            var info = ParseInfo(line);
+            if (info is not null && list.All(x => x.Id != info.Id)) list.Add(info);
+        }
+        return list;
+    }
+
+    private static YouTubeTrackInfo? FromElement(JsonElement e)
+    {
+        if (e.ValueKind != JsonValueKind.Object) return null;
+        var id = Str(e, "id");
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        var title = Str(e, "title") ?? id;
+        var url = Str(e, "webpage_url") ?? Str(e, "original_url") ?? WatchUrl(id);
+        if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) url = WatchUrl(id);
+        var channel = Str(e, "channel") ?? Str(e, "uploader") ?? Str(e, "creator") ?? string.Empty;
+        TimeSpan? duration = null;
+        if (e.TryGetProperty("duration", out var d) && d.ValueKind == JsonValueKind.Number && d.TryGetDouble(out var secs) && secs > 0)
+            duration = TimeSpan.FromSeconds(secs);
+
+        var artist = Str(e, "artist") ?? FirstOfArray(e, "artists") ?? Str(e, "creator") ?? FirstOfArray(e, "creators");
+        int? year = null;
+        if (e.TryGetProperty("release_year", out var ry) && ry.ValueKind == JsonValueKind.Number && ry.TryGetInt32(out var y) && y > 1800) year = y;
+        year ??= YearFromDate(Str(e, "release_date")) ?? YearFromDate(Str(e, "upload_date"));
+
+        return new YouTubeTrackInfo(
+            Id: id,
+            Url: url,
+            Title: title,
+            Channel: channel,
+            Duration: duration,
+            ThumbnailUrl: PickThumbnail(e, id),
+            Track: Str(e, "track"),
+            Artist: artist,
+            Album: Str(e, "album"),
+            Year: year,
+            Ext: Str(e, "ext"));
+    }
+
+    private static string? Str(JsonElement e, string name) =>
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString()) ? v.GetString() : null;
+
+    private static string? FirstOfArray(JsonElement e, string name)
+    {
+        if (!e.TryGetProperty(name, out var arr) || arr.ValueKind != JsonValueKind.Array) return null;
+        var parts = arr.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+        return parts.Count == 0 ? null : string.Join(", ", parts);
+    }
+
+    internal static int? YearFromDate(string? yyyymmdd) =>
+        yyyymmdd is { Length: >= 4 } && int.TryParse(yyyymmdd.AsSpan(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var y) && y > 1800 ? y : null;
+
+    /// <summary>Largest JPEG thumbnail up to 1280px; falls back to the single <c>thumbnail</c> field, then YouTube's hqdefault.</summary>
+    internal static string? PickThumbnail(JsonElement e, string id)
+    {
+        if (e.TryGetProperty("thumbnails", out var arr) && arr.ValueKind == JsonValueKind.Array)
+        {
+            string? best = null;
+            var bestScore = -1;
+            foreach (var t in arr.EnumerateArray())
+            {
+                var url = Str(t, "url");
+                if (url is null) continue;
+                var height = t.TryGetProperty("height", out var h) && h.ValueKind == JsonValueKind.Number && h.TryGetInt32(out var hh) ? hh : 0;
+                var isJpg = url.Contains(".jpg", StringComparison.OrdinalIgnoreCase) || url.Contains("/vi/", StringComparison.OrdinalIgnoreCase) && !url.Contains(".webp", StringComparison.OrdinalIgnoreCase);
+                if (height > 1280) continue;
+                var score = (isJpg ? 10000 : 0) + height;
+                if (score > bestScore) { bestScore = score; best = url; }
+            }
+            if (best is not null) return best;
+        }
+        var single = Str(e, "thumbnail");
+        if (single is not null) return single;
+        return $"https://i.ytimg.com/vi/{id}/hqdefault.jpg";
+    }
+
+    // ── Tag inference ─────────────────────────────────────────────────────────
+
+    [GeneratedRegex(@"\s*[\(\[\{](?:[^\)\]\}]*?)(?:official|video|audio|lyric|lyrics|visuali[sz]er|hd|hq|4k|explicit|clean version|music video|mv|remaster(?:ed)?(?:\s+\d{4})?|live|prod\.?)(?:[^\)\]\}]*?)[\)\]\}]", RegexOptions.IgnoreCase)]
+    private static partial Regex NoiseBracketsRegex();
+
+    [GeneratedRegex(@"\s*[\|•·]\s*.*$")]
+    private static partial Regex TrailingPipeRegex();
+
+    [GeneratedRegex(@"\s+(?:-|–|—)\s+(?:official\s+)?(?:music\s+)?(?:video|audio|lyrics?|visuali[sz]er)\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex TrailingDashNoiseRegex();
+
+    /// <summary>Strips "(Official Video)", "[Lyrics]", "| Official Audio" and friends from a video title.</summary>
+    public static string CleanTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return string.Empty;
+        var s = title.Trim();
+        s = NoiseBracketsRegex().Replace(s, string.Empty);
+        s = TrailingPipeRegex().Replace(s, string.Empty);
+        s = TrailingDashNoiseRegex().Replace(s, string.Empty);
+        s = Regex.Replace(s, @"\s{2,}", " ").Trim().TrimEnd('-', '–', '—').Trim();
+        return s.Length == 0 ? title.Trim() : s;
+    }
+
+    /// <summary>"Artist - Topic" (auto-generated music channels) and "ArtistVEVO" → "Artist".</summary>
+    public static string CleanChannel(string? channel)
+    {
+        if (string.IsNullOrWhiteSpace(channel)) return string.Empty;
+        var s = channel.Trim();
+        s = Regex.Replace(s, @"\s*-\s*Topic$", string.Empty, RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, @"VEVO$", string.Empty, RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, @"\s+Official$", string.Empty, RegexOptions.IgnoreCase);
+        return s.Trim();
+    }
+
+    /// <summary>
+    /// Artist/title for the file tags. Prefers YouTube Music's own <c>artist</c>/<c>track</c>
+    /// fields, then "Artist - Title" split from the video title, then channel + cleaned title.
+    /// </summary>
+    public static (string Artist, string Title) InferTags(YouTubeTrackInfo info)
+    {
+        var cleanTitle = CleanTitle(info.Title);
+        var artistTag = string.IsNullOrWhiteSpace(info.Artist) ? null : info.Artist.Trim();
+        var trackTag = string.IsNullOrWhiteSpace(info.Track) ? null : info.Track.Trim();
+        if (artistTag is not null && trackTag is not null) return (artistTag, trackTag);
+
+        // "Artist - Title" (also en/em dash). Only split once, on the first separator.
+        var m = Regex.Match(cleanTitle, @"^(?<a>.+?)\s+[-–—]\s+(?<t>.+)$");
+        if (m.Success)
+        {
+            var a = m.Groups["a"].Value.Trim();
+            var t = m.Groups["t"].Value.Trim();
+            if (a.Length > 0 && t.Length > 0)
+                return (artistTag ?? a, trackTag ?? t);
+        }
+
+        var channel = CleanChannel(info.Channel);
+        return (artistTag ?? (channel.Length > 0 ? channel : "Unknown Artist"), trackTag ?? cleanTitle);
+    }
+
+    // ── File names ────────────────────────────────────────────────────────────
+
+    public static string SanitizeFileName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "untitled";
+        var invalid = Path.GetInvalidFileNameChars().Concat(new[] { '/', '\\', ':', '*', '?', '"', '<', '>', '|' }).Distinct().ToArray();
+        var chars = name.Trim().Select(c => invalid.Contains(c) || char.IsControl(c) ? '_' : c).ToArray();
+        var s = new string(chars).Trim().TrimEnd('.', ' ');
+        s = Regex.Replace(s, @"\s{2,}", " ");
+        if (s.Length > 120) s = s[..120].TrimEnd();
+        return s.Length == 0 ? "untitled" : s;
+    }
+
+    public static string BuildFileName(string artist, string title, string ext)
+    {
+        var e = string.IsNullOrWhiteSpace(ext) ? ".m4a" : (ext.StartsWith('.') ? ext : "." + ext);
+        var stem = string.IsNullOrWhiteSpace(artist) ? SanitizeFileName(title) : SanitizeFileName($"{artist} - {title}");
+        return stem + e.ToLowerInvariant();
+    }
+
+    // ── Progress ──────────────────────────────────────────────────────────────
+
+    [GeneratedRegex(@"\[download\]\s+(\d{1,3}(?:\.\d+)?)%")]
+    private static partial Regex ProgressRegex();
+
+    /// <summary>Percent from a <c>[download]  45.3% of 3.21MiB at 1.2MiB/s</c> line, else null.</summary>
+    public static double? ParseProgressPercent(string? line)
+    {
+        if (string.IsNullOrEmpty(line)) return null;
+        var m = ProgressRegex().Match(line);
+        return m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var p)
+            ? Math.Clamp(p, 0, 100)
+            : null;
+    }
+}

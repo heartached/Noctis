@@ -8,15 +8,17 @@ namespace Noctis.Helpers;
 /// <see cref="LineMotionEase"/>) share it, so size and position arrive together
 /// instead of the line popping to full size before the list has started to move.
 ///
-/// Spring step response matched to Apple Music: a 120 fps capture of a line change
-/// (iOS, "Die With A Smile") fits a spring with damping ratio <see cref="Zeta"/> = 0.77
-/// and natural frequency <see cref="NaturalFrequency"/> = 8.25 rad/s to 0.7px RMS —
-/// 5/50/90/99% of the travel at 48/181/348/448 ms, a ~2% overshoot peaking near
-/// 560 ms, then a slow settle back. The old curve (ζ = 0.8 squeezed into 650 ms,
-/// 0.5% overshoot) reached the same points 12–25 ms sooner and landed flat. The
-/// curve runs in real time and is normalized to end exactly at 1 at
-/// <see cref="DurationMs"/>, where the residual is 0.3% of the travel (under half a
-/// pixel on a 131px line change). Pinned by LyricsMotionTests.
+/// Spring step response fitted to both reference players (2026-10-24 captures, 60 fps,
+/// every window below the active line tracked by cross-correlation): Apple Music over 521
+/// window curves fits ζ 0.83 / ωn 9.4 rad/s, Joy Tunes over 266 fits ζ 0.88 / ωn 9.9; both
+/// reach 10/50/90/99% at ~30/150/300/450 ms from the start of the motion with a median
+/// overshoot of 0.34% / 0.09%. The 10-18 fit (ζ 0.77, ωn 8.25) came from one song and
+/// overshot 2.3% — a visible stop-then-drift-back the new captures don't show. The base
+/// curve is ζ <see cref="Zeta"/> = 0.86, ωn <see cref="NaturalFrequency"/> = 9.4
+/// (0.5% overshoot). It runs in real time and is normalized to end exactly at 1 at
+/// <see cref="DurationMs"/>. The scroll glide itself picks a spring by tempo
+/// (<see cref="ForHold"/>) and carries velocity across interruptions (<see cref="LineGlide"/>).
+/// Pinned by LyricsMotionTests.
 /// </summary>
 public static class LineMotion
 {
@@ -25,11 +27,64 @@ public static class LineMotion
     /// by LyricsMotionTests.</summary>
     public const int DurationMs = 1000;
 
-    /// <summary>Damping ratio (Apple Music fit). 1 = critically damped, lower = bouncier.</summary>
-    public const double Zeta = 0.77;
+    /// <summary>Damping ratio of the base curve. 1 = critically damped, lower = bouncier.</summary>
+    public const double Zeta = 0.86;
 
-    /// <summary>Natural frequency in rad/s (Apple Music fit).</summary>
-    public const double NaturalFrequency = 8.25;
+    /// <summary>Natural frequency of the base curve in rad/s.</summary>
+    public const double NaturalFrequency = 9.4;
+
+    /// <summary>The base curve as a spring (an ordinary ~2 s line).</summary>
+    public static readonly LineSpring BaseSpring = new(Zeta, NaturalFrequency);
+
+    /// <summary>Lines held this long or longer glide on <see cref="SlowSpring"/>.</summary>
+    public const double SlowHoldMs = 4000;
+
+    /// <summary>Lines held this long glide on <see cref="BaseSpring"/>.</summary>
+    public const double BaseHoldMs = 2000;
+
+    /// <summary>Lines held this briefly or less glide on <see cref="FastSpring"/>.</summary>
+    public const double FastHoldMs = 800;
+
+    /// <summary>Slow parts (ballads, long held lines): a soft glide that lands without a
+    /// drift-back. Apple's slow songs measured ζ 0.78-0.80 / ωn 7.5-8.1 with 1-2% overshoot
+    /// (BIRDS OF A FEATHER, Die With A Smile); Joy's damping (ζ ~0.9) keeps the softness and
+    /// drops the overshoot to 0.3%. 99% at ~590 ms.</summary>
+    public static readonly LineSpring SlowSpring = new(0.88, 8.2);
+
+    /// <summary>Fast lines (rap): Apple's Godzilla line followed 0.6 s later by the next
+    /// one glided at ωn 14.1 (99% in ~290 ms) against ~10 on its 2-3 s lines. 99% at
+    /// ~330 ms, so the list has landed before the next line is due.</summary>
+    public static readonly LineSpring FastSpring = new(0.86, 14.0);
+
+    /// <summary>
+    /// The spring for a glide to a line that stays the scroll target for
+    /// <paramref name="holdMs"/> (its start to the next line's start): <see cref="FastSpring"/>
+    /// at or under <see cref="FastHoldMs"/>, <see cref="BaseSpring"/> at <see cref="BaseHoldMs"/>,
+    /// <see cref="SlowSpring"/> from <see cref="SlowHoldMs"/>, log-interpolated in between.
+    /// Unknown (NaN, last line, plain lyrics) is the base spring.
+    /// </summary>
+    public static LineSpring ForHold(double holdMs)
+    {
+        if (double.IsNaN(holdMs) || holdMs <= 0) return BaseSpring;
+        if (holdMs <= FastHoldMs) return FastSpring;
+        if (holdMs >= SlowHoldMs) return SlowSpring;
+        static LineSpring Lerp(LineSpring a, LineSpring b, double f) =>
+            new(a.Zeta + (b.Zeta - a.Zeta) * f, a.NaturalFrequency + (b.NaturalFrequency - a.NaturalFrequency) * f);
+        return holdMs <= BaseHoldMs
+            ? Lerp(FastSpring, BaseSpring, Math.Log(holdMs / FastHoldMs) / Math.Log(BaseHoldMs / FastHoldMs))
+            : Lerp(BaseSpring, SlowSpring, Math.Log(holdMs / BaseHoldMs) / Math.Log(SlowHoldMs / BaseHoldMs));
+    }
+
+    /// <summary>
+    /// How far ahead of the next word-timed line's first word the list sets off toward it
+    /// (when the lit lines have finished by then — see LyricsTimeline.ScrollIndex). Measured:
+    /// Apple Music starts the glide within 0-180 ms of the outgoing line's last word, and
+    /// when that line ended long before, 680-750 ms ahead of the next line's first word
+    /// (Godzilla, Love Me); Joy Tunes ~750 ms. The line has settled (99% at ~450-590 ms)
+    /// before the voice instead of still travelling when it starts — the old lead was the
+    /// curve's 90% time (349 ms).
+    /// </summary>
+    public const double ScrollLeadMs = 700;
 
     /// <summary>Per-line stagger of the cascade: each line below the active one starts
     /// its glide this much later than the line above it. Measured on Apple Music (iOS,

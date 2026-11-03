@@ -30,7 +30,7 @@ public sealed class AndroidLogExporter : ILogExporter
         catch (Exception ex)
         {
             DebugLog.Write("Android", $"Log export failed: {ex.Message}");
-            return false;
+            throw;   // a failure, not a cancel: Settings says so (ILogExporter)
         }
     }
 }

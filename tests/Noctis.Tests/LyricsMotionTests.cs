@@ -77,12 +77,15 @@ public class LyricsMotionTests
     }
 
     /// <summary>
-    /// Matches the Apple Music line change measured from a 120 fps capture (iOS, "Die
-    /// With A Smile", line change at video 6.044 s): 5/50/90/99% of the travel at
-    /// 48/181/348/448 ms and a ~2% overshoot (peak 1.020) that settles back slowly.
+    /// Matches the line change measured on both reference players (2026-10-24 captures,
+    /// every window below the active line, aligned at its own 2% crossing): Apple Music
+    /// (521 curves) and Joy Tunes (266) reach 10/50/90/99% at ~30/150/300/450 ms past that
+    /// point — ~15 ms after the motion starts — with a median overshoot of 0.34% / 0.09%.
+    /// The 10-18 single-song fit overshot 2.3% and drifted back; the base curve now peaks
+    /// under 1%.
     /// </summary>
     [Fact]
-    public void Ease_MatchesTheMeasuredAppleMusicCurve()
+    public void Ease_MatchesTheMeasuredReferenceCurves()
     {
         double Reach(double fraction)
         {
@@ -90,15 +93,61 @@ public class LyricsMotionTests
                 if (LineMotion.Ease(ms / (double)LineMotion.DurationMs) >= fraction) return ms;
             return double.NaN;
         }
-        Assert.InRange(Reach(0.05), 48 - 15, 48 + 15);
-        Assert.InRange(Reach(0.50), 181 - 15, 181 + 15);
-        Assert.InRange(Reach(0.90), 348 - 15, 348 + 15);
-        Assert.InRange(Reach(0.99), 448 - 15, 448 + 15);
+        Assert.InRange(Reach(0.10), 45 - 20, 45 + 20);
+        Assert.InRange(Reach(0.50), 165 - 20, 165 + 20);
+        Assert.InRange(Reach(0.90), 315 - 35, 315 + 35);
+        Assert.InRange(Reach(0.99), 465 - 40, 465 + 40);
 
         var peak = Enumerable.Range(0, LineMotion.DurationMs + 1)
             .Max(ms => LineMotion.Ease(ms / (double)LineMotion.DurationMs));
-        Assert.InRange(peak, 1.015, 1.025);
+        Assert.InRange(peak, 1.001, 1.008);
         Assert.Equal(0.9, LineMotion.Ease(LineMotion.NinetyTravelMs / LineMotion.DurationMs), 0.001);
+    }
+
+    /// <summary>
+    /// Tempo: a line held under ~0.8 s (rap) glides on the stiff spring Apple used for its
+    /// 0.6 s Godzilla line (99% in ~290 ms measured), a line held 4 s or more on the soft
+    /// one, the base spring in between — and none of them drifts back visibly.
+    /// </summary>
+    [Fact]
+    public void ForHold_FastLinesLandQuickly_SlowLinesGlideSoftly_NoneOvershoots()
+    {
+        var fast = LineMotion.ForHold(600);
+        var mid = LineMotion.ForHold(2000);
+        var slow = LineMotion.ForHold(5000);
+        Assert.Equal(LineMotion.FastSpring, fast);
+        Assert.Equal(LineMotion.BaseSpring, mid);
+        Assert.Equal(LineMotion.SlowSpring, slow);
+        Assert.Equal(LineMotion.BaseSpring, LineMotion.ForHold(double.NaN));
+
+        Assert.InRange(fast.TimeToReachMs(0.99), 250, 360);
+        Assert.InRange(mid.TimeToReachMs(0.99), 420, 520);
+        Assert.InRange(slow.TimeToReachMs(0.99), 540, 650);
+
+        // Monotone in between: a longer hold never lands sooner.
+        var prev = 0.0;
+        for (var hold = 500; hold <= 6000; hold += 100)
+        {
+            var t99 = LineMotion.ForHold(hold).TimeToReachMs(0.99);
+            Assert.True(t99 >= prev, $"hold {hold}: 99% at {t99} ms, sooner than {prev} ms");
+            prev = t99;
+        }
+
+        foreach (var spring in new[] { fast, mid, slow, LineMotion.ForHold(1200), LineMotion.ForHold(3000) })
+        {
+            var peak = Enumerable.Range(0, 2000).Max(ms => spring.Step(ms / 1000.0));
+            Assert.True(peak < 1.006, $"ζ{spring.Zeta} ωn{spring.NaturalFrequency}: overshoot {(peak - 1) * 100:0.00}%");
+        }
+    }
+
+    /// <summary>The list leads the next line by ~0.7 s (Apple 680-750 ms measured) — long
+    /// enough for even the soft spring to have covered 90% before the voice.</summary>
+    [Fact]
+    public void ScrollLead_LetsTheLineLandBeforeTheVoice()
+    {
+        Assert.Equal(700, LineMotion.ScrollLeadMs);
+        Assert.True(LineMotion.SlowSpring.TimeToReachMs(0.95) < LineMotion.ScrollLeadMs);
+        Assert.True(LineMotion.BaseSpring.TimeToReachMs(0.99) < LineMotion.ScrollLeadMs);
     }
 
     [Fact]

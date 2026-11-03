@@ -42,12 +42,18 @@ public static class PluginPermissionText
         PluginPermissions.MenuCommands => "MenuCommands",
         PluginPermissions.Notifications => "Notifications",
         PluginPermissions.LibraryWriteAnalysis => "LibraryWriteAnalysis",
+        PluginPermissions.LibraryImport => "LibraryImport",
+        PluginPermissions.AudioDecode => "AudioDecode",
         _ => "",
     };
 
     /// <summary>"Playback control".</summary>
     public static string Short(string permission)
         => Suffix(permission) is { Length: > 0 } s ? Loc.T("Plugins.PermShort." + s) : permission;
+
+    /// <summary>"control playback", the words after "Can" in the plugin page's permissions line.</summary>
+    public static string Verb(string permission)
+        => Suffix(permission) is { Length: > 0 } s ? Loc.T("Plugins.PermVerb." + s) : permission;
 
     /// <summary>"Control playback: play, pause, skip and seek".</summary>
     public static string Describe(string permission)
@@ -93,7 +99,30 @@ public sealed partial class LoadedPlugin : ObservableObject
     public bool HasPermissions => Permissions.Count > 0;
     /// <summary>Localized chip labels for <see cref="Permissions"/>.</summary>
     public IReadOnlyList<string> PermissionChips => Permissions.Select(PluginPermissionText.Short).ToList();
+    /// <summary>The plugin page's one quiet line: "Can read your library, control playback".</summary>
+    public string PermissionSummary => HasPermissions
+        ? Loc.T("Plugins.PermSummary", string.Join(Loc.T("Plugins.PermSummarySeparator"), Permissions.Select(PluginPermissionText.Verb)))
+        : Loc.T("Plugins.NoPermissionsShort");
+    /// <summary>The full sentences, shown when the line is expanded.</summary>
+    public IReadOnlyList<string> PermissionDetails => Permissions.Select(PluginPermissionText.Describe).ToList();
     public string? Homepage => Manifest?.Homepage;
+    /// <summary>Full path of plugin.json's "icon" when that file is in the plugin folder, else null.</summary>
+    public string? IconPath
+    {
+        get
+        {
+            if (Manifest?.Icon is not { } rel) return null;
+            try
+            {
+                var root = System.IO.Path.GetFullPath(Directory);
+                var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, rel));
+                var inside = full.StartsWith(root.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar,
+                    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+                return inside && File.Exists(full) ? full : null;
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException) { return null; }
+        }
+    }
 
     [ObservableProperty] private string _name = "";
     [ObservableProperty] private string _version = "";
@@ -128,6 +157,10 @@ public sealed partial class LoadedPlugin : ObservableObject
 
     /// <summary>Controls for the settings declared in plugin.json.</summary>
     public ObservableCollection<PluginSettingItem> SettingItems { get; } = new();
+
+    /// <summary>API 1.3: views the running plugin registered ("Open &lt;Name&gt;" buttons).</summary>
+    public ObservableCollection<PluginViewEntry> Views { get; } = new();
+    public bool HasViews => Views.Count > 0;
     public bool HasSettings => SettingItems.Count > 0;
 
     /// <summary>Where <see cref="IPluginHost.DataDirectory"/> points: &lt;data&gt;/plugin-data/&lt;id&gt;.</summary>
@@ -146,6 +179,29 @@ public sealed partial class LoadedPlugin : ObservableObject
     internal DateTime LastNotice = DateTime.MinValue;
 
     public bool IsRunning => Instance is not null;
+
+    internal void AddView(PluginViewEntry view)
+    {
+        Views.Add(view);
+        OnPropertyChanged(nameof(HasViews));
+    }
+
+    internal void RemoveView(PluginViewEntry view)
+    {
+        if (!Views.Remove(view)) return;
+        OnPropertyChanged(nameof(HasViews));
+        view.Withdraw();
+    }
+
+    /// <summary>Drops every view (the plugin stopped); open windows of them close.</summary>
+    internal void ClearViews()
+    {
+        if (Views.Count == 0) return;
+        var views = Views.ToList();
+        Views.Clear();
+        OnPropertyChanged(nameof(HasViews));
+        foreach (var v in views) v.Withdraw();
+    }
 
     partial void OnErrorChanged(string value) => OnPropertyChanged(nameof(HasError));
     partial void OnStatusChanged(string value)
@@ -202,6 +258,57 @@ public sealed partial class PluginSettingItem : ObservableObject
     public decimal Minimum => Definition.Min is { } m ? (decimal)Math.Max(m, -1e9) : -1_000_000_000m;
     public decimal Maximum => Definition.Max is { } m ? (decimal)Math.Min(m, 1e9) : 1_000_000_000m;
 
+    // ── Number settings, drawn like Noctis's own Settings (owner 10-29) ──
+
+    /// <summary>A number with both "min" and "max": the Settings slider with its value beside it
+    /// (Album Town's 24 to 60 albums, Album Roulette's hour 0 to 23).</summary>
+    public bool UsesSlider => IsNumber && Definition.Min is { } min && Definition.Max is { } max && max > min;
+    /// <summary>A number without a full range: the pill stepper (minus, value, plus).</summary>
+    public bool UsesStepper => IsNumber && !UsesSlider;
+    /// <summary>One step: 1 when the range and default are whole numbers, else 0.1.</summary>
+    public double NumberStep
+    {
+        get
+        {
+            static bool Whole(double? v) => v is not { } d || Math.Abs(d - Math.Round(d)) < 1e-9;
+            var whole = Whole(Definition.Min) && Whole(Definition.Max)
+                && (!double.TryParse(Definition.Default, NumberStyles.Float, CultureInfo.InvariantCulture, out var def) || Whole(def));
+            return whole ? 1 : 0.1;
+        }
+    }
+    public double SliderMinimum => Definition.Min ?? 0;
+    public double SliderMaximum => Definition.Max ?? 0;
+
+    /// <summary>The slider's value (two-way); writes clamp and round to <see cref="NumberStep"/>.</summary>
+    public double SliderValue
+    {
+        get => NumberValue is { } v ? (double)v : SliderMinimum;
+        set => NumberValue = (decimal)RoundToStep(value);
+    }
+
+    /// <summary>The value as shown beside the slider or inside the stepper ("40", "1.5").</summary>
+    public string NumberText => NumberValue is { } v ? v.ToString("0.###", CultureInfo.CurrentCulture) : "";
+
+    /// <summary>Screen reader names of the stepper's buttons.</summary>
+    public string DecreaseName => Loc.T("Plugins.Setting.Decrease", Label);
+    public string IncreaseName => Loc.T("Plugins.Setting.Increase", Label);
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void Decrease() => NumberValue = (decimal)RoundToStep((double)(NumberValue ?? 0) - NumberStep);
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void Increase() => NumberValue = (decimal)RoundToStep((double)(NumberValue ?? 0) + NumberStep);
+
+    /// <summary>Back to the plugin.json default (a double-click on the slider, like Settings' own).</summary>
+    public void ResetToDefault() => Set(Definition.Default);
+
+    private double RoundToStep(double value)
+    {
+        var step = NumberStep;
+        var rounded = Math.Round(value / step) * step;
+        return step >= 1 ? Math.Round(rounded) : Math.Round(rounded, 6);
+    }
+
     /// <summary>The stored value as invariant text (what <see cref="IPluginSettings"/> reads).</summary>
     public string Value { get; private set; } = "";
 
@@ -244,6 +351,8 @@ public sealed partial class PluginSettingItem : ObservableObject
         OnPropertyChanged(nameof(BoolValue));
         OnPropertyChanged(nameof(TextValue));
         OnPropertyChanged(nameof(NumberValue));
+        OnPropertyChanged(nameof(SliderValue));
+        OnPropertyChanged(nameof(NumberText));
         OnPropertyChanged(nameof(SelectedChoice));
         if (!_loading) _changed(this);
     }
@@ -388,6 +497,80 @@ public sealed class PluginTrackCommand
     public void Execute(Track track) => _owner.RunTrackCommand(this, track);
 }
 
+/// <summary>API 1.3: a view a plugin registered, as Settings and the view window see it.</summary>
+public sealed class PluginViewEntry
+{
+    private readonly PluginHost _owner;
+    internal readonly LoadedPlugin Plugin;
+    internal readonly IPluginViewProvider Provider;
+
+    internal PluginViewEntry(PluginHost owner, LoadedPlugin plugin, IPluginViewProvider provider, string name)
+    {
+        _owner = owner;
+        Plugin = plugin;
+        Provider = provider;
+        Name = name;
+    }
+
+    /// <summary>Window title.</summary>
+    public string Name { get; }
+    public string PluginName => Plugin.Name;
+    /// <summary>"Open Album Town".</summary>
+    public string OpenText => string.Format(CultureInfo.CurrentCulture, Loc.T("Plugins.OpenView"), Name);
+
+    /// <summary>True once the plugin stopped or disposed the registration.</summary>
+    public bool IsWithdrawn { get; private set; }
+
+    /// <summary>Raised (UI thread) when the view goes away: its window should close.</summary>
+    public event EventHandler? Withdrawn;
+
+    /// <summary>Set by the open window (or Settings, showing the view in place): brings it forward.
+    /// While set, opening the view again reuses that one instead of creating the plugin's control
+    /// a second time.</summary>
+    public Func<bool>? Reactivate { get; set; }
+
+    /// <summary>Creates the control and hands it to the window presenter.</summary>
+    public bool Open() => _owner.OpenView(this);
+
+    /// <summary>
+    /// API 1.5: the window size the plugin asks for (<see cref="IPluginViewProvider.PreferredWindowSize"/>,
+    /// <see cref="IPluginViewProvider.MinWindowSize"/>, <see cref="IPluginViewProvider.WindowSizeToContent"/>).
+    /// A plugin built against an older kit answers with the defaults; a getter that throws counts as
+    /// no hint (logged), so a bad hint never keeps the window from opening.
+    /// </summary>
+    public PluginViewSizeHint ReadSizeHint()
+    {
+        T Read<T>(Func<T> get, T fallback, string what)
+        {
+            try { return get(); }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.State, "Plugins", $"{Plugin.Id}: view '{Name}' {what} failed: {ex.Message}");
+                return fallback;
+            }
+        }
+        return new PluginViewSizeHint(
+            Read(() => Provider.PreferredWindowSize, null, nameof(IPluginViewProvider.PreferredWindowSize)),
+            Read(() => Provider.MinWindowSize, null, nameof(IPluginViewProvider.MinWindowSize)),
+            Read(() => Provider.WindowSizeToContent, Avalonia.Controls.SizeToContent.Manual, nameof(IPluginViewProvider.WindowSizeToContent)));
+    }
+
+    internal void Withdraw()
+    {
+        if (IsWithdrawn) return;
+        IsWithdrawn = true;
+        var handler = Withdrawn;
+        Withdrawn = null;
+        handler?.Invoke(this, EventArgs.Empty);
+    }
+}
+
+/// <summary>API 1.5: what a view asked of its window's size (DIPs); null = Noctis's default.</summary>
+public sealed record PluginViewSizeHint(Avalonia.Size? Preferred, Avalonia.Size? Min, Avalonia.Controls.SizeToContent SizeToContent)
+{
+    public static readonly PluginViewSizeHint None = new(null, null, Avalonia.Controls.SizeToContent.Manual);
+}
+
 /// <summary>A message a plugin asked to show.</summary>
 public sealed record PluginNotice(string PluginName, string Message);
 
@@ -442,8 +625,26 @@ public sealed class PluginHost
     /// <summary>Themes, lyrics presets and languages of the switched-on content packs.</summary>
     public ContentCatalog Content { get; } = new();
 
-    /// <summary>False = restricted mode: plugins are listed but none is loaded.</summary>
+    /// <summary>The "Community plugins" switch. Off = restricted mode for community plugins: listed,
+    /// not loaded. Verified official plugins never depend on it (owner 10-29).</summary>
     public bool CommunityPluginsEnabled => _settings().CommunityPluginsEnabled == true;
+
+    /// <summary>
+    /// The verified copy of an official plugin: it credits Noctis, and the zip installed for this
+    /// exact version was checked against the official list (<see cref="RecordOfficialInstall"/>).
+    /// Such a plugin runs whatever the Community switch says; a zip that only claims to be by
+    /// Noctis has no record and stays a community plugin.
+    /// </summary>
+    public bool IsTrustedOfficial(LoadedPlugin plugin)
+    {
+        if (!PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
+        var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
+        var bar = record?.IndexOf('|') ?? -1;
+        return bar > 0 && PluginVersion.Compare(record![..bar], plugin.Version) == 0;
+    }
+
+    /// <summary>The Community switch allows this plugin's code to run.</summary>
+    private bool AllowedToRun(LoadedPlugin plugin) => CommunityPluginsEnabled || IsTrustedOfficial(plugin);
 
     /// <summary>A synchronous plugin callback running longer than this froze the UI; the plugin is stopped.</summary>
     public TimeSpan CallbackBudget { get; set; } = TimeSpan.FromSeconds(1);
@@ -481,6 +682,88 @@ public sealed class PluginHost
 
     /// <summary>A plugin asked to show a message ("notifications").</summary>
     public event EventHandler<PluginNotice>? NotificationRequested;
+
+    /// <summary>API 1.3: shows a plugin view's control (the app opens a window). Set by the app;
+    /// null (tests, headless) = views cannot be shown and <see cref="OpenView"/> returns false.</summary>
+    public Func<PluginViewEntry, Avalonia.Controls.Control, bool>? ViewPresenter { get; set; }
+
+    /// <summary>API 1.3: opens an album page in the main window (<see cref="IPluginHost.ShowAlbum"/>).
+    /// Set by the app; null = false.</summary>
+    public Func<Guid, bool>? AlbumOpener { get; set; }
+
+    /// <summary>API 1.4: the user's playlists, in sidebar order (<see cref="ILibraryReader.GetPlaylists"/>).
+    /// Set by the app; null (tests, headless) = no playlists. Plugins may call it off the UI
+    /// thread, so the adapter copies what it reads.</summary>
+    public Func<IReadOnlyList<Playlist>>? PlaylistSource { get; set; }
+
+    /// <summary>API 1.6: where ffmpeg is (<see cref="IAudioConverterService.GetFfmpegPath"/>), for
+    /// <see cref="IPluginHost.AudioDecoder"/>. Set by the app; null (tests, headless) = no decoder.</summary>
+    public Func<string?>? FfmpegPathSource { get; set; }
+
+    /// <summary>A plain copy of a playlist for plugins: its library tracks in order (a smart
+    /// playlist's current matches), ids the library no longer has left out.</summary>
+    public static PlaylistInfo ToPlaylistInfo(Playlist p, ILibraryService? library)
+    {
+        IEnumerable<string> ids;
+        if (p.IsSmartPlaylist)
+        {
+            if (library is null) ids = Array.Empty<string>();
+            else
+            {
+                Track[] all;
+                try { all = library.Tracks.ToArray(); }
+                catch (InvalidOperationException) { all = library.Tracks.ToArray(); } // mutated mid-copy by a scan: once more
+                ids = SmartPlaylistEvaluator.Evaluate(p, all).Select(t => t.Id.ToString("D"));
+            }
+        }
+        else
+        {
+            Guid[] trackIds;
+            try { trackIds = p.TrackIds.ToArray(); }
+            catch (InvalidOperationException) { trackIds = p.TrackIds.ToArray(); }
+            ids = trackIds.Where(id => library is null || library.GetTrackById(id) is not null).Select(id => id.ToString("D"));
+        }
+        return new PlaylistInfo(p.Id.ToString("D"), p.Name ?? "", string.IsNullOrWhiteSpace(p.CoverArtPath) ? null : p.CoverArtPath, ids.ToArray())
+        {
+            Color = p.Color ?? "",
+            IsSmart = p.IsSmartPlaylist,
+        };
+    }
+
+    /// <summary>Views of every running plugin, in load order.</summary>
+    public IReadOnlyList<PluginViewEntry> Views
+        => Plugins.Where(p => p.Instance is not null).SelectMany(p => p.Views).ToList();
+
+    /// <summary>
+    /// Opens a registered view: the plugin's <see cref="IPluginViewProvider.CreateView"/> runs
+    /// guarded (a throw or a null control fails the plugin like any other callback), then the
+    /// presenter shows it. False when the view is gone, the plugin stopped, or nothing can show it.
+    /// </summary>
+    public bool OpenView(PluginViewEntry view) => ViewPresenter is { } present && OpenView(view, present);
+
+    /// <summary>
+    /// <see cref="OpenView(PluginViewEntry)"/> with another presenter (Settings shows the view in
+    /// place of the plugin's page). While the view is already shown somewhere
+    /// (<see cref="PluginViewEntry.Reactivate"/>) that one is brought forward instead.
+    /// </summary>
+    public bool OpenView(PluginViewEntry view, Func<PluginViewEntry, Avalonia.Controls.Control, bool> present)
+    {
+        if (view.IsWithdrawn || view.Plugin.Instance is null) return false;
+        if (view.Reactivate is { } reactivate && reactivate()) return true;
+        Avalonia.Controls.Control? control = null;
+        if (!Guard(view.Plugin, $"view '{view.Name}'", () => control = view.Provider.CreateView())) return false;
+        if (control is null)
+        {
+            Fault(view.Plugin, $"view '{view.Name}': CreateView returned null.");
+            return false;
+        }
+        try { return present(view, control); }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"{view.Plugin.Id}: showing view '{view.Name}' failed: {ex.Message}");
+            return false;
+        }
+    }
 
     // ── Discovery and lifecycle ──
 
@@ -575,14 +858,25 @@ public sealed class PluginHost
         return plugin;
     }
 
-    /// <summary>Turns restricted mode off (loads enabled plugins) or on (stops every plugin).</summary>
+    /// <summary>
+    /// Turns restricted mode off (starts the enabled community plugins) or on (stops them). Only
+    /// community code plugins are touched: official ones keep running (a download in Add from
+    /// YouTube is not cut off), and content packs never depended on the switch.
+    /// </summary>
     public void SetCommunityPluginsEnabled(bool enabled)
     {
         var settings = _settings();
         if (settings.CommunityPluginsEnabled == enabled) return;
         settings.CommunityPluginsEnabled = enabled;
         _saveSettings();
-        LoadAll();
+        foreach (var plugin in Plugins.ToList())
+        {
+            if (plugin.IsContentPack || IsTrustedOfficial(plugin)) continue;
+            Stop(plugin);
+            Activate(plugin);
+        }
+        RebuildContent();
+        VisualLayersChanged?.Invoke(this, EventArgs.Empty);
         CommunityPluginsChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -615,7 +909,7 @@ public sealed class PluginHost
         if (enabled && plugin.Instance is null)
         {
             if (CanRun(plugin)) Start(plugin);
-            else if (!CommunityPluginsEnabled) plugin.Status = PluginStatus.Restricted;
+            else if (!AllowedToRun(plugin)) plugin.Status = PluginStatus.Restricted;
         }
         else if (!enabled && (plugin.Instance is not null || plugin.Status == PluginStatus.Failed))
         {
@@ -768,15 +1062,15 @@ public sealed class PluginHost
             return;
         }
 
-        plugin.CanToggle = CommunityPluginsEnabled;
-        if (!CommunityPluginsEnabled) plugin.Status = PluginStatus.Restricted;
+        plugin.CanToggle = AllowedToRun(plugin);
+        if (!plugin.CanToggle) plugin.Status = PluginStatus.Restricted;
         else if (plugin.IsEnabled) Start(plugin);
         else if (!IsDisabled(plugin) && HasGrantEntry(plugin)) plugin.Status = PluginStatus.NeedsApproval;
         else plugin.Status = PluginStatus.Disabled;
     }
 
     private bool CanRun(LoadedPlugin plugin)
-        => CommunityPluginsEnabled && plugin.CanToggle && (plugin.AssemblyPath is not null || plugin.InProcessFactory is not null);
+        => AllowedToRun(plugin) && plugin.CanToggle && (plugin.AssemblyPath is not null || plugin.InProcessFactory is not null);
 
     // The Settings toggle binds IsEnabled two-way; SetEnabled also writes IsEnabled, so only
     // act when the flag disagrees with the actual running state (re-entrancy guard).
@@ -892,6 +1186,7 @@ public sealed class PluginHost
             plugin.Adapter = null;
             plugin.Instance = null;
             plugin.VisualLayers.Clear();
+            plugin.ClearViews();
             plugin.Extensions = "";
             plugin.Status = PluginStatus.Failed;
             plugin.Error = message;
@@ -929,6 +1224,7 @@ public sealed class PluginHost
         plugin.Adapter = null;
         plugin.Instance = null;
         plugin.VisualLayers.Clear();
+        plugin.ClearViews();
         plugin.Extensions = "";
         TryUnloadContext(plugin);
     }
@@ -976,10 +1272,12 @@ public sealed class PluginHost
     {
         var parts = new List<string>();
         parts.AddRange(plugin.VisualLayers.Select(v => v.Name));
+        parts.AddRange(plugin.Views.Select(v => "View: " + v.Name));
         if (plugin.Adapter is { } a)
         {
             parts.AddRange(a.LyricsSources.Select(l => "Lyrics: " + l.Name));
             parts.AddRange(a.TrackCommands.Select(c => "Menu: " + c.Label));
+            parts.AddRange(a.LyricsEffects.Select(e => "Lyrics motion: " + e.Name));
         }
         plugin.Extensions = string.Join(" · ", parts);
     }
@@ -1040,7 +1338,61 @@ public sealed class PluginHost
     {
         Bpm = t.Bpm,
         MusicalKey = t.MusicalKey ?? "",
+        AlbumId = t.AlbumId == Guid.Empty ? "" : t.AlbumId.ToString("D"),
+        ArtworkPath = string.IsNullOrEmpty(t.AlbumArtworkPath) ? null : t.AlbumArtworkPath,
+        ReleaseType = t.ReleaseType.ToString(),
+        DateAdded = t.DateAdded == default ? null : new DateTimeOffset(DateTime.SpecifyKind(t.DateAdded, DateTimeKind.Utc)),
+        LastPlayed = t.LastPlayed is { } lp ? new DateTimeOffset(DateTime.SpecifyKind(lp, DateTimeKind.Utc)) : null,
+        IsDisliked = t.IsDisliked,
+        IsExplicit = t.IsExplicit,
+        SkipWhenShuffling = t.SkipWhenShuffling,
+        SnoozedUntil = t.SnoozedUntil is { } su ? new DateTimeOffset(DateTime.SpecifyKind(su, DateTimeKind.Utc)) : null,
     };
+
+    // ── Lyrics effects (API 1.5) ──
+
+    private readonly List<PluginWordEffect> _wordEffects = new();
+
+    /// <summary>Lyrics effects of running plugins, oldest first; the newest is the one in use.</summary>
+    internal IReadOnlyList<PluginWordEffect> WordEffects => _wordEffects;
+
+    internal void AddWordEffect(PluginWordEffect effect)
+    {
+        if (_wordEffects.Count == 0) Controls.KaraokeWordText.EffectFailed += OnWordEffectFailed;
+        _wordEffects.Add(effect);
+        RefreshWordEffect();
+    }
+
+    internal void RemoveWordEffect(PluginWordEffect effect)
+    {
+        if (!_wordEffects.Remove(effect)) return;
+        if (_wordEffects.Count == 0) Controls.KaraokeWordText.EffectFailed -= OnWordEffectFailed;
+        RefreshWordEffect();
+    }
+
+    private void RefreshWordEffect()
+    {
+        PluginWordEffect? current = null;
+        for (var i = _wordEffects.Count - 1; i >= 0 && current is null; i--)
+            if (!_wordEffects[i].Failed) current = _wordEffects[i];
+        // Only touch the app-wide slot when it is ours (or empty): another host (tests) may own it.
+        var slot = Controls.LyricsWordEffect.Current;
+        if (slot is null || slot is PluginWordEffect mine && mine.Host == this)
+            Controls.LyricsWordEffect.Set(current);
+    }
+
+    /// <summary>An effect threw while a word was drawn: it is withdrawn and its plugin stopped, after the frame.</summary>
+    private void OnWordEffectFailed(Controls.IWordEffect effect, Exception ex)
+    {
+        if (effect is not PluginWordEffect pe || !_wordEffects.Contains(pe) || pe.Failed) return;
+        pe.Failed = true;
+        void Stop()
+        {
+            RemoveWordEffect(pe);
+            Fault(pe.Plugin, $"Lyrics effect: {ex.GetType().Name}: {ex.Message}");
+        }
+        Dispatcher.UIThread.Post(Stop); // never mid-frame
+    }
 
     // ── Settings declared in plugin.json ──
 
@@ -1081,7 +1433,14 @@ public sealed class PluginHost
     /// starts disabled until the user approves its permissions, unless an update asks for no
     /// new ones and it was enabled.
     /// </summary>
-    public PluginInstallResult InstallPackage(string zipPath, bool allowUpdate)
+    /// <param name="officialListing">The official list's entry this zip is meant to be (Get plugins,
+    /// or an Install from file whose id and version are on the list). The copy is recorded as
+    /// verified official only when that entry and the zip's plugin.json both credit Noctis, the id
+    /// and version match and the zip's SHA-256 is the list's. Anything else installs as community.</param>
+    /// <param name="replaceExisting">Replace an installed copy of the same id whatever its version
+    /// (a copy that is not the verified official one, swapped for the listed zip).</param>
+    public PluginInstallResult InstallPackage(string zipPath, bool allowUpdate,
+        PluginCatalogEntry? officialListing = null, bool replaceExisting = false)
     {
         // Settle the community-plugins default from what was installed BEFORE this package,
         // so installing into a fresh setup does not count as "plugins were already there".
@@ -1094,7 +1453,9 @@ public sealed class PluginHost
 
         var manifest = package.Manifest;
         var target = Path.Combine(PluginsDirectory, SafeFolderName(manifest.Id));
-        if (existing is not null)
+        if (existing is not null && replaceExisting)
+            target = existing.Directory;
+        else if (existing is not null)
         {
             if (PluginVersion.Compare(manifest.Version, existing.Version) <= 0)
                 return new PluginInstallResult(
@@ -1133,11 +1494,61 @@ public sealed class PluginHost
             return new PluginInstallResult(PluginInstallOutcome.Failed, "Could not move the plugin into place: " + moveError);
         }
 
+        RecordOfficialInstall(zipPath, manifest, officialListing);
         var plugin = LoadFrom(target);
         DebugLogger.Info(DebugLogger.Category.State, "Plugins", $"{(existing is null ? "installed" : "updated")} {manifest.Id} {manifest.Version}");
         return existing is null
             ? new PluginInstallResult(PluginInstallOutcome.Installed, $"Installed {plugin.Name} {plugin.Version}.", plugin)
             : new PluginInstallResult(PluginInstallOutcome.Updated, $"Updated {plugin.Name} to {plugin.Version}.", plugin);
+    }
+
+    /// <summary>
+    /// Writes (or drops) the verified-official record for the copy just installed: only a zip
+    /// whose SHA-256 is the official listing's, for that listing's id and version, with Noctis
+    /// credited in both the listing and the zip's plugin.json. Every other install clears it, so
+    /// a later hand-installed zip of the same id loses the mark.
+    /// </summary>
+    private void RecordOfficialInstall(string zipPath, PluginManifest manifest, PluginCatalogEntry? listing)
+    {
+        var settings = _settings();
+        settings.VerifiedOfficialPlugins ??= new();
+        foreach (var key in settings.VerifiedOfficialPlugins.Keys.Where(k => SameId(k, manifest.Id)).ToList())
+            settings.VerifiedOfficialPlugins.Remove(key);
+
+        if (listing is not null && listing.IsOfficial && PluginTrust.IsOfficialAuthor(manifest.Author)
+            && SameId(listing.Id, manifest.Id) && PluginVersion.Compare(listing.Version, manifest.Version) == 0)
+        {
+            string sha;
+            try
+            {
+                using var fs = File.OpenRead(zipPath);
+                sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fs)).ToLowerInvariant();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { sha = ""; }
+            if (sha.Length > 0 && string.Equals(sha, listing.Sha256, StringComparison.Ordinal))
+                settings.VerifiedOfficialPlugins[manifest.Id] = manifest.Version + "|" + sha;
+        }
+        _saveSettings();
+    }
+
+    /// <summary>
+    /// True when <paramref name="plugin"/> is the verified official copy of <paramref name="listing"/>:
+    /// the listing is official (author Noctis), the copy credits Noctis too, and its zip was checked
+    /// against the official list when it was installed (same version as the one installed now).
+    /// Never decided by plugin.json alone.
+    /// </summary>
+    public bool IsVerifiedOfficial(LoadedPlugin plugin, PluginCatalogEntry listing)
+    {
+        if (!listing.IsOfficial || !SameId(plugin.Id, listing.Id) || !PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
+        var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
+        if (record is null) return false;
+        var bar = record.IndexOf('|');
+        if (bar <= 0) return false;
+        var version = record[..bar];
+        var sha = record[(bar + 1)..];
+        if (PluginVersion.Compare(version, plugin.Version) != 0) return false;
+        // Same version as the list: the hash must be the list's too (a corrected listing wins).
+        return PluginVersion.Compare(version, listing.Version) != 0 || string.Equals(sha, listing.Sha256, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1152,6 +1563,8 @@ public sealed class PluginHost
         settings.DisabledPlugins?.RemoveAll(d => SameId(d, plugin.Id) || SameId(d, plugin.FolderName));
         foreach (var key in (settings.PluginPermissionGrants ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
             settings.PluginPermissionGrants!.Remove(key);
+        foreach (var key in (settings.VerifiedOfficialPlugins ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
+            settings.VerifiedOfficialPlugins!.Remove(key);
         if (deleteData)
         {
             foreach (var key in (settings.PluginSettingValues ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
@@ -1259,7 +1672,11 @@ public sealed class PluginHost
             _player = player;
             _library = library;
             AppVersion = appVersion;
-            if (_player is not null) _player.PropertyChanged += OnPlayerPropertyChanged;
+            if (_player is not null)
+            {
+                _player.PropertyChanged += OnPlayerPropertyChanged;
+                _player.TracksQueued += OnPlayerTracksQueued;
+            }
         }
 
         /// <summary>Tests: whether the player subscription is still live.</summary>
@@ -1274,17 +1691,113 @@ public sealed class PluginHost
         {
             if (_disposed) return;
             _disposed = true;
-            if (_player is not null) _player.PropertyChanged -= OnPlayerPropertyChanged;
+            if (_player is not null)
+            {
+                _player.PropertyChanged -= OnPlayerPropertyChanged;
+                _player.TracksQueued -= OnPlayerTracksQueued;
+            }
             IsSubscribedToPlayer = false;
             TrackChanged = null;
             IsPlayingChanged = null;
             Changed = null;
+            _tracksQueued = null;
             lock (_gate)
             {
                 _lyrics.Clear();
                 _commands.Clear();
                 _scrobbled.Clear();
             }
+            // The plugin's lyrics effects go with it (Noctis's own motion comes back).
+            void DropEffects()
+            {
+                foreach (var e in _effects) _owner.RemoveWordEffect(e);
+                _effects.Clear();
+            }
+            if (Dispatcher.UIThread.CheckAccess()) DropEffects();
+            else Dispatcher.UIThread.Post(DropEffects);
+        }
+
+        // ── Lyrics effects (API 1.5) ──
+
+        private readonly List<PluginWordEffect> _effects = new();
+
+        internal IReadOnlyList<PluginWordEffect> LyricsEffects => _effects;
+
+        public IDisposable RegisterLyricsEffect(ILyricsEffect effect)
+        {
+            ArgumentNullException.ThrowIfNull(effect);
+            if (_disposed) return Registration.None;
+            string name;
+            try { name = string.IsNullOrWhiteSpace(effect.Name) ? _plugin.Name : effect.Name.Trim(); }
+            catch { name = _plugin.Name; }
+            var entry = new PluginWordEffect(_owner, _plugin, effect, name);
+            void Add()
+            {
+                if (_disposed) return;
+                _effects.Add(entry);
+                _owner.AddWordEffect(entry);
+                _owner.UpdateExtensions(_plugin);
+            }
+            if (Dispatcher.UIThread.CheckAccess()) Add();
+            else Dispatcher.UIThread.Post(Add);
+            return new Registration(() =>
+            {
+                void Drop()
+                {
+                    if (!_effects.Remove(entry)) return;
+                    _owner.RemoveWordEffect(entry);
+                    _owner.UpdateExtensions(_plugin);
+                }
+                if (Dispatcher.UIThread.CheckAccess()) Drop();
+                else Dispatcher.UIThread.Post(Drop);
+            });
+        }
+
+        // ── Queue (API 1.5) ──
+
+        private EventHandler<TracksQueuedEventArgs>? _tracksQueued;
+
+        public event EventHandler<TracksQueuedEventArgs>? TracksQueued
+        {
+            add { if (!_disposed) _tracksQueued += value; }
+            remove => _tracksQueued -= value;
+        }
+
+        private void OnPlayerTracksQueued(object? sender, QueueAddedEventArgs e)
+        {
+            if (_disposed || _plugin.Instance is null || _tracksQueued is not { } handler || _player is not { } player) return;
+            // The added songs are the front of Up Next (Play Next) or its end (Add to Queue).
+            var up = player.UpNext;
+            var count = Math.Min(e.Count, up.Count);
+            var ids = new string[count];
+            var from = e.PlayNext ? 0 : up.Count - count;
+            for (var i = 0; i < count; i++) ids[i] = up[from + i].Id.ToString("D");
+            var args = new TracksQueuedEventArgs(ids, e.PlayNext);
+            _owner.Guard(_plugin, "TracksQueued", () => handler(this, args));
+        }
+
+        public Noctis.Plugins.PlaybackQueue GetQueue()
+        {
+            if (_disposed || _player is not { } player) return new Noctis.Plugins.PlaybackQueue(null, Array.Empty<string>());
+            Track[] up;
+            try { up = player.UpNext.ToArray(); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { up = player.UpNext.ToArray(); } // changed mid-copy: once more
+            var ids = new string[up.Length];
+            for (var i = 0; i < up.Length; i++) ids[i] = up[i].Id.ToString("D");
+            return new Noctis.Plugins.PlaybackQueue(player.CurrentTrack?.Id.ToString("D"), ids);
+        }
+
+        public void SetUpNext(IReadOnlyList<string> trackIds)
+        {
+            if (_disposed || trackIds is null || _library is not { } library) return;
+            var ids = trackIds.ToArray();
+            OnUi(p =>
+            {
+                var tracks = new List<Track>(ids.Length);
+                foreach (var s in ids)
+                    if (Guid.TryParse(s, out var id) && library.GetTrackById(id) is { } t) tracks.Add(t);
+                p.ReplaceUpNext(tracks);
+            });
         }
 
         public string AppVersion { get; }
@@ -1308,6 +1821,26 @@ public sealed class PluginHost
             }
         }
 
+        private PluginLibraryImporter? _libraryImport;
+        public ILibraryImport LibraryImport
+        {
+            get
+            {
+                Require(PluginPermissions.LibraryImport);
+                return _libraryImport ??= new PluginLibraryImporter(_library, _owner._settings, () => !_disposed && _plugin.Instance is not null, _plugin.Id);
+            }
+        }
+
+        private PluginAudioDecoder? _audioDecoder;
+        public IAudioDecoder AudioDecoder
+        {
+            get
+            {
+                Require(PluginPermissions.AudioDecode);
+                return _audioDecoder ??= new PluginAudioDecoder(() => _owner.FfmpegPathSource?.Invoke(), () => !_disposed && _plugin.Instance is not null, _plugin.Id);
+            }
+        }
+
         public void Log(string message)
             => DebugLogger.Info(DebugLogger.Category.State, "Plugin:" + _plugin.Name, message ?? "");
 
@@ -1317,6 +1850,42 @@ public sealed class PluginHost
             _plugin.VisualLayers.Add(provider);
             _owner.UpdateExtensions(_plugin);
             if (_plugin.Instance is not null) _owner.VisualLayersChanged?.Invoke(_owner, EventArgs.Empty);
+        }
+
+        public IDisposable RegisterView(IPluginViewProvider provider)
+        {
+            ArgumentNullException.ThrowIfNull(provider);
+            if (_disposed) return Registration.None;
+            string name;
+            try { name = string.IsNullOrWhiteSpace(provider.Name) ? _plugin.Name : provider.Name.Trim(); }
+            catch { name = _plugin.Name; }
+            var view = new PluginViewEntry(_owner, _plugin, provider, name);
+            _plugin.AddView(view);
+            _owner.UpdateExtensions(_plugin);
+            return new Registration(() =>
+            {
+                void Drop() { _plugin.RemoveView(view); _owner.UpdateExtensions(_plugin); }
+                if (Dispatcher.UIThread.CheckAccess()) Drop();
+                else Dispatcher.UIThread.Post(Drop);
+            });
+        }
+
+        // OpenView and ShowAlbum build windows and move the main window's page: from a plugin's
+        // background task they run on the UI thread (waited for, as they answer), so CreateView, the
+        // presenter and the album page never run off it (where Avalonia throws and the plugin failed).
+        public bool OpenView(IPluginViewProvider provider)
+        {
+            if (!Dispatcher.UIThread.CheckAccess()) return Dispatcher.UIThread.Invoke(() => OpenView(provider));
+            if (_disposed || provider is null) return false;
+            var view = _plugin.Views.FirstOrDefault(v => ReferenceEquals(v.Provider, provider));
+            return view is not null && _owner.OpenView(view);
+        }
+
+        public bool ShowAlbum(string albumId)
+        {
+            if (!Dispatcher.UIThread.CheckAccess()) return Dispatcher.UIThread.Invoke(() => ShowAlbum(albumId));
+            if (_disposed || !Guid.TryParse(albumId, out var id) || _owner.AlbumOpener is not { } open) return false;
+            return open(id);
         }
 
         public void Notify(string message)
@@ -1424,6 +1993,25 @@ public sealed class PluginHost
         public void Previous() => OnUi(p => p.PreviousCommand.Execute(null));
         public void Seek(TimeSpan position) => OnUi(p => p.SeekTo(position));
 
+        public void PlayTracks(IReadOnlyList<string> trackIds, int startIndex = 0)
+        {
+            if (_disposed || trackIds is null || _library is not { } library) return;
+            var ids = trackIds.ToArray();
+            OnUi(p =>
+            {
+                var tracks = new List<Track>(ids.Length);
+                var start = 0;
+                for (var i = 0; i < ids.Length; i++)
+                {
+                    if (!Guid.TryParse(ids[i], out var id) || library.GetTrackById(id) is not { } t) continue;
+                    // The known songs before the start: an unknown start song is skipped to the next one.
+                    if (i < startIndex) start = tracks.Count + 1;
+                    tracks.Add(t);
+                }
+                if (tracks.Count > 0) p.ReplaceQueueAndPlay(tracks, Math.Clamp(start, 0, tracks.Count - 1));
+            });
+        }
+
         private void OnUi(Action<PlayerViewModel> action)
         {
             if (_disposed || _player is not { } player) return;
@@ -1475,6 +2063,25 @@ public sealed class PluginHost
             return snapshot.Select(ToTrackInfo).ToArray();
         }
 
+        public IReadOnlyList<PlaylistInfo> GetPlaylists()
+        {
+            if (_disposed || _owner.PlaylistSource is not { } source) return Array.Empty<PlaylistInfo>();
+            Playlist[] snapshot;
+            try { snapshot = source().ToArray(); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { snapshot = source().ToArray(); } // edited mid-copy: once more
+            var result = new List<PlaylistInfo>(snapshot.Length);
+            foreach (var p in snapshot)
+            {
+                if (p is null) continue;
+                try { result.Add(ToPlaylistInfo(p, _library)); }
+                catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.State, "Plugins", $"{_plugin.Id}: skipped playlist {p.Id}: {ex.Message}");
+                }
+            }
+            return result;
+        }
+
         // IPluginSettings
         public string? GetString(string key)
         {
@@ -1495,6 +2102,42 @@ public sealed class PluginHost
             if (_disposed || Changed is not { } handler) return;
             _owner.Guard(_plugin, "Settings.Changed", () => handler(this, key));
         }
+    }
+
+    /// <summary>A plugin's <see cref="ILyricsEffect"/> as the lyrics controls call it (no allocation per call).</summary>
+    internal sealed class PluginWordEffect : Controls.IWordEffect
+    {
+        public PluginWordEffect(PluginHost host, LoadedPlugin plugin, ILyricsEffect effect, string name)
+        {
+            Host = host;
+            Plugin = plugin;
+            Effect = effect;
+            Name = name;
+        }
+
+        public PluginHost Host { get; }
+        public LoadedPlugin Plugin { get; }
+        public ILyricsEffect Effect { get; }
+        public string Name { get; }
+        public bool Failed { get; set; }
+
+        private static LyricsWord Word(in Controls.WordPoseInput w) => new(w.Progress, w.DurationMs, w.Lift, w.IsHeld,
+            w.IsLastInLine, w.IsRightToLeft, w.LetterCount, w.FontSize, (LyricsSurface)(int)w.Surface);
+
+        public Controls.WordDrawMode Mode(in Controls.WordPoseInput word) => Effect.GetMode(Word(word)) switch
+        {
+            LyricsWordMode.Whole => Controls.WordDrawMode.Whole,
+            LyricsWordMode.Letters => Controls.WordDrawMode.Letters,
+            _ => Controls.WordDrawMode.Native,
+        };
+
+        public Controls.LetterPose Pose(in Controls.WordPoseInput word, int letter)
+        {
+            var p = Effect.GetPose(Word(word), letter);
+            return new Controls.LetterPose(p.Scale, p.OffsetXEm, p.OffsetYEm, p.Glow);
+        }
+
+        public void LineDirections(IReadOnlyList<string> lines, Span<bool> rightToLeft) => Effect.GetLineDirections(lines, rightToLeft);
     }
 
     private sealed class Registration : IDisposable

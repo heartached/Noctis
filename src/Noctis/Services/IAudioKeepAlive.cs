@@ -26,4 +26,11 @@ internal interface IAudioKeepAlive : IDisposable
 
     /// <summary>Force-park (true) or allow (false) the silent stream — used while exclusive output holds the endpoint.</summary>
     void SetSuspended(bool suspended);
+
+    /// <summary>
+    /// Settings → Output Device changed: warm that endpoint instead. Null/empty follows
+    /// the Windows default. Windows implementation only; the native-output platforms
+    /// ignore it.
+    /// </summary>
+    void SetDevice(string? deviceId) { }
 }

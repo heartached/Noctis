@@ -179,6 +179,34 @@ public class LyricsStudioFormatRoundTripTests : IDisposable
         Assert.Equal(TimedLyricsBuilder.BuildElrc(song), TimedLyricsBuilder.BuildElrc(loaded));
     }
 
+    [Fact]
+    public void ReloadAndSave_KeepsEveryWordTag_ToTheCentisecond()
+    {
+        // Every centisecond of the first ten minutes, as a word start and as an end tag: opening
+        // a saved .elrc in the Studio and saving it again must write the same tags. Word tags were
+        // read through double seconds, which truncated "00:00.41" to 0.40999… s, and the writer
+        // (10 ms, truncating) then wrote "00:00.40": ~6 % of the tags moved 10 ms earlier on each
+        // save, the first word of such a line to before its own line stamp.
+        var moved = new List<string>();
+        for (var cs = 0; cs < 10 * 60 * 100; cs++)
+        {
+            var t = TimedLyricsBuilder.FormatTimestamp(TimeSpan.FromMilliseconds(cs * 10));
+            var elrc = $"[{t}]<{t}>word<{t}>";
+            var again = TimedLyricsBuilder.BuildElrc(ExistingLyricsLoader.ParseTimed(elrc));
+            if (again != elrc && moved.Count < 5) moved.Add($"{elrc} → {again}");
+        }
+        Assert.Empty(moved);
+    }
+
+    [Fact]
+    public void ElrcRowEdit_KeepsTheTypedTime()
+    {
+        // Typing a time into the review's ELRC row saves that time, not 10 ms earlier.
+        Assert.True(TimedLyricsBuilder.TryParseElrcBody("<00:00.41>Hello <00:12.57>world<01:07.29>", S(0.41), S(67.29), out var words, out _));
+        Assert.Equal(new[] { "00:00.41", "00:12.57" }, words!.Select(w => TimedLyricsBuilder.FormatTimestamp(w.Start)));
+        Assert.Equal("01:07.29", TimedLyricsBuilder.FormatTimestamp(words![^1].End));
+    }
+
     // ── Writer → disk → loader / page ────────────────────────────────────────
 
     private (LyricsWriter Writer, Track Track, string Lrc, string Elrc) NewWriter()

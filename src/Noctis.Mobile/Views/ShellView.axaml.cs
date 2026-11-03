@@ -50,7 +50,8 @@ public partial class ShellView : UserControl
     private void OnQueueSheetPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property != IsVisibleProperty) return;
-        ChromeLayer.ZIndex = QueueSheet.IsVisible ? 1 : 0;
+        ChromeScope.ZIndex = QueueSheet.IsVisible ? 1 : 0;
+        ApplyChromeTint();
         Motion.Stop(ChromeLayer);
         ChromeLayer.RenderTransform = ChromeScale(_covered);
     }
@@ -147,12 +148,31 @@ public partial class ShellView : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null) _vm.PropertyChanged -= OnShellPropertyChanged;
+        if (_vm != null) _vm.Player.PropertyChanged -= OnPlayerPropertyChanged;
         _vm = DataContext as ShellViewModel;
         if (_vm != null) _vm.PropertyChanged += OnShellPropertyChanged;
+        if (_vm != null) _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
         ApplyChromeLayout();
         SyncPages(animate: false);
         ShowPlayer(animate: false);
         ShowLyrics(animate: false);
+    }
+
+    /// <summary>How long the player's banner (NowPlayingViewModel.Notice) stays up.</summary>
+    internal static readonly TimeSpan NoticeTime = TimeSpan.FromSeconds(5);
+    private DispatcherTimer? _noticeTimer;
+
+    /// <summary>Each new notice gets its full time on screen, then the banner goes.</summary>
+    private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(NowPlayingViewModel.Notice) || _vm?.Player is not { HasNotice: true }) return;
+        _noticeTimer ??= new DispatcherTimer(NoticeTime, DispatcherPriority.Normal, (_, _) =>
+        {
+            _noticeTimer?.Stop();
+            _vm?.Player.DismissNotice();
+        });
+        _noticeTimer.Stop();
+        _noticeTimer.Start();
     }
 
     private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -304,15 +324,18 @@ public partial class ShellView : UserControl
         CollapsedTabButton.Opacity = folded ? 1 : 0;
         CollapsedTabButton.IsHitTestVisible = folded;
 
+        // Folded on the Search tab the current-tab circle is already Search: the round Search
+        // button beside it was a second magnifier. It stands aside and the mini player takes its room.
+        var searchBubble = folded && vm.SelectedTab != MobileTab.Search;
         SearchBubble.Width = Bubble;
         SearchBubble.Height = Bubble;
-        SearchBubble.Fade = folded ? 1 : 0;
-        SearchBubble.RenderTransform = TransformOperations.Parse(folded ? "scale(1)" : "scale(0.6)");
-        SearchBubbleContent.Opacity = folded ? 1 : 0;
-        SearchBubble.IsHitTestVisible = folded;
+        SearchBubble.Fade = searchBubble ? 1 : 0;
+        SearchBubble.RenderTransform = TransformOperations.Parse(searchBubble ? "scale(1)" : "scale(0.6)");
+        SearchBubbleContent.Opacity = searchBubble ? 1 : 0;
+        SearchBubble.IsHitTestVisible = searchBubble;
 
         MiniBar.Height = MiniHeight;
-        MiniBar.Margin = folded ? new Thickness(Bubble + FoldGap, 0, Bubble + FoldGap, 0) : new Thickness(0, 0, 0, TabHeight + Gap);
+        MiniBar.Margin = folded ? new Thickness(Bubble + FoldGap, 0, searchBubble ? Bubble + FoldGap : 0, 0) : new Thickness(0, 0, 0, TabHeight + Gap);
         MiniNextButton.IsVisible = !folded;
 
         var index = TabIndex(vm.SelectedTab);
@@ -617,5 +640,32 @@ public partial class ShellView : UserControl
             PageScrim.IsVisible = false;
             BottomScrim.IsVisible = true;
         }
+        ApplyChromeTint();
+    }
+
+    /// <summary>The page colour the chrome's glass wears now, or null for the theme's glass.</summary>
+    internal Color? ChromeTint { get; private set; }
+
+    /// <summary>
+    /// Over a cover-coloured page the tab bar, the mini player and the folded bubbles are glass in
+    /// that colour (TintedGlass), their labels in the text the colour takes and the scope in the
+    /// matching theme (Fluent's button glyphs flip with it); the theme's own glass elsewhere, and
+    /// while the Queue sheet, which follows the app theme, holds the bar over it.
+    /// </summary>
+    private void ApplyChromeTint()
+    {
+        Color? tint = QueueSheet.IsVisible ? null : _scrimTint?.TintColor;
+        ChromeTint = tint;
+        TintedGlass.Clear(ChromeScope.Resources);
+        if (tint is { } c)
+        {
+            TintedGlass.Apply(ChromeScope.Resources, c);
+            var accent = this.TryFindResource("AccentColorBrush", ActualThemeVariant, out var a) && a is ISolidColorBrush ab ? ab.Color
+                : Color.Parse(Noctis.Mobile.Services.MobileTheme.DefaultAccent);
+            TintedGlass.ApplyText(ChromeScope.Resources, c, accent);
+            ChromeScope.RequestedThemeVariant = PageTint.PrefersDarkText(TintedGlass.Face(c))
+                ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+        }
+        else ChromeScope.ClearValue(ThemeVariantScope.RequestedThemeVariantProperty);
     }
 }

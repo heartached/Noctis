@@ -10,7 +10,7 @@ using Noctis.Services.LyricsStudio;
 namespace Noctis.ViewModels;
 
 /// <summary>Lyrics Studio choices the user changes inside the dialog; persisted by Settings.</summary>
-public sealed record LyricsStudioPrefs(string Model, string Language, bool WordTimings, bool SkipAlreadyTimed, bool EmbedTags, bool OnlineLyrics = true, bool SaveTtml = false, bool LivePreview = true);
+public sealed record LyricsStudioPrefs(string Model, string Language, bool WordTimings, bool SkipAlreadyTimed, bool EmbedTags, bool OnlineLyrics = true, bool SaveTtml = false, bool LivePreview = true, bool UseGpu = false);
 
 public sealed record SpeechLanguageOption(string Code, string Name)
 {
@@ -67,6 +67,25 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [ObservableProperty] private bool _saveTtml;
     /// <summary>The live preview pane beside the review is open (remembered like the options).</summary>
     [ObservableProperty] private bool _showLivePreview;
+    /// <summary>Experimental: the speech model on the graphics card (<see cref="WhisperGpu"/>). Shown only in builds that carry the Vulkan runtime.</summary>
+    [ObservableProperty] private bool _useGpu;
+
+    /// <summary>The GPU option is offered: this build carries the Vulkan runtime and this CPU can run it.</summary>
+    public bool GpuOptionVisible => WhisperGpu.Available;
+
+    /// <summary>What the GPU option does right now: which build runs, or why the choice waits for a restart.</summary>
+    public string GpuOptionNote
+    {
+        get
+        {
+            if (!GpuOptionVisible) return string.Empty;
+            if (WhisperGpu.Loaded is null)
+                return UseGpu && WhisperGpu.BlockedReason is { } why ? why : string.Empty;
+            if (UseGpu != WhisperGpu.UsingVulkan)
+                return Loc("LyricsStudio.GpuRestart");
+            return WhisperGpu.UsingVulkan ? Loc("LyricsStudio.GpuActive") : string.Empty;
+        }
+    }
 
     // ── Model state ──
     [ObservableProperty] private bool _isModelInstalled;
@@ -269,6 +288,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         _onlineLyrics = s.LyricsStudioOnlineLyrics;
         _saveTtml = s.LyricsStudioSaveTtml;
         _showLivePreview = s.LyricsStudioLivePreview;
+        _useGpu = s.LyricsStudioUseGpu;
+        WhisperGpu.Requested = _useGpu;
         _loadingPrefs = false;
         Clock = () => _clock.Elapsed;
 
@@ -332,6 +353,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
         ScheduleLivePreview();
     }
     partial void OnSkipAlreadyTimedChanged(bool value) => PersistPrefs();
+    partial void OnUseGpuChanged(bool value)
+    {
+        WhisperGpu.Requested = value;
+        // Turning it on again after a crash turned it off is the user's retry.
+        if (value) WhisperGpu.ClearCrashMarker();
+        PersistPrefs();
+        OnPropertyChanged(nameof(GpuOptionNote));
+    }
     partial void OnEmbedTagsChanged(bool value) => PersistPrefs();
     partial void OnOnlineLyricsChanged(bool value) => PersistPrefs();
     partial void OnSaveTtmlChanged(bool value)
@@ -629,7 +658,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void PersistPrefs()
     {
         if (_loadingPrefs) return;
-        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics, SaveTtml, ShowLivePreview)); }
+        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics, SaveTtml, ShowLivePreview, UseGpu)); }
         catch { /* preferences are a convenience */ }
     }
 
@@ -1098,7 +1127,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
             try { opened = await Task.Run(() => _engine.OpenSession(WhisperModelSize.Medium)); }
             finally { RefreshModelState(); }
             using var session = opened;
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", _engine.Models.Model.FileName);
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", $"{_engine.Models.Model.FileName} | native={WhisperGpu.Loaded ?? "-"}, gpuAsked={UseGpu}");
+            OnPropertyChanged(nameof(GpuOptionNote));
             foreach (var item in items)
             {
                 _batchDone = done;
@@ -1242,12 +1272,17 @@ public partial class LyricsStudioViewModel : ViewModelBase
             }
             _secondsPerWindow = _working?.Meter?.SecondsPerWindow ?? _secondsPerWindow;
             _working = null;
-            var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics);
+            // A transcript waits in the lyrics box too, but for checking: a Transcribe-only batch
+            // used to finish on "0 ready for review · 5 need lyrics".
+            var transcripts = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics && i.IsTranscriptDraft);
+            var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics) - transcripts;
             RunStatusText = ct.IsCancellationRequested ? "Stopped."
-                : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review" + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
+                : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review"
+                  + (transcripts > 0 ? $" · {transcripts} transcript{(transcripts == 1 ? "" : "s")} to check" : string.Empty)
+                  + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
             DebugLogger.Info(DebugLogger.Category.Lyrics, ct.IsCancellationRequested ? "LyricsStudio.RunStopped" : "LyricsStudio.RunFinished",
                 $"done={done}/{total}, ready={Queue.Count(i => i.Status == StudioStatus.Ready)}");
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionClosing", "disposing the speech model");
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionClosing", "releasing the speech model (kept loaded a few minutes for the next run)");
         }
         catch (WhisperEngineUnavailableException ex)
         {
@@ -1433,6 +1468,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
+        // As Re-sync and lrc.red's sync do: a review on screen, or lyrics typed into the box, is replaced
+        // only after asking. The transcript used to replace them unasked, the box's text for good.
+        if ((item.Result is not null && item.Status is StudioStatus.Loaded or StudioStatus.Ready || item.HasUnsavedLyricsBox)
+            && !await ConfirmAsync($"What Lullaby hears will replace the lyrics shown for “{item.Title}”.\n\nNothing is written to disk until you press Save lyrics."))
+            return;
+        if (IsRunning || !ReferenceEquals(Selected, item)) return;
         item.TranscribeNext = true;
         Requeue(item);
         item.StatusText = "Queued for transcription";
@@ -1517,7 +1558,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.IsTranscriptDraft = false;
             item.StatusText = $"{Math.Round(confidence * 100)}% matched · review";
             _drafts?.Save(item.Track.Id, LyricsStudioDraft.From(result));
-            OnSelectedChanged(item);
+            // The align runs off the UI thread: a song picked meanwhile keeps the screen. Rebuilding
+            // the review regardless put this song's lines under the other one, and Save wrote them there.
+            if (ReferenceEquals(Selected, item))
+                OnSelectedChanged(item);
             RaiseStartState();
             return;
         }
@@ -1684,11 +1728,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private ReviewLine? _tapLine;
     private int _tapIndex;
     private bool _tapBlocked; // the last tap landed while a music video's audio played
+    private bool _tapOffSong; // the last tap landed while this song was not the one playing
 
     public bool IsTapping => TapLine is not null;
     public string TapHint => TapLine is { } line
         ? (_tapBlocked
             ? "Tapping is off while the music video's audio plays · click the line's time to hear the song file"
+            : _tapOffSong
+            ? "Tapping needs this song playing · click the line's time to play it"
             : _tapIndex < line.Words.Count
             ? $"Tap for “{line.Words[_tapIndex].Text}” ({_tapIndex + 1} of {line.Words.Count}) · Space or the Tap button · Esc cancels"
             : "Tap once more where the line ends")
@@ -1718,7 +1765,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (TapLine is not { } line || _player is null) return;
         // Words are timed against the song file; a music video's audio runs on the clip's clock.
         _tapBlocked = _player.IsPlayingMusicVideoAudio;
-        if (_tapBlocked)
+        // The player's clock is this song's only while it plays it: once the song ended (stopped,
+        // at 0:00) or another one started, a tap stamped that clock on the word — 0:00 took a
+        // late line ahead of every line before it, and a save wrote the lyrics out of order.
+        _tapOffSong = _player.CurrentTrack?.Id != Selected?.Track.Id || _player.State == PlaybackState.Stopped;
+        if (_tapBlocked || _tapOffSong)
         {
             OnPropertyChanged(nameof(TapHint));
             return;
@@ -1727,6 +1778,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (_tapIndex < line.Words.Count)
         {
             line.Words[_tapIndex].IsTapTarget = false;
+            // The first word stays after the line before, as a nudge keeps it (TimingNudge):
+            // tapped earlier, the line went ahead of it and the save wrote the lyrics out of order.
+            var i = ReviewLines.IndexOf(line);
+            if (_tapIndex == 0 && i > 0 && now < ReviewLines[i - 1].Start + TimingNudge.Gap)
+                now = ReviewLines[i - 1].Start + TimingNudge.Gap;
             line.TapWord(_tapIndex, now);
             _tapIndex++;
             if (_tapIndex < line.Words.Count)
@@ -1747,6 +1803,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (TapLine is { } line)
             foreach (var w in line.Words) w.IsTapTarget = false;
         _tapBlocked = false;
+        _tapOffSong = false;
         TapLine = null;
         _tapIndex = 0;
     }

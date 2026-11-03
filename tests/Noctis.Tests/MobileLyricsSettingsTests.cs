@@ -240,7 +240,7 @@ public class MobileLyricsSettingsTests : IDisposable
             shell.ToggleLyricsCommand.Execute(null);
             window.UpdateLayout();
             var page = MobileFixtures.Find<LyricsPage>(view);
-            TextBlock Adlib() => page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == "(adlib)");
+            TextBlock Adlib() => page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == "(adlib)" && t.Classes.Contains("word-sweep"));
             Assert.True(Adlib().IsEffectivelyVisible);
 
             lyrics.ShowBackgroundVocals = false;

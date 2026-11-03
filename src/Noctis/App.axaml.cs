@@ -37,6 +37,8 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        // Interface Size (GitHub #145): every window gets its scale host from here on.
+        Noctis.Helpers.UiScale.Install();
 
         // Cache heavy views so they aren't recreated on every navigation.
         // Views with complex templates (virtualized lists, context menus)
@@ -101,6 +103,9 @@ public partial class App : Application
 
         // Every ComboBox drop-down eases open (fade + glide), matching the Settings folds.
         Noctis.Helpers.ComboBoxDropDownAnimator.Install();
+
+        // A scrollbar's track stays shown while its thumb is dragged, even off the bar.
+        Noctis.Helpers.ScrollBarThumbDrag.Install();
 
         // Icon-only buttons are named by their tooltip for screen readers / UI Automation.
         Noctis.Helpers.AccessibleNames.Install();
@@ -172,6 +177,9 @@ public partial class App : Application
             // against a null DataContext and log a binding warning at each startup.
             // Same total work between the surrounding marks — bindings now resolve in a
             // single pass instead of erroring first and re-resolving.
+            // Every window that opens gets the icon chosen in Settings › Appearance › App Icon
+            // (the settings load applies the stored one; until then the XAML classic shows).
+            Noctis.Services.AppIconService.Attach();
             var mainWindow = new MainWindow(mainVm);
             Noctis.Services.StartupTrace.Mark("main-window-constructed");
 
@@ -198,6 +206,9 @@ public partial class App : Application
             var analysisCoordinator = Services!.GetRequiredService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>();
             var library = Services!.GetRequiredService<ILibraryService>();
             library.LibraryUpdated += (_, _) => analysisCoordinator.StartBackfill();
+            // Automatic ReplayGain for new files (GitHub #148); a no-op while the setting is off.
+            var autoReplayGain = Services!.GetRequiredService<ReplayGainAutoScanService>();
+            autoReplayGain.Attach();
             // Feeds the visualizer / beat-reactive backdrops whenever the output does not
             // tap the meters itself (LibVLC's own output: macOS, and Windows/Linux shared
             // mode without the gapless engine); stands aside while the engine or the
@@ -242,7 +253,13 @@ public partial class App : Application
                 // down" — or Windows force-terminated us and cut off the very save the
                 // cancel exists to protect. Bounded, the veto lasts at most a few seconds
                 // and we always exit under our own power.
-                try { await analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)); } catch { }
+                try
+                {
+                    await Task.WhenAll(
+                        analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)),
+                        autoReplayGain.StopAsync(TimeSpan.FromSeconds(3)));
+                }
+                catch { }
                 try { await mainVm.ShutdownAsync().WaitAsync(ShutdownSaveDeadline); }
                 catch (TimeoutException)
                 {
@@ -483,6 +500,18 @@ public partial class App : Application
         new AccentPreset("Sand",       "#D8B384"),
         new AccentPreset("Slate",      "#5B6C8F"),
         new AccentPreset("Silver",     "#B8BCC4"),
+        // Row 4 — pastels, deep tones and a neutral; the custom picker completes the row
+        new AccentPreset("Peach",      "#FFB59A"),
+        new AccentPreset("Mauve",      "#9C6B98"),
+        new AccentPreset("Plum",       "#6E2C68"),
+        new AccentPreset("Periwinkle", "#7C8CF8"),
+        new AccentPreset("Ocean",      "#136F8C"),
+        new AccentPreset("Mint",       "#8FE3C4"),
+        new AccentPreset("Sage",       "#95AB86"),
+        new AccentPreset("Forest",     "#22714A"),
+        new AccentPreset("Chartreuse", "#C5DC3B"),
+        new AccentPreset("Bronze",     "#A8743F"),
+        new AccentPreset("Ash",        "#8E9196"),
     };
 
     private ResourceDictionary? _activeAccentOverlay;

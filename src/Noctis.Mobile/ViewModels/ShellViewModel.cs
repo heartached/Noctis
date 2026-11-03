@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
+using Noctis.Mobile.Services.Scrobbling;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -52,8 +53,49 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Re-themes the app for Settings (AndroidApp); null in tests unless injected.</summary>
     public IThemeHost? Theme { get; init; }
 
+    /// <summary>Whether Battery Saver is on (Android); Slow Motion in Settings › Background stands
+    /// still while it is. Null in tests unless injected.</summary>
+    public IBatterySaver? BatterySaver { get; init; }
+
+    /// <summary>Scrobbling straight from the phone (Settings → Scrobbling): counts plays by the
+    /// desktop's rule and sends them to Last.fm / ListenBrainz. The host sets it; Settings makes
+    /// one on first use when it is missing (tests), and from then on it follows playback.
+    /// </summary>
+    public PhoneScrobbler Scrobbler
+    {
+        get
+        {
+            if (_scrobbler == null)
+            {
+                _scrobbler = new PhoneScrobbler(Library.Persistence, new HttpClient());
+                AttachScrobbler(_scrobbler);
+            }
+            return _scrobbler;
+        }
+        init { _scrobbler = value; AttachScrobbler(value); }
+    }
+    private PhoneScrobbler? _scrobbler;
+
+    private void AttachScrobbler(PhoneScrobbler scrobbler)
+    {
+        Player.TrackStarted += (_, track) => scrobbler.TrackStarted(track);
+        Player.PlaybackTick += (_, playing) => scrobbler.Tick(playing);
+        // A pause the engine reports without a position tick still stops the played-time clock.
+        Player.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) scrobbler.Tick(Player.IsPlaying); };
+        // The account recorded the play when it started; whether it counted, and who sends it, follows.
+        scrobbler.PlayDecided += (track, verdict) =>
+        {
+            try { Account?.DecidePlay(track, verdict); }
+            catch (Exception ex) { DebugLog.Write("Account", $"Marking a desktop play failed: {ex.Message}"); }
+        };
+        _ = scrobbler.EnsureLoadedAsync();
+    }
+
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
     public ILogExporter? Logs { get; init; }
+
+    /// <summary>Opens a web page for Settings → Help (Report a Problem, the website); null in tests unless injected.</summary>
+    public IUrlLauncher? Links { get; init; }
 
     /// <summary>The album page's description paragraph (Last.fm on Android); null in tests unless
     /// injected, and the paragraph then stays hidden.</summary>
@@ -73,6 +115,10 @@ public sealed partial class ShellViewModel : ObservableObject
     }
     private readonly IArtistPhotoSource? _artistPhotos;
 
+    /// <summary>Artists' own logos for the artist page (fanart.tv / TheAudioDB on an Android
+    /// build that carries a key); null without one, and the page shows the name.</summary>
+    public IArtistLogoSource? ArtistLogos { get; init; }
+
     /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
     public string VersionText { get; init; } = "Noctis";
 
@@ -88,7 +134,9 @@ public sealed partial class ShellViewModel : ObservableObject
             if (value == null) return;
             value.PlaylistsChanged += OnAccountPlaylistsChanged;
             value.StateChanged += OnAccountStateChanged;
+            value.SyncProgress += OnAccountSyncProgress;
             _profileAvatarPath = AccountAvatarPath();
+            _downloadedCount = value.DownloadedCount;
         }
     }
     private readonly INoctisAccountService? _account;
@@ -99,10 +147,18 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private string? AccountAvatarPath() => _account is { IsSignedIn: true } a ? a.AvatarPath : null;
 
-    /// <summary>StateChanged fires on every download step too: hop to the UI thread only for a new picture.</summary>
+    private int _downloadedCount;
+
+    /// <summary>StateChanged fires on every download step too: hop to the UI thread only for a new
+    /// picture, or when the offline copies changed (a download batch ended, Remove Download): the
+    /// Downloaded list and filter re-read only on a library refresh, and a removed song stayed
+    /// listed until the page was reopened.</summary>
     private void OnAccountStateChanged(object? sender, EventArgs e)
     {
         if (AccountAvatarPath() != ProfileAvatarPath) Marshal(() => ProfileAvatarPath = AccountAvatarPath());
+        if (_account is not { } account) return;
+        var downloaded = account.DownloadedCount;
+        if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
     }
 
     /// <summary>
@@ -232,11 +288,51 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool IsMenuOpen => PopMenu != null;
 
+    /// <summary>An album's description, whole, on the glass sheet (<see cref="ShowAlbumNote"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAlbumNoteOpen))]
+    private AlbumNoteViewModel? _albumNote;
+
+    public bool IsAlbumNoteOpen => AlbumNote != null;
+
+    /// <summary>An "are you sure?" or a name to type, as Apple's action sheet on the glass
+    /// (PromptSheet): Sign Out, Remove Downloads, Remove Folder, Delete Playlist, Rename.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPromptOpen))]
+    private PromptViewModel? _prompt;
+
+    public bool IsPromptOpen => Prompt != null;
+
+    /// <summary>Asks <paramref name="prompt"/>, closing whatever menu was up (the one it was
+    /// picked in) and any earlier question, which counts as cancelled.</summary>
+    public void ShowPrompt(PromptViewModel prompt)
+    {
+        CloseSheet();
+        Prompt = prompt;
+    }
+
+    /// <summary>Takes <paramref name="prompt"/> down if it is the one up: cancelled unless one
+    /// of its actions ran.</summary>
+    public void ClosePrompt(PromptViewModel prompt)
+    {
+        if (!ReferenceEquals(Prompt, prompt)) return;
+        Prompt = null;
+        prompt.NotifyCancelled();
+    }
+
+    /// <summary>Shows an album's description on the glass sheet, closing whatever menu was up.</summary>
+    public void ShowAlbumNote(AlbumNoteViewModel note)
+    {
+        CloseSheet();
+        AlbumNote = note;
+    }
+
     partial void OnSheetChanged(ContextSheetViewModel? oldValue, ContextSheetViewModel? newValue)
     {
         if (oldValue != null) oldValue.PropertyChanged -= OnSheetPropertyChanged;
         if (newValue == null) return;
         newValue.PropertyChanged += OnSheetPropertyChanged;
+        AlbumNote = null;
         LibraryMenu = null;
         OptionsMenu = null;
         LinksMenu = null;
@@ -281,7 +377,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
+        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -356,6 +452,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPlayerChangedForPickUp(e);
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
         {
             OnPropertyChanged(nameof(IsMiniBarVisible));
@@ -377,12 +474,20 @@ public sealed partial class ShellViewModel : ObservableObject
             _miniTint = TintFactory();
             _miniTint.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName is nameof(PageTint.TintColor)) UpdateMiniProgressBrushes();
+                if (e.PropertyName is nameof(PageTint.TintColor))
+                {
+                    UpdateMiniProgressBrushes();
+                    Background.Cover = _miniTint?.TintColor;   // the Now Playing background follows the cover
+                }
             };
             return _miniTint;
         }
     }
     private PageTint? _miniTint;
+
+    /// <summary>Settings › Background: the page background, its choice and its saved values.</summary>
+    public PhoneBackground Background => _background ??= new PhoneBackground(Library.Persistence, BatterySaver);
+    private PhoneBackground? _background;
 
     /// <summary>The elapsed fill: the cover's colour, soft, so the title stays readable on it.</summary>
     [ObservableProperty] private Avalonia.Media.IBrush _miniProgressFill = new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Avalonia.Media.Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
@@ -428,45 +533,66 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool ShowsMiniProgress => ShowMiniProgressFill || ShowMiniProgressLine;
 
     private bool _playerBarLoaded;
+    // Switches flipped before the saved values were read (Settings opens while a cold start still
+    // loads the library): the load keeps the user's value and saves it.
+    private readonly HashSet<string> _playerBarSetBeforeLoad = new();
+    private bool _applyingPlayerBar;
     private Task _playerBarSaveChain = Task.CompletedTask;
 
     /// <summary>The tail of the player-bar saves; tests await it.</summary>
     internal Task PendingPlayerBarSave { get; private set; } = Task.CompletedTask;
 
-    partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings();
-    partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings();
-    partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings();
+    partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressFill));
+    partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressLine));
+    partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
         try
         {
             var settings = await Library.Persistence.LoadSettingsAsync();
-            ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
-            ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
-            ArtworkPageColors = settings.MobileArtworkPageColors;
+            // A switch flipped while this load ran keeps the user's value: the load used to put
+            // the saved one back, and the flip was never saved either.
+            _applyingPlayerBar = true;
+            try
+            {
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressFill))) ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressLine))) ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ArtworkPageColors))) ArtworkPageColors = settings.MobileArtworkPageColors;
+            }
+            finally
+            {
+                _applyingPlayerBar = false;
+            }
         }
         catch (Exception ex)
         {
             DebugLog.Write("Settings", $"Player bar settings load failed: {ex.Message}");
         }
         _playerBarLoaded = true;
+        if (_playerBarSetBeforeLoad.Count > 0) SavePlayerBarSettings();
     }
 
     /// <summary>One save after another, so a quick on-off never lands out of order.</summary>
-    private void SavePlayerBarSettings()
+    private void SavePlayerBarSettings(string? setting = null)
     {
-        if (!_playerBarLoaded) return;
+        if (!_playerBarLoaded)
+        {
+            if (setting != null && !_applyingPlayerBar) _playerBarSetBeforeLoad.Add(setting);
+            return;
+        }
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
             {
-                var settings = await Library.Persistence.LoadSettingsAsync();
-                settings.MobilePlayerBarProgressFill = fill;
-                settings.MobilePlayerBarProgressLine = line;
-                settings.MobileArtworkPageColors = pages;
-                await Library.Persistence.SaveSettingsAsync(settings);
+                // One update: another phone save landing between a plain load and save was undone.
+                await Library.Persistence.UpdateSettingsAsync(settings =>
+                {
+                    settings.MobilePlayerBarProgressFill = fill;
+                    settings.MobilePlayerBarProgressLine = line;
+                    settings.MobileArtworkPageColors = pages;
+                });
             }
             catch (Exception ex)
             {
@@ -485,11 +611,18 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void RecordRemotePlay()
     {
-        // PlayRecorded fires only while the recorded track is still CurrentTrack.
+        // PlayRecorded fires only while the recorded track is still CurrentTrack. Share with
+        // Computer off keeps the play on the phone.
+        if (!ShareHistoryWithComputer) return;
         if (Account is not { } account || Player.CurrentTrack is not { } track) return;
         try
         {
-            if (account.IsRemote(track)) account.RecordPlay(track, DateTime.UtcNow);
+            if (!account.IsRemote(track)) return;
+            // With the scrobbler following playback, the play waits for its verdict (Through
+            // Computer then has the computer send it on, once, only if it counted). Without one
+            // nothing would ever decide it: it is sent as a plain count.
+            if (_scrobbler != null) account.RecordStartedPlay(track, DateTime.UtcNow);
+            else account.RecordPlay(track, DateTime.UtcNow);
         }
         catch (Exception ex)
         {
@@ -509,7 +642,8 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _resetting;
 
     /// <summary>Push <paramref name="page"/> over the current tab (inside the sheet, when one is
-    /// up). A page opened from Now Playing (the artist link) closes the player first.</summary>
+    /// up). A page opened from Now Playing (the artist link), Lyrics or the Queue closes them
+    /// first: Lyrics opens over a list without the player too, and the page landed under it.</summary>
     public void Navigate(MobilePage page) => Push(page, sheet: false);
 
     /// <summary>Present <paramref name="page"/> as a sheet over everything (Settings); Back or its
@@ -519,7 +653,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private void Push(MobilePage page, bool sheet)
     {
         CloseSheet();
-        if (IsNowPlayingOpen) CloseNowPlaying();
+        if (IsPlayerUp) CloseNowPlaying();
         page.IsSheet = sheet;
         Pages.Add(page);
         LastPageMove = PageMove.Push;
@@ -599,7 +733,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// </summary>
     public bool TryHandleBack()
     {
-        if (IsSheetOpen || IsMenuOpen) { CloseSheet(); return true; }
+        if (IsSheetOpen || IsMenuOpen || IsAlbumNoteOpen || IsPromptOpen) { CloseSheet(); return true; }
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
@@ -655,7 +789,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites));
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { OffersFavouritesFilter = false });
 
     [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Recently Added", Library.RecentlyAdded));
 
@@ -677,6 +811,11 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenAlbum(Album? album)
     {
         if (album == null) return;
+        if (IsShowingAlbum(album.Id))
+        {
+            ShowCurrentPage();
+            return;
+        }
         Navigate(new AlbumPageViewModel(this, CurrentAlbum(album)));
     }
 
@@ -685,14 +824,97 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenArtist(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
+        if (IsShowingArtist(name))
+        {
+            ShowCurrentPage();
+            return;
+        }
         Navigate(new ArtistPageViewModel(this, name));
+    }
+
+    // Go to Album / Go to Artist from that album's or artist's own page (Now Playing over it, a
+    // track's menu on it) pushed the same page again, and Back then showed it twice.
+    public bool IsShowingAlbum(Guid albumId) => CurrentPage is AlbumPageViewModel page && page.Album.Id == albumId;
+
+    public bool IsShowingArtist(string name) =>
+        CurrentPage is ArtistPageViewModel page && string.Equals(page.Name, name, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether Now Playing, Lyrics or the Queue covers the pages.</summary>
+    public bool IsPlayerUp => IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen;
+
+    /// <summary>The page asked for is the one under the menus and the player: uncover it.</summary>
+    private void ShowCurrentPage()
+    {
+        CloseSheet();
+        if (IsPlayerUp) CloseNowPlaying();
     }
 
     [RelayCommand]
     private void OpenPlaylist(Playlist? playlist)
     {
         if (playlist == null) return;
-        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(playlist), playlist));
+        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(CurrentPlaylist(playlist)), playlist));
+    }
+
+    /// <summary>Every playlist edit (and a sync) re-reads playlists.json into new objects: a page
+    /// or menu holding one from before reads the playlist the library holds now, by id.</summary>
+    public Playlist CurrentPlaylist(Playlist playlist) =>
+        Library.Playlists.FirstOrDefault(p => p.Id == playlist.Id) ?? playlist;
+
+    // ── Playlist editing (desktop parity: SidebarViewModel / PlaylistViewModel) ──
+
+    /// <summary>Rename: the glass prompt with the name in a pill field, selected to be typed
+    /// over. An empty name cannot be saved; the same name saves nothing (the desktop's rule).</summary>
+    public void AskRenamePlaylist(Playlist playlist)
+    {
+        var current = CurrentPlaylist(playlist);
+        ShowPrompt(new PromptViewModel(this, "Rename Playlist", string.Empty,
+            new[] { new PromptAction("Save", p => RenamePlaylistAsync(current, p.Entered)) })
+        {
+            HasField = true,
+            FieldPlaceholder = "Playlist Name",
+            FieldText = current.Name,
+        });
+    }
+
+    public async Task RenamePlaylistAsync(Playlist playlist, string name)
+    {
+        name = name.Trim();
+        if (name.Length == 0 || string.Equals(name, CurrentPlaylist(playlist).Name, StringComparison.Ordinal)) return;
+        await Library.RenamePlaylistAsync(playlist, name);
+    }
+
+    /// <summary>Delete Playlist asks first, as the desktop does ("This cannot be undone"); one of
+    /// the computer's says it goes there too.</summary>
+    public void AskDeletePlaylist(Playlist playlist)
+    {
+        var current = CurrentPlaylist(playlist);
+        var synced = Account?.IsSyncedPlaylist(current.Id) == true;
+        ShowPrompt(new PromptViewModel(this, $"Delete “{current.Name}”?",
+            synced ? "It's deleted from your computer too. This can't be undone." : "This can't be undone. The songs stay in your library.",
+            new[] { new PromptAction("Delete Playlist", _ => DeletePlaylistAsync(current), isDestructive: true) }));
+    }
+
+    /// <summary>Deletes the playlist (and its page, if it is the one on top); one of the
+    /// computer's is queued to be deleted there on the next sync.</summary>
+    public async Task DeletePlaylistAsync(Playlist playlist)
+    {
+        try
+        {
+            Account?.RecordPlaylistDeleted(playlist.Id);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Recording a playlist delete failed: {ex.Message}");
+        }
+        if (CurrentPage is SongListPageViewModel { Playlist: { } shown } && shown.Id == playlist.Id) GoBack();
+        await Library.DeletePlaylistAsync(playlist);
+    }
+
+    /// <summary>A song's Remove from Playlist (no question asked, as on the desktop and Apple's).</summary>
+    public async Task RemoveFromPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
+    {
+        await Library.RemoveFromPlaylistAsync(CurrentPlaylist(playlist), tracks);
     }
 
     /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
@@ -731,6 +953,11 @@ public sealed partial class ShellViewModel : ObservableObject
         if (track != null) Sheet = ContextSheetViewModel.ForTrack(this, track);
     }
 
+    /// <summary>A song's menu on a list; <paramref name="inPlaylist"/> is the playlist whose page
+    /// it is on, which adds Remove from Playlist.</summary>
+    public void OpenTrackMenu(Track track, Playlist? inPlaylist) =>
+        Sheet = ContextSheetViewModel.ForTrack(this, track, inPlaylist);
+
     [RelayCommand]
     private void OpenAlbumSheet(Album? album)
     {
@@ -740,7 +967,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void OpenPlaylistSheet(Playlist? playlist)
     {
-        if (playlist != null) Sheet = ContextSheetViewModel.ForPlaylist(this, playlist);
+        if (playlist != null) Sheet = ContextSheetViewModel.ForPlaylist(this, CurrentPlaylist(playlist));
     }
 
     [RelayCommand]
@@ -779,6 +1006,8 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     public void CloseSheet()
     {
+        if (Prompt is { } prompt) ClosePrompt(prompt);
+        AlbumNote = null;
         Sheet = null;
         LibraryMenu = null;
         OptionsMenu = null;
@@ -790,6 +1019,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// tapped, closing whatever menu was up.</summary>
     public void ShowOptions(OptionsMenuViewModel menu)
     {
+        AlbumNote = null;
         Sheet = null;
         LibraryMenu = null;
         LinksMenu = null;
@@ -805,23 +1035,20 @@ public sealed partial class ShellViewModel : ObservableObject
     public async Task SetFavouriteAsync(IReadOnlyList<Track> tracks, bool favourite)
     {
         if (tracks.Count == 0) return;
-        foreach (var t in tracks) t.IsFavorite = favourite;
+        // The library's own songs too: the queue keeps its Track objects, and a rescan that
+        // re-read a changed file (or a sync) made the library a new one. The save journals the
+        // library's copy, so flagging only the queue's lost the heart (never in Favorites).
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).ToList();
+        foreach (var t in tracks.Concat(current)) t.IsFavorite = favourite;
         try
         {
-            await Library.Service.SaveTrackUserStateAsync(tracks.ToList());
+            await Library.Service.SaveTrackUserStateAsync(current);
         }
         catch (Exception ex)
         {
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
-        Library.Service.NotifyFavoritesChanged(tracks.ToList());
-    }
-
-    /// <summary>A song row's heart: one tap favourites or unfavourites that song.</summary>
-    [RelayCommand]
-    private async Task ToggleTrackFavouriteAsync(Track? track)
-    {
-        if (track != null) await SetFavouriteAsync(new[] { track }, !track.IsFavorite);
+        Library.Service.NotifyFavoritesChanged(current);
     }
 
     [RelayCommand]
@@ -931,6 +1158,8 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
+        await Background.LoadAsync();
+        await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
         await Lyrics.InitializeAsync();

@@ -230,8 +230,7 @@ public sealed class UpdateService
         using var response = await _http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
-        var releasesJson = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
-        var releases = System.Text.Json.JsonSerializer.Deserialize<List<GitHubRelease>>(releasesJson);
+        var releases = await HttpSafety.ReadJsonBoundedAsync<List<GitHubRelease>>(response.Content, ct: ct);
         if (releases is null || releases.Count == 0)
             return null;
 
@@ -286,11 +285,30 @@ public sealed class UpdateService
         using var request = new HttpRequestMessage(HttpMethod.Get, ReleaseListUrl);
         request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
 
+        // The list is re-fetched on every About visit with Developer Mode on (and at launch).
+        // It is ~1.5 MB of JSON, so ask GitHub whether it changed: an unchanged list answers
+        // 304 with no body (which also doesn't count against the API rate limit) and the
+        // last parse is reused.
+        var cached = _releaseListCache;
+        if (cached is not null)
+            request.Headers.IfNoneMatch.Add(cached.ETag);
+
         using var response = await _http.SendAsync(request, ct);
+        if (cached is not null && response.StatusCode == System.Net.HttpStatusCode.NotModified)
+            return new List<ReleaseListItem>(cached.Items);
         response.EnsureSuccessStatusCode();
 
-        var releasesJson = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
-        var releases = System.Text.Json.JsonSerializer.Deserialize<List<GitHubRelease>>(releasesJson);
+        var items = await ParseReleaseListAsync(response.Content, ct);
+        _releaseListCache = response.Headers.ETag is { } etag ? new ReleaseListCache(etag, items) : null;
+        return new List<ReleaseListItem>(items);
+    }
+
+    private sealed record ReleaseListCache(System.Net.Http.Headers.EntityTagHeaderValue ETag, List<ReleaseListItem> Items);
+    private volatile ReleaseListCache? _releaseListCache;
+
+    private static async Task<List<ReleaseListItem>> ParseReleaseListAsync(HttpContent content, CancellationToken ct)
+    {
+        var releases = await HttpSafety.ReadJsonBoundedAsync<List<GitHubRelease>>(content, ct: ct);
         if (releases is null) return new List<ReleaseListItem>();
 
         var items = new List<ReleaseListItem>();

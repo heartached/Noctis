@@ -363,6 +363,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
+        // Pick Up on Computer: the window coming to the front is when a newer phone queue is offered.
+        Activated += (_, _) => (DataContext as MainWindowViewModel)?.HandoffPrompt.Check();
 
         // Windows 10: Avalonia leaves the native caption white under the dark theme.
         // The handle exists from construction, so this lands before the first paint.
@@ -685,6 +687,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, AppGlass.IsActive);
 
                 InitializeQueuePopupBinding(vm);
+                InitializeSearchCapsuleInset(vm);
                 InitializeTaskbarButtons(vm);
                 InitializeTrayIcon(vm);
                 _trayHost = LinuxTrayHost.TryStart();
@@ -942,12 +945,39 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private LyricsPanelView? GetLyricsPanelView() =>
         this.FindControl<ContentControl>("LyricsPanelHost")?.Content as LyricsPanelView;
 
-    private void EnsureSettingsViewLoaded()
+    internal void EnsureSettingsViewLoaded()
     {
         var host = this.FindControl<ContentControl>("SettingsViewHost");
         if (host is null || host.Content is not null) return;
 
-        host.Content = new SettingsView { Background = Avalonia.Media.Brushes.Transparent };
+        var view = new SettingsView { Background = Avalonia.Media.Brushes.Transparent };
+        view.CardSizeRequested += SizeSettingsCard;
+        host.Content = view;
+    }
+
+    /// <summary>The Settings card's own MaxWidth/MaxHeight (MainWindow.axaml), read on first use.</summary>
+    private Avalonia.Size? _settingsCardSize;
+
+    /// <summary>
+    /// <see cref="SettingsView.CardSizeRequested"/>: the card and its frost grow so the Settings
+    /// view inside gets <paramref name="content"/> (a plugin's own view open in place of its page),
+    /// never below their own size; null puts them back. The window still caps them (they stretch
+    /// within the overlay's margin), and their MaxWidth/MaxHeight transitions make it a glide.
+    /// </summary>
+    internal void SizeSettingsCard(Avalonia.Size? content)
+    {
+        var card = _settingsCard ?? this.FindControl<Border>("SettingsCard");
+        if (card is null) return;
+        var normal = _settingsCardSize ??= new Avalonia.Size(card.MaxWidth, card.MaxHeight);
+        var border = card.BorderThickness;
+        var width = content is { } c ? Math.Max(normal.Width, Math.Ceiling(c.Width + border.Left + border.Right)) : normal.Width;
+        var height = content is { } d ? Math.Max(normal.Height, Math.Ceiling(d.Height + border.Top + border.Bottom)) : normal.Height;
+        foreach (var box in new Control?[] { card, _settingsGlass ?? this.FindControl<Controls.GlassPanel>("SettingsGlass") })
+        {
+            if (box is null) continue;
+            box.MaxWidth = width;
+            box.MaxHeight = height;
+        }
     }
 
     private void WireWindowLevelHandlers()
@@ -1204,8 +1234,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         try
         {
-            var iconUri = new Uri("avares://Noctis.UI/Assets/Icons/Noctis.ico");
-            var icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(iconUri));
+            // Settings › Appearance › App Icon picks the tray icon too; classic if it can't load.
+            var icon = AppIconService.CurrentIcon
+                ?? new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://Noctis.UI/Assets/Icons/Noctis.ico")));
 
             var menu = new NativeMenu();
 
@@ -1238,6 +1269,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             };
             menu.Items.Add(quit);
 
+            // The menu above opens in Avalonia's own transparent window; always frost it
+            // (GitHub #150 — owner wants it frosted, not only with Liquid Glass), tinted with
+            // the theme's menu colour. Windows draws it solid when Transparency effects are off.
+            TrayMenuFrost.Register(() => true,
+                () => ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414")));
+
             _trayIcon = new TrayIcon
             {
                 Icon = icon,
@@ -1247,6 +1284,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             };
             _trayIcon.Clicked += (_, _) => ShowFromTray();
             TrayIcon.SetIcons(Application.Current!, new TrayIcons { _trayIcon });
+            _appIconChangedHandler = (_, _) =>
+            {
+                if (_trayIcon != null && AppIconService.CurrentIcon is { } next)
+                    _trayIcon.Icon = next;
+            };
+            AppIconService.Changed += _appIconChangedHandler;
 
             // Keep the tooltip and the play/pause label current. Both were set once and
             // never updated, so hovering the tray icon of a player deliberately running
@@ -1283,6 +1326,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     }
 
     private System.ComponentModel.PropertyChangedEventHandler? _trayStateHandler;
+    private EventHandler? _appIconChangedHandler;
 
     /// <summary>
     /// Whether hiding into the tray leaves a way back. A TrayIcon object alone does not: on
@@ -1439,6 +1483,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _trayHost = null;
         _macNowPlaying?.Dispose();
         _macNowPlaying = null;
+        if (_appIconChangedHandler != null)
+        {
+            AppIconService.Changed -= _appIconChangedHandler;
+            _appIconChangedHandler = null;
+        }
         if (_trayIcon != null)
         {
             _trayIcon.IsVisible = false;
@@ -1488,7 +1537,44 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_mainVmPropertyChangedHandler != null)
                 vm.PropertyChanged -= _mainVmPropertyChangedHandler;
+
+            if (_searchInsetHandler != null)
+                vm.TopBar.PropertyChanged -= _searchInsetHandler;
         }
+    }
+
+    private System.ComponentModel.PropertyChangedEventHandler? _searchInsetHandler;
+
+    /// <summary>
+    /// The sidebar's search pill floats over the page beside the rail, at the Search button's
+    /// height: just under the top bar, over the Songs column headers and first row (Discord,
+    /// HypnoTized 10-24; the same spot on every page). While it is open the page host starts
+    /// below the pill instead. Measured per open, and again when the top bar's height changes
+    /// under an open pill (a page without a bar), so the band is only what the pill needs.
+    /// </summary>
+    private void InitializeSearchCapsuleInset(MainWindowViewModel vm)
+    {
+        var host = this.FindControl<ContentControl>("PageHost");
+        if (host == null || _contentDockPanel == null) return;
+
+        void Apply()
+        {
+            var top = 0.0;
+            if (vm.TopBar.IsSearchOpen && SidebarPane?.SearchCapsuleBottom(_contentDockPanel) is { } bottom)
+                top = Math.Max(0, Math.Ceiling(bottom));
+            if (host.Margin.Top != top)
+                host.Margin = new Thickness(0, top, 0, 0);
+        }
+
+        _searchInsetHandler = (_, e) =>
+        {
+            if (e.PropertyName == nameof(TopBarViewModel.IsSearchOpen)) Apply();
+        };
+        vm.TopBar.PropertyChanged += _searchInsetHandler;
+        _contentDockPanel.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BoundsProperty && vm.TopBar.IsSearchOpen) Apply();
+        };
     }
 
     /// <summary>
@@ -1511,6 +1597,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // keep it in sight as songs change and when the panel opens.
             if (e.PropertyName is nameof(PlayerViewModel.CurrentTrack) or nameof(PlayerViewModel.KeepPlayedInQueue))
             {
+                // Turning it off drops the played rows and the playing row from the top of the
+                // list; the offset that kept the playing row in sight would now land deep in
+                // Up Next (it opened on #36 instead of #1), so go back to the top.
+                if (e.PropertyName == nameof(PlayerViewModel.KeepPlayedInQueue) && !vm.Player.KeepPlayedInQueue)
+                    _queueScrollToTopPending = true;
                 ScheduleQueueScrollToCurrent();
                 return;
             }
@@ -1530,9 +1621,101 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
         };
         vm.Player.PropertyChanged += _queuePopupStateHandler;
+
+        // GitHub #147: a stored width never pushes the drawer past the window's left edge.
+        if (_queuePopupPanel?.Parent is Control host)
+        {
+            host.SizeChanged += (_, _) => UpdateQueuePanelMaxWidth();
+            UpdateQueuePanelMaxWidth();
+        }
+    }
+
+    // GitHub #147: left-edge resize of the queue drawer. The drag writes Player.QueuePanelWidth
+    // live (the drawer, its frost and the row titles bind to it); release persists it.
+    private bool _queueResizeDragging;
+    private bool _queueResizeChanged;
+    private double _queueResizeStartX;
+    private double _queueResizeStartWidth;
+
+    /// <summary>The widest the drawer may be in this window: its host less the 8px margins.</summary>
+    private double QueuePanelHostMaxWidth() =>
+        _queuePopupPanel?.Parent is Control { Bounds.Width: > 0 } host
+            ? Math.Max(QueuePanelMetrics.Min, host.Bounds.Width - 16)
+            : QueuePanelMetrics.Max;
+
+    private void UpdateQueuePanelMaxWidth()
+    {
+        var max = QueuePanelHostMaxWidth();
+        if (_queuePopupPanel != null) _queuePopupPanel.MaxWidth = max;
+        if (_queueGlass != null) _queueGlass.MaxWidth = max;
+    }
+
+    private void OnQueueResizeGripPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control grip || DataContext is not MainWindowViewModel vm) return;
+        if (!e.GetCurrentPoint(grip).Properties.IsLeftButtonPressed) return;
+
+        if (e.ClickCount == 2)
+        {
+            // Double-click the edge: back to the stock width, persisted like a drag.
+            _queueResizeDragging = false;
+            vm.Player.CommitQueuePanelWidth(QueuePanelMetrics.Default);
+            e.Handled = true;
+            return;
+        }
+
+        _queueResizeDragging = true;
+        _queueResizeChanged = false;
+        _queueResizeStartX = e.GetPosition(this).X;
+        // The arranged width: MaxWidth may be clamping a wider stored value.
+        _queueResizeStartWidth = _queuePopupPanel is { Bounds.Width: > 0 } panel
+            ? panel.Bounds.Width
+            : vm.Player.QueuePanelWidth;
+        e.Pointer.Capture(grip);
+        e.Handled = true;
+    }
+
+    private void OnQueueResizeGripMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_queueResizeDragging || DataContext is not MainWindowViewModel vm) return;
+        // The drawer is pinned to the right edge, so pulling its left edge left widens it.
+        var target = _queueResizeStartWidth - (e.GetPosition(this).X - _queueResizeStartX);
+        target = QueuePanelMetrics.Clamp(Math.Min(target, QueuePanelHostMaxWidth()));
+        if (Math.Abs(vm.Player.QueuePanelWidth - target) >= 1)
+        {
+            vm.Player.QueuePanelWidth = target;
+            _queueResizeChanged = true;
+        }
+        e.Handled = true;
+    }
+
+    private void OnQueueResizeGripReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_queueResizeDragging) return;
+        _queueResizeDragging = false;
+        e.Pointer.Capture(null);
+        CommitQueueResize();
+        e.Handled = true;
+    }
+
+    private void OnQueueResizeGripCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_queueResizeDragging) return;
+        _queueResizeDragging = false;
+        // The width already changed on screen; keep Settings and disk in step with it.
+        CommitQueueResize();
+    }
+
+    private void CommitQueueResize()
+    {
+        if (_queueResizeChanged && DataContext is MainWindowViewModel vm)
+            vm.Player.CommitQueuePanelWidth(vm.Player.QueuePanelWidth);
+        _queueResizeChanged = false;
     }
 
     private bool _queueScrollToCurrentPending;
+    /// <summary>Keep Played Songs went off: the list returns to the top when it is next in sight.</summary>
+    private bool _queueScrollToTopPending;
 
     /// <summary>GitHub #134: once the rows settle, scroll the open queue list so the playing
     /// row is second from the top. Not while a row is dragged or a band is drawn.</summary>
@@ -1544,10 +1727,16 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         {
             _queueScrollToCurrentPending = false;
             if (DataContext is not MainWindowViewModel { Player: { IsQueuePopupOpen: true } player }
-                || player.QueueCurrentRow < 0
                 || _queueDragActive || _queueBandActive || QueueLiquid is { IsSettling: true }
                 || this.FindControl<ListBox>("QueuePopupListBox") is not { } listBox)
                 return;
+            if (player.QueueCurrentRow < 0)
+            {
+                if (_queueScrollToTopPending && QueuePanelRows.ScrollToTop(listBox))
+                    _queueScrollToTopPending = false;
+                return;
+            }
+            _queueScrollToTopPending = false;
             QueuePanelRows.ScrollRowNearTop(listBox, player.QueueCurrentRow);
         }, DispatcherPriority.Background);
     }
@@ -1953,7 +2142,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // A Shortcuts-tab chip is waiting for a chord: the chip owns every key until it
         // is done, otherwise pressing the key you are trying to assign would run it.
         if (vm.Settings.Shortcuts.IsRecording) return;
+        // A plugin's view shown in Settings owns its keys, as in its own window (where the app's
+        // shortcuts never reached it): Space presses its focused button instead of play/pause.
+        if (IsInHostedPluginView(e.Source)) return;
         if (shortcuts.TryMatch(e) is not { } action) return;
+        // Space (or Enter) on a control reached with the keyboard, its focus ring showing,
+        // presses that control. After a mouse click it stays play/pause, so clicking Next and
+        // then pressing Space doesn't skip again.
+        if (e.KeyModifiers == KeyModifiers.None && e.Key is Key.Space or Key.Enter && IsKeyboardFocusedControl(e.Source)) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an
         // edit box: typing a space in the search box stays typing a space. Ctrl+←/→ in
@@ -1964,6 +2160,16 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _consumedShortcut = action;
         e.Handled = true;
     }
+
+    /// <summary>A button, switch or drop-down that has keyboard focus (reached with Tab or the
+    /// arrow keys, so its focus ring shows), not one that was last clicked.</summary>
+    internal static bool IsKeyboardFocusedControl(object? source)
+        => source is Control c && c.Classes.Contains(":focus-visible")
+           && c is Button or ComboBox or Noctis.Controls.LottieToggle;
+
+    /// <summary>The key came from inside a plugin view hosted in Settings (PluginViewHost).</summary>
+    private static bool IsInHostedPluginView(object? source)
+        => source is Visual v && v.GetSelfAndVisualAncestors().OfType<ContentControl>().Any(c => c.Name == "PluginViewHost");
 
     private void OnGlobalShortcutKeyUp(object? sender, KeyEventArgs e)
     {
@@ -2087,6 +2293,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // Fullscreen counts as the topmost surface — leave it first, browser-style,
             // before closing any in-app overlay.
             ToggleFullScreen();
+        }
+        else if (vm.IsSettingsModalOpen && vm.Settings.IsPluginViewOpen)
+        {
+            // A plugin's view is the topmost surface in Settings: back to its page, like the
+            // Back pill (a search typed in it isn't thrown away with Settings).
+            vm.Settings.ClosePluginViewCommand.Execute(null);
         }
         else if (vm.IsSettingsModalOpen)
         {

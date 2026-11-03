@@ -81,7 +81,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     private sealed record DownloadedFile(string Path, long Size);
     private readonly ConcurrentDictionary<Guid, DownloadedFile> _downloaded = new();
-    private readonly ConcurrentDictionary<Guid, byte> _inFlight = new();
+    /// <summary>Songs downloading now, each with its own stop (Remove Download on it).</summary>
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _inFlight = new();
+    /// <summary>Songs whose download was removed: a batch that still holds one skips it, and one
+    /// that finishes it throws the file away. Cleared when the song is asked for again.</summary>
+    private readonly ConcurrentDictionary<Guid, byte> _withdrawn = new();
+    /// <summary>A finished download joins <see cref="_downloaded"/> and a removal withdraws it under this,
+    /// so a removal can never land between the check and the add.</summary>
+    private readonly object _downloadCommit = new();
     private readonly SemaphoreSlim _downloadSlots = new(DownloadConcurrency, DownloadConcurrency);
     private readonly List<Task> _downloadRuns = new();
     private CancellationTokenSource _downloadCts = new();
@@ -166,6 +173,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         _account = _store.LoadAccount();
         _sync = _store.LoadSyncState();
         _pending = _store.LoadPending();
+        // A play the last run held for its verdict can no longer get one (the song's clock went
+        // with that run): counted only, never sent on to Last.fm.
+        for (var i = 0; i < _pending.Plays.Count; i++)
+            if (_pending.Plays[i].Scrobble == PlayScrobbleWire.Pending)
+                _pending.Plays[i] = _pending.Plays[i] with { Scrobble = PlayScrobbleWire.Of(PlayScrobble.No) };
         IndexDownloads();
         LoadCachedAvatar();
         stateRecorder?.Attach(this);
@@ -173,7 +185,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     /// <summary>Tests: unpushed favorite/rating edits and queued plays.</summary>
     internal int PendingTrackCount { get { lock (_gate) return _pending.Tracks.Count; } }
-    internal int PendingPlayCount { get { lock (_gate) return _pending.Plays.Count; } }
+    public int PendingPlayCount { get { lock (_gate) return _pending.Plays.Count; } }
 
     public string DeviceId => _deviceId;
     public string DeviceName { get; }
@@ -458,7 +470,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         // 6. The desktop's profile picture and name (best effort: never fail the sync).
         await RefreshAvatarAsync(ct).ConfigureAwait(false);
-        var (nameKnown, displayName, serverName) = await FetchDisplayNameAsync(client, ct).ConfigureAwait(false);
+        var (nameKnown, displayName, serverName, scrobbling) = await FetchDisplayNameAsync(client, ct).ConfigureAwait(false);
 
         NoctisAccount? updated;
         lock (_gate)
@@ -470,6 +482,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 {
                     LastSyncUtc = UtcNow,
                     DisplayName = nameKnown ? displayName : _account.DisplayName,
+                    // Where the computer sends the phone's plays: an answer without it is a computer
+                    // that sends them nowhere (an older one), so it clears too.
+                    ComputerScrobbling = nameKnown ? scrobbling : _account.ComputerScrobbling,
                     ServerName = serverName ?? _account.ServerName,
                 };
             if (updated is not null)
@@ -719,17 +734,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     /// <summary>The desktop's profile name for the header and the computer's name (getNoctisSyncStatus).
     /// Known = false when the ask failed (unreachable, a desktop without it): the names shown stay.</summary>
-    private static async Task<(bool Known, string? Name, string? ServerName)> FetchDisplayNameAsync(NoctisServerClient client, CancellationToken ct)
+    private static async Task<(bool Known, string? Name, string? ServerName, ComputerScrobbling? Scrobbling)> FetchDisplayNameAsync(NoctisServerClient client, CancellationToken ct)
     {
         try
         {
-            var (name, server) = await client.GetDisplayNameAsync(ct).ConfigureAwait(false);
-            return (true, name, server);
+            var (name, server, scrobbling) = await client.GetDisplayNameAsync(ct).ConfigureAwait(false);
+            return (true, name, server, scrobbling);
         }
         catch (NoctisServerException ex)
         {
             DebugLog.Write("Account", $"profile name not fetched: {ex.Kind}");
-            return (false, null, null);
+            return (false, null, null, null);
         }
     }
 
@@ -925,9 +940,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     {
         var phone = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
         Dictionary<string, PlaylistSyncState> agreed;
-        lock (_gate) agreed = new Dictionary<string, PlaylistSyncState>(_sync.Playlists, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, DateTime> deleted;
+        lock (_gate)
+        {
+            agreed = new Dictionary<string, PlaylistSyncState>(_sync.Playlists, StringComparer.OrdinalIgnoreCase);
+            deleted = new Dictionary<string, DateTime>(_pending.DeletedPlaylists, StringComparer.OrdinalIgnoreCase);
+        }
         var now = UtcNow;
         var changed = false;
+
+        // Deleted on the phone: gone from the phone's list even if a stale save brought it back,
+        // unless the computer edited it after the delete (last writer wins, the edit is newer).
+        var resolved = new List<string>();
+        foreach (var (hex, at) in deleted)
+        {
+            if (!NoctisRemoteIds.TryParseSyncId(hex, out var id) || !agreed.ContainsKey(hex)) { resolved.Add(hex); continue; }
+            if (pulled.TryGetValue(id, out var state) && (state.Deleted || Newer(state.ModifiedAt, at))) { resolved.Add(hex); continue; }
+            pulled.Remove(id);
+            if (phone.RemoveAll(p => p.Id == id) > 0) changed = true;
+        }
+        foreach (var hex in resolved) deleted.Remove(hex);
 
         foreach (var (id, state) in pulled)
         {
@@ -954,7 +986,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         foreach (var (hex, state) in agreed.ToList())
         {
             if (!NoctisRemoteIds.TryParseSyncId(hex, out var id) || state.Deleted) { agreed.Remove(hex); continue; }
-            if (pulled.ContainsKey(id)) continue;
+            if (pulled.ContainsKey(id) || deleted.ContainsKey(hex)) continue;
             var local = phone.FirstOrDefault(p => p.Id == id);
             if (local is null)
             {
@@ -971,8 +1003,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
 
         var toPush = new List<(string Hex, PlaylistSyncState State)>();
+        foreach (var (hex, at) in deleted)
+            toPush.Add((hex, PlaylistSyncState.Tombstone(Guid.Empty, NotAfter(Utc(at), now) ?? now)));
         foreach (var (hex, state) in agreed)
         {
+            if (deleted.ContainsKey(hex)) continue;
             var local = phone.FirstOrDefault(p => NoctisRemoteIds.TryParseSyncId(hex, out var id) && p.Id == id);
             if (local is null || !Newer(local.ModifiedAt, state.ModifiedAt)) continue;
             var modified = NotAfter(Utc(local.ModifiedAt), now) ?? now;
@@ -996,10 +1031,33 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         {
             var items = chunk.Select(p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)).ToList();
             await client.PushSyncChangesAsync(_deviceId, DeviceName, items, ct).ConfigureAwait(false);
-            foreach (var (hex, state) in chunk) agreed[hex] = state;
+            var tombstones = false;
+            foreach (var (hex, state) in chunk)
+            {
+                if (!state.Deleted)
+                {
+                    agreed[hex] = state;
+                    continue;
+                }
+                // Deleted on the computer now: no longer one of the playlists the phone keeps in step.
+                agreed.Remove(hex);
+                lock (_gate)
+                {
+                    if (_pending.DeletedPlaylists.TryGetValue(hex, out var at) && at == deleted[hex])
+                        _pending.DeletedPlaylists.Remove(hex);
+                }
+                tombstones = true;
+            }
+            if (tombstones) SchedulePendingSave();
         }
 
-        lock (_gate) _sync.Playlists = agreed;
+        lock (_gate)
+        {
+            _sync.Playlists = agreed;
+            // Settled without a push (the computer deleted or re-edited it first): not asked again.
+            foreach (var hex in resolved) _pending.DeletedPlaylists.Remove(hex);
+        }
+        if (resolved.Count > 0) SchedulePendingSave();
         return (agreed.Count, toPush.Count);
     }
 
@@ -1041,7 +1099,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private async Task<int> SendPlaysAsync(NoctisServerClient client, CancellationToken ct)
     {
         List<PendingPlay> plays;
-        lock (_gate) plays = _pending.Plays.ToList();
+        // A play still waiting for its verdict (the song is playing) stays for a later sync.
+        lock (_gate) plays = _pending.Plays.Where(p => p.Scrobble != PlayScrobbleWire.Pending).ToList();
         if (plays.Count == 0) return 0;
         RaiseSyncProgress(NoctisSyncStage.Plays, 0, plays.Count);
         var nowMs = _time.GetUtcNow().ToUnixTimeMilliseconds();
@@ -1049,8 +1108,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         foreach (var batch in plays.Chunk(ScrobbleBatch))
         {
             var valid = batch
-                .Select(p => (Ok: NoctisRemoteIds.TryParseSyncId(p.Id, out var id), Id: id, Time: Math.Clamp(p.Time, 0, nowMs)))
-                .Where(p => p.Ok).Select(p => (p.Id, p.Time)).ToList();
+                .Select(p => (Ok: NoctisRemoteIds.TryParseSyncId(p.Id, out var id), Id: id, Time: Math.Clamp(p.Time, 0, nowMs), p.Scrobble))
+                .Where(p => p.Ok).Select(p => (p.Id, p.Time, p.Scrobble)).ToList();
             if (valid.Count > 0) await client.ScrobbleAsync(valid, ct).ConfigureAwait(false);
             var sentSet = new HashSet<PendingPlay>(batch, ReferenceEqualityComparer.Instance);
             lock (_gate) _pending.Plays.RemoveAll(p => sentSet.Contains(p));
@@ -1063,15 +1122,78 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     // ── Phone-side changes ───────────────────────────────────────────────
 
-    public void RecordPlay(Track track, DateTime playedUtc)
+    public void RecordPlay(Track track, DateTime playedUtc) => Record(track, playedUtc, null);
+
+    public void RecordStartedPlay(Track track, DateTime playedUtc) => Record(track, playedUtc, PlayScrobbleWire.Pending);
+
+    private void Record(Track track, DateTime playedUtc, string? scrobble)
     {
         if (!IsRemote(track)) return;
         var utc = playedUtc.Kind == DateTimeKind.Local ? playedUtc.ToUniversalTime() : DateTime.SpecifyKind(playedUtc, DateTimeKind.Utc);
         var ms = Math.Clamp(new DateTimeOffset(utc).ToUnixTimeMilliseconds(), 0, _time.GetUtcNow().ToUnixTimeMilliseconds());
         lock (_gate)
         {
-            _pending.Plays.Add(new PendingPlay(track.Id.ToString("N"), ms));
+            // One song plays at a time: a play still held when the next starts never counted.
+            if (scrobble == PlayScrobbleWire.Pending) DecideHeld(_ => true, PlayScrobble.No);
+            _pending.Plays.Add(new PendingPlay(track.Id.ToString("N"), ms, scrobble));
             if (_pending.Plays.Count > MaxQueuedPlays) _pending.Plays.RemoveRange(0, _pending.Plays.Count - MaxQueuedPlays);
+        }
+        SchedulePendingSave();
+    }
+
+    public void DecidePlay(Track track, PlayScrobble verdict)
+    {
+        if (!IsRemote(track)) return;
+        var id = track.Id.ToString("N");
+        bool decided;
+        lock (_gate) decided = DecideHeld(p => p.Id == id, verdict, latestOnly: true);
+        if (decided) SchedulePendingSave();
+    }
+
+    /// <summary>Gives held plays matching <paramref name="match"/> their verdict (the latest only, or
+    /// all of them). Under _gate.</summary>
+    private bool DecideHeld(Func<PendingPlay, bool> match, PlayScrobble verdict, bool latestOnly = false)
+    {
+        var any = false;
+        for (var i = _pending.Plays.Count - 1; i >= 0; i--)
+        {
+            var p = _pending.Plays[i];
+            if (p.Scrobble != PlayScrobbleWire.Pending || !match(p)) continue;
+            _pending.Plays[i] = p with { Scrobble = PlayScrobbleWire.Of(verdict) };
+            any = true;
+            if (latestOnly) break;
+        }
+        return any;
+    }
+
+    public ComputerScrobbling? ComputerScrobbling
+    {
+        get { lock (_gate) return _account?.ComputerScrobbling; }
+    }
+
+    public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default)
+    {
+        lock (_gate)
+        {
+            if (_account is null) return Task.CompletedTask;
+        }
+        return GetClient().SavePlayQueueAsync(share, ct);
+    }
+
+    public bool IsSyncedPlaylist(Guid playlistId)
+    {
+        lock (_gate) return _account is not null && _sync.Playlists.ContainsKey(playlistId.ToString("N"));
+    }
+
+    /// <summary>A playlist the phone deleted: one of the computer's is queued for a tombstone on
+    /// the next sync (SyncPlaylistsAsync), which otherwise restored it as a stale save's loss.</summary>
+    public void RecordPlaylistDeleted(Guid playlistId)
+    {
+        var hex = playlistId.ToString("N");
+        lock (_gate)
+        {
+            if (_account is null || !_sync.Playlists.ContainsKey(hex)) return;
+            _pending.DeletedPlaylists[hex] = UtcNow;
         }
         SchedulePendingSave();
     }
@@ -1130,6 +1252,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     UserName = _pending.UserName,
                     Tracks = new Dictionary<string, PendingTrackState>(_pending.Tracks),
                     Plays = _pending.Plays.ToList(),
+                    DeletedPlaylists = new Dictionary<string, DateTime>(_pending.DeletedPlaylists),
                 };
             }
             try
@@ -1184,10 +1307,18 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public int DownloadedCount => _downloaded.Count;
 
-    public Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+    /// <summary>Whether the phone is on an unmetered network (Wi-Fi). Null = unknown, which never blocks
+    /// a download. With Settings → Downloads → Wi-Fi only on, a download asked for on mobile data is refused.</summary>
+    public Func<bool>? IsOnWifi { get; init; }
+
+    public async Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
     {
         var ids = tracks.Where(IsRemote).Select(t => t.Id).Distinct().Where(id => !_downloaded.ContainsKey(id)).ToList();
-        return RunDownloadsAsync(ids, ct);
+        if (ids.Count > 0 && IsOnWifi is { } onWifi && !onWifi()
+            && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly)
+            throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
+        foreach (var id in ids) _withdrawn.TryRemove(id, out _);   // asked for again: no longer removed
+        await RunDownloadsAsync(ids, ct).ConfigureAwait(false);
     }
 
     public Task DownloadAllAsync(CancellationToken ct = default) => DownloadAsync(_library.Tracks.ToList(), ct);
@@ -1216,6 +1347,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
         var token = linked.Token;
+        // Wi-Fi only holds for the whole batch, not only when it was asked for: a Download All
+        // that loses Wi-Fi stops rather than carrying on over mobile data.
+        var onWifi = IsOnWifi;
+        var wifiOnly = onWifi != null && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
         var queue = new ConcurrentQueue<Guid>(ids);
         // With no other batch running, this one counts from zero: "Downloading 3 of 22" and
         // "1 failed" are about this run, not every run since the app started.
@@ -1235,20 +1370,28 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 try
                 {
-                    if (token.IsCancellationRequested || _downloaded.ContainsKey(id) || !_inFlight.TryAdd(id, 0)) continue;
+                    // Removed while it waited in this batch's queue: skipped, not downloaded anyway.
+                    if (token.IsCancellationRequested || _downloaded.ContainsKey(id) || _withdrawn.ContainsKey(id)) continue;
+                    using var song = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    if (!_inFlight.TryAdd(id, song)) continue;
                     try
                     {
-                        await _downloadSlots.WaitAsync(token).ConfigureAwait(false);
+                        if (_withdrawn.ContainsKey(id)) continue;   // removed just before it was marked in flight
+                        await _downloadSlots.WaitAsync(song.Token).ConfigureAwait(false);
                         try
                         {
-                            await DownloadOneAsync(client, id, token).ConfigureAwait(false);
+                            if (wifiOnly && !onWifi!())
+                                throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
+                            await DownloadOneAsync(client, id, song.Token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);
                             Interlocked.Increment(ref done);
                         }
                         finally { _downloadSlots.Release(); }
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull)
+                    // Remove Download on this song mid-transfer: stopped, neither done nor failed.
+                    catch (Exception) when (song.IsCancellationRequested || _withdrawn.ContainsKey(id)) { }
+                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull or NoctisErrorKind.WifiRequired)
                     {
                         // Every other song would fail the same way.
                         Interlocked.CompareExchange(ref fatal, ex, null);
@@ -1271,7 +1414,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         Interlocked.Increment(ref failed);
                         DebugLog.Write("Account", $"download failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
                     }
-                    finally { _inFlight.TryRemove(id, out _); }
+                    finally { _inFlight.TryRemove(new KeyValuePair<Guid, CancellationTokenSource>(id, song)); }
                 }
                 finally
                 {
@@ -1316,7 +1459,18 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             var final = InsideOffline(hex + "." + ExtensionFor(id, contentType, flac));
             if (_downloaded.TryGetValue(id, out var old) && old.Path != final) NoctisServerClient.TryDelete(old.Path);
             File.Move(part, final, overwrite: true);
-            _downloaded[id] = new DownloadedFile(final, new FileInfo(final).Length);
+            bool removed;
+            lock (_downloadCommit)
+            {
+                removed = _withdrawn.ContainsKey(id);
+                if (!removed) _downloaded[id] = new DownloadedFile(final, new FileInfo(final).Length);
+            }
+            if (removed)
+            {
+                // Remove Download came as the last bytes landed: the file goes, as it asked.
+                NoctisServerClient.TryDelete(final);
+                throw new OperationCanceledException("The download was removed.");
+            }
         }
         finally
         {
@@ -1369,7 +1523,22 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         return Task.Run(() =>
         {
             foreach (var id in ids)
-                if (_downloaded.TryRemove(id, out var f)) NoctisServerClient.TryDelete(f.Path);
+            {
+                // A running batch that holds the song skips it, or stops it mid-transfer; removing
+                // only the finished file left both to download it anyway.
+                DownloadedFile? f;
+                lock (_downloadCommit)
+                {
+                    _withdrawn[id] = 0;
+                    _downloaded.TryRemove(id, out f);
+                }
+                if (f != null) NoctisServerClient.TryDelete(f.Path);
+                if (_inFlight.TryGetValue(id, out var song))
+                {
+                    try { song.Cancel(); }
+                    catch (ObjectDisposedException) { /* it just finished */ }
+                }
+            }
             RaiseDownloadProgress();
             RaiseStateChanged();
         });

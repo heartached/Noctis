@@ -384,6 +384,7 @@ public partial class MiniPlayerWindow : Window
         {
             _hookedVm.PropertyChanged -= OnVmPropertyChanged;
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
+            _hookedVm.Lyrics.LyricsSwapped -= OnLyricsSwapped;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
@@ -395,6 +396,7 @@ public partial class MiniPlayerWindow : Window
         _lastVmForm = _hookedVm.Form;
         _hookedVm.PropertyChanged += OnVmPropertyChanged;
         _hookedVm.Lyrics.PropertyChanged += OnLyricsPropertyChanged;
+        _hookedVm.Lyrics.LyricsSwapped += OnLyricsSwapped;
         _hookedVm.Player.PropertyChanged += OnPlayerPropertyChanged;
         _hookedVm.FormResizeRequested += OnFormResizeRequested;
         _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
@@ -454,7 +456,7 @@ public partial class MiniPlayerWindow : Window
                 _lastVmForm = Vm?.Form;
 
                 SyncFormVisual();
-                ApplyTransparencyHint(); // frost is Classic-only; a design switch turns it on or off
+                ApplyTransparencyHint();
                 UpdateLyricsSurfaceRegistration();
                 UpdateFlowAnimationState();
                 if (Vm?.IsLyricsForm == true)
@@ -474,6 +476,17 @@ public partial class MiniPlayerWindow : Window
                 UpdateFlowAnimationState();
                 break;
         }
+    }
+
+    /// <summary>New lines (a track change, lyrics fetched online): the ScrollLineIndex change
+    /// reached this window before they were laid out, so their containers had no place yet and
+    /// the list stayed where it was (GitHub #155). Jump once the layout pass has run.</summary>
+    private void OnLyricsSwapped(object? sender, EventArgs e)
+    {
+        if (Vm?.IsLyricsForm != true) return;
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => CenterActiveLyric(animated: false),
+            Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -929,10 +942,17 @@ public partial class MiniPlayerWindow : Window
         Math.Abs(a.Left - b.Left) < 0.5 && Math.Abs(a.Top - b.Top) < 0.5 &&
         Math.Abs(a.Right - b.Right) < 0.5 && Math.Abs(a.Bottom - b.Bottom) < 0.5;
 
-    /// <summary>The ground's drop shadow per design (Pill 0 6 22, Sleeve 0 8 26, #33).</summary>
+    /// <summary>The ground's drop shadow per design (Pill 0 6 22, Sleeve 0 8 26, #33).
+    /// None while frosted: the window region ends FrostRegionBleed past the slab, so the
+    /// shadow's darkest band would be cut there into a hard, stair-stepped line.</summary>
     private void UpdateDesignGroundShadow()
     {
         if (ActiveGround() is not { } g) return;
+        if (_frosted)
+        {
+            g.Ground.BoxShadow = default;
+            return;
+        }
         var sleeve = Vm?.Form == MiniPlayerForm.Sleeve;
         g.Ground.BoxShadow = new BoxShadows(new BoxShadow
         {
@@ -940,6 +960,18 @@ public partial class MiniPlayerWindow : Window
             Blur = sleeve ? 26 : 22,
             Color = Color.FromArgb(0x33, 0, 0, 0),
         });
+    }
+
+    /// <summary>The Pill cover's XAML shadow, put back when the frost goes off.</summary>
+    private BoxShadows? _pillCoverShadow;
+
+    /// <summary>Drops the shadows that fall outside the frost region (design ground, Pill
+    /// cover) while frosted, and restores them after.</summary>
+    private void UpdateFrostShadows()
+    {
+        _pillCoverShadow ??= PillCover.BoxShadow;
+        PillCover.BoxShadow = _frosted ? default : _pillCoverShadow.Value;
+        UpdateDesignGroundShadow();
     }
 
     // Drawer ink under a design: the sheet sits on the theme-coloured ground, so the
@@ -994,8 +1026,16 @@ public partial class MiniPlayerWindow : Window
     // the Pill's round cover / the Sleeve's slab. While frosted the window is therefore
     // clipped to the design's own outline with a Win32 window region (SetWindowRgn clips
     // everything the window presents, the composition backdrop included). Region edges are
-    // not anti-aliased, and the design grounds' drop shadows fall outside it. Mica is left
-    // out on purpose: it tints from the wallpaper instead of blurring what is behind.
+    // not anti-aliased, so the region runs a little past the outline (FrostRegionBleed): the
+    // card's own anti-aliased edge is painted whole over the blur, and the stair-step lands
+    // between blurred and unblurred desktop, where it barely reads. Shadows outside the
+    // outline are dropped while frosted. Mica is left out on purpose: it tints from the
+    // wallpaper instead of blurring what is behind.
+    //
+    // Why not something anti-aliased: Avalonia's only rounded backdrop is the process-wide
+    // Win32PlatformOptions.WinUICompositionBackdropCornerRadius (one radius for every window,
+    // the main window's Liquid Glass included, and a rounded rect can't follow the Pill's
+    // cover), and DWM's Win11 corner preference is a fixed 4/8 px radius.
 
     /// <summary>The transparency levels asked for, and what the frost toggle maps to.
     /// One shared array per choice: the hint is set again whenever the view model is
@@ -1015,15 +1055,17 @@ public partial class MiniPlayerWindow : Window
     {
         // The opaque fallback (no compositor / NOCTIS_MINI_OPAQUE) owns the hint.
         if (_squareCard) return;
-        // Classic only. The frost needs the window region below, and a region edge is never
-        // anti-aliased: the Pill's round cover and both designs' rounded slabs came out
-        // stair-stepped (and lost their drop shadows) — GitHub/Discord 1v1ctus 2026-10-05.
-        // The designs sit on their own opaque-ish ground, so they skip the OS backdrop.
-        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true
-                      && Vm is not { IsDesignForm: true };
+        // Every design (GitHub #76, #150). The Pill and Sleeve were dropped from the frost on
+        // 10-05 (e2340d26) because the region below sat ON their outline and cut the
+        // anti-aliased edge into stair-steps (1v1ctus). The region now runs FrostRegionBleed
+        // past the outline (RegionPixels), so the painted edge stays whole and only the
+        // blurred desktop meets the region's edge; the shadows that would be cut there are
+        // dropped while frosted (UpdateFrostShadows).
+        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true;
         TransparencyLevelHint = TransparencyLevels(frosted);
         if (frosted == _frosted) return;
         _frosted = frosted;
+        UpdateFrostShadows();
         if (frosted) LayoutUpdated += OnFrostLayoutUpdated;
         else LayoutUpdated -= OnFrostLayoutUpdated;
         _appliedRegion = null;
@@ -1055,8 +1097,15 @@ public partial class MiniPlayerWindow : Window
         return shapes.ToArray();
     }
 
-    /// <summary>The shapes in whole device pixels (left, top, right, bottom, corner
-    /// diameter) — what CreateRoundRectRgn / CreateEllipticRgn take.</summary>
+    /// <summary>How far (DIPs) the frost region runs past each shape's outline. The region's
+    /// edge is never anti-aliased; on the outline it sliced the card's soft edge pixels into
+    /// stair-steps (the Pill/Sleeve report, 10-05). Past it the whole edge is painted, over
+    /// the blur. Two DIPs clear the ~1 px edge ramp plus CreateRoundRectRgn's arc rounding.</summary>
+    internal const double FrostRegionBleed = 2;
+
+    /// <summary>The shapes grown by <see cref="FrostRegionBleed"/> (same corner centres:
+    /// the radius grows with them), in whole device pixels (left, top, right, bottom,
+    /// corner diameter) — what CreateRoundRectRgn / CreateEllipticRgn take.</summary>
     internal static (int L, int T, int R, int B, int D, bool Ellipse)[] RegionPixels(
         RegionShape[] shapes, double scaling)
     {
@@ -1064,6 +1113,8 @@ public partial class MiniPlayerWindow : Window
         for (var i = 0; i < shapes.Length; i++)
         {
             var (r, radius, ellipse) = shapes[i];
+            r = r.Inflate(FrostRegionBleed);
+            radius += FrostRegionBleed;
             // Region rects exclude their right / bottom edge, hence the +1.
             px[i] = ((int)Math.Floor(r.X * scaling), (int)Math.Floor(r.Y * scaling),
                      (int)Math.Ceiling(r.Right * scaling) + 1, (int)Math.Ceiling(r.Bottom * scaling) + 1,
@@ -1093,7 +1144,7 @@ public partial class MiniPlayerWindow : Window
         Win32Region.Set(handle.Handle, px);
     }
 
-    private static class Win32Region
+    internal static class Win32Region
     {
         [System.Runtime.InteropServices.DllImport("gdi32.dll")]
         private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
@@ -1213,6 +1264,7 @@ public partial class MiniPlayerWindow : Window
         {
             _hookedVm.PropertyChanged -= OnVmPropertyChanged;
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
+            _hookedVm.Lyrics.LyricsSwapped -= OnLyricsSwapped;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             // The settings VM outlives this window; a later toggle must not reach it.

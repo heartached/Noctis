@@ -150,7 +150,7 @@
                             Background="Transparent" BorderThickness="0" Padding="0"
                             Width="27" Height="23"
                             Cursor="Hand" VerticalAlignment="Center"
-                            ToolTip.Tip="{loc:T Queue.RepeatTip}">
+                            ToolTip.Tip="{Binding Player.RepeatModeTip}">
                         <Panel Width="27" Height="23">
                             <Border CornerRadius="6"
                                     Background="{DynamicResource AccentColorBrush}"
@@ -226,10 +226,16 @@
                               helpers:DragFileBehavior.EnableFileDrag="True">
                             <StackPanel Grid.Column="0">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{Binding TitleDisplay}"
-                                               Grid.Column="0"
+                                    <TextBlock Grid.Column="0"
                                                Classes="one-line-explicit-title"
-                                               FontSize="13" />
+                                               FontSize="13">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                <Binding />
+                                                <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                     <Border Grid.Column="1"
                                             Classes="explicit-badge compact"
                                             Margin="6,0,0,0"
@@ -241,10 +247,18 @@
                                                    Opacity="0.9" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Text="{Binding ArtistDisplay}"
-                                           FontSize="11"
+                                <!-- GitHub #147: the rows follow Settings ▸ Player ▸ Queue ▸ Queue Rows. -->
+                                <TextBlock FontSize="11"
                                            Opacity="0.6"
-                                           TextTrimming="CharacterEllipsis" />
+                                           TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding $parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout.HasLine2, FallbackValue=True}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                            <Binding />
+                                            <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding DurationFormatted}"
@@ -277,10 +291,16 @@
                               helpers:DragFileBehavior.EnableFileDrag="True">
                             <StackPanel Grid.Column="0">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{Binding TitleDisplay}"
-                                               Grid.Column="0"
+                                    <TextBlock Grid.Column="0"
                                                Classes="one-line-explicit-title"
-                                               FontSize="13" />
+                                               FontSize="13">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                <Binding />
+                                                <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                     <Border Grid.Column="1"
                                             Classes="explicit-badge compact"
                                             Margin="6,0,0,0"
@@ -292,10 +312,18 @@
                                                    Opacity="0.9" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Text="{Binding ArtistDisplay}"
-                                           FontSize="11"
+                                <!-- GitHub #147: the rows follow Settings ▸ Player ▸ Queue ▸ Queue Rows. -->
+                                <TextBlock FontSize="11"
                                            Opacity="0.6"
-                                           TextTrimming="CharacterEllipsis" />
+                                           TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding $parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout.HasLine2, FallbackValue=True}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                            <Binding />
+                                            <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding DurationFormatted}"

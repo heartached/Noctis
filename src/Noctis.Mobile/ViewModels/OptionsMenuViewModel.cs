@@ -48,16 +48,18 @@ public sealed class OptionsMenuViewModel
     /// kept offline; Show All after a group break while one is on.</summary>
     public static OptionsMenuViewModel ForFilter(ShellViewModel shell, SongListPageViewModel list)
     {
-        var items = new List<OptionsMenuItem>
-        {
-            new(shell, "Favorites", list.OnlyFavourites, () => list.OnlyFavourites = !list.OnlyFavourites),
-        };
+        var items = new List<OptionsMenuItem>();
+        if (list.OffersFavouritesFilter)
+            items.Add(new OptionsMenuItem(shell, "Favorites", list.OnlyFavourites, () => list.OnlyFavourites = !list.OnlyFavourites));
         if (list.CanFilterDownloaded)
             items.Add(new OptionsMenuItem(shell, "Downloaded", list.OnlyDownloaded, () => list.OnlyDownloaded = !list.OnlyDownloaded));
         if (list.IsFiltered)
             items.Add(new OptionsMenuItem(shell, "Show All", false, () => { list.OnlyFavourites = false; list.OnlyDownloaded = false; }) { StartsGroup = true });
         return Lined(items);
     }
+
+    /// <summary>Any short list of choices (Settings' Theme menu): the items as given, with the usual hairlines.</summary>
+    public static OptionsMenuViewModel ForItems(List<OptionsMenuItem> items) => Lined(items);
 
     /// <summary>A note with no choices: a heading, a detail line and a paragraph.</summary>
     public static OptionsMenuViewModel ForNote(string title, string? detail, string? note) =>
@@ -88,6 +90,9 @@ public sealed partial class OptionsMenuItem
 
     public string Label { get; }
     public bool IsChecked { get; }
+
+    /// <summary>What a screen reader says: the label, and that it is the choice in use.</summary>
+    public string AccessibleName => IsChecked ? $"{Label}, selected" : Label;
 
     /// <summary>The first row of a new group (Ascending, Show All): a band above it, no hairline.</summary>
     public bool StartsGroup { get; init; }

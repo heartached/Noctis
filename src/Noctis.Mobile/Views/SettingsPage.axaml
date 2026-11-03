@@ -6,29 +6,11 @@
              x:Class="Noctis.Mobile.Views.SettingsPage"
              x:DataType="vm:SettingsPageViewModel">
 
-    <!-- Settings as Apple Music's account sheet: few things on the top level, each calm. The
-         profile card with a grey note under it; the Look tiles (System / Light / Dark, each a
-         live mini preview of that theme); plain rows into Music Folders, Appearance and Lyrics
-         (text, a grey value, a chevron: no icons); then the actions, the only accent rows, each
-         with its note. Music Folders, Appearance and Lyrics are pages pushed inside the sheet:
-         they slide in from the right under a back button. Shared look: GroupedStyles.axaml. -->
-
-    <UserControl.Resources>
-        <!-- A Look tile's mini preview: a theme's grouped page with two cards on it, the first
-             carrying the accent. It fills the rim's inside (56 x 38), and its padding leaves the
-             two cards (13 + 4 + 11) exactly that height, so nothing is cut at the edges. -->
-        <DataTemplate x:Key="LookPreviewTemplate" x:DataType="vm:LookPreview">
-            <Border CornerRadius="8" Background="{Binding Page}" Padding="6,5">
-                <StackPanel Spacing="4">
-                    <Border Height="13" CornerRadius="4" Background="{Binding Card}">
-                        <Ellipse Width="6" Height="6" Margin="4,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                 Fill="{DynamicResource AccentColorBrush}" />
-                    </Border>
-                    <Border Height="11" CornerRadius="4" Background="{Binding Card}" />
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-    </UserControl.Resources>
+    <!-- Settings as Apple Music's account sheet, redesigned (10-28): a large title that collapses
+         into the header, the profile card with the library's numbers, then sections of rows
+         (a round glyph chip, the label, the value in grey, a chevron). Rows push pages inside the
+         sheet (they slide in from the right under a back button), open the Theme glass menu, flip
+         a switch or leave the app. Shared look: GroupedStyles.axaml. -->
 
     <UserControl.Styles>
         <StyleInclude Source="avares://Noctis.Mobile/Views/GroupedStyles.axaml" />
@@ -38,13 +20,18 @@
             <Setter Property="Spacing" Value="30" />
         </Style>
 
-        <!-- Header: no glyph, so the title starts near the cards' edge; a pushed page puts its
-             back button there. The hairline under it shows once content scrolls beneath. -->
+        <!-- Header: the small title is centred between the back and close buttons; on the top
+             level it fades in once the large one has scrolled away (SettingsPage.axaml.cs). The
+             hairline under it shows once content scrolls beneath. -->
         <Style Selector="Grid.settings-header TextBlock.sheet-title">
-            <Setter Property="Margin" Value="4,0,0,0" />
-        </Style>
-        <Style Selector="Grid.settings-header.sub TextBlock.sheet-title">
-            <Setter Property="Margin" Value="12,0,0,0" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Border.header-hairline">
             <Setter Property="Height" Value="0.5" />
@@ -87,6 +74,7 @@
         </Style>
         <Style Selector="TextBlock.row-value">
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="MaxWidth" Value="220" />
         </Style>
         <!-- A small grey caption over a card on a pushed page ("Dark Style"). -->
         <Style Selector="TextBlock.group-caption">
@@ -110,62 +98,88 @@
             <Setter Property="Margin" Value="0,2,0,8" />
         </Style>
 
-        <!-- Look tiles: three equal cards, each a mini preview over its name. The chosen one
-             takes an accent outline and an accent name. -->
-        <Style Selector="Button.look-tile">
-            <Setter Property="Background" Value="{DynamicResource PhoneCardBrush}" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="CornerRadius" Value="22" />
-            <Setter Property="Padding" Value="0,14,0,11" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="RenderTransform" Value="scale(1)" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12">
-                        <DoubleTransition.Easing><CubicEaseOut /></DoubleTransition.Easing>
-                    </DoubleTransition>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16">
-                        <TransformOperationsTransition.Easing><CubicEaseOut /></TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.look-tile:pressed">
-            <Setter Property="Opacity" Value="0.6" />
-            <Setter Property="RenderTransform" Value="scale(0.96)" />
-        </Style>
-        <Style Selector="Button.look-tile.selected">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentTextExactBrush}" />
-        </Style>
-        <Style Selector="Button.look-tile:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.look-tile:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
-            <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
-            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
-        </Style>
-        <Style Selector="Button.look-tile TextBlock.look-name">
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,9,0,0" />
-        </Style>
-        <Style Selector="Button.look-tile.selected TextBlock.look-name">
-            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-        <!-- The preview's thin rim, so the light one still reads on a white card. -->
-        <Style Selector="Border.look-preview">
-            <Setter Property="Width" Value="58" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="CornerRadius" Value="9" />
-            <Setter Property="ClipToBounds" Value="True" />
-            <Setter Property="BorderBrush" Value="{DynamicResource PhoneSeparatorBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+        <!-- The large title scrolls away with the page and the small centred one takes over in the
+             header (SettingsPage.axaml.cs): Apple's collapsing title. -->
+        <Style Selector="TextBlock.large-title">
+            <Setter Property="FontSize" Value="34" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="4,0,0,0" />
         </Style>
 
-        <!-- Check lists (Dark Style): Apple's rows, the chosen one with an accent checkmark.
+        <!-- The profile card's stats strip: three numbers under a hairline, hairlines between. -->
+        <Style Selector="Border.stats-strip">
+            <Setter Property="BorderBrush" Value="{DynamicResource PhoneSeparatorBrush}" />
+            <Setter Property="BorderThickness" Value="0,0.5,0,0" />
+            <Setter Property="Margin" Value="16,0,16,14" />
+            <Setter Property="Padding" Value="0,13,0,0" />
+        </Style>
+        <Style Selector="Border.stat-divider">
+            <Setter Property="Width" Value="0.5" />
+            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
+        </Style>
+        <Style Selector="TextBlock.stat-value">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.stat-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <!-- "Synced with ..." under the name: a green dot, then the line. -->
+        <Style Selector="Ellipse.synced-dot">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Fill" Value="#30D158" />
+            <Setter Property="Margin" Value="0,2,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Row glyphs: a 30 dp round chip, the mockup's line glyph in it. The hairline starts under
+             the text (16 + 30 + 14). -->
+        <Style Selector="Border.row-chip">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Background" Value="{DynamicResource PhoneFillBrush}" />
+            <Setter Property="Margin" Value="0,0,14,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.row-chip views|GridIcon">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.row-separator.chipped">
+            <Setter Property="Margin" Value="60,0,16,0" />
+        </Style>
+        <!-- A row's value dot (the background, the accent) and its trailing marks. -->
+        <Style Selector="Ellipse.value-dot">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Margin" Value="12,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="views|GridIcon.row-trailing">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="8,0,-4,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneChevronBrush}" />
+        </Style>
+        <!-- Remove All Downloads: the red of the folder's Remove. -->
+        <Style Selector="Button.danger-row TextBlock.row-label">
+            <Setter Property="Foreground" Value="#E5484D" />
+        </Style>
+        <Style Selector="TextBlock.license-name">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Check lists: Apple's rows, the chosen one with an accent checkmark.
              Fluent's ListBoxItem repaints its presenter on pointerover / pressed / selected (a
              touch), and Noctis.UI's Styles.axaml clears every ListBoxItem's selected look, so
              every state is set here. -->
@@ -233,7 +247,7 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="0,2,0,0" />
         </Style>
-        <Style Selector="ItemsControl#FolderList ContentPresenter:nth-child(1) Border.row-separator">
+        <Style Selector="ItemsControl#FolderList ContentPresenter:nth-child(1) Border.row-separator, ItemsControl#WhatsNewList ContentPresenter:nth-child(1) Border.row-separator, ItemsControl#LicenseList ContentPresenter:nth-child(1) Border.row-separator">
             <Setter Property="IsVisible" Value="False" />
         </Style>
         <!-- A folder's Remove: a red bin at the row's end, a full finger wide. -->
@@ -259,29 +273,6 @@
         <Style Selector="Button.folder-remove:pressed">
             <Setter Property="Opacity" Value="0.5" />
         </Style>
-        <!-- Removing a folder asks first (AccountPage's "are you sure?" card): the question, then its rows. -->
-        <Style Selector="TextBlock.confirm-text">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="16,14,16,10" />
-        </Style>
-        <Style Selector="Border.confirm-separator">
-            <Setter Property="Height" Value="0.5" />
-            <Setter Property="Margin" Value="16,0" />
-            <Setter Property="Background" Value="{DynamicResource PhoneSeparatorBrush}" />
-        </Style>
-        <Style Selector="Button.confirm-row">
-            <Setter Property="MinHeight" Value="52" />
-            <Setter Property="Padding" Value="16,0" />
-        </Style>
-        <Style Selector="Button.confirm-row TextBlock">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.confirm-row.danger TextBlock">
-            <Setter Property="Foreground" Value="#E5484D" />
-        </Style>
-
         <!-- The Windows Settings slider (SettingsView's accent-slider): an 8 dp round-ended track,
              the accent filling up to a round thumb, the rest a soft grey. A SmoothSlider, as on
              the desktop: the thumb follows the finger, the setting moves in whole steps.
@@ -353,7 +344,7 @@
         <Border Name="PageBackdrop" Classes="grouped-backdrop" />
         <Grid RowDefinitions="Auto,*">
             <Panel Grid.Row="0">
-                <Grid Classes="sheet-header settings-header" Classes.sub="{Binding IsSubPane}" ColumnDefinitions="Auto,*,Auto">
+                <Grid Classes="sheet-header settings-header" ColumnDefinitions="46,*,46">
                     <Button Name="BackButton" Classes="sheet-close" AutomationProperties.Name="Back to Settings"
                             IsVisible="{Binding IsSubPane}" Command="{Binding ShowMainCommand}">
                         <views:GridIcon Data="{DynamicResource PhBack}" />
@@ -373,137 +364,270 @@
                 <ScrollViewer Name="MainScroll" Classes="page-scroll" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Classes="grouped-content">
 
-                        <!-- Profile: only where the head wires an account service (Shell.Account).
-                             The picture (else initials, else the person glyph), the name, the
-                             computer and its last sync; the chevron into Account. -->
-                        <StackPanel Name="AccountGroup" IsVisible="{Binding Shell.HasAccount}">
+                        <StackPanel Spacing="14">
+                            <TextBlock Name="LargeTitle" Classes="large-title" Text="{Binding Title}" />
+
+                            <!-- Profile: the picture (else initials, else the person glyph), the name, the
+                                 computer; the chevron into Account (only where the head wires an account
+                                 service, Shell.Account). Under it the library's numbers, always. -->
                             <Border Name="AccountCard" Classes="group-card">
-                                <Button Name="AccountRow" Classes="row" Command="{Binding Shell.OpenAccountCommand}"
-                                        AutomationProperties.Name="{Binding AccountRowText}">
-                                    <Grid Classes="profile-row" ColumnDefinitions="Auto,*,Auto">
-                                        <Border Name="ProfileAvatar" Classes="avatar large neutral">
-                                            <Panel>
-                                                <TextBlock Classes="initials" Text="{Binding AccountInitials}" IsVisible="{Binding ShowAccountInitials}" />
-                                                <views:GridIcon Data="{DynamicResource PhPerson}" IsVisible="{Binding ShowAccountGlyph}" />
-                                                <controls:CachedImage SourcePath="{Binding AccountAvatarPath}" IsVisible="{Binding HasAccountAvatar}"
-                                                                      DecodeWidth="224" Stretch="UniformToFill" />
-                                            </Panel>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Name="AccountRowLabel" Classes="profile-name" Text="{Binding AccountTitle}" />
-                                            <TextBlock Name="AccountRowSub" Classes="profile-sub" Text="{Binding AccountSubtitle}" />
-                                        </StackPanel>
-                                        <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                    </Grid>
-                                </Button>
+                                <StackPanel>
+                                    <Button Name="AccountRow" Classes="row" Command="{Binding Shell.OpenAccountCommand}"
+                                            IsVisible="{Binding Shell.HasAccount}" AutomationProperties.Name="{Binding AccountRowName}">
+                                        <Grid Classes="profile-row" ColumnDefinitions="Auto,*,Auto">
+                                            <Border Name="ProfileAvatar" Classes="avatar large neutral">
+                                                <Panel>
+                                                    <TextBlock Classes="initials" Text="{Binding AccountInitials}" IsVisible="{Binding ShowAccountInitials}" />
+                                                    <views:GridIcon Data="{DynamicResource PhPerson}" IsVisible="{Binding ShowAccountGlyph}" />
+                                                    <controls:CachedImage SourcePath="{Binding AccountAvatarPath}" IsVisible="{Binding HasAccountAvatar}"
+                                                                          DecodeWidth="224" Stretch="UniformToFill" />
+                                                </Panel>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Name="AccountRowLabel" Classes="profile-name" Text="{Binding AccountTitle}" />
+                                                <!-- A Grid, not a horizontal StackPanel: the line then has the column's
+                                                     width, so the signed-out invitation wraps short of the chevron. -->
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <Ellipse Name="SyncedDot" Classes="synced-dot" IsVisible="{Binding ShowSyncedDot}" />
+                                                    <TextBlock Grid.Column="1" Name="AccountRowSub" Classes="profile-sub" Text="{Binding AccountSubtitle}"
+                                                               TextWrapping="Wrap" />
+                                                </Grid>
+                                            </StackPanel>
+                                            <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Name="StatsStrip" Classes="stats-strip">
+                                        <Grid ColumnDefinitions="*,Auto,*,Auto,*">
+                                            <StackPanel>
+                                                <TextBlock Name="SongsStatLabel" Classes="stat-value" Text="{Binding SongsStat}" />
+                                                <TextBlock Classes="stat-label" Text="Songs" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Classes="stat-divider" />
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Name="DownloadedStatLabel" Classes="stat-value" Text="{Binding DownloadedStat}" />
+                                                <TextBlock Classes="stat-label" Text="Downloaded" />
+                                            </StackPanel>
+                                            <Border Grid.Column="3" Classes="stat-divider" />
+                                            <StackPanel Grid.Column="4">
+                                                <TextBlock Name="OnPhoneStatLabel" Classes="stat-value" Text="{Binding OnPhoneStat}" />
+                                                <TextBlock Classes="stat-label" Text="On Phone" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
                             </Border>
-                            <TextBlock Name="AccountFootnote" Classes="group-footnote" Text="{Binding AccountFootnote}" />
                         </StackPanel>
 
-                        <!-- Look: System / Light / Dark, each a live preview; a tap applies it. -->
-                        <Grid Name="LookTiles" ColumnDefinitions="*,12,*,12,*">
-                            <Button Name="LookSystem" Classes="look-tile" Classes.selected="{Binding IsSystemLook}"
-                                    Command="{Binding ChooseAppearanceCommand}" CommandParameter="System"
-                                    AutomationProperties.Name="Look: System">
-                                <StackPanel>
-                                    <!-- Half Light, half the dark style: whichever the phone is in. -->
-                                    <Border Classes="look-preview">
-                                        <Panel>
-                                            <ContentControl Content="{Binding DarkPreview}" ContentTemplate="{StaticResource LookPreviewTemplate}" />
-                                            <Border Width="28" HorizontalAlignment="Left" ClipToBounds="True">
-                                                <Canvas>
-                                                    <ContentControl Width="56" Height="38" Content="{Binding LightPreview}" ContentTemplate="{StaticResource LookPreviewTemplate}" />
-                                                </Canvas>
-                                            </Border>
-                                        </Panel>
-                                    </Border>
-                                    <TextBlock Classes="look-name" Text="System" />
-                                </StackPanel>
-                            </Button>
-                            <Button Grid.Column="2" Name="LookLight" Classes="look-tile" Classes.selected="{Binding IsLightLook}"
-                                    Command="{Binding ChooseAppearanceCommand}" CommandParameter="Light"
-                                    AutomationProperties.Name="Look: Light">
-                                <StackPanel>
-                                    <Border Classes="look-preview">
-                                        <ContentControl Content="{Binding LightPreview}" ContentTemplate="{StaticResource LookPreviewTemplate}" />
-                                    </Border>
-                                    <TextBlock Classes="look-name" Text="Light" />
-                                </StackPanel>
-                            </Button>
-                            <Button Grid.Column="4" Name="LookDark" Classes="look-tile" Classes.selected="{Binding IsDarkLook}"
-                                    Command="{Binding ChooseAppearanceCommand}" CommandParameter="Dark"
-                                    AutomationProperties.Name="Look: Dark">
-                                <StackPanel>
-                                    <Border Classes="look-preview">
-                                        <ContentControl Content="{Binding DarkPreview}" ContentTemplate="{StaticResource LookPreviewTemplate}" />
-                                    </Border>
-                                    <TextBlock Classes="look-name" Text="Dark" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-
-                        <!-- Into the pages: plain text, the current value in grey, a chevron. -->
-                        <Border Name="PagesCard" Classes="group-card">
-                            <StackPanel>
-                                <Button Name="FoldersRow" Classes="row" Command="{Binding OpenPaneCommand}"
-                                        CommandParameter="{x:Static vm:SettingsPane.Folders}" AutomationProperties.Name="Music Folders">
-                                    <Grid Classes="setting-row" ColumnDefinitions="*,Auto,Auto,Auto">
-                                        <TextBlock Classes="row-label" Text="Music Folders" />
-                                        <Ellipse Grid.Column="1" Name="FolderWarningDot" Classes="warning-dot" IsVisible="{Binding HasLostFolder}" />
-                                        <TextBlock Grid.Column="2" Name="FoldersValueLabel" Classes="row-value" Text="{Binding FoldersValue}" />
-                                        <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                    </Grid>
-                                </Button>
-                                <Border Classes="row-separator plain" />
-                                <Button Name="AppearanceRow" Classes="row" Command="{Binding OpenPaneCommand}"
-                                        CommandParameter="{x:Static vm:SettingsPane.Appearance}" AutomationProperties.Name="Appearance">
-                                    <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
-                                        <TextBlock Classes="row-label" Text="Appearance" />
-                                        <TextBlock Grid.Column="1" Name="AppearanceValueLabel" Classes="row-value" HorizontalAlignment="Right"
-                                                   Text="{Binding AppearanceValue}" />
-                                        <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                    </Grid>
-                                </Button>
-                                <Border Classes="row-separator plain" />
-                                <Button Name="LyricsRow" Classes="row" Command="{Binding OpenPaneCommand}"
-                                        CommandParameter="{x:Static vm:SettingsPane.Lyrics}" AutomationProperties.Name="Lyrics">
-                                    <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
-                                        <TextBlock Classes="row-label" Text="Lyrics" />
-                                        <TextBlock Grid.Column="1" Name="LyricsValueLabel" Classes="row-value" HorizontalAlignment="Right"
-                                                   Text="{Binding LyricsValue}" />
-                                        <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                    </Grid>
-                                </Button>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Rescan: one accent row, the scan's state (or why it is off) under it. -->
+                        <!-- Appearance: Background, Accent and Player Bar are pages; Theme opens the glass menu. -->
                         <StackPanel>
-                            <Border Classes="group-card">
-                                <Button Name="RescanButton" Classes="row accent-row" Command="{Binding Shell.Library.RescanCommand}"
-                                        IsEnabled="{Binding CanRescan}">
-                                    <Grid Classes="setting-row">
-                                        <TextBlock Classes="row-label" Text="Rescan Library" />
-                                    </Grid>
-                                </Button>
+                            <TextBlock Classes="group-caption" Text="Appearance" />
+                            <Border Name="AppearanceCard" Classes="group-card">
+                                <StackPanel>
+                                    <Button Name="BackgroundRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Background}" AutomationProperties.Name="{Binding BackgroundRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconBackground}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Background" />
+                                            <Ellipse Grid.Column="2" Classes="value-dot" Fill="{Binding Background.SummarySwatch}" />
+                                            <TextBlock Grid.Column="3" Name="BackgroundValueLabel" Classes="row-value" Text="{Binding Background.Summary}" />
+                                            <views:GridIcon Grid.Column="4" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ThemeRow" Classes="row" Command="{Binding ShowThemeMenuCommand}" AutomationProperties.Name="{Binding ThemeRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon Data="{DynamicResource SetIconTheme}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Theme" />
+                                            <TextBlock Grid.Column="2" Name="ThemeValueLabel" Classes="row-value" Text="{Binding ThemeValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="AccentRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Accent}" AutomationProperties.Name="{Binding AccentRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconAccent}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Accent" />
+                                            <Ellipse Grid.Column="2" Classes="value-dot" Fill="{Binding AccentBrush}" />
+                                            <TextBlock Grid.Column="3" Name="AccentValueLabel" Classes="row-value" Text="{Binding AccentName}" />
+                                            <views:GridIcon Grid.Column="4" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="PlayerBarRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.PlayerBar}" AutomationProperties.Name="{Binding PlayerBarRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Player Bar" />
+                                            <TextBlock Grid.Column="2" Name="PlayerBarValueLabel" Classes="row-value" Text="{Binding PlayerBarValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Library: Music Folders and Downloads are pages; Rescan is an action, its state under it. -->
+                        <StackPanel>
+                            <TextBlock Classes="group-caption" Text="Library" />
+                            <Border Name="PagesCard" Classes="group-card">
+                                <StackPanel>
+                                    <Button Name="FoldersRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Folders}" AutomationProperties.Name="{Binding FoldersRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconFolder}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Music Folders" />
+                                            <Ellipse Grid.Column="2" Name="FolderWarningDot" Classes="warning-dot" IsVisible="{Binding HasLostFolder}" />
+                                            <TextBlock Grid.Column="3" Name="FoldersValueLabel" Classes="row-value" Text="{Binding FoldersValue}" />
+                                            <views:GridIcon Grid.Column="4" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <StackPanel Name="DownloadsGroup" IsVisible="{Binding Shell.HasAccount}">
+                                        <Border Classes="row-separator chipped" />
+                                        <Button Name="DownloadsRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                                CommandParameter="{x:Static vm:SettingsPane.Downloads}" AutomationProperties.Name="{Binding DownloadsRowName}">
+                                            <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                                <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconDownload}" /></Border>
+                                                <TextBlock Grid.Column="1" Classes="row-label" Text="Downloads" />
+                                                <TextBlock Grid.Column="2" Name="DownloadsValueLabel" Classes="row-value" Text="{Binding DownloadsValue}" />
+                                                <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                            </Grid>
+                                        </Button>
+                                    </StackPanel>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
+                                            IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconRescan}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="Rescan Library" />
+                                                <TextBlock Name="RescanSubtitleLabel" Classes="row-sub" Text="{Binding RescanSubtitle}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
                             </Border>
                             <TextBlock Name="ScanStatusLabel" Classes="group-footnote" Text="{Binding RescanFootnote}"
                                        IsVisible="{Binding RescanFootnote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
 
-                        <!-- Export Logs: the log, for a bug report. -->
+                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Pick Up on Computer a switch. -->
                         <StackPanel>
-                            <Border Name="AdvancedCard" Classes="group-card">
-                                <Button Name="ExportLogsButton" Classes="row accent-row" Command="{Binding ExportLogsCommand}">
-                                    <Grid Classes="setting-row">
-                                        <TextBlock Classes="row-label" Text="Export Logs" />
-                                    </Grid>
-                                </Button>
+                            <TextBlock Classes="group-caption" Text="Listening" />
+                            <Border Name="ListeningCard" Classes="group-card">
+                                <StackPanel>
+                                    <Button Name="LyricsRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Lyrics}" AutomationProperties.Name="{Binding LyricsRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconLyrics}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Lyrics" />
+                                            <TextBlock Grid.Column="2" Name="LyricsValueLabel" Classes="row-value" Text="{Binding LyricsValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ScrobblingRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Scrobbling}" AutomationProperties.Name="{Binding ScrobblingRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconScrobbling}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Scrobbling" />
+                                            <TextBlock Grid.Column="2" Name="ScrobblingValueLabel" Classes="row-value" Text="{Binding Scrobbling.Summary}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="HistoryRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.History}" AutomationProperties.Name="{Binding HistoryRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconHistory}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Listening History" />
+                                            <TextBlock Grid.Column="2" Name="HistoryValueLabel" Classes="row-value" Text="{Binding History.Summary}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <StackPanel Name="PickUpGroup" IsVisible="{Binding ShowPickUp}">
+                                        <Border Classes="row-separator chipped" />
+                                        <ToggleButton Name="PickUpSwitch" Classes="switch-row" IsChecked="{Binding History.PickUpOnComputer}"
+                                                      AutomationProperties.Name="Pick Up on Computer, Your queue and spot follow you">
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPickUp}" /></Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                    <TextBlock Classes="row-label" Text="Pick Up on Computer" />
+                                                    <TextBlock Classes="row-sub" Text="Your queue and spot follow you" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </StackPanel>
                             </Border>
-                            <TextBlock Name="ExportStatusLabel" Classes="group-footnote" Text="{Binding ExportFootnote}" />
+                            <TextBlock Name="PickUpFootnoteLabel" Classes="group-footnote" Text="{Binding PickUpFootnote}"
+                                       IsVisible="{Binding ShowPickUp}" />
                         </StackPanel>
 
-                        <TextBlock Name="VersionLabel" Classes="version-footer" Text="{Binding VersionText}" />
+                        <!-- Help: Report a Problem and Noctis Website leave the app; Export Logs saves the log. -->
+                        <StackPanel>
+                            <TextBlock Classes="group-caption" Text="Help" />
+                            <Border Name="HelpCard" Classes="group-card">
+                                <StackPanel>
+                                    <Button Name="ReportRow" Classes="row" Command="{Binding ReportProblemCommand}" AutomationProperties.Name="Report a Problem, opens in your browser">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconWarning}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Report a Problem" />
+                                            <views:GridIcon Grid.Column="2" Classes="row-trailing" Width="14" Height="14" Margin="8,0,2,0" StrokeThickness="2.4" Data="{DynamicResource SetIconExternal}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ExportLogsButton" Classes="row" Command="{Binding ExportLogsCommand}" AutomationProperties.Name="{Binding ExportRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconDoc}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="Export Logs" />
+                                                <TextBlock Name="ExportStatusLabel" Classes="row-sub" Text="{Binding ExportSubtitle}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="WebsiteRow" Classes="row" Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="Noctis Website, opens in your browser">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconGlobe}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="Noctis Website" />
+                                            <views:GridIcon Grid.Column="2" Classes="row-trailing" Width="14" Height="14" Margin="8,0,2,0" StrokeThickness="2.4" Data="{DynamicResource SetIconExternal}" />
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- About: no glyphs, so the hairlines start under the text. -->
+                        <StackPanel>
+                            <TextBlock Classes="group-caption" Text="About" />
+                            <Border Name="AboutCard" Classes="group-card">
+                                <StackPanel>
+                                    <Grid Name="VersionRow" Classes="setting-row" ColumnDefinitions="*,Auto" AutomationProperties.Name="{Binding VersionRowName}">
+                                        <TextBlock Classes="row-label" Text="Version" />
+                                        <TextBlock Grid.Column="1" Name="VersionLabel" Classes="row-value" Text="{Binding VersionValue}" />
+                                    </Grid>
+                                    <Border Classes="row-separator plain" />
+                                    <Button Name="WhatsNewRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.WhatsNew}" AutomationProperties.Name="What's New">
+                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="What's New" />
+                                            <views:GridIcon Grid.Column="1" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator plain" />
+                                    <Button Name="LicensesRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Licenses}" AutomationProperties.Name="Open-Source Licenses">
+                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="Open-Source Licenses" />
+                                            <views:GridIcon Grid.Column="1" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock Name="TaglineLabel" Classes="version-footer" Text="Noctis · plays your music, on your devices." />
                     </StackPanel>
                 </ScrollViewer>
 
@@ -547,20 +671,6 @@
                                 </Border>
                                 <TextBlock Classes="group-footnote" Text="Your library on this phone is the music in these folders." />
                             </StackPanel>
-                            <!-- Remove asks first. -->
-                            <Border Name="RemoveFolderCard" Classes="group-card" IsVisible="{Binding IsConfirmingRemoveFolder}">
-                                <StackPanel>
-                                    <TextBlock Name="RemoveFolderQuestion" Classes="confirm-text" Text="{Binding RemoveFolderQuestion}" />
-                                    <Border Classes="confirm-separator" />
-                                    <Button Name="ConfirmRemoveFolderButton" Classes="row confirm-row danger" Command="{Binding ConfirmRemoveFolderCommand}">
-                                        <TextBlock Text="Remove Folder" FontWeight="SemiBold" />
-                                    </Button>
-                                    <Border Classes="confirm-separator" />
-                                    <Button Name="CancelRemoveFolderButton" Classes="row confirm-row" Command="{Binding CancelRemoveFolderCommand}">
-                                        <TextBlock Text="Cancel" />
-                                    </Button>
-                                </StackPanel>
-                            </Border>
                             <StackPanel>
                                 <Border Classes="group-card">
                                     <Button Name="AddFolderButton" Classes="row accent-row" Command="{Binding Shell.Library.AddFolderCommand}"
@@ -584,30 +694,21 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Appearance: the dark style as a check list, the accent, then the player bar. -->
-                        <StackPanel Name="AppearancePane" Classes="grouped-content" IsVisible="{Binding ShowsAppearancePane}">
-                            <StackPanel Name="DarkThemeSection">
-                                <TextBlock Classes="group-caption" Text="Dark Style" />
-                                <Border Classes="group-card">
-                                    <ListBox Name="DarkThemeList" Classes="check-list" ItemsSource="{Binding DarkThemes}"
-                                             SelectedItem="{Binding DarkTheme}" IsEnabled="{Binding ShowsDarkThemes}">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate x:DataType="x:String">
-                                                <StackPanel>
-                                                    <Border Classes="row-separator plain" />
-                                                    <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
-                                                        <TextBlock Classes="row-label" Text="{Binding}" />
-                                                        <views:GridIcon Grid.Column="1" Classes="check" Data="{DynamicResource PhCheck}" />
-                                                    </Grid>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Border>
-                                <TextBlock Name="DarkStyleFootnote" Classes="group-footnote" Text="{Binding DarkStyleFootnote}" />
-                            </StackPanel>
+                        <!-- Background, Scrobbling and Listening History: pages of their own (Views/Settings),
+                             each with its own view model on the page's. -->
+                        <Panel Name="BackgroundHost" IsVisible="{Binding ShowsBackgroundPane}">
+                            <views:BackgroundPane Name="BackgroundPane" DataContext="{Binding Background}" />
+                        </Panel>
+                        <Panel Name="ScrobblingHost" IsVisible="{Binding ShowsScrobblingPane}">
+                            <views:ScrobblingPane Name="ScrobblingPane" DataContext="{Binding Scrobbling}" />
+                        </Panel>
+                        <Panel Name="HistoryHost" IsVisible="{Binding ShowsHistoryPane}">
+                            <views:ListeningHistoryPane Name="HistoryPane" DataContext="{Binding History}" />
+                        </Panel>
+
+                        <!-- Accent: the nine colours, then whether album and artist pages take the cover's colour. -->
+                        <StackPanel Name="AccentPane" Classes="grouped-content" IsVisible="{Binding ShowsAccentPane}">
                             <StackPanel>
-                                <TextBlock Classes="group-caption" Text="Accent Colour" />
                                 <Border Classes="group-card">
                                     <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding SelectedAccent}">
                                         <ListBox.ItemsPanel>
@@ -645,10 +746,12 @@
                                 <TextBlock Classes="group-footnote"
                                            Text="Album and artist pages take a deep shade of the cover's colour, with white text. Off, they use the plain Light or Dark theme." />
                             </StackPanel>
-                            <!-- The mini player's progress, both off by default (Apple's plain glass
-                                 capsule); the shell applies each switch at once and saves it. -->
+                        </StackPanel>
+
+                        <!-- Player Bar: the mini player's progress, both off by default (Apple's plain glass
+                             capsule); the shell applies each switch at once and saves it. -->
+                        <StackPanel Name="PlayerBarPane" Classes="grouped-content" IsVisible="{Binding ShowsPlayerBarPane}">
                             <StackPanel>
-                                <TextBlock Classes="group-caption" Text="Player Bar" />
                                 <Border Name="PlayerBarCard" Classes="group-card">
                                     <StackPanel>
                                         <ToggleButton Name="ProgressColourSwitch" Classes="switch-row" AutomationProperties.Name="Progress Colour"
@@ -667,11 +770,89 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <!-- Downloads: the Wi-Fi rule, then what is stored and Remove All Downloads. -->
+                        <StackPanel Name="DownloadsPane" Classes="grouped-content" IsVisible="{Binding ShowsDownloadsPane}">
+                            <StackPanel>
+                                <Border Name="DownloadWifiCard" Classes="group-card">
+                                    <ToggleButton Name="DownloadWifiSwitch" Classes="switch-row" AutomationProperties.Name="Download on Wi-Fi Only"
+                                                  IsChecked="{Binding DownloadWifiOnly}">
+                                        <TextBlock Classes="row-label" Text="Download on Wi-Fi Only" />
+                                    </ToggleButton>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="Songs from your computer download only on Wi-Fi, never over mobile data. Streaming is not affected." />
+                            </StackPanel>
+                            <StackPanel>
+                                <Border Name="DownloadStorageCard" Classes="group-card">
+                                    <StackPanel>
+                                        <Grid Name="StorageUsedRow" Classes="setting-row" ColumnDefinitions="*,Auto"
+                                              AutomationProperties.Name="{Binding StorageUsedText, StringFormat='Storage Used, {0}'}">
+                                            <TextBlock Classes="row-label" Text="Storage Used" />
+                                            <TextBlock Grid.Column="1" Name="StorageUsedLabel" Classes="row-value" Text="{Binding StorageUsedText}" />
+                                        </Grid>
+                                        <StackPanel IsVisible="{Binding CanRemoveDownloads}">
+                                            <Border Classes="row-separator plain" />
+                                            <Button Name="RemoveDownloadsButton" Classes="row danger-row" Command="{Binding AskRemoveDownloadsCommand}"
+                                                    AutomationProperties.Name="Remove All Downloads">
+                                                <Grid Classes="setting-row">
+                                                    <TextBlock Classes="row-label" Text="Remove All Downloads" />
+                                                </Grid>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="Removed downloads stay on your computer and still stream." />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- What's New: the phone has no release feed, so this build's changes, plainly. -->
+                        <StackPanel Name="WhatsNewPane" Classes="grouped-content" IsVisible="{Binding ShowsWhatsNewPane}">
+                            <StackPanel>
+                                <TextBlock Name="WhatsNewVersion" Classes="group-caption" Text="{Binding VersionText}" />
+                                <Border Classes="group-card">
+                                    <ItemsControl Name="WhatsNewList" ItemsSource="{Binding WhatsNewItems}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="x:String">
+                                                <StackPanel>
+                                                    <Border Classes="row-separator plain" />
+                                                    <Grid Classes="setting-row" ColumnDefinitions="*">
+                                                        <TextBlock Classes="row-label" Margin="0,12" Text="{Binding}" />
+                                                    </Grid>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Open-Source Licenses: what Noctis is built with, each with its licence. -->
+                        <StackPanel Name="LicensesPane" Classes="grouped-content" IsVisible="{Binding ShowsLicensesPane}">
+                            <StackPanel>
+                                <Border Classes="group-card">
+                                    <ItemsControl Name="LicenseList" ItemsSource="{Binding Licenses}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:LicenseEntry">
+                                                <StackPanel>
+                                                    <Border Classes="row-separator plain" />
+                                                    <StackPanel Margin="16,12">
+                                                        <TextBlock Classes="license-name" Text="{Binding Name}" />
+                                                        <TextBlock Classes="row-sub" Foreground="{DynamicResource AccentTextBrush}" Text="{Binding License}" />
+                                                        <TextBlock Classes="row-sub" Text="{Binding Detail}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="Noctis itself is MIT licensed." />
+                            </StackPanel>
+                        </StackPanel>
                         <!-- Lyrics: the desktop's lyrics display settings that the phone's lyrics
                              page honours: the extra lines, the text size and the dimmed lines'
-                             floor, then joining split words. (The desktop's online sources,
-                             backgrounds, visualizer and fullscreen focus have nothing to act
-                             on here.) -->
+                             floor, joining split words, then the desktop's first online source
+                             (LRCLIB) for songs with no lyrics of their own. (The desktop's other
+                             sources, backgrounds, visualizer and fullscreen focus have nothing
+                             to act on here.) -->
                         <StackPanel Name="LyricsPane" Classes="grouped-content" IsVisible="{Binding ShowsLyricsPane}">
                             <StackPanel>
                                 <Border Name="LyricsCard" Classes="group-card">
@@ -726,6 +907,15 @@
                                     </ToggleButton>
                                 </Border>
                                 <TextBlock Classes="group-footnote" Text="Keeps words whole when TTML lyrics split them into syllables." />
+                            </StackPanel>
+                            <StackPanel>
+                                <Border Classes="group-card">
+                                    <ToggleButton Name="FindOnlineSwitch" Classes="switch-row" AutomationProperties.Name="Find Lyrics Online"
+                                                  IsChecked="{Binding Shell.Lyrics.FindLyricsOnline}">
+                                        <TextBlock Classes="row-label" Text="Find Lyrics Online" />
+                                    </ToggleButton>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="When a song has no lyrics file or lyrics in its tags, asks LRCLIB by its title, artist and length, as the desktop app does. Found lyrics are kept on the phone." />
                             </StackPanel>
                         </StackPanel>
                     </Panel>

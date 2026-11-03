@@ -62,6 +62,13 @@
         <Style Selector="Panel.sl-line.selected:pointerover > Border.sl-fill">
             <Setter Property="Opacity" Value="0.2" />
         </Style>
+        <!-- The row the keyboard is on reads as hovered (no ring: the rows join into blocks). -->
+        <Style Selector="Panel.sl-line:not(.selected):focus-visible > Border.sl-hover">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Panel.sl-line.selected:focus-visible > Border.sl-fill">
+            <Setter Property="Opacity" Value="0.2" />
+        </Style>
         <!-- A run of picked neighbours reads as one block: the inner corners square off and
              the fill bridges the 2 px gap to the row below (JoinsPrevious / JoinsNext). -->
         <Style Selector="Panel.sl-line.join-up > Border.sl-fill">
@@ -130,16 +137,25 @@
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <!-- A stray white glyph (the Fluent scrollbar's line-up arrow) showed at the top of
-             the line list at rest: the bar stays hidden until the list is hovered. -->
-        <Style Selector="ScrollViewer.sl-lines /template/ ScrollBar:vertical">
+             the line list at rest: the bar stays hidden until the list is hovered.
+             The thumb is what fades, not the whole bar, so a held thumb stays: :pointerover
+             follows the pointer even while the thumb has it captured, and dragging the thumb
+             sideways off the list (onto the card) faded the bar out mid-drag (owner 10-24).
+             The RenderTransform transition repeats the app-wide thumb style's, which this
+             Transitions setter replaces. -->
+        <Style Selector="ScrollViewer.sl-lines /template/ ScrollBar:vertical /template/ Thumb">
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="ScrollViewer.sl-lines:pointerover /template/ ScrollBar:vertical">
+        <Style Selector="ScrollViewer.sl-lines:pointerover /template/ ScrollBar:vertical /template/ Thumb">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ScrollViewer.sl-lines /template/ ScrollBar:vertical /template/ Thumb:pressed">
             <Setter Property="Opacity" Value="1" />
         </Style>
 
@@ -253,7 +269,8 @@
                               Classes="sl-lines"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
-                    <ItemsControl x:Name="LineItems" ItemsSource="{Binding Lines}" Margin="0,0,12,0">
+                    <ItemsControl x:Name="LineItems" ItemsSource="{Binding Lines}" Margin="0,0,12,0"
+                                  KeyboardNavigation.TabNavigation="Once">
                         <!-- The edit box keeps the line where it was: its padding cancels its
                              margin. Here, not in Window.Styles: PillDialogHost's own pill-area
                              style (Padding 18,14, MinHeight 40) sits nearer and won there. -->
@@ -269,11 +286,15 @@
                         </ItemsControl.Styles>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:SelectableLyricLine">
+                                <!-- Focusable: Tab reaches the list, Up/Down move along it,
+                                     Space/Enter pick, F2 edits (code-behind OnLineKeyDown). -->
                                 <Panel Classes="sl-line"
                                        Classes.selected="{Binding IsSelected}"
                                        Classes.join-up="{Binding JoinsPrevious}"
                                        Classes.join-down="{Binding JoinsNext}"
                                        Classes.now="{Binding IsCurrent}"
+                                       Focusable="True"
+                                       AutomationProperties.Name="{Binding Text}"
                                        ToolTip.Tip="{loc:T ShareLyrics.LineTip}">
                                     <Border Classes="sl-hover" />
                                     <Border Classes="sl-fill" />
@@ -334,6 +355,7 @@
             <StackPanel Grid.Column="0" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Layout}" />
                 <ComboBox x:Name="LayoutBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Layout}"
                           SelectedIndex="{Binding LayoutIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T LyricShare.Card}" ToolTip.Tip="{loc:T LyricShare.RoundedCardArtworkHeaderTip}" />
                     <ComboBoxItem Content="{loc:T LyricShare.Poster}" ToolTip.Tip="{loc:T LyricShare.BigCenteredArtworkCenteredTip}" />
@@ -342,6 +364,7 @@
             <StackPanel Grid.Column="2" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Format}" />
                 <ComboBox x:Name="FormatBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Format}"
                           SelectedIndex="{Binding FormatIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T ShareLyrics.Square}" />
                     <ComboBoxItem Content="{loc:T ShareLyrics.Story}" />
@@ -350,6 +373,7 @@
             <StackPanel Grid.Column="4" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Text}" />
                 <ComboBox x:Name="TextColorBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Text}"
                           SelectedIndex="{Binding TextColorIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T LyricShare.Auto}" />
                     <ComboBoxItem Content="{loc:T LyricShare.White}" />
@@ -359,6 +383,7 @@
             <StackPanel Grid.Column="6" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Background}" />
                 <ComboBox x:Name="BackgroundBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Background}"
                           ItemsSource="{Binding BackgroundChoices}"
                           SelectedItem="{Binding SelectedBackground, Mode=TwoWay}"
                           ToolTip.Tip="{loc:T LyricShare.CardBackgroundBlurredArtworkTip}"

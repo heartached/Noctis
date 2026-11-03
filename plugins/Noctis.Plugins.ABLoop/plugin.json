@@ -1,0 +1,24 @@
+{
+  "id": "dev.noctis.plugins.abloop",
+  "name": "A-B Loop",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "Loop any part of a song and save your loops.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.ABLoop.dll",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["playback.control", "menu.commands"],
+  "icon": "icon.png",
+  "settings": [
+    { "key": "gap", "label": "Gap before each repeat", "type": "choice", "choices": ["None", "0.25 s", "0.5 s", "1 s", "1.5 s", "2 s"],
+      "default": "None",
+      "description": "A short pause before each repeat." },
+    { "key": "keepLoops", "label": "Keep loops for each song", "type": "bool", "default": true,
+      "description": "Remember saved loops after Noctis closes." },
+    { "key": "nudge", "label": "Nudge step", "type": "choice", "choices": ["0.1 s", "1 s"], "default": "0.1 s",
+      "description": "How far the arrows move A or B." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.ABLoop"
+}

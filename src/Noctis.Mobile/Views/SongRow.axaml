@@ -6,9 +6,10 @@
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.SongRow"
              x:DataType="models:Track">
-    <!-- One song: cover, title, artist, explicit badge, then the heart and the overflow button
-         (a favourite is one tap, not a trip through the sheet). -->
-    <Grid Name="RowGrid" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Height="60" Margin="8,0">
+    <!-- One song: cover, title, artist, explicit badge, then the overflow button. No heart on the
+         row (owner 10-19, the album page's rule): Favorite is the first tile of the ⋯ menu, which
+         shows whether the song is one. -->
+    <Grid Name="RowGrid" ColumnDefinitions="Auto,*,Auto" Height="60" Margin="8,0">
         <Border Classes="art" Width="44" Height="44">
             <Panel>
                 <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
@@ -16,25 +17,21 @@
             </Panel>
         </Border>
         <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-            <TextBlock Classes="row-title" Text="{Binding Title}" />
+            <!-- Left-aligned, so the badge follows the title (the album rows' rule), not the row's end. -->
+            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                <TextBlock Name="RowTitle" Classes="row-title" Text="{Binding Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                <Border Grid.Column="1" Name="ExplicitBadge" Classes="explicit-badge compact" Margin="6,0,0,0"
+                        IsVisible="{Binding IsExplicit}">
+                    <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                </Border>
+            </Grid>
             <TextBlock Classes="row-sub" Text="{Binding Artist}" />
         </StackPanel>
-        <Border Grid.Column="2" Name="ExplicitBadge" Classes="explicit" IsVisible="{Binding IsExplicit}">
-            <TextBlock Text="E" />
-        </Border>
-        <Button Grid.Column="3" Name="HeartButton" Classes="icon row-heart" Width="36" Height="36"
-                Classes.on="{Binding IsFavorite}"
-                Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).ToggleTrackFavouriteCommand}"
+        <Button Grid.Column="2" Name="MoreButton" Classes="icon" Width="36" Height="36"
+                Command="{Binding $parent[views:SongRow].MenuCommand}"
                 CommandParameter="{Binding}">
-            <Panel>
-                <PathIcon Data="{DynamicResource PhHeart}" Width="20" Height="20" IsVisible="{Binding !IsFavorite}" />
-                <PathIcon Data="{DynamicResource PhHeartFill}" Width="20" Height="20" IsVisible="{Binding IsFavorite}" />
-            </Panel>
-        </Button>
-        <Button Grid.Column="4" Name="MoreButton" Classes="icon" Width="36" Height="36"
-                Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
-                CommandParameter="{Binding}">
-            <PathIcon Data="{DynamicResource PhMore}" Width="22" Height="22" />
+            <!-- Button.icon's 24 box, as every other row's ⋯ (album, artist, queue). -->
+            <PathIcon Data="{DynamicResource PhMore}" />
         </Button>
     </Grid>
 </UserControl>

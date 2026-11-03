@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.PromptSheet"
+             x:DataType="vm:ShellViewModel"
+             IsVisible="False">
+
+    <!-- Every "are you sure?" and every name to type on the phone (owner 10-20), as Apple's iOS 26
+         action sheet: the pop-ups' one glass card (MenuGlass) rising out of the bottom edge with the
+         menu's pop, the dim behind it. A centred title, one line on what follows, the name field
+         when there is one (Rename), then the actions as full-width pills (a destructive one red,
+         the others the accent's) and Cancel, a pill of the glass's own fill. A tap on the dim,
+         Cancel or Back cancels. It wears the page's look (light glass over a light cover tint,
+         dark over a dark one), else the app's theme, and rides above the keyboard. -->
+    <UserControl.Styles>
+        <Style Selector="Border#PromptCard TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+        <Style Selector="Border#PromptCard TextBlock.prompt-message">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassSecondaryText}" />
+        </Style>
+        <Style Selector="Button.prompt-button">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="MinHeight" Value="50" />
+            <Setter Property="CornerRadius" Value="25" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Background" Value="{DynamicResource MenuGlassFieldFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+        <Style Selector="Border#PromptCard Button.prompt-button TextBlock">
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <!-- The destructive action: white on the red of the phone's destructive rows (#E5484D),
+             readable on every theme's glass and every cover tint. -->
+        <Style Selector="Button.prompt-button.destructive">
+            <Setter Property="Background" Value="#E5484D" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.prompt-button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="Button.prompt-button:disabled">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="Button.prompt-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button.prompt-button.cancel">
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <!-- The name: the Add to Playlist sheet's pill field (ContextSheet's glass-field). -->
+        <Style Selector="TextBox.prompt-field">
+            <Setter Property="Background" Value="{DynamicResource MenuGlassFieldFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource MenuGlassText}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="25" />
+            <Setter Property="MinHeight" Value="50" />
+            <Setter Property="Padding" Value="18,0" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBox.prompt-field:pointerover /template/ Border#PART_BorderElement, TextBox.prompt-field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource MenuGlassFieldFill}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.prompt-field:pointerover, TextBox.prompt-field:focus">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+        <Style Selector="TextBox.prompt-field /template/ TextBlock#PART_Placeholder, TextBox.prompt-field:focus /template/ TextBlock#PART_Placeholder, TextBox.prompt-field:pointerover /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassSecondaryText}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <Border Name="Scrim" Background="#99000000" PointerPressed="OnScrimPressed" />
+
+        <Border Name="PromptCard" VerticalAlignment="Bottom" Padding="{Binding BottomSafePadding}">
+            <ThemeVariantScope Name="PromptScope">
+                <Panel Name="PromptPop" Margin="8,0,8,8">
+                    <views:MenuGlass Name="PromptGlass">
+                        <!-- The prompt shown, set by the code-behind: kept while the card closes. -->
+                        <StackPanel Name="PromptBody" x:DataType="vm:PromptViewModel" Margin="16,22,16,16" Spacing="10">
+                            <TextBlock Name="PromptTitle" Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"
+                                       TextAlignment="Center" TextWrapping="Wrap" Margin="8,0" />
+                            <TextBlock Name="PromptMessage" Classes="prompt-message" Text="{Binding Message}" FontSize="14"
+                                       TextAlignment="Center" TextWrapping="Wrap" Margin="8,-6,8,0" IsVisible="{Binding HasMessage}" />
+                            <TextBox Name="PromptField" Classes="prompt-field" Text="{Binding FieldText}" Margin="0,6,0,0"
+                                     PlaceholderText="{Binding FieldPlaceholder}" IsVisible="{Binding HasField}"
+                                     AutomationProperties.Name="{Binding FieldPlaceholder}" KeyDown="OnFieldKeyDown" />
+                            <ItemsControl Name="PromptActions" ItemsSource="{Binding Actions}" Margin="0,8,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PromptAction">
+                                        <Button Classes="pill prompt-button" Classes.destructive="{Binding IsDestructive}"
+                                                Classes.primary="{Binding IsPrimary}" Command="{Binding RunCommand}"
+                                                IsEnabled="{Binding $parent[ItemsControl].((vm:PromptViewModel)DataContext).CanConfirm}"
+                                                AutomationProperties.Name="{Binding Label}">
+                                            <TextBlock Text="{Binding Label}" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Name="PromptCancel" Classes="pill prompt-button cancel" Command="{Binding CancelCommand}"
+                                    AutomationProperties.Name="Cancel">
+                                <TextBlock Text="Cancel" />
+                            </Button>
+                        </StackPanel>
+                    </views:MenuGlass>
+                </Panel>
+            </ThemeVariantScope>
+        </Border>
+    </Grid>
+</UserControl>

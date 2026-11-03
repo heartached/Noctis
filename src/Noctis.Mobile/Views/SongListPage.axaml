@@ -3,10 +3,11 @@
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:models="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Mobile.Views.SongListPage"
              x:DataType="vm:SongListPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="8,4,16,0" IsVisible="{Binding !IsEmbedded}">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,4,16,0" IsVisible="{Binding !IsEmbedded}">
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
                 <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
@@ -14,6 +15,14 @@
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             <!-- Embedded (the Favorites tab), the tab's own header carries the same pill. -->
             <views:ListTools Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" />
+            <!-- A playlist's page: its ⋯ in a round glass button (Apple's), the playlist's menu with
+                 Rename and Delete Playlist. Shown on an empty playlist too, where the tools are not. -->
+            <controls:GlassPanel Grid.Column="3" Classes="header-glass" Margin="8,0,0,0" IsVisible="{Binding IsPlaylist}">
+                <Button Name="PlaylistMoreButton" Classes="glass-round" Command="{Binding ShowPlaylistMenuCommand}"
+                        AutomationProperties.Name="More">
+                    <PathIcon Data="{DynamicResource PhMore}" />
+                </Button>
+            </controls:GlassPanel>
         </Grid>
 
         <!-- Play and Shuffle play what the list shows (the title row's pill searches, sorts and
@@ -51,11 +60,13 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:Track">
+                        <!-- The row's ⋯ and a long press: the page's song menu (on a playlist's page
+                             it offers Remove from Playlist). -->
                         <Button Classes="row"
-                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                views:LongPress.Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}"
                                 Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).PlayCommand}"
                                 CommandParameter="{Binding}">
-                            <views:SongRow />
+                            <views:SongRow MenuCommand="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}" />
                         </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

@@ -51,11 +51,14 @@ public class FileSystemSourceScanTests : IDisposable
         f.Save();
     }
 
-    private (LibraryService Library, PersistenceService Persistence) MakeLibrary(IFileSystemSource source)
+    private (LibraryService Library, PersistenceService Persistence) MakeLibrary(IFileSystemSource source, bool scanPastUnavailable = false)
     {
         var persistence = new PersistenceService(Path.Combine(_root, "data"));
         var index = new SqliteLibraryIndexService(persistence);
-        var library = new LibraryService(new MetadataService(), persistence, index, new NoOpAudit(), fileSystem: source);
+        var library = new LibraryService(new MetadataService(), persistence, index, new NoOpAudit(), fileSystem: source)
+        {
+            ScanPastUnavailableFolders = scanPastUnavailable,
+        };
         return (library, persistence);
     }
 
@@ -162,6 +165,101 @@ public class FileSystemSourceScanTests : IDisposable
 
         Assert.NotNull(aborted);
         Assert.Equal(2, library.Tracks.Count); // library untouched
+    }
+
+    /// <summary>
+    /// The phone (emulator 10-20): with one folder unavailable (a card taken out), removing
+    /// another folder did nothing and an added one stayed empty: the scan saw the unavailable
+    /// root, abandoned everything and restored the old library. Now the reachable folders'
+    /// changes apply and the unavailable folder's songs stay as they were, user state and all.
+    /// </summary>
+    [Fact]
+    public async Task UnavailableFolder_OnThePhone_RemoveAndAddElsewhereStillApply_AndItsSongsStay()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var source = new MultiRootSource();
+        foreach (var name in new[] { "A", "B", "C" })
+        {
+            var dir = Path.Combine(_root, "roots", name);
+            Directory.CreateDirectory(dir);
+            WriteMp3(Path.Combine(dir, $"01 - {name}1.mp3"), name + "1", "Tester", "Album " + name);
+            WriteMp3(Path.Combine(dir, $"02 - {name}2.mp3"), name + "2", "Tester", "Album " + name);
+            source.Dirs["fake://tree/" + name] = dir;
+        }
+        var (library, persistence) = MakeLibrary(source, scanPastUnavailable: true);
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B" }, ct);
+        Assert.Equal(4, library.Tracks.Count);
+        library.Tracks.Single(t => t.Title == "B1").PlayCount = 9;
+        string[]? flagged = null;
+        library.ScanAborted += (_, roots) => flagged = roots;
+
+        source.Unavailable.Add("fake://tree/B");
+        // Add C while B is out.
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B", "fake://tree/C" }, ct);
+        Assert.Equal(new[] { "A1", "A2", "B1", "B2", "C1", "C2" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
+        Assert.Equal(new[] { "fake://tree/B" }, flagged);
+
+        // Remove A while B is still out.
+        flagged = null;
+        await library.ScanAsync(new[] { "fake://tree/B", "fake://tree/C" }, ct);
+        Assert.Equal(new[] { "B1", "B2", "C1", "C2" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
+        Assert.Equal(9, library.Tracks.Single(t => t.Title == "B1").PlayCount);
+        Assert.Equal(new[] { "fake://tree/B" }, flagged);
+
+        // On disk too: a restart reads the same library.
+        var saved = await persistence.LoadLibraryAsync();
+        Assert.Equal(new[] { "B1", "B2", "C1", "C2" }, saved!.Select(t => t.Title).OrderBy(t => t));
+
+        // B back: a plain rescan, nothing flagged, nothing lost.
+        source.Unavailable.Clear();
+        flagged = null;
+        await library.ScanAsync(new[] { "fake://tree/B", "fake://tree/C" }, ct);
+        Assert.Null(flagged);
+        Assert.Equal(4, library.Tracks.Count);
+        Assert.Equal(9, library.Tracks.Single(t => t.Title == "B1").PlayCount);
+    }
+
+    /// <summary>The desktop keeps its rule: an unavailable folder abandons the scan, library kept.</summary>
+    [Fact]
+    public async Task UnavailableFolder_OnTheDesktop_StillKeepsTheLibraryUnchanged()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var source = new MultiRootSource();
+        foreach (var name in new[] { "A", "B" })
+        {
+            var dir = Path.Combine(_root, "roots", name);
+            Directory.CreateDirectory(dir);
+            WriteMp3(Path.Combine(dir, $"01 - {name}1.mp3"), name + "1", "Tester", "Album " + name);
+            source.Dirs["fake://tree/" + name] = dir;
+        }
+        var (library, _) = MakeLibrary(source);
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B" }, ct);
+        source.Unavailable.Add("fake://tree/B");
+
+        await library.ScanAsync(new[] { "fake://tree/B" }, ct);
+
+        Assert.Equal(new[] { "A1", "B1" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
+    }
+
+    /// <summary>Several roots, each served from its own fixture folder; any can be made unavailable.</summary>
+    private sealed class MultiRootSource : IFileSystemSource
+    {
+        public Dictionary<string, string> Dirs { get; } = new();
+        public HashSet<string> Unavailable { get; } = new();
+
+        public bool RootExists(string root) => Dirs.ContainsKey(root) && !Unavailable.Contains(root);
+
+        public IEnumerable<ScanEntry> EnumerateAudioFiles(string root, IReadOnlyCollection<string> excludedRoots,
+            IReadOnlySet<string> ignoredFolderNames, Action<string> reportFailedDirectory)
+        {
+            foreach (var file in Directory.EnumerateFiles(Dirs[root]))
+            {
+                var fi = new FileInfo(file);
+                var captured = file;
+                yield return new ScanEntry(root + "/" + fi.Name, fi.Name, fi.Length, fi.LastWriteTimeUtc, LocalPath: null,
+                    OpenRead: () => File.OpenRead(captured));
+            }
+        }
     }
 
     /// <summary>

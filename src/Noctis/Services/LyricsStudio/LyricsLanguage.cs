@@ -46,6 +46,9 @@ public static class LyricsLanguage
         ["ro"] = new[] { "si", "eu", "tu", "nu", "ca", "de", "la", "pe", "cu", "un", "o", "sa", "ma", "te", "mi", "esti", "sunt" },
     };
 
+    /// <summary>Scripts written without spaces between words: one letter is about a syllable, so it counts as a word.</summary>
+    private static readonly HashSet<string> Unspaced = new(StringComparer.Ordinal) { "ja", "zh", "th", "lo", "km", "my" };
+
     private static readonly Dictionary<string, List<string>> LanguagesOfWord = BuildIndex();
 
     private static Dictionary<string, List<string>> BuildIndex()
@@ -74,8 +77,12 @@ public static class LyricsLanguage
                 var script = ScriptOf(raw, out var marker);
                 if (script is null) continue;
                 if (marker is not null) marked[marker] = marked.GetValueOrDefault(marker) + 1;
-                totalWords++;
-                scripts[script] = scripts.GetValueOrDefault(script) + 1;
+                // Scripts written without spaces count a word per letter: split on spaces, a whole
+                // Japanese phrase was one word, and a J-pop song's English hooks outnumbered it
+                // (benchmark 10-19: a Japanese song transcribed as English, 38 of 83 lines unanchored).
+                var weight = Unspaced.Contains(script) ? Math.Max(1, raw.Count(char.IsLetter)) : 1;
+                totalWords += weight;
+                scripts[script] = scripts.GetValueOrDefault(script) + weight;
                 if (script != "latin") continue;
                 var norm = LyricsAligner.Normalize(raw);
                 if (!LanguagesOfWord.TryGetValue(norm, out var langs)) continue;

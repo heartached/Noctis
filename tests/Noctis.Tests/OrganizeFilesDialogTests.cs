@@ -5,10 +5,13 @@ using System.Linq;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -17,9 +20,11 @@ using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Localization;
 using Noctis.Models;
+using Track = Noctis.Models.Track;
 using Noctis.Services;
 using Noctis.ViewModels;
 using Noctis.Views;
+using SkiaSharp;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -115,9 +120,9 @@ public class OrganizeFilesDialogTests
                 var undo = all.OfType<Button>().Single(b => b.Command == vm.UndoLastCommand);
                 Assert.False(undo.IsEffectivelyEnabled, "Undo enabled with nothing to undo");
 
-                // The preview sits in a filled well and its rows are realized.
+                // The preview sits over a filled well and its rows are realized.
                 var list = all.OfType<ItemsControl>().Single(ic => ReferenceEquals(ic.ItemsSource, vm.Rows));
-                Assert.Contains(list.GetVisualAncestors().OfType<Border>(), b => b.Classes.Contains("pill-well"));
+                Assert.Contains("pill-well", PreviewSurface(win, vm).well.Classes);
                 Assert.Equal(3, list.GetRealizedContainers().Count());
 
                 // Localized footer count.
@@ -153,6 +158,182 @@ public class OrganizeFilesDialogTests
             }
             finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
         });
+    }
+
+    /// <summary>Owner 10-27: the Preview list's scrollbar first ran into the well's rounded
+    /// corners, then (inset) still sat inside the well on its own track; the owner wanted it
+    /// "just like Metadata > Details": down the dialog content's right edge, outside the well.
+    /// Pins, at the top and at the bottom of the list, that the bar lies wholly right of the
+    /// well and ends at the card's content edge, and that every visible row stays inside the
+    /// well's rounded shape.</summary>
+    [AvaloniaFact]
+    public void Preview_ScrollbarSitsAtTheRightEdge_RowsStayInsideTheRoundedWell()
+    {
+        EnsureAppStyles();
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var (vm, win) = OpenScrolling();
+            try
+            {
+                var bad = new List<string>();
+                foreach (var bottom in new[] { false, true })
+                    bad.AddRange(CheckPreview(win, vm, bottom));
+                foreach (var b in bad) _o.WriteLine(b);
+                Assert.True(bad.Count == 0, string.Join("\n", bad));
+            }
+            finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+        });
+    }
+
+    /// <summary>Real Skia only (NOCTIS_TEST_SKIA=1): the dialog with the Preview list at its
+    /// top and at its bottom, plus a 3x zoom of the well's right-hand corners, saved to
+    /// NOCTIS_SHOTS_DIR (default: the system temp folder) as organize-&lt;NOCTIS_SHOTS_TAG&gt;-*.png.</summary>
+    [AvaloniaFact]
+    public void Probe_SavesThePreviewScrollbarAtTopAndBottom()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        EnsureAppStyles();
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_SHOTS_DIR") is { Length: > 0 } d ? d : Path.GetTempPath();
+        var tag = Environment.GetEnvironmentVariable("NOCTIS_SHOTS_TAG") is { Length: > 0 } t ? t : "current";
+        Directory.CreateDirectory(dir);
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var (vm, win) = OpenScrolling();
+            try
+            {
+                foreach (var bottom in new[] { false, true })
+                {
+                    var (well, sv) = PreviewSurface(win, vm);
+                    ScrollTo(sv, bottom);
+                    var full = Path.Combine(dir, $"organize-{tag}-{(bottom ? "bottom" : "top")}.png");
+                    win.CaptureRenderedFrame()!.Save(full, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                    // 3x zoom of the well's top-right and bottom-right 90x90 corners, side by side.
+                    var r = RectIn(well, win);
+                    using var src = SKBitmap.Decode(full);
+                    const int c = 90, z = 3;
+                    using var outBmp = new SKBitmap(c * z * 2 + 12, c * z);
+                    using (var canvas = new SKCanvas(outBmp))
+                    {
+                        canvas.Clear(new SKColor(255, 0, 255));
+                        using var paint = new SKPaint { FilterQuality = SKFilterQuality.None };
+                        var x0 = (int)Math.Round(r.Right) - c;
+                        canvas.DrawBitmap(src, new SKRect(x0, (int)r.Top, x0 + c, (int)r.Top + c), new SKRect(0, 0, c * z, c * z), paint);
+                        canvas.DrawBitmap(src, new SKRect(x0, (int)r.Bottom - c, x0 + c, (int)r.Bottom), new SKRect(c * z + 12, 0, c * z * 2 + 12, c * z), paint);
+                    }
+                    using var img = SKImage.FromBitmap(outBmp);
+                    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                    File.WriteAllBytes(Path.ChangeExtension(full, null) + "-corners.png", data.ToArray());
+                    _o.WriteLine(full);
+                }
+            }
+            finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+        });
+    }
+
+    /// <summary>The dialog over 40 planned moves: more rows than the well shows.</summary>
+    private static (OrganizeFilesViewModel vm, OrganizeFilesDialog win) OpenScrolling()
+    {
+        var settings = new SettingsViewModel(new TestPersistenceService(), new FakeLibraryService(), new NoOpPlayHistory());
+        settings.OrganizeTargetRoot = TestPaths.Primary("Organized");
+        var tracks = Enumerable.Range(1, 40).Select(i => new Track
+        {
+            Id = Guid.NewGuid(), Title = $"Song {i}", Artist = "Bad Bunny", AlbumArtist = "Bad Bunny",
+            Album = "nadie sabe lo que va a pasar mañana", TrackNumber = i,
+            FilePath = TestPaths.Primary("Music", $"song{i}.flac"),
+        }).ToArray();
+        var vm = new OrganizeFilesViewModel(tracks, new PlannerOrganizer(), settings);
+        Assert.True(PumpUntil(() => vm.Rows.Count == 40), "preview never filled");
+        var win = new OrganizeFilesDialog(vm) { RequestedThemeVariant = ThemeVariant.Dark, Width = 1100, Height = 820 };
+        win.Show();
+        var host = win.GetVisualDescendants().OfType<PillDialogHost>().Single();
+        Assert.True(PumpUntil(() => host.Card is { Opacity: > 0.999 }), "open animation never settled");
+        PumpUntil(() => false, 150);
+        return (vm, win);
+    }
+
+    /// <summary>The Preview well (the rounded fill behind the rows) and the list's ScrollViewer
+    /// over it.</summary>
+    private static (Border well, ScrollViewer sv) PreviewSurface(Window win, OrganizeFilesViewModel vm)
+    {
+        var list = win.GetVisualDescendants().OfType<ItemsControl>().Single(ic => ReferenceEquals(ic.ItemsSource, vm.Rows));
+        var sv = list.GetVisualAncestors().OfType<ScrollViewer>().First();
+        var well = win.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PreviewWell");
+        return (well, sv);
+    }
+
+    private static void ScrollTo(ScrollViewer sv, bool bottom)
+    {
+        sv.Offset = new Vector(0, bottom ? Math.Max(0, sv.Extent.Height - sv.Viewport.Height) : 0);
+        PumpUntil(() => false, 250);
+    }
+
+    private static Rect RectIn(Visual v, Visual to)
+    {
+        var m = v.TransformToVisual(to) ?? throw new InvalidOperationException("not in the same tree");
+        return new Rect(v.Bounds.Size).TransformToAABB(m);
+    }
+
+    /// <summary>True when the point lies in the rounded rect (0,0,size) with corners <paramref name="cr"/>.</summary>
+    private static bool InRounded(Point p, Size size, CornerRadius cr, double eps = 0.5)
+    {
+        if (p.X < -eps || p.Y < -eps || p.X > size.Width + eps || p.Y > size.Height + eps) return false;
+        bool Corner(double r, double cx, double cy, bool left, bool top)
+        {
+            if (r <= 0) return true;
+            var inX = left ? p.X < cx : p.X > cx;
+            var inY = top ? p.Y < cy : p.Y > cy;
+            if (!inX || !inY) return true;
+            var dx = p.X - cx; var dy = p.Y - cy;
+            return Math.Sqrt(dx * dx + dy * dy) <= r + eps;
+        }
+        return Corner(cr.TopLeft, cr.TopLeft, cr.TopLeft, true, true)
+            && Corner(cr.TopRight, size.Width - cr.TopRight, cr.TopRight, false, true)
+            && Corner(cr.BottomRight, size.Width - cr.BottomRight, size.Height - cr.BottomRight, false, false)
+            && Corner(cr.BottomLeft, cr.BottomLeft, size.Height - cr.BottomLeft, true, false);
+    }
+
+    /// <summary>Bar track + thumb lie right of the well, ending at the card's content edge;
+    /// every visible row clipped to the viewport stays inside the well's rounded shape.</summary>
+    private List<string> CheckPreview(Window win, OrganizeFilesViewModel vm, bool bottom)
+    {
+        var (well, sv) = PreviewSurface(win, vm);
+        ScrollTo(sv, bottom);
+        var where = bottom ? "bottom" : "top";
+        var bar = sv.GetVisualDescendants().OfType<ScrollBar>()
+            .Single(b => b.TemplatedParent == sv && b.Orientation == Orientation.Vertical);
+        Assert.True(bar.IsEffectivelyVisible && bar.Bounds.Height > 0,
+            $"{where}: no vertical scrollbar (extent {sv.Extent}, viewport {sv.Viewport})");
+        var thumb = bar.GetVisualDescendants().OfType<Thumb>().First();
+        var bad = new List<string>();
+        void Inside(string what, Rect r)
+        {
+            foreach (var p in new[] { r.TopLeft, r.TopRight, r.BottomRight, r.BottomLeft })
+                if (!InRounded(p, well.Bounds.Size, well.CornerRadius))
+                    bad.Add($"{where} {what} corner {p} lies outside the {well.Bounds.Size} well's {well.CornerRadius} rounded shape");
+        }
+        var barRect = RectIn(bar, well);
+        var thumbRect = RectIn(thumb, well);
+        _o.WriteLine($"{where}: well {well.Bounds.Size} r={well.CornerRadius}  track {barRect}  thumb {thumbRect}");
+        if (barRect.Left < well.Bounds.Width - 0.5)
+            bad.Add($"{where} track {barRect} overlaps the {well.Bounds.Size} well (should sit right of it)");
+        if (thumbRect.Left < well.Bounds.Width - 0.5 || thumbRect.Top < barRect.Top - 0.5 || thumbRect.Bottom > barRect.Bottom + 0.5)
+            bad.Add($"{where} thumb {thumbRect} is not on its track {barRect} right of the well");
+        // The bar's right edge is the dialog content's right edge (the card's).
+        var card = win.GetVisualDescendants().OfType<PillDialogHost>().Single().Card!;
+        var cardRect = RectIn(card, win);
+        var barInWin = RectIn(bar, win);
+        if (Math.Abs(barInWin.Right - cardRect.Right) > 0.5)
+            bad.Add($"{where} bar right edge {barInWin.Right} is not the card's right edge {cardRect.Right}");
+        var presenter = sv.GetVisualDescendants().OfType<ScrollContentPresenter>().First(p => p.TemplatedParent == sv);
+        var clip = RectIn(presenter, well);
+        foreach (var row in sv.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("of-row") && b.IsEffectivelyVisible))
+        {
+            var seen = RectIn(row, well).Intersect(clip);
+            if (seen.Width <= 0 || seen.Height <= 0) continue;
+            Inside("row", seen);
+        }
+        return bad;
     }
 
     /// <summary>Real Skia only (NOCTIS_TEST_SKIA=1): a PNG of the dialog over a busy owner,

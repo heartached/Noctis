@@ -13,8 +13,35 @@ public static class SingleInstanceGuard
 {
     // Mutex default namespace is per-session on Windows; the pipe namespace is
     // machine-global, so the user name keeps two logged-in users independent.
-    private static readonly string MutexName = $"Noctis-SingleInstance-{Environment.UserName}";
-    private static readonly string PipeName = $"Noctis-Activate-{Environment.UserName}";
+    // A copy pointed at its own data root (NOCTIS_DATA_DIR, or a Debug build's Noctis-dev) is a
+    // separate app with its own window, as on Unix (see TryAcquireUnix). Keyed by user name
+    // alone, a dev launch while the installed Noctis ran handed itself to it and quit (10-27).
+    // Keyed by NOCTIS_DATA_DIR alone, a Debug exe started without it (Explorer, a script) still
+    // ran on Noctis-dev but shared the installed app's names, and quit the same way (10-28).
+    // The default root keeps the original names, so an older running install still catches
+    // a second launch of the new one.
+    private static readonly string InstanceKey =
+        Environment.UserName + SuffixFor(AppPaths.DataRoot,
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Noctis"));
+    private static readonly string MutexName = $"Noctis-SingleInstance-{InstanceKey}";
+    private static readonly string PipeName = $"Noctis-Activate-{InstanceKey}";
+
+    /// <summary>The suffix for the root the app really uses: "" when it is the installed app's
+    /// default root, else <see cref="RootSuffix"/> of it. Pure; internal for tests.</summary>
+    internal static string SuffixFor(string dataRoot, string defaultRoot) =>
+        RootSuffix(dataRoot) == RootSuffix(defaultRoot) ? "" : RootSuffix(dataRoot);
+
+    /// <summary>"" for the default data root; "-" + 8 hex of the overriding root otherwise
+    /// (case- and slash-insensitive, so one folder spelled two ways is one instance). Pure;
+    /// internal for tests.</summary>
+    internal static string RootSuffix(string? dataDirOverride)
+    {
+        if (string.IsNullOrWhiteSpace(dataDirOverride)) return "";
+        var root = Path.GetFullPath(Environment.ExpandEnvironmentVariables(dataDirOverride.Trim()))
+            .Replace('/', '\\').TrimEnd('\\').ToUpperInvariant();
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(root));
+        return "-" + Convert.ToHexString(hash, 0, 4);
+    }
 
     private static Mutex? _mutex;
     private static FileStream? _unixLock;

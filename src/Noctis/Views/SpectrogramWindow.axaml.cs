@@ -49,7 +49,8 @@ public partial class SpectrogramWindow : Window
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ClientSizeProperty)
+        // Interface Size (GitHub #145) changes the room the card has without a resize.
+        if (change.Property == ClientSizeProperty || change.Property == Helpers.UiScale.AppliedProperty)
             FitCardToWindow();
     }
 
@@ -74,7 +75,7 @@ public partial class SpectrogramWindow : Window
     {
         // ClientSize can change before InitializeComponent has run (base Window ctor).
         if (CardRoot is null) return;
-        var client = ClientSize;
+        var client = Helpers.UiScale.ContentSize(this);
         if (client.Width <= 0 || client.Height <= 0) return;
         CardRoot.MaxWidth = Math.Max(320, Math.Min(CardMaxWidth, client.Width - WindowGutter));
         CardRoot.MaxHeight = Math.Max(280, client.Height - WindowGutter);

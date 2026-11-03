@@ -58,7 +58,6 @@ public class PopupLineIconTests
         ("RemoveFromLibraryDialog", "MenuLineTrash", ["Helpers/TrackContextMenuBuilder.cs", "Helpers/AlbumContextMenuBuilder.cs"]),
         ("LyricShareDialog", "MenuLineCamera", ["Views/PlaybackBarView.axaml"]),
         ("PlaylistImportDialog", "MenuLineImport", ["Views/MainWindow.axaml"]),
-        ("YouTubeDownloadDialog", "MenuLineSearch", ["Views/MainWindow.axaml"]),
         ("WrapDialog", "PageLineRecap", ["Views/StatisticsView.axaml"]),
         ("DuplicateFinderDialog", "LineDuplicates", []),
         ("OrganizeFilesDialog", "LineOrganizeFiles", []),

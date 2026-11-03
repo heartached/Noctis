@@ -85,6 +85,14 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Import.TidalSignIn" xml:space="preserve"><value>Sign in to TIDAL</value></data>
   <data name="Import.PickerTitle" xml:space="preserve"><value>Choose a playlist export</value></data>
   <data name="Import.PickerFilter" xml:space="preserve"><value>Playlist exports</value></data>
+  <data name="Import.AddSongWatermark" xml:space="preserve"><value>Add a song from your library</value></data>
+  <data name="Import.RemoveAdded" xml:space="preserve"><value>Remove</value></data>
+  <data name="Import.StatusAdded" xml:space="preserve"><value>{0} added</value><comment>{0} = songs added by hand from the library</comment></data>
+  <data name="Import.Change" xml:space="preserve"><value>Change</value></data>
+  <data name="Import.LeaveOut" xml:space="preserve"><value>Leave out of the playlist / put back</value></data>
+  <data name="Import.UseThisSong" xml:space="preserve"><value>Use this song from your library</value></data>
+  <data name="Import.SearchLibrary" xml:space="preserve"><value>Search library</value></data>
+  <data name="Import.SearchWatermark" xml:space="preserve"><value>Search your library</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Close</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Create</value></data>
   <data name="Common.Done" xml:space="preserve"><value>Done</value></data>
@@ -177,7 +185,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Pause Video With Playback</value><comment>Appearance toggle title</comment></data>
   <data name="Settings.PauseVideoWithPlaybackDesc" xml:space="preserve"><value>Freeze the background video while the song is paused.</value><comment>Appearance toggle description</comment></data>
   <data name="AlbumDetail.LyricsBackgroundVideo" xml:space="preserve"><value>Lyrics Background Video</value><comment>Album page menu</comment></data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Choose video for this album…</value><comment>Album page menu</comment></data>
+  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Choose video for this album</value><comment>Album page menu</comment></data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve"><value>Use default video</value><comment>Album page menu</comment></data>
   <data name="Settings.StarGitHub" xml:space="preserve"><value>Star on GitHub</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinDiscord" xml:space="preserve"><value>Join Discord</value><comment>Text in SettingsView.axaml</comment></data>
@@ -245,6 +253,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Cassette</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover Flow Layout</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>How the Cover Flow page arranges the queue's covers.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumsView" xml:space="preserve"><value>Albums View</value><comment>Settings › Player card title</comment></data>
+  <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>How the Albums page shows your albums, and how the carousel dresses each one.</value><comment>Settings › Player Albums View card subtitle</comment></data>
+  <data name="Settings.CarouselCase" xml:space="preserve"><value>Carousel case</value><comment>Settings › Player Albums View card: case style row label</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>The classic row: playing cover centred, history and up next to each side</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Carousel</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Tilted covers on a diagonal path with the track details beside them</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -320,6 +331,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="PlaybackBar.MusicVideo" xml:space="preserve"><value>Music video</value><comment>Options menu toggle in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.MusicVideoAudio" xml:space="preserve"><value>Music video audio</value><comment>Options menu toggle in PlaybackBarView.axaml, under Music video</comment></data>
   <data name="Settings.MusicVideoAudioHint" xml:space="preserve"><value>Play the video's own audio instead of the song file. Takes effect from the next song.</value><comment>Music video audio toggle tooltip (Lyrics Studio card and options menu)</comment></data>
+  <data name="PlaybackBar.WatchMusicVideo" xml:space="preserve"><value>Watch music video</value><comment>Options menu toggle in PlaybackBarView.axaml: the lyrics page plays the clip full size</comment></data>
+  <data name="Settings.MusicVideoBehindLyricsHint" xml:space="preserve"><value>Play the video behind the lyrics instead of in place of the cover</value><comment>Behind lyrics toggle tooltip (Lyrics Studio card)</comment></data>
+  <data name="Lyrics.MusicVideoAudioSide" xml:space="preserve"><value>Audio</value><comment>Lyrics page Audio / Video switch: the normal page (cover and lyrics)</comment></data>
+  <data name="Lyrics.MusicVideoVideoSide" xml:space="preserve"><value>Video</value><comment>Lyrics page Audio / Video switch: the music video full size</comment></data>
   <data name="Settings.LyricsBackgroundVideo" xml:space="preserve"><value>Lyrics Background Video</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LoopVideoGIFBehind" xml:space="preserve"><value>A looping video or GIF behind the lyrics.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Choose" xml:space="preserve"><value>Choose</value><comment>Content in SettingsView.axaml</comment></data>
@@ -381,10 +396,14 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Background Blur</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
   <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>How blurred the app looks behind pop-ups like the metadata editor and behind Settings. Slide all the way left to turn it off.</value><comment>Settings slider description (Background Blur)</comment></data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Off</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
+  <data name="Settings.UiScale" xml:space="preserve"><value>Interface Size</value><comment>Settings heading (Appearance): scale of the whole interface, GitHub #145</comment></data>
+  <data name="Settings.UiScaleHint" xml:space="preserve"><value>Makes text, buttons and icons larger or smaller.</value><comment>Settings description (Interface Size)</comment></data>
+  <data name="Settings.UiScalePercent" xml:space="preserve"><value>{0}%</value><comment>Interface Size choice; {0} = percent of the normal size (SettingsViewModel)</comment></data>
+  <data name="Settings.UiScaleDefault" xml:space="preserve"><value>{0}% (default)</value><comment>Interface Size choice for the normal size; {0} = 100 (SettingsViewModel)</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How solid the mini player's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player (Classic design).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>PLAYBACK</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Song Transitions</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongsBlendSmoothlyInto" xml:space="preserve"><value>Songs blend into each other. Albums play without transitions.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -411,10 +430,28 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue list, above the playing song, and the last song stays loaded when the queue ends.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>When a queued song's file was moved or deleted, playback skips to the next song that can play. Choose what happens to the missing song.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
+  <data name="Settings.MissingSongsRemove" xml:space="preserve"><value>Remove from Queue</value><comment>Missing Songs picker option: take the song off the queue</comment></data>
+  <data name="Queue.MissingBadge" xml:space="preserve"><value>Missing</value><comment>Badge on a queue row whose file can't be found</comment></data>
+  <data name="Queue.MissingTip" xml:space="preserve"><value>The file can't be found. It was moved or deleted, or its drive is not connected.</value><comment>Tooltip on the queue row Missing badge</comment></data>
+  <data name="Queue.MissingSkippedOne" xml:space="preserve"><value>Skipped “{0}”: its file can't be found</value><comment>Notice when one missing song was skipped; {0} = song title</comment></data>
+  <data name="Queue.MissingSkippedMany" xml:space="preserve"><value>Skipped {0} songs whose files can't be found</value><comment>Notice when several missing songs were skipped; {0} = count</comment></data>
+  <data name="Queue.MissingRemovedOne" xml:space="preserve"><value>Removed “{0}” from the queue: its file can't be found</value><comment>Notice when one missing song was removed from the queue; {0} = song title</comment></data>
+  <data name="Queue.MissingRemovedMany" xml:space="preserve"><value>Removed {0} songs from the queue: their files can't be found</value><comment>Notice when several missing songs were removed from the queue; {0} = count</comment></data>
+  <data name="Queue.MissingStopped" xml:space="preserve"><value>Playback stopped: no song left in the queue can be found</value><comment>Notice when every remaining queued song is missing</comment></data>
   <data name="Queue.Played" xml:space="preserve"><value>Played</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="MiniPlayer.Played" xml:space="preserve"><value>Played</value><comment>Text in MiniPlayerWindow.axaml</comment></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Off skips explicit songs unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDevice" xml:space="preserve"><value>Output Device</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Where Noctis plays. Exclusive Mode opens the selected device directly, so bit-perfect output follows this setting instead of the Windows default.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>System Default</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>default</value><comment>Suffix marking the current Windows default endpoint</comment></data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Selected device</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>not connected</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>The selected device is not connected right now. Playback uses the system default until it returns.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect output that bypasses the Windows mixer. Other apps go silent and transitions are off.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Analyze Tempo &amp; Key</value><comment>Text in SettingsView.axaml</comment></data>
@@ -458,6 +495,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Adjust volume from ReplayGain tags. Scan tracks via right-click.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Mode</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Pre-amp (dB)</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Scan new files automatically</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Writes ReplayGain tags into new songs once their album has finished copying.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>REMOTE CONTROL</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Web Remote</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Control what's playing from your phone's browser. No app needed. Only use it on Wi-Fi you trust.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1295,6 +1334,23 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Main.PickTracksYourself" xml:space="preserve"><value>Pick the tracks yourself</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.NewSmartPlaylist" xml:space="preserve"><value>New Smart Playlist</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.FillsItselfFromRules" xml:space="preserve"><value>Fills itself from rules you set</value><comment>Text in MainWindow.axaml</comment></data>
+  <data name="Main.QuickPlaylist" xml:space="preserve"><value>Playlist from a Genre or Artist</value><comment>Playlists page New menu</comment></data>
+  <data name="Main.QuickPlaylistSub" xml:space="preserve"><value>All its songs, or a mix made from your library</value><comment>Playlists page New menu</comment></data>
+  <data name="QuickPlaylist.Title" xml:space="preserve"><value>Playlist from a Genre or Artist</value></data>
+  <data name="QuickPlaylist.Subtitle" xml:space="preserve"><value>All its songs, or a mix of similar songs from your library. Made on this PC, nothing is sent anywhere.</value></data>
+  <data name="QuickPlaylist.Genres" xml:space="preserve"><value>Genres</value></data>
+  <data name="QuickPlaylist.Artists" xml:space="preserve"><value>Artists</value></data>
+  <data name="QuickPlaylist.SearchGenres" xml:space="preserve"><value>Search genres</value></data>
+  <data name="QuickPlaylist.SearchArtists" xml:space="preserve"><value>Search artists</value></data>
+  <data name="QuickPlaylist.AllSongs" xml:space="preserve"><value>All Songs</value></data>
+  <data name="QuickPlaylist.AllSongsTip" xml:space="preserve"><value>A playlist with every song of this one</value></data>
+  <data name="QuickPlaylist.Mix" xml:space="preserve"><value>Mix</value></data>
+  <data name="QuickPlaylist.MixTip" xml:space="preserve"><value>About 50 songs: this one's music and similar songs from your library, favourites and most played first</value></data>
+  <data name="QuickPlaylist.OneSong" xml:space="preserve"><value>1 song</value></data>
+  <data name="QuickPlaylist.Songs" xml:space="preserve"><value>{0:N0} songs</value><comment>{0} = number of songs</comment></data>
+  <data name="QuickPlaylist.NoneFound" xml:space="preserve"><value>Nothing found</value></data>
+  <data name="QuickPlaylist.Nothing" xml:space="preserve"><value>No songs to put in it.</value></data>
+  <data name="QuickPlaylist.Failed" xml:space="preserve"><value>Couldn't make the playlist: {0}</value><comment>{0} = error message</comment></data>
   <data name="Main.ImportPlaylist" xml:space="preserve"><value>Import Playlist</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.FromM3uM3u8File" xml:space="preserve"><value>From an .m3u / .m3u8 file</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.ShuffleAllTip" xml:space="preserve"><value>Shuffle All</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
@@ -1377,6 +1433,11 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="MetadataFinder.NoMatch" xml:space="preserve"><value>No match</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
   <data name="MetadataFinder.Applied" xml:space="preserve"><value>Applied</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
   <data name="MetadataFinder.WriteFailed" xml:space="preserve"><value>Write failed</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): the file could not be written</comment></data>
+  <data name="MetadataFinder.Progress" xml:space="preserve"><value>Identifying {0} of {1}…</value><comment>Find Metadata tool (MetadataFinderViewModel) while Identify all runs; {0} = current row, {1} = total</comment></data>
+  <data name="MetadataFinder.Failed" xml:space="preserve"><value>Couldn't identify ({0})</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): the lookup failed; {0} = reason</comment></data>
+  <data name="MetadataFinder.TimedOut" xml:space="preserve"><value>timed out</value><comment>Find Metadata tool (MetadataFinderViewModel): failure reason in MetadataFinder.Failed</comment></data>
+  <data name="MetadataFinder.NetworkError" xml:space="preserve"><value>network error</value><comment>Find Metadata tool (MetadataFinderViewModel): failure reason in MetadataFinder.Failed</comment></data>
+  <data name="MetadataFinder.IdentifiedFailed" xml:space="preserve"><value>Identified {0} of {1}, {2} failed</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = matched, {1} = total, {2} = failed lookups</comment></data>
 
   <!-- MetadataWindow.axaml (auto-migrated) -->
   <data name="Metadata.Metadata" xml:space="preserve"><value>Metadata</value><comment>Title in MetadataWindow.axaml</comment></data>
@@ -2175,12 +2236,13 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets installed plugins run. They can do anything Noctis can, so only use ones you trust.</value></data>
+  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets plugins made by other people run. Official plugins work either way.</value></data>
   <data name="Plugins.CustomTitle" xml:space="preserve"><value>Custom Category</value></data>
   <data name="Plugins.CustomNone" xml:space="preserve"><value>Plugins you add from a file show up here.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="Plugins.OpenView" xml:space="preserve"><value>Open {0}</value></data>
   <data name="Plugins.Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Plugins.Permissions" xml:space="preserve"><value>Permissions</value></data>
   <data name="Plugins.NoPermissionsShort" xml:space="preserve"><value>None beyond seeing what is playing</value></data>
@@ -2217,23 +2279,27 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermShort.MenuCommands" xml:space="preserve"><value>Track menu</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Notifications</value></data>
   <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Set BPM and key</value></data>
+  <data name="Plugins.PermShort.LibraryImport" xml:space="preserve"><value>Add to library</value></data>
+  <data name="Plugins.PermShort.AudioDecode" xml:space="preserve"><value>Analyze audio</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Control playback: play, pause, skip and seek</value></data>
-  <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Search your library (titles, artists, albums, file paths, play counts)</value></data>
+  <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Read your library and playlists (titles, artists, albums, file paths, play counts)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Connect to the internet</value></data>
   <data name="Plugins.Perm.LyricsProvider" xml:space="preserve"><value>Supply lyrics to the lyrics search</value></data>
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Add entries to the track menu</value></data>
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Show short notices</value></data>
   <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Set the BPM and musical key of library tracks (in Noctis only, never in your files)</value></data>
+  <data name="Plugins.Perm.LibraryImport" xml:space="preserve"><value>Add audio files it saved (such as downloads) to your library</value></data>
+  <data name="Plugins.Perm.AudioDecode" xml:space="preserve"><value>Decode songs to analyze their sound (nothing is changed or sent anywhere)</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Enable {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} asks to:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} by {2} asks to:</value></data>
   <data name="Plugins.EnableConfirm" xml:space="preserve"><value>Enable</value></data>
   <data name="Plugins.SafetyNote" xml:space="preserve"><value>.NET plugins run inside Noctis with the same access to your files, network and computer as the app itself. Permissions only limit what a plugin can do through Noctis; they are not a sandbox. Enable plugins from people you trust.</value></data>
   <data name="Plugins.TurnOnTitle" xml:space="preserve"><value>Turn on community plugins?</value></data>
-  <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Noctis will load the plugins you switch on. Each one asks for your approval the first time.</value></data>
+  <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Community plugins are made by other people, not by Noctis. A plugin can do anything Noctis can on your computer, so only use ones from people you trust.</value></data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve"><value>Turn on</value></data>
   <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Remove {0}?</value></data>
-  <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's folder is deleted. Its data and settings are kept unless you tick the box, so a reinstall picks up where it left off.</value></data>
+  <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's folder is deleted. Its data and settings are kept unless you turn on the switch below, so a reinstall picks up where it left off.</value></data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve"><value>Also delete its data and settings</value></data>
   <data name="Plugins.Removed" xml:space="preserve"><value>Removed {0}.</value></data>
   <data name="Plugins.RemoveFailed" xml:space="preserve"><value>Some files could not be deleted. Close Noctis and delete {0} by hand.</value></data>
@@ -2261,6 +2327,66 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Get.Mismatch" xml:space="preserve"><value>The download didn't match the official list, so it wasn't installed.</value></data>
   <data name="Plugins.Get.NotAllowed" xml:space="preserve"><value>This download link isn't allowed, so nothing was installed.</value></data>
   <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>The download isn't {0} {1}, so it wasn't installed.</value></data>
+  <data name="Plugins.Get.By" xml:space="preserve"><value>by {0}</value></data>
+  <data name="Plugins.Submit" xml:space="preserve"><value>Submit a Plugin</value></data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <data name="Plugins.Make.Title" xml:space="preserve"><value>Make your own plugin</value></data>
+  <data name="Plugins.Make.Line" xml:space="preserve"><value>Build something for Noctis and share it. If it passes our review, it shows up under Community plugins with your name on it.</value></data>
+  <data name="Plugins.Make.Step1Title" xml:space="preserve"><value>Build it</value></data>
+  <data name="Plugins.Make.Step1" xml:space="preserve"><value>Follow the guide. You need the free .NET SDK and a code editor.</value></data>
+  <data name="Plugins.Make.Step2Title" xml:space="preserve"><value>Submit it</value></data>
+  <data name="Plugins.Make.Step2" xml:space="preserve"><value>Publish it on GitHub, then send us the link with the form.</value></data>
+  <data name="Plugins.Make.Step3Title" xml:space="preserve"><value>Get listed</value></data>
+  <data name="Plugins.Make.Step3" xml:space="preserve"><value>We check it's safe, then it appears here, credited to you.</value></data>
+  <data name="Plugins.Make.Guide" xml:space="preserve"><value>Read the Guide</value></data>
+  <data name="Plugins.OfficialSection" xml:space="preserve"><value>Official Noctis plugins</value></data>
+  <data name="Plugins.CommunitySection" xml:space="preserve"><value>Community plugins</value></data>
+  <data name="Plugins.CommunityEmpty" xml:space="preserve"><value>Plugins made by the community show up here once you install one. Use Install from file, or make your own below.</value></data>
+  <data name="Plugins.Search" xml:space="preserve"><value>Search plugins</value></data>
+  <data name="Plugins.SearchEmpty" xml:space="preserve"><value>No plugins match your search.</value></data>
+  <data name="Plugins.Refresh" xml:space="preserve"><value>Refresh plugins</value></data>
+  <data name="Plugins.ReloadedNone" xml:space="preserve"><value>No plugins installed</value></data>
+  <data name="Plugins.ReloadedOne" xml:space="preserve"><value>Refreshed · 1 plugin</value></data>
+  <data name="Plugins.ReloadedMany" xml:space="preserve"><value>Refreshed · {0} plugins</value></data>
+  <data name="Plugins.Get.Replace" xml:space="preserve"><value>Replace with official</value></data>
+  <data name="Plugins.Card.NoAuthor" xml:space="preserve"><value>Community plugin</value></data>
+  <data name="Plugins.Card.Installing" xml:space="preserve"><value>Installing</value></data>
+  <data name="Plugins.Card.On" xml:space="preserve"><value>On</value></data>
+  <data name="Plugins.Card.Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Official Noctis Plugin</value></data>
+  <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, official plugin by Noctis</value></data>
+  <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, community plugin by {1}</value></data>
+  <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, community plugin</value></data>
+  <data name="Plugins.Detail.Back" xml:space="preserve"><value>Plugins</value></data>
+  <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
+  <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>Visit homepage</value></data>
+  <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Turn it off to stop the plugin without removing it.</value></data>
+  <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Turn on Community plugins to use it.</value></data>
+  <data name="Plugins.Detail.Files" xml:space="preserve"><value>Plugin files</value></data>
+  <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Removing it keeps its settings and data unless you choose otherwise.</value></data>
+  <data name="Plugins.Detail.More" xml:space="preserve"><value>More</value></data>
+  <data name="Plugins.View.Back" xml:space="preserve"><value>Back to {0}</value></data>
+  <data name="Plugins.View.PopOut" xml:space="preserve"><value>Open in its own window</value></data>
+  <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Remove plugin</value></data>
+  <data name="Plugins.PermSummary" xml:space="preserve"><value>Can {0}</value></data>
+  <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
+  <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>control playback</value></data>
+  <data name="Plugins.PermVerb.LibraryRead" xml:space="preserve"><value>read your library</value></data>
+  <data name="Plugins.PermVerb.Network" xml:space="preserve"><value>use the internet</value></data>
+  <data name="Plugins.PermVerb.LyricsProvider" xml:space="preserve"><value>supply lyrics</value></data>
+  <data name="Plugins.PermVerb.MenuCommands" xml:space="preserve"><value>add to the track menu</value></data>
+  <data name="Plugins.PermVerb.Notifications" xml:space="preserve"><value>show notices</value></data>
+  <data name="Plugins.PermVerb.LibraryWriteAnalysis" xml:space="preserve"><value>set BPM and key</value></data>
+  <data name="Plugins.PermVerb.LibraryImport" xml:space="preserve"><value>add files to your library</value></data>
+  <data name="Plugins.PermVerb.AudioDecode" xml:space="preserve"><value>analyze the sound of your songs</value></data>
+  <data name="Plugins.Setting.Decrease" xml:space="preserve"><value>Decrease {0}</value></data>
+  <data name="Plugins.Setting.Increase" xml:space="preserve"><value>Increase {0}</value></data>
+
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
+  <data name="Integrations.More.Title" xml:space="preserve"><value>More integrations</value></data>
+  <data name="Integrations.More.Line" xml:space="preserve"><value>Plugins can add new services and features to Noctis.</value></data>
+  <data name="Integrations.More.Browse" xml:space="preserve"><value>Browse Plugins</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Noctis Server</value></data>
@@ -2359,23 +2485,19 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
+  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Also upgrade songs with plain or line-synced lyrics</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Look again at songs an earlier run already checked</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Open Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
+  <data name="BulkLyrics.Stop" xml:space="preserve"><value>Stop</value><comment>Button: stops a bulk run</comment></data>
+  <data name="BulkArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Dialog title (window)</comment></data>
+  <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Adds moving covers from Apple Music to albums that don't have one. Only clear matches are saved.</value></data>
+  <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Look again at albums an earlier run found nothing for</value><comment>Checkbox</comment></data>
+  <data name="BulkArtwork.Find" xml:space="preserve"><value>Find</value><comment>Button: starts the run</comment></data>
+  <data name="Settings.FindLibraryLyrics" xml:space="preserve"><value>Find Lyrics</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryLyricsSub" xml:space="preserve"><value>Look up lyrics for the whole library, word-synced first, and upgrade plain ones.</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryArtwork" xml:space="preserve"><value>Find Animated Artwork</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryArtworkSub" xml:space="preserve"><value>Add moving covers to albums from Apple Music, clear matches only.</value><comment>Settings Tools row</comment></data>
 
-  <data name="Main.AddFromYouTube" xml:space="preserve"><value>Add from YouTube</value><comment>New/Add menu item</comment></data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve"><value>Search or paste a link — downloads into your library</value><comment>New/Add menu item subtitle</comment></data>
-
-  <data name="YouTube.Title" xml:space="preserve"><value>Add from YouTube</value><comment>Dialog title</comment></data>
-  <data name="YouTube.Subtitle" xml:space="preserve"><value>Search or paste a link. Saved to your library with cover art.</value><comment>Dialog subtitle</comment></data>
-  <data name="YouTube.SearchHint" xml:space="preserve"><value>Search or paste a link</value><comment>Search box watermark</comment></data>
-  <data name="YouTube.Search" xml:space="preserve"><value>Search</value><comment>Search button</comment></data>
-  <data name="YouTube.SetupTitle" xml:space="preserve"><value>One-time setup</value><comment>First-run card title</comment></data>
-  <data name="YouTube.SetupBody" xml:space="preserve"><value>Downloads need yt-dlp. Noctis installs it once and keeps it updated.</value><comment>First-run card body</comment></data>
-  <data name="YouTube.Install" xml:space="preserve"><value>Install yt-dlp</value><comment>First-run card button</comment></data>
-  <data name="YouTube.Download" xml:space="preserve"><value>Download</value><comment>Per-result button</comment></data>
-  <data name="YouTube.SavesTo" xml:space="preserve"><value>Saves to</value><comment>Footer label before the folder</comment></data>
-  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Find a song, then download it into your library.</value><comment>Empty state</comment></data>
-  <data name="YouTube.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
-  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Update</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
-  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Install Noctis's own up-to-date copy of yt-dlp.</value><comment>Tooltip of the footer Update button</comment></data>
   <data name="Import.Hint.Spotify" xml:space="preserve"><value>Spotify blocks this. Export it with Exportify, then choose the CSV file.</value><comment>Import Playlist: a Spotify link was pasted</comment></data>
   <data name="Import.Hint.AppleMusic" xml:space="preserve"><value>Apple Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: an Apple Music link was pasted</comment></data>
   <data name="Import.Hint.Tidal" xml:space="preserve"><value>This TIDAL link can't be read here yet. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: a TIDAL link in a build without TIDAL sign-in</comment></data>
@@ -2383,29 +2505,11 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Import.Hint.AmazonMusic" xml:space="preserve"><value>Amazon Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: an Amazon Music link was pasted</comment></data>
   <data name="Import.Hint.OpenExportify" xml:space="preserve"><value>Open Exportify</value><comment>Button: opens exportify.net (a product name, keep it)</comment></data>
   <data name="Import.Hint.OpenTuneMyMusic" xml:space="preserve"><value>Open TuneMyMusic</value><comment>Button: opens tunemymusic.com (a product name, keep it)</comment></data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="YouTube.Installing" xml:space="preserve"><value>Installing…</value><comment>Install button label while yt-dlp downloads</comment></data>
-  <data name="YouTube.Status.NoFolder" xml:space="preserve"><value>Add a music folder in Settings → Library first.</value><comment>Footer status: no library folder to save into</comment></data>
-  <data name="YouTube.Status.InstallingTool" xml:space="preserve"><value>Downloading yt-dlp…</value><comment>Footer status while yt-dlp installs</comment></data>
-  <data name="YouTube.Status.Ready" xml:space="preserve"><value>yt-dlp is ready.</value><comment>Footer status after yt-dlp installed</comment></data>
-  <data name="YouTube.Status.InstallFailed" xml:space="preserve"><value>Couldn't install yt-dlp — {0}</value><comment>Footer status; {0} = error message</comment></data>
-  <data name="YouTube.Status.InstallFirst" xml:space="preserve"><value>Install yt-dlp first.</value><comment>Footer status: search pressed before setup</comment></data>
-  <data name="YouTube.Status.ReadingLink" xml:space="preserve"><value>Reading link…</value><comment>Footer status while a pasted link resolves</comment></data>
-  <data name="YouTube.Status.Searching" xml:space="preserve"><value>Searching…</value><comment>Footer status while searching</comment></data>
-  <data name="YouTube.Status.NothingFound" xml:space="preserve"><value>Nothing found.</value><comment>Footer status: search returned no results</comment></data>
-  <data name="YouTube.Status.SearchFailed" xml:space="preserve"><value>Search failed — {0}</value><comment>Footer status; {0} = error message</comment></data>
-  <data name="YouTube.Row.Starting" xml:space="preserve"><value>Starting…</value><comment>Result card status when a download begins</comment></data>
-  <data name="YouTube.Row.InLibrary" xml:space="preserve"><value>In your library</value><comment>Result card status after the download was imported</comment></data>
-  <data name="YouTube.Row.SavedToFolder" xml:space="preserve"><value>Saved to folder</value><comment>Result card status: saved but not imported</comment></data>
+  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Update</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
+  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Install Noctis's own up-to-date copy of yt-dlp.</value><comment>Tooltip of the footer Update button</comment></data>
 
-  <data name="YouTubeSettings.Section" xml:space="preserve"><value>YOUTUBE DOWNLOADS</value><comment>Library tab section title</comment></data>
-  <data name="YouTubeSettings.Title" xml:space="preserve"><value>Add songs from YouTube</value><comment>Card title</comment></data>
-  <data name="YouTubeSettings.Description" xml:space="preserve"><value>Search or paste a link to download.</value><comment>Card description</comment></data>
-  <data name="YouTubeSettings.Open" xml:space="preserve"><value>Open downloader</value><comment>Card button</comment></data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve"><value>Download folder</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve"><value>Empty uses a &quot;YouTube&quot; folder inside your first music folder.</value><comment>Row help</comment></data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve"><value>yt-dlp</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve"><value>Install / update</value><comment>Row button</comment></data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve"><value>Custom path to yt-dlp (optional)</value><comment>Path watermark</comment></data>
   <data name="YtDlp.Version" xml:space="preserve"><value>yt-dlp {0}</value><comment>Small secondary text: the installed yt-dlp version ({0})</comment></data>
   <data name="YtDlp.UpdateAvailable" xml:space="preserve"><value>update available</value><comment>Appended after the yt-dlp version when a newer release exists</comment></data>
   <data name="YtDlp.UpdatingRetrying" xml:space="preserve"><value>Updating yt-dlp and retrying…</value><comment>Download status after YouTube blocked the first attempt</comment></data>
@@ -2493,6 +2597,10 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>Lullaby listens to every song and writes the words itself, even when the song already has lyrics. Sung vocals often come out wrong: each transcript opens in the lyrics box for you to fix before it is aligned.</value><comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve"><value>Look up lyrics online when a song has none</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve"><value>Plain lyrics are fetched from LRCLIB first, so the model only has to time them. Off, or when nothing is found, the song waits for you to paste its lyrics.</value><comment>Footer checkbox tooltip</comment></data>
+  <data name="LyricsStudio.UseGpu" xml:space="preserve"><value>Use the graphics card (GPU) · Experimental</value><comment>Footer checkbox (only in builds with the Vulkan runtime)</comment></data>
+  <data name="LyricsStudio.UseGpuTip" xml:space="preserve"><value>Runs the speech model on the graphics card through Vulkan, about 5 times faster than the processor on a recent GPU. If the card cannot run it, the Studio stays on the CPU. The choice takes effect the next time Noctis starts once a run has used the CPU.</value><comment>Footer checkbox tooltip</comment></data>
+  <data name="LyricsStudio.GpuRestart" xml:space="preserve"><value>Restart Noctis to switch between the CPU and the graphics card.</value><comment>Note under the GPU checkbox</comment></data>
+  <data name="LyricsStudio.GpuActive" xml:space="preserve"><value>Running on the graphics card.</value><comment>Note under the GPU checkbox</comment></data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve"><value>Download model</value><comment>Footer button</comment></data>
   <data name="LyricsStudio.Start" xml:space="preserve"><value>Start</value><comment>Footer button</comment></data>
   <data name="LyricsStudio.Stop" xml:space="preserve"><value>Stop</value><comment>Footer button</comment></data>
@@ -2556,6 +2664,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>
   <data name="LyricsStudio.MusicVideoAudio" xml:space="preserve"><value>Video audio</value><comment>Music videos card: play the clip's own audio toggle label</comment></data>
+  <data name="LyricsStudio.MusicVideoBehindLyrics" xml:space="preserve"><value>Behind lyrics</value><comment>Music videos card: play the clip behind the lyrics toggle label</comment></data>
   <data name="LyricsStudio.ComposeEmpty" xml:space="preserve"><value>No lyrics yet. Paste lyrics or listen to the track.</value><comment>Lyrics box empty state</comment></data>
   <data name="LyricsStudio.ComposeCheck" xml:space="preserve"><value>Check the lyrics below, one line per sung line, then press Align lyrics.</value><comment>Lyrics box hint when text is present</comment></data>
   <data name="LyricsStudio.TranscriptBanner" xml:space="preserve"><value>Experimental transcript. Sung vocals often transcribe poorly, so fix the words below, then press Align lyrics to time them.</value><comment>Lyrics box banner after a transcription</comment></data>
@@ -2752,12 +2861,16 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="QueueToast.PlayingNext" xml:space="preserve"><value>Playing Next</value><comment>Confirmation pill above the playback island after Play Next</comment></data>
   <data name="QueueToast.SongCount" xml:space="preserve"><value>{0} songs</value><comment>Confirmation pill detail line when several songs were queued; {0} = count</comment></data>
   <data name="QueueToast.OneSong" xml:space="preserve"><value>1 song</value><comment>Confirmation pill detail line for one untitled song</comment></data>
+  <data name="Handoff.Headline" xml:space="preserve"><value>Continue from your phone</value><comment>Pill when the desktop opens: the phone has a newer queue (Pick Up on Computer); the song title is under it</comment></data>
+  <data name="Handoff.Continue" xml:space="preserve"><value>Continue</value><comment>Button on the Continue from your phone pill: loads the phone's queue, paused</comment></data>
+  <data name="Handoff.Dismiss" xml:space="preserve"><value>Dismiss</value><comment>Screen-reader name of the close button on the Continue from your phone pill</comment></data>
   <data name="A11y.ScrollLeft" xml:space="preserve"><value>Scroll left</value><comment>Screen-reader name of the arrow that scrolls an album page tile row left</comment></data>
   <data name="A11y.ScrollRight" xml:space="preserve"><value>Scroll right</value><comment>Screen-reader name of the arrow that scrolls an album page tile row right</comment></data>
   <data name="Menu.FetchLyrics" xml:space="preserve"><value>Fetch &amp; Save Lyrics</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
-  <data name="Menu.LyricsStudio" xml:space="preserve"><value>Open in Lyrics Studio…</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
-  <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Choose video for this song…</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
+  <data name="Menu.LyricsStudio" xml:space="preserve"><value>Open in Lyrics Studio</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
+  <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Choose video for this song</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
   <data name="Menu.StartRadio" xml:space="preserve"><value>Start Radio</value><comment>v2 right-click menu row</comment></data>
+  <data name="Menu.CreateMix" xml:space="preserve"><value>Create Mix from This Song</value><comment>Song right-click menu, beside Start Radio</comment></data>
   <data name="Menu.Snooze" xml:space="preserve"><value>Snooze for a Month</value><comment>v2 right-click menu row: hide the song from suggestions for a month</comment></data>
   <data name="Menu.Badge" xml:space="preserve"><value>Badge</value><comment>v2 right-click menu submenu (colored song badges)</comment></data>
   <data name="Menu.NewBadge" xml:space="preserve"><value>New badge…</value><comment>v2 right-click menu, Badge submenu</comment></data>
@@ -2829,4 +2942,128 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Go to Songs</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Go to Albums</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Go to Artists</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="ArtistDetail.SearchArtistInfo" xml:space="preserve">
+    <value>Search Artist Info</value>
+    <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
+  </data>
+  <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
+    <value>Use Automatic Artist Info</value>
+    <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Title" xml:space="preserve">
+    <value>Search Artist Info</value>
+    <comment>ArtistInfoSearchDialog.axaml title</comment>
+  </data>
+  <data name="ArtistInfoSearch.Subtitle" xml:space="preserve">
+    <value>Pick the right artist. The picture, fans and About follow your pick.</value>
+    <comment>ArtistInfoSearchDialog.axaml subtitle</comment>
+  </data>
+  <data name="ArtistInfoSearch.Searching" xml:space="preserve">
+    <value>Searching…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.NothingFound" xml:space="preserve">
+    <value>No artists found.</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.Failed" xml:space="preserve">
+    <value>Search failed: {0}</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml; {0} = error message</comment>
+  </data>
+  <data name="ArtistInfoSearch.Applying" xml:space="preserve">
+    <value>Saving…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
+  </data>
+  <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
+    <value>{0} albums</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
+    <value>1 album</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
+    <value>1 fan</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Current" xml:space="preserve">
+    <value>Current</value>
+    <comment>Badge on the row the artist is pinned to</comment>
+  </data>
+  <data name="ArtistInfoSearch.Use" xml:space="preserve">
+    <value>Use Artist</value>
+    <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="Repeat.OffTip" xml:space="preserve"><value>Repeat: Off</value><comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment></data>
+  <data name="Repeat.AllTip" xml:space="preserve"><value>Repeat All: the queue loops</value><comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment></data>
+  <data name="Repeat.OneTip" xml:space="preserve"><value>Repeat One: this song loops</value><comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment></data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Show played songs</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
+  <data name="Settings.AppIcon" xml:space="preserve"><value>App Icon</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
+  <data name="Settings.AppIconDesc" xml:space="preserve"><value>Changes the icon in the title bar, taskbar and tray right away. The desktop shortcut and the .exe keep the classic icon.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Classic</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Light" xml:space="preserve"><value>Light</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Dark</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve"><value>Blush</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve"><value>Sky</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve"><value>Sunset</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve"><value>Violet</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve"><value>Aurora</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Midnight</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Ruby</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
+  <data name="Settings.MonoAudio" xml:space="preserve"><value>Mono Audio</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Plays the left and right channels together in both ears. For hearing in one ear or listening with a single earbud.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Balance" xml:space="preserve"><value>Balance</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Moves the sound toward the left or right ear. Snaps to the center.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceCenter" xml:space="preserve"><value>Center</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceLeftFormat" xml:space="preserve"><value>L {0}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceRightFormat" xml:space="preserve"><value>R {0}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChannelMixExclusiveNote" xml:space="preserve"><value>Off while Exclusive Mode is on, which plays files bit-perfect.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChannelMixUnavailableNote" xml:space="preserve"><value>Not available on the current audio output. Restart Noctis to bring it back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOut" xml:space="preserve"><value>Sleep Timer Fade Out</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOutDesc" xml:space="preserve"><value>Fades the music out over the last seconds of the sleep timer, and at the end of the track with Stop After Current Track. Your volume stays as it is.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFadeOff" xml:space="preserve"><value>Off</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade10" xml:space="preserve"><value>10 s</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade30" xml:space="preserve"><value>30 s</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepFade60" xml:space="preserve"><value>60 s</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ExclusiveModePaused" xml:space="preserve"><value>Exclusive Mode is paused: the device couldn't be opened. It will try again next launch or when you turn it off and on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.Queue" xml:space="preserve"><value>Queue</value><comment>Settings section label</comment></data>
+  <data name="Settings.QueueRows" xml:space="preserve"><value>Queue Rows</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRowsHint" xml:space="preserve"><value>What each song in the queue shows. A line can add a second field after a dot.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueFirstLine" xml:space="preserve"><value>First line</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueFirstLineExtra" xml:space="preserve"><value>First line, added field</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueSecondLine" xml:space="preserve"><value>Second line</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueSecondLineExtra" xml:space="preserve"><value>Second line, added field</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRightSide" xml:space="preserve"><value>Right side</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidth" xml:space="preserve"><value>Queue Width</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidthHint" xml:space="preserve"><value>How wide the queue opens. You can also drag the queue's left edge. Double-click the knob or the edge to reset.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueField.None" xml:space="preserve"><value>None</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Title" xml:space="preserve"><value>Title</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Artist" xml:space="preserve"><value>Artist</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Album" xml:space="preserve"><value>Album</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.AlbumArtist" xml:space="preserve"><value>Album artist</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Composer" xml:space="preserve"><value>Composer</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Genre" xml:space="preserve"><value>Genre</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Year" xml:space="preserve"><value>Year</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Duration" xml:space="preserve"><value>Duration</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueField.Format" xml:space="preserve"><value>Format</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.Position" xml:space="preserve"><value>Queue number</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.Duration" xml:space="preserve"><value>Duration</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="Settings.QueueSide.None" xml:space="preserve"><value>Nothing</value><comment>Queue row right-side choice (SettingsViewModel)</comment></data>
+  <data name="AlbumCarousel.Name" xml:space="preserve"><value>Album carousel</value><comment>Album carousel (GitHub #149): screen reader name</comment></data>
+  <data name="AlbumCarousel.Counter" xml:space="preserve"><value>{0} of {1}</value><comment>Album carousel: position under the centred album</comment></data>
+  <data name="Main.AlbumView" xml:space="preserve"><value>View</value><comment>Albums page top-right view menu tooltip</comment></data>
+  <data name="Main.AlbumGrid" xml:space="preserve"><value>Grid</value><comment>Albums view menu: tile grid</comment></data>
+  <data name="Main.AlbumCarousel" xml:space="preserve"><value>Carousel</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.ViewList" xml:space="preserve"><value>List</value><comment>Artists view menu: list rows</comment></data>
+  <data name="Main.CarouselCover" xml:space="preserve"><value>Cover</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
+  <data name="Main.CarouselJewelCase" xml:space="preserve"><value>CD Jewel Case</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselVinyl" xml:space="preserve"><value>Vinyl</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselCassette" xml:space="preserve"><value>Cassette</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="ArtistDetail.ShowCarousel" xml:space="preserve"><value>Show as Carousel</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
+  <data name="ArtistDetail.ShowGrid" xml:space="preserve"><value>Show as Grid</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
+  <data name="LibrarySongs.Composer" xml:space="preserve"><value>Composer</value><comment>Songs list column header (GitHub #151)</comment></data>
+  <data name="LibrarySongs.Format" xml:space="preserve"><value>Format</value><comment>Songs list column header: short codec name (GitHub #151)</comment></data>
+  <data name="Columns.Reset" xml:space="preserve"><value>Reset Columns</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
+  <data name="Columns.ResizeName" xml:space="preserve"><value>Resize {0} column</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
+  <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
 </root>

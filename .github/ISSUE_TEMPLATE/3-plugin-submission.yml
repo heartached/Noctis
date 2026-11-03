@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for building something for Noctis. Someone from the Noctis team reads the source and tries the plugin. Once it's approved, it shows up under **Community plugins** in Settings → Plugins in every copy of Noctis, credited to you.
+        Thanks for building something for Noctis. A bot checks the zip as soon as you submit (it never runs your code) and comments with what it found. Then someone from the Noctis team reads the source and tries the plugin. Once it's approved, it shows up under **Community plugins** in Settings → Plugins in every copy of Noctis, credited to you.
 
         Before you start: the plugin's source must be public on GitHub, and the zip must be an asset of a GitHub release. The [Make a plugin guide](https://noctisapp.cc/plugins/make) has the details.
 

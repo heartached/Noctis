@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
+using Noctis.Models;
 using Noctis.Services;
 
 namespace Noctis.ViewModels;
@@ -22,11 +23,20 @@ public partial class PlaylistImportViewModel : ViewModelBase
     private static string L(string key) => Localization.Loc.T(key);
     private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
 
-    /// <summary>One entry of the preview list: a title, its artist under it, and whether the
-    /// library has it (the row's Found / Missing chip).</summary>
-    public sealed record ImportRow(string Title, string Artist, bool IsMatched)
+    /// <summary>
+    /// One entry of the preview list: a title, its artist under it, and whether the library has
+    /// it (the row's Found / Missing chip). Discord (Cosmo, 11-02): a missing entry offers the
+    /// library songs closest to it and a search, so a song under a slightly different name can
+    /// still be added; any matched entry can be left out of the playlist.
+    /// </summary>
+    public sealed partial class ImportRow : ObservableObject
     {
-        public bool HasArtist => Artist.Length > 0;
+        public ImportRow(string title, string artist, bool isMatched)
+        {
+            Title = title;
+            Artist = artist;
+            _matchedByFile = isMatched;
+        }
 
         /// <summary>Splits the service's "Artist – Title" label for the two-line row.</summary>
         public static ImportRow From(string label, bool matched)
@@ -36,6 +46,88 @@ public partial class PlaylistImportViewModel : ViewModelBase
                 ? new ImportRow(label[(at + 3)..], label[..at], matched)
                 : new ImportRow(label, string.Empty, matched);
         }
+
+        public string Title { get; }
+        public string Artist { get; }
+        public bool HasArtist => Artist.Length > 0;
+
+        /// <summary>Position in the imported list: the playlist keeps the file's order.</summary>
+        internal int Order { get; init; }
+        /// <summary>The library song the importer matched (null for label-only previews).</summary>
+        internal Guid? TrackId { get; init; }
+        private readonly bool _matchedByFile;
+
+        /// <summary>The library song picked in the review step.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsMatched), nameof(IsMissing), nameof(HasPick), nameof(PickLabel), nameof(ShowCandidates), nameof(CanToggleIncluded))]
+        private Track? _picked;
+
+        /// <summary>Left out of the playlist with the row's ✕ (matched rows only).</summary>
+        [ObservableProperty] private bool _isIncluded = true;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowCandidates))]
+        private bool _isSearchOpen;
+        [ObservableProperty] private string _searchText = string.Empty;
+        [ObservableProperty] private IReadOnlyList<Choice> _searchResults = Array.Empty<Choice>();
+
+        public bool IsMatched => Picked is not null || _matchedByFile;
+        public bool IsMissing => !IsMatched;
+        public bool HasPick => Picked is not null;
+        public bool CanToggleIncluded => IsMatched;
+        /// <summary>"→ Title · Artist" under a row matched in the review.</summary>
+        public string PickLabel => Picked is null ? string.Empty : Choice.LabelOf(Picked);
+
+        /// <summary>The library songs closest to a missing entry, best first.</summary>
+        public IReadOnlyList<Choice> Candidates { get; init; } = Array.Empty<Choice>();
+        public bool ShowCandidates => IsMissing && !IsSearchOpen && Candidates.Count > 0;
+
+        /// <summary>The track this row puts in the playlist, null when it adds none.</summary>
+        internal Guid? PlaylistTrackId => !IsIncluded ? null : Picked?.Id ?? (_matchedByFile ? TrackId : null);
+
+        /// <summary>Set by the dialog: searches the library for the row's search box.</summary>
+        internal Func<string, IReadOnlyList<Track>>? Search { get; init; }
+        internal Action? Changed { get; init; }
+
+        partial void OnPickedChanged(Track? value) => Changed?.Invoke();
+        partial void OnIsIncludedChanged(bool value) => Changed?.Invoke();
+
+        partial void OnSearchTextChanged(string value)
+            => SearchResults = Search is null || string.IsNullOrWhiteSpace(value)
+                ? Array.Empty<Choice>()
+                : Search(value).Select(t => new Choice(t)).ToList();
+
+        [RelayCommand]
+        private void Pick(Choice? choice)
+        {
+            if (choice is null) return;
+            IsSearchOpen = false;
+            IsIncluded = true;
+            Picked = choice.Track;
+        }
+
+        /// <summary>"Change": back to the candidates and the search.</summary>
+        [RelayCommand]
+        private void Unpick() => Picked = null;
+
+        [RelayCommand]
+        private void ToggleSearch()
+        {
+            IsSearchOpen = !IsSearchOpen;
+            if (IsSearchOpen && SearchText.Length == 0)
+                SearchText = HasArtist ? $"{Title} {Artist}" : Title;
+        }
+
+        [RelayCommand]
+        private void ToggleIncluded() => IsIncluded = !IsIncluded;
+    }
+
+    /// <summary>A library song offered for a row: a candidate or a search result.</summary>
+    public sealed record Choice(Track Track)
+    {
+        public string Label => LabelOf(Track);
+        internal static string LabelOf(Track t)
+            => string.IsNullOrWhiteSpace(t.Artist) ? t.Title : $"{t.Title} · {t.Artist}";
     }
 
     [ObservableProperty] private bool _isBusy;
@@ -184,6 +276,8 @@ public partial class PlaylistImportViewModel : ViewModelBase
         IsAnalyzing = true;
         StatusMessage = busyMessage;
         MissingTracks.Clear();
+        AddedSongs.Clear();
+        AddSearchText = string.Empty;
         Rows = Array.Empty<ImportRow>();
         HasPreview = false;
         CanCreate = false;
@@ -198,18 +292,11 @@ public partial class PlaylistImportViewModel : ViewModelBase
             var preview = await analyze(_analyzeCts.Token);
             _preview = preview;
             PlaylistName = preview.SuggestedName;
-            MatchedCount = preview.MatchedTrackIds.Count;
-            MissingCount = preview.MissingLabels.Count;
-            HasMissing = MissingCount > 0;
             foreach (var m in preview.MissingLabels) MissingTracks.Add(m);
-            Rows = preview.MissingLabels.Select(m => ImportRow.From(m, matched: false))
-                .Concat(preview.MatchedLabels.Select(m => ImportRow.From(m, matched: true)))
-                .ToList();
+            Rows = BuildRows(preview);
             HasPreview = preview.TotalEntries > 0;
-            CanCreate = MatchedCount > 0;
-            StatusMessage = HasPreview
-                ? L("Import.StatusResult", MatchedCount, preview.TotalEntries)
-                : emptyMessage;
+            RefreshCounts();
+            if (!HasPreview) StatusMessage = emptyMessage;
         }
         catch (OperationCanceledException)
         {
@@ -230,14 +317,100 @@ public partial class PlaylistImportViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Missing entries first (they are what needs a look), each keeping its place in the file.</summary>
+    private IReadOnlyList<ImportRow> BuildRows(PlaylistImportPreview preview)
+    {
+        Func<string, IReadOnlyList<Track>> search = q => _service.SearchLibrary(q, SearchResultCount);
+        List<ImportRow> rows;
+        if (preview.Matches.Count > 0)
+        {
+            rows = preview.Matches.Select((m, i) =>
+            {
+                var split = ImportRow.From(PlaylistImportService.Label(m.Entry), m.Match is not null);
+                return new ImportRow(split.Title, split.Artist, m.Match is not null)
+                {
+                    Order = i,
+                    TrackId = m.Match?.Id,
+                    Candidates = m.Candidates.Select(c => new Choice(c.Track)).ToList(),
+                    Search = search,
+                    Changed = RefreshCounts,
+                };
+            }).ToList();
+        }
+        else
+        {
+            // Label-only preview: the matched ids line up with the matched labels.
+            rows = preview.MissingLabels.Select((m, i) => Wire(ImportRow.From(m, matched: false), i, null))
+                .Concat(preview.MatchedLabels.Select((m, i) => Wire(ImportRow.From(m, matched: true),
+                    preview.MissingLabels.Count + i, i < preview.MatchedTrackIds.Count ? preview.MatchedTrackIds[i] : null)))
+                .ToList();
+        }
+        return rows.Where(r => r.IsMissing).Concat(rows.Where(r => r.IsMatched)).ToList();
+
+        ImportRow Wire(ImportRow r, int order, Guid? id) => new(r.Title, r.Artist, r.IsMatched)
+        {
+            Order = order, TrackId = id, Search = search, Changed = RefreshCounts,
+        };
+    }
+
+    internal const int SearchResultCount = 6;
+
+    /// <summary>The playlist the dialog would create now: the file's order, then songs added by hand.</summary>
+    internal IReadOnlyList<Guid> ChosenTrackIds()
+        => Rows.OrderBy(r => r.Order).Select(r => r.PlaylistTrackId).OfType<Guid>()
+            .Concat(AddedSongs.Select(a => a.Track.Id))
+            .ToList();
+
+    private void RefreshCounts()
+    {
+        if (_preview is null) return;
+        MatchedCount = ChosenTrackIds().Count;
+        MissingCount = Rows.Count(r => r.IsMissing);
+        HasMissing = MissingCount > 0;
+        CanCreate = MatchedCount > 0 && !IsCreated;
+        if (HasPreview && !IsCreated)
+            StatusMessage = L("Import.StatusResult", Rows.Count(r => r.IsMatched && r.IsIncluded), _preview.TotalEntries)
+                            + (AddedSongs.Count > 0 ? " · " + L("Import.StatusAdded", AddedSongs.Count) : string.Empty);
+    }
+
+    // ── Add songs by hand (Discord, Cosmo 11-02: "let us add and remove songs") ──
+
+    /// <summary>Library songs added to the import from the "Add a song" search.</summary>
+    public ObservableCollection<Choice> AddedSongs { get; } = new();
+    [ObservableProperty] private string _addSearchText = string.Empty;
+    [ObservableProperty] private IReadOnlyList<Choice> _addSearchResults = Array.Empty<Choice>();
+
+    partial void OnAddSearchTextChanged(string value)
+        => AddSearchResults = string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<Choice>()
+            : _service.SearchLibrary(value, SearchResultCount).Select(t => new Choice(t)).ToList();
+
+    [RelayCommand]
+    private void AddSong(Choice? choice)
+    {
+        if (choice is null || IsCreated) return;
+        AddedSongs.Add(choice);
+        AddSearchText = string.Empty;
+        RefreshCounts();
+    }
+
+    [RelayCommand]
+    private void RemoveAddedSong(Choice? choice)
+    {
+        if (choice is null || IsCreated || !AddedSongs.Remove(choice)) return;
+        RefreshCounts();
+    }
+
     [RelayCommand]
     private async Task Create()
     {
-        if (IsBusy || _preview is null || _preview.MatchedTrackIds.Count == 0) return;
+        if (IsBusy || _preview is null) return;
+        var ids = ChosenTrackIds();
+        if (ids.Count == 0) return;
         IsBusy = true;
         StatusMessage = L("Import.StatusCreating");
 
-        await _service.CreateAsync(PlaylistName, _preview.MatchedTrackIds);
+        await _service.CreateAsync(PlaylistName, ids);
 
         // Reflect the new playlist in the sidebar immediately.
         var main = App.Services?.GetService<MainWindowViewModel>();
@@ -246,7 +419,7 @@ public partial class PlaylistImportViewModel : ViewModelBase
         CanCreate = false;
         IsBusy = false;
         IsCreated = true;
-        var count = _preview.MatchedTrackIds.Count;
+        var count = ids.Count;
         StatusMessage = count == 1
             ? L("Import.StatusCreatedOne", PlaylistName)
             : L("Import.StatusCreated", PlaylistName, count);

@@ -50,6 +50,7 @@
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/TabIcons.axaml" />
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/LibraryIcons.axaml" />
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/PhoneIcons.axaml" />
+                <ResourceInclude Source="avares://Noctis.Mobile/Views/SettingsIcons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <!-- Liquid Glass bar surfaces beyond the palette's (MobileTheme.BuildPalette: the
@@ -109,8 +110,11 @@
         <Panel Name="AppLayer">
             <Panel Name="TabContent" Margin="{Binding TopSafePadding}">
                 <!-- The tab roots: the selected one shows while no page covers it; PageHost slides
-                     the layer under a pushed page and hides it once the page lands. -->
-                <Panel Name="RootLayer">
+                     the layer under a pushed page and hides it once the page lands. It wears the
+                     page brush itself, over the same slot as a pushed page's: with a Background
+                     mesh on, the roots and the page are one mesh, stretched alike, so nothing jumps
+                     as one slides over the other (the window's own copy spans the status bar too). -->
+                <Panel Name="RootLayer" Background="{DynamicResource PhoneBackgroundBrush}">
                     <views:HomePage DataContext="{Binding}" IsVisible="{Binding IsHomeSelected}" />
                     <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibrarySelected}" />
                     <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchSelected}" />
@@ -149,8 +153,11 @@
         </Panel>
 
         <!-- The full-screen layer the chrome stands in, so it steps back under a sheet about the
-             same centre as the app; ShellView raises it over the Queue sheet. -->
-        <Panel Name="ChromeLayer">
+             same centre as the app; ShellView raises it over the Queue sheet. Over a page in its
+             cover's colour (album, artist) the glass takes that colour and the theme its text
+             reads in (ShellView.ApplyChromeTint, TintedGlass), Apple's red glass on a red page. -->
+        <ThemeVariantScope Name="ChromeScope">
+        <Panel Name="ChromeLayer" TextElement.Foreground="{DynamicResource PrimaryTextBrush}">
             <Panel Name="BottomChrome" VerticalAlignment="Bottom" Margin="{Binding BottomSafePadding}">
                 <Panel Name="ChromeHost" Margin="16,0,16,8" VerticalAlignment="Bottom">
 
@@ -293,17 +300,14 @@
                                         </StackPanel>
                                     </Grid>
                                 </Button>
-                                <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini" Command="{Binding Player.TogglePlayPauseCommand}">
-                                    <Panel>
-                                        <PathIcon Name="MiniPlayGlyph" Data="{DynamicResource PhPlayFill}" IsVisible="{Binding !Player.IsPlaying}" />
-                                        <PathIcon Name="MiniPauseGlyph" Data="{DynamicResource PhPauseFill}" IsVisible="{Binding Player.IsPlaying}" />
-                                    </Panel>
+                                <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini tx" Command="{Binding Player.TogglePlayPauseCommand}">
+                                    <controls:TransportGlyph Name="MiniPlayGlyph" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
                                 </Button>
                                 <!-- Expanded only, like Apple's: the folded row has room for Play alone.
                                      Greyed when there is nothing to skip to. -->
-                                <Button Grid.Column="2" Name="MiniNextButton" Classes="icon mini" Classes.unavailable="{Binding !Player.HasNext}"
+                                <Button Grid.Column="2" Name="MiniNextButton" Classes="icon mini tx" Classes.unavailable="{Binding !Player.HasNext}"
                                         IsEnabled="{Binding Player.HasNext}" Command="{Binding Player.NextCommand}">
-                                    <PathIcon Name="MiniNextGlyph" Classes="forward" Data="{DynamicResource PhForwardFill}" />
+                                    <controls:TransportGlyph Name="MiniNextGlyph" Classes="forward" Kind="Next" />
                                 </Button>
                             </Grid>
                         </Panel>
@@ -311,6 +315,7 @@
                 </Panel>
             </Panel>
         </Panel>
+        </ThemeVariantScope>
 
         <!-- Over the app while a sheet is up: dims it and takes the taps meant for it. -->
         <Border Name="SheetDim" Background="Black" Opacity="0" IsVisible="False" />
@@ -344,5 +349,23 @@
              well); the bottom sheet is only its Add to Playlist list, on the same glass with the same pop. -->
         <views:PopMenu Name="Menu" DataContext="{Binding}" ZIndex="2" />
         <views:ContextSheet Name="Sheet" DataContext="{Binding}" ZIndex="2" />
+        <!-- An album's description, whole, on the same glass with the same pop. -->
+        <views:AlbumNoteSheet Name="Note" DataContext="{Binding}" ZIndex="2" />
+        <!-- Every "are you sure?" and every name to type (Delete Playlist, Rename, Sign Out, Remove
+             Folder…), as Apple's action sheet on the same glass with the same pop. -->
+        <views:PromptSheet Name="Prompt" DataContext="{Binding}" ZIndex="2" />
+
+        <!-- The player's short message (Player.Notice) over whatever is on screen, as Apple's
+             banner: e.g. the computer did not answer, so songs that are not downloaded were
+             passed over. ShellView takes it down after a few seconds; it never takes a tap.
+             The pop-ups' glass (MenuGlass) in a pill, in the app's theme (owner 10-20: every
+             pop-up the one liquid glass, never a flat dark box). -->
+        <Panel Name="NoticeLayer" ZIndex="3" Margin="{Binding TopSafePadding}" IsHitTestVisible="False">
+            <views:MenuGlass Name="NoticeBanner" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="20,8,20,0"
+                             MaxWidth="360" CornerRadius="22" IsVisible="{Binding Player.HasNotice}">
+                <TextBlock Name="NoticeText" Text="{Binding Player.Notice}" Foreground="{DynamicResource MenuGlassText}" FontSize="14"
+                           Margin="18,11" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" />
+            </views:MenuGlass>
+        </Panel>
     </Grid>
 </UserControl>

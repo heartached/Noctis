@@ -121,6 +121,19 @@ public static class PngExportHelper
                     catch { /* in use or not ours — leave it */ }
                 }
             }
+
+            // The still clip's frame and the clip's work file are files in the temp root, not
+            // directories (ShareClipRenderer.RenderAsync: noctis-clip-{guid}.png;
+            // LyricShareViewModel.ExportClipAsync: noctis-clip-{guid}.mp4).
+            foreach (var file in Directory.EnumerateFiles(root, "noctis-clip-*"))
+            {
+                try
+                {
+                    if (File.GetCreationTimeUtc(file) < cutoff)
+                        File.Delete(file);
+                }
+                catch { /* in use or not ours — leave it */ }
+            }
         }
         catch { /* sweeping is best effort */ }
     }

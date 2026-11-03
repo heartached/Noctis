@@ -86,6 +86,7 @@
                         FontSize="12.5"
                         VerticalAlignment="Center"
                         Command="{Binding IdentifyAllCommand}"
+                        AutomationProperties.Name="{loc:T MetadataFinder.IdentifyAll}"
                         IsEnabled="{Binding !IsBusy}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12"

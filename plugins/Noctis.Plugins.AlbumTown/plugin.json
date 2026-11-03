@@ -1,0 +1,26 @@
+{
+  "id": "dev.noctis.plugins.albumtown",
+  "name": "Album Town",
+  "version": "1.0.1",
+  "author": "Jafezy JD",
+  "description": "Your albums come to life in a little town.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.AlbumTown.dll",
+  "apiVersion": "1.4",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["library.read", "playback.control"],
+  "settings": [
+    { "key": "crowdSize", "label": "Albums in the plaza", "type": "number", "default": 40, "min": 24, "max": 60,
+      "description": "How many albums walk around at once." },
+    { "key": "showNames", "label": "Show album names", "type": "bool", "default": false,
+      "description": "Off: names show when you point at one." },
+    { "key": "chatty", "label": "Let them talk", "type": "bool", "default": true,
+      "description": "Albums chat about what they share." },
+    { "key": "motion", "label": "Motion", "type": "choice", "choices": ["Smooth (60 fps)", "Balanced (30 fps)", "Battery saver (15 fps)"],
+      "default": "Balanced (30 fps)",
+      "description": "Fewer frames are easier on older computers." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
+  "icon": "icon.png"
+}

@@ -80,6 +80,35 @@ public class MobileQueueSheetTests
     }
 
     [AvaloniaFact]
+    public void ExplicitTracks_ShowTheEBadge_InTheHeaderAndOnTheirRows()
+    {
+        var songs = Songs(3);
+        songs[0].IsExplicit = true;
+        songs[2].IsExplicit = true;
+        using var rig = MobileFixtures.MakeRig(songs);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(songs, 0, "Alpha");
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        rig.Shell.ToggleQueueCommand.Execute(null);
+        window.UpdateLayout();
+        var page = MobileFixtures.Find<QueuePage>(view);
+        page.CompleteSlide();
+        window.UpdateLayout();
+
+        var now = MobileFixtures.Named<Border>(page, "NowExplicit");
+        Assert.True(now.IsEffectivelyVisible);
+        Assert.True(now.Classes.Contains("explicit-badge"));
+        var rows = page.GetVisualDescendants().OfType<Border>().Where(b => b.Name == "RowExplicit").ToList();
+        Assert.Equal(2, rows.Count);                        // S1 and S2 up next
+        Assert.Equal(1, rows.Count(b => b.IsVisible));      // only S2 is explicit
+
+        rig.Shell.Player.NextCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.False(now.IsVisible);                        // S1 is clean
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void Header_ShowsTheTrack_WhereItPlaysFrom_AndItsPlace()
     {
         var (rig, window, _, page, _) = OpenQueue();
@@ -100,35 +129,47 @@ public class MobileQueueSheetTests
         window.Close();
     }
 
-    /// <summary>The owner's mockup: the cover on the left and, stacked beside it, the kicker
-    /// with its bars, title, artist, the source, "Track N of M" and UP NEXT (Clear on its
-    /// line, at the right edge), with a rule under the whole header.</summary>
+    /// <summary>Apple's queue (owner 10-19: "organized, cleaner, simple"): the current track as a
+    /// row of its own (a small cover, the title over the artist, the playing bars at its end),
+    /// then Up Next as a title with Clear at its end, and under it, on one line, where the queue
+    /// plays from and the track's place in it.</summary>
     [AvaloniaFact]
-    public void Header_StacksTheTrackBesideTheCover()
+    public void Header_PutsTheTrackBesideASmallCover_AndUpNextUnderIt()
     {
         var (rig, window, _, page, _) = OpenQueue();
         using var _rig = rig;
         Rect At(Control c) => new(c.TranslatePoint(default, page)!.Value, c.Bounds.Size);
+        TextBlock T(string name) => MobileFixtures.Named<TextBlock>(page, name);
         var cover = At(MobileFixtures.Named<Border>(page, "NowCover"));
-        var stack = new[] { "NowKicker", "NowTitle", "NowArtist", "SourceLine", "PositionLine", "UpNextLabel" }
-            .Select(n => At(MobileFixtures.Named<TextBlock>(page, n))).ToArray();
+        var title = At(T("NowTitle"));
+        var artist = At(T("NowArtist"));
 
-        Assert.InRange(cover.Width, 110, 130);
+        Assert.InRange(cover.Width, 56, 72);
         Assert.Equal(cover.Width, cover.Height);
-        for (var i = 0; i < stack.Length; i++)
-        {
-            Assert.True(stack[i].Left >= cover.Right + 8, $"line {i} at x {stack[i].Left}, over the cover ending at {cover.Right}");
-            if (i > 0) Assert.True(stack[i].Top >= stack[i - 1].Bottom - 0.5, $"line {i} not below line {i - 1}");
-        }
-        Assert.True(stack[0].Top >= cover.Top - 6 && stack[^1].Bottom <= cover.Bottom + 6,
-            $"the stack runs {stack[0].Top}..{stack[^1].Bottom}, the cover {cover.Top}..{cover.Bottom}");
-
+        Assert.True(title.Left >= cover.Right + 8 && artist.Left == title.Left, "the title and artist sit beside the cover");
+        Assert.True(artist.Top >= title.Bottom - 0.5, "the artist under the title");
+        Assert.True(title.Top >= cover.Top && artist.Bottom <= cover.Bottom, "the two lines stay within the cover's height");
+        Assert.Equal(FontWeight.SemiBold, T("NowTitle").FontWeight);
         var bars = At(MobileFixtures.Named<Panel>(page, "EqBars"));
-        Assert.True(bars.Left >= stack[0].Right, "the bars follow CURRENTLY PLAYING");
+        Assert.True(bars.Left >= title.Right && bars.Right >= page.Bounds.Width - 24, "the bars sit at the row's end");
+        Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "CURRENTLY PLAYING");
+
+        var upNext = At(T("UpNextLabel"));
+        Assert.Equal("Up Next", T("UpNextLabel").Text);
+        Assert.True(upNext.Top >= cover.Bottom + 12, "Up Next starts under the current track");
+        Assert.Equal(cover.Left, upNext.Left, 0.5);
         var clear = At(MobileFixtures.Named<Button>(page, "ClearButton"));
-        Assert.InRange(clear.Center.Y, stack[^1].Top, stack[^1].Bottom);
+        Assert.InRange(clear.Center.Y, upNext.Top, upNext.Bottom);
         Assert.True(clear.Right >= page.Bounds.Width - 24, $"Clear ends at {clear.Right}, not at the right edge");
-        Assert.True(At(MobileFixtures.Named<Border>(page, "HeaderRule")).Top >= cover.Bottom);
+
+        // "Playing from Alpha · Track 1 of 5" on the one line under the title.
+        var source = At(T("SourceLine"));
+        var position = At(T("PositionLine"));
+        Assert.True(T("SourceDot").IsEffectivelyVisible);
+        Assert.Equal(source.Top, position.Top, 0.5);
+        Assert.True(position.Left >= source.Right, "the position follows the source");
+        Assert.True(source.Top >= upNext.Bottom - 0.5 && source.Left == upNext.Left);
+        Assert.True(At(MobileFixtures.Named<ScrollViewer>(page, "QueueScroll")).Top >= source.Bottom, "the list starts under the header");
         window.Close();
     }
 
@@ -139,6 +180,7 @@ public class MobileQueueSheetTests
         using var _rig = rig;
 
         Assert.False(MobileFixtures.Named<TextBlock>(page, "SourceLine").IsEffectivelyVisible);
+        Assert.False(MobileFixtures.Named<TextBlock>(page, "SourceDot").IsEffectivelyVisible);
         Assert.True(MobileFixtures.Named<TextBlock>(page, "PositionLine").IsEffectivelyVisible);
         window.Close();
     }
@@ -189,27 +231,42 @@ public class MobileQueueSheetTests
         window.Close();
     }
 
-    /// <summary>The mockup's pill: the queue and "…" ends are soft accent-washed circles (not
-    /// solid accent), repeat and shuffle small, the transport large.</summary>
+    /// <summary>The pill = the desktop player bar (owner 10-19: "all of the icons the same
+    /// sizes, just like pause, play, forward, previous"): every glyph in the skip buttons' box,
+    /// Play/Pause the desktop's 20 to their 18, no filled circles; Queue (its sheet is open) and a
+    /// mode that is on turn accent over the desktop's faint accent square.</summary>
     [AvaloniaFact]
-    public void ThePill_EndsAreSoftAccentCircles_AndTheTransportIsLarge()
+    public void ThePill_DrawsEveryGlyphInTheSkipBox_PlayALittleLarger_AndOnOverTheAccentSquare()
     {
         var (rig, window, _, page, _) = OpenQueue();
         using var _rig = rig;
         Button B(string name) => MobileFixtures.Named<Button>(page, name);
-        double Glyph(string name) => B(name).GetVisualDescendants().OfType<PathIcon>().First(p => p.IsVisible).Bounds.Width;
+        // The transport's glyph is a TransportGlyph (Apple's press motion) in the same box.
+        Control Glyph(string name) => B(name).GetVisualDescendants().OfType<Control>().First(p => p is PathIcon or TransportGlyph && p.IsVisible);
+        Border? Wash(string name) => B(name).GetVisualDescendants().OfType<Border>().SingleOrDefault(b => b.Classes.Contains("wash"));
+        var all = new[] { "QueueListButton", "QueueRepeatButton", "QueuePreviousButton", "QueuePlayPauseButton", "QueueNextButton", "QueueShuffleButton", "QueueMoreButton" };
 
-        foreach (var end in new[] { "QueueListButton", "QueueMoreButton" })
-        {
-            Assert.False(B(end).Classes.Contains("accent"), $"{end} is a solid accent circle");
-            var wash = B(end).GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("wash"));
-            Assert.InRange(wash.Opacity, 0.12, 0.25);
-            Assert.Equal(B(end).Bounds.Size, wash.Bounds.Size);
-        }
-        foreach (var big in new[] { "QueuePreviousButton", "QueuePlayPauseButton", "QueueNextButton" })
-            Assert.True(Glyph(big) >= 28, $"{big} glyph is {Glyph(big)}");
-        foreach (var small in new[] { "QueueRepeatButton", "QueueShuffleButton" })
-            Assert.True(Glyph(small) <= 20, $"{small} glyph is {Glyph(small)}");
+        var skip = Glyph("QueuePreviousButton").Bounds.Width;
+        Assert.InRange(skip, 22, 26);   // owner 10-20: "a little smaller" than the first 30
+        foreach (var name in all.Where(n => n != "QueuePlayPauseButton"))
+            Assert.Equal(skip, Glyph(name).Bounds.Width);
+        Assert.Equal(skip * 20 / 18, Glyph("QueuePlayPauseButton").Bounds.Width, 1.0);   // layout rounding
+        // One row, one button size, no filled circles.
+        Assert.Single(all.Select(n => B(n).Bounds.Size).Distinct());
+        Assert.Single(all.Select(n => Math.Round(B(n).TranslatePoint(new Point(0, B(n).Bounds.Height / 2), page)!.Value.Y, 1)).Distinct());
+        Assert.All(all, n => Assert.False(B(n).Classes.Contains("round"), $"{n} is a round button"));
+
+        // The sheet is open: Queue is lit, over the square; the modes are off and unlit.
+        Assert.True(B("QueueListButton").Classes.Contains("on"));
+        Assert.True(Wash("QueueListButton")!.IsEffectivelyVisible);
+        Assert.InRange(Wash("QueueListButton")!.Opacity, 0.12, 0.25);
+        Assert.True(Wash("QueueListButton")!.Bounds.Width > skip && Wash("QueueListButton")!.CornerRadius.TopLeft < Wash("QueueListButton")!.Bounds.Width / 2,
+            "a rounded square a little larger than the glyph");
+        foreach (var mode in new[] { "QueueRepeatButton", "QueueShuffleButton" })
+            Assert.False(Wash(mode)!.IsEffectivelyVisible, mode);
+        rig.Shell.Player.ToggleShuffleCommand.Execute(null);
+        Assert.True(Wash("QueueShuffleButton")!.IsEffectivelyVisible);
+        Assert.Null(Wash("QueueMoreButton"));
         window.Close();
     }
 
@@ -329,7 +386,8 @@ public class MobileQueueSheetTests
         var (rig, window, view, page, _) = OpenQueue();
         using var _rig = rig;
         var chrome = view.FindControl<Panel>("BottomChrome")!;
-        var layer = view.FindControl<Panel>("ChromeLayer")!;   // the bar's full-screen layer, raised over the Queue
+        // The bar's full-screen layer, raised over the Queue: its theme scope is the shell grid's child.
+        var layer = view.FindControl<ThemeVariantScope>("ChromeScope")!;
         var sheet = MobileFixtures.Named<Border>(page, "Sheet");
         Assert.True(layer.ZIndex > page.ZIndex);
 

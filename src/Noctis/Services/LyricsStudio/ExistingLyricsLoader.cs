@@ -23,7 +23,7 @@ public static partial class ExistingLyricsLoader
     private static readonly string[] LrcExtensions = { ".lrc", ".LRC", ".Lrc" };
     private static readonly string[] TtmlExtensions = { ".ttml", ".TTML", ".Ttml" };
 
-    [GeneratedRegex(@"^\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]")]
+    [GeneratedRegex(@"^\[(\d{1,3}):(\d{2,3})(?:[.:](\d{1,3}))?\]")]
     private static partial Regex LeadingTimestamp();
 
     [GeneratedRegex(@"^\[[A-Za-z][A-Za-z0-9_]*:[^\]]*\]$")]
@@ -86,7 +86,7 @@ public static partial class ExistingLyricsLoader
         return Comparable(EmbeddedLyrics.ReadFile(path).TimedText) == Comparable(timed);
 
         static string Comparable(string text) =>
-            text.TrimStart('﻿').Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
+            text.TrimStart('\uFEFF').Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
     }
 
     /// <summary>
@@ -215,11 +215,19 @@ public static partial class ExistingLyricsLoader
     /// among lines sharing a start. Plain lines sharing a line's start in its voice (romaji,
     /// translation — GitHub #116) become its <see cref="AlignedLine.Companions"/>, by the
     /// lyrics page's rule (<see cref="LrcParser"/>): word-timed or other-voice lines stay sung.
+    /// A global [offset:] moves every line and word as on the lyrics page; the times come back
+    /// with it applied (the Studio writes no offset tag).
     /// </summary>
     public static IReadOnlyList<AlignedLine> ParseTimed(string text)
     {
         var raw = new List<(TimeSpan Start, string Text, List<WordTiming>? Words, LyricVoice Voice, List<AlignedWord>? Background)>();
-        foreach (var rawLine in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+        // A BOM kept in the text (lyrics copied into a tag from a file) is not part of the first
+        // line: Trim leaves it, its stamp then did not start the line, and the line was dropped.
+        var rows = text.TrimStart('﻿').Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        // The page shows the song by the offset, so the Studio times and saves it there too: read
+        // bare, every line was 0.5 s off the page for "[offset:+500]", and a save moved them.
+        var offset = TimeSpan.FromMilliseconds(LrcParser.ParseLrcOffsetMilliseconds(rows));
+        foreach (var rawLine in rows)
         {
             var line = rawLine.Trim();
             // A "[bg: …]" background vocal belongs to the timed line above it in the file, as on
@@ -227,7 +235,7 @@ public static partial class ExistingLyricsLoader
             // so a Studio save wrote the song without its background vocals.
             if (line.StartsWith(BgLinePrefix, StringComparison.Ordinal))
             {
-                if (raw.Count > 0 && ParseBackground(line, raw[^1].Start) is { } bg)
+                if (raw.Count > 0 && ParseBackground(line, raw[^1].Start, offset) is { } bg)
                 {
                     var last = raw[^1];
                     raw[^1] = last with { Background = last.Background is null ? bg : [.. last.Background, .. bg] };
@@ -255,8 +263,8 @@ public static partial class ExistingLyricsLoader
             var (plain, words) = EnhancedLrcParser.ParseLine(body);
             if (string.IsNullOrWhiteSpace(plain)) continue;
             // Word times are absolute, so they only make sense on a single-stamp line.
-            var lineWords = stamps.Count == 1 ? words : null;
-            foreach (var s in stamps) raw.Add((s, plain.Trim(), lineWords, voice, null));
+            var lineWords = stamps.Count == 1 ? Shifted(words, offset) : null;
+            foreach (var s in stamps) raw.Add((Shift(s, offset), plain.Trim(), lineWords, voice, null));
         }
         // Stable: List.Sort reordered lines sharing a start once a file passed 16 lines.
         raw = raw.OrderBy(r => r.Start).ToList();
@@ -378,12 +386,14 @@ public static partial class ExistingLyricsLoader
     /// A "[bg: …]" line as timed words. Word tags give the times (a word with no end runs to the
     /// next one, the last for <see cref="DefaultWordSpan"/>); a body with no tags is one word at
     /// <paramref name="lineStart"/>, where the lyrics page puts it. Null when it holds no text.
+    /// Word tags move by the file's <paramref name="offset"/>, as the line's own do.
     /// </summary>
-    private static List<AlignedWord>? ParseBackground(string line, TimeSpan lineStart)
+    private static List<AlignedWord>? ParseBackground(string line, TimeSpan lineStart, TimeSpan offset)
     {
         var body = line[BgLinePrefix.Length..];
         if (body.EndsWith(']')) body = body[..^1];
-        var (plain, words) = EnhancedLrcParser.ParseLine(body);
+        var (plain, parsed) = EnhancedLrcParser.ParseLine(body);
+        var words = Shifted(parsed, offset);
         if (string.IsNullOrWhiteSpace(plain)) return null;
         if (words is not { Count: > 0 })
             return [new AlignedWord(plain.Trim(), lineStart, lineStart + DefaultWordSpan)];
@@ -406,6 +416,13 @@ public static partial class ExistingLyricsLoader
     /// </summary>
     private static bool FollowedWithoutSpace(List<WordTiming> words, int index) =>
         index + 1 < words.Count && words[index].Text is { Length: > 0 } text && !char.IsWhiteSpace(text[^1]);
+
+    /// <summary>A time moved by the file's offset, never below 0:00 (as <see cref="LrcParser"/> does).</summary>
+    private static TimeSpan Shift(TimeSpan t, TimeSpan offset) => t + offset < TimeSpan.Zero ? TimeSpan.Zero : t + offset;
+
+    private static List<WordTiming>? Shifted(List<WordTiming>? words, TimeSpan offset) =>
+        words is null || offset == TimeSpan.Zero ? words
+            : words.Select(w => new WordTiming { Text = w.Text, Start = Shift(w.Start, offset), End = w.End is { } e ? Shift(e, offset) : null }).ToList();
 
     private static bool TryParseFile(string path, out IReadOnlyList<AlignedLine> lines)
     {

@@ -128,24 +128,66 @@ public sealed class PlayHistoryService : IPlayHistoryService
 
     private int TailCount => (int)Math.Min(_appended - _baseAppended, _count);
 
-    public void RecordPlay(Track track)
+    public void RecordPlay(Track track) => RecordPlay(track, DateTime.UtcNow);
+
+    public void RecordPlay(Track track, DateTime playedUtc)
     {
+        var now = DateTime.UtcNow;
+        playedUtc = playedUtc.Kind == DateTimeKind.Local ? playedUtc.ToUniversalTime() : DateTime.SpecifyKind(playedUtc, DateTimeKind.Utc);
+        if (playedUtc > now) playedUtc = now;
+        var e = new PlayHistoryEvent
+        {
+            TrackId = track.Id,
+            Title = track.Title,
+            Artist = track.Artist,
+            PlayedAtUtc = playedUtc,
+            Skipped = false
+        };
         lock (_lock)
         {
             EnsureLoaded();
-            Append(new PlayHistoryEvent
+            if (_count > 0 && playedUtc < _buffer![_start + _count - 1].PlayedAtUtc)
             {
-                TrackId = track.Id,
-                Title = track.Title,
-                Artist = track.Artist,
-                PlayedAtUtc = DateTime.UtcNow,
-                Skipped = false
-            });
+                InsertInOrder(e);
+                return;
+            }
+            Append(e);
             _appended++;
 
             PublishSnapshot();
             ScheduleSave();
         }
+    }
+
+    /// <summary>
+    /// A play older than the newest one logged (a phone's, reported late): put in its place, so
+    /// the log stays oldest first (PruneOlderThan cuts a prefix, the week and the rails read it in
+    /// order). Into a new buffer, as ClearAsync does: slots inside a published snapshot are never
+    /// written again. It lands inside what play_history.json holds, so the next save rewrites it.
+    /// Rare (a live play appends); one copy of the log each. Under _lock.
+    /// </summary>
+    private void InsertInOrder(PlayHistoryEvent e)
+    {
+        // After every event at the same time or earlier: the first one later than it.
+        int lo = 0, hi = _count;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) / 2;
+            if (_buffer![_start + mid].PlayedAtUtc <= e.PlayedAtUtc) lo = mid + 1;
+            else hi = mid;
+        }
+        // At the cap the oldest goes, as Append trims: a play older than all of them goes itself.
+        var drop = _count >= _maxEvents ? 1 : 0;
+        if (drop == 1 && lo == 0) return;
+        var next = new PlayHistoryEvent[Capacity(_count + 1 - drop)];
+        Array.Copy(_buffer!, _start + drop, next, 0, lo - drop);
+        next[lo - drop] = e;
+        Array.Copy(_buffer!, _start + lo, next, lo - drop + 1, _count - lo);
+        _buffer = next;
+        _start = 0;
+        _count += 1 - drop;
+        _appended++;
+        RewriteAfterRemoval();
     }
 
     /// <summary>Adds one event, trimming the oldest at the cap. Under _lock.</summary>
@@ -223,6 +265,47 @@ public sealed class PlayHistoryService : IPlayHistoryService
             if (!changed) return;
             ScheduleSave();
         }
+    }
+
+    public int PruneOlderThan(DateTime cutoffUtc)
+    {
+        lock (_lock)
+        {
+            EnsureLoaded();
+            // Events are logged in time order, so the old ones are a prefix.
+            var drop = 0;
+            while (drop < _count && _buffer![_start + drop].PlayedAtUtc < cutoffUtc) drop++;
+            if (drop == 0) return 0;
+            // Trims by moving the window, as Append does at the cap; older snapshots are untouched.
+            _start += drop;
+            _count -= drop;
+            RewriteAfterRemoval();
+            return drop;
+        }
+    }
+
+    public Task ClearAsync()
+    {
+        lock (_lock)
+        {
+            EnsureLoaded();
+            // A fresh buffer: a snapshot a reader still holds keeps the old array.
+            _buffer = new PlayHistoryEvent[Capacity(1)];
+            _start = 0;
+            _count = 0;
+            RewriteAfterRemoval();
+        }
+        return FlushAsync();
+    }
+
+    /// <summary>After events left the front: publish, and have the next save rewrite
+    /// play_history.json (and drop the tail) instead of appending to the old base. Under _lock.</summary>
+    private void RewriteAfterRemoval()
+    {
+        _baseAppended = _appended;
+        _baseDirtyVersion++;
+        PublishSnapshot();
+        ScheduleSave();
     }
 
     public Task FlushAsync()

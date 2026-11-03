@@ -64,11 +64,47 @@ public partial class LyricLine : ObservableObject
     [ObservableProperty]
     private double _blurRadius;
 
-    /// <summary>Whether this line is the intro placeholder ("...").</summary>
+    /// <summary>Whether this line is a "..." dots placeholder: the intro before the first
+    /// lyric, or an instrumental interlude (<see cref="IsInterlude"/>).</summary>
     public bool IsIntroPlaceholder { get; set; }
+
+    /// <summary>A placeholder inserted into a long instrumental gap mid-song
+    /// (LrcParser.InsertInterludePlaceholders); <see cref="IsIntroPlaceholder"/> is set too,
+    /// so every consumer that skips the intro dots skips these.</summary>
+    public bool IsInterlude { get; set; }
+
+    /// <summary>
+    /// How far through its gap an active dots placeholder is, 0..1 (its start to the next
+    /// line's start); NaN while it is not active. The dots fill one after another with it
+    /// (LyricsTimeline drives it every frame).
+    /// </summary>
+    [ObservableProperty]
+    private double _interludeProgress = double.NaN;
 
     /// <summary>Duet voice for this line (Apple Music duet layout). Views bind through the LyricVoice* converters.</summary>
     public LyricVoice Voice { get; set; }
+
+    /// <summary>
+    /// The line reads right to left (plugin API 1.5: a lyrics effect decides it): its word rows
+    /// run from the right, it sits against the right edge and its words fill from the right.
+    /// Set with <see cref="SetRightToLeft"/>, which passes it on to the line's words.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isRightToLeft;
+
+    /// <summary>Sets <see cref="IsRightToLeft"/> on the line and on every word of its layers.</summary>
+    public void SetRightToLeft(bool value)
+    {
+        IsRightToLeft = value;
+        Mark(Words);
+        Mark(BackgroundWords);
+        Mark(TransliterationWords);
+        void Mark(IReadOnlyList<WordTiming>? words)
+        {
+            if (words is null) return;
+            foreach (var w in words) w.IsRightToLeft = value;
+        }
+    }
 
     /// <summary>Whether these lyrics are synced (have timestamps).</summary>
     public bool IsSynced => Timestamp.HasValue;
@@ -257,6 +293,25 @@ public partial class LyricLine : ObservableObject
     /// when a line activates (the old TextBlock↔WrapPanel swap caused visible reflow).
     /// </summary>
     public bool ShowWords => HasWords && !IsIntroPlaceholder;
+
+    /// <summary>
+    /// The word layer is built for this line (the default). Very long word-timed lyrics keep
+    /// it only near the sung line (LyricsViewModel); elsewhere the view draws the line at rest
+    /// with one control laid out the same way (KaraokeRestingWords), because a whole
+    /// audiobook of word cells froze the page and starved the audio (10-28).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LiveWords), nameof(ShowLiveWords), nameof(ShowRestingWords))]
+    private bool _isWordLayerLive = true;
+
+    /// <summary><see cref="Words"/> while the word layer is built, else null (no cells).</summary>
+    public IReadOnlyList<WordTiming>? LiveWords => IsWordLayerLive ? Words : null;
+
+    /// <summary>The view renders the per-word karaoke layer (<see cref="ShowWords"/>, built).</summary>
+    public bool ShowLiveWords => ShowWords && IsWordLayerLive;
+
+    /// <summary>The view renders the line's words at rest in one control instead.</summary>
+    public bool ShowRestingWords => ShowWords && !IsWordLayerLive;
 
     /// <summary>True when the view should render the normal line-level text (not intro, no word timings, not a bg-only line).</summary>
     public bool ShowLineText => !IsIntroPlaceholder && !HasWords && !IsBackgroundOnly;

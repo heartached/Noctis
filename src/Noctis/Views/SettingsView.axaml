@@ -27,107 +27,366 @@
                  generated as a 384-point outline so it stays smooth at any size. -->
             <StreamGeometry x:Key="VerifiedSealGeometry">M12.000,1.000 L12.180,1.002 L12.360,1.008 L12.539,1.020 L12.718,1.040 L12.896,1.071 L13.072,1.116 L13.245,1.174 L13.415,1.249 L13.581,1.340 L13.742,1.448 L13.898,1.572 L14.047,1.709 L14.190,1.859 L14.327,2.019 L14.459,2.184 L14.585,2.352 L14.708,2.519 L14.827,2.680 L14.946,2.832 L15.064,2.972 L15.185,3.097 L15.310,3.205 L15.441,3.293 L15.578,3.362 L15.724,3.410 L15.878,3.440 L16.043,3.452 L16.217,3.450 L16.400,3.435 L16.591,3.411 L16.790,3.381 L16.994,3.350 L17.202,3.321 L17.412,3.297 L17.622,3.281 L17.829,3.276 L18.032,3.284 L18.229,3.307 L18.419,3.344 L18.601,3.397 L18.774,3.465 L18.938,3.546 L19.094,3.639 L19.242,3.742 L19.383,3.854 L19.518,3.973 L19.650,4.096 L19.778,4.222 L19.904,4.350 L20.027,4.482 L20.146,4.617 L20.258,4.758 L20.361,4.906 L20.454,5.062 L20.535,5.226 L20.603,5.399 L20.656,5.581 L20.693,5.771 L20.716,5.968 L20.724,6.171 L20.719,6.378 L20.703,6.588 L20.679,6.798 L20.650,7.006 L20.619,7.210 L20.589,7.409 L20.565,7.600 L20.550,7.783 L20.548,7.957 L20.560,8.122 L20.590,8.276 L20.638,8.422 L20.707,8.559 L20.795,8.690 L20.903,8.815 L21.028,8.936 L21.168,9.054 L21.320,9.173 L21.481,9.292 L21.648,9.415 L21.816,9.541 L21.981,9.673 L22.141,9.810 L22.291,9.953 L22.428,10.102 L22.552,10.258 L22.660,10.419 L22.751,10.585 L22.826,10.755 L22.884,10.928 L22.929,11.104 L22.960,11.282 L22.980,11.461 L22.992,11.640 L22.998,11.820 L23.000,12.000 L22.998,12.180 L22.992,12.360 L22.980,12.539 L22.960,12.718 L22.929,12.896 L22.884,13.072 L22.826,13.245 L22.751,13.415 L22.660,13.581 L22.552,13.742 L22.428,13.898 L22.291,14.047 L22.141,14.190 L21.981,14.327 L21.816,14.459 L21.648,14.585 L21.481,14.708 L21.320,14.827 L21.168,14.946 L21.028,15.064 L20.903,15.185 L20.795,15.310 L20.707,15.441 L20.638,15.578 L20.590,15.724 L20.560,15.878 L20.548,16.043 L20.550,16.217 L20.565,16.400 L20.589,16.591 L20.619,16.790 L20.650,16.994 L20.679,17.202 L20.703,17.412 L20.719,17.622 L20.724,17.829 L20.716,18.032 L20.693,18.229 L20.656,18.419 L20.603,18.601 L20.535,18.774 L20.454,18.938 L20.361,19.094 L20.258,19.242 L20.146,19.383 L20.027,19.518 L19.904,19.650 L19.778,19.778 L19.650,19.904 L19.518,20.027 L19.383,20.146 L19.242,20.258 L19.094,20.361 L18.938,20.454 L18.774,20.535 L18.601,20.603 L18.419,20.656 L18.229,20.693 L18.032,20.716 L17.829,20.724 L17.622,20.719 L17.412,20.703 L17.202,20.679 L16.994,20.650 L16.790,20.619 L16.591,20.589 L16.400,20.565 L16.217,20.550 L16.043,20.548 L15.878,20.560 L15.724,20.590 L15.578,20.638 L15.441,20.707 L15.310,20.795 L15.185,20.903 L15.064,21.028 L14.946,21.168 L14.827,21.320 L14.708,21.481 L14.585,21.648 L14.459,21.816 L14.327,21.981 L14.190,22.141 L14.047,22.291 L13.898,22.428 L13.742,22.552 L13.581,22.660 L13.415,22.751 L13.245,22.826 L13.072,22.884 L12.896,22.929 L12.718,22.960 L12.539,22.980 L12.360,22.992 L12.180,22.998 L12.000,23.000 L11.820,22.998 L11.640,22.992 L11.461,22.980 L11.282,22.960 L11.104,22.929 L10.928,22.884 L10.755,22.826 L10.585,22.751 L10.419,22.660 L10.258,22.552 L10.102,22.428 L9.953,22.291 L9.810,22.141 L9.673,21.981 L9.541,21.816 L9.415,21.648 L9.292,21.481 L9.173,21.320 L9.054,21.168 L8.936,21.028 L8.815,20.903 L8.690,20.795 L8.559,20.707 L8.422,20.638 L8.276,20.590 L8.122,20.560 L7.957,20.548 L7.783,20.550 L7.600,20.565 L7.409,20.589 L7.210,20.619 L7.006,20.650 L6.798,20.679 L6.588,20.703 L6.378,20.719 L6.171,20.724 L5.968,20.716 L5.771,20.693 L5.581,20.656 L5.399,20.603 L5.226,20.535 L5.062,20.454 L4.906,20.361 L4.758,20.258 L4.617,20.146 L4.482,20.027 L4.350,19.904 L4.222,19.778 L4.096,19.650 L3.973,19.518 L3.854,19.383 L3.742,19.242 L3.639,19.094 L3.546,18.938 L3.465,18.774 L3.397,18.601 L3.344,18.419 L3.307,18.229 L3.284,18.032 L3.276,17.829 L3.281,17.622 L3.297,17.412 L3.321,17.202 L3.350,16.994 L3.381,16.790 L3.411,16.591 L3.435,16.400 L3.450,16.217 L3.452,16.043 L3.440,15.878 L3.410,15.724 L3.362,15.578 L3.293,15.441 L3.205,15.310 L3.097,15.185 L2.972,15.064 L2.832,14.946 L2.680,14.827 L2.519,14.708 L2.352,14.585 L2.184,14.459 L2.019,14.327 L1.859,14.190 L1.709,14.047 L1.572,13.898 L1.448,13.742 L1.340,13.581 L1.249,13.415 L1.174,13.245 L1.116,13.072 L1.071,12.896 L1.040,12.718 L1.020,12.539 L1.008,12.360 L1.002,12.180 L1.000,12.000 L1.002,11.820 L1.008,11.640 L1.020,11.461 L1.040,11.282 L1.071,11.104 L1.116,10.928 L1.174,10.755 L1.249,10.585 L1.340,10.419 L1.448,10.258 L1.572,10.102 L1.709,9.953 L1.859,9.810 L2.019,9.673 L2.184,9.541 L2.352,9.415 L2.519,9.292 L2.680,9.173 L2.832,9.054 L2.972,8.936 L3.097,8.815 L3.205,8.690 L3.293,8.559 L3.362,8.422 L3.410,8.276 L3.440,8.122 L3.452,7.957 L3.450,7.783 L3.435,7.600 L3.411,7.409 L3.381,7.210 L3.350,7.006 L3.321,6.798 L3.297,6.588 L3.281,6.378 L3.276,6.171 L3.284,5.968 L3.307,5.771 L3.344,5.581 L3.397,5.399 L3.465,5.226 L3.546,5.062 L3.639,4.906 L3.742,4.758 L3.854,4.617 L3.973,4.482 L4.096,4.350 L4.222,4.222 L4.350,4.096 L4.482,3.973 L4.617,3.854 L4.758,3.742 L4.906,3.639 L5.062,3.546 L5.226,3.465 L5.399,3.397 L5.581,3.344 L5.771,3.307 L5.968,3.284 L6.171,3.276 L6.378,3.281 L6.588,3.297 L6.798,3.321 L7.006,3.350 L7.210,3.381 L7.409,3.411 L7.600,3.435 L7.783,3.450 L7.957,3.452 L8.122,3.440 L8.276,3.410 L8.422,3.362 L8.559,3.293 L8.690,3.205 L8.815,3.097 L8.936,2.972 L9.054,2.832 L9.173,2.680 L9.292,2.519 L9.415,2.352 L9.541,2.184 L9.673,2.019 L9.810,1.859 L9.953,1.709 L10.102,1.572 L10.258,1.448 L10.419,1.340 L10.585,1.249 L10.755,1.174 L10.928,1.116 L11.104,1.071 L11.282,1.040 L11.461,1.020 L11.640,1.008 L11.820,1.002 Z</StreamGeometry>
             <StreamGeometry x:Key="VerifiedCheckGeometry">M7.55,12.35 L10.55,15.30 L16.45,9.15</StreamGeometry>
-            <!-- An installed plugin's body under its header row (Settings > Plugins): notes,
-                 permissions, declared settings, Open folder / Remove. Shared by the official
-                 rows (when installed) and the Custom Category rows. -->
-            <DataTemplate x:Key="PluginDetailsTemplate" x:DataType="plugins:LoadedPlugin">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="{loc:T Plugins.LegacyNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
-                               IsVisible="{Binding IsLegacy}"/>
+            <!-- One setting a plugin declares in plugin.json, as a row of the plugin page's card (owner
+                 10-29: the app's own controls). Label and one short grey line on the left (the whole
+                 description in its tooltip), the control on the right: the Settings switch, the pill
+                 list, a number with a range as the Settings slider and its value, a number without one
+                 as a pill stepper. A text setting takes the full row width under its label. -->
+            <DataTemplate x:Key="PluginSettingRowTemplate" x:DataType="plugins:PluginSettingItem">
+                <Border Classes="plugin-row plugin-setting-row">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Classes="plugin-row-label" Text="{Binding Label}" TextWrapping="Wrap"/>
+                            <TextBlock Classes="plugin-row-hint plugin-setting-hint" Text="{Binding Description}"
+                                       MaxLines="1" TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding Description}" IsVisible="{Binding HasDescription}"/>
+                        </StackPanel>
+                        <Panel Classes="plugin-setting-control" VerticalAlignment="Center">
+                            <controls:LottieToggle IsVisible="{Binding IsBool}"
+                                                  AutomationProperties.Name="{Binding Label}"
+                                                  AutomationProperties.HelpText="{Binding Description}"
+                                                  IsChecked="{Binding BoolValue, Mode=TwoWay}"/>
+                            <ComboBox IsVisible="{Binding IsChoice}" Classes="pill-list"
+                                      AutomationProperties.Name="{Binding Label}"
+                                      AutomationProperties.HelpText="{Binding Description}"
+                                      ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
+                                      MinWidth="160" MaxWidth="300" CornerRadius="999" Padding="14,6">
+                                <!-- A choice longer than the pill trims, the whole of it in the tooltip. -->
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="sys:String">
+                                        <TextBlock Classes="plugin-choice-text" Text="{Binding}" TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <!-- The Settings slider itself (Lyrics > Minimum line opacity, owner 10-29: the same
+                                 control, not a lookalike): a SmoothSlider.accent-slider in a 200 column, 16 in,
+                                 the value beside it, and a double-click puts the default back. -->
+                            <Grid Classes="plugin-number-slider" ColumnDefinitions="200,Auto" IsVisible="{Binding UsesSlider}">
+                                <controls:SmoothSlider Grid.Column="0" Classes="accent-slider" VerticalAlignment="Center" Margin="16,0,0,0"
+                                                       AutomationProperties.Name="{Binding Label}"
+                                                       AutomationProperties.HelpText="{Binding Description}"
+                                                       Maximum="{Binding SliderMaximum}" Minimum="{Binding SliderMinimum}"
+                                                       Step="{Binding NumberStep}"
+                                                       SteppedValue="{Binding SliderValue, Mode=TwoWay}"
+                                                       DoubleTapped="OnPluginSliderDoubleTapped"/>
+                                <TextBlock Grid.Column="1" Classes="plugin-number-value" Text="{Binding NumberText}" FontSize="12" Opacity="0.7"
+                                           VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
+                            </Grid>
+                            <!-- No full range: minus, the value, plus, in one rounded capsule. -->
+                            <Border Classes="plugin-stepper" IsVisible="{Binding UsesStepper}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Classes="plugin-step" Command="{Binding DecreaseCommand}"
+                                            AutomationProperties.Name="{Binding DecreaseName}" ToolTip.Tip="{Binding DecreaseName}">
+                                        <TextBlock Text="−" FontSize="16"/>
+                                    </Button>
+                                    <TextBlock Classes="plugin-number-value" Text="{Binding NumberText}" FontSize="13" FontWeight="SemiBold"
+                                               MinWidth="44" TextAlignment="Center" VerticalAlignment="Center" Margin="2,0"/>
+                                    <Button Classes="plugin-step" Command="{Binding IncreaseCommand}"
+                                            AutomationProperties.Name="{Binding IncreaseName}" ToolTip.Tip="{Binding IncreaseName}">
+                                        <TextBlock Text="+" FontSize="16"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </Panel>
+                        <TextBox Grid.Row="1" Grid.ColumnSpan="2" Classes="plugin-setting-text" IsVisible="{Binding IsString}"
+                                 Text="{Binding TextValue, Mode=TwoWay}" Watermark="{Binding Placeholder}"
+                                 AutomationProperties.Name="{Binding Label}"
+                                 AutomationProperties.HelpText="{Binding Description}"
+                                 Margin="0,10,0,0" CornerRadius="999" Padding="14,6" BorderThickness="1.5" MinHeight="0"/>
+                    </Grid>
+                </Border>
+            </DataTemplate>
 
-                    <TextBlock Text="{loc:T Plugins.ContentNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
-                               IsVisible="{Binding IsContentPack}"/>
+            <!-- Page motion for the Plugins grid and a plugin's page: a quick start that settles
+                 softly (CubicBezierEase: SplineEasing is broken here, see its remarks). -->
+            <helpers:CubicBezierEase x:Key="PluginPageEase">
+                <x:Arguments>
+                    <x:Double>0.2</x:Double>
+                    <x:Double>0.9</x:Double>
+                    <x:Double>0.3</x:Double>
+                    <x:Double>1</x:Double>
+                </x:Arguments>
+            </helpers:CubicBezierEase>
 
-                    <!-- Permissions as quiet chips (code plugins only: a content pack has none). -->
-                    <StackPanel Spacing="5" IsVisible="{Binding IsCodePlugin}">
-                        <TextBlock Text="{loc:T Plugins.Permissions}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
-                        <ItemsControl ItemsSource="{Binding PermissionChips}" IsVisible="{Binding HasPermissions}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="sys:String">
-                                    <Border CornerRadius="999" Padding="9,2" Margin="0,0,6,6"
-                                            Background="#12FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1">
-                                        <TextBlock Text="{Binding}" FontSize="11"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="{loc:T Plugins.NoPermissionsShort}" FontSize="11" Opacity="0.5"
-                                   IsVisible="{Binding !HasPermissions}"/>
-                    </StackPanel>
+            <!-- One plugin on the Plugins grid: its icon (or letter tile), its name with the verified
+                 mark for official plugins, "by <author>" and two lines of description. The whole
+                 card is a button: click, or Tab to it and press Enter, to open its page. -->
+            <DataTemplate x:Key="PluginCardTemplate" x:DataType="vm:PluginCardItem">
+                <Button Classes="plugin-card"
+                        Classes.official="{Binding IsOfficial}"
+                        Classes.restricted="{Binding IsRestricted}"
+                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginCardCommand}"
+                        CommandParameter="{Binding}"
+                        AutomationProperties.Name="{Binding AccessibleName}"
+                        AutomationProperties.HelpText="{Binding Description}">
+                    <Button.Template>
+                        <ControlTemplate>
+                            <Border x:Name="card" CornerRadius="20" ClipToBounds="True">
+                                <Panel>
+                                    <Border x:DataType="vm:PluginCardItem" Background="{Binding TintBrush}" IsHitTestVisible="False"/>
+                                    <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                                      Padding="16,18,16,18" HorizontalContentAlignment="Stretch"/>
+                                </Panel>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <Panel>
+                        <StackPanel Classes="plugin-card-body">
+                            <Panel Width="60" Height="60" HorizontalAlignment="Center" Margin="0,4,0,12">
+                                <Border CornerRadius="16" Background="{Binding MonogramBrush}" IsVisible="{Binding ShowMonogram}">
+                                    <TextBlock Text="{Binding Monogram}" FontSize="22" FontWeight="Bold" Foreground="White"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="60" Height="60"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                            </Panel>
+                            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Center">
+                                <TextBlock Classes="plugin-card-name" Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                <Viewbox Grid.Column="1" Classes="verified-mark" Width="15" Height="15" Margin="5,0,0,0" VerticalAlignment="Center"
+                                         IsVisible="{Binding IsOfficial}" ToolTip.Tip="{loc:T Plugins.Card.Verified}"
+                                         AutomationProperties.Name="{loc:T Plugins.Card.Verified}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource VerifiedSealGeometry}" Fill="#1D9BF0"/>
+                                        <Path Data="{StaticResource VerifiedCheckGeometry}" Stroke="White" StrokeThickness="2.2"
+                                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                            <TextBlock Classes="plugin-card-by" Text="{Binding ByLine}" FontSize="11.5" Opacity="0.5" Margin="0,2,0,0"
+                                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Classes="plugin-card-description" Text="{Binding Description}" FontSize="12" Opacity="0.68" Margin="0,8,0,0"
+                                       TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                                       LineHeight="17" Height="34" IsVisible="{Binding HasDescription}"/>
+                        </StackPanel>
+                        <Border Classes="plugin-chip" Classes.accent="{Binding ChipIsAccent}" IsVisible="{Binding HasChip}"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-4,0">
+                            <TextBlock Text="{Binding ChipText}" FontSize="10.5" FontWeight="SemiBold"/>
+                        </Border>
+                    </Panel>
+                </Button>
+            </DataTemplate>
 
-                    <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
-                               IsVisible="{Binding HasError}"/>
-                    <TextBlock Text="{Binding Warnings}" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
-                               IsVisible="{Binding HasWarnings}"/>
+            <!-- A plugin's own page (owner 10-29: reads top to bottom in one glance). Back; the header
+                 (big icon, name and mark, "by X · v1.2.1", the description at a readable width, Update /
+                 Open X under it, and top-right Install while not installed or a "..." menu with the
+                 homepage and the folder once it is); quiet notes; one card of rows (Enabled, the
+                 plugin's settings, a one-line permissions row that opens to the full list); Remove
+                 plugin on its own at the bottom. -->
+            <DataTemplate x:Key="PluginPageTemplate" x:DataType="vm:PluginCardItem">
+                <StackPanel Spacing="14">
+                    <Button x:Name="PluginBackButton" Classes="pill-action plugin-back" HorizontalAlignment="Left"
+                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ClosePluginDetailCommand}"
+                            AutomationProperties.Name="{loc:T Plugins.Detail.Back}"
+                            Height="32" Padding="8,0,14,0" VerticalContentAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="16" Height="16"/>
+                            <TextBlock Text="{loc:T Plugins.Detail.Back}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
-                    <!-- Settings declared in plugin.json, drawn by Noctis. -->
-                    <StackPanel Spacing="8" IsVisible="{Binding HasSettings}" IsEnabled="{Binding !IsRestricted}">
-                        <TextBlock Text="{loc:T Plugins.Settings}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
-                        <ItemsControl ItemsSource="{Binding SettingItems}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="8"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="plugins:PluginSettingItem">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,12,0">
-                                            <TextBlock Text="{Binding Label}" FontSize="13" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"
-                                                       IsVisible="{Binding HasDescription}"/>
-                                        </StackPanel>
-                                        <Panel Grid.Column="1" VerticalAlignment="Center">
-                                            <controls:LottieToggle IsVisible="{Binding IsBool}"
-                                                                  AutomationProperties.Name="{Binding Label}"
-                                                                  IsChecked="{Binding BoolValue, Mode=TwoWay}"/>
-                                            <TextBox IsVisible="{Binding IsString}" Text="{Binding TextValue, Mode=TwoWay}" Watermark="{Binding Placeholder}"
-                                                     AutomationProperties.Name="{Binding Label}"
-                                                     Width="220" CornerRadius="999" Padding="14,6" BorderThickness="1.5" MinHeight="0"/>
-                                            <NumericUpDown IsVisible="{Binding IsNumber}" Value="{Binding NumberValue, Mode=TwoWay}"
-                                                           AutomationProperties.Name="{Binding Label}"
-                                                           Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
-                                                           Width="150" CornerRadius="999" FormatString="0.###"/>
-                                            <ComboBox IsVisible="{Binding IsChoice}" Classes="pill-list"
-                                                      AutomationProperties.Name="{Binding Label}"
-                                                      ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
-                                                      MinWidth="160" CornerRadius="999" Padding="14,6"/>
-                                        </Panel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-
-                    <!-- What the running plugin added (e.g. its track menu item) glides in and out
-                         as it starts and stops, like the Crossfade block. It shares a spacing-free
-                         panel with the always-shown buttons, the gap riding inside the fold, so the
-                         panel's Spacing can't snap at the end of a close. -->
-                    <StackPanel>
-                        <controls:CollapsibleContent IsOpen="{Binding HasExtensions}" Lift="10" Motion="Glide">
-                            <TextBlock Text="{Binding ShownExtensions}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"
-                                       Margin="0,0,0,10"/>
-                        </controls:CollapsibleContent>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Classes="pill-action" Padding="12,6" CornerRadius="999" Cursor="Hand"
-                                    AutomationProperties.Name="{loc:T Plugins.OpenPluginFolder}"
-                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginDirectoryCommand}"
-                                    CommandParameter="{Binding}">
-                                <TextBlock Text="{loc:T Plugins.OpenPluginFolder}" FontSize="12"/>
+                    <Grid x:Name="PluginHero" ColumnDefinitions="Auto,*,Auto" Margin="4,0,0,2">
+                        <Panel Width="84" Height="84" VerticalAlignment="Top">
+                            <Border CornerRadius="22" Background="{Binding MonogramBrush}" IsVisible="{Binding ShowMonogram}">
+                                <TextBlock Text="{Binding Monogram}" FontSize="30" FontWeight="Bold" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="84" Height="84"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                        </Panel>
+                        <StackPanel Grid.Column="1" Margin="18,4,12,0" Spacing="3" VerticalAlignment="Top">
+                            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                <TextBlock x:Name="PluginPageName" Text="{Binding Name}" FontSize="22" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center"/>
+                                <Viewbox Grid.Column="1" Classes="verified-mark" Width="20" Height="20" Margin="7,1,0,0" VerticalAlignment="Center"
+                                         IsVisible="{Binding IsOfficial}" ToolTip.Tip="{loc:T Plugins.Card.Verified}"
+                                         AutomationProperties.Name="{loc:T Plugins.Card.Verified}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource VerifiedSealGeometry}" Fill="#1D9BF0"/>
+                                        <Path Data="{StaticResource VerifiedCheckGeometry}" Stroke="White" StrokeThickness="2.2"
+                                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                            <TextBlock x:Name="PluginPageMeta" Text="{Binding MetaLine}" FontSize="12.5" Opacity="0.6"
+                                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding MetaLine}"/>
+                            <TextBlock x:Name="PluginPageDescription" Text="{Binding Description}" FontSize="13" Opacity="0.78"
+                                       TextWrapping="Wrap" LineHeight="19" MaxWidth="560" HorizontalAlignment="Left" Margin="0,6,0,0"
+                                       IsVisible="{Binding HasDescription}"/>
+                            <!-- An installed plugin's Update (or Cancel) from the list. Install, and the plugin's
+                                 own views ("Open Album Town"), sit top-right beside "..." instead. -->
+                            <WrapPanel x:Name="PluginPageActions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0"
+                                       IsVisible="{Binding HasHeaderActions}">
+                                <Button x:Name="PluginPageUpdateButton"
+                                        Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
+                                        Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
+                                        Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
+                                        MaxWidth="260"
+                                        IsVisible="{Binding ShowInlineButton}"
+                                        IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
+                                        AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
+                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
+                                        CommandParameter="{Binding Listing}">
+                                    <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                                               TextWrapping="Wrap" TextAlignment="Center"/>
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock Text="{Binding Listing.Error, FallbackValue={x:Null}}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
+                                       Margin="0,6,0,0" IsVisible="{Binding Listing.HasError, FallbackValue=False}"/>
+                            <ProgressBar Value="{Binding Listing.Progress, FallbackValue=0}" Minimum="0" Maximum="1" Height="3" CornerRadius="2"
+                                         MaxWidth="260" HorizontalAlignment="Left" Width="260" Margin="0,8,0,0"
+                                         IsVisible="{Binding Listing.IsBusy, FallbackValue=False}"/>
+                        </StackPanel>
+                        <!-- Top-right (owner 10-29): Install / Replace / Cancel while the plugin is not
+                             installed; once it is, the plugin's own views ("Open Album Town") and "..." with
+                             Visit homepage and Open folder (SettingsView.axaml.cs OnPluginMoreClick). -->
+                        <StackPanel x:Name="PluginPageCorner" Grid.Column="2" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Top" Margin="0,4,0,0">
+                            <ItemsControl x:Name="PluginPageViews" VerticalAlignment="Center" ItemsSource="{Binding Installed.Views, FallbackValue={x:Null}}"
+                                          IsVisible="{Binding Installed.HasViews, FallbackValue=False}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="plugins:PluginViewEntry">
+                                        <Button Classes="accent-pill" Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand"
+                                                VerticalContentAlignment="Center"
+                                                AutomationProperties.Name="{Binding OpenText}"
+                                                Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginViewCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="{Binding OpenText}" FontSize="12.5" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button x:Name="PluginPageInstallButton"
+                                    Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
+                                    Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
+                                    Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
+                                    MaxWidth="200" HorizontalAlignment="Right"
+                                    IsVisible="{Binding ShowCornerButton}"
+                                    IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
+                                    AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
+                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
+                                    CommandParameter="{Binding Listing}">
+                                <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Listing.ButtonText, FallbackValue={x:Null}}"/>
                             </Button>
-                            <Button Classes="pill-action danger-ghost-pill" Padding="12,6" CornerRadius="999" Cursor="Hand"
-                                    AutomationProperties.Name="{loc:T Plugins.Remove}"
-                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemovePluginCommand}"
-                                    CommandParameter="{Binding}">
-                                <TextBlock Text="{loc:T Plugins.Remove}" FontSize="12"/>
+                            <Button x:Name="PluginPageMoreButton" Classes="icon-chip" HorizontalAlignment="Right"
+                                    IsVisible="{Binding HasMoreMenu}"
+                                    AutomationProperties.Name="{loc:T Plugins.Detail.More}" ToolTip.Tip="{loc:T Plugins.Detail.More}"
+                                    Click="OnPluginMoreClick">
+                                <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15"/>
                             </Button>
                         </StackPanel>
+                    </Grid>
+
+                    <!-- Notes and problems, as quiet lines (only when there is something to say). -->
+                    <StackPanel x:Name="PluginPageNotes" Spacing="6" Margin="4,0" IsVisible="{Binding IsInstalled}">
+                        <TextBlock Text="{loc:T Plugins.LegacyNote}" FontSize="11.5" Opacity="0.55" TextWrapping="Wrap"
+                                   IsVisible="{Binding Installed.IsLegacy, FallbackValue=False}"/>
+                        <TextBlock Text="{loc:T Plugins.ContentNote}" FontSize="11.5" Opacity="0.55" TextWrapping="Wrap"
+                                   IsVisible="{Binding Installed.IsContentPack, FallbackValue=False}"/>
+                        <TextBlock Text="{Binding Installed.Error, FallbackValue={x:Null}}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
+                                   IsVisible="{Binding Installed.HasError, FallbackValue=False}"/>
+                        <TextBlock Text="{Binding Installed.Warnings, FallbackValue={x:Null}}" FontSize="11.5" Opacity="0.45" TextWrapping="Wrap"
+                                   IsVisible="{Binding Installed.HasWarnings, FallbackValue=False}"/>
                     </StackPanel>
+
+                    <!-- One card of rows: Enabled, the plugin's settings, its permissions. -->
+                    <Border x:Name="PluginPageGroup" Classes="plugin-panel plugin-group" IsVisible="{Binding IsInstalled}">
+                        <StackPanel>
+                            <Border x:Name="PluginPageSwitchPanel" Classes="plugin-row first">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Spacing="2" Margin="0,0,16,0" VerticalAlignment="Center">
+                                        <TextBlock Classes="plugin-row-label" Text="{loc:T Plugins.Detail.Enabled}"/>
+                                        <TextBlock Classes="plugin-row-hint" Text="{Binding EnableLine}" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasEnableLine}"/>
+                                    </StackPanel>
+                                    <ContentControl Grid.Column="1" Content="{Binding Installed}" VerticalAlignment="Center">
+                                        <ContentControl.ContentTemplate>
+                                            <DataTemplate x:DataType="plugins:LoadedPlugin">
+                                                <controls:LottieToggle x:Name="PluginPageToggle" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                                      AutomationProperties.Name="{Binding Name}"
+                                                                      IsEnabled="{Binding CanToggle}"/>
+                                            </DataTemplate>
+                                        </ContentControl.ContentTemplate>
+                                    </ContentControl>
+                                </Grid>
+                            </Border>
+                            <ItemsControl x:Name="PluginPageSettings" ItemsSource="{Binding Installed.SettingItems, FallbackValue={x:Null}}"
+                                          IsVisible="{Binding Installed.HasSettings, FallbackValue=False}"
+                                          IsEnabled="{Binding !IsRestricted}"
+                                          ItemTemplate="{StaticResource PluginSettingRowTemplate}"/>
+                            <!-- Permissions: one quiet line ("Can read your library, control playback");
+                                 click it for the full sentences. Code plugins only. -->
+                            <Border x:Name="PluginPagePermissionsRow" Classes="plugin-row"
+                                    IsVisible="{Binding Installed.IsCodePlugin, FallbackValue=False}">
+                                <StackPanel>
+                                    <Button x:Name="PluginPagePermissions" Classes="plugin-row-button"
+                                            Command="{Binding TogglePermissionsCommand}"
+                                            AutomationProperties.Name="{loc:T Plugins.Permissions}"
+                                            AutomationProperties.HelpText="{Binding Installed.PermissionSummary, FallbackValue={x:Null}}">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Spacing="2" Margin="0,0,16,0">
+                                                <TextBlock Classes="plugin-row-label" Text="{loc:T Plugins.Permissions}"/>
+                                                <TextBlock Classes="plugin-row-hint" Text="{Binding Installed.PermissionSummary, FallbackValue={x:Null}}"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <PathIcon Grid.Column="1" Classes="plugin-perm-chevron"
+                                                      Classes.open="{Binding IsPermissionsExpanded}"
+                                                      Data="{StaticResource ChevronDownThinIcon}" Width="12" Height="12" Opacity="0.5"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding Installed.HasPermissions, FallbackValue=False}"/>
+                                        </Grid>
+                                    </Button>
+                                    <controls:CollapsibleContent IsOpen="{Binding IsPermissionsExpanded}" Lift="6">
+                                        <ItemsControl x:Name="PluginPagePermissionList" ItemsSource="{Binding Installed.PermissionDetails, FallbackValue={x:Null}}"
+                                                      Margin="0,10,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Spacing="6"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="sys:String">
+                                                    <Grid ColumnDefinitions="Auto,*">
+                                                        <Ellipse Width="4" Height="4" Margin="2,7,10,0" VerticalAlignment="Top"
+                                                                 Fill="{DynamicResource AccentColorBrush}"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </controls:CollapsibleContent>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Remove plugin: one red row of its own (asks first, data kept unless chosen).
+                         Release builds: only plugins the user added; the ones listed in Noctis just switch
+                         on and off. Dev builds: every plugin (owner 10-29). -->
+                    <Panel x:Name="PluginPageRemoveHost">
+                        <Panel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).PluginRemovalAllowed"/>
+                                <Binding Path="IsUserAdded"/>
+                            </MultiBinding>
+                        </Panel.IsVisible>
+                        <Border x:Name="PluginPageRemovePanel" Classes="plugin-panel plugin-group" IsVisible="{Binding IsInstalled}">
+                            <Button x:Name="PluginPageRemoveButton" Classes="plugin-row-button plugin-danger-row"
+                                    AutomationProperties.Name="{loc:T Plugins.Detail.RemoveRow}"
+                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemovePluginCommand}"
+                                    CommandParameter="{Binding Installed}">
+                                <TextBlock Text="{loc:T Plugins.Detail.RemoveRow}" FontSize="14"/>
+                            </Button>
+                        </Border>
+                    </Panel>
                 </StackPanel>
             </DataTemplate>
         </ResourceDictionary>
@@ -1313,70 +1572,9 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
-        <!-- Every combo box: filled pill shell, label centred, and the pill-combo dropdown
-             (rounded popup, pill rows, accent highlight) so no combo has square rows. -->
-        <Style Selector="ComboBox">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-            <Setter Property="MinHeight" Value="34"/>
-            <Setter Property="Padding" Value="12,0,8,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="ComboBox /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-        </Style>
-        <Style Selector="ComboBox /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
-        </Style>
-        <!-- States skip server-pill: its fill and ring are drawn by the server-pill-shell
-             wrapper, so the combo's own chrome must stay clear in every state. -->
-        <Style Selector="ComboBox:not(.server-pill):pointerover /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
-        </Style>
-        <Style Selector="ComboBox:not(.server-pill):pressed /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
-        </Style>
-        <Style Selector="ComboBox:not(.server-pill):focus /template/ Border#Background, ComboBox:not(.server-pill):dropdownopen /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
-        </Style>
-        <Style Selector="ComboBox:not(.server-pill):disabled /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
-        </Style>
-        <Style Selector="ComboBox /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="ComboBox /template/ Border#PopupBorder">
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="0,4"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem">
-            <Setter Property="Margin" Value="4,1"/>
-            <Setter Property="Padding" Value="11,6"/>
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
-        <Style Selector="ComboBox ComboBoxItem:selected:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
+        <!-- Every combo box: the Settings drop-down (shell, list, rows, pop motion), shared with
+             plugin windows (Noctis.UI/Assets/DropDowns.axaml). -->
+        <StyleInclude Source="avares://Noctis.UI/Assets/DropDowns.axaml"/>
         <!-- Equalizer: the per-band remove control is a round chip like the page's close X. -->
         <Style Selector="Button.eq-remove">
             <Setter Property="Width" Value="26"/>
@@ -1555,6 +1753,249 @@
             <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
+
+        <!-- ── Plugins page (card grid + a plugin's page). Last in this block on purpose: these
+             rules must win over the generic Settings Button rules above (no hover zoom, the
+             ContentPresenter hover wash), which match the cards too. ── -->
+
+        <!-- The grid and a plugin's page slide past each other: the incoming one fades in from
+             28 px to its side. Same trick as tab-page: the hidden state pins opacity and offset,
+             and releasing it on IsVisible=True transitions both home (keyframe animations can't
+             drive RenderTransform here). A plugin's own view (PluginViewPage) comes in over its
+             page the same way, and the page comes back from the left. -->
+        <Style Selector=":is(Panel).plugin-subpage">
+            <Setter Property="RenderTransform" Value="translateX(0px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.22" Easing="{StaticResource PluginPageEase}"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" Easing="{StaticResource PluginPageEase}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector=":is(Panel).plugin-subpage.from-right[IsVisible=False]">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="translateX(28px)"/>
+        </Style>
+        <Style Selector=":is(Panel).plugin-subpage.from-left[IsVisible=False]">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="translateX(-28px)"/>
+        </Style>
+
+        <!-- The trust switch, compact. -->
+        <Style Selector="Border.setting-card.plugin-trust-card">
+            <Setter Property="Padding" Value="20,11"/>
+            <Setter Property="CornerRadius" Value="20"/>
+        </Style>
+
+        <Style Selector="TextBox.plugin-search">
+            <Setter Property="Padding" Value="8,0,14,0"/>
+        </Style>
+
+        <!-- Section counts beside the titles. -->
+        <Style Selector="Border.plugin-count">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="7,1"/>
+            <Setter Property="MinWidth" Value="20"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.plugin-count > TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Opacity" Value="0.6"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Cards: lift on hover, a small dip on press, the accent ring for keyboard focus. -->
+        <Style Selector="Button.plugin-card">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            <Setter Property="RenderTransform" Value="translateY(0px) scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="{StaticResource PluginPageEase}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.plugin-card:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-3px) scale(1)"/>
+        </Style>
+        <Style Selector="Button.plugin-card:pressed">
+            <Setter Property="RenderTransform" Value="translateY(-1px) scale(0.97)"/>
+        </Style>
+        <Style Selector="Button.plugin-card /template/ Border#card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="BorderBrush" Value="#14FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.18"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.plugin-card:pointerover /template/ Border#card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
+            <Setter Property="BorderBrush" Value="#2BFFFFFF"/>
+        </Style>
+        <Style Selector="Button.plugin-card:focus-visible /template/ Border#card">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="Button.plugin-card /template/ ContentPresenter, Button.plugin-card:pointerover /template/ ContentPresenter, Button.plugin-card:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <!-- Community plugins off: a code plugin's card greys out like the rows did. -->
+        <Style Selector="Button.plugin-card.restricted StackPanel.plugin-card-body">
+            <Setter Property="Opacity" Value="0.55"/>
+        </Style>
+
+        <!-- The corner pill: On / Off / Update / a problem. -->
+        <Style Selector="Border.plugin-chip">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="Background" Value="#1FFFFFFF"/>
+        </Style>
+        <Style Selector="Border.plugin-chip > TextBlock">
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+        <Style Selector="Border.plugin-chip.accent">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="Border.plugin-chip.accent > TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- A plugin's page: Settings card look, not setting-card (Settings search must not pick
+             up a page that comes and goes). -->
+        <Style Selector="Border.plugin-panel">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="Padding" Value="22,16"/>
+        </Style>
+        <Style Selector="TextBlock.plugin-panel-title">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- A plugin's page (owner 10-29): grouped rows in the Settings card look, a hairline
+             between rows, none above the first. -->
+        <Style Selector="Border.plugin-panel.plugin-group">
+            <Setter Property="Padding" Value="22,0"/>
+        </Style>
+        <Style Selector="Border.plugin-row">
+            <Setter Property="Padding" Value="0,13"/>
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        </Style>
+        <Style Selector="Border.plugin-row.first">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBlock.plugin-row-label">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TextBlock.plugin-row-hint">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Opacity" Value="0.55"/>
+        </Style>
+        <Style Selector="ItemsControl:disabled Border.plugin-setting-row">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <!-- A whole row that is a button (permissions, Remove plugin): no fill, no lift. -->
+        <Style Selector="Button.plugin-row-button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransform" Value="{x:Null}"/>
+        </Style>
+        <Style Selector="Button.plugin-row-button /template/ ContentPresenter#PART_ContentPresenter, Button.plugin-row-button:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.plugin-row-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.plugin-row-button:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1.5"/>
+        </Style>
+        <Style Selector="Button.plugin-danger-row">
+            <Setter Property="Padding" Value="0,14"/>
+            <Setter Property="Foreground" Value="#E74856"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Button.plugin-danger-row:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.plugin-danger-row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="#FF6B76"/>
+        </Style>
+        <Style Selector="PathIcon.plugin-perm-chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="PathIcon.plugin-perm-chevron.open">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+        </Style>
+        <!-- Pills with a set height on the Plugins pages (Back 32, the rest 34): the pill-action
+             template padding (16,10) above left them 12-14 px for 12.5 px text, so "Plugins" on
+             Back lost the bottom of its "g" (owner screenshot 10-29). Keep the sides, drop the
+             top and bottom: the height centres the label. -->
+        <Style Selector="Button.pill-action[Height=34] /template/ ContentPresenter">
+            <Setter Property="Padding" Value="16,0"/>
+        </Style>
+        <Style Selector="Button.pill-action.plugin-back /template/ ContentPresenter">
+            <Setter Property="Padding" Value="8,0,14,0"/>
+        </Style>
+        <!-- A narrow pane (SettingsView.axaml.cs LayoutPluginRows): a setting's control drops under
+             its label instead of squeezing the label or running past the card. -->
+        <Style Selector="Panel.plugin-setting-control">
+            <Setter Property="Grid.Column" Value="1"/>
+        </Style>
+        <Style Selector="StackPanel.narrow Panel.plugin-setting-control">
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="Grid.Column" Value="0"/>
+            <Setter Property="Grid.ColumnSpan" Value="2"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+        </Style>
+        <!-- Number settings without a full range: a pill stepper in the Settings field fill. -->
+        <Style Selector="Border.plugin-stepper">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+            <Setter Property="Padding" Value="3"/>
+            <Setter Property="Height" Value="34"/>
+        </Style>
+        <Style Selector="Button.plugin-step">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.plugin-step /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.plugin-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid ColumnDefinitions="232,*">
@@ -1659,6 +2100,7 @@
          Flowing Lyrics description re-wrapped (09-12). The bar itself still auto-hides its thumb. -->
     <ScrollViewer x:Name="SettingsScrollViewer"
                   Grid.Row="1"
+                  IsVisible="{Binding !IsPluginViewOpen}"
                   Focusable="True"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Visible">
@@ -2124,6 +2566,46 @@
                     </WrapPanel>
                 </StackPanel>
             </Border>
+            <!-- App Icon: the window/taskbar/tray icon, swapped live (AppIconService). Each
+                 tile shows the real rendered icon; the active one takes the theme tiles'
+                 accent outline. The exe/shortcut icon is baked in and stays classic. -->
+            <Border x:Name="AppIconCard" Classes="setting-card" Padding="22,12">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AppIcon}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AppIconDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl x:Name="AppIconList" ItemsSource="{Binding AppIconOptions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AppIconOption">
+                                <Button Classes="theme-btn"
+                                        AutomationProperties.Name="{Binding Name}"
+                                        Classes.active="{Binding IsSelected}"
+                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SetAppIconCommand}"
+                                        CommandParameter="{Binding Id}"
+                                        Margin="0,0,10,10">
+                                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                        <!-- 48 DIP from a 96 px render: an exact 2:1 step at 100 %
+                                             and 1:1 at 200 %, so the preview stays crisp. -->
+                                        <Image Source="{Binding Preview}" Width="48" Height="48"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="12"
+                                                   HorizontalAlignment="Center"
+                                                   MaxWidth="90" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-card">
                 <StackPanel Spacing="16">
 
@@ -2138,7 +2620,7 @@
 
                     <!-- Preset grid + custom-picker tile -->
                     <StackPanel Spacing="8">
-                        <StackPanel>
+                        <Grid>
                             <!-- Preset swatches -->
                             <ItemsControl ItemsSource="{Binding AccentSwatches}">
                                 <ItemsControl.ItemsPanel>
@@ -2175,8 +2657,12 @@
                             </ItemsControl>
 
                             <!-- Custom-color tile: rainbow ring + plus, opens reusable HSV/hex picker.
-                                 Same 44px cell as a swatch so it reads as the next slot in the grid. -->
-                            <Panel Width="44" Height="44" HorizontalAlignment="Left" Margin="0,0,4,4">
+                                 It takes the 12th cell of the last swatch row (App.AccentPresets holds
+                                 12n-1 colours, guarded by a test), on a grid with the same 12 columns,
+                                 so it reads as the next slot instead of starting a row of its own. -->
+                            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*,*,*,*,*">
+                            <Panel Grid.Column="11" Width="44" Height="44"
+                                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,4,4">
                                 <controls:ColorPickerFlyout Hex="{Binding CustomAccentHex, Mode=TwoWay}"
                                                             SwatchSize="44"
                                                             HorizontalAlignment="Center"
@@ -2217,7 +2703,8 @@
                                     </controls:ColorPickerFlyout.SwatchContent>
                                 </controls:ColorPickerFlyout>
                             </Panel>
-                        </StackPanel>
+                            </Grid>
+                        </Grid>
                     </StackPanel>
 
                     <!-- Accent follows album art (Discord, aaron 09-15) -->
@@ -2246,6 +2733,33 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
+            </Border>
+
+            <!-- GitHub #145: the whole interface larger or smaller, live, in every window
+                 (UiScale). A picker, not a slider: each step re-lays out the whole app,
+                 the slider under the pointer included. -->
+            <Border Classes="setting-card group-card" Margin="0,14,0,0">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.UiScale}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.UiScaleHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="UiScaleCombo"
+                              AutomationProperties.Name="{loc:T Settings.UiScale}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding UiScaleOptions}"
+                              SelectedItem="{Binding SelectedUiScaleOption}"
+                              MinWidth="180"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
+            </StackPanel>
             </Border>
 
             <Border Classes="setting-card group-card" Margin="0,14,0,10">
@@ -2707,6 +3221,40 @@
                                               IsChecked="{Binding PlaybackBarShowSleepTimer}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- The sleep timer's fade-out (also "stop after current track"): a playback
+                         gain of its own, so the volume setting never moves. -->
+                    <StackPanel Spacing="6">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{loc:T Settings.SleepTimerFadeOut}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.SleepTimerFadeOutDesc}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                            <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFadeOff}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFadeOff, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFadeOff}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFade10}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFade10, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFade10}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFade30}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFade30, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFade30}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                            <RadioButton Grid.Column="3" Classes="transition-card medium-card"
+                                         AutomationProperties.Name="{loc:T Settings.SleepFade60}"
+                                         GroupName="SleepTimerFadeOut"
+                                         IsChecked="{Binding IsSleepFade60, Mode=TwoWay}">
+                                <TextBlock Text="{loc:T Settings.SleepFade60}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </RadioButton>
+                        </Grid>
+                    </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.Shuffle}" FontSize="13" FontWeight="SemiBold"/>
@@ -3022,6 +3570,228 @@
                                 <TextBlock Text="{loc:T Settings.Collage}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
+
+            <!-- Owner 11-02: the Albums page's default design. The same AlbumViewMode /
+                 AlbumCarouselStyle settings the Albums page View menu writes. -->
+            <Border Classes="setting-card group-card" Margin="0,14,0,10">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumsView}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumsViewDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.AlbumGrid}"
+                                     GroupName="AlbumsView"
+                                     IsChecked="{Binding IsAlbumViewGrid, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.AlbumGrid}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="15" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="2" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="15" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.AlbumGrid}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.AlbumCarousel}"
+                                     GroupName="AlbumsView"
+                                     IsChecked="{Binding IsAlbumViewCarousel, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.AlbumCarousel}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="1" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="21" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="8" Canvas.Top="5" Width="12" Height="18" RadiusX="2.5" RadiusY="2.5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.AlbumCarousel}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                    <TextBlock Text="{loc:T Settings.CarouselCase}" FontSize="12" Opacity="0.5"/>
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselCover}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseCover, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselCover}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="3" Canvas.Top="3" Width="22" Height="22" RadiusX="5" RadiusY="5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselCover}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselJewelCase}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseJewelCase, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselJewelCase}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="4" Width="24" Height="20" RadiusX="2.5" RadiusY="2.5"
+                                               Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2.5"/>
+                                    <Rectangle Canvas.Left="6" Canvas.Top="4" Width="2.5" Height="20"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="11" Canvas.Top="8" Width="12" Height="12" RadiusX="1.5" RadiusY="1.5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselJewelCase}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselVinyl}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseVinyl, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselVinyl}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Ellipse Canvas.Left="10" Canvas.Top="6" Width="16" Height="16"
+                                             Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="5"/>
+                                    <Rectangle Canvas.Left="2" Canvas.Top="5" Width="18" Height="18" RadiusX="3" RadiusY="3"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselVinyl}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="3" Classes="transition-card medium-card"
+                                     AutomationProperties.Name="{loc:T Main.CarouselCassette}"
+                                     GroupName="AlbumCarouselCase"
+                                     IsChecked="{Binding IsAlbumCaseCassette, Mode=TwoWay}"
+                                     ToolTip.Tip="{loc:T Main.CarouselCassette}">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="6" Width="24" Height="16" RadiusX="4" RadiusY="4"
+                                               Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2.5"/>
+                                    <Ellipse Canvas.Left="7" Canvas.Top="11.5" Width="5" Height="5"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Ellipse Canvas.Left="16" Canvas.Top="11.5" Width="5" Height="5"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="{loc:T Main.CarouselCassette}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
+
+            <!-- GitHub #147: the Queue panel's rows and width. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.Queue}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.QueueRows}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.QueueRowsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,*" RowDefinitions="Auto,Auto,Auto"
+                          ColumnSpacing="8" RowSpacing="8">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T Settings.QueueFirstLine}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox Grid.Row="0" Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.QueueFirstLine}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueLine1Options}"
+                                  SelectedItem="{Binding SelectedQueueLine1Option}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <ComboBox Grid.Row="0" Grid.Column="2"
+                                  AutomationProperties.Name="{loc:T Settings.QueueFirstLineExtra}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueOptionalFieldOptions}"
+                                  SelectedItem="{Binding SelectedQueueLine1ExtraOption}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:T Settings.QueueSecondLine}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox Grid.Row="1" Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.QueueSecondLine}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueOptionalFieldOptions}"
+                                  SelectedItem="{Binding SelectedQueueLine2Option}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <ComboBox Grid.Row="1" Grid.Column="2"
+                                  AutomationProperties.Name="{loc:T Settings.QueueSecondLineExtra}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueOptionalFieldOptions}"
+                                  SelectedItem="{Binding SelectedQueueLine2ExtraOption}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:T Settings.QueueRightSide}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox Grid.Row="2" Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.QueueRightSide}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QueueRightOptions}"
+                                  SelectedItem="{Binding SelectedQueueRightOption}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.QueueWidth}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.QueueWidthHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.Narrower}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <controls:SmoothSlider Grid.Column="1"
+                                AutomationProperties.Name="{loc:T Settings.QueueWidth}"
+                                Classes="accent-slider"
+                                Step="1" Minimum="300" Maximum="720"
+                                x:Name="QueueWidthSlider"
+                                SteppedValue="{Binding QueuePanelWidth, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{loc:T Settings.Wider}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding QueuePanelWidth, StringFormat='{}{0:0} px'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="52" TextAlignment="Right" Margin="12,0,0,0"/>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -3735,6 +4505,25 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #154: what a queued song whose file is gone does when playback passes it. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.MissingSongs}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.MissingSongsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              AutomationProperties.Name="{loc:T Settings.MissingSongs}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding MissingSongsOptions}"
+                              SelectedItem="{Binding SelectedMissingSongsOption}"
+                              MinWidth="140"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
@@ -3754,6 +4543,31 @@
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.Output}" Margin="0,16,0,8"/>
             <Border Classes="setting-card group-card">
             <StackPanel>
+            <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.OutputDevice}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.OutputDeviceDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox x:Name="OutputDeviceCombo"
+                                  Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.OutputDevice}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding OutputDeviceOptions}"
+                                  SelectedItem="{Binding SelectedOutputDevice}"
+                                  MinWidth="260"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding OutputDeviceMissing}" Lift="6">
+                        <TextBlock Text="{loc:T Settings.OutputDeviceMissingHint}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
@@ -3823,7 +4637,48 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
-            <Border Classes="setting-row" Classes.first="{Binding !IsExclusiveAudioSupported}">
+            <!-- Accessibility: Mono Audio and Balance, applied in the output's sample stage
+                 (ChannelMixProvider). Bypassed in bit-perfect Exclusive Mode. -->
+            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding IsChannelMixEnabled}">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.MonoAudio}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.MonoAudioDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.MonoAudio}"
+                                              IsChecked="{Binding MonoAudio}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel Spacing="6" IsEnabled="{Binding IsChannelMixEnabled}">
+                        <TextBlock Text="{loc:T Settings.Balance}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.BalanceDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:SmoothSlider x:Name="AudioBalanceSlider" Grid.Column="0"
+                                    AutomationProperties.Name="{loc:T Settings.Balance}"
+                                    Classes="accent-slider" Step="1"
+                                    Minimum="-100" Maximum="100"
+                                    SteppedValue="{Binding AudioBalance, Mode=TwoWay}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding AudioBalanceLabel}"
+                                       FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding ChannelMixNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6">
+                        <TextBlock Text="{Binding ChannelMixNote}"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentColorBrush}"
+                                   TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
+            <Border Classes="setting-row">
                 <StackPanel Spacing="10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -3886,6 +4741,19 @@
                                    Text="{Binding ReplayGainPreampDb, StringFormat='{}{0:+0.0;-0.0;0.0} dB'}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" MinWidth="60"/>
+                    </Grid>
+                    <!-- GitHub #148: tagging new files works whether or not playback applies
+                         ReplayGain, so this row is not tied to the toggle above. -->
+                    <Grid Classes="sub-setting" ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.ScanNewFilesReplayGain}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ScanNewFilesReplayGainDesc}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.ScanNewFilesReplayGain}"
+                                              IsChecked="{Binding AutoReplayGainScanEnabled}"
+                                              VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -4704,7 +5572,36 @@
                         <TextBlock Text="{loc:T Settings.FindDuplicateTracksRemove}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenDuplicateFinderCommand}"
-                            AutomationProperties.Name="{loc:T Settings.Find}"
+                            AutomationProperties.Name="{loc:T Settings.FindDuplicates}"
+                            Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
+                    </Button>
+                </Grid>
+            </Border>
+            <!-- Discord (Cosmo, 11-02): lyrics and animated artwork for the whole library at once. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineLyrics}"/>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.FindLibraryLyrics}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.FindLibraryLyricsSub}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenLibraryLyricsCommand}"
+                            AutomationProperties.Name="{loc:T Settings.FindLibraryLyrics}"
+                            Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
+                    </Button>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineVideo}"/>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.FindLibraryArtwork}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.FindLibraryArtworkSub}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenLibraryAnimatedArtworkCommand}"
+                            AutomationProperties.Name="{loc:T Settings.FindLibraryArtwork}"
                             Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
                     </Button>
@@ -4718,7 +5615,7 @@
                         <TextBlock Text="{loc:T Settings.IdentifyPoorlyTaggedTracks}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenMetadataFinderCommand}"
-                            AutomationProperties.Name="{loc:T Settings.Find}"
+                            AutomationProperties.Name="{loc:T Settings.FindMetadata}"
                             Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
                         <TextBlock Text="{loc:T Settings.Find}" FontSize="13"/>
                     </Button>
@@ -4738,39 +5635,6 @@
                     </Button>
                 </Grid>
             </Border>
-            </StackPanel>
-            </Border>
-
-            <!-- YouTube: its own card, header row then the two settings stacked. -->
-            <Border Classes="setting-card group-card">
-            <StackPanel>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineSearch}"/>
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="{loc:T YouTubeSettings.Title}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T YouTubeSettings.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <Button Grid.Column="2" Classes="pill-action" Command="{Binding OpenYouTubeDownloaderCommand}"
-                            AutomationProperties.Name="{loc:T YouTubeSettings.Open}"
-                            Padding="14,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="{loc:T YouTubeSettings.Open}" FontSize="13"/>
-                    </Button>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <!-- The watermark is the folder a blank field uses, so no hint line under it. -->
-                <Grid ColumnDefinitions="150,*,Auto">
-                    <TextBlock Grid.Column="0" Text="{loc:T YouTubeSettings.Folder}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Text="{Binding YouTubeDownloadFolder}" Watermark="{Binding YouTubeDownloadFolderHint}"
-                             AutomationProperties.Name="{loc:T YouTubeSettings.Folder}"
-                             CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Content="{loc:T Settings.Browse}" Command="{Binding BrowseYouTubeFolderCommand}"
-                            Padding="14,8" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand" VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <!-- No yt-dlp row (owner 10-08): the downloader installs and keeps its own copy
-                 current; a custom path set earlier still works (YtDlpTool.Resolve). -->
             </StackPanel>
             </Border>
 
@@ -6368,16 +7232,37 @@
                     </Grid>
                 </StackPanel>
             </Border>
+
+            <!-- More integrations: the way to the Plugins page, where plugins add services and features. -->
+            <Border x:Name="MoreIntegrationsCard" Classes="setting-card" Margin="0,10,0,10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Integrations.More.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Integrations.More.Line}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" x:Name="BrowsePluginsButton" Classes="pill-action"
+                            AutomationProperties.Name="{loc:T Integrations.More.Browse}"
+                            Command="{Binding SelectSettingsTabCommand}"
+                            CommandParameter="{x:Static vm:SettingsViewModel.TabPlugins}"
+                            Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Integrations.More.Browse}" FontSize="12" FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
+            </Border>
             </StackPanel>
 
             <StackPanel x:Name="PluginsTabPanel" Classes="tab-page" IsVisible="{Binding IsPluginsTabVisible}" Spacing="4">
+            <!-- The grid: trust switch, search and actions, Official Noctis plugins, Community
+                 plugins, Make your own plugin. A card opens the plugin's page (PluginDetailPage)
+                 in place; the two slide past each other (plugin-subpage, from-left / from-right). -->
+            <StackPanel x:Name="PluginsListPage" Classes="plugin-subpage from-left" IsVisible="{Binding IsPluginGridVisible}" Spacing="4">
             <!-- Community plugins: restricted mode when off (Obsidian-style). First on the page: it
-                 decides whether anything below can run. -->
-            <Border x:Name="CommunityPluginsCard" Classes="setting-card" Margin="0,0,0,10">
+                 decides whether anything below can run. Compact: one line and the switch. -->
+            <Border x:Name="CommunityPluginsCard" Classes="setting-card plugin-trust-card" Margin="0,0,0,8">
                 <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,16,0" VerticalAlignment="Center">
-                        <TextBlock Text="{loc:T Plugins.CommunityTitle}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Plugins.CommunityLine}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    <StackPanel Grid.Column="0" Spacing="1" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Plugins.CommunityTitle}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{loc:T Plugins.CommunityLine}" FontSize="11.5" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1" x:Name="CommunityPluginsToggle"
                                           AutomationProperties.Name="{loc:T Plugins.CommunityTitle}"
@@ -6385,172 +7270,185 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
-            <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="22,0,0,8"
-                       IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
-            <!-- Official Plugins: the official list (plugins/index.json), fetched when this page opens.
-                 An installed one is managed right on its row (switch, settings, Remove). -->
-            <Grid ColumnDefinitions="*,Auto" Margin="2,10,0,8">
-                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0" VerticalAlignment="Center"/>
-                <!-- Dims while the list loads. -->
-                <Button Grid.Column="1" x:Name="RefreshOfficialPluginsButton" Classes="icon-chip"
-                        ToolTip.Tip="{loc:T Plugins.Get.Refresh}"
-                        Command="{Binding RefreshOfficialPluginsCommand}"
-                        IsEnabled="{Binding !IsOfficialPluginsLoading}">
-                    <Viewbox Width="15" Height="15">
-                        <Canvas Width="24" Height="24">
-                            <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
-                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
+            <!-- Search (both sections) and the small actions: Install from file, the plugins folder
+                 (its path in the tooltip), refresh (the folder and the list). On a narrow pane the
+                 actions drop under the search box (SettingsView.axaml.cs LayoutPluginsHeader). -->
+            <Grid x:Name="PluginsHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,4">
+                <TextBox x:Name="PluginSearchBox" Grid.Column="0" Classes="settings-search plugin-search"
+                         Watermark="{loc:T Plugins.Search}"
+                         AutomationProperties.Name="{loc:T Plugins.Search}"
+                         Text="{Binding PluginSearchText, Mode=TwoWay}"
+                         VerticalContentAlignment="Center" Height="34">
+                    <TextBox.InnerLeftContent>
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Opacity="0.5" Margin="12,0,0,0"/>
+                    </TextBox.InnerLeftContent>
+                </TextBox>
+                <WrapPanel x:Name="PluginsHeaderActions" Grid.Column="1" Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" Margin="10,0,0,0" VerticalAlignment="Center">
+                    <Button x:Name="InstallPluginFromFileButton" Classes="pill-action"
+                            AutomationProperties.Name="{loc:T Plugins.InstallFromFile}"
+                            Command="{Binding InstallPluginFromFileCommand}"
+                            Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="12" FontWeight="SemiBold"/>
+                    </Button>
+                    <Button x:Name="OpenPluginsFolderButton" Classes="icon-chip"
+                            AutomationProperties.Name="{loc:T Plugins.OpenFolder}"
+                            ToolTip.Tip="{Binding PluginsFolderTip}" Command="{Binding OpenPluginsFolderCommand}">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{StaticResource PluginsFolderGlyph}" Stroke="{Binding $parent[Button].Foreground}"
+                                      StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <!-- Dims while the list loads. -->
+                    <Button x:Name="RefreshPluginsButton" Classes="icon-chip"
+                            AutomationProperties.Name="{loc:T Plugins.Refresh}"
+                            ToolTip.Tip="{loc:T Plugins.Refresh}" Command="{Binding RefreshPluginsCommand}"
+                            IsEnabled="{Binding !IsOfficialPluginsLoading}">
+                        <Panel>
+                            <Viewbox Width="15" Height="15" IsVisible="{Binding !IsRefreshingPlugins}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
+                                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                </Canvas>
+                            </Viewbox>
+                            <controls:LoadingSpinner Width="15" Height="15" Thickness="2"
+                                                     Foreground="{Binding $parent[Button].Foreground}"
+                                                     IsVisible="{Binding IsRefreshingPlugins}" IsActive="{Binding IsRefreshingPlugins}"/>
+                        </Panel>
+                    </Button>
+                </WrapPanel>
             </Grid>
-            <TextBlock Text="{loc:T Plugins.Get.Empty}" FontSize="12" Opacity="0.5" Margin="22,0,0,10"
-                       IsVisible="{Binding HasNoOfficialPlugins}"/>
-            <Border Classes="setting-card group-card" IsVisible="{Binding !!OfficialPlugins.Count}">
-                <ItemsControl x:Name="OfficialPluginsList" Classes="row-list" ItemsSource="{Binding OfficialPlugins}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:OfficialPluginItem">
-                            <Border Classes="setting-row">
-                                <StackPanel Classes="plugin-body" Classes.restricted="{Binding Installed.IsRestricted, FallbackValue=False}" Spacing="10">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,16,0" VerticalAlignment="Center">
-                                            <WrapPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                                <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center" Margin="0,0,6,0"
-                                                        IsVisible="{Binding Installed.ShowStatusBadge, FallbackValue=False}">
-                                                    <TextBlock Text="{Binding Installed.StatusText, FallbackValue={x:Null}}" FontSize="10.5" FontWeight="SemiBold"/>
-                                                </Border>
-                                                <!-- Verified mark in place of an "Official" pill. -->
-                                                <Viewbox Width="17" Height="17" VerticalAlignment="Center" Margin="0,0,6,0"
-                                                         ToolTip.Tip="{loc:T Plugins.Get.Official}">
-                                                    <Canvas Width="24" Height="24">
-                                                        <Path Data="{StaticResource VerifiedSealGeometry}" Fill="#1D9BF0"/>
-                                                        <Path Data="{StaticResource VerifiedCheckGeometry}" Stroke="White" StrokeThickness="2.2"
-                                                              StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                    </Canvas>
-                                                </Viewbox>
-                                            </WrapPanel>
-                                            <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
-                                                       IsVisible="{Binding HasDescription}"/>
-                                            <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
-                                                       IsVisible="{Binding HasError}"/>
-                                            <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2"
-                                                         Margin="0,4,0,0" IsVisible="{Binding IsBusy}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                                            <!-- Install / Update (accent), Cancel while downloading, or a disabled
-                                                 Requires Noctis x / Not available on this OS. Once installed and
-                                                 current, the row's switch stands in for a plain "Installed". -->
-                                            <Button Classes.accent-pill="{Binding IsPrimary}" Classes.pill-action="{Binding !IsPrimary}"
-                                                    Padding="14,7" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center"
-                                                    IsVisible="{Binding ShowButton}"
-                                                    IsEnabled="{Binding CanClick}"
-                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
-                                                    CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding ButtonText}" FontSize="12" FontWeight="SemiBold"/>
-                                            </Button>
-                                            <!-- The installed copy's own switch (same two-way path as Custom Category). -->
-                                            <ContentControl Content="{Binding Installed}" IsVisible="{Binding IsInstalled}" VerticalAlignment="Center">
-                                                <ContentControl.ContentTemplate>
-                                                    <DataTemplate x:DataType="plugins:LoadedPlugin">
-                                                        <controls:LottieToggle IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                                                              AutomationProperties.Name="{Binding Name}"
-                                                                              IsEnabled="{Binding CanToggle}"/>
-                                                    </DataTemplate>
-                                                </ContentControl.ContentTemplate>
-                                            </ContentControl>
-                                        </StackPanel>
-                                    </Grid>
-                                    <ContentControl Content="{Binding Installed}" IsVisible="{Binding IsInstalled}"
-                                                    ContentTemplate="{StaticResource PluginDetailsTemplate}"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
+            <!-- After a refresh: a check and "Refreshed · 8 plugins", gone again after a few seconds. -->
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="14,2,0,4"
+                        IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="11" Height="11"
+                          Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
+                           VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Official Noctis plugins: the list's plugins by Noctis (plugins/index.json, fetched when
+                 this page opens). Always the verified mark. -->
+            <StackPanel x:Name="OfficialPluginsSection" IsVisible="{Binding ShowOfficialSection}">
+                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left" Margin="4,12,0,10">
+                    <TextBlock Classes="section-title" Text="{loc:T Plugins.OfficialSection}" Margin="0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <Border Grid.Column="1" Margin="8,0,0,0" Classes="plugin-count" IsVisible="{Binding HasOfficialCards}">
+                        <TextBlock Text="{Binding OfficialCountText}"/>
+                    </Border>
+                </Grid>
+                <TextBlock Text="{loc:T Plugins.Get.Empty}" FontSize="12" Opacity="0.5" Margin="14,0,0,10"
+                           IsVisible="{Binding ShowOfficialEmpty}"/>
+                <ItemsControl x:Name="OfficialPluginsGrid" ClipToBounds="False" ItemsSource="{Binding OfficialCards}"
+                              ItemTemplate="{StaticResource PluginCardTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).PluginGridColumns}"
+                                         ColumnSpacing="12" RowSpacing="12"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                 </ItemsControl>
-            </Border>
+            </StackPanel>
 
+            <!-- Community plugins: made by users and credited by name (listed ones, and whatever was
+                 installed from a file or dropped in the folder). Never the verified mark. -->
+            <StackPanel x:Name="CommunityPluginsSection" IsVisible="{Binding ShowCommunitySection}">
+                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left" Margin="4,18,0,10">
+                    <TextBlock Classes="section-title" Text="{loc:T Plugins.CommunitySection}" Margin="0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <Border Grid.Column="1" Margin="8,0,0,0" Classes="plugin-count" IsVisible="{Binding HasCommunityCards}">
+                        <TextBlock Text="{Binding CommunityCountText}"/>
+                    </Border>
+                </Grid>
+                <TextBlock x:Name="CommunityPluginsEmpty" Text="{loc:T Plugins.CommunityEmpty}" FontSize="12" Opacity="0.5" Margin="14,0,0,10"
+                           TextWrapping="Wrap" IsVisible="{Binding ShowCommunityEmpty}"/>
+                <ItemsControl x:Name="CommunityPluginsGrid" ClipToBounds="False" ItemsSource="{Binding CommunityCards}"
+                              ItemTemplate="{StaticResource PluginCardTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).PluginGridColumns}"
+                                         ColumnSpacing="12" RowSpacing="12"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </StackPanel>
 
-            <!-- Custom Category: plugins the user adds (Install from file, or a folder dropped in by
-                 hand). Install from file is this section's action; the folder and reload are small
-                 icon buttons (the folder's path is in its tooltip). -->
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="2,10,0,8">
-                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.CustomTitle}" Margin="0" VerticalAlignment="Center"/>
-                <Button Grid.Column="2" x:Name="InstallPluginFromFileButton" Classes="pill-action"
-                        AutomationProperties.Name="{loc:T Plugins.InstallFromFile}"
-                        Command="{Binding InstallPluginFromFileCommand}"
-                        Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,6,0">
-                    <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="12" FontWeight="SemiBold"/>
-                </Button>
-                <Button Grid.Column="3" x:Name="OpenPluginsFolderButton" Classes="icon-chip" Margin="0,0,6,0"
-                        ToolTip.Tip="{Binding PluginsFolderTip}" Command="{Binding OpenPluginsFolderCommand}">
-                    <Viewbox Width="15" Height="15">
-                        <Canvas Width="24" Height="24">
-                            <Path Data="{StaticResource PluginsFolderGlyph}" Stroke="{Binding $parent[Button].Foreground}"
-                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-                <Button Grid.Column="4" x:Name="ReloadPluginsButton" Classes="icon-chip"
-                        ToolTip.Tip="{loc:T Plugins.Reload}" Command="{Binding ReloadPluginsCommand}">
-                    <Viewbox Width="15" Height="15">
-                        <Canvas Width="24" Height="24">
-                            <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
-                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-            </Grid>
-            <Border x:Name="CustomPluginsCard" Classes="setting-card group-card">
-                <StackPanel>
-                    <TextBlock Text="{loc:T Plugins.CustomNone}" FontSize="12" Opacity="0.5" Margin="0,14"
-                               IsVisible="{Binding HasNoCustomPlugins}"/>
-                    <ItemsControl Classes="row-list" ItemsSource="{Binding CustomPlugins}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="plugins:LoadedPlugin">
-                                <Border Classes="setting-row">
-                                    <StackPanel Classes="plugin-body" Classes.restricted="{Binding IsRestricted}" Spacing="10">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,16,0">
-                                                <WrapPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                                    <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center" Margin="0,0,6,0"
-                                                            IsVisible="{Binding ShowStatusBadge}">
-                                                        <TextBlock Text="{Binding StatusText}" FontSize="10.5" FontWeight="SemiBold"/>
-                                                    </Border>
-                                                    <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
-                                                            VerticalAlignment="Center" IsVisible="{Binding IsLegacy}">
-                                                        <TextBlock Text="{loc:T Plugins.LegacyBadge}" FontSize="10.5" Opacity="0.8"/>
-                                                    </Border>
-                                                    <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
-                                                            VerticalAlignment="Center" IsVisible="{Binding IsContentPack}">
-                                                        <TextBlock Text="{loc:T Plugins.ContentBadge}" FontSize="10.5" Opacity="0.8"/>
-                                                    </Border>
-                                                </WrapPanel>
-                                                <TextBlock Text="{Binding Author}" FontSize="11" Opacity="0.45"
-                                                           IsVisible="{Binding HasAuthor}"/>
-                                                <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
-                                                           IsVisible="{Binding HasDescription}"/>
-                                            </StackPanel>
-                                            <!-- Two-way: LoadedPlugin.IsEnabled routes the flip back to the host
-                                                 (approval dialog on first enable, start/stop + persist). -->
-                                            <controls:LottieToggle Grid.Column="1" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                                                  AutomationProperties.Name="{Binding Name}"
-                                                                  IsEnabled="{Binding CanToggle}"
-                                                                  VerticalAlignment="Top"/>
-                                        </Grid>
+            <TextBlock x:Name="PluginSearchEmpty" Text="{loc:T Plugins.SearchEmpty}" FontSize="12.5" Opacity="0.55"
+                       HorizontalAlignment="Center" Margin="0,24,0,16" IsVisible="{Binding ShowNoPluginMatches}"/>
 
-                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PluginDetailsTemplate}"/>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+            <!-- Make your own plugin: the way in for people who want to build one. Three plain steps
+                 (a row; stacked when the pane is narrow, see SettingsView.axaml.cs LayoutMakePluginSteps),
+                 then the website guide and the submission form (docs/PLUGINS.md, "Submitting a plugin"). -->
+            <Border x:Name="MakePluginCard" Classes="setting-card" Margin="0,22,0,10">
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Plugins.Make.Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{loc:T Plugins.Make.Line}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid x:Name="MakePluginSteps" ColumnDefinitions="*,*,*">
+                        <Grid.Styles>
+                            <Style Selector="Border.make-step-n">
+                                <Setter Property="Width" Value="22"/>
+                                <Setter Property="Height" Value="22"/>
+                                <Setter Property="CornerRadius" Value="999"/>
+                                <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                                <Setter Property="VerticalAlignment" Value="Top"/>
+                                <Setter Property="Margin" Value="0,0,10,0"/>
+                            </Style>
+                            <Style Selector="Border.make-step-n > TextBlock">
+                                <Setter Property="FontSize" Value="11"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </Grid.Styles>
+                        <Grid Grid.Column="0" ColumnDefinitions="Auto,*">
+                            <Border Classes="make-step-n"><TextBlock Text="1"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{loc:T Plugins.Make.Step1Title}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Plugins.Make.Step1}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Margin="16,0,0,0">
+                            <Border Classes="make-step-n"><TextBlock Text="2"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{loc:T Plugins.Make.Step2Title}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Plugins.Make.Step2}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="2" ColumnDefinitions="Auto,*" Margin="16,0,0,0">
+                            <Border Classes="make-step-n"><TextBlock Text="3"/></Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{loc:T Plugins.Make.Step3Title}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Plugins.Make.Step3}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                    <!-- Guide first (read, then submit): the tab order follows. -->
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                        <Button x:Name="ReadPluginGuideButton" Classes="pill-action"
+                                AutomationProperties.Name="{loc:T Plugins.Make.Guide}"
+                                Command="{Binding OpenPluginGuideCommand}"
+                                Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Plugins.Make.Guide}" FontSize="12" FontWeight="SemiBold"/>
+                        </Button>
+                        <Button x:Name="SubmitPluginButton" Classes="accent-pill"
+                                AutomationProperties.Name="{loc:T Plugins.Submit}"
+                                Command="{Binding SubmitPluginCommand}"
+                                Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Plugins.Submit}" FontSize="12" FontWeight="SemiBold"/>
+                        </Button>
+                    </WrapPanel>
                 </StackPanel>
             </Border>
+            </StackPanel>
+
+            <!-- A plugin's own page (PluginPageTemplate), in place of the grid. -->
+            <StackPanel x:Name="PluginDetailPage" Classes="plugin-subpage from-right" IsVisible="{Binding IsPluginPageVisible}">
+                <ContentControl x:Name="PluginDetailHost" Content="{Binding SelectedPluginCard}"
+                                ContentTemplate="{StaticResource PluginPageTemplate}"/>
+            </StackPanel>
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
@@ -6982,6 +7880,44 @@
 
         </StackPanel>
     </ScrollViewer>
+
+    <!-- A plugin's own view ("Open Album Town") in place of its page (owner 10-29: the window
+         looked choppy). Outside the scroller so the view gets a real height; it slides in like a
+         plugin's page (plugin-subpage) while MainWindow grows the card to the size the view asks
+         for (CardSizeRequested). Back returns to the page; the icon opens the view in its own
+         window instead. The view wears the plugin-window theme (PluginViewTheme on PluginViewHost). -->
+    <DockPanel x:Name="PluginViewPage" Grid.Row="1" Classes="plugin-subpage from-right"
+               Margin="28,8,28,24" IsVisible="{Binding IsPluginViewOpen}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <Button x:Name="PluginViewBackButton" Classes="pill-action plugin-back" HorizontalAlignment="Left"
+                    Command="{Binding ClosePluginViewCommand}"
+                    AutomationProperties.Name="{Binding PluginViewBackName}"
+                    Height="32" Padding="8,0,14,0" VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="16" Height="16"/>
+                    <TextBlock Text="{Binding OpenPluginViewEntry.PluginName, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="1" x:Name="PluginViewPopOutButton" Classes="icon-chip"
+                    AutomationProperties.Name="{loc:T Plugins.View.PopOut}" ToolTip.Tip="{loc:T Plugins.View.PopOut}"
+                    Command="{Binding PopOutPluginViewCommand}">
+                <Viewbox Width="15" Height="15">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource MenuLineOpenWith}" Stroke="{Binding $parent[Button].Foreground}"
+                              StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+        </Grid>
+        <!-- DataContext null: as in its window, the plugin's control inherits no DataContext
+             (a binding of its own must not resolve against Settings' view model). -->
+        <Border x:Name="PluginViewFrame" CornerRadius="18" ClipToBounds="True">
+            <ContentControl x:Name="PluginViewHost" DataContext="{x:Null}"
+                            Content="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).PluginViewContent}"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+        </Border>
+    </DockPanel>
     </Grid>
     </Grid>
 </UserControl>

@@ -285,7 +285,7 @@ public class MixxxPluginTests : IDisposable
     public void Manifest_TargetsApi12_WithMinimalPermissions()
     {
         var manifest = PluginManifest.Parse(File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.Mixxx/plugin.json")));
-        Assert.Equal(PluginApi.Version, manifest.ApiVersion);
+        Assert.Equal("1.2", manifest.ApiVersion); // built for 1.2: it runs on Noctis 1.5.9+, and later kits only add
         Assert.Equal(new[] { "library.read", "library.write.analysis", "menu.commands", "notifications" }, manifest.Permissions);
         Assert.Empty(manifest.Warnings);
         Assert.Equal(new[] { "databasePath", "overwrite" }, manifest.Settings.Select(s => s.Key));

@@ -41,6 +41,10 @@ tools/*
 !tools/NoctisCoverProxy/
 tools/NoctisCoverProxy/bin/
 tools/NoctisCoverProxy/obj/
+# ...and the plugin submission checker (.github/workflows/plugin-submission.yml).
+!tools/Noctis.PluginCheck/
+tools/Noctis.PluginCheck/bin/
+tools/Noctis.PluginCheck/obj/
 
 ## Temp / build scratch
 build_tmp_verify/
@@ -87,3 +91,4 @@ dotnet
 *.jks
 *.keystore
 *.p12
+__pycache__/

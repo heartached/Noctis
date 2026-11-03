@@ -77,7 +77,8 @@ public sealed class PlaybackQueue
 
         _originalOrder.Clear();
         IsShuffleEnabled = false;
-        _repeatCycle = tracks.Skip(startIndex).Concat(tracks.Take(startIndex)).ToList();
+        // List order, so Repeat All wraps to the first track (not to the one picked mid-list).
+        _repeatCycle = tracks.ToList();
 
         _upNext.Clear();
         for (int i = startIndex + 1; i < tracks.Count; i++)
@@ -87,13 +88,30 @@ public sealed class PlaybackQueue
         return Current;
     }
 
+    // While shuffled, songs queued go into the pre-shuffle order too (Play Next at its front,
+    // Add to Queue at its end): Shuffle off rebuilds Up Next from that order, and without them
+    // there it dropped every song queued in the meantime.
+
     /// <summary>"Play Next": front of UpNext.</summary>
-    public void AddNext(Track track) => _upNext.Insert(0, track);
+    public void AddNext(Track track)
+    {
+        _upNext.Insert(0, track);
+        if (IsShuffleEnabled) _originalOrder.Insert(0, track);
+    }
 
     /// <summary>"Add to Queue": end of UpNext.</summary>
-    public void Add(Track track) => _upNext.Add(track);
+    public void Add(Track track)
+    {
+        _upNext.Add(track);
+        if (IsShuffleEnabled) _originalOrder.Add(track);
+    }
 
-    public void AddRange(IEnumerable<Track> tracks) => _upNext.AddRange(tracks);
+    public void AddRange(IEnumerable<Track> tracks)
+    {
+        var list = tracks.ToList();
+        _upNext.AddRange(list);
+        if (IsShuffleEnabled) _originalOrder.AddRange(list);
+    }
 
     public void RemoveAt(int upNextIndex)
     {
@@ -235,6 +253,20 @@ public sealed class PlaybackQueue
         IsShuffleEnabled,
         _originalOrder.Select(t => t.Id).ToList(),
         PlayedInQueue);
+
+    /// <summary>An independent copy holding the same tracks, for undoing a look-ahead.</summary>
+    public PlaybackQueue Clone()
+    {
+        var q = new PlaybackQueue(_historyCap)
+        {
+            Current = Current, RepeatMode = RepeatMode, IsShuffleEnabled = IsShuffleEnabled, PlayedInQueue = PlayedInQueue,
+        };
+        q._upNext.AddRange(_upNext);
+        q._history.AddRange(_history);
+        q._repeatCycle = new List<Track>(_repeatCycle);
+        q._originalOrder = new List<Track>(_originalOrder);
+        return q;
+    }
 
     /// <summary>Rebuild from a snapshot; ids that no longer resolve are dropped.</summary>
     public static PlaybackQueue Restore(PlaybackQueueState s, Func<Guid, Track?> resolve, int historyCap = DefaultHistoryCap)

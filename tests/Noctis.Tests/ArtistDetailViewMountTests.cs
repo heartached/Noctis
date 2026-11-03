@@ -99,6 +99,49 @@ public class ArtistDetailViewMountTests
         win.Close();
     }
 
+    /// <summary>GitHub #149: the Albums tab's grid / carousel toggle swaps the tile grid for
+    /// the album carousel, which browses that artist's albums.</summary>
+    [AvaloniaFact]
+    public void ArtistPage_AlbumsTab_SwitchesToTheCarousel()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        ((List<Album>)lib.Albums).AddRange(new[]
+        {
+            MakeAlbum("Bad", "Michael Jackson", 1987, 10),
+            MakeAlbum("Thriller", "Michael Jackson", 1982, 9),
+            MakeAlbum("Invincible", "Michael Jackson", 2001, 16),
+        });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new FakeHistoryLog());
+        var vm = new ArtistDetailViewModel("Michael Jackson", lib, player, settings: settings);
+        var view = new ArtistDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        vm.SelectTabCommand.Execute("albums");
+        Dispatcher.UIThread.RunJobs();
+
+        var panel = view.FindControl<StackPanel>("AlbumsPanel")!;
+        var carousel = panel.GetVisualDescendants().OfType<AlbumCarousel>().Single();
+        Assert.False(carousel.IsVisible);
+
+        var toggle = panel.GetVisualDescendants().OfType<Button>()
+            .Single(b => Avalonia.Automation.AutomationProperties.GetName(b) == "Show as Carousel");
+        toggle.Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+
+        Assert.True(carousel.IsVisible);
+        Assert.Equal("carousel", settings.ArtistAlbumsViewMode);
+        Assert.Equal("Show as Grid", Avalonia.Automation.AutomationProperties.GetName(toggle));
+        Assert.Contains(carousel.RealizedCards.Values, c => c.Album?.Name == "Invincible");
+        Assert.Contains(carousel.RealizedCards.Values, c => c.Album?.Name == "Thriller");
+        // Newest first, like the grid: the carousel starts on Invincible.
+        Assert.Equal("Invincible", carousel.CenterAlbum?.Name);
+        win.Close();
+    }
+
     [AvaloniaFact]
     public void ArtistPage_MountsWithHeroPopularAndReleases()
     {

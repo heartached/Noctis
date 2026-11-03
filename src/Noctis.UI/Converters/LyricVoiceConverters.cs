@@ -30,6 +30,26 @@ public class LyricVoiceToAlignmentConverter : IValueConverter
         throw new NotImplementedException();
 }
 
+/// <summary>
+/// [Voice, IsRightToLeft] → the line's place in the column. A right-to-left line (plugin API
+/// 1.5) sits against the edge it starts from, the right one, mirroring the voice layout: voice 2
+/// goes left, group lines stay centred.
+/// </summary>
+public class LyricLineAlignmentConverter : IMultiValueConverter
+{
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var voice = values.Count > 0 && values[0] is LyricVoice v ? v : LyricVoice.Default;
+        var rtl = values.Count > 1 && values[1] is true;
+        return voice switch
+        {
+            LyricVoice.Group => HorizontalAlignment.Center,
+            LyricVoice.Voice2 => rtl ? HorizontalAlignment.Left : HorizontalAlignment.Right,
+            _ => rtl ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+        };
+    }
+}
+
 /// <summary>Wrapped plain-text lines: ragged-left for voice 2, centered for group.</summary>
 public class LyricVoiceToTextAlignmentConverter : IValueConverter
 {

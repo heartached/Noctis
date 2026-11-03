@@ -7,10 +7,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
+using Noctis.Controls;
 using Noctis.Models;
 using Noctis.Services;
 using Xunit;
@@ -120,13 +122,50 @@ public class MobileNowPlayingPageTests : IDisposable
         var transport = new[] { "PreviousButton", "PlayPauseButton", "NextButton" }
             .Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
         Assert.Single(transport.Select(b => b.TranslatePoint(default, page)!.Value.Y).Distinct());
-        double Glyph(Button b) => b.GetVisualDescendants().OfType<PathIcon>().First(i => i.IsVisible).Width;
+        double Glyph(Button b) => b.GetVisualDescendants().OfType<TransportGlyph>().Single().Width;
         Assert.True(Glyph(transport[1]) > Glyph(transport[0]) && Glyph(transport[0]) == Glyph(transport[2]));
         // The cover sits back while paused.
         var frame = MobileFixtures.Named<Border>(page, "ArtworkFrame");
         Assert.False(frame.Classes.Contains("paused"));
         rig.Shell.Player.TogglePlayPauseCommand.Execute(null);
         Assert.True(frame.Classes.Contains("paused"));
+        window.Close();
+    }
+
+    /// <summary>
+    /// The bottom row and the transport follow the desktop player bar (owner 10-19: "the same as
+    /// the Windows app ... same sizes"): Lyrics and Queue draw the bar's Lyrics and Queue glyphs
+    /// in one box, the middle button its Volume speaker at the bar's 16 of 18, and Play/Pause is
+    /// the bar's 20 to the skips' 18.
+    /// </summary>
+    [AvaloniaFact]
+    public void TheBottomRowAndTransport_UseTheDesktopBarsGlyphsAndProportions()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        window.UpdateLayout();
+        var page = view.FindControl<NowPlayingPage>("NowPlaying")!;
+        PathIcon Glyph(string button) => MobileFixtures.Named<Button>(page, button).GetVisualDescendants().OfType<PathIcon>().First(i => i.IsVisible);
+        Geometry Key(string key) => (Geometry)page.FindResource(key)!;
+
+        Assert.Same(Key("PhLyrics"), Glyph("LyricsButton").Data);
+        Assert.Same(Key("PhVolumeHigh"), Glyph("OutputButton").Data);
+        Assert.Same(Key("PhQueue"), Glyph("QueueButton").Data);
+        var box = Glyph("LyricsButton").Bounds.Width;
+        Assert.InRange(box, 22, 26);
+        Assert.Equal(box, Glyph("QueueButton").Bounds.Width);
+        Assert.Equal(box * 16 / 18, Glyph("OutputButton").Bounds.Width, 1.0);   // layout rounding
+        var row = new[] { "LyricsButton", "OutputButton", "QueueButton" }
+            .Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
+        Assert.Single(row.Select(b => Math.Round(b.TranslatePoint(new Point(0, b.Bounds.Height / 2), page)!.Value.Y, 1)).Distinct());
+
+        // The transport draws Apple's press motion (TransportGlyph) in the same boxes.
+        TransportGlyph Transport(string button) => MobileFixtures.Named<Button>(page, button).GetVisualDescendants().OfType<TransportGlyph>().Single();
+        var skip = Transport("PreviousButton").Bounds.Width;
+        Assert.Equal(skip, Transport("NextButton").Bounds.Width);
+        Assert.Equal(skip * 20 / 18, Transport("PlayPauseButton").Bounds.Width, 1.0);
         window.Close();
     }
 
@@ -386,8 +425,10 @@ public class MobileNowPlayingPageTests : IDisposable
         Assert.Equal(LyricsSource.None, LyricsLoader.Load(MobileFixtures.Song("Tone"), files, joinSplitWords: false).Source);
     }
 
+    /// <summary>Apple Music's lyrics show a thin auto-hiding scroll indicator at the right edge
+    /// (the owner's reference, 10-20), so the scroller keeps its overlay bar (Auto), not Hidden.</summary>
     [AvaloniaFact]
-    public void LyricsPage_HidesItsScrollBar_AndTheBannerWithoutAFallback()
+    public void LyricsPage_ShowsAThinScrollIndicator_AndHidesTheBannerWithoutAFallback()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
         var window = MobileFixtures.Mount(rig.Shell, out var view);
@@ -396,7 +437,7 @@ public class MobileNowPlayingPageTests : IDisposable
         window.UpdateLayout();
 
         var page = MobileFixtures.Find<LyricsPage>(view);
-        Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,
+        Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             MobileFixtures.Named<ScrollViewer>(page, "LyricsScroll").VerticalScrollBarVisibility);
         Assert.False(MobileFixtures.Named<TextBlock>(page, "FallbackBanner").IsVisible);
         window.Close();

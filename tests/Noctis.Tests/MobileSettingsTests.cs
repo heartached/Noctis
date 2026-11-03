@@ -33,11 +33,12 @@ public class MobileSettingsTests
     {
         public string? FileName { get; private set; }
         public string? Text { get; private set; }
+        public Exception? Failure { get; set; }
         public Task<bool> ExportAsync(string suggestedFileName, string text)
         {
             FileName = suggestedFileName;
             Text = text;
-            return Task.FromResult(true);
+            return Failure != null ? Task.FromException<bool>(Failure) : Task.FromResult(true);
         }
     }
 
@@ -235,6 +236,21 @@ public class MobileSettingsTests
         Assert.Equal("Noctis 9.9.9", page.VersionText);
     }
 
+    /// <summary>A write that failed (the picked place refused it, no documents app) said "Export
+    /// cancelled", as if the user had backed out: the failure was visible only in logcat.</summary>
+    [Fact]
+    public async Task ExportLogs_AFailedWrite_SaysSo()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var exporter = new FakeLogExporter { Failure = new IOException("no space") };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Logs = exporter };
+        var page = await OpenSettings(shell);
+
+        await page.ExportLogsCommand.ExecuteAsync(null);
+
+        Assert.Equal("Couldn't save the log", page.ExportStatus);
+    }
+
     /// <summary>S23 2026-10-05: the folder's grant was dropped and every song failed with a bare
     /// "Source error"; Settings now names the folder whose access was lost.</summary>
     [AvaloniaFact]
@@ -404,7 +420,7 @@ public class MobileSettingsTests
         }
     }
 
-    /// <summary>Owner 10-13: Appearance's Player Bar card switches the mini player's progress
+    /// <summary>Owner 10-13: the Player Bar page switches the mini player's progress
     /// colour and line, both off by default; a switch acts on the shell at once and is saved.</summary>
     [AvaloniaFact]
     public async Task Settings_Appearance_PlayerBarSwitches_DriveTheMiniPlayer()
@@ -413,7 +429,7 @@ public class MobileSettingsTests
         await rig.Shell.InitializeAsync();
         await WithMountedSettings(rig, (page, vm, window) =>
         {
-            vm.OpenPaneCommand.Execute(SettingsPane.Appearance);
+            vm.OpenPaneCommand.Execute(SettingsPane.PlayerBar);
             Settle(window);
             var card = MobileFixtures.Named<Border>(page, "PlayerBarCard");
             Assert.True(card.IsEffectivelyVisible);
@@ -489,72 +505,104 @@ public class MobileSettingsTests
     private const string Tones = "content://com.android.externalstorage.documents/tree/primary%3AMusic%2FTones";
     private const string Beats = "content://com.android.externalstorage.documents/tree/primary%3AMusic%2FBeats";
 
-    /// <summary>Owner 10-13, "cluttered, very AI": the top level is Apple's account sheet. No
-    /// section heads, no header badge; three plain rows (no icons) into the pages; the only
-    /// accent rows are the two actions; the version is a small footer, not a card. Every card
-    /// keeps its 24 dp corners, and the gapless switch stays gone (the phone is always gapless).</summary>
+    /// <summary>10-28 redesign: the top level is a large title over the profile card (its stats
+    /// strip always there), then five sections of rows, each with its round glyph chip; the About
+    /// rows have none; the only accent rows are gone (Rescan and Export Logs are chip rows now).
+    /// The small header title waits for the large one to scroll away.</summary>
     [AvaloniaFact]
-    public async Task Settings_TopLevel_IsCalm_PlainRowsIntoPages_AndOnlyActionsInTheAccent()
+    public async Task Settings_TopLevel_HasTheLargeTitle_ProfileStats_SectionsAndChipRows()
     {
         using var rig = await RigWithFolders(null, Tones);
-        await WithMountedSettings(rig, (page, _, _) =>
+        await WithMountedSettings(rig, (page, vm, _) =>
         {
             var visible = page.GetVisualDescendants().OfType<Control>().Where(c => c.IsEffectivelyVisible).ToList();
             Assert.DoesNotContain(visible, c => c.Classes.Contains("group-head") || c.Classes.Contains("sheet-glyph"));
-            Assert.Equal("Settings", MobileFixtures.Named<TextBlock>(page, "SettingsTitle").Text);
+            Assert.Equal("Settings", MobileFixtures.Named<TextBlock>(page, "LargeTitle").Text);
+            Assert.Equal(0, MobileFixtures.Named<TextBlock>(page, "SettingsTitle").Opacity);
             Assert.False(MobileFixtures.Named<Button>(page, "BackButton").IsVisible);
+            Assert.False(MobileFixtures.Named<Button>(page, "AccountRow").IsVisible);     // no account service in this rig
+            Assert.True(MobileFixtures.Named<Border>(page, "StatsStrip").IsEffectivelyVisible);
+            Assert.Equal(new[] { "Appearance", "Library", "Listening", "Help", "About" },
+                visible.OfType<TextBlock>().Where(t => t.Classes.Contains("group-caption")).Select(t => t.Text));
 
-            foreach (var (name, label) in new[] { ("FoldersRow", "Music Folders"), ("AppearanceRow", "Appearance"), ("LyricsRow", "Lyrics") })
+            foreach (var (name, label) in new[]
+                     {
+                         ("BackgroundRow", "Background"), ("ThemeRow", "Theme"), ("AccentRow", "Accent"), ("PlayerBarRow", "Player Bar"),
+                         ("FoldersRow", "Music Folders"), ("RescanButton", "Rescan Library"),
+                         ("LyricsRow", "Lyrics"), ("ScrobblingRow", "Scrobbling"), ("HistoryRow", "Listening History"),
+                         ("ReportRow", "Report a Problem"), ("ExportLogsButton", "Export Logs"), ("WebsiteRow", "Noctis Website"),
+                     })
             {
                 var row = MobileFixtures.Named<Button>(page, name);
-                Assert.DoesNotContain("accent-row", row.Classes);
+                Assert.True(row.IsEffectivelyVisible, name);
                 Assert.Equal(label, row.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("row-label")).Text);
-                // The chevron is the row's only icon.
-                Assert.Equal(new[] { "row-chevron" }, row.GetVisualDescendants().OfType<GridIcon>().Select(i => i.Classes.Single()));
+                var chip = row.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("row-chip"));
+                Assert.Equal(new Size(30, 30), chip.Bounds.Size);
+                Assert.Single(chip.GetVisualDescendants().OfType<GridIcon>());
             }
-
-            var accentRows = visible.OfType<Button>().Where(b => b.Classes.Contains("accent-row")).Select(b => b.Name).ToList();
-            Assert.Equal(new[] { "RescanButton", "ExportLogsButton" }, accentRows);
-            // Icons on the top level: the actions' own and the chevrons, nothing else.
-            Assert.All(visible.OfType<GridIcon>().Where(i => i.Classes.Contains("row-icon")),
-                i => Assert.Contains(i.GetVisualAncestors().OfType<Button>().First().Name, accentRows));
+            foreach (var name in new[] { "WhatsNewRow", "LicensesRow" })
+                Assert.DoesNotContain(MobileFixtures.Named<Button>(page, name).GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("row-chip"));
+            // The computer's rows (Downloads, Pick Up on Computer) show only with an account.
+            Assert.False(MobileFixtures.Named<Button>(page, "DownloadsRow").IsEffectivelyVisible);
+            Assert.False(MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(page, "PickUpSwitch").IsEffectivelyVisible);
+            Assert.DoesNotContain(visible.OfType<Button>(), b => b.Classes.Contains("accent-row"));
 
             Assert.All(visible.OfType<Border>().Where(b => b.Classes.Contains("group-card")), c => Assert.Equal(24, c.CornerRadius.TopLeft));
-            var version = MobileFixtures.Named<TextBlock>(page, "VersionLabel");
-            Assert.True(version.IsEffectivelyVisible);
-            Assert.Equal(Avalonia.Layout.HorizontalAlignment.Center, version.HorizontalAlignment);
-            Assert.DoesNotContain(visible, c => c.Name is "AboutCard" or "GaplessSwitch");
+            Assert.Equal(vm.VersionValue, MobileFixtures.Named<TextBlock>(page, "VersionLabel").Text);
+            var tagline = MobileFixtures.Named<TextBlock>(page, "TaglineLabel");
+            Assert.True(tagline.IsEffectivelyVisible);
+            Assert.Equal(Avalonia.Layout.HorizontalAlignment.Center, tagline.HorizontalAlignment);
+            Assert.DoesNotContain(visible, c => c.Name is "GaplessSwitch");
             Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains("Gapless", StringComparison.OrdinalIgnoreCase) == true);
         });
     }
 
-    /// <summary>Each row into a page carries its value in grey: how many folders (a red dot when
-    /// one lost its access), the dark style and accent, which lyric lines show. They follow changes.</summary>
+    /// <summary>Each row carries its value in grey, and its screen-reader name says it too ("Music
+    /// Folders, 2" plus the warning when a folder lost its access). They follow changes.</summary>
     [AvaloniaFact]
-    public async Task Settings_PageRows_ShowTheirValues_AndFollowChanges()
+    public async Task Settings_Rows_ShowTheirValues_NameThem_AndFollowChanges()
     {
         var picker = new MobileFixtures.NoPicker();
         picker.Lost.Add(Beats);
         using var rig = await RigWithFolders(picker, Tones, Beats);
         await WithMountedSettings(rig, (page, vm, window) =>
         {
+            string NameOf(string row) => Avalonia.Automation.AutomationProperties.GetName(MobileFixtures.Named<Button>(page, row));
             Assert.Equal("2", MobileFixtures.Named<TextBlock>(page, "FoldersValueLabel").Text);
             Assert.True(MobileFixtures.Named<Avalonia.Controls.Shapes.Ellipse>(page, "FolderWarningDot").IsEffectivelyVisible);
-            Assert.Equal("Ink · Crimson", MobileFixtures.Named<TextBlock>(page, "AppearanceValueLabel").Text);
+            Assert.Equal("Music Folders, 2, a folder lost its access or can't be reached", NameOf("FoldersRow"));
+            Assert.Equal("System", MobileFixtures.Named<TextBlock>(page, "ThemeValueLabel").Text);
+            Assert.Equal("Crimson", MobileFixtures.Named<TextBlock>(page, "AccentValueLabel").Text);
+            Assert.Equal("Plain", MobileFixtures.Named<TextBlock>(page, "PlayerBarValueLabel").Text);
+            Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "BackgroundValueLabel").Text);
+            Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "ScrobblingValueLabel").Text);
             Assert.Equal("Translations, Romanization", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
+            Assert.Equal("Theme, System", NameOf("ThemeRow"));
+            Assert.Equal("Accent, Crimson", NameOf("AccentRow"));
+            Assert.Equal("Player Bar, Plain", NameOf("PlayerBarRow"));
+            Assert.Equal("Background, Off", NameOf("BackgroundRow"));
+            Assert.Equal("Scrobbling, Off", NameOf("ScrobblingRow"));
+            Assert.Equal("Listening History", NameOf("HistoryRow"));               // no summary, no comma
+            Assert.Equal("Lyrics, Translations, Romanization", NameOf("LyricsRow"));
+            Assert.Equal("Export Logs, Keys and passwords removed", NameOf("ExportLogsButton"));
+            Assert.StartsWith("Rescan Library, ", NameOf("RescanButton"));
 
-            vm.DarkTheme = "Midnight";
+            vm.Appearance = "Dark";
             vm.SelectedAccent = SettingsPageViewModel.Accents.Single(a => a.Name == "Emerald");
+            rig.Shell.ShowMiniProgressLine = true;
             rig.Shell.Lyrics.ShowRomanization = false;
             window.UpdateLayout();
-            Assert.Equal("Midnight · Emerald", MobileFixtures.Named<TextBlock>(page, "AppearanceValueLabel").Text);
+            Assert.Equal("Dark", MobileFixtures.Named<TextBlock>(page, "ThemeValueLabel").Text);
+            Assert.Equal("Emerald", MobileFixtures.Named<TextBlock>(page, "AccentValueLabel").Text);
+            Assert.Equal("Progress Line", MobileFixtures.Named<TextBlock>(page, "PlayerBarValueLabel").Text);
             Assert.Equal("Translations on", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
-
-            vm.Appearance = "Light";                         // no dark style under Light: just the accent
-            window.UpdateLayout();
-            Assert.Equal("Emerald", MobileFixtures.Named<TextBlock>(page, "AppearanceValueLabel").Text);
+            Assert.Equal("Theme, Dark", NameOf("ThemeRow"));
+            Assert.Equal("Accent, Emerald", NameOf("AccentRow"));
+            Assert.Equal("Player Bar, Progress Line", NameOf("PlayerBarRow"));
+            Assert.Equal("Lyrics, Translations on", NameOf("LyricsRow"));
         });
         await ((SettingsPageViewModel)rig.Shell.CurrentPage!).PendingSave;
+        await rig.Shell.PendingPlayerBarSave;
     }
 
     /// <summary>A row opens its page inside the sheet: the header takes the page's name and a back
@@ -571,8 +619,14 @@ public class MobileSettingsTests
             foreach (var (row, pane, heading) in new[]
                      {
                          ("FoldersRow", "FoldersPane", "Music Folders"),
-                         ("AppearanceRow", "AppearancePane", "Appearance"),
+                         ("AccentRow", "AccentPane", "Accent"),
+                         ("PlayerBarRow", "PlayerBarPane", "Player Bar"),
                          ("LyricsRow", "LyricsPane", "Lyrics"),
+                         ("BackgroundRow", "BackgroundHost", "Background"),
+                         ("ScrobblingRow", "ScrobblingHost", "Scrobbling"),
+                         ("HistoryRow", "HistoryHost", "Listening History"),
+                         ("WhatsNewRow", "WhatsNewPane", "What's New"),
+                         ("LicensesRow", "LicensesPane", "Open-Source Licenses"),
                      })
             {
                 var button = MobileFixtures.Named<Button>(page, row);
@@ -580,7 +634,7 @@ public class MobileSettingsTests
                 Settle(window);
                 Assert.Equal(heading, title.Text);
                 Assert.True(back.IsEffectivelyVisible);
-                Assert.True(MobileFixtures.Named<StackPanel>(page, pane).IsEffectivelyVisible);
+                Assert.True(MobileFixtures.Named<Control>(page, pane).IsEffectivelyVisible);
                 Assert.False(MobileFixtures.Named<ScrollViewer>(page, "MainScroll").IsEffectivelyVisible);
                 // The page sits fully in place once its slide ends.
                 Assert.Equal(0, MobileFixtures.Named<ScrollViewer>(page, "SubScroll").TranslatePoint(new Point(0, 0), page)!.Value.X, 1);
@@ -588,8 +642,18 @@ public class MobileSettingsTests
                 back.Command!.Execute(back.CommandParameter);
                 Settle(window);
                 Assert.Equal("Settings", title.Text);
+                Assert.Equal(SettingsPane.Main, vm.Pane);
                 Assert.True(MobileFixtures.Named<ScrollViewer>(page, "MainScroll").IsEffectivelyVisible);
                 Assert.False(MobileFixtures.Named<ScrollViewer>(page, "SubScroll").IsEffectivelyVisible);
+            }
+
+            foreach (var pane in new[] { SettingsPane.Background, SettingsPane.Scrobbling, SettingsPane.History, SettingsPane.Accent,
+                         SettingsPane.PlayerBar, SettingsPane.Downloads, SettingsPane.WhatsNew, SettingsPane.Licenses })
+            {
+                vm.OpenPaneCommand.Execute(pane);
+                Assert.True(rig.Shell.TryHandleBack());      // Android Back leaves every new page first
+                Assert.Equal(SettingsPane.Main, vm.Pane);
+                Assert.Same(vm, rig.Shell.CurrentPage);
             }
 
             vm.OpenPaneCommand.Execute(SettingsPane.Lyrics);
@@ -611,7 +675,7 @@ public class MobileSettingsTests
         await WithMountedSettings(rig, (page, vm, window) =>
         {
             var rows = new List<Control>();
-            foreach (var pane in new[] { SettingsPane.Main, SettingsPane.Folders, SettingsPane.Appearance, SettingsPane.Lyrics })
+            foreach (var pane in new[] { SettingsPane.Main, SettingsPane.Folders, SettingsPane.Accent, SettingsPane.PlayerBar, SettingsPane.Lyrics, SettingsPane.WhatsNew })
             {
                 vm.Pane = pane;
                 Settle(window);
@@ -626,7 +690,7 @@ public class MobileSettingsTests
             Assert.All(rows, r => Assert.True(r.Bounds.Height >= 52, $"{r.Name ?? r.GetType().Name} is {r.Bounds.Height} tall"));
 
             var icons = rows.SelectMany(r => r.GetVisualDescendants().OfType<GridIcon>().Where(i => i.Classes.Contains("row-icon"))).ToList();
-            Assert.Equal(1, icons.Count);                    // Add Folder; Rescan Library and Export Logs are text only
+            Assert.Equal(1, icons.Count);                    // Add Folder; the top level's glyphs are chips, not row-icons
             Assert.All(icons, i => Assert.Contains("accent-row", i.GetVisualAncestors().OfType<Button>().First().Classes));
             Assert.All(icons, i => Assert.Equal(new Size(24, 24), i.Bounds.Size));
             Assert.All(icons, i =>
@@ -649,21 +713,22 @@ public class MobileSettingsTests
         await WithMountedSettings(rig, (page, vm, window) =>
         {
             var lines = new List<Border>();
-            foreach (var pane in new[] { SettingsPane.Main, SettingsPane.Folders, SettingsPane.Appearance, SettingsPane.Lyrics })
+            foreach (var pane in new[] { SettingsPane.Main, SettingsPane.Folders, SettingsPane.Accent, SettingsPane.PlayerBar, SettingsPane.Lyrics })
             {
                 vm.Pane = pane;
                 Settle(window);
                 lines.AddRange(page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("row-separator") && b.IsEffectivelyVisible));
             }
-            // 2 on the top level, 1 between two folders, 3 between four dark styles and 1 between
-            // the Player Bar's two switches, 3 in Lyrics (two between its three switches, one
-            // between its two sliders): none above a list's first row.
-            Assert.Equal(10, lines.Count);
+            // 10 on the top level (3 Appearance, 1 Library with Downloads away, 2 Listening, 2 Help,
+            // 2 About), 1 between two folders, none on Accent, 1 between the Player Bar's two
+            // switches, 3 in Lyrics (two between its three switches, one between its two
+            // sliders): none above a list's first row.
+            Assert.Equal(15, lines.Count);
             Assert.All(lines, line =>
             {
                 var card = line.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("group-card"));
                 var left = line.TranslatePoint(new Point(0, 0), card)!.Value.X;
-                Assert.Equal(16, left, 1);
+                Assert.Equal(line.Classes.Contains("chipped") ? 60 : 16, left, 1);   // under the text: after a chip, or 16 in
                 Assert.Equal(card.Bounds.Width - 16, left + line.Bounds.Width, 1);
             });
 
@@ -738,24 +803,27 @@ public class MobileSettingsTests
             var bins = page.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("folder-remove")).ToList();
             Assert.Equal(new[] { "Remove Tones", "Remove Beats" }, bins.Select(Avalonia.Automation.AutomationProperties.GetName));
             Assert.All(bins, b => Assert.True(b.Bounds.Width >= 44 && b.Bounds.Height >= 44));
-            var card = MobileFixtures.Named<Border>(page, "RemoveFolderCard");
-            Assert.False(card.IsEffectivelyVisible);
+            // Asked on the glass prompt over the sheet (owner 10-20), not in a card on the page.
+            var sheet = view.FindControl<PromptSheet>("Prompt")!;
+            Assert.False(sheet.IsVisible);
 
             bins[1].Command!.Execute(bins[1].CommandParameter);
             window.UpdateLayout();
-            Assert.True(card.IsEffectivelyVisible);
-            Assert.Equal("Remove “Beats”? Its songs leave your library on this phone. The files stay where they are.",
-                MobileFixtures.Named<TextBlock>(page, "RemoveFolderQuestion").Text);
+            Assert.True(sheet.IsVisible);
+            Assert.Equal("Remove “Beats”?", MobileFixtures.Named<TextBlock>(sheet, "PromptTitle").Text);
+            Assert.Equal("Its songs leave your library on this phone. The files stay where they are.",
+                MobileFixtures.Named<TextBlock>(sheet, "PromptMessage").Text);
+            Assert.Equal("Remove Folder", Assert.Single(rig.Shell.Prompt!.Actions).Label);
 
-            MobileFixtures.Named<Button>(page, "CancelRemoveFolderButton").Command!.Execute(null);
-            window.UpdateLayout();
-            Assert.False(card.IsEffectivelyVisible);
+            MobileFixtures.Named<Button>(sheet, "PromptCancel").Command!.Execute(null);
+            Assert.False(rig.Shell.IsPromptOpen);
+            Assert.False(vm.IsConfirmingRemoveFolder);
             Assert.Equal(2, vm.FolderRows.Count);
 
             bins[1].Command!.Execute(bins[1].CommandParameter);
-            await vm.ConfirmRemoveFolderCommand.ExecuteAsync(null);
+            await rig.Shell.Prompt!.Actions[0].RunCommand.ExecuteAsync(null);
             window.UpdateLayout();
-            Assert.False(card.IsEffectivelyVisible);
+            Assert.False(rig.Shell.IsPromptOpen);
             Assert.Equal(new[] { Tones }, (await rig.Persistence.LoadSettingsAsync()).MusicFolders);
             Assert.Equal(new[] { Tones }, rig.Library.ScanPasses.Last());
             Assert.Equal(new[] { "Tones", "Music/Tones" },
@@ -772,6 +840,15 @@ public class MobileSettingsTests
             vm.AskRemoveFolderCommand.Execute(vm.FolderRows[0]);
             vm.ShowMainCommand.Execute(null);
             Assert.False(vm.IsConfirmingRemoveFolder);
+            Assert.False(rig.Shell.IsPromptOpen);
+
+            // Back cancels it, as a tap off the card does.
+            vm.OpenPaneCommand.Execute(SettingsPane.Folders);
+            vm.AskRemoveFolderCommand.Execute(vm.FolderRows[0]);
+            Assert.True(rig.Shell.TryHandleBack());
+            Assert.False(rig.Shell.IsPromptOpen);
+            Assert.False(vm.IsConfirmingRemoveFolder);
+            Assert.Equal(SettingsPane.Folders, vm.Pane);   // Back took the question, not the page
         }
         finally
         {
@@ -813,80 +890,41 @@ public class MobileSettingsTests
         });
     }
 
-    /// <summary>The Look tiles (System / Light / Dark) apply at a tap and mark the chosen one.
-    /// On Appearance, Dark Style is a check list; under Light it is greyed with a note saying
-    /// why, rather than vanishing.</summary>
+    /// <summary>The Theme row opens the glass pop menu: System, Light, Dark (the one in use exposed as
+    /// selected), then the dark style, which steps to the next. A pick applies at once.</summary>
     [AvaloniaFact]
-    public async Task Settings_LookTiles_Apply_AndDarkStyleGreysUnderLight()
+    public async Task Settings_ThemeMenu_AppliesTheLook_AndStepsTheDarkStyle()
     {
         var host = new FakeThemeHost();
         using var rig = MobileFixtures.MakeRig(theme: host);
         await WithMountedSettings(rig, (page, vm, window) =>
         {
-            var tiles = new[] { "LookSystem", "LookLight", "LookDark" }.Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
-            Assert.Equal(new[] { true, false, false }, tiles.Select(t => t.Classes.Contains("selected")));
+            var row = MobileFixtures.Named<Button>(page, "ThemeRow");
+            row.Command!.Execute(row.CommandParameter);
+            var menu = Assert.IsType<OptionsMenuViewModel>(rig.Shell.PopMenu);
+            Assert.Equal(new[] { "System", "Light", "Dark", "Dark style: Ink" }, menu.Items.Select(i => i.Label));
+            Assert.Equal(new[] { true, false, false, false }, menu.Items.Select(i => i.IsChecked));
+            Assert.Equal("System, selected", menu.Items[0].AccessibleName);
+            Assert.Equal("Light", menu.Items[1].AccessibleName);
+            Assert.True(menu.Items[3].StartsGroup);
 
-            // Each preview's page and its two cards sit wholly inside the rim (they were cut at
-            // the right and bottom edges when the page was sized as the rim's outside).
-            Assert.All(tiles, tile =>
-            {
-                var rim = tile.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("look-preview"));
-                var inside = new Rect(rim.Bounds.Size).Deflate(rim.BorderThickness);
-                var shapes = rim.GetVisualDescendants().OfType<Border>().Where(b => b.IsEffectivelyVisible && b.Background != null).ToList();
-                Assert.NotEmpty(shapes);
-                Assert.All(shapes, b =>
-                {
-                    var r = new Rect(b.TranslatePoint(new Point(0, 0), rim)!.Value, b.Bounds.Size);
-                    Assert.True(inside.Inflate(0.01).Contains(r), $"{tile.Name}: {r} outside {inside}");
-                });
-            });
-
-            tiles[2].Command!.Execute(tiles[2].CommandParameter);
-            window.UpdateLayout();
+            menu.Items[2].PickCommand.Execute(null);
+            Assert.Null(rig.Shell.PopMenu);                   // a pick closes the menu
             Assert.Equal(("Dark", "Ink", "#E74856"), host.Last);
-            Assert.Equal(new[] { false, false, true }, tiles.Select(t => t.Classes.Contains("selected")));
+            Assert.Equal("Theme, Dark", vm.ThemeRowName);
 
-            vm.OpenPaneCommand.Execute(SettingsPane.Appearance);
-            Settle(window);
-            var styles = MobileFixtures.Named<ListBox>(page, "DarkThemeList");
-            Assert.Equal(new[] { "Ink", "Smoke", "Dark", "Midnight" }, styles.Items.Cast<string>());
-            Assert.True(styles.IsEffectivelyEnabled);
-            styles.SelectedItem = "Smoke";
+            row.Command!.Execute(row.CommandParameter);
+            menu = Assert.IsType<OptionsMenuViewModel>(rig.Shell.PopMenu);
+            Assert.Equal(new[] { false, false, true, false }, menu.Items.Select(i => i.IsChecked));
+            menu.Items[3].PickCommand.Execute(null);          // Ink -> Smoke
             Assert.Equal(("Dark", "Smoke", "#E74856"), host.Last);
-            // The chosen style's checkmark is the only one showing.
-            Assert.Equal(new[] { 0.0, 1.0, 0.0, 0.0 }, styles.GetVisualDescendants().OfType<GridIcon>().Where(i => i.Classes.Contains("check")).Select(i => i.Opacity));
-
-            vm.ShowMainCommand.Execute(null);
-            Settle(window);
-            tiles[1].Command!.Execute(tiles[1].CommandParameter);
-            vm.OpenPaneCommand.Execute(SettingsPane.Appearance);
-            Settle(window);
+            row.Command!.Execute(row.CommandParameter);
+            menu = Assert.IsType<OptionsMenuViewModel>(rig.Shell.PopMenu);
+            Assert.Equal("Dark style: Smoke", menu.Items[3].Label);
+            menu.Items[1].PickCommand.Execute(null);
             Assert.Equal(("Light", "Smoke", "#E74856"), host.Last);
-            Assert.True(MobileFixtures.Named<StackPanel>(page, "DarkThemeSection").IsEffectivelyVisible);
-            Assert.False(styles.IsEffectivelyEnabled);
-            Assert.Equal("Dark Style applies when Look is System or Dark.", MobileFixtures.Named<TextBlock>(page, "DarkStyleFootnote").Text);
         });
         await ((SettingsPageViewModel)rig.Shell.CurrentPage!).PendingSave;
-    }
-
-    /// <summary>The Look tiles' previews paint the theme's own page and card colours: they must
-    /// follow MobileTheme.BuildPalette, for Light and each dark style.</summary>
-    [AvaloniaTheory]
-    [InlineData(null)]
-    [InlineData("Ink")]
-    [InlineData("Smoke")]
-    [InlineData("Dark")]
-    [InlineData("Midnight")]
-    public void LookPreview_MatchesThePalette(string? darkTheme)
-    {
-        var palette = MobileTheme.BuildPalette(darkTheme);
-        var variant = darkTheme == null ? ThemeVariant.Light : ThemeVariant.Dark;
-        var keys = (ResourceDictionary)palette.ThemeDictionaries[variant];
-        var preview = darkTheme == null ? LookPreview.Light : LookPreview.Dark(darkTheme);
-        Color Of(string key) => ((ISolidColorBrush)keys[key]!).Color;
-        Assert.Equal(Of("PhoneGroupedBackgroundBrush"), ((ISolidColorBrush)preview.Page).Color);
-        Assert.Equal(Of("PhoneCardBrush"), ((ISolidColorBrush)preview.Card).Color);
-        Assert.Equal(Of("PhoneSeparatorBrush"), ((ISolidColorBrush)preview.Line).Color);
     }
 
     /// <summary>The profile card's grey line says when the phone last synced, in words.</summary>
@@ -894,14 +932,14 @@ public class MobileSettingsTests
     public void SyncedText_ReadsAsRelativeTime()
     {
         var now = new DateTime(2026, 10, 13, 15, 0, 0, DateTimeKind.Local).ToUniversalTime();
-        Assert.Equal("not synced yet", SettingsPageViewModel.SyncedText(null, now));
-        Assert.Equal("synced just now", SettingsPageViewModel.SyncedText(now.AddSeconds(-20), now));
-        Assert.Equal("synced 5 min ago", SettingsPageViewModel.SyncedText(now.AddMinutes(-5), now));
-        Assert.Equal("synced 3 hr ago", SettingsPageViewModel.SyncedText(now.AddHours(-3), now));
-        Assert.Equal("synced yesterday", SettingsPageViewModel.SyncedText(now.AddHours(-24), now));
-        Assert.Equal("synced 4 days ago", SettingsPageViewModel.SyncedText(now.AddDays(-4), now));
-        Assert.StartsWith("synced ", SettingsPageViewModel.SyncedText(now.AddDays(-30), now));
-        Assert.DoesNotContain("ago", SettingsPageViewModel.SyncedText(now.AddDays(-30), now));
+        Assert.Equal("Not synced yet", AccountPageViewModel.SyncedText(null, now));
+        Assert.Equal("Synced just now", AccountPageViewModel.SyncedText(now.AddSeconds(-20), now));
+        Assert.Equal("Synced 5 min ago", AccountPageViewModel.SyncedText(now.AddMinutes(-5), now));
+        Assert.Equal("Synced 3 hr ago", AccountPageViewModel.SyncedText(now.AddHours(-3), now));
+        Assert.Equal("Synced yesterday", AccountPageViewModel.SyncedText(now.AddHours(-24), now));
+        Assert.Equal("Synced 4 days ago", AccountPageViewModel.SyncedText(now.AddDays(-4), now));
+        Assert.StartsWith("Synced ", AccountPageViewModel.SyncedText(now.AddDays(-30), now));
+        Assert.DoesNotContain("ago", AccountPageViewModel.SyncedText(now.AddDays(-30), now));
     }
 
     /// <summary>The hairline under the header shows only once the page has scrolled under it.</summary>
@@ -922,6 +960,272 @@ public class MobileSettingsTests
             scroll.Offset = default;
             Settle(window, 250);
             Assert.Equal(0, line.Opacity);
+        });
+    }
+
+    private sealed class FakeLinks : IUrlLauncher
+    {
+        public List<string> Opened { get; } = new();
+        public bool Open(string url) { Opened.Add(url); return true; }
+    }
+
+    private static ShellViewModel ShellWithAccount(MobileFixtures.Rig rig, MobileAccountTests.FakeAccount? account, IUrlLauncher? links = null) =>
+        new(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Account = account,
+            Links = links,
+            Marshal = a => a(),
+            TintFactory = rig.Shell.TintFactory,
+        };
+
+    /// <summary>The stats under the profile: the library's song count, then the downloads' count and
+    /// bytes, read off the UI thread; they follow a download and a removal.</summary>
+    [Fact]
+    public async Task Stats_FillIn_FromTheLibraryAndTheDownloads_AndFollowThem()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("A"), MobileFixtures.Song("B") });
+        await rig.Shell.Library.InitializeAsync();
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        for (var i = 0; i < 3; i++) account.DownloadedIds.Add(Guid.NewGuid());   // 5 MB each in the fake
+        var page = new SettingsPageViewModel(ShellWithAccount(rig, account));
+        await page.LoadAsync();
+        await page.StatsLoaded;
+
+        Assert.Equal("2", page.SongsStat);
+        Assert.Equal("3", page.DownloadedStat);
+        Assert.Equal("15 MB", page.OnPhoneStat);
+        Assert.Equal("3 songs · 15 MB", page.StorageUsedText);
+        Assert.True(page.CanRemoveDownloads);
+
+        account.DownloadedIds.Add(Guid.NewGuid());
+        account.RaiseStateChanged();
+        await page.StatsLoaded;
+        Assert.Equal("4", page.DownloadedStat);
+        Assert.Equal("20 MB", page.OnPhoneStat);
+
+        // No computer link: nothing downloaded, so the numbers are zero, not a dash.
+        var bare = new SettingsPageViewModel(ShellWithAccount(rig, null));
+        Assert.Equal("0", bare.DownloadedStat);
+        Assert.Equal("0 MB", bare.OnPhoneStat);
+        Assert.False(bare.CanRemoveDownloads);
+        page.OnClosed();
+        bare.OnClosed();
+    }
+
+    /// <summary>Settings → Downloads: the Wi-Fi switch is on by default, saved when flipped and read
+    /// back by the next Settings; Remove All Downloads asks first, then empties the phone.</summary>
+    [AvaloniaFact]
+    public async Task Settings_DownloadsPage_WifiSwitchPersists_AndRemoveAllAsksFirst()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(Guid.NewGuid());
+        var shell = ShellWithAccount(rig, account);
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)shell.CurrentPage!;
+            await vm.Loaded;
+            await vm.StatsLoaded;
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+
+            var row = MobileFixtures.Named<Button>(page, "DownloadsRow");
+            Assert.True(row.IsEffectivelyVisible);
+            Assert.Equal("Wi-Fi Only", MobileFixtures.Named<TextBlock>(page, "DownloadsValueLabel").Text);
+            Assert.Equal("Downloads, Wi-Fi Only", Avalonia.Automation.AutomationProperties.GetName(row));
+            Assert.True(MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(page, "PickUpSwitch").IsEffectivelyVisible);
+            Assert.Equal("Studio PC · Not synced yet", MobileFixtures.Named<TextBlock>(page, "AccountRowSub").Text);
+
+            row.Command!.Execute(row.CommandParameter);
+            Settle(window);
+            var wifi = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(page, "DownloadWifiSwitch");
+            Assert.True(wifi.IsEffectivelyVisible);
+            Assert.True(wifi.IsChecked);
+            Assert.Equal("5 MB", vm.OnPhoneStat);
+            Assert.Equal("1 song · 5 MB", MobileFixtures.Named<TextBlock>(page, "StorageUsedLabel").Text);
+
+            wifi.IsChecked = false;
+            await vm.PendingWifiSave;
+            Assert.False((await rig.Persistence.LoadSettingsAsync()).MobileDownloadWifiOnly);
+            Assert.Equal("Any Network", vm.DownloadsValue);
+
+            var remove = MobileFixtures.Named<Button>(page, "RemoveDownloadsButton");
+            Assert.True(remove.IsEffectivelyVisible);
+            remove.Command!.Execute(remove.CommandParameter);
+            var prompt = shell.Prompt!;
+            Assert.Equal("Remove all downloads?", prompt.Title);
+            Assert.Equal(0, account.RemoveAllCalls);                      // asked, not yet done
+            await prompt.Actions[0].RunCommand.ExecuteAsync(null);
+            Assert.Equal(1, account.RemoveAllCalls);
+            await vm.StatsLoaded;
+            Assert.Equal("0", vm.DownloadedStat);
+            Assert.False(vm.CanRemoveDownloads);
+
+            // The next Settings reads the saved switch.
+            var again = new SettingsPageViewModel(shell);
+            await again.LoadAsync();
+            Assert.False(again.DownloadWifiOnly);
+            again.OnClosed();
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Help: Report a Problem opens the GitHub new-issue page and Noctis Website the site,
+    /// through the head's launcher.</summary>
+    [Fact]
+    public async Task HelpRows_OpenTheIssuePageAndTheWebsite()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var links = new FakeLinks();
+        var page = await OpenSettings(ShellWithAccount(rig, null, links));
+        page.ReportProblemCommand.Execute(null);
+        page.OpenWebsiteCommand.Execute(null);
+        Assert.Equal(new[] { "https://github.com/heartached/Noctis/issues/new", "https://noctisapp.cc/" }, links.Opened);
+    }
+
+    /// <summary>About: What's New and Open-Source Licenses have content; the licences name the
+    /// bundled LGPL FFmpeg decoder first, with the licence it comes under.</summary>
+    [AvaloniaFact]
+    public async Task AboutPages_ListWhatsNew_AndTheOpenSourceLicenses()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { VersionText = "Noctis 1.7.0", TintFactory = rig.Shell.TintFactory };
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)shell.CurrentPage!;
+            await vm.Loaded;
+            Assert.Equal("1.7.0", vm.VersionValue);
+            Assert.Equal("Version, 1.7.0", vm.VersionRowName);
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+
+            vm.OpenPaneCommand.Execute(SettingsPane.WhatsNew);
+            Settle(window);
+            Assert.Equal("Noctis 1.7.0", MobileFixtures.Named<TextBlock>(page, "WhatsNewVersion").Text);
+            Assert.Equal(vm.WhatsNewItems.Count, MobileFixtures.Named<ItemsControl>(page, "WhatsNewList").GetVisualDescendants().OfType<TextBlock>().Count(t => t.IsEffectivelyVisible));
+
+            vm.OpenPaneCommand.Execute(SettingsPane.Licenses);
+            Settle(window);
+            var list = MobileFixtures.Named<ItemsControl>(page, "LicenseList");
+            var texts = list.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+            Assert.Contains("LGPL-2.1-or-later", texts);
+            Assert.Contains("FFmpeg (libavcodec, libavutil, libswresample)", texts);
+            Assert.Contains("Avalonia", texts);
+            Assert.True(vm.Licenses.Count >= 8);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Rescan Library's grey line: when the last scan finished (today, yesterday, a date),
+    /// else what the row does.</summary>
+    [Fact]
+    public void RescanSubtitle_SaysWhenTheLastScanFinished()
+    {
+        var now = new DateTime(2026, 10, 28, 15, 0, 0, DateTimeKind.Local);
+        Assert.StartsWith("today, ", SettingsPageViewModel.ScanTime(now.AddHours(-3), now));
+        Assert.StartsWith("yesterday, ", SettingsPageViewModel.ScanTime(now.AddHours(-20), now));
+        Assert.StartsWith("4 Oct, ", SettingsPageViewModel.ScanTime(new DateTime(2026, 10, 4, 9, 5, 0, DateTimeKind.Local), now));
+        using var rig = MobileFixtures.MakeRig();
+        var page = new SettingsPageViewModel(rig.Shell) { UtcNow = () => now.ToUniversalTime() };
+        Assert.Equal("Looks for new songs in your folders", page.RescanSubtitle);
+        rig.Shell.Library.LastScanLocal = now.AddMinutes(-18);
+        Assert.StartsWith("Last scan today, ", page.RescanSubtitle);
+        Assert.StartsWith("Rescan Library, Last scan today, ", page.RescanRowName);
+        page.OnClosed();
+    }
+
+    /// <summary>Pick Up on Computer is the History page's switch (a stub property until its page
+    /// lands); its note names the computer.</summary>
+    [AvaloniaFact]
+    public async Task PickUpOnComputer_IsASwitchOnTheListeningCard_NamingTheComputer()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        var shell = ShellWithAccount(rig, account);
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)shell.CurrentPage!;
+            await vm.Loaded;
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+            var toggle = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(page, "PickUpSwitch");
+            Assert.False(toggle.IsChecked);
+            toggle.IsChecked = true;
+            Assert.True(vm.History.PickUpOnComputer);
+            Assert.Equal("When you open Noctis on Studio PC, it offers to carry on from the song you were playing here.",
+                MobileFixtures.Named<TextBlock>(page, "PickUpFootnoteLabel").Text);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Live: signed out (the account service there, no account) the switch still showed.</summary>
+    [AvaloniaFact]
+    public async Task PickUpOnComputer_IsHiddenWhileSignedOut_AndShowsOnSignIn()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new MobileAccountTests.FakeAccount();
+        var shell = ShellWithAccount(rig, account);
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)shell.CurrentPage!;
+            await vm.Loaded;
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+            Assert.True(shell.HasAccount);
+            Assert.False(MobileFixtures.Named<StackPanel>(page, "PickUpGroup").IsVisible);
+            Assert.False(MobileFixtures.Named<TextBlock>(page, "PickUpFootnoteLabel").IsVisible);
+
+            account.Account = MobileAccountTests.FakeAccount.SignedInAs();
+            account.RaiseStateChanged();
+            window.UpdateLayout();
+            Assert.True(MobileFixtures.Named<StackPanel>(page, "PickUpGroup").IsVisible);
+            Assert.True(MobileFixtures.Named<TextBlock>(page, "PickUpFootnoteLabel").IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>The header's small title is invisible on the top level until the large one has
+    /// scrolled away; a pushed page names itself at once.</summary>
+    [AvaloniaFact]
+    public async Task Settings_SmallTitle_FadesInOnceTheLargeOneScrollsAway()
+    {
+        using var rig = await RigWithFolders(null, Tones);
+        await WithMountedSettings(rig, (page, vm, window) =>
+        {
+            var small = MobileFixtures.Named<TextBlock>(page, "SettingsTitle");
+            var scroll = MobileFixtures.Named<ScrollViewer>(page, "MainScroll");
+            window.Height = 500;
+            window.UpdateLayout();
+            Assert.Equal(0, small.Opacity);
+            scroll.Offset = new Vector(0, SettingsPage.TitleCollapseOffset + 20);
+            Settle(window, 250);
+            Assert.Equal(1, small.Opacity);
+            scroll.Offset = default;
+            Settle(window, 250);
+            Assert.Equal(0, small.Opacity);
+            vm.Pane = SettingsPane.Accent;
+            Settle(window);
+            Assert.Equal(1, small.Opacity);
         });
     }
 }

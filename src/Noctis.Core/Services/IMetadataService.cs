@@ -62,6 +62,14 @@ public interface IMetadataService
     string ReadGenres(string filePath) => ReadTrackMetadata(filePath)?.Genre ?? string.Empty;
 
     /// <summary>
+    /// Just the ReplayGain tags, for the ReplayGain column's backfill (GitHub #151). Null when
+    /// the file can't be read now. The default falls back to the full read.
+    /// </summary>
+    ReplayGainValues? ReadReplayGain(string filePath) => ReadTrackMetadata(filePath) is { } t
+        ? new ReplayGainValues(t.ReplayGainTrackDb, t.ReplayGainTrackPeak, t.ReplayGainAlbumDb)
+        : null;
+
+    /// <summary>
     /// Writes metadata tags back to the audio file.
     /// </summary>
     bool WriteTrackMetadata(Track track);

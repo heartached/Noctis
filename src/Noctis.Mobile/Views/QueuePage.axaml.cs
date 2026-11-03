@@ -329,17 +329,18 @@ public partial class QueuePage : UserControl
         _landscape = landscape;
         Layout.ColumnDefinitions = landscape ? new ColumnDefinitions("*,*") : new ColumnDefinitions("*");
         Grid.SetColumnSpan(TopBar, landscape ? 2 : 1);
-        // Spanning into the star row, the header no longer sizes the rows the list starts under.
+        // Spanning into the star row, the current track no longer sizes the rows the list starts under.
         Grid.SetRowSpan(NowRow, landscape ? 3 : 1);
         NowRow.VerticalAlignment = landscape ? VerticalAlignment.Top : VerticalAlignment.Stretch;
-        // Side by side the column split divides the header from the list; the rule would only
-        // sit over the cover's column.
-        HeaderRule.IsVisible = !landscape;
+        // Up Next's title heads the right column, over the list.
+        Grid.SetColumn(UpNextHeader, landscape ? 1 : 0);
+        Grid.SetRow(UpNextHeader, landscape ? 1 : 2);
+        UpNextHeader.Margin = landscape ? new Thickness(20, 0, 20, 4) : new Thickness(20, 20, 20, 6);
         foreach (var list in new Control[] { EmptyQueue, QueueScroll })
         {
             Grid.SetColumn(list, landscape ? 1 : 0);
-            Grid.SetRow(list, landscape ? 1 : 3);
-            Grid.SetRowSpan(list, landscape ? 3 : 1);
+            Grid.SetRow(list, landscape ? 2 : 3);
+            Grid.SetRowSpan(list, landscape ? 2 : 1);
         }
         ApplySafeArea();
     }

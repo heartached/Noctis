@@ -242,6 +242,9 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>The card's lyric text (tests).</summary>
     internal IReadOnlyList<string> CardLines => CardSelection().Select(l => l.Text).ToList();
 
+    /// <summary>The karaoke timing the preview and the clip use for the card's lines (tests).</summary>
+    internal IReadOnlyList<KaraokeLine> CardKaraoke => BuildKaraokeLines(CardSelection());
+
     /// <summary>"3 of 8" next to Clear.</summary>
     public string SelectionSummary => L("ShareLyrics.SelectedCount", SelectedCount, MaxLines);
 
@@ -274,8 +277,10 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         foreach (var other in Lines)
             if (!ReferenceEquals(other, line)) other.EndEdit(keep: true);
-        // An edited line is one meant for the card.
+        // An edited line is one meant for the card. When the 8-line cap refuses it, no edit
+        // box: the typing would change a line the card does not show.
         if (!line.IsSelected) line.IsSelected = true;
+        if (!line.IsSelected) return;
         line.BeginEdit();
     }
 
@@ -1014,16 +1019,22 @@ public partial class LyricShareViewModel : ViewModelBase
 
     /// <summary>
     /// Karaoke timing parallel to the card's lines: sanitized word tokens with resolved
-    /// end times (explicit end → next word → line end → next line start → +2 s).
-    /// Lines without word data get StartSeconds only (line-level highlight).
+    /// end times (explicit end → next word → line end → the lyrics page's open-word end:
+    /// the next lyric line's start, capped at +2 s). Lines without word data get
+    /// StartSeconds only (line-level highlight).
     /// </summary>
-    private static IReadOnlyList<KaraokeLine> BuildKaraokeLines(IReadOnlyList<SelectableLyricLine> selected)
+    private IReadOnlyList<KaraokeLine> BuildKaraokeLines(IReadOnlyList<SelectableLyricLine> selected)
     {
         var result = new List<KaraokeLine>(selected.Count);
         for (int i = 0; i < selected.Count; i++)
         {
             var line = selected[i];
-            double? nextLineStart = i + 1 < selected.Count ? selected[i + 1].Timestamp?.TotalSeconds : null;
+            // The next line of the song, not the next picked one: picks can skip lines, and
+            // the last pick has none. Either way the open word swept on over lines that are
+            // sung meanwhile (or ran 2 s past the next line's start).
+            TimeSpan? nextLineStart = null;
+            for (int j = Lines.IndexOf(line) + 1; j > 0 && j < Lines.Count; j++)
+                if (Lines[j].Timestamp is { } ts) { nextLineStart = ts; break; }
             if (line.Words is not { Count: > 0 } words)
             {
                 result.Add(new KaraokeLine { StartSeconds = line.Timestamp?.TotalSeconds });
@@ -1039,7 +1050,8 @@ public partial class LyricShareViewModel : ViewModelBase
                 double start = words[k].Start.TotalSeconds;
                 double end = words[k].End?.TotalSeconds
                     ?? (k + 1 < words.Count ? words[k + 1].Start.TotalSeconds
-                        : line.EndTimestamp?.TotalSeconds ?? nextLineStart ?? start + 2);
+                        : line.EndTimestamp?.TotalSeconds
+                          ?? KaraokeSweep.ResolveOpenLastWordEnd(words[k].Start, nextLineStart).TotalSeconds);
                 karaokeWords.Add(new KaraokeWord(token, start, end));
             }
             result.Add(new KaraokeLine
@@ -1093,8 +1105,10 @@ public partial class LyricShareViewModel : ViewModelBase
     /// Both paths (still card, karaoke frames) run under one cancellation source, so Esc and
     /// closing the dialog (<see cref="CancelExport"/>, <see cref="Detach"/>) stop either. The
     /// still path used to get no token at all: closing mid-export left ffmpeg writing the clip
-    /// behind a closed dialog. A clip this run created and did not finish (cancelled or
-    /// failed) is deleted; a file the user chose to replace in the picker is not ours to remove.
+    /// behind a closed dialog. ffmpeg writes a work file in the temp folder that replaces
+    /// <paramref name="outputPath"/> only once the clip is complete: written in place, -y
+    /// truncated the file the user picked to replace, so a cancel or a failure left a cut-off
+    /// clip where it had been. An unfinished work file is deleted.
     /// </summary>
     public async Task<string> ExportClipAsync(string outputPath)
     {
@@ -1111,7 +1125,7 @@ public partial class LyricShareViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _exportCts = cts;
         var token = cts.Token;
-        bool existedBefore = File.Exists(outputPath);
+        var workPath = Path.Combine(Path.GetTempPath(), $"noctis-clip-{Guid.NewGuid():N}.mp4");
         bool ok = false;
 
         IsRendering = true;
@@ -1130,7 +1144,7 @@ public partial class LyricShareViewModel : ViewModelBase
                 // Base-resolution still: the clip is 1080p-bound, so the 2× supersampled
                 // export card would only quadruple the encode cost.
                 var still = await Task.Run(() => ShareCardRenderer.RenderLyricCardStyled(spec), token);
-                (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, outputPath, timing, token);
+                (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, workPath, timing, token);
             }
             else
             {
@@ -1163,7 +1177,7 @@ public partial class LyricShareViewModel : ViewModelBase
                     StatusText = L("ShareLyrics.Encoding");
                     var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
                     (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                        ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing, token);
+                        ffmpeg, pattern, KaraokeFps, _track.FilePath, workPath, timing, token);
                 }
                 finally
                 {
@@ -1178,7 +1192,10 @@ public partial class LyricShareViewModel : ViewModelBase
                 ok = false;
                 return L("ShareLyrics.Cancelled");
             }
-            return ok ? L("ShareLyrics.Saved") : L("ShareLyrics.ClipFailed", error);
+            if (!ok)
+                return L("ShareLyrics.ClipFailed", error);
+            await Task.Run(() => File.Move(workPath, outputPath, overwrite: true));
+            return L("ShareLyrics.Saved");
         }
         catch (OperationCanceledException)
         {
@@ -1191,8 +1208,8 @@ public partial class LyricShareViewModel : ViewModelBase
         }
         finally
         {
-            if (!ok && !existedBefore)
-                await DeletePartialAsync(outputPath);
+            // Moved into place on success; whatever is left is unfinished.
+            await DeletePartialAsync(workPath);
             if (ReferenceEquals(_exportCts, cts)) _exportCts = null;
             cts.Dispose();
             IsRendering = false;

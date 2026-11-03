@@ -100,6 +100,45 @@ public class ExistingLyricsLoaderTests : IDisposable
     }
 
     [Fact]
+    public void ParseTimed_TextStartingWithAByteOrderMark_KeepsItsFirstLine()
+    {
+        // Lyrics a tagger copied from a file with its BOM: the lyrics page shows the first line,
+        // and the Studio dropped it (its stamp no longer started the line), so a save lost it.
+        const string text = "\uFEFF[00:01.00]First line\n[00:02.00]Second line";
+        var track = new Track { Title = "Song", SyncedLyrics = text };
+
+        var lines = ExistingLyricsLoader.Load(track)!.Lines;
+
+        Assert.Equal(new[] { "First line", "Second line" }, lines.Select(l => l.Text));
+        Assert.Equal(S(1), lines[0].Start);
+        Assert.Equal(Noctis.ViewModels.LyricsViewModel.ParseLrcContent(text).Where(l => !l.IsIntroPlaceholder).Select(l => l.Text), lines.Select(l => l.Text));
+    }
+
+    [Fact]
+    public void ParseTimed_OffsetTag_MovesLinesAndWords_AsTheLyricsPageDoes()
+    {
+        // The lyrics page applies [offset:]; the Studio read the bare stamps, so it timed and
+        // showed every line 0.5 s off what the page showed, and a save (absolute stamps, no
+        // offset tag) moved the song's lyrics by that much.
+        const string text = "[offset:+500]\n[00:01.00]<00:01.00>Hello <00:01.40>you<00:01.80>\n[bg: <00:01.50>(you)<00:01.70>]\n[00:03.00]Line two";
+
+        var lines = ExistingLyricsLoader.ParseTimed(text);
+
+        Assert.Equal(new[] { S(1.5), S(3.5) }, lines.Select(l => l.Start));
+        Assert.Equal(new[] { S(1.5), S(1.9) }, lines[0].Words.Select(w => w.Start));
+        Assert.Equal(S(2.3), lines[0].Words[^1].End);
+        Assert.Equal(S(2.0), lines[0].Background![0].Start);
+        // Saved and shown again: the page puts every line where it did before.
+        var page = Noctis.ViewModels.LyricsViewModel.ParseLrcContent(text).Where(l => !l.IsIntroPlaceholder).ToList();
+        var saved = Noctis.ViewModels.LyricsViewModel.ParseLrcContent(TimedLyricsBuilder.BuildElrc(lines)).Where(l => !l.IsIntroPlaceholder).ToList();
+        Assert.Equal(page.Select(l => l.Timestamp), saved.Select(l => l.Timestamp));
+        Assert.Equal(page[0].Words!.Select(w => w.Start), saved[0].Words!.Select(w => w.Start));
+
+        // A negative offset never takes a line below 0:00.
+        Assert.Equal(new[] { TimeSpan.Zero, S(1) }, ExistingLyricsLoader.ParseTimed("[offset:-2000]\n[00:01.00]a\n[00:03.00]b").Select(l => l.Start));
+    }
+
+    [Fact]
     public void Load_PrefersElrcSidecar_ThenLrc_ThenEmbedded()
     {
         TagLyrics("[00:01.00]embedded");

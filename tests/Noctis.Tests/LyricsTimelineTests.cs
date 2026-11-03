@@ -572,4 +572,112 @@ public class LyricsTimelineTests
         Assert.False(step.ActiveSetChanged);
         Assert.Equal(-1, step.ActiveIndex);
     }
+
+    // ── 10-24 flow: the measured 0.7 s lead, duet hold, dots, tempo ─────────────────────
+    private static readonly TimeSpan MeasuredLead = TimeSpan.FromMilliseconds(Helpers.LineMotion.ScrollLeadMs);
+
+    [Fact]
+    public void Slow_gap_the_list_leads_the_next_line_by_the_measured_lead()
+    {
+        // a ends at 2 s, b starts at 6 s: the list sets off at 6 − 0.7 − 0.08 = 5.22 s,
+        // settled (99% ≤ 0.6 s on every spring) before b's first word.
+        var a = WordLine(1, ("a", 1, 2)); var b = WordLine(6, ("b", 6, 7));
+        var t = Make(a, b);
+        t.Update(TimeSpan.FromSeconds(5.2));
+        Assert.Equal(0, t.ScrollIndex(TimeSpan.FromSeconds(5.2), MeasuredLead));
+        t.Update(TimeSpan.FromSeconds(5.23));
+        Assert.Equal(1, t.ScrollIndex(TimeSpan.FromSeconds(5.23), MeasuredLead));
+        Assert.Equal(0, t.ActiveIndex);   // the highlight still waits for the voice
+    }
+
+    [Fact]
+    public void Fast_lines_the_list_moves_the_moment_the_sung_line_ends_never_before()
+    {
+        // Rap: a's last word ends at 1.55 s, b starts at 1.6 s — well inside the 0.7 s lead.
+        var a = WordLine(1, ("a1", 1, 1.3), ("a2", 1.3, 1.55)); var b = WordLine(1.6, ("b", 1.6, 2.1));
+        var t = Make(a, b);
+        for (var ms = 1000; ms < 1600; ms += 10)
+        {
+            if (Math.Abs(ms + 80 - 1550) < 5) continue;   // the boundary frame itself
+            var pos = TimeSpan.FromMilliseconds(ms);
+            t.Update(pos);
+            var scroll = t.ScrollIndex(pos, MeasuredLead);
+            if (ms + 80 < 1550)
+                Assert.True(scroll == 0, $"left a while it was sung, at {ms} ms");
+            else
+                Assert.Equal(1, scroll);
+        }
+    }
+
+    [Fact]
+    public void Duet_the_list_holds_on_the_earlier_line_while_it_is_still_sung()
+    {
+        // A sings 10–13 s, B comes in at 12 s (Apple Music, Dance With Me: the list does not
+        // move until the earlier voice finishes, then glides once).
+        var (a, b, _, t) = Duet();
+        t.Update(TimeSpan.FromSeconds(11));
+        t.Update(TimeSpan.FromSeconds(12.5));
+        Assert.Equal(2, t.ActiveIndex);
+        Assert.Equal(1, t.ScrollIndex(TimeSpan.FromSeconds(12.5), MeasuredLead));
+        Assert.Equal(1, t.Lead(TimeSpan.FromSeconds(12.5), MeasuredLead));
+        Assert.False(a.IsLeading);   // an earlier line is never "led into"
+        Assert.False(b.IsLeading);
+
+        t.Update(TimeSpan.FromSeconds(13.5));   // A has finished
+        Assert.Equal(2, t.ScrollIndex(TimeSpan.FromSeconds(13.5), MeasuredLead));
+    }
+
+    [Fact]
+    public void Duet_hold_gives_way_when_the_earlier_line_is_too_far_back()
+    {
+        var a = WordLine(10, ("a", 10, 20));
+        var b = WordLine(11, ("b", 11, 12)); var c = WordLine(12, ("c", 12, 13)); var d = WordLine(13, ("d", 13, 14));
+        var t = Make(a, b, c, d);
+        t.Update(TimeSpan.FromSeconds(13.5));
+        Assert.Equal(3, t.ActiveIndex);
+        Assert.Equal(new[] { 0, 3 }, t.ActiveIndices);
+        Assert.Equal(3, t.ScrollIndex(TimeSpan.FromSeconds(13.5), MeasuredLead));
+    }
+
+    [Fact]
+    public void Intro_dots_lead_out_into_the_first_word_line()
+    {
+        var dots = new LyricLine { Timestamp = TimeSpan.Zero, Text = "...", IsIntroPlaceholder = true };
+        var a = WordLine(8, ("a", 8, 9));
+        var t = Make(dots, a);
+        t.Update(TimeSpan.FromSeconds(7.0));
+        Assert.Equal(0, t.ScrollIndex(TimeSpan.FromSeconds(7.0), MeasuredLead));
+        t.Update(TimeSpan.FromSeconds(7.25));
+        Assert.Equal(1, t.Lead(TimeSpan.FromSeconds(7.25), MeasuredLead));
+        Assert.True(a.IsLeading);
+        Assert.Equal(-1, a.CurrentWordIndex);   // comes in unsung: no white flash
+    }
+
+    [Fact]
+    public void Dots_progress_runs_through_the_gap_and_clears_when_the_line_comes()
+    {
+        var dots = new LyricLine { Timestamp = TimeSpan.FromSeconds(2), Text = "...", IsIntroPlaceholder = true, IsInterlude = true };
+        var a = WordLine(0.5, ("a", 0.5, 1.5)); var b = WordLine(12, ("b", 12, 13));
+        var t = Make(a, dots, b);
+        t.Update(TimeSpan.FromSeconds(1));
+        Assert.True(double.IsNaN(dots.InterludeProgress));
+        t.Update(TimeSpan.FromSeconds(7));
+        Assert.Same(dots, t.ActiveLine);
+        Assert.Equal(0.5, dots.InterludeProgress, 3);
+        t.Update(TimeSpan.FromSeconds(11.9));
+        Assert.Equal(0.99, dots.InterludeProgress, 3);
+        t.Update(TimeSpan.FromSeconds(12));
+        Assert.Same(b, t.ActiveLine);
+        Assert.True(double.IsNaN(dots.InterludeProgress));
+    }
+
+    [Fact]
+    public void HoldMs_is_the_time_to_the_next_synced_line()
+    {
+        var lines = new[] { Line(1, "a"), new LyricLine { Text = "unsynced" }, Line(3.5, "b"), Line(3.5, "c") };
+        Assert.Equal(2500, LyricsTimeline.HoldMs(lines, 0), 6);
+        Assert.True(double.IsNaN(LyricsTimeline.HoldMs(lines, 1)));
+        Assert.True(double.IsNaN(LyricsTimeline.HoldMs(lines, 2)));   // same start: no forward hold
+        Assert.True(double.IsNaN(LyricsTimeline.HoldMs(lines, 3)));   // last line
+    }
 }

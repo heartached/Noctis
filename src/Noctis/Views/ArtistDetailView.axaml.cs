@@ -358,6 +358,46 @@ public partial class ArtistDetailView : UserControl
             vm.RemovePicture();
     }
 
+    /// <summary>GitHub #141: Search Artist Info — the Deezer account picker.</summary>
+    private async void OnSearchArtistInfoClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (DataContext is not ArtistDetailViewModel vm) return;
+            var http = App.Services?.GetService(typeof(HttpClient)) as HttpClient;
+            var picker = vm.CreateArtistInfoSearch(http == null ? null : (url, ct) => LoadThumbnailAsync(http, url, ct));
+            if (picker != null)
+                await MetadataHelper.OpenArtistInfoSearchDialog(picker);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ArtistDetailView] Artist info search failed: {ex.Message}");
+        }
+    }
+
+    private static async Task<Avalonia.Media.Imaging.Bitmap?> LoadThumbnailAsync(HttpClient http, string url, CancellationToken ct)
+    {
+        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode) return null;
+        var bytes = await Noctis.Services.HttpSafety.ReadBytesBoundedAsync(response.Content, Noctis.Services.HttpSafety.MaxImageBytes, ct);
+        if (!Noctis.Services.HttpSafety.LooksLikeImage(bytes)) return null;
+        using var ms = new MemoryStream(bytes);
+        return Avalonia.Media.Imaging.Bitmap.DecodeToWidth(ms, 96);
+    }
+
+    private async void OnResetArtistInfoClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (DataContext is ArtistDetailViewModel vm)
+                await vm.ResetArtistPickAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ArtistDetailView] Artist info reset failed: {ex.Message}");
+        }
+    }
+
     /// <summary>Tile hover dots: the same menu a right-click on the tile opens, bound
     /// afresh (the tile may still hold the shared menu from an older language or album).</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

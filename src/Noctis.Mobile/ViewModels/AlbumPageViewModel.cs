@@ -112,9 +112,6 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     public bool HasDescription => !string.IsNullOrEmpty(Description);
 
-    /// <summary>The paragraph shows in full (LESS) rather than its first lines (MORE).</summary>
-    [ObservableProperty] private bool _isDescriptionExpanded;
-
     /// <summary>The description lookup started with the page; tests await it.</summary>
     internal Task DescriptionLoad { get; }
 
@@ -189,7 +186,9 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         return detail.Length > 0 ? $"{badge} · {detail}" : badge;
     }
 
-    /// <summary>Apple's "15 songs, 56 minutes" ("1 hour, 2 minutes" past the hour), whole minutes.</summary>
+    /// <summary>Apple's "15 songs, 56 minutes" ("1 hour, 2 minutes" past the hour), whole minutes;
+    /// under a minute the seconds ("2 songs, 40 seconds": "0 minutes" read as an empty album), and
+    /// the songs alone when no length is known.</summary>
     public static string BuildSongsLine(Album album)
     {
         static string Count(int n, string unit) => n == 1 ? $"1 {unit}" : $"{n} {unit}s";
@@ -198,8 +197,10 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         var hours = (int)total.TotalHours;
         var length = hours > 0
             ? total.Minutes > 0 ? $"{Count(hours, "hour")}, {Count(total.Minutes, "minute")}" : Count(hours, "hour")
-            : Count((int)total.TotalMinutes, "minute");
-        return $"{songs}, {length}";
+            : total.TotalMinutes >= 1 ? Count((int)total.TotalMinutes, "minute")
+            : (int)total.TotalSeconds > 0 ? Count((int)total.TotalSeconds, "second")
+            : null;
+        return length == null ? songs : $"{songs}, {length}";
     }
 
     private async Task LoadDescriptionAsync(string artist, string album, CancellationToken ct)
@@ -220,12 +221,13 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         }
     }
 
-    partial void OnDescriptionChanged(string? value) => IsDescriptionExpanded = false;
-
+    /// <summary>The paragraph (or its MORE) tapped: the whole text on the glass sheet, under the
+    /// album's cover, title and artist (owner 10-19: "a clean pop-up" rather than unfolding in place).</summary>
     [RelayCommand]
-    private void ToggleDescription()
+    private void ShowDescription()
     {
-        if (HasDescription) IsDescriptionExpanded = !IsDescriptionExpanded;
+        if (Description is { Length: > 0 } text)
+            Shell.ShowAlbumNote(new AlbumNoteViewModel(Shell, Album.Name, Album.Artist, Album.ArtworkPath, text, Album.IsExplicit));
     }
 
     private static IReadOnlyList<object> BuildRows(IReadOnlyList<AlbumTrackRow> tracks)

@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
 using Avalonia.Threading;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -208,11 +210,12 @@ public class MiniPlayerFrostSettingTests : IDisposable
         }
     }
 
-    /// <summary>The frost needs a window region, whose edge is never anti-aliased, so the Pill
-    /// and Sleeve came out stair-stepped with it on (1v1ctus, 2026-10-05). The designs skip
-    /// the OS backdrop; Classic keeps it, and switching between them follows live.</summary>
+    /// <summary>GitHub #150: the Pill and Sleeve lost the frost on 10-05 (e2340d26), when the
+    /// window region on their outline stair-stepped their edges. The region now runs past the
+    /// outline (RegionPixels), so every design takes the OS backdrop again, across design
+    /// switches; the shadows the region would cut are dropped while frosted.</summary>
     [AvaloniaFact]
-    public void Frost_AppliesToClassicOnly_AndFollowsADesignSwitch()
+    public void Frost_AppliesToEveryDesign_AndDropsTheCutShadows()
     {
         var app = Application.Current!;
         if (!app.Resources.TryGetResource("SearchIcon", null, out _))
@@ -236,15 +239,28 @@ public class MiniPlayerFrostSettingTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         try
         {
-            Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+            var frosted = MiniPlayerWindow.TransparencyLevels(OperatingSystem.IsWindows());
+            var pillGround = win.FindControl<Border>("PillGround")!;
+            var pillCover = win.FindControl<Border>("PillCover")!;
+            Assert.Same(frosted, win.TransparencyLevelHint);
+            Assert.Equal(OperatingSystem.IsWindows(), pillGround.BoxShadow.Count == 0);
+            Assert.Equal(OperatingSystem.IsWindows(), pillCover.BoxShadow.Count == 0);
 
             vm.SetDesignCommand.Execute("Classic");
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal(MiniPlayerWindow.TransparencyLevels(OperatingSystem.IsWindows()), win.TransparencyLevelHint);
+            Assert.Same(frosted, win.TransparencyLevelHint);
 
             vm.SetDesignCommand.Execute("Sleeve");
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+            Assert.Same(frosted, win.TransparencyLevelHint);
+            Assert.Equal(OperatingSystem.IsWindows(), win.FindControl<Border>("SleeveGround")!.BoxShadow.Count == 0);
+
+            // Frost off: the Sleeve's ground shadow and the Pill's cover shadow come back.
+            settings.MiniPlayerFrostedBackground = false;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+            Assert.Equal(1, win.FindControl<Border>("SleeveGround")!.BoxShadow.Count);
+            Assert.Equal(1, pillCover.BoxShadow.Count);
         }
         finally
         {
@@ -412,9 +428,65 @@ public class MiniPlayerFrostSettingTests : IDisposable
             new MiniPlayerWindow.RegionShape(new Rect(10, 20, 100, 50), 28, false),
             new MiniPlayerWindow.RegionShape(new Rect(0, 0, 120, 120), 60, true),
         }, 1.5);
-        // Scaled out to whole pixels; right / bottom +1 because region rects exclude them;
-        // the corner is given as a diameter.
-        Assert.Equal((15, 30, 166, 106, 84, false), px[0]);
-        Assert.Equal((0, 0, 181, 181, 180, true), px[1]);
+        // Grown by the 2-DIP bleed (radius too, so the corner centres stay put), scaled out
+        // to whole pixels; right / bottom +1 because region rects exclude them; the corner is
+        // given as a diameter.
+        Assert.Equal(2, MiniPlayerWindow.FrostRegionBleed);
+        Assert.Equal((12, 27, 169, 109, 90, false), px[0]);
+        Assert.Equal((-3, -3, 184, 184, 186, true), px[1]);
+    }
+
+    /// <summary>GitHub #150: the tray icon's right-click menu is Avalonia's own transparent
+    /// window (TrayPopupRoot, Name "AvaloniaTrayPopupRoot_…", a MenuFlyoutPresenter as its
+    /// content). While Liquid Glass is on it gets the OS blur and a translucent card; off, or
+    /// for any other window, nothing changes. This window stands in for Avalonia's private one.</summary>
+    [AvaloniaFact]
+    public void TrayMenu_IsFrostedOnlyWhileGlassIsOn()
+    {
+        var glass = true;
+        TrayMenuFrost.Register(() => glass, () => Color.Parse("#202030"));
+        Window Open(string name)
+        {
+            var w = new Window
+            {
+                Name = name,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowDecorations = WindowDecorations.None,
+                TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
+                Content = new MenuFlyoutPresenter { ItemsSource = new[] { "Open Noctis", "Quit" } },
+            };
+            w.Show();
+            Dispatcher.UIThread.RunJobs();
+            return w;
+        }
+
+        var tray = Open(TrayMenuFrost.TrayPopupNamePrefix + "Noctis");
+        var other = Open("SomeOtherWindow");
+        glass = false;
+        var trayNoGlass = Open(TrayMenuFrost.TrayPopupNamePrefix + "Noctis");
+        try
+        {
+            var card = (MenuFlyoutPresenter)tray.Content!;
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.Same(MiniPlayerWindow.TransparencyLevels(true), tray.TransparencyLevelHint);
+                var fill = Assert.IsAssignableFrom<ISolidColorBrush>(card.Background);
+                Assert.Equal(Color.Parse("#202030"), fill.Color);
+                Assert.Equal(TrayMenuFrost.CardTintOpacity, fill.Opacity);
+                // The region is cut from the card's own layout outline and corner radius.
+                var shape = Assert.IsType<MiniPlayerWindow.RegionShape>(TrayMenuFrost.CardShape(card));
+                Assert.Equal(card.Bounds.Size, shape.Rect.Size);
+                Assert.Equal(card.CornerRadius.TopLeft, shape.Radius);
+            }
+            Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, other.TransparencyLevelHint);
+            Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, trayNoGlass.TransparencyLevelHint);
+        }
+        finally
+        {
+            glass = false;
+            tray.Close();
+            other.Close();
+            trayNoGlass.Close();
+        }
     }
 }

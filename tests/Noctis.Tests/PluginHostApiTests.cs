@@ -133,6 +133,57 @@ public class PluginHostApiTests : IDisposable
         Assert.Equal(2, changed);
     }
 
+    // ── Official plugins don't depend on the Community switch (owner 10-29) ──
+
+    private string TrackToolsVersion()
+        => System.Text.Json.JsonDocument.Parse(File.ReadAllText(PluginSandbox.RepoFile("samples/Noctis.SamplePlugin.TrackTools/plugin.json")))
+            .RootElement.GetProperty("version").GetString()!;
+
+    [AvaloniaFact]
+    public void VerifiedOfficialPlugin_RunsWithCommunityOff_AndTheSwitchNeverRestartsIt()
+    {
+        _box.Settings.CommunityPluginsEnabled = false;
+        _box.Settings.PluginPermissionGrants["dev.noctis.samples.tracktools"] = new List<string> { "menu.commands", "library.read", "lyrics.provider", "notifications" };
+        InstallTrackTools();
+        // What RecordOfficialInstall writes after the zip matched the official list.
+        _box.Settings.VerifiedOfficialPlugins["dev.noctis.samples.tracktools"] = TrackToolsVersion() + "|" + new string('a', 64);
+        var host = _box.NewHost();
+        host.LoadAll();
+        var plugin = host.Plugins.Single();
+
+        Assert.True(host.IsTrustedOfficial(plugin));
+        Assert.Equal(PluginStatus.Running, plugin.Status);
+        Assert.True(plugin.CanToggle);
+        Assert.NotEmpty(host.TrackCommands);
+
+        // Flipping the switch leaves it alone: same instance, still running.
+        var instance = plugin.Instance;
+        host.SetCommunityPluginsEnabled(true);
+        Assert.Same(instance, plugin.Instance);
+        host.SetCommunityPluginsEnabled(false);
+        Assert.Same(instance, plugin.Instance);
+        Assert.Equal(PluginStatus.Running, plugin.Status);
+    }
+
+    [AvaloniaFact]
+    public void PluginThatOnlyClaimsNoctis_IsACommunityPlugin_RestrictedWhileTheSwitchIsOff()
+    {
+        _box.Settings.CommunityPluginsEnabled = false;
+        _box.Settings.PluginPermissionGrants["dev.noctis.samples.tracktools"] = new List<string> { "menu.commands", "library.read", "lyrics.provider", "notifications" };
+        InstallTrackTools();
+        // Author "Noctis" but no verified install; then a record for another version.
+        var host = _box.NewHost();
+        host.LoadAll();
+        Assert.False(host.IsTrustedOfficial(host.Plugins.Single()));
+        Assert.Equal(PluginStatus.Restricted, host.Plugins.Single().Status);
+
+        _box.Settings.VerifiedOfficialPlugins["dev.noctis.samples.tracktools"] = "0.0.1|" + new string('a', 64);
+        host.LoadAll();
+        Assert.False(host.IsTrustedOfficial(host.Plugins.Single()));
+        Assert.Equal(PluginStatus.Restricted, host.Plugins.Single().Status);
+        Assert.Empty(host.TrackCommands);
+    }
+
     // ── First-enable approval ──
 
     [AvaloniaFact]

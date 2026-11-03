@@ -12,6 +12,7 @@ using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
+using Noctis.Mobile.Services.Scrobbling;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
 using Noctis.Services;
@@ -98,8 +99,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // Favourite/rating changes to desktop songs go through this to the account service,
         // which queues them for the next sync (it attaches itself once constructed).
         var stateRecorder = new NoctisStateRecorder();
+        // A folder that is out of reach (a card taken out, a folder renamed) keeps its songs and
+        // no longer holds up the others: removing or adding a folder still applies.
         var library = new LibraryService(metadata, persistence, index, audit, syncRecorder: stateRecorder,
-            fileSystem: new AndroidFileSystemSource(context));
+            fileSystem: new AndroidFileSystemSource(context)) { ScanPastUnavailableFolders = true };
         var history = new PlayHistoryService();
         // The application context, never the activity: the player outlives the activity
         // (it keeps playing in the background service) and holding the activity leaks it.
@@ -118,6 +121,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
             FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
             PrepareTrack = remoteLyrics is null ? null : remoteLyrics.ForLoad,
+            // The desktop's automatic lookup for a song with no lyrics of its own: LRCLIB, asked
+            // by title, artist and length only (Settings → Lyrics → Find Lyrics Online).
+            Online = LrcLibOnlineLyricsSource.Create(persistence.DataDirectory, new HttpClient()),
         };
         var shell = new ShellViewModel(
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
@@ -125,16 +131,26 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             lyrics)
         {
             Outputs = new AndroidOutputSwitcher(context),
+            BatterySaver = new AndroidBatterySaver(context),
             Theme = this,
             Logs = new AndroidLogExporter(context),
+            Links = new AndroidUrlLauncher(context),
             VersionText = DescribeVersion(context),
             Account = account,
+            // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
+            Scrobbler = new PhoneScrobbler(persistence, new HttpClient()),
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
             // when an album page opens (Settings → About says so).
             AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
             // The desktop's artist photos: Deezer, asked by artist name only when an artist page
             // opens or artist circles come into view (Settings → About says so).
             ArtistPhotos = DeezerArtistPhotoSource.Create(persistence.DataDirectory, new HttpClient(), library),
+            // Artists' own logos on the artist page (MusicBrainz for the artist, then fanart.tv /
+            // TheAudioDB), asked by name only when an artist page opens; only in a build that
+            // carries a key (Noctis.Android.csproj), else the page shows the name.
+            ArtistLogos = ArtistLogoKeys.FromAssembly(typeof(AndroidApp).Assembly) is { IsEmpty: false } logoKeys
+                ? ArtistLogoSource.Create(persistence.DataDirectory, new HttpClient(), library, logoKeys)
+                : null,
         };
         _shell = shell;
 
@@ -143,6 +159,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // Desktop songs play from their download or the desktop's stream; the stream needs
             // the pinned certificate trusted and the device key sent, for as long as signed in.
             _player.ResolveRemote = account.ResolvePlaybackUri;
+            // The songs that stream from the computer: when it does not answer, the player passes
+            // over them to the downloaded ones instead of trying each in silence.
+            nowPlaying.NeedsComputer = t => account.IsRemote(t) && !account.IsDownloaded(t);
             account.StateChanged += (_, _) => ApplyAccountState(account);
             ApplyAccountState(account);
         }
@@ -189,6 +208,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 stateRecorder: stateRecorder)
             {
                 LibraryReady = libraryReady,
+                // Settings → Downloads → Wi-Fi only: a download on mobile data is refused.
+                IsOnWifi = () => AndroidNetwork.IsUnmetered(context),
                 // No ALAC decoder, neither the phone's nor the bundled FFmpeg (a build without
                 // Libs/media3-decoder-ffmpeg): the desktop sends its ALAC songs as FLAC.
                 PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
@@ -266,6 +287,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             var settings = await persistence.LoadSettingsAsync();
             Loc.Instance.SetCulture(settings.Language);
             ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
+            // Settings › Background, before the first page paints rather than after the library loads.
+            _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
             _shell!.Library.ApplySettings(settings);
             // No SetGapless(settings.GaplessPlaybackEnabled): the phone is always gapless
@@ -293,12 +316,19 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// </summary>
     public void OnBackgrounded()
     {
+        if (_shell != null) _shell.Background.Suspended = true;   // Slow Motion stands still
         var save = _shell?.SaveStateAsync();
         // Matches NowPlayingViewModel.SaveStateNow: a background save that throws would
         // otherwise be an unobserved exception nobody ever sees.
         _ = save?.ContinueWith(
             t => DebugLog.Write("Queue", $"Background save failed: {t.Exception?.GetBaseException().Message}"),
             TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    /// <summary>MainActivity, on resume: Slow Motion drifts again.</summary>
+    public void OnForegrounded()
+    {
+        if (_shell != null) _shell.Background.Suspended = false;
     }
 
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes
@@ -323,6 +353,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
         DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
         _theme.Apply(this, resolved, accentHex);
+        _shell?.Background.Reassert();   // the theme rebuilt its palette: the background mesh goes back on top
         // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
         Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
     }

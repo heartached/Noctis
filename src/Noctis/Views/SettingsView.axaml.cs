@@ -33,6 +33,7 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+        DeferTabPages();
 
         if (EqSavePresetButton.Flyout is Flyout eqPresetFlyout)
         {
@@ -50,6 +51,11 @@ public partial class SettingsView : UserControl
         SettingsSearchBox.KeyDown += OnSearchBoxKeyDown;
         DataContextChanged += OnSettingsDataContextChanged;
 
+        // Output Device picker: re-enumerate the endpoints as the dropdown opens, so a
+        // just-plugged DAC (or a default-device change) shows up without leaving Settings.
+        OutputDeviceCombo.DropDownOpened += (_, _) =>
+            _trackedViewModel?.RefreshOutputDevicesCommand.Execute(null);
+
         // Pre-amp pill slider: the visible track/fill/thumb are drawn on a Canvas and
         // positioned from code-behind. The real Slider is transparent and only handles
         // pointer input (drag + double-press-to-reset), mirroring the metadata volume slider.
@@ -64,6 +70,8 @@ public partial class SettingsView : UserControl
         // so this can never drift from what a new install gets.
         var defaults = new Noctis.Models.AppSettings();
         AttachThumbDoubleTapReset(IslandWidthSlider, defaults.PlaybackBarWidth);
+        AttachThumbDoubleTapReset(QueueWidthSlider, defaults.QueuePanelWidth);
+        AttachThumbDoubleTapReset(AudioBalanceSlider, defaults.AudioBalance);
         AttachThumbDoubleTapReset(PlayerBarOpacitySlider, defaults.PlaybackBarBackgroundOpacity);
         AttachThumbDoubleTapReset(BackgroundBlurSlider, defaults.BackgroundBlurAmount);
         AttachThumbDoubleTapReset(TrackBoxOpacitySlider, defaults.PlaybackBarTrackBoxOpacity);
@@ -85,6 +93,240 @@ public partial class SettingsView : UserControl
         {
             eqCombo.DropDownOpened += OnEqPresetDropDownOpened;
             eqCombo.DropDownClosed += OnEqPresetDropDownClosed;
+        }
+
+        // Plugins → Make your own plugin: three steps side by side, stacked on a narrow pane.
+        MakePluginSteps.SizeChanged += (_, e) => LayoutMakePluginSteps(e.NewSize.Width);
+        // Plugins: search + Install from file / folder / refresh (actions under the search box when
+        // they don't fit beside it), and the cards per row from the page width.
+        PluginsHeader.SizeChanged += (_, e) => LayoutPluginsHeader(e.NewSize.Width);
+        PluginsTabPanel.SizeChanged += (_, e) => LayoutPluginGrid(e.NewSize.Width);
+        // A plugin's page: on a narrow pane its settings' controls drop under their labels.
+        PluginDetailPage.SizeChanged += (_, e) => LayoutPluginRows(e.NewSize.Width);
+        // A plugin's own view shown here wears the same theme as in its window.
+        PluginViewTheme.Apply(PluginViewHost);
+    }
+
+    /// <summary>Room the search box keeps beside the header's actions before they drop under it.</summary>
+    internal const double PluginSearchMinWidth = 200;
+
+    private void LayoutPluginsHeader(double width)
+    {
+        var stacked = width < PluginsHeaderActions.DesiredSize.Width + PluginSearchMinWidth;
+        Grid.SetRow(PluginsHeaderActions, stacked ? 1 : 0);
+        Grid.SetColumn(PluginsHeaderActions, stacked ? 0 : 1);
+        Grid.SetColumnSpan(PluginsHeaderActions, stacked ? 2 : 1);
+        Grid.SetColumnSpan(PluginSearchBox, stacked ? 2 : 1);
+        PluginsHeaderActions.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
+        PluginsHeaderActions.Margin = stacked ? new Thickness(0, 8, 0, 0) : new Thickness(10, 0, 0, 0);
+    }
+
+    /// <summary>Narrowest a plugin card gets before the grid drops a column, and the gap between cards.</summary>
+    internal const double PluginCardMinWidth = 190;
+    internal const double PluginCardGap = 12;
+    internal const int PluginGridMaxColumns = 4;
+
+    /// <summary>Cards per row for a page <paramref name="width"/> wide: as many as fit at
+    /// <see cref="PluginCardMinWidth"/>, at least one, at most <see cref="PluginGridMaxColumns"/>.</summary>
+    internal static int PluginGridColumnsFor(double width)
+        => Math.Clamp((int)Math.Floor((width + PluginCardGap) / (PluginCardMinWidth + PluginCardGap)), 1, PluginGridMaxColumns);
+
+    private void LayoutPluginGrid(double width)
+    {
+        if (width <= 0 || DataContext is not SettingsViewModel vm) return;
+        var columns = PluginGridColumnsFor(width);
+        if (vm.PluginGridColumns != columns) vm.PluginGridColumns = columns;
+    }
+
+    // ── A plugin's page ──
+
+    private double _pluginGridScrollOffset;
+    private PluginCardItem? _openedPluginCard;
+
+    /// <summary>
+    /// The page opens at the top with the back button focused (keyboard users land on it); going
+    /// back restores where the grid was scrolled and puts focus on the card that opened the page.
+    /// </summary>
+    private void OnPluginDetailChanged(SettingsViewModel vm)
+    {
+        // From the grid the page comes in from the right (back from a view it came from the left).
+        PluginDetailPage.Classes.Set("from-left", false);
+        PluginDetailPage.Classes.Set("from-right", true);
+        if (vm.SelectedPluginCard is { } card)
+        {
+            if (_openedPluginCard is null) _pluginGridScrollOffset = SettingsScrollViewer.Offset.Y;
+            _openedPluginCard = card;
+            ScrollToTop();
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (PluginDetailHost.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "PluginBackButton") is { } back)
+                    back.Focus(NavigationMethod.Unspecified); // focus moves (Tab goes on from Back), no ring for a mouse click
+            }, DispatcherPriority.Loaded);
+            return;
+        }
+
+        var opened = _openedPluginCard;
+        _openedPluginCard = null;
+        if (opened is null) return;
+        var offset = _pluginGridScrollOffset;
+        Dispatcher.UIThread.Post(() =>
+        {
+            SettingsScrollViewer.Offset = new Vector(SettingsScrollViewer.Offset.X, offset);
+            var cardButton = PluginsListPage.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(b => b.Classes.Contains("plugin-card") && ReferenceEquals(b.DataContext, opened));
+            cardButton?.Focus(NavigationMethod.Unspecified);
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Below this page width a plugin setting's control sits under its label (the slider
+    /// alone is 248 wide).</summary>
+    internal const double PluginRowStackWidth = 520;
+
+    private void LayoutPluginRows(double width) => PluginDetailPage.Classes.Set("narrow", width > 0 && width < PluginRowStackWidth);
+
+    // ── A plugin's own view, in place of its page ──
+
+    /// <summary>
+    /// The size this view needs to give an open plugin view the size it asks for (its hint, else
+    /// PluginViewWindow's defaults) with the rail, the header and the margins around it; null once
+    /// the view leaves. MainWindow grows the Settings card to it (SizeSettingsCard).
+    /// </summary>
+    public event Action<Size?>? CardSizeRequested;
+
+    private Noctis.Services.Plugins.PluginViewEntry? _shownPluginView;
+
+    /// <summary>
+    /// The view opens with the Back pill focused and asks for the card size it needs; it leaves
+    /// with the card back to its own size and, on Back, focus on the view's Open button. The page
+    /// it covered comes back from the left (it went out that way).
+    /// </summary>
+    private void OnPluginViewChanged(SettingsViewModel vm)
+    {
+        if (vm.OpenPluginViewEntry is { } view)
+        {
+            _shownPluginView = view;
+            PluginDetailPage.Classes.Set("from-right", false);
+            PluginDetailPage.Classes.Set("from-left", true);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!ReferenceEquals(vm.OpenPluginViewEntry, view)) return;
+                CardSizeRequested?.Invoke(PluginViewCardSize(view));
+                PluginViewBackButton.Focus(NavigationMethod.Unspecified);
+            }, DispatcherPriority.Loaded);
+            return;
+        }
+
+        var left = _shownPluginView;
+        _shownPluginView = null;
+        if (left is null) return;
+        CardSizeRequested?.Invoke(null);
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Not when Settings closed or moved to another tab or plugin meanwhile.
+            if (vm.IsPluginViewOpen || !PluginDetailPage.IsEffectivelyVisible) return;
+            var buttons = PluginDetailHost.GetVisualDescendants().OfType<Button>().ToList();
+            var target = buttons.FirstOrDefault(b => ReferenceEquals(b.DataContext, left))
+                         ?? buttons.FirstOrDefault(b => b.Name == "PluginBackButton");
+            target?.Focus(NavigationMethod.Unspecified);
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>What this view needs for <paramref name="view"/>: the view's size plus everything
+    /// around its frame (this view's size minus the frame's, as laid out now).</summary>
+    private Size PluginViewCardSize(Noctis.Services.Plugins.PluginViewEntry view)
+    {
+        var frame = PluginViewFrame.Bounds.Size;
+        var size = PluginViewSize(view.ReadSizeHint(), PluginViewHost.Content as Control);
+        return new Size(size.Width + Bounds.Width - frame.Width, size.Height + Bounds.Height - frame.Height);
+    }
+
+    /// <summary>
+    /// The size a plugin view asks for, as its window would open (PluginViewWindow.Resolve, no
+    /// screen cap: the main window caps the card): the hint per axis, else 1000 x 680, never under
+    /// the minimum; on a size-to-content axis the control's own desired size.
+    /// </summary>
+    internal static Size PluginViewSize(Noctis.Services.Plugins.PluginViewSizeHint hint, Control? content)
+    {
+        var size = PluginViewWindow.Resolve(hint, null);
+        double width = size.Width, height = size.Height;
+        var byWidth = size.SizeToContent.HasFlag(SizeToContent.Width);
+        var byHeight = size.SizeToContent.HasFlag(SizeToContent.Height);
+        if (content is not null && (byWidth || byHeight))
+        {
+            content.Measure(new Size(byWidth ? double.PositiveInfinity : width, byHeight ? double.PositiveInfinity : height));
+            if (byWidth) width = Math.Max(size.MinWidth, content.DesiredSize.Width);
+            if (byHeight) height = Math.Max(size.MinHeight, content.DesiredSize.Height);
+            content.InvalidateMeasure(); // its slot measures it again with the real room
+        }
+        return new Size(width, height);
+    }
+
+    /// <summary>The page header's "..." menu: Visit homepage (its address in the tooltip) and Open
+    /// folder, the two quiet actions that used to be big pills. Rows light up in the accent like
+    /// the Queue Rows drop-downs (owner 10-29).</summary>
+    internal static List<MenuItem> PluginMoreMenuItems(SettingsViewModel vm, PluginCardItem card)
+    {
+        var items = new List<MenuItem>();
+        if (card.HasHomepage)
+        {
+            var homepage = new MenuItem
+            {
+                Name = "PluginPageHomepageItem",
+                Classes = { "accent-rows" },
+                Header = Noctis.Localization.Loc.T("Plugins.Detail.Homepage"),
+                Command = vm.OpenPluginHomepageCommand,
+                CommandParameter = card,
+            };
+            ToolTip.SetTip(homepage, card.Homepage);
+            items.Add(homepage);
+        }
+        if (card.Installed is { } plugin)
+            items.Add(new MenuItem
+            {
+                Name = "PluginPageFolderItem",
+                Classes = { "accent-rows" },
+                Header = Noctis.Localization.Loc.T("Plugins.OpenPluginFolder"),
+                Command = vm.OpenPluginDirectoryCommand,
+                CommandParameter = plugin,
+            });
+        return items;
+    }
+
+    /// <summary>The menu last opened from a plugin page's "..." button (tests).</summary>
+    internal MenuFlyout? PluginMoreMenu { get; private set; }
+
+    private void OnPluginMoreClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not PluginCardItem card || DataContext is not SettingsViewModel vm) return;
+        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        // Closes with the pop like every other menu (the style only opens it that way).
+        MenuOpenAnimation.SetEnableFlyoutClose(menu, true);
+        foreach (var item in PluginMoreMenuItems(vm, card)) menu.Items.Add(item);
+        if (menu.Items.Count == 0) return;
+        PluginMoreMenu = menu;
+        menu.ShowAt(button);
+    }
+
+    /// <summary>Below this width the three Make your own plugin steps stack: side by side, each
+    /// column would wrap its one line into four or five.</summary>
+    internal const double MakePluginStepsStackWidth = 560;
+
+    private bool _makePluginStepsStacked;
+
+    private void LayoutMakePluginSteps(double width)
+    {
+        var stacked = width < MakePluginStepsStackWidth;
+        if (stacked == _makePluginStepsStacked) return;
+        _makePluginStepsStacked = stacked;
+        var grid = MakePluginSteps;
+        grid.ColumnDefinitions = new ColumnDefinitions(stacked ? "*" : "*,*,*");
+        grid.RowDefinitions = new RowDefinitions(stacked ? "Auto,Auto,Auto" : "Auto");
+        for (var i = 0; i < grid.Children.Count; i++)
+        {
+            var step = grid.Children[i];
+            Grid.SetColumn(step, stacked ? 0 : i);
+            Grid.SetRow(step, stacked ? i : 0);
+            step.Margin = i == 0 ? default : stacked ? new Thickness(0, 12, 0, 0) : new Thickness(16, 0, 0, 0);
         }
     }
 
@@ -121,6 +363,9 @@ public partial class SettingsView : UserControl
     private SettingsSearchIndex EnsureSearchIndex()
     {
         if (_searchIndex is not null) return _searchIndex;
+        // The index reads every card's text and visibility, which needs each page bound.
+        foreach (var (tab, _) in TabPanels)
+            RealizeTabPage(tab, animate: false);
         var panels = new List<(string Tab, Control Panel)>();
         foreach (var (tab, name) in TabPanels)
         {
@@ -128,6 +373,65 @@ public partial class SettingsView : UserControl
                 panels.Add((tab, panel));
         }
         return _searchIndex = SettingsSearchIndex.Build(panels);
+    }
+
+    // ── Lazy tab pages (GitHub #139) ──
+
+    // All thirteen pages used to join the tree on the first open, though only one shows:
+    // styling ~2,100 controls allocated ~35 MB at once (headless Release harness,
+    // SettingsOpenCostTests), and the gen1/gen2 collections that followed paused every
+    // thread, the audio render thread included — an audible skip on Linux. The pages are
+    // still built here (x:Name fields, the code-behind wiring), but each one stays out of
+    // the tree until its tab is first shown, and then stays in.
+    private Panel? _tabHost;
+    private readonly List<Control> _tabHostOrder = new();
+    private readonly Dictionary<string, Control> _deferredTabPages = new();
+
+    /// <summary>Test hook: the pages still waiting for their first visit.</summary>
+    internal IReadOnlyCollection<string> DeferredTabsForTests => _deferredTabPages.Keys;
+
+    private void DeferTabPages()
+    {
+        foreach (var (tab, name) in TabPanels)
+        {
+            if (this.FindControl<Control>(name) is not { Parent: Panel host } page) continue;
+            if (_tabHost is null)
+            {
+                _tabHost = host;
+                _tabHostOrder.AddRange(host.Children);
+            }
+            if (!ReferenceEquals(host, _tabHost)) continue;
+            host.Children.Remove(page);
+            _deferredTabPages[tab] = page;
+        }
+    }
+
+    /// <summary>
+    /// Puts <paramref name="tab"/>'s page back in its original slot. With
+    /// <paramref name="animate"/> it enters from the tab-page hidden state (faded, 6 px
+    /// down) so the first visit glides in like every later one.
+    /// </summary>
+    private void RealizeTabPage(string tab, bool animate)
+    {
+        if (_tabHost is null || !_deferredTabPages.Remove(tab, out var page)) return;
+
+        var order = _tabHostOrder.IndexOf(page);
+        var index = _tabHost.Children.Count(c => _tabHostOrder.IndexOf(c) < order);
+        if (animate)
+        {
+            page.Opacity = 0;
+            page.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translateY(6px)");
+        }
+        _tabHost.Children.Insert(index, page);
+        if (animate)
+        {
+            // Released once the tab-page style (and its transitions) is on the page.
+            Dispatcher.UIThread.Post(() =>
+            {
+                page.ClearValue(OpacityProperty);
+                page.ClearValue(RenderTransformProperty);
+            }, DispatcherPriority.Loaded);
+        }
     }
 
     /// <summary>Focus the rail's search box (Ctrl+F while the modal is open).</summary>
@@ -346,7 +650,10 @@ public partial class SettingsView : UserControl
         _trackedViewModel = DataContext as SettingsViewModel;
 
         if (_trackedViewModel != null)
+        {
             _trackedViewModel.PropertyChanged += OnSettingsViewModelPropertyChanged;
+            RealizeTabPage(_trackedViewModel.SelectedSettingsTab, animate: false);
+        }
     }
 
     private void OnSettingsViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -357,12 +664,21 @@ public partial class SettingsView : UserControl
             // already switched tabs), so landing there is just a scroll to the top.
             case nameof(SettingsViewModel.MediaFoldersScrollRequest):
             case nameof(SettingsViewModel.SelectedSettingsTab):
+                if (_trackedViewModel is { } selected)
+                    RealizeTabPage(selected.SelectedSettingsTab, animate: true);
                 ScrollToTop();
                 Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
                 break;
 
             // Phone app / Web Remote / Local API turned on: their body glides open below the
             // fold (Local API is the page's last card), so follow the card down as it grows.
+            case nameof(SettingsViewModel.SelectedPluginCard):
+                if (_trackedViewModel is { } pluginsVm) OnPluginDetailChanged(pluginsVm);
+                break;
+            case nameof(SettingsViewModel.OpenPluginViewEntry):
+                if (_trackedViewModel is { } viewVm) OnPluginViewChanged(viewVm);
+                break;
+
             case nameof(SettingsViewModel.IsPhoneCardOpen):
                 if (_trackedViewModel?.IsPhoneCardOpen == true) FollowReveal(PhoneCard, PhoneBody);
                 break;
@@ -597,6 +913,17 @@ public partial class SettingsView : UserControl
 
     // Double-tapping the lyrics minimum-line-opacity slider restores the fresh-install
     // value (same affordance as the pre-amp and crossfade sliders).
+    // A plugin's number slider: double-tapping restores the plugin.json default, like the
+    // Settings sliders above.
+    private void OnPluginSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Slider { DataContext: Noctis.Services.Plugins.PluginSettingItem item })
+        {
+            item.ResetToDefault();
+            e.Handled = true;
+        }
+    }
+
     private void OnLyricsMinLineOpacitySliderDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is SettingsViewModel vm)

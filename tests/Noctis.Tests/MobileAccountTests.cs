@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
@@ -31,6 +32,7 @@ public class MobileAccountTests
         public bool IsSyncing { get; set; }
         public bool WasSignedOutByComputer { get; set; }
         public string? AvatarPath { get; set; }
+        public ComputerScrobbling? ComputerScrobbling { get; set; }
 
         public event EventHandler? StateChanged;
 
@@ -89,6 +91,8 @@ public class MobileAccountTests
             Account = null;
             AvatarPath = null;
             if (removeDownloads) DownloadedIds.Clear();
+            // As the service does (NoctisAccountService.SignOutAsync): a final report with nothing running.
+            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes));
             StateChanged?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
@@ -105,6 +109,18 @@ public class MobileAccountTests
         }
 
         public void RecordPlay(Track track, DateTime playedUtc) => Plays.Add((track, playedUtc));
+        /// <summary>Plays recorded to wait for their verdict, and the verdicts given.</summary>
+        public List<Track> Started { get; } = new();
+        public List<(Track Track, PlayScrobble Verdict)> Decided { get; } = new();
+        public void RecordStartedPlay(Track track, DateTime playedUtc) { Started.Add(track); RecordPlay(track, playedUtc); }
+        public void DecidePlay(Track track, PlayScrobble verdict) => Decided.Add((track, verdict));
+
+        public List<PlayQueueShare> SavedQueues { get; } = new();
+        public Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default)
+        {
+            SavedQueues.Add(share);
+            return Task.CompletedTask;
+        }
 
         public void RaiseSyncProgress(NoctisSyncProgress progress) => SyncProgress?.Invoke(this, progress);
 
@@ -503,16 +519,20 @@ public class MobileAccountTests
     }
 
     /// <summary>Bug (10-14, emulator): signed out with nothing downloaded, a song list's filter
-    /// still offered Downloaded, and picking it emptied the list ("0 of 11").</summary>
+    /// still offered Downloaded, and picking it emptied the list ("0 of 11"). Signed out with
+    /// copies kept (10-20), their songs are gone from the library: still nothing to show.</summary>
     [Fact]
-    public void SongsFilter_OffersDownloaded_OnlySignedIn_OrWhileCopiesAreKept()
+    public void SongsFilter_OffersDownloaded_OnlySignedIn_OrWhileAListedSongIsDownloaded()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Local") });
         var account = new FakeAccount();
         var list = new SongListPageViewModel(ShellWith(rig, account), "Songs", () => rig.Library.TrackList);
         Assert.False(list.CanFilterDownloaded);
 
-        account.DownloadedIds.Add(Guid.NewGuid());          // signed out, copies kept
+        account.DownloadedIds.Add(Guid.NewGuid());          // signed out, a kept copy of a song no longer listed
+        Assert.False(list.CanFilterDownloaded);
+
+        account.DownloadedIds.Add(rig.Library.TrackList[0].Id);   // signed out by the computer: songs and copies stay
         Assert.True(list.CanFilterDownloaded);
 
         account.DownloadedIds.Clear();
@@ -578,11 +598,13 @@ public class MobileAccountTests
 
         await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
         Assert.Equal("John Doe", settings.AccountTitle);
-        Assert.Equal("Studio PC · not synced yet", settings.AccountSubtitle);
-        Assert.Equal("Playlists, favourites and plays stay in step with your computer.", settings.AccountFootnote);
+        Assert.Equal("Studio PC · Not synced yet", settings.AccountSubtitle);
+        Assert.False(settings.ShowSyncedDot);
         account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
         account.RaiseStateChanged();
-        Assert.Equal("Studio PC · synced 5 min ago", settings.AccountSubtitle);
+        Assert.Equal("Synced with Studio PC", settings.AccountSubtitle);
+        Assert.True(settings.ShowSyncedDot);
+        Assert.Equal("Signed in as John Doe · Studio PC, Synced 5 min ago", settings.AccountRowName);
         Assert.Equal("JD", settings.AccountInitials);
         Assert.True(settings.ShowAccountInitials);
         Assert.False(settings.HasAccountAvatar);
@@ -984,15 +1006,47 @@ public class MobileAccountTests
         Assert.Equal(string.Empty, page.DownloadText);                     // not "Downloads finished" over none
     }
 
-    [Theory]
-    [InlineData(20, "just now")]
-    [InlineData(5 * 60, "5 min ago")]
-    [InlineData(3 * 3600 + 120, "3 h ago")]
-    public void LastSync_IsWordedAsTheDesktopWordsIt(int secondsAgo, string expected)
+    /// <summary>Settings' profile card said "Synced 5 min ago" for as long as the sheet stayed
+    /// open: the page's minute ticker re-reads it (RefreshSyncTime) against the clock.</summary>
+    [Fact]
+    public async Task SettingsProfileCard_SyncTime_RefreshesWhileOpen()
     {
-        var now = new DateTime(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc);
-        Assert.Equal(expected, AccountPageViewModel.Ago(now.AddSeconds(-secondsAgo), now));
-        Assert.StartsWith("on ", AccountPageViewModel.Ago(now.AddDays(-2), now));
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount();
+        await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
+        var now = DateTime.UtcNow;
+        account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
+        var clock = now;
+        var settings = new SettingsPageViewModel(ShellWith(rig, account)) { UtcNow = () => clock };
+        Assert.Equal("Signed in as John Doe · Studio PC, Synced 5 min ago", settings.AccountRowName);
+
+        var raised = false;
+        settings.PropertyChanged += (_, e) => raised |= e.PropertyName == nameof(SettingsPageViewModel.AccountRowName);
+        clock = now.AddMinutes(2);
+        settings.RefreshSyncTime();
+        Assert.True(raised);
+        Assert.Equal("Signed in as John Doe · Studio PC, Synced 7 min ago", settings.AccountRowName);
+    }
+
+    /// <summary>The Account page and Settings' profile card say the last sync in the same words
+    /// (they read "Synced 3 h ago" and "synced 3 hr ago", "on 10/9/2026 2:05 PM" and "synced 2 Oct").</summary>
+    [Fact]
+    public async Task LastSync_IsWordedAlike_OnTheAccountPageAndTheProfileCard()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount();
+        await account.SignInAsync("https://192.168.1.20:4747", "John Doe", "pw", Fingerprint);
+        var shell = ShellWith(rig, account);
+        var now = DateTime.UtcNow;
+        var settings = new SettingsPageViewModel(shell) { UtcNow = () => now };
+        var page = OpenAccount(shell);
+        Assert.Equal("Not synced yet", page.LastSyncText);
+        Assert.Equal("Studio PC · Not synced yet", settings.AccountSubtitle);
+
+        account.Account = account.Account! with { LastSyncUtc = now.AddMinutes(-5) };
+        account.RaiseStateChanged();
+        Assert.Equal("Synced 5 min ago", page.LastSyncText);
+        Assert.Equal($"Signed in as John Doe · Studio PC, {page.LastSyncText}", settings.AccountRowName);
     }
 
     [Fact]
@@ -1055,6 +1109,24 @@ public class MobileAccountTests
         Assert.False(page.IsConfirmingSignOut);
     }
 
+    /// <summary>Sign-out's final download report (nothing running) was kept as the page's last
+    /// download, so signing back in on the same page showed "Downloads finished" under
+    /// Download everything with nothing downloaded.</summary>
+    [Fact]
+    public async Task SignOutThenIn_ShowsNoStaleDownloadsFinished()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var page = OpenAccount(ShellWith(rig, account));
+
+        page.AskSignOutCommand.Execute(null);
+        await page.ConfirmSignOutCommand.ExecuteAsync(null);
+        await account.SignInAsync("https://192.168.1.20:4747", "owner", "pw", Fingerprint);
+
+        Assert.True(page.IsSignedIn);
+        Assert.Equal(string.Empty, page.DownloadText);
+    }
+
     [Fact]
     public void StateChanged_FromTheService_RefreshesThePage_AndTheSettingsRow()
     {
@@ -1106,6 +1178,8 @@ public class MobileAccountTests
         Assert.True(MobileFixtures.Named<StackPanel>(page, "SignInForm").IsEffectivelyVisible);
         Assert.False(MobileFixtures.Named<StackPanel>(page, "SignedInPanel").IsEffectivelyVisible);
         Assert.Equal('•', MobileFixtures.Named<TextBox>(page, "PasswordBox").PasswordChar);
+        // It only goes back to Settings: the screen reader said "Close", as if it left the sheet.
+        Assert.Equal("Back to Settings", Avalonia.Automation.AutomationProperties.GetName(MobileFixtures.Named<Button>(page, "CloseButton")));
         window.Close();
     }
 
@@ -1154,6 +1228,31 @@ public class MobileAccountTests
         Assert.False(rig.Shell.Sheet.CanRemoveDownload);
     }
 
+    /// <summary>Library → Downloaded (and the Downloaded filter) re-read only on a library refresh,
+    /// and a download or Remove Download raises only the account's StateChanged: the removed song
+    /// stayed listed (and then streamed) until the page was reopened.</summary>
+    [Fact]
+    public async Task DownloadedPage_FollowsADownloadAndARemoval()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(a.Id);
+        var shell = ShellWith(rig, account);
+        shell.LibraryRows.ActivateCommand.Execute(shell.LibraryRows.Rows.Single(r => r.Kind == LibraryRowKind.Downloaded));
+        var page = Assert.IsType<SongListPageViewModel>(shell.CurrentPage);
+        Assert.Equal(new[] { "A" }, page.Songs.Select(t => t.Title));
+
+        await shell.RemoveDownloadsAsync(new[] { a });
+        account.RaiseStateChanged();
+        Assert.Empty(page.Songs);
+
+        await shell.DownloadTracksAsync(new[] { b });
+        account.RaiseStateChanged();
+        Assert.Equal(new[] { "B" }, page.Songs.Select(t => t.Title));
+    }
+
     [Fact]
     public void TrackSheet_SignedOut_OffersNoDownload()
     {
@@ -1190,6 +1289,29 @@ public class MobileAccountTests
         shell.OpenAlbumSheetCommand.Execute(album);
         Assert.False(shell.Sheet!.CanDownload);                            // all of its desktop songs are on the phone
         await shell.Sheet.RemoveDownloadCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { a, b }, Assert.Single(account.RemoveCalls));
+    }
+
+    /// <summary>
+    /// Remove Downloads on an album whose download is still running: the sheet handed over only
+    /// the songs already downloaded, so the batch went on to fetch the rest of the album. It hands
+    /// over every desktop song of the album; the service removes the copies and withdraws the rest.
+    /// </summary>
+    [Fact]
+    public async Task AlbumSheet_RemoveDownloadsMidDownload_HandsOverTheSongsStillToCome()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var local = MobileFixtures.Song("Local");
+        var album = MobileFixtures.MakeAlbum("Half", "Artist", a, b, local);
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, local }, new[] { album });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(a.Id);   // b is still on its way
+        var shell = ShellWith(rig, account);
+
+        shell.OpenAlbumSheetCommand.Execute(album);
+        await shell.Sheet!.RemoveDownloadCommand.ExecuteAsync(null);
+
         Assert.Equal(new[] { a, b }, Assert.Single(account.RemoveCalls));
     }
 
@@ -1437,10 +1559,13 @@ public class MobileAccountTests
             }
             Assert.Equal("0 songs · 0 MB", MobileFixtures.Named<TextBlock>(page, "StorageLabel").Text);
 
-            // Remove all downloads still asks first, inline.
+            // Remove all downloads still asks first, on the glass prompt over the sheet (owner 10-20).
             MobileFixtures.Named<Button>(page, "RemoveDownloadsButton").Command!.Execute(null);
             window.UpdateLayout();
-            Assert.True(MobileFixtures.Named<StackPanel>(page, "RemoveDownloadsConfirm").IsEffectivelyVisible);
+            var prompt = window.GetVisualDescendants().OfType<Noctis.Mobile.Views.PromptSheet>().Single();
+            Assert.True(prompt.IsVisible);
+            Assert.Equal("Remove all downloads?", MobileFixtures.Named<TextBlock>(prompt, "PromptTitle").Text);
+            MobileFixtures.Named<Button>(prompt, "PromptCancel").Command!.Execute(null);
 
             // No picture: the initials on the accent circle.
             account.AvatarPath = null;
@@ -1519,5 +1644,82 @@ public class MobileAccountTests
             Text = text;
             return Task.FromResult(true);
         }
+    }
+
+    // ── The glass prompt (owner 10-20: confirm prompts are pop-ups, not cards in the page) ──
+
+    /// <summary>Sign out asks on the shell's glass prompt: the question, one line, Sign Out in red,
+    /// and only with downloads on the phone a second red Sign Out and Remove Downloads (the switch
+    /// row offered it with nothing to remove). That second action removes them.</summary>
+    [Fact]
+    public async Task SignOut_AsksOnTheGlassPrompt_AndOffersRemovingDownloadsOnlyWithSome()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+
+        page.AskSignOutCommand.Execute(null);
+        var prompt = Assert.IsType<PromptViewModel>(shell.Prompt);
+        Assert.Equal("Sign out of Studio PC?", prompt.Title);
+        Assert.Equal("Its songs leave this phone's library. You can sign in again any time.", prompt.Message);
+        var only = Assert.Single(prompt.Actions);
+        Assert.Equal("Sign Out", only.Label);
+        Assert.True(only.IsDestructive);
+        prompt.CancelCommand.Execute(null);
+        Assert.False(shell.IsPromptOpen);
+        Assert.False(page.IsConfirmingSignOut);
+
+        account.DownloadedIds.Add(Guid.NewGuid());
+        account.RaiseStateChanged();
+        page.AskSignOutCommand.Execute(null);
+        Assert.Equal(new[] { "Sign Out", "Sign Out and Remove Downloads" }, shell.Prompt!.Actions.Select(a => a.Label));
+        await shell.Prompt.Actions[1].RunCommand.ExecuteAsync(null);
+        Assert.False(shell.IsPromptOpen);
+        Assert.Equal(new[] { true }, account.SignOuts);
+    }
+
+    /// <summary>Back, a tap off the card or Cancel: the question goes and the page forgets it
+    /// (the Remove downloads tile, greyed while asked, is live again); nothing is removed.</summary>
+    [Fact]
+    public void RemoveDownloads_BackCancelsTheGlassPrompt()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(Guid.NewGuid());
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+
+        page.AskRemoveDownloadsCommand.Execute(null);
+        Assert.Equal("Remove all downloads?", shell.Prompt!.Title);
+        Assert.Equal("Remove Downloads", Assert.Single(shell.Prompt.Actions).Label);
+        Assert.False(page.CanRemoveDownloads);
+
+        Assert.True(shell.TryHandleBack());
+        Assert.False(shell.IsPromptOpen);
+        Assert.False(page.IsConfirmingRemoveDownloads);
+        Assert.True(page.CanRemoveDownloads);
+        Assert.Equal(0, account.RemoveAllCalls);
+        Assert.IsType<AccountPageViewModel>(shell.CurrentPage);   // Back took the question, not the page
+    }
+
+    /// <summary>The sheet dropped another way than Back (DismissSheet closes pages, not prompts):
+    /// a question asked by a page it closed goes with it, and nothing is removed.</summary>
+    [Fact]
+    public async Task DismissingTheSheet_TakesItsPagesQuestionsDown()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        shell.OpenSettingsCommand.Execute(null);
+        await ((SettingsPageViewModel)shell.CurrentPage!).Loaded;
+        var page = OpenAccount(shell);
+        page.AskSignOutCommand.Execute(null);
+        Assert.True(shell.IsPromptOpen);
+
+        Assert.True(shell.DismissSheet());
+        Assert.False(shell.IsPromptOpen);
+        Assert.False(page.IsConfirmingSignOut);
+        Assert.Empty(account.SignOuts);
     }
 }

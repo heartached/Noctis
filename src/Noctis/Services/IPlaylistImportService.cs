@@ -1,3 +1,5 @@
+using Noctis.Models;
+
 namespace Noctis.Services;
 
 /// <summary>Result of analyzing an import file against the local library.</summary>
@@ -7,6 +9,9 @@ public sealed class PlaylistImportPreview
     public IReadOnlyList<Guid> MatchedTrackIds { get; init; } = Array.Empty<Guid>();
     public IReadOnlyList<string> MatchedLabels { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> MissingLabels { get; init; } = Array.Empty<string>();
+    /// <summary>Every entry in file order with its match, or its best candidates when unmatched
+    /// (the dialog's review step). Empty from callers that only report labels.</summary>
+    public IReadOnlyList<MatchResult> Matches { get; init; } = Array.Empty<MatchResult>();
     public int TotalEntries => MatchedLabels.Count + MissingLabels.Count;
 }
 
@@ -26,4 +31,7 @@ public interface IPlaylistImportService
 
     /// <summary>Creates and persists a playlist from the matched track IDs. Returns its ID.</summary>
     Task<Guid> CreateAsync(string name, IReadOnlyList<Guid> matchedTrackIds, CancellationToken ct = default);
+
+    /// <summary>Library songs for the review step's search (title, artist or album words), best first.</summary>
+    IReadOnlyList<Track> SearchLibrary(string query, int max) => Array.Empty<Track>();
 }

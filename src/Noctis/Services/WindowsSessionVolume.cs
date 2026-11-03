@@ -41,6 +41,10 @@ internal sealed class WindowsSessionVolume : IOutputLevel
     // this process). Null until audio is flowing / between resolves.
     private ISimpleAudioVolume? _activeVolume;
     private long _resolvedTicks;
+    // Settings → Output Device pin; null = resolve on the Windows default endpoint.
+    // Our sessions live on whatever endpoint is actually rendering us, so the
+    // resolver must look there.
+    private volatile string? _deviceId;
     // Whether the held session was in the Active (rendering) state at resolve
     // time. A matched-but-idle pick is a valid write target, but the track-start
     // reassert must not treat it as proof the LIVE session got the level.
@@ -112,6 +116,18 @@ internal sealed class WindowsSessionVolume : IOutputLevel
         }
     }
 
+    /// <summary>
+    /// Settings → Output Device changed: look for this process's sessions on that
+    /// endpoint instead of the Windows default. Null/empty follows the default. A
+    /// missing endpoint falls back to the default inside <see cref="Resolve"/> —
+    /// the engine may have fallen back there too, and volume must follow the audio.
+    /// </summary>
+    public void SetDevice(string? deviceId)
+    {
+        _deviceId = string.IsNullOrEmpty(deviceId) ? null : deviceId;
+        Invalidate();
+    }
+
     private void EnsureFresh()
     {
         if (_activeVolume != null && Environment.TickCount64 - _resolvedTicks < RefreshTtlMs)
@@ -135,7 +151,20 @@ internal sealed class WindowsSessionVolume : IOutputLevel
         try
         {
             _enumerator ??= (IMMDeviceEnumerator)CoreAudioComInterop.CreateMMDeviceEnumerator();
-            if (_enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eConsole, out var device) < 0 || device == null)
+            // Pinned endpoint (Settings → Output Device) when it exists, default otherwise.
+            IMMDevice? device = null;
+            var pin = _deviceId;
+            if (pin != null && _enumerator.GetDevice(pin, out var pinned) >= 0 && pinned != null)
+            {
+                // GetDevice succeeds for unplugged/disabled endpoints too; our audio has
+                // fallen back to the default then, so the volume must look there.
+                if (pinned.GetState(out var state) >= 0 && state == DeviceStateActive)
+                    device = pinned;
+                else
+                    TryRelease(pinned);
+            }
+            if (device == null &&
+                (_enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eConsole, out device) < 0 || device == null))
                 return;
 
             try
@@ -294,7 +323,7 @@ internal sealed class WindowsSessionVolume : IOutputLevel
     {
         [PreserveSig] int EnumAudioEndpoints();
         [PreserveSig] int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, out IMMDevice ppDevice);
-        [PreserveSig] int GetDevice();
+        [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string pwstrId, out IMMDevice ppDevice);
         [PreserveSig] int RegisterEndpointNotificationCallback();
         [PreserveSig] int UnregisterEndpointNotificationCallback();
     }
@@ -307,8 +336,10 @@ internal sealed class WindowsSessionVolume : IOutputLevel
             [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface);
         [PreserveSig] int OpenPropertyStore();
         [PreserveSig] int GetId();
-        [PreserveSig] int GetState();
+        [PreserveSig] int GetState(out uint pdwState);
     }
+
+    private const uint DeviceStateActive = 0x1; // DEVICE_STATE_ACTIVE
 
     [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"),
      InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

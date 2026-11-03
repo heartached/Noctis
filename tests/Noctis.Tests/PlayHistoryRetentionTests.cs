@@ -168,6 +168,55 @@ public sealed class PlayHistoryRetentionTests : IDisposable
     }
 
     [Fact]
+    public async Task APlayReportedLate_LandsInItsPlace_SurvivesAReload_AndPruneStillCutsAPrefix()
+    {
+        // A phone's offline play reaches the desktop days later; stamped "now" it fell on the wrong day.
+        var legacy = Synthetic(30_000);                                    // past FullRewriteMaxEvents: tail saves
+        WriteLegacyLog(legacy);
+        var history = new PlayHistoryService(LogPath);
+        var live = NewTrack("Live");
+        history.RecordPlay(live);                                          // in the tail
+        var late = NewTrack("Late");
+        var at = legacy[20_000].PlayedAtUtc.AddSeconds(1);
+        var before = history.Events;
+        history.RecordPlay(late, at);
+
+        Assert.Equal(30_001, before.Count);                                // a snapshot already taken is untouched
+        Assert.Equal(live.Id, before[^1].TrackId);
+        var events = history.Events;
+        Assert.Equal(30_002, events.Count);
+        Assert.Equal(late.Id, events[20_001].TrackId);
+        Assert.Equal(at, events[20_001].PlayedAtUtc);
+        Assert.Equal(live.Id, events[^1].TrackId);
+        await history.FlushAsync();
+
+        var reloaded = new PlayHistoryService(LogPath);
+        Assert.Equal(events.Select(e => (e.TrackId, e.PlayedAtUtc)), reloaded.Events.Select(e => (e.TrackId, e.PlayedAtUtc)));
+        Assert.Equal(20_001, reloaded.PruneOlderThan(at));                 // the late play is not older than its own time
+        Assert.Equal(late.Id, reloaded.Events[0].TrackId);
+
+        // A time in the future is now; one after the newest is a plain append.
+        var future = NewTrack("Future");
+        reloaded.RecordPlay(future, DateTime.UtcNow.AddDays(3));
+        Assert.Equal(future.Id, reloaded.Events[^1].TrackId);
+        Assert.True(reloaded.Events[^1].PlayedAtUtc <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void AtTheCap_APlayReportedLate_TrimsTheOldest_OrGoesItselfWhenOlderThanAll()
+    {
+        var history = new PlayHistoryService(LogPath, maxEvents: 3);
+        var t = new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
+        foreach (var i in new[] { 0, 2, 4 }) history.RecordPlay(NewTrack("S" + i), t.AddHours(i));
+        var middle = NewTrack("Middle");
+        history.RecordPlay(middle, t.AddHours(3));
+        Assert.Equal(new[] { t.AddHours(2), t.AddHours(3), t.AddHours(4) }, history.Events.Select(e => e.PlayedAtUtc));
+
+        history.RecordPlay(NewTrack("Ancient"), t.AddDays(-5));
+        Assert.Equal(new[] { t.AddHours(2), t.AddHours(3), t.AddHours(4) }, history.Events.Select(e => e.PlayedAtUtc));
+    }
+
+    [Fact]
     public async Task Tail_IsFoldedIntoTheBaseFile_AfterCompactAfterTailEvents()
     {
         WriteLegacyLog(Synthetic(PlayHistoryService.FullRewriteMaxEvents + 1_000));

@@ -21,6 +21,16 @@
         <!-- Ticks the active entry in the Songs sort menu: one bound field
              (PageSortColumn) decides which of a dozen items shows its checkmark. -->
         <conv:StringEqualsConverter x:Key="StringEquals" />
+        <!-- The Settings card growing to fit a plugin's own view and back: the Plugins page's
+             motion (SettingsView PluginPageEase, its 0.28 s slide). -->
+        <helpers:CubicBezierEase x:Key="SettingsCardResizeEase">
+            <x:Arguments>
+                <x:Double>0.2</x:Double>
+                <x:Double>0.9</x:Double>
+                <x:Double>0.3</x:Double>
+                <x:Double>1</x:Double>
+            </x:Arguments>
+        </helpers:CubicBezierEase>
     </Window.Resources>
 
     <!-- Keyboard shortcuts are dispatched in code-behind through ShortcutService
@@ -192,9 +202,12 @@
                      an accent dot on an icon means the control is away from its default,
                      the section's single primary action keeps its words as a red pill, and
                      the Library / Cover Flow segment is one icon showing the mode you would
-                     switch TO. Order, left to right: filter · sort · view options · primary
-                     · view mode. Corner width is now the same band on every section. -->
-                <StackPanel Grid.Column="1"
+                     switch TO. Order, left to right (11-02, every section): page option
+                     (Folders: Manage Folders) · filter (FilterIcon) · sort (SortIcon) · view
+                     (ViewIcon menu or View Options) · shuffle icon + primary pill · Cover Flow.
+                     Corner width is now the same band on every section. -->
+                <StackPanel x:Name="CornerActions"
+                            Grid.Column="1"
                             x:DataType="vm:TopBarViewModel"
                             DataContext="{Binding TopBar}"
                             Orientation="Horizontal"
@@ -212,11 +225,11 @@
                                 <Binding Path="!IsPageTitleVisible"/>
                             </MultiBinding>
                         </Panel.IsVisible>
-                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Type}">
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                             <ToolTip.Tip>
-                                <TextBlock><Run Text="{loc:T Main.Type}"/><Run Text=" "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
+                                <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
                             </ToolTip.Tip>
-                            <PathIcon Data="{StaticResource ReleaseTypeIcon}"/>
+                            <PathIcon Data="{StaticResource FilterIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
@@ -257,11 +270,11 @@
                         </StackPanel.IsVisible>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Type}">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                                 <ToolTip.Tip>
-                                    <TextBlock><Run Text="{loc:T Main.Type}"/><Run Text=" "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
+                                    <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
                                 </ToolTip.Tip>
-                                <PathIcon Data="{StaticResource ReleaseTypeIcon}"/>
+                                <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
@@ -355,6 +368,37 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsAlbumSortActive}"/>
                         </Panel>
+
+                        <!-- View (GitHub #149): grid or album carousel, and the carousel's case
+                             style. The shared View glyph, like every page's view control. -->
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
+                                ToolTip.Tip="{loc:T Main.AlbumView}">
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="{loc:T Main.AlbumGrid}" Command="{Binding AlbumViewCommand}" CommandParameter="grid">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding !IsAlbumCarouselView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.AlbumCarousel}" Command="{Binding AlbumViewCommand}" CommandParameter="carousel">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumCarouselView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="{loc:T Main.CarouselCover}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cover">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cover}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.CarouselJewelCase}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="JewelCase">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=JewelCase}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.CarouselVinyl}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Vinyl">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Vinyl}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.CarouselCassette}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cassette">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cassette}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
                     </StackPanel>
 
                     <!-- Songs (and any page with page actions): filter · sort · view options ·
@@ -362,7 +406,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding PageActionsVisible}">
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" ToolTip.Tip="{loc:T Main.FilterTip}">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
                                 <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
@@ -441,6 +485,9 @@
                                         <MenuItem Header="{loc:T Main.SampleRate}" Command="{Binding PageSortCommand}" CommandParameter="SampleRate">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=SampleRate}"/></MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="{loc:T LibrarySongs.ReplayGain}" Command="{Binding PageSortCommand}" CommandParameter="ReplayGain">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=ReplayGain}"/></MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T Main.DateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Date Added">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Added'}"/></MenuItem.Icon>
                                         </MenuItem>
@@ -462,8 +509,9 @@
 
                         <Button Classes="corner-icon"
                                 Command="{Binding PageViewOptionsCommand}"
+                                AutomationProperties.Name="{loc:T Main.ShowViewOptions}"
                                 ToolTip.Tip="{loc:T Main.ShowViewOptions}">
-                            <PathIcon Data="{StaticResource ViewOptionsIcon}"/>
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
                         </Button>
 
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
@@ -544,6 +592,17 @@
                                             </StackPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
+                                    <MenuItem Command="{Binding PageQuickPlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineRadio}"/>
+                                        </MenuItem.Icon>
+                                        <MenuItem.Header>
+                                            <StackPanel Margin="0,5" Spacing="2">
+                                                <TextBlock Text="{loc:T Main.QuickPlaylist}" FontSize="13" FontWeight="SemiBold" />
+                                                <TextBlock Text="{loc:T Main.QuickPlaylistSub}" FontSize="11" Opacity="0.55" />
+                                            </StackPanel>
+                                        </MenuItem.Header>
+                                    </MenuItem>
                                     <Separator />
                                     <MenuItem Command="{Binding PageImportPlaylistCommand}">
                                         <MenuItem.Icon>
@@ -553,21 +612,6 @@
                                             <StackPanel Margin="0,5" Spacing="2">
                                                 <TextBlock Text="{loc:T Main.ImportPlaylist}" FontSize="13" FontWeight="SemiBold" />
                                                 <TextBlock Text="{loc:T Main.FromM3uM3u8File}" FontSize="11" Opacity="0.55" />
-                                            </StackPanel>
-                                        </MenuItem.Header>
-                                    </MenuItem>
-                                    <Separator />
-                                    <!-- YouTube → library: search or paste a link; the file lands in the
-                                         library folder, tagged, like any import. No YouTube section in the app. -->
-                                    <MenuItem Command="{Binding AddFromYouTubeCommand}">
-                                        <MenuItem.Icon>
-                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
-                                        </MenuItem.Icon>
-                                        <MenuItem.Header>
-                                            <StackPanel Margin="0,5" Spacing="2">
-                                                <TextBlock Text="{loc:T Main.AddFromYouTube}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <!-- Wraps: menus cap at 330 px, and the hint ran past it (French far more). -->
-                                                <TextBlock Text="{loc:T Main.AddFromYouTubeHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
@@ -594,8 +638,7 @@
                     </StackPanel>
 
                     <!-- Artists page: sort popover (Name / Songs / Albums / Time / Genre + direction)
-                         and the grid ↔ list icon, which like the view-mode icon shows the
-                         layout you would switch TO. Both hide under Cover Flow. -->
+                         and the View menu (Grid / List). Both hide under Cover Flow. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding ArtistSortVisible}">
                         <Panel VerticalAlignment="Center">
@@ -634,17 +677,21 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsArtistSortActive}"/>
                         </Panel>
-                        <Button Classes="corner-icon" IsVisible="{Binding !IsArtistListView}"
-                                Command="{Binding ToggleArtistViewCommand}"
-                                AutomationProperties.Name="{loc:T Main.SwitchToArtistList}"
-                                ToolTip.Tip="{loc:T Main.SwitchToArtistList}">
-                            <PathIcon Data="{StaticResource ListViewIcon}"/>
-                        </Button>
-                        <Button Classes="corner-icon" IsVisible="{Binding IsArtistListView}"
-                                Command="{Binding ToggleArtistViewCommand}"
-                                AutomationProperties.Name="{loc:T Main.SwitchToArtistGrid}"
-                                ToolTip.Tip="{loc:T Main.SwitchToArtistGrid}">
-                            <PathIcon Data="{StaticResource GridViewIcon}"/>
+                        <!-- View: Grid / List, the same View glyph and menu shape as Albums. -->
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
+                                ToolTip.Tip="{loc:T Main.AlbumView}">
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="{loc:T Main.AlbumGrid}" Command="{Binding SetArtistViewCommand}" CommandParameter="grid">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding !IsArtistListView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.ViewList}" Command="{Binding SetArtistViewCommand}" CommandParameter="list">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsArtistListView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
                         </Button>
                     </StackPanel>
 
@@ -665,9 +712,13 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Folders: sort popover · manage icon · shuffle icon · Play (primary). -->
+                    <!-- Folders: manage folders (page option, opens Settings > Library) · sort popover ·
+                         shuffle icon · Play (primary). Same shuffle-icon + Play pair as Favorites. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FoldersActionsVisible}">
+                        <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
+                            <PathIcon Data="{StaticResource FolderIcon}"/>
+                        </Button>
                         <Panel VerticalAlignment="Center">
                             <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
@@ -691,9 +742,6 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsFoldersSortActive}"/>
                         </Panel>
-                        <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
-                            <PathIcon Data="{StaticResource SettingsIcon}"/>
-                        </Button>
                         <Button Classes="corner-icon" Command="{Binding PageShuffleFolderCommand}" ToolTip.Tip="{loc:T Main.ShuffleFolderTip}">
                             <PathIcon Data="{StaticResource ShuffleIcon}"/>
                         </Button>
@@ -716,7 +764,7 @@
                             <ToolTip.Tip>
                                 <TextBlock><Run Text="{loc:T Main.Layout}"/><Run Text=" "/><Run Text="{Binding CoverFlowLayoutLabel}"/></TextBlock>
                             </ToolTip.Tip>
-                            <PathIcon Data="{StaticResource LayoutIcon}"/>
+                            <PathIcon Data="{StaticResource ViewIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
@@ -746,7 +794,8 @@
                 <Border Background="{Binding WindowTintBrush}"
                         IsVisible="{Binding IsWindowTinted}"
                         IsHitTestVisible="False" />
-                <ContentControl Content="{Binding CurrentView}"
+                <ContentControl x:Name="PageHost"
+                                Content="{Binding CurrentView}"
                                 Classes="page-host"
                                 RenderTransformOrigin="50%,50%">
                     <ContentControl.Transitions>
@@ -799,7 +848,7 @@
                      Hidden while glass is off, so the drawer paints exactly as before. -->
                 <controls:GlassPanel x:Name="QueueGlass"
                                      HorizontalAlignment="Right"
-                                     Width="330"
+                                     Width="{Binding Player.QueuePanelWidth}"
                                      Margin="0,8,8,8"
                                      CornerRadius="16"
                                      Background="{DynamicResource QueueDrawerBackground}"
@@ -831,10 +880,12 @@
                      Visibility and the fade/slide open-close animation are driven from
                      code-behind (IsQueuePopupOpen handler) so the close can play before
                      the panel leaves the tree — same pattern as the Settings modal.
-                     Its fill comes from the Border#QueuePopupPanel style (Window.Styles). -->
+                     Its fill comes from the Border#QueuePopupPanel style (Window.Styles).
+                     GitHub #147: its width is the user's (Player.QueuePanelWidth), dragged at
+                     the left edge (QueueResizeGrip) or set in Settings ▸ Player ▸ Queue. -->
                 <Border x:Name="QueuePopupPanel"
                         HorizontalAlignment="Right"
-                        Width="330"
+                        Width="{Binding Player.QueuePanelWidth}"
                         Margin="0,8,8,8"
                         CornerRadius="16"
                         ClipToBounds="True"
@@ -921,8 +972,9 @@
                                 <Setter Property="Foreground" Value="{DynamicResource QueueDrawerForeground}"/>
                             </Style>
                         </DockPanel.Styles>
-                        <!-- Compact header: "Queue • N", and with Keep Played Songs on a
-                             Clear Played button at the right end (GitHub #134). -->
+                        <!-- Compact header: "Queue • N", then icon chips at the right end:
+                             History, Repeat, Reshuffle (Shuffle on) and, with Keep Played Songs
+                             on, Clear Played (GitHub #134). -->
                         <DockPanel DockPanel.Dock="Top" Margin="20,16,16,6">
                         <!-- Reshuffle (Discord, vari): the same quiet chip, icon-only so it fits
                              beside Clear Played in every language; shown while Shuffle is on, as
@@ -930,6 +982,55 @@
                              than two songs up next (the command's CanExecute). -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6"
                                     VerticalAlignment="Center">
+                        <!-- Discord (Luwi): History shows the played songs above Now Playing (the
+                             Keep Played Songs setting, one click away); accent while on. -->
+                        <Button x:Name="QueueHistoryButton"
+                                Classes="queue-clear-played"
+                                Command="{Binding Player.ToggleShowPlayedInQueueCommand}"
+                                ToolTip.Tip="{loc:T Queue.ShowPlayedTip}"
+                                AutomationProperties.Name="{loc:T Queue.History}"
+                                Width="28" Height="24"
+                                Padding="0"
+                                CornerRadius="999"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                VerticalAlignment="Center"
+                                Cursor="Hand">
+                            <Panel>
+                                <controls:LineIcon Data="{StaticResource MenuLineHistory}" Width="14" Height="14"
+                                                   Foreground="{DynamicResource QueueDrawerForeground}"
+                                                   IsVisible="{Binding !Player.KeepPlayedInQueue}"/>
+                                <controls:LineIcon Data="{StaticResource MenuLineHistory}" Width="14" Height="14"
+                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                   IsVisible="{Binding Player.KeepPlayedInQueue}"/>
+                            </Panel>
+                        </Button>
+                        <!-- GitHub #144: Repeat in the panel too (the island's Repeat is opt-in),
+                             Off → All → One like everywhere else; the tooltip names the mode. -->
+                        <Button x:Name="QueueRepeatButton"
+                                Classes="queue-clear-played"
+                                Command="{Binding Player.CycleRepeatCommand}"
+                                ToolTip.Tip="{Binding Player.RepeatModeTip}"
+                                AutomationProperties.Name="{loc:T Queue.RepeatTip}"
+                                Width="28" Height="24"
+                                Padding="0"
+                                CornerRadius="999"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                VerticalAlignment="Center"
+                                Cursor="Hand">
+                            <Panel>
+                                <PathIcon Data="{StaticResource RepeatAllIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource QueueDrawerForeground}"
+                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}"/>
+                                <PathIcon Data="{StaticResource RepeatAllIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentColorBrush}"
+                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}"/>
+                                <PathIcon Data="{StaticResource RepeatOneIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentColorBrush}"
+                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}"/>
+                            </Panel>
+                        </Button>
                         <Button x:Name="QueueReshuffleButton"
                                 Classes="queue-clear-played"
                                 Command="{Binding Player.ReshuffleCommand}"
@@ -947,16 +1048,23 @@
                         </Button>
                         <Button x:Name="QueueClearPlayedButton"
                                 Classes="queue-clear-played"
-                                Content="{loc:T Queue.ClearPlayed}"
                                 Click="OnQueueClearPlayedClick"
                                 IsVisible="{Binding Player.KeepPlayedInQueue}"
                                 IsEnabled="{Binding Player.HasPlayedQueueRows}"
-                                Padding="11,4"
-                                FontSize="12"
-                                FontWeight="SemiBold"
+                                ToolTip.Tip="{loc:T Queue.ClearPlayed}"
+                                AutomationProperties.Name="{loc:T Queue.ClearPlayed}"
+                                Width="28" Height="24"
+                                Padding="0"
                                 CornerRadius="999"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
                                 VerticalAlignment="Center"
-                                Cursor="Hand" />
+                                Cursor="Hand">
+                            <!-- Icon-only like its neighbours, so History + Repeat + Reshuffle +
+                                 Clear Played fit beside "Queue • N" in every language. -->
+                            <controls:LineIcon Data="{StaticResource MenuLineTrash}" Width="14" Height="14"
+                                               Foreground="{DynamicResource QueueDrawerForeground}"/>
+                        </Button>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="7"
                                     VerticalAlignment="Center">
@@ -1040,12 +1148,18 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <Grid ColumnDefinitions="Auto,Auto">
                                             <TextBlock Grid.Column="0"
-                                                       Text="{Binding TitleDisplay}"
                                                        Classes="one-line-explicit-title"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
-                                                       MaxWidth="165" />
+                                                       MaxWidth="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueTitleMaxWidth, FallbackValue=165}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                             <Border Grid.Column="1"
                                                     Classes="explicit-badge compact"
                                                     Margin="4,0,0,0"
@@ -1058,26 +1172,51 @@
                                                            Opacity="0.9" />
                                             </Border>
                                         </Grid>
+                                        <!-- GitHub #147: line 2 is a link while it is the artist,
+                                             plain text for any other field, gone for None. -->
                                         <Button Classes="queue-link"
                                                 AutomationProperties.Name="{Binding ArtistDisplay}"
                                                 HorizontalAlignment="Left"
                                                 Margin="0,2,0,0"
+                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
                                                 CommandParameter="{Binding}">
                                             <Border Classes="artist-text-hover"
                                                     CornerRadius="2"
                                                     Padding="2,0,3,0">
-                                                <TextBlock Text="{Binding ArtistDisplay}"
-                                                           FontSize="11"
+                                                <TextBlock FontSize="11"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource AccentForegroundBrush}"
                                                            Opacity="0.75"
                                                            TextTrimming="CharacterEllipsis"
-                                                           MaxLines="1" />
+                                                           MaxLines="1">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                                            <Binding />
+                                                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
                                             </Border>
                                         </Button>
+                                        <TextBlock FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentForegroundBrush}"
+                                                   Opacity="0.75"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="1"
+                                                   Margin="2,2,3,0"
+                                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                                    <Binding />
+                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                     <TextBlock Grid.Column="2"
+                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsRight, FallbackValue=True}"
                                                Text="{Binding DurationFormatted}"
                                                FontSize="12"
                                                FontWeight="SemiBold"
@@ -1161,6 +1300,10 @@
                                     <Style Selector="ListBoxItem.queue-played controls|LineIcon.queue-played-mark">
                                         <Setter Property="IsVisible" Value="True"/>
                                     </Style>
+                                    <!-- GitHub #154: a song whose file is missing reads dimmed, marked. -->
+                                    <Style Selector="Grid.queue-row-content.queue-missing">
+                                        <Setter Property="Opacity" Value="0.45"/>
+                                    </Style>
                                     <!-- The playing row: the accent card the pinned Now Playing row uses,
                                          a speaker in the number slot. Last, so it wins over hover. -->
                                     <Style Selector="ListBoxItem.queue-current Border.queue-row">
@@ -1171,6 +1314,14 @@
                                     </Style>
                                     <Style Selector="ListBoxItem.queue-current controls|LineIcon.queue-current-mark">
                                         <Setter Property="IsVisible" Value="True"/>
+                                    </Style>
+                                    <!-- GitHub #147: with Duration in the right slot, played and playing
+                                         rows show their check / speaker there instead. -->
+                                    <Style Selector="TextBlock.queue-row-duration">
+                                        <Setter Property="Opacity" Value="0.5"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem.queue-played TextBlock.queue-row-duration, ListBoxItem.queue-current TextBlock.queue-row-duration">
+                                        <Setter Property="Opacity" Value="0"/>
                                     </Style>
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
@@ -1214,8 +1365,9 @@
                                                     </MenuItem>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="48"
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="48"
                                               Classes="queue-row-content"
+                                              Classes.queue-missing="{Binding IsFileMissing}"
                                               Background="Transparent">
 
                                             <!-- Album art thumbnail -->
@@ -1233,11 +1385,17 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                                                 <Grid ColumnDefinitions="Auto,Auto">
                                                     <TextBlock Grid.Column="0"
-                                                               Text="{Binding TitleDisplay}"
                                                                Classes="one-line-explicit-title queue-fg"
                                                                FontSize="13"
                                                                FontWeight="SemiBold"
-                                                               MaxWidth="165" />
+                                                               MaxWidth="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueTitleMaxWidth, FallbackValue=165}">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                                <Binding />
+                                                                <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
                                                     <Border Grid.Column="1"
                                                             Classes="explicit-badge compact"
                                                             Margin="4,0,0,0"
@@ -1250,38 +1408,85 @@
                                                                    Opacity="0.9" />
                                                     </Border>
                                                 </Grid>
+                                                <!-- GitHub #147: line 2 is a link while it is the artist,
+                                                     plain text for any other field, gone for None. -->
                                                 <Button Classes="queue-link"
                                                         AutomationProperties.Name="{Binding ArtistDisplay}"
                                                         HorizontalAlignment="Left"
                                                         Margin="0,2,0,0"
+                                                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}"
                                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
                                                         CommandParameter="{Binding}">
                                                     <Border Classes="artist-text-hover"
                                                             CornerRadius="2"
                                                             Padding="2,0,3,0">
-                                                        <TextBlock Text="{Binding ArtistDisplay}"
-                                                                   Classes="queue-fg"
+                                                        <TextBlock Classes="queue-fg"
                                                                    FontSize="11"
                                                                    FontWeight="SemiBold"
                                                                    Opacity="0.55"
                                                                    TextTrimming="CharacterEllipsis"
-                                                                   MaxLines="1" />
+                                                                   MaxLines="1">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                                                    <Binding />
+                                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
                                                     </Border>
                                                 </Button>
+                                                <TextBlock Classes="queue-fg"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Opacity="0.55"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxLines="1"
+                                                           Margin="2,2,3,0"
+                                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                                            <Binding />
+                                                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
                                             </StackPanel>
                                             <!-- Queue position (stamped from code-behind; virtualization
                                                  recycles rows, so there is no per-item index to bind).
                                                  GitHub #134: played rows show a check, the playing row
                                                  a speaker, instead of a number. -->
-                                            <Panel Grid.Column="2" MinWidth="20" Margin="4,0,4,0"
-                                                   VerticalAlignment="Center">
+                                            <!-- GitHub #154: the file can't be found (moved, deleted, drive unplugged). -->
+                                            <Border Grid.Column="2"
+                                                    Classes="explicit-badge compact"
+                                                    Margin="0,0,4,0"
+                                                    IsVisible="{Binding IsFileMissing}"
+                                                    ToolTip.Tip="{loc:T Queue.MissingTip}"
+                                                    AutomationProperties.Name="{loc:T Queue.MissingTip}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:T Queue.MissingBadge}"
+                                                           Classes="explicit-badge-text compact"
+                                                           FontSize="8"
+                                                           Opacity="0.9" />
+                                            </Border>
+                                            <Panel Grid.Column="3" MinWidth="20" Margin="4,0,4,0"
+                                                   VerticalAlignment="Center"
+                                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsRight, FallbackValue=True}">
                                                 <TextBlock x:Name="QueueRowNumber"
                                                            Classes="queue-fg"
                                                            FontSize="14"
                                                            FontWeight="SemiBold"
                                                            Opacity="0.4"
                                                            TextAlignment="Right"
-                                                           VerticalAlignment="Center" />
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsPosition, FallbackValue=True}" />
+                                                <!-- GitHub #147: Duration in the right slot (Settings ▸ Player ▸ Queue). -->
+                                                <TextBlock Classes="queue-fg queue-row-duration"
+                                                           Text="{Binding DurationFormatted}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           TextAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsDuration, FallbackValue=False}" />
                                                 <controls:LineIcon Classes="queue-played-mark"
                                                                    Data="{StaticResource MenuLineCheck}"
                                                                    Foreground="{DynamicResource QueueDrawerForeground}"
@@ -1386,20 +1591,33 @@
                                                               Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
-                                        <TextBlock Text="{Binding TitleDisplay}"
-                                                    FontSize="13"
+                                        <TextBlock FontSize="13"
                                                     FontWeight="SemiBold"
                                                     Foreground="{DynamicResource AccentForegroundBrush}"
                                                    TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1" />
-                                        <TextBlock Text="{Binding ArtistDisplay}"
-                                                    FontSize="11"
+                                                   MaxLines="1">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                    <Binding />
+                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                        <TextBlock FontSize="11"
                                                     FontWeight="Bold"
                                                     Foreground="{DynamicResource AccentForegroundBrush}"
                                                    Opacity="0.7"
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxLines="1"
-                                                   Margin="0,2,0,0" />
+                                                   Margin="0,2,0,0"
+                                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.HasLine2, FallbackValue=True}">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
+                                                    <Binding />
+                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -1421,6 +1639,20 @@
                             </Border>
                         </Grid>
                     </DockPanel>
+
+                    <!-- GitHub #147: drag the panel's left edge to resize it (300-720, never
+                         past the window); double-click it for the stock 330. Last child, so it
+                         sits over the list's left gutter. -->
+                    <Border x:Name="QueueResizeGrip"
+                            Width="6"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Stretch"
+                            Background="Transparent"
+                            Cursor="SizeWestEast"
+                            PointerPressed="OnQueueResizeGripPressed"
+                            PointerMoved="OnQueueResizeGripMoved"
+                            PointerReleased="OnQueueResizeGripReleased"
+                            PointerCaptureLost="OnQueueResizeGripCaptureLost"/>
                     </Panel>
                 </Border>
 
@@ -1513,6 +1745,11 @@
     <views:QueueToastView DataContext="{Binding QueueToast}"
                           Margin="0,0,0,80"
                           ZIndex="40" />
+
+    <!-- "Continue from your phone" (Pick Up on Computer): above the queue toast's spot. -->
+    <views:HandoffPromptView DataContext="{Binding HandoffPrompt}"
+                             Margin="0,0,0,132"
+                             ZIndex="41" />
 
     <!-- Bottom playback island (Apple Music-style glass pill). No clip: the island's glass
          must hear of repaints right beside the pill, which its blur reads (see GlassReach). -->
@@ -1655,8 +1892,8 @@
              scale transform, so it is never inside the card's opacity layer. Off, it paints
              the same AppMainBackground the card used to. -->
         <controls:GlassPanel Name="SettingsGlass"
-                             Width="1000" MaxHeight="720" Margin="0,24"
-                             HorizontalAlignment="Center"
+                             MaxWidth="1000" MaxHeight="720" Margin="24,24"
+                             HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch"
                              CornerRadius="22"
                              Background="{DynamicResource AppMainBackground}"
@@ -1679,19 +1916,24 @@
                             <CubicEaseOut/>
                         </DoubleTransition.Easing>
                     </DoubleTransition>
+                    <DoubleTransition Property="MaxWidth" Duration="0:0:0.28" Easing="{StaticResource SettingsCardResizeEase}"/>
+                    <DoubleTransition Property="MaxHeight" Duration="0:0:0.28" Easing="{StaticResource SettingsCardResizeEase}"/>
                 </Transitions>
             </controls:GlassPanel.Transitions>
         </controls:GlassPanel>
         <!-- Stretch + MaxHeight: the card is always min(720, window − margin) tall, whatever
              page is open. With VerticalAlignment=Center it sized to its content, so short
-             pages (Plugins, Statistics) visibly shrank the whole dialog. -->
+             pages (Plugins, Statistics) visibly shrank the whole dialog.
+             Stretch + MaxWidth the same way across (GitHub #145): a fixed 1000 px card ran off
+             both sides of anything narrower — the 780 px minimum window, or a 1560 px window at
+             200% Interface Size — cutting off the close button (UiScaleTests). -->
         <Border Name="SettingsCard"
-                Width="1000" MaxHeight="720" Margin="0,24"
+                MaxWidth="1000" MaxHeight="720" Margin="24,24"
                 Opacity="0"
                 BorderBrush="#22FFFFFF"
                 BorderThickness="1"
                 CornerRadius="22"
-                HorizontalAlignment="Center"
+                HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 RenderTransformOrigin="50%,50%"
                 RenderTransform="scale(0.96)"
@@ -1710,6 +1952,9 @@
                             <CubicEaseOut/>
                         </DoubleTransition.Easing>
                     </DoubleTransition>
+                    <!-- Growing to fit a plugin's own view and back (SizeSettingsCard), in step with the frost. -->
+                    <DoubleTransition Property="MaxWidth" Duration="0:0:0.28" Easing="{StaticResource SettingsCardResizeEase}"/>
+                    <DoubleTransition Property="MaxHeight" Duration="0:0:0.28" Easing="{StaticResource SettingsCardResizeEase}"/>
                 </Transitions>
             </Border.Transitions>
             <!-- Clip children (the opaque settings rail in particular) to the card's

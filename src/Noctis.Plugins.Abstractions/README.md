@@ -4,7 +4,7 @@ The plugin kit for [Noctis](https://github.com/heartached/Noctis), a desktop mus
 Reference it with `ExcludeAssets="runtime"`: the app supplies this assembly (and Avalonia) at run time.
 
 ```xml
-<PackageReference Include="Noctis.Plugins.Abstractions" Version="1.2.*" ExcludeAssets="runtime" PrivateAssets="all" />
+<PackageReference Include="Noctis.Plugins.Abstractions" Version="1.6.*" ExcludeAssets="runtime" PrivateAssets="all" />
 ```
 
 Implement `INoctisPlugin`, add a `plugin.json` manifest next to your DLL, zip the folder and
@@ -12,3 +12,11 @@ install it from Settings → Plugins → Install from file…
 
 Full guide (manifest reference, API, permissions, safety model, packaging):
 https://github.com/heartached/Noctis/blob/main/docs/PLUGINS.md
+
+## Release notes
+
+- **1.5** (Noctis 1.6.6+): the queue (`GetQueue`, `SetUpNext`, `TracksQueued`), more `TrackInfo`
+  fields, lyrics effects, `ILibraryImport`, and the size a view's window opens at
+  (`IPluginViewProvider.PreferredWindowSize`, `MinWindowSize`, `WindowSizeToContent`; older Noctis
+  versions ignore them).
+- Earlier versions: see "Versioning and deprecation policy" in the full guide.

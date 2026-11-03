@@ -735,8 +735,10 @@
 
                 <DataTemplate DataType="{x:Type vm:StatsPlayRow}">
                     <!-- Album in its own column: on a wide window the row reads as a table, not a
-                         title stranded at one edge and the time at the other. -->
-                    <Grid ColumnDefinitions="36,3*,2*,Auto,Auto" ColumnSpacing="12" Height="48" Margin="13,0">
+                         title stranded at one edge and the time at the other. The Skipped chip and
+                         the time sit inside the album side: as columns of their own, their per-row
+                         Auto widths shifted the album start left on skipped rows. -->
+                    <Grid ColumnDefinitions="36,4*,3*" ColumnSpacing="12" Height="48" Margin="13,0">
                         <Border Classes="thumb" Width="36" Height="36" CornerRadius="6">
                             <Panel>
                                 <Viewbox Classes="ph" Width="14" Height="14"><Path Classes="ph" Data="{StaticResource SongsIcon}" /></Viewbox>
@@ -750,15 +752,17 @@
                             <TextBlock Text="{Binding Artist}" FontSize="11.5" Opacity="0.55"
                                        TextTrimming="CharacterEllipsis" MaxLines="1" />
                         </StackPanel>
-                        <TextBlock Grid.Column="2" Text="{Binding Album}" FontSize="12" Opacity="0.5"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1" />
-                        <Border Grid.Column="3" CornerRadius="999" Padding="8,2" VerticalAlignment="Center"
-                                Background="{DynamicResource PillFieldBackgroundPointerOver}"
-                                IsVisible="{Binding Skipped}">
-                            <TextBlock Text="{loc:T Statistics.Skipped}" FontSize="10.5" Opacity="0.75" />
-                        </Border>
-                        <TextBlock Grid.Column="4" Text="{Binding TimeText}" FontSize="12" Opacity="0.5"
-                                   VerticalAlignment="Center" MinWidth="64" TextAlignment="Right" />
+                        <Grid Grid.Column="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                            <TextBlock Text="{Binding Album}" FontSize="12" Opacity="0.5"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                            <Border Grid.Column="1" CornerRadius="999" Padding="8,2" VerticalAlignment="Center"
+                                    Background="{DynamicResource PillFieldBackgroundPointerOver}"
+                                    IsVisible="{Binding Skipped}">
+                                <TextBlock Text="{loc:T Statistics.Skipped}" FontSize="10.5" Opacity="0.75" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Text="{Binding TimeText}" FontSize="12" Opacity="0.5"
+                                       VerticalAlignment="Center" MinWidth="64" TextAlignment="Right" />
+                        </Grid>
                     </Grid>
                 </DataTemplate>
 

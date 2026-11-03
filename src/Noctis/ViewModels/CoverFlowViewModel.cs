@@ -177,14 +177,188 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         return 0;
     }
 
-    /// <summary>Carousel click / wheel / arrow keys: play the track <paramref name="offset"/>
-    /// slots away (+ = up next, − = history). Jumping into history re-queues what was
-    /// skipped over so the order survives; 0 is a no-op.</summary>
+    /// <summary>Play the track <paramref name="offset"/> slots away from the playing one
+    /// (+ = up next, − = history): the centred card of a browsed carousel, a Collage tile.
+    /// Jumping into history re-queues what was skipped over so the order survives; 0 is a
+    /// no-op.</summary>
     [RelayCommand]
     private void JumpTo(int offset)
     {
         if (offset > 0) _player.PlayFromUpNextAt(offset - 1);
         else if (offset < 0) _player.PlayFromHistoryAt(-offset - 1);
+    }
+
+    // ── Browsing the carousel (GitHub #152) ───────────────────────────────────
+    // Wheel, drag, arrow keys and clicks on a side card move the ROW, not the playback:
+    // BrowseOffset is how many slots the centred card sits from the playing track, and Row
+    // holds the fifteen cards around it. Clicking the centred card plays it. With Repeat
+    // All on the row runs round: past the last up-next track come the ones this queue
+    // already played, oldest first (what the wrap will play again).
+
+    /// <summary>Cards each side of the carousel's centre.</summary>
+    public const int RowSideSlots = 7;
+
+    /// <summary>The carousel row: slot −7..+7 at index slot + 7, around the browsed card.</summary>
+    public CoverFlowRowSlot[] Row { get; } =
+        Enumerable.Range(0, 2 * RowSideSlots + 1).Select(_ => new CoverFlowRowSlot()).ToArray();
+
+    /// <summary>The centred card of the carousel.</summary>
+    public CoverFlowRowSlot FocusedSlot => Row[RowSideSlots];
+
+    private int _browseOffset;
+
+    /// <summary>Slots between the centred card and the playing track (+ = toward up next).
+    /// 0 = the row follows playback.</summary>
+    public int BrowseOffset
+    {
+        get => _browseOffset;
+        private set
+        {
+            if (SetProperty(ref _browseOffset, value))
+                OnPropertyChanged(nameof(IsBrowsing));
+        }
+    }
+
+    public bool IsBrowsing => BrowseOffset != 0;
+
+    /// <summary>Repeat All with a playing track and something to go round to.</summary>
+    private bool Wraps(out int played, out int length)
+    {
+        played = _player.PlayedInThisQueueCount;
+        length = played + 1 + _player.UpNext.Count;
+        return _player.RepeatMode == RepeatMode.All && _player.CurrentTrack != null && length > 1;
+    }
+
+    /// <summary>Folds a position onto the Repeat All ring −<paramref name="played"/> ..
+    /// <paramref name="length"/> − played − 1.</summary>
+    internal static int Fold(int position, int played, int length)
+    {
+        var m = ((position + played) % length + length) % length;
+        return m - played;
+    }
+
+    /// <summary>The track <paramref name="position"/> slots from the playing one (0 = playing,
+    /// + = up next, − = history), or null past either end.</summary>
+    private Track? TrackAt(int position)
+    {
+        if (position == 0) return _player.CurrentTrack;
+        if (position > 0) return position <= _player.UpNext.Count ? _player.UpNext[position - 1] : null;
+        return -position <= _player.History.Count ? _player.History[-position - 1] : null;
+    }
+
+    /// <summary>Move the row <paramref name="delta"/> cards (+ = toward up next) without
+    /// touching playback. Stops at either end, or runs round with Repeat All. Returns
+    /// whether the row moved.</summary>
+    public bool BrowseBy(int delta)
+    {
+        if (delta == 0 || !HasQueue) return false;
+        int target;
+        if (Wraps(out var played, out var length))
+        {
+            target = Fold(BrowseOffset + delta, played, length);
+        }
+        else
+        {
+            target = Math.Clamp(BrowseOffset + delta, -_player.History.Count, _player.UpNext.Count);
+            delta = target - BrowseOffset;
+        }
+        if (delta == 0) return false;
+        BrowseOffset = target;
+        FillRow();
+        CarouselShifted?.Invoke(this, delta);
+        return true;
+    }
+
+    /// <summary>Slide the row back so the playing track is centred again.</summary>
+    [RelayCommand]
+    private void ReturnToPlaying()
+    {
+        if (BrowseOffset == 0) return;
+        var step = -BrowseOffset;
+        BrowseOffset = 0;
+        FillRow();
+        CarouselShifted?.Invoke(this, step);
+    }
+
+    /// <summary>Play the centred card's track (no-op when it is already playing).</summary>
+    [RelayCommand]
+    private void PlayFocused()
+    {
+        if (FocusedSlot.Track == null || FocusedSlot.IsPlaying) return;
+        JumpTo(BrowseOffset);
+    }
+
+    /// <summary>The centred card's title link: the playing track opens its album (as it
+    /// always did), a browsed one plays.</summary>
+    [RelayCommand]
+    private void ActivateFocused()
+    {
+        if (FocusedSlot.IsPlaying) GoToAlbum();
+        else PlayFocused();
+    }
+
+    /// <summary>The centred card's artist link.</summary>
+    [RelayCommand]
+    private void GoToFocusedArtist()
+    {
+        var artist = FocusedSlot.Track?.Artist;
+        if (!string.IsNullOrWhiteSpace(artist))
+            _viewArtistAction?.Invoke(artist);
+    }
+
+    /// <summary>Where the browsed track is after the queue changed: still centred if it is
+    /// still in reach (the playing track first, then the copy nearest the old spot), else
+    /// back on the playing track.</summary>
+    private int RelocateBrowsed(Track? browsed, int oldOffset)
+    {
+        if (browsed == null || oldOffset == 0) return 0;
+        if (ReferenceEquals(browsed, _player.CurrentTrack)) return 0;
+        int lo, hi;
+        if (Wraps(out var played, out _)) { lo = -played; hi = _player.UpNext.Count; }
+        else { lo = -_player.History.Count; hi = _player.UpNext.Count; }
+        var best = 0;
+        var bestDistance = int.MaxValue;
+        for (var p = lo; p <= hi; p++)
+        {
+            if (p == 0 || !ReferenceEquals(TrackAt(p), browsed)) continue;
+            var d = Math.Abs(p - oldOffset);
+            if (d < bestDistance) { bestDistance = d; best = p; }
+        }
+        return best;
+    }
+
+    /// <summary>Fill the fifteen carousel cards around <see cref="BrowseOffset"/>. On the
+    /// Repeat All ring a short queue shows each track once (no card repeats itself).</summary>
+    private void FillRow()
+    {
+        var wraps = Wraps(out var played, out var length);
+        var left = wraps ? (length - 1) / 2 : RowSideSlots;
+        var right = wraps ? length - 1 - left : RowSideSlots;
+        for (var k = -RowSideSlots; k <= RowSideSlots; k++)
+        {
+            Track? track = null;
+            var playing = false;
+            if (k >= -left && k <= right)
+            {
+                var position = BrowseOffset + k;
+                if (wraps) position = Fold(position, played, length);
+                track = TrackAt(position);
+                playing = position == 0 && track != null;
+            }
+            var slot = Row[k + RowSideSlots];
+            slot.Track = track;
+            slot.IsPlaying = playing;
+            slot.IsMarked = playing && k != 0;
+        }
+    }
+
+    partial void OnLayoutChanged(CoverFlowLayout value)
+    {
+        // Only the carousel browses; any other layout shows the playing track centred.
+        if (BrowseOffset == 0) return;
+        BrowseOffset = 0;
+        FillRow();
+        CarouselShifted?.Invoke(this, 0);
     }
 
     public CoverFlowViewModel(PlayerViewModel player)
@@ -208,7 +382,8 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(PlayerViewModel.CurrentTrack) or nameof(PlayerViewModel.State))
+        if (e.PropertyName is nameof(PlayerViewModel.CurrentTrack) or nameof(PlayerViewModel.State)
+            or nameof(PlayerViewModel.RepeatMode))
         {
             Dispatcher.UIThread.Post(RefreshCarousel);
         }
@@ -228,8 +403,13 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         {
             if (_isActive == value) return;
             _isActive = value;
-            // Catch up on anything missed while hidden.
-            if (value) RefreshCarousel();
+            // Catch up on anything missed while hidden; a page opened anew shows the
+            // playing track centred, not where it was last browsed to.
+            if (value)
+            {
+                BrowseOffset = 0;
+                RefreshCarousel();
+            }
         }
     }
 
@@ -249,11 +429,17 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
 
         HasQueue = current != null || upNext.Count > 0;
 
-        // Judge the slide BEFORE the slots move: the old neighbours are still in place.
-        var centerChanged = !ReferenceEquals(CenterTrack, current);
-        var step = StepBetween(CenterTrack, current,
-            new[] { PreviousTrack, FarPreviousTrack, EdgePreviousTrack, OffPreviousTrack, Prev5Track, Prev6Track, Prev7Track },
-            new[] { NextTrack, FarNextTrack, EdgeNextTrack, OffNextTrack, Next5Track, Next6Track, Next7Track });
+        // Judge the slide BEFORE the slots move: the old row is still in place. The row
+        // slides by how far its centred card moved (the playing track unless browsing).
+        var oldFocused = FocusedSlot.Track;
+        var oldPrev = new Track?[RowSideSlots];
+        var oldNext = new Track?[RowSideSlots];
+        for (var k = 0; k < RowSideSlots; k++)
+        {
+            oldPrev[k] = Row[RowSideSlots - 1 - k].Track;
+            oldNext[k] = Row[RowSideSlots + 1 + k].Track;
+        }
+        BrowseOffset = RelocateBrowsed(oldFocused, BrowseOffset);
 
         // Track center track property changes (e.g. IsFavorite toggle)
         if (_subscribedCenterTrack != current)
@@ -359,8 +545,10 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         Next30Track = upNext.Count > 29 ? upNext[29] : null;
         Next31Track = upNext.Count > 30 ? upNext[30] : null;
 
-        if (centerChanged)
-            CarouselShifted?.Invoke(this, step);
+        FillRow();
+        var newFocused = FocusedSlot.Track;
+        if (!ReferenceEquals(oldFocused, newFocused))
+            CarouselShifted?.Invoke(this, StepBetween(oldFocused, newFocused, oldPrev, oldNext));
     }
 
     private void OnCenterTrackPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -392,4 +580,17 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         if (_subscribedCenterTrack != null)
             _subscribedCenterTrack.PropertyChanged -= OnCenterTrackPropertyChanged;
     }
+}
+
+/// <summary>One card of the Cover Flow carousel row.</summary>
+public partial class CoverFlowRowSlot : ObservableObject
+{
+    [ObservableProperty] private Track? _track;
+
+    /// <summary>This card is the playing track.</summary>
+    [ObservableProperty] private bool _isPlaying;
+
+    /// <summary>The playing track off the centre (the row was browsed away): its card
+    /// carries the "now playing" mark so it can be found again.</summary>
+    [ObservableProperty] private bool _isMarked;
 }

@@ -21,6 +21,13 @@ public interface IPlayHistoryService
     /// <summary>Records that playback of a track started.</summary>
     void RecordPlay(Track track);
 
+    /// <summary>
+    /// Records a play that started at <paramref name="playedUtc"/> (a phone's play, reported on its
+    /// next sync: offline, that can be days later). The log stays oldest first. The default stamps
+    /// it now (test doubles).
+    /// </summary>
+    void RecordPlay(Track track, DateTime playedUtc) => RecordPlay(track);
+
     /// <summary>Marks the most recent play of the track as skipped.</summary>
     void RecordSkip(Track track);
 
@@ -34,4 +41,14 @@ public interface IPlayHistoryService
     /// The default does nothing (test doubles).
     /// </summary>
     void RemapTrackIds(IReadOnlyDictionary<Guid, Guid> remap) { }
+
+    /// <summary>
+    /// Drops every event older than <paramref name="cutoffUtc"/> (the phone's Keep History).
+    /// Returns how many went. The default does nothing (test doubles).
+    /// </summary>
+    int PruneOlderThan(DateTime cutoffUtc) => 0;
+
+    /// <summary>Forgets every event (the phone's Clear Listening History) and writes the empty log.
+    /// The default does nothing (test doubles).</summary>
+    Task ClearAsync() => Task.CompletedTask;
 }

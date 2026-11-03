@@ -1135,20 +1135,30 @@ public static class LineWindows
 
 /// <summary>
 /// Turns a bare transcript into lyric lines when the track has no lyrics to align against:
-/// breaks on long pauses, sentence punctuation and a maximum line length.
+/// breaks where a Whisper segment starts, on long pauses, sentence punctuation and a maximum
+/// line length.
 /// </summary>
 public static class TranscriptLines
 {
     private static readonly char[] TagDelimiters = { '<', '>' };
 
+    /// <param name="segmentStarts">
+    /// Index into <paramref name="words"/> of each Whisper segment's first word. Lullaby was tuned on
+    /// lyrics, so its segments are mostly the song's own lines: each starts a line, and only a much
+    /// longer line (16 words) or pause (2 s) splits one. Benchmark 10-19, 11 songs: line breaks where
+    /// the .lrc has them F1 0.24 → 0.74 (8 words / 1 s without segments), line starts within 0.5 s of
+    /// the .lrc's F1 0.38 → 0.78. Without segments: 8 words, 1 s.
+    /// </param>
     public static IReadOnlyList<AlignedLine> Group(
         IReadOnlyList<RecognizedWord> words,
-        int maxWordsPerLine = 8,
+        int? maxWordsPerLine = null,
         TimeSpan? gapBreak = null,
-        TimeSpan? totalDuration = null)
+        TimeSpan? totalDuration = null,
+        IReadOnlyList<int>? segmentStarts = null)
     {
-        var gap = gapBreak ?? TimeSpan.FromSeconds(1.0);
-        maxWordsPerLine = Math.Clamp(maxWordsPerLine, 2, 32);
+        var lineStarts = segmentStarts is { Count: > 0 } ? new HashSet<int>(segmentStarts) : null;
+        var gap = gapBreak ?? TimeSpan.FromSeconds(lineStarts is null ? 1.0 : 2.0);
+        var maxWords = Math.Clamp(maxWordsPerLine ?? (lineStarts is null ? 8 : 16), 2, 32);
         var lines = new List<AlignedLine>();
         var current = new List<RecognizedWord>();
 
@@ -1167,17 +1177,17 @@ public static class TranscriptLines
 
         // "<" and ">" delimit ELRC word tags: a heard "<" (benchmark 09-30, one transcript) made the
         // saved line read back with a word too many. They are no lyric text; words of nothing else are dropped.
-        var clean = words.Where(w => w is not null && w.Text is not null)
-            .Select(w => w.Text.IndexOfAny(TagDelimiters) < 0 ? w : w with { Text = new string(w.Text.Where(c => c is not '<' and not '>').ToArray()) })
-            .Where(w => !string.IsNullOrWhiteSpace(w.Text));
-        foreach (var w in clean.OrderBy(w => w.Start))
+        var clean = words.Select((w, i) => (Word: w, Index: i)).Where(x => x.Word is not null && x.Word.Text is not null)
+            .Select(x => x.Word.Text.IndexOfAny(TagDelimiters) < 0 ? x : (Word: x.Word with { Text = new string(x.Word.Text.Where(c => c is not '<' and not '>').ToArray()) }, x.Index))
+            .Where(x => !string.IsNullOrWhiteSpace(x.Word.Text));
+        foreach (var (w, index) in clean.OrderBy(x => x.Word.Start))
         {
             if (current.Count > 0)
             {
                 var prev = current[^1];
                 var pause = w.Start - prev.End;
                 var sentenceEnd = prev.Text.TrimEnd().EndsWith('.') || prev.Text.TrimEnd().EndsWith('?') || prev.Text.TrimEnd().EndsWith('!');
-                if (current.Count >= maxWordsPerLine || pause > gap || (sentenceEnd && current.Count >= 3))
+                if (current.Count >= maxWords || pause > gap || (sentenceEnd && current.Count >= 3) || lineStarts?.Contains(index) == true)
                     Flush();
             }
             current.Add(w);

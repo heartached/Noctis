@@ -92,6 +92,63 @@ public partial class PlayerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasMusicVideo));
         OnPropertyChanged(nameof(MusicVideoSyncPosition));
+        RaiseMusicVideoPlacement();
+    }
+
+    // ── Where the clip shows (Discord, Cosmo 11-02: "music videos in the back that pause with
+    // the music, or being able to switch from audio and video"). One place at a time, so one
+    // decoder runs: the cover slot (default), behind the lyrics (Settings), or full size
+    // (the page's Audio / Video switch). Every placement is muted and follows the song.
+
+    /// <summary>Settings → Lyrics Studio → Music videos → Behind lyrics: the clip fills the
+    /// page behind the lyrics instead of the cover slot.</summary>
+    [ObservableProperty] private bool _musicVideoAsBackground;
+
+    /// <summary>The lyrics page's Audio / Video switch is on Video: the clip plays full size
+    /// over the page. Session-only, and kept across songs: a song with no clip shows the
+    /// normal page, the next one with a clip goes back to the video.</summary>
+    [ObservableProperty] private bool _isWatchingMusicVideo;
+
+    /// <summary>The clip plays in the cover slot.</summary>
+    public bool ShowsMusicVideoInCover => HasMusicVideo && !MusicVideoAsBackground && !IsWatchingMusicVideo;
+
+    /// <summary>The clip fills the page behind the lyrics.</summary>
+    public bool ShowsMusicVideoBackdrop => HasMusicVideo && MusicVideoAsBackground && !IsWatchingMusicVideo;
+
+    /// <summary>The clip plays full size over the page (Video side of the switch).</summary>
+    public bool ShowsMusicVideoFullSize => HasMusicVideo && IsWatchingMusicVideo;
+
+    /// <summary>The user's lyrics background video shows: it gives way to a music video that
+    /// fills the page, so the two never decode at once.</summary>
+    public bool ShowsLyricsBackgroundMedia =>
+        !string.IsNullOrEmpty(LyricsBackgroundMediaPath) && !ShowsMusicVideoBackdrop && !ShowsMusicVideoFullSize;
+
+    partial void OnMusicVideoAsBackgroundChanged(bool value) => RaiseMusicVideoPlacement();
+    partial void OnIsWatchingMusicVideoChanged(bool value) => RaiseMusicVideoPlacement();
+    partial void OnLyricsBackgroundMediaPathChanged(string value) => OnPropertyChanged(nameof(ShowsLyricsBackgroundMedia));
+
+    private void RaiseMusicVideoPlacement()
+    {
+        OnPropertyChanged(nameof(ShowsMusicVideoInCover));
+        OnPropertyChanged(nameof(ShowsMusicVideoBackdrop));
+        OnPropertyChanged(nameof(ShowsMusicVideoFullSize));
+        OnPropertyChanged(nameof(ShowsLyricsBackgroundMedia));
+    }
+
+    [RelayCommand]
+    private void ShowMusicVideoAudio() => IsWatchingMusicVideo = false;
+
+    [RelayCommand]
+    private void ShowMusicVideoFullSize() => IsWatchingMusicVideo = true;
+
+    /// <summary>The island menu's "Watch music video": back to Audio while the video plays on
+    /// the lyrics page, otherwise Video, opening the lyrics page when elsewhere.</summary>
+    [RelayCommand]
+    private void ToggleWatchMusicVideo()
+    {
+        var watch = !(IsWatchingMusicVideo && IsLyricsPageActive);
+        IsWatchingMusicVideo = watch;
+        if (watch && !IsLyricsPageActive) _navigateAction?.Invoke("lyrics");
     }
 
     partial void OnMusicVideosEnabledChanged(bool value)
@@ -304,7 +361,18 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _durationText = "0:00";
     [ObservableProperty] private string _remainingTimeText = "0:00";
     [ObservableProperty] private bool _isShuffleEnabled;
-    [ObservableProperty] private RepeatMode _repeatMode = RepeatMode.Off;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RepeatModeTip))]
+    private RepeatMode _repeatMode = RepeatMode.Off;
+
+    /// <summary>GitHub #144: the Repeat buttons' tooltip names the mode and what it does (it
+    /// read just "Repeat" in all three states, so Repeat One / All were easy to miss).</summary>
+    public string RepeatModeTip => Localization.Loc.T(RepeatMode switch
+    {
+        RepeatMode.All => "Repeat.AllTip",
+        RepeatMode.One => "Repeat.OneTip",
+        _ => "Repeat.OffTip",
+    });
     [ObservableProperty] private bool _isQueuePopupOpen;
     [ObservableProperty] private bool _autoMixEnabled;
     [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = AutoMixTransitionMode.Off;
@@ -320,6 +388,17 @@ public partial class PlayerViewModel : ViewModelBase
     /// panel and the mini player list what played above Now Playing, and the last song stays
     /// loaded when the queue runs out, so Previous still has somewhere to go. Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
+
+    /// <summary>Discord (Luwi): the Queue panel's History chip, a shortcut to Keep Played Songs
+    /// so what just played shows above Now Playing without a trip to Settings. Goes through
+    /// Settings when attached, which saves it and pushes it back here.</summary>
+    [RelayCommand]
+    private void ToggleShowPlayedInQueue()
+    {
+        var on = !KeepPlayedInQueue;
+        if (_settings != null) _settings.KeepPlayedInQueue = on;
+        else KeepPlayedInQueue = on;
+    }
 
     partial void OnKeepPlayedInQueueChanged(bool value)
     {
@@ -429,6 +508,15 @@ public partial class PlayerViewModel : ViewModelBase
     /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
     /// 626 default mirrors both the settings default and the XAML base width.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = 536;
+    /// <summary>Queue panel width (GitHub #147). Hydrated from AppSettings.QueuePanelWidth and
+    /// set live by the panel's left-edge drag; the panel and its glass frost bind to it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(QueueTitleMaxWidth))]
+    private double _queuePanelWidth = QueuePanelMetrics.Default;
+    /// <summary>MaxWidth of a queue row's title: follows the panel width (165 at the stock 330).</summary>
+    public double QueueTitleMaxWidth => QueuePanelMetrics.TitleMaxWidth(QueuePanelWidth);
+    /// <summary>What the Queue panel rows show (GitHub #147); Settings swaps in a new instance.</summary>
+    [ObservableProperty] private QueueRowLayout _queueRowLayout = QueueRowLayout.Default;
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
@@ -846,7 +934,7 @@ public partial class PlayerViewModel : ViewModelBase
             if (CurrentTrack != null) UpNext.Insert(0, CurrentTrack);
             var prev = _precedingInQueue[^1];
             _precedingInQueue.RemoveAt(_precedingInQueue.Count - 1);
-            PlayTrack(prev);
+            PlayTrack(prev, backward: true);
         }
         else if (History.Count > 0)
         {
@@ -867,6 +955,10 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>The History entries this queue played (newest-first); deeper ones are older.</summary>
     private int PlayedInThisQueue => Math.Min(_queueHistoryDepth, History.Count);
+
+    /// <summary>How many leading <see cref="History"/> entries this queue played (Cover Flow's
+    /// Repeat All ring wraps from the last up-next track to the oldest of these).</summary>
+    public int PlayedInThisQueueCount => PlayedInThisQueue;
 
     /// <summary>Island speed menu; parameter is a percent ("75" … "200").</summary>
     [RelayCommand]
@@ -974,7 +1066,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (!int.TryParse(minutes, out var mins) || mins <= 0) return;
 
-        _sleepTimerEndsAtUtc = DateTime.UtcNow.AddMinutes(mins);
+        _sleepTimerEndsAtUtc = SleepClock().AddMinutes(mins);
         _sleepTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _sleepTimer.Tick -= OnSleepTimerTick;
         _sleepTimer.Tick += OnSleepTimerTick;
@@ -982,6 +1074,9 @@ public partial class PlayerViewModel : ViewModelBase
         IsSleepTimerActive = true;
         SleepTimerMinutes = mins;
         UpdateSleepTimerRemaining();
+        // A restart (15 then 60 min) mid-fade lifts the level straight back.
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Start", $"minutes={mins}");
     }
 
@@ -992,6 +1087,10 @@ public partial class PlayerViewModel : ViewModelBase
         IsSleepTimerActive = false;
         SleepTimerMinutes = 0;
         SleepTimerRemainingText = string.Empty;
+        // Cancelled mid-fade: the level comes straight back (one click-free ramp). When the
+        // timer fired, the hold below keeps it silent until the pause has landed.
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Cancel", null);
     }
 
@@ -1005,20 +1104,134 @@ public partial class PlayerViewModel : ViewModelBase
 
     private void OnSleepTimerTick(object? sender, EventArgs e)
     {
-        if (DateTime.UtcNow >= _sleepTimerEndsAtUtc)
+        if (!IsSleepTimerActive) return;
+        if (SleepClock() >= _sleepTimerEndsAtUtc)
         {
+            var playing = State == PlaybackState.Playing;
+            // The fade-out has taken the level to silence: hold it there until playback
+            // starts again, or the cancel below would lift it for the moment the pause
+            // takes to land (the player pauses on a worker).
+            if (playing && SleepTimerFadeSeconds > 0)
+                _playbackFadeHoldUntilPlay = true;
             CancelSleepTimer();
-            if (State == PlaybackState.Playing)
+            if (playing)
                 PlayPause();
-            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fired", "paused playback");
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fired",
+                playing ? $"paused playback, fadeSeconds={SleepTimerFadeSeconds}" : "nothing playing");
             return;
         }
         UpdateSleepTimerRemaining();
     }
 
+    // ── Sleep timer fade-out ──
+    // Over the last SleepTimerFadeSeconds of the timer (and of the track, with "stop after
+    // current track") the player's playback fade layer goes 1 to 0 along SleepFadeGain. It is
+    // a gain of its own in the output stage (IAudioPlayer.SetPlaybackFadeGain), so Volume and
+    // the saved volume never move and the next play is at the user's level. A 250 ms ticker
+    // aims each step at where the curve will be when the step's ramp lands, so the output
+    // follows the curve piecewise-linearly and reaches silence at the end.
+
+    /// <summary>Fade ticker period, and the length of each fade step's ramp.</summary>
+    internal const int PlaybackFadeTickMs = 250;
+
+    /// <summary>Wall clock for the sleep timer; tests replace it.</summary>
+    internal Func<DateTime> SleepClock { get; set; } = () => DateTime.UtcNow;
+
+    /// <summary>Settings → Player → Fade Out: 0 (off), 10, 30 or 60 seconds.</summary>
+    [ObservableProperty] private int _sleepTimerFadeSeconds = 30;
+
+    private DispatcherTimer? _playbackFadeTimer;
+    private double _appliedPlaybackFadeGain = 1.0;
+    private bool _playbackFadeHoldUntilPlay;
+
+    /// <summary>The playback fade gain last sent to the player (1 = none).</summary>
+    internal double AppliedPlaybackFadeGain => _appliedPlaybackFadeGain;
+
+    /// <summary>
+    /// The fade curve: gain for <paramref name="remainingSeconds"/> left of a
+    /// <paramref name="fadeSeconds"/> fade. Quadratic in amplitude (x² of the remaining
+    /// fraction: -6 dB at 71 % left, -12 dB half way), which sounds like an even fade where
+    /// a linear amplitude ramp hangs loud and then drops at the end. 1 before the fade
+    /// window, 0 at the end; 1 throughout when the fade is off.
+    /// </summary>
+    internal static double SleepFadeGain(double remainingSeconds, int fadeSeconds)
+    {
+        if (fadeSeconds <= 0 || double.IsNaN(remainingSeconds)) return 1.0;
+        var x = Math.Clamp(remainingSeconds / fadeSeconds, 0.0, 1.0);
+        return x * x;
+    }
+
+    /// <summary>The fade gain the timer and stop-after state call for,
+    /// <paramref name="lookaheadSeconds"/> after <paramref name="nowUtc"/>.</summary>
+    internal double DesiredPlaybackFadeGain(DateTime nowUtc, double lookaheadSeconds = 0)
+    {
+        if (_playbackFadeHoldUntilPlay) return 0.0;
+        var fade = SleepTimerFadeSeconds;
+        if (fade <= 0) return 1.0;
+        var gain = 1.0;
+        if (IsSleepTimerActive)
+            gain = Math.Min(gain, SleepFadeGain((_sleepTimerEndsAtUtc - nowUtc).TotalSeconds - lookaheadSeconds, fade));
+        if (StopAfterCurrentTrack && CurrentTrack != null && Duration > TimeSpan.Zero)
+        {
+            // Media time runs at the playback speed.
+            var left = (Duration - Position).TotalSeconds / Math.Max(0.25, PlaybackRate);
+            gain = Math.Min(gain, SleepFadeGain(left - lookaheadSeconds, fade));
+        }
+        return gain;
+    }
+
+    /// <summary>Sends the current fade gain to the player when it moved, ramped over <paramref name="rampMs"/>.</summary>
+    internal void UpdatePlaybackFade(int rampMs)
+    {
+        var gain = DesiredPlaybackFadeGain(SleepClock(), rampMs / 1000.0);
+        var prev = _appliedPlaybackFadeGain;
+        // Small moves are skipped, but the ends of the range are always sent exactly.
+        if (gain == prev || (Math.Abs(gain - prev) < 0.0005 && gain is > 0.0 and < 1.0)) return;
+        _appliedPlaybackFadeGain = gain;
+        _audioPlayer.SetPlaybackFadeGain(gain, rampMs);
+        if (prev == 1.0 || gain == 1.0 || gain == 0.0)
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fade",
+                $"gain={gain:0.###}, from={prev:0.###}, rampMs={rampMs}, hold={_playbackFadeHoldUntilPlay}");
+    }
+
+    /// <summary>One fade step (the ticker's body; tests call it directly).</summary>
+    internal void PlaybackFadeTick()
+    {
+        // Fire on the fade clock, not up to a second late on the label tick.
+        if (IsSleepTimerActive && SleepClock() >= _sleepTimerEndsAtUtc)
+        {
+            OnSleepTimerTick(null, EventArgs.Empty);
+            return;
+        }
+        UpdatePlaybackFade(PlaybackFadeTickMs);
+    }
+
+    // The ticker runs only while a fade can be due: a timer or stop-after armed, fade on.
+    private void EnsurePlaybackFadeTimer()
+    {
+        var needed = SleepTimerFadeSeconds > 0 && (IsSleepTimerActive || StopAfterCurrentTrack);
+        if (!needed)
+        {
+            _playbackFadeTimer?.Stop();
+            return;
+        }
+        if (_playbackFadeTimer == null)
+        {
+            _playbackFadeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PlaybackFadeTickMs) };
+            _playbackFadeTimer.Tick += (_, _) => PlaybackFadeTick();
+        }
+        if (!_playbackFadeTimer.IsEnabled) _playbackFadeTimer.Start();
+    }
+
+    partial void OnSleepTimerFadeSecondsChanged(int value)
+    {
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
+    }
+
     private void UpdateSleepTimerRemaining()
     {
-        var remaining = _sleepTimerEndsAtUtc - DateTime.UtcNow;
+        var remaining = _sleepTimerEndsAtUtc - SleepClock();
         if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
         SleepTimerRemainingText = remaining.TotalHours >= 1
             ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
@@ -1227,6 +1440,14 @@ public partial class PlayerViewModel : ViewModelBase
     {
         PlaybackBarIslandWidth = width;
         _settings?.SetPlaybackBarWidth(width);
+    }
+
+    /// <summary>Commits a finished queue panel resize (GitHub #147: drag release or edge
+    /// double-click reset) and persists it through Settings; headless tests have none.</summary>
+    public void CommitQueuePanelWidth(double width)
+    {
+        QueuePanelWidth = QueuePanelMetrics.Clamp(width);
+        _settings?.SetQueuePanelWidth(QueuePanelWidth);
     }
 
     /// <summary>Sets the play history log used for play/skip event recording.</summary>
@@ -1674,12 +1895,12 @@ public partial class PlayerViewModel : ViewModelBase
         _parkedExplicit.Clear(); // parked explicit tracks belonged to the old queue
         IsShuffleEnabled = unshuffled != null;
 
-        // Record the full cycle for Repeat All, starting at the track being played so a
-        // wrap replays the queue in the order the user actually started it. A shuffled start
-        // records the list's own order instead: the wrap reshuffles it while Shuffle is on and
-        // plays it in order once Shuffle is off (the shuffled one lacks the held-out tracks).
-        _repeatCycleTracks = unshuffled?.ToList()
-            ?? tracks.Skip(startIndex).Concat(tracks.Take(startIndex)).ToList();
+        // Record the full cycle for Repeat All in the list's own order, so a playlist started
+        // mid-way wraps to its first track. It was rotated to start at the picked track: the
+        // first wrap went back to that track and only later passes reached the songs above it
+        // (Discord 10-25). A shuffled start records the unshuffled list: the wrap reshuffles it
+        // while Shuffle is on and plays it in order once Shuffle is off.
+        _repeatCycleTracks = (unshuffled ?? tracks).ToList();
 
         // GitHub #74: the tracks BEFORE the start point are what Previous should step back
         // through (playlist started at track 5 → Previous plays track 4), not the last
@@ -1801,6 +2022,39 @@ public partial class PlayerViewModel : ViewModelBase
         RemoveFromRepeatCycle(UpNext);
         UpNext.Clear();
         _parkedExplicit.Clear();
+    }
+
+    /// <summary>
+    /// Plugin API 1.5 (IPlaybackControl.SetUpNext): Up Next becomes <paramref name="tracks"/>, in
+    /// that order, while the current song plays on. The order is the caller's, so Shuffle goes off
+    /// and its Shuffle-off snapshot is dropped (turning Shuffle on again shuffles this list), Track
+    /// Radio ends (it would refill behind it), and the Repeat All cycle is the playing song and this
+    /// list. Explicit songs are parked while Settings hides them, as for a fresh shuffle.
+    /// </summary>
+    public void ReplaceUpNext(IList<Track> tracks)
+    {
+        DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceUpNext", $"tracks={tracks.Count}, was={UpNext.Count}");
+        CancelAutoMixTransition("queue replaced");
+        MarkQueueChanged();
+        IsRadioActive = false;
+        _radioSeed = null;
+        _originalQueue.Clear();
+        _parkedExplicit.Clear();
+        IsShuffleEnabled = false;
+        _repeatCycleTracks = new List<Track>(tracks.Count + 1);
+        if (CurrentTrack is { } playing) _repeatCycleTracks.Add(playing);
+        _repeatCycleTracks.AddRange(tracks);
+        _suppressHasContentNotify = true;
+        try
+        {
+            UpNext.ReplaceAll(tracks);
+            PruneBlockedExplicit(wholeQueue: true);
+        }
+        finally
+        {
+            _suppressHasContentNotify = false;
+            OnPropertyChanged(nameof(HasContent));
+        }
     }
 
     /// <summary>The queue ran out with Keep played songs on: stop, keep the last song loaded
@@ -2171,7 +2425,39 @@ public partial class PlayerViewModel : ViewModelBase
         // GitHub #86: non-library tracks (dropped with "Import dropped files" off) are
         // unknown to the library, so they are re-read from their saved files.
         var external = await ResolveSavedExternalTracksAsync(state);
-        Track? Resolve(Guid id) => _library.GetTrackById(id) ?? external.GetValueOrDefault(id);
+        ApplyQueueState(state, id => _library.GetTrackById(id) ?? external.GetValueOrDefault(id));
+        _ = RefreshMissingMarksAsync(); // GitHub #154: songs whose file went while the app was closed
+    }
+
+    /// <summary>
+    /// "Pick Up on Computer": makes the queue a phone sent this one, paused at its place (never
+    /// started). False, and nothing touched, when the song it was playing is not in the library.
+    /// Repeat, Shuffle and mute stay as they are here.
+    /// </summary>
+    public bool LoadPhoneHandoff(PhoneHandoff handoff)
+    {
+        var index = handoff.TrackIds.IndexOf(handoff.CurrentId);
+        if (index < 0 || _library.GetTrackById(handoff.CurrentId) == null) return false;
+        StopAndClear("phone handoff");
+        ApplyQueueState(new QueueState
+        {
+            CurrentTrackId = handoff.CurrentId,
+            PositionSeconds = handoff.PositionMs / 1000.0,
+            HistoryIds = handoff.TrackIds.Take(index).Reverse().ToList(),
+            UpNextIds = handoff.TrackIds.Skip(index + 1).ToList(),
+            RepeatMode = RepeatMode,
+            IsShuffleEnabled = IsShuffleEnabled,
+            IsMuted = IsMuted,
+        }, _library.GetTrackById);
+        SaveQueueStateInBackground();
+        return true;
+    }
+
+    /// <summary>Puts a saved queue in place: history, up next, the transport modes and the current
+    /// track, loaded paused. <paramref name="resolve"/> finds a track by id (null: gone, skipped).</summary>
+    private void ApplyQueueState(QueueState state, Func<Guid, Track?> resolve)
+    {
+        Track? Resolve(Guid id) => resolve(id);
 
         // Restore history
         var restoredHistory = new List<Track>();
@@ -2424,7 +2710,16 @@ public partial class PlayerViewModel : ViewModelBase
             $"old={oldValue?.Title ?? "<null>"} new={newValue?.Title ?? "<null>"}");
     }
 
-    partial void OnStateChanged(PlaybackState value) => SyncNowPlayingFlags();
+    partial void OnStateChanged(PlaybackState value)
+    {
+        SyncNowPlayingFlags();
+        // Playback starting again after the sleep fade ended it: back to the user's level.
+        if (value == PlaybackState.Playing && (_playbackFadeHoldUntilPlay || _appliedPlaybackFadeGain != 1.0))
+        {
+            _playbackFadeHoldUntilPlay = false;
+            UpdatePlaybackFade(ChannelMixProvider.RampMs);
+        }
+    }
 
     private Album? _flaggedAlbum;
 
@@ -2695,6 +2990,16 @@ public partial class PlayerViewModel : ViewModelBase
     {
         track.PlayCount++;
         track.LastPlayed = DateTime.UtcNow;
+        // The queue can hold a pre-reload copy (a rescan of a changed file builds a new Track,
+        // LibraryService.CopyMutableTrackState). Count on the library's own too: the journal
+        // writes the library instance, so the play was lost, and library views never saw it.
+        var libraryTrack = track.IsExternal ? null : _library.GetTrackById(track.Id);
+        if (libraryTrack != null && !ReferenceEquals(libraryTrack, track))
+        {
+            libraryTrack.PlayCount++;
+            libraryTrack.LastPlayed = track.LastPlayed;
+            track = libraryTrack;
+        }
         MarkPlayStateDirty(track);
         _playHistory?.RecordPlay(track);
         PlayCounted?.Invoke(this, track);
@@ -2729,7 +3034,8 @@ public partial class PlayerViewModel : ViewModelBase
         ScheduleLibrarySave();
     }
 
-    private void PlayTrack(Track track)
+    /// <summary>Starts <paramref name="track"/>; its file was found just now (see <see cref="PlayTrack"/>).</summary>
+    private void PlayTrackCore(Track track)
     {
         var playTrackStart = Stopwatch.GetTimestamp();
         _seekDebounceTimer?.Dispose();
@@ -3053,6 +3359,10 @@ public partial class PlayerViewModel : ViewModelBase
             // Play afterwards restarted the current track at the following track's entry
             // point instead of from where it stopped.
             CancelAutoMixTransition("stop after current track");
+            // The end-of-track fade reached silence: keep it until playback starts again
+            // (clearing the flag below would otherwise lift it over the stopped output).
+            if (SleepTimerFadeSeconds > 0)
+                _playbackFadeHoldUntilPlay = true;
             StopAfterCurrentTrack = false;
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
@@ -3101,42 +3411,11 @@ public partial class PlayerViewModel : ViewModelBase
             PlayTrack(next);
             RefillRadioIfNeeded();
         }
-        else if (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || PlayedInThisQueue > 0))
+        else if (BuildRepeatAllPass() is { } allTracks)
         {
-            // Repeat all: restart the full cycle. Prefer the uncapped cycle list; fall
-            // back to what this queue played only when there isn't one (e.g. songs queued
-            // onto the emptied player, or a queue restored without a cycle), and record it
-            // as the cycle so the next wrap does not read the longer History again.
-            if (_repeatCycleTracks.Count == 0)
-                _repeatCycleTracks = History.Take(PlayedInThisQueue).Reverse().ToList();
-            var allTracks = new List<Track>(_repeatCycleTracks);
-            if (!_allowExplicitContent)
-                allTracks.RemoveAll(IsBlockedExplicit);
-
-            // History stays (GitHub #124): it was cleared here, so Previous on the first
-            // song of a new pass did nothing. The pass just played stays this queue's.
-            _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
-
             if (allTracks.Count == 0) { StopAndClear("repeatAllNothingPlayable"); return; }
-
-            // Shuffle stays on across the wrap. The cycle holds the order the queue was
-            // started in, so replaying it as-is played every pass after the first in
-            // album order with Shuffle still lit. Reshuffle the new pass as ToggleShuffle
-            // does, keeping the in-order cycle as the un-shuffle target.
-            if (IsShuffleEnabled)
-            {
-                var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
-                    allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
-                if (shuffled.Count > 0)
-                {
-                    // shuffled[0] stays in: Shuffle off continues after it (GitHub #110).
-                    _originalQueue = new List<Track>(allTracks);
-                    allTracks = shuffled;
-                }
-            }
-
             UpNext.ReplaceAll(allTracks.Skip(1).ToList());
-            PlayTrack(allTracks[0]);
+            PlayTrack(allTracks[0], wrapped: true);
         }
         else
         {
@@ -3161,6 +3440,49 @@ public partial class PlayerViewModel : ViewModelBase
             // Keep what played (GitHub #124): Previous goes back to the last songs.
             StopAndClear("queueEnded", keepHistory: true);
         }
+    }
+
+    /// <summary>
+    /// Repeat All: the next pass of the cycle, in play order (empty when the explicit filter
+    /// leaves nothing), or null when Repeat All is off or there is no cycle to repeat.
+    /// </summary>
+    private List<Track>? BuildRepeatAllPass()
+    {
+        if (RepeatMode != RepeatMode.All || (_repeatCycleTracks.Count == 0 && PlayedInThisQueue == 0))
+            return null;
+
+        // Repeat all: restart the full cycle. Prefer the uncapped cycle list; fall
+        // back to what this queue played only when there isn't one (e.g. songs queued
+        // onto the emptied player, or a queue restored without a cycle), and record it
+        // as the cycle so the next wrap does not read the longer History again.
+        if (_repeatCycleTracks.Count == 0)
+            _repeatCycleTracks = History.Take(PlayedInThisQueue).Reverse().ToList();
+        var allTracks = new List<Track>(_repeatCycleTracks);
+        if (!_allowExplicitContent)
+            allTracks.RemoveAll(IsBlockedExplicit);
+
+        // History stays (GitHub #124): it was cleared here, so Previous on the first
+        // song of a new pass did nothing. The pass just played stays this queue's.
+        _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
+
+        if (allTracks.Count == 0) return allTracks;
+
+        // Shuffle stays on across the wrap. The cycle holds the order the queue was
+        // started in, so replaying it as-is played every pass after the first in
+        // album order with Shuffle still lit. Reshuffle the new pass as ToggleShuffle
+        // does, keeping the in-order cycle as the un-shuffle target.
+        if (IsShuffleEnabled)
+        {
+            var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
+                allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
+            if (shuffled.Count > 0)
+            {
+                // shuffled[0] stays in: Shuffle off continues after it (GitHub #110).
+                _originalQueue = new List<Track>(allTracks);
+                allTracks = shuffled;
+            }
+        }
+        return allTracks;
     }
 
     /// <summary>
@@ -3301,7 +3623,7 @@ public partial class PlayerViewModel : ViewModelBase
         var prev = History[0];
         History.RemoveAt(0);
         if (_queueHistoryDepth > 0) _queueHistoryDepth--;
-        PlayTrack(prev);
+        PlayTrack(prev, backward: true);
     }
 
     /// <summary>
@@ -3922,6 +4244,10 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (value && _autoMixPreparedTrackId != Guid.Empty)
             CancelAutoMixTransition("stop after current track");
+        // Fades over the end of the track; turned off (or a skip cleared it) mid-fade,
+        // the level comes straight back.
+        EnsurePlaybackFadeTimer();
+        UpdatePlaybackFade(ChannelMixProvider.RampMs);
     }
 
     private void CancelAutoMixTransition(string reason)

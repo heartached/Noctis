@@ -49,20 +49,6 @@ public partial class AccountPage : UserControl
     /// password sat below the fold, under the player bar: it is scrolled into the middle.</summary>
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // An "are you sure?" card opens under the tiles, mostly below the fold: it scrolls up whole.
-        if (e.PropertyName is nameof(AccountPageViewModel.IsConfirmingSignOut) or nameof(AccountPageViewModel.IsConfirmingRemoveDownloads)
-            && _vm is { } asking && (asking.IsConfirmingSignOut || asking.IsConfirmingRemoveDownloads))
-        {
-            Control card = asking.IsConfirmingSignOut ? SignOutCard : RemoveDownloadsCard;
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (!card.IsEffectivelyVisible || card.TranslatePoint(default, PageScroll) is not { } top) return;
-                var bottom = top.Y + card.Bounds.Height;
-                var limit = PageScroll.Bounds.Height * 0.8;   // above the player bar
-                if (bottom > limit) PageScroll.Offset = PageScroll.Offset.WithY(PageScroll.Offset.Y + Math.Min(bottom - limit, top.Y));
-            }, DispatcherPriority.Background);
-            return;
-        }
         if (e.PropertyName != nameof(AccountPageViewModel.ErrorText) || _vm is not { HasError: true } vm) return;
         Control label = vm.HasAddressError ? AddressErrorLabel : vm.HasCredentialsError ? CredentialsErrorLabel : ErrorLabel;
         Dispatcher.UIThread.Post(() =>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A-B Loop for Noctis (official): mark an A and a B point in the playing song and loop that
+    part, with nudging, a repeat count, a gap before each repeat and named loops saved per song.
+    Uses plugin API 1.4 (a view of its own, Seek/Play/Pause). The loop runs on a ~15 ms timer that
+    predicts the position between the host's position updates; docs/PLUGINS.md (A-B Loop) has the
+    precision. `dotnet build -c Release` writes bin/Release/Noctis.Plugins.ABLoop-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.ABLoop</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- Release builds also write bin/Release/Noctis.Plugins.ABLoop-<version>.zip (DLL + plugin.json + icon.png). -->
+  <Import Project="..\..\samples\PluginPackage.targets" />
+</Project>

@@ -13,6 +13,8 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public List<string?> PlayedFallbacks { get; } = new();
     public List<string> PreparedPaths { get; } = new();
     public List<TimeSpan> Seeks { get; } = new();
+    /// <summary>Play calls on a <see cref="MissingPaths"/> path (not in PlayedPaths).</summary>
+    public List<string> MissingPlayAttempts { get; } = new();
 
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
@@ -45,8 +47,19 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
 
     public void Play(string filePath) => Play(filePath, null);
 
+    /// <summary>Paths that are "not on disk": <see cref="SourceExists"/> says so and Play
+    /// reports "File not found" through PlaybackError, as VlcAudioPlayer does.</summary>
+    public HashSet<string> MissingPaths { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public bool SourceExists(string filePath) => !MissingPaths.Contains(filePath);
+
     public void Play(string filePath, string? fallbackPath)
     {
+        if (MissingPaths.Contains(filePath))
+        {
+            MissingPlayAttempts.Add(filePath);
+            PlaybackError?.Invoke(this, $"File not found: {filePath}");
+            return;
+        }
         PlayedPaths.Add(filePath);
         PlayedFallbacks.Add(fallbackPath);
         CurrentMediaPath = filePath;
@@ -60,7 +73,11 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void Seek(TimeSpan position) => Seeks.Add(position);
     public void CommitVolume() { }
     public void SetNormalization(bool enabled) { }
-    public void SetExclusiveMode(bool enabled) { }
+    /// <summary>Every SetExclusiveMode call, in order.</summary>
+    public List<bool> ExclusiveRequests { get; } = new();
+    public void SetExclusiveMode(bool enabled) => ExclusiveRequests.Add(enabled);
+    public bool ExclusiveModePaused { get; set; }
+    public void RaiseOutputModeChanged(string status) => OutputModeChanged?.Invoke(this, status);
     public void ApplyReplayGain(string mode, double preampDb) { }
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public bool GaplessEnabled { get; private set; } = true;
@@ -74,6 +91,13 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public string UpmixMode { get; private set; } = "Off";
     public void SetUpmixMode(string mode) => UpmixMode = mode;
     public bool HeadphoneSurroundActive { get; set; }
+    public (bool Mono, double Balance) ChannelMix { get; private set; }
+    public void SetChannelMix(bool mono, double balance) => ChannelMix = (mono, balance);
+    public bool ChannelMixAvailable { get; set; } = true;
+    /// <summary>Every SetPlaybackFadeGain call, in order.</summary>
+    public List<(double Gain, int RampMs)> FadeGainCalls { get; } = new();
+    public double FadeGain => FadeGainCalls.Count == 0 ? 1.0 : FadeGainCalls[^1].Gain;
+    public void SetPlaybackFadeGain(double gain, int rampMs) => FadeGainCalls.Add((gain, rampMs));
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public bool PreparesRemoteStreams { get; set; }
     public int CancelledCount { get; private set; }
@@ -103,6 +127,8 @@ internal sealed class FakeLibraryService : ILibraryService
     public event EventHandler? FavoritesChanged;
     public event EventHandler<List<string>>? MusicFoldersChanged;
     public event EventHandler<string[]>? ScanAborted;
+    public event EventHandler<IReadOnlyList<Track>>? TracksAdded;
+    public void RaiseTracksAdded(IReadOnlyList<Track> tracks) => TracksAdded?.Invoke(this, tracks);
 
     /// <summary>When set, ScanAsync behaves like the real service meeting an offline
     /// root: it raises ScanAborted with these roots and leaves the library untouched.</summary>
@@ -131,7 +157,25 @@ internal sealed class FakeLibraryService : ILibraryService
         return Task.CompletedTask;
     }
     public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
-    public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null) => Task.CompletedTask;
+    /// <summary>Every ImportFilesAsync call's paths, in order.</summary>
+    public List<List<string>> ImportCalls { get; } = new();
+
+    /// <summary>When set, an import adds a track per new path (as the real service does for a file it can read).</summary>
+    public bool ImportAddsTracks { get; set; }
+
+    /// <summary>Whether each import call ran on the UI thread.</summary>
+    public List<bool> ImportOnUiThread { get; } = new();
+
+    public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null)
+    {
+        var list = filePaths.ToList();
+        ImportCalls.Add(list);
+        ImportOnUiThread.Add(Avalonia.Threading.Dispatcher.UIThread.CheckAccess());
+        if (ImportAddsTracks)
+            foreach (var path in list.Where(p => !TrackList.Any(t => string.Equals(t.FilePath, p, StringComparison.OrdinalIgnoreCase))))
+                TrackList.Add(new Track { Title = Path.GetFileNameWithoutExtension(path), Artist = "Artist", Album = "Album", FilePath = path });
+        return Task.CompletedTask;
+    }
     public Track? GetTrackById(Guid id) => TrackList.FirstOrDefault(t => t.Id == id);
     public Album? GetAlbumById(Guid id) => Albums.FirstOrDefault(a => a.Id == id);
     /// <summary>Albums GetAlbumsByArtist answers from (by Artist); empty unless a test fills it.</summary>
@@ -220,6 +264,8 @@ internal sealed class FakeHistoryLog : IPlayHistoryService
     public void RecordPlay(Track track) => Seed(track, DateTime.UtcNow);
     public void RecordSkip(Track track) { }
     public Task FlushAsync() => Task.CompletedTask;
+    public int PruneOlderThan(DateTime cutoffUtc) => EventList.RemoveAll(e => e.PlayedAtUtc < cutoffUtc);
+    public Task ClearAsync() { EventList.Clear(); return Task.CompletedTask; }
 
     public void Seed(Track track, DateTime playedAtUtc) => EventList.Add(new PlayHistoryEvent
     {

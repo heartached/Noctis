@@ -48,9 +48,10 @@ public class OfficialPluginsFlowTests : IDisposable
         return new Mounted(vm, host, dialogs, persistence, server);
     }
 
+    /// <summary>The listed zip: credited to Noctis like the list entry, so the install is verified official.</summary>
     private byte[] ZipBytes(string version, string id = "dev.test.zip")
         => File.ReadAllBytes(_box.WriteZip($"{id}-{version}.zip",
-            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: id, version: version))),
+            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: id, version: version, author: "Noctis"))),
             ("Test.Plugin.dll", new byte[] { 1 })));
 
     /// <summary>Serves <paramref name="zip"/> at <see cref="Url"/> and lists it as dev.test.zip <paramref name="version"/>.</summary>
@@ -95,29 +96,22 @@ public class OfficialPluginsFlowTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task Install_WhileCommunityPluginsAreOff_OffersTheSwitchsOwnConfirmation()
+    public async Task Install_WhileCommunityPluginsAreOff_OfficialRunsWithoutTheSwitch()
     {
-        var confirm = false;
-        using var m = Mount(_ => new ConfirmationResult(confirm, false));
-        m.Host.LoadAll(); // fresh: restricted
+        // Owner 10-29: official plugins never depend on the Community switch.
+        using var m = Mount(_ => new ConfirmationResult(true, false));
+        m.Host.LoadAll(); // fresh: Community off
         Publish(m, ZipBytes("1.0.0"), "1.0.0");
         await m.Vm.LoadOfficialPluginsAsync();
 
         await m.Vm.InstallOfficialPluginAsync(m.Vm.OfficialPlugins[0]);
 
-        var dialog = Assert.Single(m.Dialogs);
-        Assert.Equal(Loc.T("Plugins.TurnOnTitle"), dialog.Title);
-        Assert.False(m.Host.CommunityPluginsEnabled); // declined: never switched on silently
-        Assert.Equal(PluginStatus.Restricted, Assert.Single(m.Host.Plugins).Status);
-
-        // Removing and installing again, this time saying yes.
-        m.Host.Remove(m.Host.Plugins[0], deleteData: true);
-        confirm = true;
-        await m.Vm.InstallOfficialPluginAsync(m.Vm.OfficialPlugins[0]);
-        Assert.Equal(2, m.Dialogs.Count);
-        Assert.True(m.Host.CommunityPluginsEnabled);
-        Assert.True(m.Vm.CommunityPluginsEnabled);
-        Assert.Single(m.Host.Plugins);
+        Assert.Empty(m.Dialogs); // no "Turn on community plugins?"
+        Assert.False(m.Host.CommunityPluginsEnabled);
+        var plugin = Assert.Single(m.Host.Plugins);
+        Assert.True(m.Host.IsTrustedOfficial(plugin));
+        Assert.NotEqual(PluginStatus.Restricted, plugin.Status);
+        Assert.True(plugin.CanToggle);
     }
 
     [AvaloniaFact]
@@ -201,6 +195,28 @@ public class OfficialPluginsFlowTests : IDisposable
         await m.Vm.LoadOfficialPluginsAsync();
         Assert.Equal("dev.test.builtin", Assert.Single(m.Vm.OfficialPlugins).Entry.Id);
         Assert.False(m.Vm.IsOfficialPluginsLoading);
+    }
+
+    [AvaloniaFact]
+    public async Task Replace_IsNotOffered_ForAListingThisNoctisCannotRun()
+    {
+        // A copy that was not checked against the list (here: a hand-installed zip of the same id
+        // and version, not credited to Noctis) gets "Replace". The listing needs a newer Noctis,
+        // so Replace would swap a working copy for one that cannot run.
+        using var m = Mount(_ => new ConfirmationResult(true, false), appVersion: "1.5.8");
+        _box.Settings.CommunityPluginsEnabled = true;
+        m.Host.LoadAll();
+        m.Host.InstallPackage(_box.WriteZip("hand.zip",
+            ("plugin.json", PluginSandbox.Utf8(PluginSandbox.Manifest(id: "dev.test.zip", version: "1.0.0"))),
+            ("Test.Plugin.dll", new byte[] { 2 })), allowUpdate: false);
+        Publish(m, ZipBytes("1.0.0"), "1.0.0", minApp: "1.5.9");
+
+        await m.Vm.LoadOfficialPluginsAsync();
+        var item = m.Vm.OfficialPlugins[0];
+        Assert.True(item.HasUnverifiedCopy);
+        Assert.False(item.CanInstall);
+        Assert.Equal(OfficialPluginState.NeedsNewerApp, item.State);
+        Assert.Equal(Loc.T("Plugins.Get.RequiresApp", "1.5.9"), item.ButtonText);
     }
 
     [AvaloniaFact]

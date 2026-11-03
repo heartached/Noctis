@@ -1,0 +1,33 @@
+{
+  "id": "dev.noctis.plugins.lyricmotion",
+  "name": "Lyric Motion",
+  "version": "1.0.0",
+  "author": "Alfamin",
+  "description": "Lyrics that grow letter by letter as they are sung.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.LyricMotion.dll",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": [],
+  "settings": [
+    { "key": "animation", "label": "Animation", "type": "choice",
+      "choices": ["Smooth", "Crisp", "Flowing", "Off"], "default": "Smooth",
+      "description": "How words move along with the singer." },
+    { "key": "strength", "label": "Strength", "type": "choice",
+      "choices": ["Subtle", "Balanced", "Expressive"], "default": "Balanced",
+      "description": "How much words grow and glow." },
+    { "key": "letters", "label": "Letter by letter", "type": "bool", "default": true,
+      "description": "Grow one letter at a time, not whole words." },
+    { "key": "heldMs", "label": "Long note from (ms)", "type": "number", "default": 600, "min": 300, "max": 2000,
+      "description": "How long a word must be sung to glow." },
+    { "key": "glow", "label": "Glow on long notes", "type": "bool", "default": true,
+      "description": "Long notes glow softly." },
+    { "key": "rtl", "label": "Right-to-left lyrics", "type": "bool", "default": true,
+      "description": "Lay out Persian, Arabic and Hebrew from the right." },
+    { "key": "otherViews", "label": "Also in the side panel and mini player", "type": "bool", "default": true,
+      "description": "Off: only the lyrics page moves." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.LyricMotion",
+  "icon": "icon.png"
+}

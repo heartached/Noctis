@@ -523,7 +523,7 @@ public class MiniPlayerDesignTests
         try
         {
             var button = win.GetVisualDescendants().OfType<Button>()
-                .First(b => b.IsEffectivelyVisible && ToolTip.GetTip(b) as string == "Repeat");
+                .First(b => b.IsEffectivelyVisible && ToolTip.GetTip(b) as string == vm.Player.RepeatModeTip);
             var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
             var at = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
             for (var clicks = 1; clicks <= 2; clicks++)

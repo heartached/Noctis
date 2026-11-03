@@ -134,7 +134,7 @@
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Videoyu Oynatmayla Birlikte Duraklat</value><comment>Appearance toggle title</comment></data>
   <data name="Settings.PauseVideoWithPlaybackDesc" xml:space="preserve"><value>Şarkı duraklatıldığında arka plan videosunu dondur.</value><comment>Appearance toggle description</comment></data>
   <data name="AlbumDetail.LyricsBackgroundVideo" xml:space="preserve"><value>Söz Arka Plan Videosu</value><comment>Album page menu</comment></data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Bu albüm için video seç…</value><comment>Album page menu</comment></data>
+  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve"><value>Bu albüm için video seç</value><comment>Album page menu</comment></data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve"><value>Varsayılan videoyu kullan</value><comment>Album page menu</comment></data>
   <data name="Settings.StarGitHub" xml:space="preserve"><value>GitHub'da Yıldızla</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinDiscord" xml:space="preserve"><value>Discord'a Katıl</value><comment>Text in SettingsView.axaml</comment></data>
@@ -329,6 +329,13 @@
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Müstehcen İçerik</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Kapalıyken, doğrudan çalmadığın sürece müstehcen şarkılar atlanır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDevice" xml:space="preserve"><value>Çıkış Aygıtı</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Noctis'in sesi çaldığı yer. Özel mod seçili aygıtı doğrudan açar, bu yüzden bit-perfect çıkışı Windows varsayılanı yerine bu ayarı izler.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>Sistem Varsayılanı</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
+  <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>varsayılan</value><comment>Suffix marking the current Windows default endpoint</comment></data>
+  <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Seçili aygıt</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
+  <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>bağlı değil</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>Seçili aygıt şu anda bağlı değil. Yeniden bağlanana kadar çalma, sistem varsayılanını kullanır.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Özel Mod</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Windows karıştırıcısını atlayan bit-perfect çıkış. Diğer uygulamalar susar ve geçişler kapanır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Tempo ve Ton Analizi</value><comment>Text in SettingsView.axaml</comment></data>
@@ -357,6 +364,8 @@
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Sesi ReplayGain etiketlerinden ayarla. Parçaları sağ tıkla tarayabilirsin.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Mod</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Ön yükseltme (dB)</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Yeni dosyaları otomatik tara</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Albümün kopyalanması bittiğinde yeni şarkılara ReplayGain etiketleri yazar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>UZAKTAN KUMANDA</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Web Kumandası</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Çalanı telefonunun tarayıcısından yönet. Uygulama gerekmez. Yalnızca güvendiğin Wi-Fi ağlarında kullan.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1540,31 +1549,6 @@
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Şarkı Sözleri</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Kapat</value><comment>Secondary button</comment></data>
 
-  <data name="Main.AddFromYouTube" xml:space="preserve"><value>YouTube'dan Ekle</value><comment>New/Add menu item</comment></data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve"><value>Ara veya bağlantı yapıştır — kitaplığına indirilir</value><comment>New/Add menu item subtitle</comment></data>
-
-  <data name="YouTube.Title" xml:space="preserve"><value>YouTube'dan Ekle</value><comment>Dialog title</comment></data>
-  <data name="YouTube.Subtitle" xml:space="preserve"><value>Ara veya bağlantı yapıştır. Kapak resmiyle kitaplığına kaydedilir.</value><comment>Dialog subtitle</comment></data>
-  <data name="YouTube.SearchHint" xml:space="preserve"><value>YouTube'da ara veya bağlantı yapıştır…</value><comment>Search box watermark</comment></data>
-  <data name="YouTube.Search" xml:space="preserve"><value>Ara</value><comment>Search button</comment></data>
-  <data name="YouTube.SetupTitle" xml:space="preserve"><value>Tek seferlik kurulum</value><comment>First-run card title</comment></data>
-  <data name="YouTube.SetupBody" xml:space="preserve"><value>Noctis, YouTube ile konuşmak için yt-dlp (ücretsiz, açık kaynak) kullanır. Bir kez Noctis'in kendi klasörüne indirilir ve buradan güncellenir.</value><comment>First-run card body</comment></data>
-  <data name="YouTube.Install" xml:space="preserve"><value>yt-dlp'yi kur</value><comment>First-run card button</comment></data>
-  <data name="YouTube.Download" xml:space="preserve"><value>İndir</value><comment>Per-result button</comment></data>
-  <data name="YouTube.SavesTo" xml:space="preserve"><value>Kayıt yeri</value><comment>Footer label before the folder</comment></data>
-  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Sonuçlar burada görünür. İndirmeler etiketlenmiş ve kapak resmiyle kitaplık klasörüne iner.</value><comment>Empty state</comment></data>
-  <data name="YouTube.Close" xml:space="preserve"><value>Kapat</value><comment>Secondary button</comment></data>
-
-  <data name="YouTubeSettings.Section" xml:space="preserve"><value>YOUTUBE İNDİRMELERİ</value><comment>Library tab section title</comment></data>
-  <data name="YouTubeSettings.Title" xml:space="preserve"><value>YouTube'dan şarkı ekle</value><comment>Card title</comment></data>
-  <data name="YouTubeSettings.Description" xml:space="preserve"><value>İndirmek için ara veya bağlantı yapıştır.</value><comment>Card description</comment></data>
-  <data name="YouTubeSettings.Open" xml:space="preserve"><value>İndiriciyi aç</value><comment>Card button</comment></data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve"><value>İndirme klasörü</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve"><value>Boşsa ilk müzik klasöründeki "YouTube" klasörü kullanılır.</value><comment>Row help</comment></data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve"><value>yt-dlp</value><comment>Row label</comment></data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve"><value>Kur / güncelle</value><comment>Row button</comment></data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve"><value>yt-dlp için özel yol (isteğe bağlı)</value><comment>Path watermark</comment></data>
-
   <data name="Upmix.Title" xml:space="preserve"><value>Çok kanallı upmix</value><comment>Audio card title</comment></data>
   <data name="Upmix.Description" xml:space="preserve"><value>Stereoyu bir 5.1 veya 7.1 sistemin her hoparlöründen çal.</value><comment>Audio card description</comment></data>
   <data name="Upmix.Off" xml:space="preserve"><value>Kapalı</value><comment>Upmix mode</comment></data>
@@ -1840,4 +1824,112 @@
   <data name="Shortcuts.Action.GoSongs" xml:space="preserve"><value>Şarkılar'a git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoAlbums" xml:space="preserve"><value>Albümler'e git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoArtists" xml:space="preserve"><value>Sanatçılar'a git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="ArtistDetail.SearchArtistInfo" xml:space="preserve">
+    <value>Sanatçı Bilgisi Ara</value>
+    <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
+  </data>
+  <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
+    <value>Otomatik Sanatçı Bilgisini Kullan</value>
+    <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Title" xml:space="preserve">
+    <value>Sanatçı Bilgisi Ara</value>
+    <comment>ArtistInfoSearchDialog.axaml title</comment>
+  </data>
+  <data name="ArtistInfoSearch.Subtitle" xml:space="preserve">
+    <value>Doğru sanatçıyı seçin. Resim, hayranlar ve Hakkında seçiminizi izler.</value>
+    <comment>ArtistInfoSearchDialog.axaml subtitle</comment>
+  </data>
+  <data name="ArtistInfoSearch.Searching" xml:space="preserve">
+    <value>Aranıyor…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.NothingFound" xml:space="preserve">
+    <value>Sanatçı bulunamadı.</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="ArtistInfoSearch.Failed" xml:space="preserve">
+    <value>Arama başarısız: {0}</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml; {0} = error message</comment>
+  </data>
+  <data name="ArtistInfoSearch.Applying" xml:space="preserve">
+    <value>Kaydediliyor…</value>
+    <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
+  </data>
+  <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
+    <value>{0} albüm</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
+    <value>1 albüm</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
+    <value>1 hayran</value>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
+  </data>
+  <data name="ArtistInfoSearch.Current" xml:space="preserve">
+    <value>Geçerli</value>
+    <comment>Badge on the row the artist is pinned to</comment>
+  </data>
+  <data name="ArtistInfoSearch.Use" xml:space="preserve">
+    <value>Bu Sanatçıyı Kullan</value>
+    <comment>Primary button in ArtistInfoSearchDialog.axaml</comment>
+  </data>
+  <data name="Repeat.OffTip" xml:space="preserve">
+    <value>Tekrar: Kapalı</value>
+    <comment>Tooltip/name of the Repeat buttons while Repeat is off (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.AllTip" xml:space="preserve">
+    <value>Tümünü tekrarla: sıra döngüde çalar</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat All: the queue loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Repeat.OneTip" xml:space="preserve">
+    <value>Birini tekrarla: bu şarkı döngüde çalar</value>
+    <comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment>
+  </data>
+  <data name="Queue.ShowPlayedTip" xml:space="preserve">
+    <value>Çalınan şarkıları göster</value>
+    <comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment>
+  </data>
+  <data name="Settings.AppIcon" xml:space="preserve">
+    <value>Uygulama Simgesi</value>
+    <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
+  </data>
+  <data name="Settings.AppIconDesc" xml:space="preserve">
+    <value>Başlık çubuğu, görev çubuğu ve tepsideki simgeyi hemen değiştirir. Masaüstü kısayolu ve .exe klasik simgeyi korur.</value>
+    <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
+  </data>
+  <data name="Settings.AppIcon.Classic" xml:space="preserve">
+    <value>Klasik</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Blush" xml:space="preserve">
+    <value>Allık</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sky" xml:space="preserve">
+    <value>Gökyüzü</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Sunset" xml:space="preserve">
+    <value>Gün Batımı</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Violet" xml:space="preserve">
+    <value>Menekşe</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Aurora" xml:space="preserve">
+    <value>Aurora</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Midnight" xml:space="preserve">
+    <value>Gece Yarısı</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
+  <data name="Settings.AppIcon.Ruby" xml:space="preserve">
+    <value>Yakut</value>
+    <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
+  </data>
 </root>

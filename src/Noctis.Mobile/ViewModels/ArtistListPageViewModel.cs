@@ -38,10 +38,15 @@ public sealed record ArtistListItem(Artist Artist, string? CoverPath) : INotifyP
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    // By what the circle shows, not the Artist object: the library rebuilds every Artist on each
+    // update (a scan's progress every 1.5 s), and comparing references tore the grid down and
+    // cancelled the on-screen photo lookups each time.
     public bool Equals(ArtistListItem? other) =>
-        other is not null && ReferenceEquals(Artist, other.Artist) && CoverPath == other.CoverPath;
+        other is not null && string.Equals(Artist.Name, other.Artist.Name, StringComparison.Ordinal)
+        && Artist.AlbumCount == other.Artist.AlbumCount && Artist.TrackCount == other.Artist.TrackCount
+        && CoverPath == other.CoverPath;
 
-    public override int GetHashCode() => HashCode.Combine(Artist, CoverPath);
+    public override int GetHashCode() => HashCode.Combine(Artist.Name, CoverPath);
 
     public string Subtitle =>
         $"{Artist.AlbumCount} album{(Artist.AlbumCount == 1 ? "" : "s")} · {Artist.TrackCount} song{(Artist.TrackCount == 1 ? "" : "s")}";

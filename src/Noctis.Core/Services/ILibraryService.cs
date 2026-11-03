@@ -90,11 +90,19 @@ public interface ILibraryService
     event EventHandler<List<string>>? MusicFoldersChanged;
 
     /// <summary>
-    /// Fires when a scan was abandoned because configured music folders were unavailable
-    /// (offline drive / unreachable share). Carries the missing root paths; the existing
-    /// library is left untouched.
+    /// Fires when a scan found configured music folders unavailable (offline drive /
+    /// unreachable share). Carries the missing root paths. The scan was abandoned and the
+    /// library left untouched, or (LibraryService.ScanPastUnavailableFolders, the phone) their
+    /// songs were kept as they were and the other folders applied.
     /// </summary>
     event EventHandler<string[]>? ScanAborted;
+
+    /// <summary>
+    /// Fires once a scan or import has published tracks for files the library did not know
+    /// before (re-read known files are not included). Raised on the scan's thread, after
+    /// <see cref="LibraryUpdated"/>. Drives the automatic ReplayGain scan (GitHub #148).
+    /// </summary>
+    event EventHandler<IReadOnlyList<Track>>? TracksAdded { add { } remove { } }
 
     /// <summary>
     /// Scans configured music folders for audio files.

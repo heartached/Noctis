@@ -167,7 +167,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     public bool ShowInitials => !HasAvatar && Initials.Length > 0;
     public bool ShowPersonGlyph => !HasAvatar && Initials.Length == 0;
 
-    /// <summary>"Synced 5 min ago" (the desktop's own wording for a phone's last sync).</summary>
+    /// <summary>"Synced 5 min ago" (<see cref="SyncedText"/>, as Settings' profile card says it).</summary>
     [ObservableProperty] private string _lastSyncText = string.Empty;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSync), nameof(ShowSyncAction))]
@@ -411,21 +411,47 @@ public sealed partial class AccountPageViewModel : MobilePage
         }
     }
 
-    /// <summary>One question at a time: asking to remove the downloads closes a pending sign-out
-    /// question (both cards stood open at once, each with its own red button).</summary>
+    // The question up now (the shell's glass prompt), so a confirm from elsewhere takes it down.
+    private PromptViewModel? _question;
+
+    private void Ask(PromptViewModel question)
+    {
+        _question = question;
+        Shell.ShowPrompt(question);
+    }
+
+    private void DropQuestion()
+    {
+        if (_question is { } q) Shell.ClosePrompt(q);
+        _question = null;
+    }
+
+    /// <summary>One question at a time, on the glass prompt (owner 10-20: no more cards inside
+    /// the page): asking to remove the downloads closes a pending sign-out question.</summary>
     [RelayCommand]
     private void AskRemoveDownloads()
     {
+        DropQuestion();   // the one before is cancelled first, so its reset cannot undo this one
         IsConfirmingSignOut = false;
         IsConfirmingRemoveDownloads = true;
+        Ask(new PromptViewModel(Shell, "Remove all downloads?",
+            $"{StorageValue} leave this phone. They stay on your computer and still stream.",
+            new[] { new PromptAction("Remove Downloads", _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) },
+            cancelled: () => IsConfirmingRemoveDownloads = false));
     }
 
-    [RelayCommand] private void CancelRemoveDownloads() => IsConfirmingRemoveDownloads = false;
+    [RelayCommand]
+    private void CancelRemoveDownloads()
+    {
+        IsConfirmingRemoveDownloads = false;
+        DropQuestion();
+    }
 
     [RelayCommand]
     private async Task ConfirmRemoveDownloadsAsync()
     {
         IsConfirmingRemoveDownloads = false;
+        DropQuestion();
         await RunAsync("Removing downloads…", () => _account.RemoveAllDownloadsAsync());
         // The last download's report goes too: it put "Downloads finished" back under the
         // Download everything card over a phone that had just removed them all.
@@ -437,17 +463,35 @@ public sealed partial class AccountPageViewModel : MobilePage
     [RelayCommand]
     private void AskSignOut()
     {
+        DropQuestion();
         IsConfirmingRemoveDownloads = false;
         AlsoRemoveDownloads = false;
         IsConfirmingSignOut = true;
+        // Apple's way to ask "and the downloads too?": a second red action, only with something
+        // downloaded to remove (the switch row asked it with nothing on the phone).
+        var actions = new List<PromptAction> { new("Sign Out", _ => ConfirmSignOutCommand.ExecuteAsync(null), isDestructive: true) };
+        if (HasDownloads)
+            actions.Add(new PromptAction("Sign Out and Remove Downloads", _ =>
+            {
+                AlsoRemoveDownloads = true;
+                return ConfirmSignOutCommand.ExecuteAsync(null);
+            }, isDestructive: true));
+        Ask(new PromptViewModel(Shell, SignOutQuestion, "Its songs leave this phone's library. You can sign in again any time.",
+            actions, cancelled: () => IsConfirmingSignOut = false));
     }
 
-    [RelayCommand] private void CancelSignOut() => IsConfirmingSignOut = false;
+    [RelayCommand]
+    private void CancelSignOut()
+    {
+        IsConfirmingSignOut = false;
+        DropQuestion();
+    }
 
     [RelayCommand]
     private async Task ConfirmSignOutAsync()
     {
         IsConfirmingSignOut = false;
+        DropQuestion();
         var removeDownloads = AlsoRemoveDownloads;
         await RunAsync("Signing out…", () => _account.SignOutAsync(removeDownloads));
         SyncText = string.Empty;
@@ -522,7 +566,9 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     private void OnDownloadProgress(object? sender, NoctisDownloadProgress progress) => _marshal(() =>
     {
-        _lastDownload = progress;
+        // Sign-out's last report (nothing running, signed out) is not a download that finished:
+        // kept, it put "Downloads finished" back on the page at the next sign-in.
+        _lastDownload = progress.Pending == 0 && !_account.IsSignedIn ? null : progress;
         RefreshDownloads();
     });
 
@@ -560,6 +606,7 @@ public sealed partial class AccountPageViewModel : MobilePage
             IsCertificateChanged = false;
             IsConfirmingSignOut = false;
             IsConfirmingRemoveDownloads = false;
+            DropQuestion();
         }
         RefreshDownloads();
     }
@@ -567,7 +614,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     /// <summary>"Synced 5 min ago" goes stale while the page stays open: the page re-reads it
     /// once a minute (AccountPage's ticker), as the desktop's phone list does.</summary>
     public void RefreshSyncTime() =>
-        LastSyncText = _account.Account?.LastSyncUtc is { } synced ? $"Synced {Ago(synced, DateTime.UtcNow)}" : "Not synced yet";
+        LastSyncText = SyncedText(_account.Account?.LastSyncUtc, DateTime.UtcNow);
 
     private void RefreshDownloads()
     {
@@ -590,6 +637,11 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     public override void OnClosed()
     {
+        // A sign-out or remove-downloads question does not outlive the page (DismissSheet does
+        // not close prompts).
+        IsConfirmingSignOut = false;
+        IsConfirmingRemoveDownloads = false;
+        DropQuestion();
         _account.StateChanged -= OnStateChanged;
         _account.SyncProgress -= OnSyncProgress;
         _account.DownloadProgress -= OnDownloadProgress;
@@ -622,6 +674,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         NoctisErrorKind.UnknownHost =>
             "No computer answers to that name. Type the address shown under Connect a phone, like 192.168.1.20.",
         NoctisErrorKind.Outdated => "Noctis on your computer is too old to connect a phone. Update it, then try again.",
+        NoctisErrorKind.WifiRequired => "Downloads are set to Wi-Fi only. Connect to Wi-Fi, or change this in Settings, Downloads.",
         _ => "Your computer couldn't finish that. Try again in a moment.",
     };
 
@@ -729,15 +782,21 @@ public sealed partial class AccountPageViewModel : MobilePage
     internal static string FormatBytes(long bytes) =>
         bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.0} GB" : $"{bytes / (double)(1L << 20):0} MB";
 
-    /// <summary>"just now", "5 min ago", "3 h ago", else "on 10/9/2026 2:05 PM": the desktop's
-    /// wording for a phone's last sync (SettingsViewModel.Ago), so both sides read alike.</summary>
-    internal static string Ago(DateTime utc, DateTime nowUtc)
+    /// <summary>The phone's one wording for the last sync, on this page and Settings' profile
+    /// card alike: "Synced just now", "Synced 5 min ago", "Synced 3 hr ago", "Synced yesterday",
+    /// "Synced 4 days ago", "Synced 2 Oct"; "Not synced yet" before the first sync.</summary>
+    internal static string SyncedText(DateTime? syncedUtc, DateTime nowUtc)
     {
-        var ago = nowUtc - utc;
-        if (ago < TimeSpan.FromMinutes(1)) return "just now";
-        if (ago < TimeSpan.FromHours(1)) return $"{(int)ago.TotalMinutes} min ago";
-        if (ago < TimeSpan.FromDays(1)) return $"{(int)ago.TotalHours} h ago";
-        return $"on {utc.ToLocalTime():g}";
+        if (syncedUtc is not { } synced) return "Not synced yet";
+        var ago = nowUtc - synced;
+        if (ago < TimeSpan.FromMinutes(1)) return "Synced just now";
+        if (ago < TimeSpan.FromHours(1)) return $"Synced {(int)ago.TotalMinutes} min ago";
+        var day = synced.ToLocalTime().Date;
+        var today = nowUtc.ToLocalTime().Date;
+        if (day == today) return $"Synced {(int)ago.TotalHours} hr ago";
+        if (day == today.AddDays(-1)) return "Synced yesterday";
+        if (day > today.AddDays(-7)) return $"Synced {(today - day).Days} days ago";
+        return $"Synced {day:d MMM}";
     }
 
     private static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";

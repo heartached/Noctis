@@ -65,6 +65,39 @@ public class LibraryServerAdapterHeadlessTests
     }
 
     [Fact]
+    public async Task PhonePlays_AreForwardedOnlyWhenAsked_OnceEach_AtThePhonesTime_AndLoggedOnTheirDay()
+    {
+        var library = new FakeLibraryService();
+        var track = MakeTrack("phone");
+        library.TrackList.Add(track);
+        using var persistence = new TestPersistenceService();
+        var history = new PlayHistoryService(System.IO.Path.Combine(persistence.DataDirectory, "play_history.json"));
+        var forwarded = new List<(Track Track, DateTime At)>();
+        var adapter = new LibraryServerAdapter(library, persistence, history,
+            forwardScrobble: (t, at) => { lock (forwarded) forwarded.Add((t, at)); return Task.CompletedTask; },
+            scrobbleServices: () => (true, false));
+
+        var live = DateTime.UtcNow.AddMinutes(-1);
+        history.RecordPlay(MakeTrack("desktop"));                        // the desktop played since
+        var offline = DateTime.UtcNow.AddDays(-2);                          // the phone, offline two days ago
+        await adapter.ScrobbleAsync(track.Id, offline, forward: true);
+        await adapter.ScrobbleAsync(track.Id, live, forward: false);       // skipped, or sent by the phone itself
+        await adapter.ScrobbleAsync(track.Id);                             // a plain Subsonic client
+
+        var sent = Assert.Single(forwarded);
+        Assert.Same(track, sent.Track);
+        Assert.Equal(offline, sent.At);
+        Assert.Equal(3, track.PlayCount);
+        Assert.Equal((true, false), adapter.ScrobbleServices);
+        // The log keeps its order, the offline play on the day it was played (it was stamped now).
+        var events = history.Events;
+        Assert.Equal(4, events.Count);
+        Assert.Equal(offline, events[0].PlayedAtUtc);
+        Assert.Equal(events.OrderBy(e => e.PlayedAtUtc).Select(e => e.PlayedAtUtc), events.Select(e => e.PlayedAtUtc));
+        Assert.Null(new LibraryServerAdapter(library, persistence, history).ScrobbleServices);   // the headless host
+    }
+
+    [Fact]
     public async Task Star_ThenSnapshot_ReflectsTheChange_WithoutADispatcher()
     {
         var library = new FakeLibraryService();

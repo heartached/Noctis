@@ -435,6 +435,18 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <!-- The drop-down list keeps its rows and scrollbar inside its rounded shape (owner 10-24,
+         Share lyrics > Background: scrolled to the end, the bar ran past the list's rounded
+         bottom corner and the last row showed in the corner). Fluent's PopupBorder has no
+         padding and no clip, so its ScrollViewer filled the rounded border edge to edge. A
+         Border's ClipToBounds clips to its rounded inner shape; the bar is inset from the top
+         and bottom like the metadata editor's well-scroll, clear of the corners (up to the
+         pill-field's 18 px radius; the inset sits below the app-wide ScrollBar:vertical style,
+         which would otherwise win). -->
+    <Style Selector="ComboBox /template/ Border#PopupBorder">
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+
     <Style Selector="ComboBox /template/ ContentPresenter">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="0,1,0,0" />
@@ -534,6 +546,10 @@
         <Setter Property="Width" Value="14"/>
         <Setter Property="Margin" Value="2,0,0,0"/>
     </Style>
+    <!-- A ComboBox list's bar clears the list's rounded corners (see Border#PopupBorder above). -->
+    <Style Selector="ComboBox /template/ Border#PopupBorder ScrollViewer /template/ ScrollBar:vertical">
+        <Setter Property="Margin" Value="2,10,0,10" />
+    </Style>
 
     <!-- Vertical scrollbar thumb (rounded pill). Apple-Music style: idle = thin + dim,
          hovering or dragging the bar = full width + bright. Driven by :pointerover on the
@@ -598,6 +614,12 @@
         </Setter>
     </Style>
     <Style Selector="ScrollBar:vertical:pointerover /template/ Rectangle#TrackRect">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <!-- …and for the whole of a thumb drag, like the thumb (Thumb:pressed above): :pointerover
+         follows the pointer even while the thumb holds it, so drifting sideways off the bar
+         mid-drag hid the track (owner 10-24). thumb-dragging: Helpers/ScrollBarThumbDrag. -->
+    <Style Selector="ScrollBar:vertical.thumb-dragging /template/ Rectangle#TrackRect">
         <Setter Property="Opacity" Value="1"/>
     </Style>
 
@@ -809,6 +831,14 @@
     </Style>
     <Style Selector="MenuItem:open /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}" />
+    </Style>
+    <!-- accent-rows: the row under the pointer (or keyboard) fills with the accent, like the
+         chosen row of a pill-list drop-down (DropDowns.axaml). The plugin page's "..." menu. -->
+    <Style Selector="MenuItem.accent-rows:pointerover /template/ Border#PART_LayoutRoot, MenuItem.accent-rows:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="MenuItem.accent-rows:pointerover /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.accent-rows:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
     <Style Selector="MenuItem /template/ ContentControl#PART_IconPresenter">
         <Setter Property="Margin" Value="0,0,11,0" />

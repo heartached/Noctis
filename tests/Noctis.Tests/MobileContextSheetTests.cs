@@ -98,6 +98,25 @@ public class MobileContextSheetTests
         Assert.Equal(new[] { "A", "B" }, rig.Shell.Player.UpNext.Select(t => t.Title));
     }
 
+    /// <summary>The queue keeps its own Track objects, and a rescan that re-reads a changed file
+    /// (or a desktop sync) makes the library a new one. The heart on the playing song set the
+    /// flag on the queue's old copy only, while the save journals the library's copy: the song
+    /// never reached Favorites and the heart was lost at the next start.</summary>
+    [Fact]
+    public async Task Favourite_OnAQueueCopyFromBeforeARescan_FavouritesTheLibrarysSong()
+    {
+        var song = MobileFixtures.Song("Song");
+        using var rig = MobileFixtures.MakeRig(new[] { song });
+        var before = new Track { Id = song.Id, Title = "Song", Artist = "Artist", FilePath = song.FilePath, Duration = song.Duration };
+        rig.Shell.Player.PlayTracks(new[] { before }, 0);
+
+        await rig.Shell.ToggleCurrentFavouriteCommand.ExecuteAsync(null);
+
+        Assert.True(song.IsFavorite);
+        Assert.True(before.IsFavorite);                                          // the heart shows it too
+        Assert.Contains(song, rig.Shell.Library.Favourites());
+    }
+
     [Fact]
     public async Task Favourite_TogglesEveryTrack_AndTheFavouritesCountFollows()
     {
@@ -192,7 +211,7 @@ public class MobileContextSheetTests
 
         rig.Shell.OpenAlbumSheetCommand.Execute(album);
         Assert.True(rig.Shell.Sheet!.CanPin);
-        Assert.Equal("Pin to Library", rig.Shell.Sheet.PinLabel);
+        Assert.Equal("Pin to Home", rig.Shell.Sheet.PinLabel);
         await rig.Shell.Sheet.TogglePinCommand.ExecuteAsync(null);
 
         Assert.Equal(new[] { "Alpha" }, rig.Shell.Library.PinnedRail.Select(r => r.Title));

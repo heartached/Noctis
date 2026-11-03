@@ -15,16 +15,17 @@ using Avalonia.Threading;
 namespace Noctis.Helpers;
 
 /// <summary>
-/// Eases every ComboBox drop-down open and shut (fade + a short glide) instead of the
-/// stock pop. One class handler on <see cref="ComboBox.IsDropDownOpenProperty"/> covers
-/// every ComboBox in the app, including ones templated in later (user ask 09-08, to match
-/// the Settings sub-menu folds).
+/// Opens and shuts every ComboBox drop-down with the app menus' pop (owner 10-29: a list must
+/// open and close like a menu, in Settings, on a plugin's page and in plugin windows alike):
+/// the card grows out of the click while it fades in and its rows settle in one after another
+/// (MenuOpenAnimation.PopIn), and it shrinks back and fades on close (PopOut). One class handler
+/// on <see cref="ComboBox.IsDropDownOpenProperty"/> covers every ComboBox in the app, including
+/// ones templated in later and the ones in plugin windows (user ask 09-08, then a fade + glide).
 /// </summary>
 /// <remarks>
 /// The Fluent template hosts the list in Popup PART_Popup whose child is the PopupBorder.
-/// The border is what animates: its start state is written with transitions off, then the
-/// resting state is posted at Render priority so the transitions (enabled once the popup
-/// root attaches it) carry it in.
+/// The border is what animates (MenuOpenAnimation writes its start state with transitions off,
+/// then posts the resting state at Render priority so the transitions carry it in).
 ///
 /// Closing must never tear the popup down mid-fade. On Windows the popup is its own native
 /// window, so a close followed by a re-open destroys and recreates that window and the user
@@ -41,20 +42,12 @@ namespace Noctis.Helpers;
 /// </remarks>
 public static class ComboBoxDropDownAnimator
 {
+    // The fade + glide curves, kept for DropDownFlyoutMotion's flyouts (BuildOpen / BuildClose).
     // Our own bezier, not Avalonia.SplineEasing: see CubicBezierEase for why.
-    // Open: a longer, decelerating settle (expo-style curve, no overshoot). Close: shorter,
-    // eases in so the list "lets go" before it fades. Scale is anchored at the top centre so
-    // the sheet grows out of the box instead of sliding in as a slab.
     private static readonly TimeSpan OpenDuration = TimeSpan.FromMilliseconds(320);
     private static readonly TimeSpan CloseDuration = TimeSpan.FromMilliseconds(220);
     private static readonly Avalonia.Animation.Easings.Easing OpenEase = new CubicBezierEase(0.16, 1.0, 0.3, 1.0);
     private static readonly Avalonia.Animation.Easings.Easing CloseEase = new CubicBezierEase(0.4, 0.0, 0.7, 0.4);
-    private static readonly TransformOperations Start = TransformOperations.Parse("scale(0.94) translateY(-4px)");
-    private static readonly TransformOperations Rest = TransformOperations.Parse("scale(1) translateY(0px)");
-    private static readonly TransformOperations End = TransformOperations.Parse("scale(0.97) translateY(-2px)");
-    // A list placed above its box (ComboBox.open-up) grows out of the box's top edge instead.
-    private static readonly TransformOperations StartAbove = TransformOperations.Parse("scale(0.94) translateY(4px)");
-    private static readonly TransformOperations EndAbove = TransformOperations.Parse("scale(0.97) translateY(2px)");
     private static readonly ConditionalWeakTable<ComboBox, State> States = new();
     private static bool _installed;
 
@@ -88,7 +81,7 @@ public static class ComboBoxDropDownAnimator
                 if (state.ClosingHeld) return;
                 if (FindPopup(box) is not { Child: Control body } popup) return;
                 InstallDismiss(box, state, popup);
-                AnimateIn(body, OpensAbove(popup));
+                MenuOpenAnimation.PopIn(body);
                 return;
             }
 
@@ -118,7 +111,7 @@ public static class ComboBoxDropDownAnimator
             state.ClosingHeld = true;
             box.SetCurrentValue(ComboBox.IsDropDownOpenProperty, true);
             WatchFadeOut(box, state, fadeBody);
-            AnimateOut(fadeBody, OpensAbove(fadePopup));
+            MenuOpenAnimation.PopOut(fadeBody);
         });
     }
 
@@ -204,9 +197,6 @@ public static class ComboBoxDropDownAnimator
     private static Popup? FindPopup(ComboBox box) =>
         box.GetVisualDescendants().OfType<Popup>().FirstOrDefault(p => p.Name == "PART_Popup");
 
-    private static bool OpensAbove(Popup popup) => popup.Placement is
-        PlacementMode.Top or PlacementMode.TopEdgeAlignedLeft or PlacementMode.TopEdgeAlignedRight;
-
     /// <summary>The same curves for a Flyout that should read as a drop-down (<see cref="DropDownFlyoutMotion"/>).</summary>
     internal static Transitions BuildOpen() => Build(OpenDuration, OpenEase);
     internal static Transitions BuildClose() => Build(CloseDuration, CloseEase);
@@ -219,29 +209,4 @@ public static class ComboBoxDropDownAnimator
         new DoubleTransition { Property = Visual.OpacityProperty, Duration = duration * 0.85, Easing = ease },
         new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Easing = ease },
     };
-
-    private static void AnimateIn(Control body, bool above)
-    {
-        body.Transitions = null;
-        body.RenderTransformOrigin = new RelativePoint(0.5, above ? 1 : 0, RelativeUnit.Relative);
-        body.Opacity = 0;
-        body.RenderTransform = above ? StartAbove : Start;
-        body.Transitions = Build(OpenDuration, OpenEase);
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            body.Opacity = 1;
-            body.RenderTransform = Rest;
-        }, DispatcherPriority.Render);
-    }
-
-    private static void AnimateOut(Control body, bool above)
-    {
-        body.Transitions = Build(CloseDuration, CloseEase);
-        Dispatcher.UIThread.Post(() =>
-        {
-            body.Opacity = 0;
-            body.RenderTransform = above ? EndAbove : End;
-        }, DispatcherPriority.Render);
-    }
 }

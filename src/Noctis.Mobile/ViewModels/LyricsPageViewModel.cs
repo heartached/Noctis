@@ -3,6 +3,7 @@ using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -10,19 +11,30 @@ namespace Noctis.Mobile.ViewModels;
 
 /// <summary>
 /// Phone lyrics. Loads the current track's lyrics off the UI thread (sidecar TTML/ELRC/LRC
-/// through <see cref="ITrackFileAccess"/>, then embedded), and turns the audible position
+/// through <see cref="ITrackFileAccess"/>, then embedded, then — when the song has nothing of
+/// its own — the desktop's automatic online lookup, <see cref="Online"/>), and turns the audible position
 /// into the active line and word sweep through the shared Core <see cref="LyricsTimeline"/>,
 /// with the desktop's clock smoothing, latency compensation and lookaheads.
 /// </summary>
 public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
 {
-    /// <summary>Line size in DIPs at system font scale 1.0.</summary>
-    public const double BaseFontSize = 28;
+    /// <summary>Line size in DIPs at system font scale 1.0: Apple Music's phone lyrics (the
+    /// owner's reference, 10-20: about 34 pt on a 440 pt wide iPhone, three or four words a line).</summary>
+    public const double BaseFontSize = 34;
 
     private const int WordLookaheadMs = 80;
 
     // The desktop's normal-mode opacity ramp by distance from the active line (LyricsViewModel.UpdateLineOpacities).
     private static readonly double[] OpacityRamp = { 1.0, 0.55, 0.32, 0.18, 0.12, 0.08, 0.06, 0.04, 0.03, 0.02 };
+
+    // Depth blur by distance: the desktop's ramp a step stronger, as Apple Music's phone lyrics
+    // (owner's reference, 10-20) blur the next line more than the desktop page does.
+    private static readonly double[] BlurRamp = { 0, 5, 8, 10 };
+    private const double FarBlur = 12;
+
+    /// <summary>While the user scrolls the lyrics themselves (Apple Music's browse), every line
+    /// is sharp and at least this visible, so any of them can be read and tapped.</summary>
+    internal const double BrowseOpacityFloor = 0.45;
 
     private readonly IAudioPlayer _player;
     private readonly NowPlayingViewModel _nowPlaying;
@@ -33,6 +45,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     private readonly LyricsPlaybackClock _clock = new();
     private int _generation;
     private bool _settingsLoaded;
+    // Settings changed by the user before InitializeAsync read the saved ones (Settings opens
+    // while a cold start still loads the library): the load keeps these and saves them.
+    private readonly HashSet<string> _setBeforeLoad = new();
+    private bool _applyingSaved;
     private int _opacitySaveGeneration;
     private bool _disposed;
 
@@ -58,12 +74,17 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// </summary>
     public Func<Track, Track>? PrepareTrack { get; init; }
 
+    /// <summary>Optional: the online lookup for a song with no lyrics of its own (the desktop's
+    /// automatic search; the Android head passes LRCLIB). Asked only while
+    /// <see cref="FindLyricsOnline"/> is on.</summary>
+    public IOnlineLyricsSource? Online { get; init; }
+
     /// <summary>The lines the page shows: synced, or plain (pre-activated, never swept).</summary>
     public BulkObservableCollection<LyricLine> Lines { get; } = new();
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(WantsFrames))] private bool _isSynced;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText))] private bool _hasLyrics;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText))] private bool _isLoading;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _hasLyrics;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _isLoading;
     [ObservableProperty] private int _activeLineIndex = -1;
     [ObservableProperty] private bool _hasTranslations;
     [ObservableProperty] private bool _hasRomanizations;
@@ -79,6 +100,30 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>One unbroken word for a word TTML splits into timed syllables (desktop issue #32).</summary>
     [ObservableProperty] private bool _joinSplitWords;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText))] private bool _isRawFallback;
+
+    /// <summary>The desktop's LRCLIB switch (Settings → Lyrics → Find Lyrics Online): a song with
+    /// no lyrics of its own is looked up online.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusDetail))] private bool _findLyricsOnline = true;
+
+    /// <summary>True while the online lookup for the current song runs.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusDetail), nameof(ShowsEmptyState))]
+    private bool _isSearchingOnline;
+
+    /// <summary>The online source lists the song as instrumental.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusDetail))] private bool _isInstrumental;
+
+    /// <summary>The online lookup failed (offline, timed out, LRCLIB busy), not missed.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusDetail))] private bool _onlineLookupFailed;
+
+    /// <summary>Where the shown lyrics came from (online ones get a credit under the last line).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SourceCredit))] private LyricsSource _source;
+
+    /// <summary>The desktop's Glow and Lift: sung words float up and held notes swell and glow.</summary>
+    [ObservableProperty] private bool _wordMotion = true;
+
+    /// <summary>The user is scrolling the lyrics (the page sets it, and clears it a few seconds
+    /// after the last touch): every line sharp and readable, as in Apple Music.</summary>
+    [ObservableProperty] private bool _isBrowsing;
 
     /// <summary>Android's system font scale. Avalonia scales by density only, so the head
     /// passes Configuration.FontScale in and the page sizes lyric text from it.</summary>
@@ -99,10 +144,30 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     public bool WantsFrames => IsSynced && _nowPlaying.IsPlaying;
 
     public string StatusText =>
-        IsLoading ? "Loading lyrics…"
-        : !HasLyrics ? "No lyrics"
+        IsSearchingOnline ? "Searching for Lyrics…"
+        : IsLoading ? "Loading lyrics…"
+        : IsInstrumental ? "Instrumental"
+        : !HasLyrics ? "No Lyrics"
         : IsRawFallback ? "No synced lyrics"
         : string.Empty;
+
+    /// <summary>The line under the empty state's title.</summary>
+    public string StatusDetail =>
+        IsSearchingOnline ? string.Empty
+        : IsInstrumental ? "This song has no words to sing along to."
+        // LRCLIB busy (503) or no network read as "none were found online" (emulator 10-20).
+        : OnlineLookupFailed ? "This song has no lyrics file or lyrics in its tags, and the online lyrics service couldn't be reached. It's asked again the next time this song plays."
+        : FindLyricsOnline && Online != null
+            ? "This song has no lyrics file or lyrics in its tags, and none were found online."
+            : "This song has no lyrics file or lyrics in its tags.";
+
+    /// <summary>The empty state shows once the local load is done: no lyrics, searching
+    /// online, or instrumental. (The local load takes milliseconds; flashing a "Loading" title
+    /// on every track change read as a glitch.)</summary>
+    public bool ShowsEmptyState => !HasLyrics && (!IsLoading || IsSearchingOnline);
+
+    /// <summary>Credit under the last line for lyrics fetched online.</summary>
+    public string SourceCredit => Source == LyricsSource.Online ? "Lyrics from LRCLIB" : string.Empty;
 
     public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
@@ -116,33 +181,76 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         try
         {
             var settings = await _persistence.LoadSettingsAsync();
-            ShowTranslation = settings.LyricsShowTranslations;
-            ShowRomanization = settings.LyricsShowRomanization;
-            ShowBackgroundVocals = settings.LyricsShowBackgroundVocals;
-            MinLineOpacity = Math.Clamp(settings.LyricsMinLineOpacity, 0, 60);
-            JoinSplitWords = settings.LyricsJoinSplitWords;
-            TextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+            // A switch flipped while this load ran keeps the user's value, not the file's: the
+            // load used to put the saved value back, and the flip was lost (never saved either).
+            _applyingSaved = true;
+            try
+            {
+                if (Saved(nameof(ShowTranslation))) ShowTranslation = settings.LyricsShowTranslations;
+                if (Saved(nameof(ShowRomanization))) ShowRomanization = settings.LyricsShowRomanization;
+                if (Saved(nameof(ShowBackgroundVocals))) ShowBackgroundVocals = settings.LyricsShowBackgroundVocals;
+                if (Saved(nameof(MinLineOpacity))) MinLineOpacity = Math.Clamp(settings.LyricsMinLineOpacity, 0, 60);
+                if (Saved(nameof(JoinSplitWords))) JoinSplitWords = settings.LyricsJoinSplitWords;
+                if (Saved(nameof(TextScale))) TextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+                if (Saved(nameof(FindLyricsOnline))) FindLyricsOnline = settings.LrcLibEnabled;
+                WordMotion = settings.LyricsGlowAndLift;
+            }
+            finally
+            {
+                _applyingSaved = false;
+            }
         }
         catch (Exception ex)
         {
             DebugLog.Write("Lyrics", $"Settings load failed: {ex.Message}");
         }
         _settingsLoaded = true;
+        // TextScale is the Settings page's to save (its own slider); the rest are saved here.
+        if (_setBeforeLoad.Any(name => name != nameof(TextScale))) PersistLayerToggles();
         await LoadAsync(_nowPlaying.CurrentTrack);
     }
 
-    partial void OnShowTranslationChanged(bool value) => PersistLayerToggles();
+    private bool Saved(string setting) => !_setBeforeLoad.Contains(setting);
 
-    partial void OnShowRomanizationChanged(bool value) => PersistLayerToggles();
+    /// <summary>A setting changed before the saved ones were read: true (and remembered) when the
+    /// user changed it, so InitializeAsync keeps it.</summary>
+    private bool SetBeforeLoad(string setting)
+    {
+        if (_settingsLoaded) return false;
+        if (!_applyingSaved) _setBeforeLoad.Add(setting);
+        return true;
+    }
 
-    partial void OnShowBackgroundVocalsChanged(bool value) => PersistLayerToggles();
+    partial void OnShowTranslationChanged(bool value) => PersistLayerToggles(nameof(ShowTranslation));
+
+    partial void OnShowRomanizationChanged(bool value) => PersistLayerToggles(nameof(ShowRomanization));
+
+    partial void OnShowBackgroundVocalsChanged(bool value) => PersistLayerToggles(nameof(ShowBackgroundVocals));
+
+    partial void OnTextScaleChanged(double value) => SetBeforeLoad(nameof(TextScale));
+
+    partial void OnWordMotionChanged(bool value) => _timeline.WordMotion = value;
+
+    /// <summary>Switched on with nothing shown, the current song is looked up straight away.</summary>
+    partial void OnFindLyricsOnlineChanged(bool value)
+    {
+        if (SetBeforeLoad(nameof(FindLyricsOnline))) return;
+        PersistLayerToggles();
+        if (value && !HasLyrics && !IsLoading && !IsInstrumental) _ = LoadAsync(_nowPlaying.CurrentTrack);
+    }
+
+    /// <summary>Browsing lifts the blur and the far lines' fade; ending it puts the ramp back.</summary>
+    partial void OnIsBrowsingChanged(bool value)
+    {
+        if (IsSynced && Lines.Count > 0) ApplyOpacities(ActiveLineIndex);
+    }
 
     /// <summary>Re-floors the shown lines in place (the desktop's RefreshFocusDimming); the save
     /// waits for the slider to settle.</summary>
     partial void OnMinLineOpacityChanged(int value)
     {
         if (IsSynced && Lines.Count > 0) ApplyOpacities(ActiveLineIndex);
-        if (!_settingsLoaded) return;
+        if (SetBeforeLoad(nameof(MinLineOpacity))) return;
         var generation = ++_opacitySaveGeneration;
         PendingSave = SaveAfterSliderSettlesAsync(generation);
     }
@@ -151,7 +259,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// goes back through the load path, as on the desktop.</summary>
     partial void OnJoinSplitWordsChanged(bool value)
     {
-        if (!_settingsLoaded) return;
+        if (SetBeforeLoad(nameof(JoinSplitWords))) return;
         PersistLayerToggles();
         _ = LoadAsync(_nowPlaying.CurrentTrack);
     }
@@ -169,9 +277,9 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>settings.json writes so far; tests count them.</summary>
     internal int SaveCount;
 
-    private void PersistLayerToggles()
+    private void PersistLayerToggles(string? setting = null)
     {
-        if (!_settingsLoaded) return;   // InitializeAsync assigning the saved values
+        if (setting != null ? SetBeforeLoad(setting) : !_settingsLoaded) return;   // saved once loaded
         PendingSave = SaveLayerTogglesAsync();
     }
 
@@ -179,13 +287,18 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.LyricsShowTranslations = ShowTranslation;
-            settings.LyricsShowRomanization = ShowRomanization;
-            settings.LyricsShowBackgroundVocals = ShowBackgroundVocals;
-            settings.LyricsMinLineOpacity = MinLineOpacity;
-            settings.LyricsJoinSplitWords = JoinSplitWords;
-            await _persistence.SaveSettingsAsync(settings);
+            // One update, so no other phone save lands between the read and the write (a pin, a
+            // player-bar switch: the stale copy written after it undid it). The values are read
+            // inside, as the latest: two quick flips saved in either order end on the last one.
+            await _persistence.UpdateSettingsAsync(settings =>
+            {
+                settings.LyricsShowTranslations = ShowTranslation;
+                settings.LyricsShowRomanization = ShowRomanization;
+                settings.LyricsShowBackgroundVocals = ShowBackgroundVocals;
+                settings.LyricsMinLineOpacity = MinLineOpacity;
+                settings.LyricsJoinSplitWords = JoinSplitWords;
+                settings.LrcLibEnabled = FindLyricsOnline;
+            });
             Interlocked.Increment(ref SaveCount);
         }
         catch (Exception ex)
@@ -223,6 +336,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         HasTranslations = false;
         HasRomanizations = false;
         IsRawFallback = false;
+        IsSearchingOnline = false;
+        IsInstrumental = false;
+        OnlineLookupFailed = false;
+        Source = LyricsSource.None;
         if (track == null)
         {
             IsLoading = false;
@@ -244,7 +361,39 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         }
 
         if (generation != _generation || _disposed) return;   // a newer track won
+
+        // Nothing of its own: the desktop's automatic online lookup (LyricsViewModel goes
+        // online in exactly this case).
+        if (result.Lines.Count == 0 && FindLyricsOnline && Online is { } online)
+        {
+            IsSearchingOnline = true;
+            var found = await FindOnlineAsync(online, track);
+            if (generation != _generation || _disposed) return;
+            IsSearchingOnline = false;
+            if (found is { Failed: true })
+            {
+                OnlineLookupFailed = true;
+            }
+            else if (found is { Instrumental: true })
+            {
+                IsInstrumental = true;
+            }
+            else if (found != null)
+            {
+                try
+                {
+                    result = await _runBackground(() => LyricsLoader.FromOnlineText(found.Text) ?? LoadedLyrics.None);
+                }
+                catch (Exception ex)
+                {
+                    DebugLog.Write("Lyrics", $"Online lyrics parse failed for {track.Title}: {ex.Message}");
+                }
+                if (generation != _generation || _disposed) return;
+            }
+        }
+
         IsLoading = false;
+        Source = result.Source;
         Lines.ReplaceAll(result.Lines);
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;
@@ -255,6 +404,19 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         {
             ApplyOpacities(-1);
             OnFrame(NowMs());
+        }
+    }
+
+    private static async Task<OnlineLyrics?> FindOnlineAsync(IOnlineLyricsSource online, Track track)
+    {
+        try
+        {
+            return await online.FindAsync(track, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Lyrics", $"Online lookup failed for {track.Title}: {ex.GetType().Name}");
+            return OnlineLyrics.Unreachable;
         }
     }
 
@@ -300,22 +462,37 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Before the first line (<paramref name="active"/> &lt; 0) every line is at full
-    /// opacity, as the desktop's UpdateLineOpacities(-1) does: nothing is sung yet, so nothing
-    /// should read as dimmed. Otherwise the ramp runs from the nearest lit line, so
-    /// overlapping duet lines all sit at full opacity.</summary>
+    /// opacity and sharp, as the desktop's UpdateLineOpacities(-1) does: nothing is sung yet, so
+    /// nothing should read as dimmed. Otherwise the opacity and depth-blur ramps run from the
+    /// nearest lit line, so overlapping duet lines all sit in full focus. While
+    /// <see cref="IsBrowsing"/>, no line is blurred and none fades below the browse floor.</summary>
     private void ApplyOpacities(int active)
     {
         var lit = _timeline.ActiveIndices;
+        var floor = Math.Clamp(MinLineOpacity, 0, 60) / 100.0;
+        if (IsBrowsing) floor = Math.Max(floor, BrowseOpacityFloor);
         for (var i = 0; i < Lines.Count; i++)
         {
+            var line = Lines[i];
             if (active < 0)
             {
-                Lines[i].LineOpacity = 1.0;
+                Set(line, 1.0, 0);
                 continue;
             }
             var distance = LyricsTimeline.DistanceToNearestActive(i, active, lit);
+            // Lines already sung recede a step faster than the ones to come: in Apple Music
+            // the line just sung is a soft ghost under the header.
+            if (distance > 0 && i < active) distance++;
             var ramp = distance < OpacityRamp.Length ? OpacityRamp[distance] : 0;
-            Lines[i].LineOpacity = Math.Max(ramp, Math.Clamp(MinLineOpacity, 0, 60) / 100.0);
+            var blur = IsBrowsing ? 0 : distance < BlurRamp.Length ? BlurRamp[distance] : FarBlur;
+            Set(line, Math.Max(ramp, floor), blur);
+        }
+
+        // Only on change: each write re-renders the line (and its blur).
+        static void Set(LyricLine line, double opacity, double blur)
+        {
+            if (line.LineOpacity != opacity) line.LineOpacity = opacity;
+            if (line.BlurRadius != blur) line.BlurRadius = blur;
         }
     }
 

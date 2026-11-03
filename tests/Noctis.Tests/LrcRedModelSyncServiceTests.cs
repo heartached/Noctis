@@ -180,6 +180,23 @@ public class LrcRedModelSyncServiceTests
         Assert.Single(router.Requests); // never retried
     }
 
+    // lrc.red's real answer (curl, 2026-10-24: POST /s/UYB282688400/sync, an ISRC it does not
+    // know) — the page's "lrc.red: We can't find the recording this comes from." / Try again.
+    [Fact]
+    public async Task Sync_RecordingNotFound_IsARefusalWithLrcRedsWords_AndReachesTheSessionLog()
+    {
+        var router = AcousticRouter(() => Json((HttpStatusCode)422, "{\n  \"error\": \"We can't find the recording this comes from.\"\n}\n"));
+        var svc = new LrcRedLyricsService(new HttpClient(router));
+
+        var ex = await Assert.ThrowsAsync<LrcRedSyncException>(() => svc.SyncWithModelAsync(AcousticIsrc));
+
+        Assert.Equal(LrcRedSyncFailure.Refused, ex.Failure);
+        Assert.Equal(422, ex.StatusCode);
+        Assert.Equal("We can't find the recording this comes from.", ex.ServerMessage);
+        var log = DebugLog.Snapshot();
+        Assert.Contains($"lrc.red model sync failed: Refused (422) — We can't find the recording this comes from. | isrc={AcousticIsrc}", log);
+    }
+
     [Fact]
     public async Task Sync_NetworkFailure_IsNetwork()
     {

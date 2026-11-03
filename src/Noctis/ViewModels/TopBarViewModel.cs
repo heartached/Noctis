@@ -71,9 +71,6 @@ public partial class TopBarViewModel : ViewModelBase
     // to a page without search).
     [ObservableProperty] private bool _isSearchOpen;
 
-    /// <summary>"Add from YouTube" in the New/Add menu — always available, downloads into the library folder.</summary>
-    public IAsyncRelayCommand AddFromYouTubeCommand { get; } = new AsyncRelayCommand(() => MetadataHelper.OpenYouTubeDownloadDialog());
-
     // Back button (shown in detail views like Album Detail, Genre Detail, etc.)
     [ObservableProperty] private bool _isBackButtonVisible;
     [ObservableProperty] private bool _isGenericBackButtonVisible;
@@ -263,9 +260,21 @@ public partial class TopBarViewModel : ViewModelBase
         ArtistSortCommand = null;
         ToggleArtistViewCommand = null;
     }
+
+    /// <summary>Artists View menu (Grid / List): picks a layout, toggling only when it differs,
+    /// so choosing the checked item is a no-op rather than a flip.</summary>
+    [RelayCommand]
+    private void SetArtistView(string? mode)
+    {
+        var wantList = string.Equals(mode, "list", StringComparison.OrdinalIgnoreCase);
+        if (wantList != IsArtistListView)
+            ToggleArtistViewCommand?.Execute(null);
+    }
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
+    /// <summary>Playlists page New ▸ "Playlist from a Genre or Artist" (Discord, Cosmo 11-02).</summary>
+    [ObservableProperty] private ICommand? _pageQuickPlaylistCommand;
 
     // Playlists grid sort, mirrored here for top-bar placement — same pattern as the
     // Albums sort chip above. Rides HasPlaylistActions so it appears and disappears with
@@ -390,8 +399,9 @@ public partial class TopBarViewModel : ViewModelBase
     }
 
     public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand,
-        ICommand importPlaylistCommand, ICommand sortCommand, string sortLabel)
+        ICommand importPlaylistCommand, ICommand sortCommand, string sortLabel, ICommand? quickPlaylistCommand = null)
     {
+        PageQuickPlaylistCommand = quickPlaylistCommand;
         PageCreatePlaylistCommand = createPlaylistCommand;
         PageCreateSmartPlaylistCommand = createSmartPlaylistCommand;
         PageImportPlaylistCommand = importPlaylistCommand;
@@ -406,6 +416,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageCreatePlaylistCommand = null;
         PageCreateSmartPlaylistCommand = null;
         PageImportPlaylistCommand = null;
+        PageQuickPlaylistCommand = null;
         PlaylistSortCommand = null;
     }
 
@@ -516,6 +527,14 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>"Default" floats recent imports instead of ordering by a single key,
     /// and "Random" is a shuffle — no direction applies to either.</summary>
     public bool AlbumSortDirectionEnabled => AlbumSortMode is not ("default" or "random");
+
+    // Albums View menu (GitHub #149): grid / carousel and the carousel's case style,
+    // mirrored from LibraryAlbumsViewModel like the sort.
+    [ObservableProperty] private ICommand? _albumViewCommand;
+    [ObservableProperty] private ICommand? _albumCarouselStyleCommand;
+    [ObservableProperty] private bool _isAlbumCarouselView;
+    /// <summary>Case style name ("Cover" / "JewelCase" / "Vinyl" / "Cassette") for the checkmarks.</summary>
+    [ObservableProperty] private string _albumCarouselStyle = "Cover";
 
     // Dropdown variants of the release-type / quality filters (albums grid top bar).
     [ObservableProperty] private ICommand? _releaseTypeFilterCommand;

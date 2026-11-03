@@ -210,17 +210,25 @@ internal sealed class HeroChrome
     }
 
     /// <summary>
-    /// The status bar icons: the theme's own (null) while the theme fade lies under the bar, the
-    /// ones readable on the scrim's colour (the text's contrast rule) once the scrim has taken
-    /// over; the theme's again while Now Playing, Lyrics or the Queue covers the page and when
-    /// the page leaves. Only a change reaches the platform.
+    /// The status bar icons: the ones readable on the haze's colour (the picture's top colour) at
+    /// rest, on the scrim's colour (the text's contrast rule) once the scrim has taken over; the
+    /// theme's own (null) without a tint (the haze is then the theme's surface), while Now Playing,
+    /// Lyrics or the Queue covers the page and when the page leaves. Only a change reaches the
+    /// platform.
     /// </summary>
     private void UpdateStatusBar()
     {
         bool? dark = null;
-        if (_shell is { IsNowPlayingOpen: false, IsLyricsOpen: false, IsQueueOpen: false }
-            && _topScrim.Opacity >= 0.5 && _tint?.TintColor != null && _scrimColour is { } under)
-            dark = PageTint.PrefersDarkText(under);
+        if (_shell is { IsNowPlayingOpen: false, IsLyricsOpen: false, IsQueueOpen: false } && _tint?.TintColor != null)
+        {
+            if (_topScrim.Opacity >= 0.5 && _scrimColour is { } under)
+                dark = PageTint.PrefersDarkText(under);
+            // At rest the bar sits on the haze in the picture's own top colour, not the theme's:
+            // the Light theme's dark icons vanished on J. Cole's dark red photo (emulator,
+            // 2026-10-20), so the icons follow that colour too.
+            else if (_tint.TopColor is { } haze)
+                dark = PageTint.PrefersDarkText(haze);
+        }
         SetStatusIcons(dark);
     }
 
@@ -261,8 +269,12 @@ internal sealed class HeroChrome
             var accent = _page.TryFindResource("AccentTextBrush", _page.ActualThemeVariant, out var a)
                          && a is ISolidColorBrush accentBrush ? accentBrush.Color : text;
             _page.Resources[_prefix + "Accent"] = new SolidColorBrush(MobileTheme.Readable(accent, new[] { tint }, text));
+            // The floating back and ⋯ buttons: glass in the page colour (Apple's red glass on a red
+            // page), their glyphs in the page's text colour (the pages' tinted glass-round style).
+            TintedGlass.Apply(_topBar.Resources, tint);
             into = tint;
         }
+        else TintedGlass.Clear(_topBar.Resources);
         ApplyFades();
         _tintApplied(into);
         UpdateStatusBar();

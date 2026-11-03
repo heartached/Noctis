@@ -80,8 +80,10 @@ public partial class ArtworkViewerDialog : Window
 
         if (_path != null)
         {
-            var scaling = RenderScaling;
-            var fit = FitArtwork(_sourceSize ?? new PixelSize(1, 1), ClientSize, scaling);
+            // Interface Size (GitHub #145): the frame is laid out in scaled units, so a device
+            // pixel is RenderScaling × the scale, and the room is the scaled ClientSize.
+            var scaling = Helpers.UiScale.DeviceScaling(this);
+            var fit = FitArtwork(_sourceSize ?? new PixelSize(1, 1), Helpers.UiScale.ContentSize(this), scaling);
             if (fit.Width > 0)
             {
                 // Whole device pixels, so the decode maps 1:1 onto the screen.

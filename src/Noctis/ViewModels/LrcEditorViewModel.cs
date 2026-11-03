@@ -83,7 +83,7 @@ public partial class LrcEditorViewModel : ViewModelBase
 {
     private static readonly TimeSpan NudgeStep = TimeSpan.FromMilliseconds(100);
     private static readonly Regex TimestampPattern = new(
-        @"^\s*\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]", RegexOptions.Compiled);
+        @"^\s*\[(\d{1,2}):(\d{2,3})(?:[.:](\d{1,3}))?\]", RegexOptions.Compiled);
 
     private readonly Track _track;
     private readonly PlayerViewModel _player;

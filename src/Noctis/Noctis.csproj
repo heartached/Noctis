@@ -16,12 +16,12 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.6.5</Version>
+    <Version>1.6.6</Version>
     <!-- Pre-release marker: numeric Version stays 1.1.16 (update checks + the
          displayed number are unchanged); the "-prerelease" SemVer suffix on the
          informational version is what lights the "Pre-release" badge in Settings.
          Remove this line (or drop the suffix) when cutting a stable release. -->
-    <InformationalVersion>1.6.5</InformationalVersion>
+    <InformationalVersion>1.6.6</InformationalVersion>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
@@ -47,6 +47,8 @@
   <!-- Expose internal services (e.g. the Core Audio COM interop) to the test project. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Noctis.Tests" />
+    <!-- The plugin submission check (tools/Noctis.PluginCheck) validates with the app's own plugin rules. -->
+    <InternalsVisibleTo Include="Noctis.PluginCheck" />
   </ItemGroup>
   <!-- Built-in Noctis server (Settings → Integrations): OpenSubsonic API over Kestrel.
        The shared framework is only loaded when the server is switched on. -->
@@ -82,6 +84,9 @@
        when the live copy on GitHub cannot be fetched. -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\plugins\index.json" LogicalName="Noctis.Plugins.index.json" Link="Assets\plugins-index.json" />
+    <!-- Each repo plugin's icon (plugins/<folder>/icon.png), so a listed plugin's card shows its
+         icon offline and without a fetch (PluginCatalog.ReadEmbeddedIcon). -->
+    <EmbeddedResource Include="..\..\plugins\*\icon.png" LogicalName="Noctis.PluginIcons/%(RelativeDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Avalonia UI -->
@@ -99,7 +104,26 @@
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.NoAvx" Version="1.9.1" />
+    <!-- Experimental: Lyrics Studio on the graphics card (WhisperGpu, off by default in the app).
+         Only in builds made with -p:LyricsGpu=true: win-x64 + linux-x64 Vulkan builds, ~60 MB per
+         platform unpacked. Owner decision before it ships (l2-speed report, 10-20). -->
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" Condition="'$(LyricsGpu)' == 'true'" />
   </ItemGroup>
+
+  <!-- Whisper.net.Runtime.Vulkan copies its win-x64 AND linux-x64 libraries (58 MB each) into every
+       build, whatever the target. Keep only the one the target can load: by -r, else by the build
+       host; none for macOS or arm64 (WhisperGpu offers Vulkan on win-x64 / linux-x64 only). -->
+  <Target Name="KeepOnlyTargetVulkanRuntime" BeforeTargets="AssignTargetPaths" Condition="'$(LyricsGpu)' == 'true'">
+    <PropertyGroup>
+      <_VulkanRid>$(RuntimeIdentifier)</_VulkanRid>
+      <_VulkanRid Condition="'$(_VulkanRid)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">win-x64</_VulkanRid>
+      <_VulkanRid Condition="'$(_VulkanRid)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</_VulkanRid>
+    </PropertyGroup>
+    <ItemGroup>
+      <_OtherVulkanRuntime Include="@(None)" Condition="$([System.String]::Copy('%(None.Identity)').ToLowerInvariant().Contains('whisper.net.runtime.vulkan')) and !$([System.String]::Copy('%(None.Identity)').Replace('\','/').Contains('/$(_VulkanRid)/'))" />
+      <None Remove="@(_OtherVulkanRuntime)" />
+    </ItemGroup>
+  </Target>
 
   <!-- MVVM -->
   <ItemGroup>
@@ -171,6 +195,10 @@
     <!-- Shared assets (themes, styles, icons, fonts) live in Noctis.UI; only the
          exe icon stays here for ApplicationIcon and the installer. -->
     <AvaloniaResource Include="Controls\EqVisualizer.axaml" />
+    <!-- Settings › Appearance › App Icon: desktop-only window/tray icons + previews
+         (scripts/app-icons/generate_app_icons.py). Kept out of Noctis.UI so the phone
+         builds don't carry them. -->
+    <AvaloniaResource Include="Assets\AppIcons\*.ico;Assets\AppIcons\*.png" />
   </ItemGroup>
 
 </Project>

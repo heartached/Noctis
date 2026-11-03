@@ -56,6 +56,10 @@
                     <SolidColorBrush x:Key="MenuGlassHairline" Color="#2EFFFFFF" />
                     <!-- Apple's group break between a menu's sections (Sort By, then the order). -->
                     <SolidColorBrush x:Key="MenuGlassGroupGap" Color="#33000000" />
+                    <!-- A text field on the glass (Add to Playlist's new name): a pill of the glass's own fill. -->
+                    <SolidColorBrush x:Key="MenuGlassFieldFill" Color="#24FFFFFF" />
+                    <!-- A destructive row's red (Delete Playlist): Apple's dark-mode red, lifted to read on the glass. -->
+                    <SolidColorBrush x:Key="MenuGlassDestructive" Color="#FF7A73" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="MenuGlassTint" Color="#4DFFFFFF" />
@@ -72,6 +76,8 @@
                     <SolidColorBrush x:Key="MenuGlassSecondaryText" Color="#99000000" />
                     <SolidColorBrush x:Key="MenuGlassHairline" Color="#1F000000" />
                     <SolidColorBrush x:Key="MenuGlassGroupGap" Color="#0F000000" />
+                    <SolidColorBrush x:Key="MenuGlassFieldFill" Color="#14000000" />
+                    <SolidColorBrush x:Key="MenuGlassDestructive" Color="#D70015" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>

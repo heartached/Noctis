@@ -390,7 +390,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
             // Smart-playlist eval and filter/sort are full-list passes; run them off the
             // UI thread like LibrarySongsViewModel.ApplyFilterAndSort does.
-            var (allResolvedTracks, sorted) = await Task.Run(() =>
+            var (allResolvedTracks, sorted, unfiltered) = await Task.Run(() =>
             {
                 IEnumerable<Track> resolved = isSmart
                     ? SmartPlaylistEvaluator.Evaluate(playlist, library.Tracks)
@@ -398,16 +398,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
                 var all = resolved.ToList();
 
-                var filtered = string.IsNullOrWhiteSpace(filter)
-                    ? all
-                    : all.Where(Noctis.Helpers.SearchQuery.Parse(filter).Matches).ToList();
+                if (string.IsNullOrWhiteSpace(filter))
+                    return (all, SortTracks(all, sortMode, addedAt), (IReadOnlyList<Track>?)null);
 
-                return (all, SortTracks(filtered, sortMode, addedAt));
+                var filtered = all.Where(Noctis.Helpers.SearchQuery.Parse(filter).Matches).ToList();
+                return (all, SortTracks(filtered, sortMode, addedAt), SortTracks(all, sortMode, addedAt));
             });
 
             if (generation != _loadGeneration) return;
 
             TrackAddedAt = addedAt; // before the rows, so their Added / NEW read this load's dates
+            _unfilteredTracks = unfiltered;
             Tracks.ReplaceAll(sorted);
 
             TrackCount = Tracks.Count;
@@ -626,10 +627,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _player.ReplaceQueueAndPlay(tracks, 0);
     }
 
+    /// <summary>The whole playlist in the current sort while a search narrows <see cref="Tracks"/>;
+    /// null without a search. A song played from a search continues with the playlist after it
+    /// (as LibrarySongsViewModel.PlayContext), not with the other search results only.</summary>
+    private IReadOnlyList<Track>? _unfilteredTracks;
+
     [RelayCommand]
     private void PlayFrom(Track track)
     {
-        var tracks = Tracks.ToList();
+        var tracks = _unfilteredTracks != null && _unfilteredTracks.Contains(track)
+            ? _unfilteredTracks.ToList()
+            : Tracks.ToList();
         var idx = tracks.IndexOf(track);
         if (idx < 0) idx = 0;
         _player.ReplaceQueueAndPlay(tracks, idx);
@@ -716,6 +724,13 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                 Tracks.RemoveAt(displayIdx);
             _playlist.TrackIds.Remove(t.Id);
             if (!_playlist.TrackIds.Contains(t.Id)) _playlist.TrackAddedAt.Remove(t.Id);
+        }
+        // The whole-playlist list a search-play continues with must lose them too.
+        if (_unfilteredTracks != null)
+        {
+            var unfiltered = _unfilteredTracks.ToList();
+            foreach (var t in tracks) unfiltered.Remove(t);
+            _unfilteredTracks = unfiltered;
         }
         _playlist.ModifiedAt = DateTime.UtcNow;
         TrackCount = Tracks.Count;

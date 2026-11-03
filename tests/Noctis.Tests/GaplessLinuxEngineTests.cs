@@ -46,12 +46,36 @@ public class GaplessLinuxEngineTests
     [Fact]
     public void PulseBuffer_TargetsTheOutputLatency_RefilledPerPeriod()
     {
-        var attr = PulseSimpleWavePlayer.BufferAttrFor(44100, 8, GaplessSink.OutputLatencyMs);
-        Assert.Equal((uint)(4410 * 8), attr.TLength);
+        var attr = PulseSimpleWavePlayer.BufferAttrFor(44100, 8, GaplessSink.LinuxOutputLatencyMs);
+        Assert.Equal((uint)(8820 * 8), attr.TLength);
         Assert.Equal((uint)(441 * 8), attr.MinReq);
         Assert.Equal(uint.MaxValue, attr.MaxLength);
         Assert.Equal(uint.MaxValue, attr.PreBuf);
         Assert.Equal(uint.MaxValue, attr.FragSize);
+    }
+
+    // GitHub #139 follow-up ("skips a beat"): with ADJUST_LATENCY PipeWire's pulse server
+    // keeps (tlength - 2·minreq)/2 + 2·minreq queued. At 100 ms that was 60 ms and 50-60 ms
+    // render stalls (the user's GC pauses) cut out on the harness; at 200 ms it is 110 ms.
+    [Fact]
+    public void PulseBuffer_ServerKeepsMoreThanTheFieldStalls()
+    {
+        var attr = PulseSimpleWavePlayer.BufferAttrFor(44100, 8, GaplessSink.LinuxOutputLatencyMs);
+        var tlengthMs = attr.TLength / 8 * 1000.0 / 44100;
+        var minreqMs = attr.MinReq / 8 * 1000.0 / 44100;
+        var queuedMs = (tlengthMs - 2 * minreqMs) / 2 + 2 * minreqMs;
+        Assert.True(queuedMs >= 100, $"server keeps {queuedMs:F0} ms");
+        Assert.True(GaplessSink.LinuxOutputLatencyMs > GaplessSink.OutputLatencyMs);
+    }
+
+    [Fact]
+    public void StallThreshold_ClearsThePulseQuantum_KeepsWasapiAt25()
+    {
+        Assert.Equal(25, GaplessSink.StallThresholdMs(GaplessSink.OutputLatencyMs));
+        var pulse = GaplessSink.StallThresholdMs(GaplessSink.LinuxOutputLatencyMs);
+        // A 2048-frame graph quantum at 44.1 kHz is a write that waits 46 ms every cycle.
+        Assert.True(pulse > 2048 * 1000.0 / 44100, $"threshold {pulse} ms");
+        Assert.True(pulse < GaplessSink.LinuxOutputLatencyMs / 2);
     }
 
     private sealed class ConstantProvider(float value, int rate = 1000, int channels = 2) : ISampleProvider

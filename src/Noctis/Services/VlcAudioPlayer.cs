@@ -226,6 +226,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private volatile bool _exclusiveModeEnabled;
     private volatile WasapiGainOutput? _exclusiveOut;
     private readonly object _exclusiveSinkLock = new();
+    // Settings → Output → Output Device (Windows): the MMDevice endpoint id every
+    // output path plays to — the exclusive sink, its shared fallback, the gapless
+    // engine, VLC's own mmdevice aout, the keep-warm stream and the session-volume
+    // resolver. Null = follow the Windows default. Set at construction from
+    // OutputDeviceAtLaunch; changed at runtime via SetOutputDevice.
+    private volatile string? _outputDeviceId;
     // Output mode the players are currently WIRED for (set by
     // RebuildOutputModeLocked). Lets queued SetExclusiveMode workers coalesce:
     // each executes against the latest desired mode and no-ops when the players
@@ -288,6 +294,27 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private int _devBridgeRingNext;
     private long _devBridgeLastContextTicks;
 
+    // ── Decoder wedge watch (always on; see DecoderWedgeDetector) ──
+    // Only Error lines reach the handler at the default verbosity, so it costs nothing
+    // while playback is healthy.
+    private readonly object _decoderWedgeLock = new();
+    private readonly DecoderWedgeDetector _decoderWedge = new();
+    private string? _decoderWedgePath;
+    private int _decoderWedgeAttempts;
+    private long _decoderWedgeLastMs;
+    // Files that wedged mpg123 this session: opened on FFmpeg's MP3 decoder from then on,
+    // which resyncs over damaged data instead of failing every frame after it.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _avcodecMp3Paths =
+        new(StringComparer.FromComparison(Helpers.PathComparison.Comparison));
+    // After a storm, act only once the audible position stands still while the errors keep
+    // coming: the line names no player (the standby one may be preparing a file), and the
+    // engine ring still plays out what was decoded before the damage. Harness: ~4 s of
+    // buffered audio after the first error; a check after a fixed 600 ms saw it advancing.
+    private const int DecoderWedgePollMs = 250;
+    private const int DecoderWedgeWatchMs = 10_000;
+    private long _decoderWedgeLastLineMs;
+    private int _decoderWedgeWatching;
+
     // Serializes Play/Stop operations so rapid track switching
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
     private readonly SemaphoreSlim _playbackLock = new(1, 1);
@@ -340,6 +367,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // Store the last known good value so end-of-track position updates always reach
     // the true duration — otherwise lyrics/UI stop updating early.
     private long _lastKnownLengthMs;
+
+    // Counted lengths of VBR MP3s with no Xing/VBRI header, by path (0 = not such a file).
+    // VLC's length for one is a bitrate guess (a 65-minute file read as 62:27), and every
+    // seek is clamped to it, so the last minutes were out of reach (see CurrentLengthMs).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long FileBytes, long LengthMs)> _countedMp3Lengths =
+        new(StringComparer.OrdinalIgnoreCase);
 
     // Track paused state ourselves because VLC's MediaPlayer
     // does not expose a reliable IsPaused property.
@@ -575,6 +608,15 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // mmdevice is Windows-only.
         if (OperatingSystem.IsWindows())
         {
+            // Settings → Output → Output Device: the endpoint VLC's own aout opens on.
+            // An instance-level arg (inherited by every aout open) is the only reliable
+            // way to pin it from launch; runtime changes ride SetOutputDevice instead.
+            // Only a connected pin: VLC's mmdevice opens an unplugged endpoint by id
+            // (GetDevice succeeds for it) and then fails to start instead of falling
+            // back to the default.
+            _outputDeviceId = NormalizeOutputDeviceId(OutputDeviceAtLaunch);
+            if (_outputDeviceId != null && AudioOutputDeviceCatalog.Exists(_outputDeviceId))
+                vlcArgs.Add($"--mmdevice-audio-device={_outputDeviceId}");
             // Diagnostic override: NOCTIS_AOUT lets us A/B the Windows audio
             // output module on real hardware without recompiling. On Bluetooth
             // (AirPods etc.) mmdevice's WASAPI clock can spiral into a permanent
@@ -626,6 +668,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         }
         catch { /* cosmetic only — never block playback on naming */ }
 
+        try { _libVlc.Log += OnVlcLogForDecoderWedge; }
+        catch { /* recovery is best-effort; never block playback on it */ }
+
         if (vlcDiag)
         {
             TryEnableVlcDiagnostics();
@@ -644,6 +689,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
+        ApplyOutputDeviceTo(_player);
+        ApplyOutputDeviceTo(_standbyPlayer);
 
         // Experimental: route audio through a custom WASAPI sink that applies
         // volume as a per-sample interpolated gain (click-free at any drag speed).
@@ -656,7 +703,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (OperatingSystem.IsWindows() &&
             Environment.GetEnvironmentVariable("NOCTIS_WASAPI") == "1")
         {
-            wasapi = WasapiGainOutput.TryCreate();
+            wasapi = WasapiGainOutput.TryCreate(_outputDeviceId);
             if (wasapi != null)
             {
                 _audioPlayCb = AudioPlay;
@@ -706,6 +753,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             : WindowsSessionVolume.TryCreate();
         if (_sessionVolume != null)
         {
+            if (_sessionVolume is WindowsSessionVolume wsv)
+                wsv.SetDevice(_outputDeviceId);
             try { _player.Volume = 100; } catch { }
             try { _standbyPlayer.Volume = 100; } catch { }
         }
@@ -728,7 +777,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                          Environment.GetEnvironmentVariable("NOCTIS_GAPLESS_ENGINE") != "0";
         if (_gaplessEngine)
         {
-            _gaplessSink = GaplessSink.TryCreate();
+            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId);
             if (_gaplessSink == null)
             {
                 _gaplessEngine = false;
@@ -800,7 +849,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // Resume() never uncorks against a suspended sink (GitHub #70).
         _keepAlive = NullWavePlayer.SilentMode ? null
             : OperatingSystem.IsWindows()
-                ? WasapiSilenceKeepAlive.TryStart()
+                ? WasapiSilenceKeepAlive.TryStart(_outputDeviceId)
                 : VlcSilenceKeepAlive.TryStart(_libVlc, () => _isPaused);
         if (NullWavePlayer.SilentMode)
         {
@@ -840,7 +889,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         get
         {
             if (_disposed) return TimeSpan.Zero;
-            var len = _player.Length;
+            var len = CurrentLengthMs();
             if (_gaplessEngine)
             {
                 // The ring knows more than VLC's length estimate (see EngineReportedLengthMs).
@@ -1697,9 +1746,18 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
     public bool ExclusiveModeActive => _exclusiveOut is { IsExclusive: true };
 
-    /// <summary>Settings → Audio → Headphone surround as saved when Noctis started. Program.Main
+    /// <summary>
+    /// Settings → Audio → Headphone surround as saved when Noctis started. Program.Main
     /// sets it before the player is built (see <see cref="StereoModeArg"/>).</summary>
     public static bool HeadphoneSurroundAtLaunch { get; set; }
+
+    /// <summary>
+    /// Settings → Output → Output Device as saved when Noctis started (MMDevice
+    /// endpoint id, empty/null = Windows default). Program.Main sets it before the
+    /// player is built: the LibVLC instance arg and every sink the constructor opens
+    /// need it up front. Runtime changes go through <see cref="SetOutputDevice"/>.
+    /// </summary>
+    public static string? OutputDeviceAtLaunch { get; set; }
 
     /// <inheritdoc />
     public bool HeadphoneSurroundActive { get; }
@@ -1724,18 +1782,24 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     {
         get
         {
+            // The pinned device (Settings → Output Device), when one is set and alive.
+            var device = AudioOutputDeviceCatalog.NameOf(_outputDeviceId);
+            var suffix = string.IsNullOrEmpty(device) ? "" : $" ({device})";
             if (_exclusiveModeEnabled && _exclusiveOut is { } sink)
             {
+                // Name the endpoint the sink actually opened (a missing pin falls back
+                // to the default, DeviceId null).
+                if (sink.DeviceId == null) suffix = "";
                 return sink.IsExclusive
-                    ? $"WASAPI Exclusive — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
-                    : $"WASAPI Shared — {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
+                    ? $"WASAPI Exclusive{suffix}, {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
+                    : $"WASAPI Shared{suffix}, {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
             }
             if (_exclusiveModeEnabled)
                 return "WASAPI Exclusive (engages on play)";
             if (_wasapiOut != null)
-                return $"WASAPI Shared — {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
+                return $"WASAPI Shared{suffix}, {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
             if (OperatingSystem.IsWindows())
-                return "WASAPI Shared (system mixer)";
+                return $"WASAPI Shared{suffix} (system mixer)";
             if (OperatingSystem.IsMacOS())
                 return "CoreAudio (shared)";
             return "System output (shared)";
@@ -1745,12 +1809,49 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     public double ReplayGainAppliedDb =>
         Math.Abs(_replayGainScalar - 1.0) < 0.0001 ? 0.0 : 20.0 * Math.Log10(_replayGainScalar);
 
+    // ── Exclusive Mode paused ──
+    // The device could not be opened in exclusive mode, or it went away mid-track: the
+    // session falls back to shared output, but the user's saved choice stays on (an
+    // unplugged DAC must not lose it). While paused, the "on" that every ApplyAudioSettings
+    // re-sends is ignored; turning the setting off clears the pause, so off and on again
+    // retries, and so does the next launch (the flag is per session).
+    private volatile bool _exclusivePaused;
+
+    /// <inheritdoc />
+    public bool ExclusiveModePaused => _exclusivePaused;
+
+    /// <summary>Whether a SetExclusiveMode request goes ahead: "off" always does and clears
+    /// the pause; "on" is held while paused. Internal for tests.</summary>
+    internal static bool ExclusiveRequestAllowed(bool enabled, ref bool paused)
+    {
+        if (!enabled)
+        {
+            paused = false;
+            return true;
+        }
+        return !paused;
+    }
+
+    private void PauseExclusiveMode()
+    {
+        _exclusivePaused = true;
+        _exclusiveModeEnabled = false;
+    }
+
     public void SetExclusiveMode(bool enabled)
     {
         if (_disposed) return;
         if (!OperatingSystem.IsWindows()) enabled = false;
         // The experimental NOCTIS_WASAPI sink already owns the audio callbacks.
         if (_wasapiOut != null) return;
+        var paused = _exclusivePaused;
+        var allowed = ExclusiveRequestAllowed(enabled, ref paused);
+        _exclusivePaused = paused;
+        if (!allowed)
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.PausedIgnored", "on request held until off and on again");
+            return;
+        }
         if (_exclusiveModeEnabled == enabled) return;
         _exclusiveModeEnabled = enabled;
 
@@ -1788,6 +1889,100 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _playbackLock.Release();
             }
         });
+    }
+
+    /// <summary>
+    /// Pin every output path to the given MMDevice endpoint id (Settings → Output →
+    /// Output Device). Null/empty follows the Windows default again. The gapless
+    /// engine's sink and the keep-warm stream retarget themselves; the session-volume
+    /// resolver re-pins; the exclusive sink and VLC's own aout move via a queued
+    /// rebuild (the SetExclusiveMode machinery — callback players cannot re-target
+    /// their stream, they are torn down and the track resumes on the new endpoint).
+    /// No-op on non-Windows.
+    /// </summary>
+    public void SetOutputDevice(string? deviceId)
+    {
+        if (_disposed) return;
+        if (!OperatingSystem.IsWindows()) deviceId = null;
+        deviceId = NormalizeOutputDeviceId(deviceId);
+        if (string.Equals(deviceId, _outputDeviceId, StringComparison.Ordinal)) return;
+        _outputDeviceId = deviceId;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+            $"outputDevice={(deviceId == null ? "default" : deviceId)}");
+
+        // Self-retargeting sinks.
+        _gaplessSink?.SetDevice(deviceId);
+        _keepAlive?.SetDevice(deviceId);
+        if (_sessionVolume is WindowsSessionVolume wsv)
+            wsv.SetDevice(deviceId);
+
+        if (_outputModeExclusiveBuilt)
+        {
+            // Callback players hold the (exclusive or shared-fallback) sink; drop it so
+            // the rebuild reopens on the new endpoint, then resume the track there.
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { _playbackLock.Wait(); }
+                catch (ObjectDisposedException) { return; }
+                try
+                {
+                    if (_disposed || !_outputModeExclusiveBuilt) return;
+                    lock (_exclusiveSinkLock)
+                    {
+                        try { _exclusiveOut?.Dispose(); } catch { }
+                        _exclusiveOut = null;
+                    }
+                    RebuildOutputModeLocked(_exclusiveModeEnabled);
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "Audio.DeviceSwitchFailed", ex.Message);
+                }
+                finally
+                {
+                    _playbackLock.Release();
+                }
+            });
+        }
+        else
+        {
+            // Classic path: a live aout moves immediately, a future one inherits the
+            // module var set below (fresh players get it in RebuildOutputModeLocked).
+            ApplyOutputDeviceTo(_player);
+            ApplyOutputDeviceTo(_standbyPlayer);
+        }
+    }
+
+    private static string? NormalizeOutputDeviceId(string? deviceId) =>
+        string.IsNullOrEmpty(deviceId) ? null : deviceId.Trim();
+
+    /// <summary>
+    /// Pins a MediaPlayer to the selected output device. The module-name call stores
+    /// <c>mmdevice-audio-device</c> on the player (inherited by every aout it opens —
+    /// VLC 3.x's mmdevice reads it at output start and falls back to the default
+    /// endpoint when the id no longer resolves); the module-less call moves a LIVE
+    /// aout straight away. Both take "" as the explicit "default device" marker.
+    /// Called on every player creation (ctor, RebuildOutputModeLocked) and on device
+    /// changes; each call is harmless when the pin already matches.
+    /// </summary>
+    private void ApplyOutputDeviceTo(MediaPlayer player)
+    {
+        if (!OperatingSystem.IsWindows() || NullWavePlayer.SilentMode) return;
+        // A disconnected pin plays to the default ("") rather than to a dead endpoint.
+        var pin = _outputDeviceId;
+        var id = pin != null && AudioOutputDeviceCatalog.Exists(pin) ? pin : "";
+        try
+        {
+            player.SetOutputDevice(id, "mmdevice"); // every future aout open on this player
+            player.SetOutputDevice(id);             // a live aout, right now
+        }
+        catch (Exception ex)
+        {
+            // The aout API exists since VLC 2.2; failures here are inert (default
+            // device) — never block playback over the pin.
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Audio.OutputDevicePinFailed",
+                $"{ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1866,6 +2061,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
+        // The exclusive-mode callbacks are wired below on the fresh players; the
+        // device pin applies to both modes, classic mmdevice included.
+        ApplyOutputDeviceTo(_player);
+        ApplyOutputDeviceTo(_standbyPlayer);
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
         _standbyPlayer.EndReached += OnEndReached;
@@ -1965,15 +2164,22 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             string? notice = null;
             int sinkRate, sinkChannels;
 
+            // The endpoint to open: the pinned device while it is connected, else the
+            // Windows default (an unplugged pin still gets exclusive output there, and
+            // the next track moves back once it returns).
+            var pin = _outputDeviceId;
+            var target = AudioOutputDeviceCatalog.Exists(pin) ? pin : null;
+
             lock (_exclusiveSinkLock)
             {
                 // Reuse the open device stream when the format matches; otherwise
-                // close it (rate change, or a shared fallback that can retry
-                // exclusive now that the device may be free).
+                // close it (rate change, a device re-pin from Settings, or a shared
+                // fallback that can retry exclusive now that the device may be free).
                 if (_exclusiveOut != null &&
                     (!_exclusiveOut.IsExclusive ||
                      _exclusiveOut.SampleRate != rate ||
-                     _exclusiveOut.Channels != channels))
+                     _exclusiveOut.Channels != channels ||
+                     !string.Equals(_exclusiveOut.DeviceId, target, StringComparison.Ordinal)))
                 {
                     _exclusiveOut.Dispose();
                     _exclusiveOut = null;
@@ -1981,18 +2187,18 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
                 if (_exclusiveOut == null)
                 {
-                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, out var reason);
+                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out var reason);
                     if (sink != null)
                     {
-                        notice = $"Exclusive output active — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
+                        notice = $"Exclusive output active: {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
                     }
                     else
                     {
-                        sink = WasapiGainOutput.TryCreate();
+                        sink = WasapiGainOutput.TryCreate(target);
                         // Read as an error before: it said what failed but not that
                         // playback is fine, nor that the next track retries exclusive
                         // (the reuse check above drops a shared fallback sink).
-                        notice = $"Playing through the shared system mixer — {reason}. " +
+                        notice = $"Playing through the shared system mixer ({reason}). " +
                                  "Audio is unaffected; exclusive output is retried when the next track starts.";
                     }
 
@@ -2006,10 +2212,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                         // say why.
                         DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed",
                             "no WASAPI output available");
-                        _exclusiveModeEnabled = false;
+                        PauseExclusiveMode();
                         RebuildOutputModeLocked(false, resumeTrack: false);
                         OutputModeChanged?.Invoke(this,
-                            "No audio output could be opened in exclusive mode — " +
+                            "No audio output could be opened in exclusive mode. " +
                             "Exclusive Mode was turned off and playback moved back to the shared system mixer.");
                         return;
                     }
@@ -2099,12 +2305,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_disposed || !ReferenceEquals(_exclusiveOut, sink)) return;
                 DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.DeviceLost",
                     "output device disappeared; falling back to shared output");
-                _exclusiveModeEnabled = false;
+                PauseExclusiveMode();
                 if (!_playbackLock.Wait(2000)) return;
                 try { RebuildOutputModeLocked(false); }
                 finally { _playbackLock.Release(); }
                 OutputModeChanged?.Invoke(this,
-                    "Audio device disconnected — switched back to shared output.");
+                    "Audio device disconnected. Switched back to shared output.");
             }
             catch (Exception ex)
             {
@@ -2337,39 +2543,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // frames. The default read style materialises every embedded picture
             // (a 16 MB cover PNG became a 16 MB dead array per track change).
             using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.Average | TagLib.ReadStyle.PictureLazy);
-            double? track = null, album = null;
-
-            if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
-            {
-                track ??= ReadTxxx(id3, "REPLAYGAIN_TRACK_GAIN");
-                album ??= ReadTxxx(id3, "REPLAYGAIN_ALBUM_GAIN");
-            }
-            if (file.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
-            {
-                track ??= ParseDb(xiph.GetField("REPLAYGAIN_TRACK_GAIN").FirstOrDefault());
-                album ??= ParseDb(xiph.GetField("REPLAYGAIN_ALBUM_GAIN").FirstOrDefault());
-            }
-            // MP4 / M4A / ALAC / AAC: RG lives in iTunes freeform atoms.
-            if (file.GetTag(TagLib.TagTypes.Apple, false) is TagLib.Mpeg4.AppleTag apple)
-            {
-                track ??= ParseDb(apple.GetDashBox("com.apple.iTunes", "REPLAYGAIN_TRACK_GAIN"));
-                album ??= ParseDb(apple.GetDashBox("com.apple.iTunes", "REPLAYGAIN_ALBUM_GAIN"));
-            }
-            // WavPack / Monkey's Audio, and MP3s tagged by mp3gain/foobar2000: APEv2
-            // (item keys are case-insensitive).
-            if (file.GetTag(TagLib.TagTypes.Ape, false) is TagLib.Ape.Tag ape)
-            {
-                track ??= ParseDb(ape.GetItem("REPLAYGAIN_TRACK_GAIN")?.ToString());
-                album ??= ParseDb(ape.GetItem("REPLAYGAIN_ALBUM_GAIN")?.ToString());
-            }
-            // WMA: only an ASF tag, which is where the in-app scanner writes. Descriptor
-            // names match case-sensitively, and foobar2000 writes them lower-case.
-            if (file.GetTag(TagLib.TagTypes.Asf, false) is TagLib.Asf.Tag asf)
-            {
-                track ??= ParseDb(asf.GetDescriptorString("REPLAYGAIN_TRACK_GAIN", "replaygain_track_gain"));
-                album ??= ParseDb(asf.GetDescriptorString("REPLAYGAIN_ALBUM_GAIN", "replaygain_album_gain"));
-            }
-            return (track, album);
+            // The shared reader (Noctis.Core): the library's ReplayGain column reads the same values.
+            var rg = ReplayGainTags.Read(file);
+            return (rg.TrackGainDb, rg.AlbumGainDb);
         }
         catch (Exception ex)
         {
@@ -2377,25 +2553,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 $"{ex.GetType().Name}, file={Path.GetFileName(filePath)}");
             return (null, null);
         }
-    }
-
-    private static double? ReadTxxx(TagLib.Id3v2.Tag id3, string desc)
-    {
-        var frame = id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>()
-            .FirstOrDefault(f => string.Equals(f.Description, desc, StringComparison.OrdinalIgnoreCase));
-        return ParseDb(frame?.Text.FirstOrDefault());
-    }
-
-    private static double? ParseDb(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        var token = s.Trim();
-        // RG values are stored like "-7.84 dB". Strip the unit.
-        var spaceIdx = token.IndexOf(' ');
-        if (spaceIdx > 0) token = token.Substring(0, spaceIdx);
-        return double.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)
-            ? d
-            : null;
     }
 
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false)
@@ -2564,6 +2721,55 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         _gaplessSink?.RequestRebuild();
     }
 
+    // ── Mono Audio / Balance / sleep fade (ChannelMixProvider) ──
+    // The stage sits in the engine sink (Windows, Linux) and in the WASAPI callback sinks;
+    // Exclusive Mode's sink runs it with mono/balance bypassed. LibVLC's own output (macOS,
+    // and the classic path after an output-mode rebuild disabled the engine) has no sample
+    // stage of ours: mono/balance are unavailable there, and the fade rides the volume.
+
+    /// <summary>True while an output with the sample stage is rendering.</summary>
+    private bool SampleStageActive => (_gaplessEngine && _gaplessSink != null) || ActiveCallbackSink != null;
+
+    public bool ChannelMixAvailable =>
+        !_disposed && !_exclusiveModeEnabled &&
+        ((_gaplessEngine && _gaplessSink != null) || _wasapiOut != null);
+
+    public void SetChannelMix(bool mono, double balance)
+    {
+        if (_disposed) return;
+        var mix = ChannelMixSettings.Shared;
+        var b = Math.Clamp(balance, -1.0, 1.0);
+        if (mix.Mono == mono && mix.Balance == (float)b) return;
+        mix.SetChannelMix(mono, b);
+        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+            $"channelMix mono={mono}, balance={b:0.00}, available={ChannelMixAvailable}");
+    }
+
+    public void SetPlaybackFadeGain(double gain, int rampMs)
+    {
+        if (_disposed) return;
+        var g = double.IsFinite(gain) ? Math.Clamp(gain, 0.0, 1.0) : 1.0;
+        ChannelMixSettings.Shared.SetFadeGain(g, rampMs);
+        if (SampleStageActive) return;
+        // No sample stage: scale the level the classic path carries. The user's volume
+        // setting itself is untouched; g = 1 puts the user's level back.
+        try
+        {
+            if (_sessionVolume != null)
+                _sessionVolume.SetLevel(UserLevelMilli() / 1000.0 * g);
+            else
+                SetPlayerVolumeInsistent(_player, (int)Math.Round(GetTargetVlcVolume() * g));
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "PlaybackFade.Failed", ex.Message);
+        }
+    }
+
+    /// <summary>The sleep fade has already taken the output to silence: a pause then needs
+    /// no play/pause fade of its own (it would only delay the pause, inaudibly).</summary>
+    private bool PlaybackFadeSilenced => ChannelMixSettings.Shared.FadeGainTarget <= 0.001f;
+
     /// <summary>
     /// Engine: the speed is a pitch-preserving stretch in the sink's render path
     /// (LibVLC stays at 1× — it was started with --no-audio-time-stretch, so its
@@ -2660,6 +2866,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (!isRemote)
                     ApplyReadAhead(media);
                 mp3TailTrimFrames = ApplyMp3Demux(media, normalizedPath, startPositionMs);
+                ApplyMp3DecoderFallback(media, normalizedPath);
+                CountMp3Length(normalizedPath);
                 // Off the engine the playback-speed button is LibVLC's rate; only
                 // media opened with time-stretch keep their pitch at ≠ 1×.
                 if (!_gaplessEngine)
@@ -2908,6 +3116,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (t.TrackType == TrackType.Audio) return true;
         return false;
     }
+
+    public bool SourceExists(string filePath) =>
+        !string.IsNullOrWhiteSpace(filePath) && (IsPathlessMedia(filePath) || File.Exists(filePath));
 
     public void Play(string filePath) => Play(filePath, null);
 
@@ -3307,6 +3518,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (pendingMs > 0)
                 _currentMedia.AddOption(FormattableString.Invariant($":start-time={pendingMs / 1000.0:0.###}"));
             var mp3TailTrimFrames = isPathless ? 0 : ApplyMp3Demux(_currentMedia, filePath, pendingMs);
+            ApplyMp3DecoderFallback(_currentMedia, filePath);
+            if (!isPathless) CountMp3Length(filePath);
 
             // Exclusive mode: open/reuse the device sink at this track's source
             // rate and pin the output format before the aout starts.
@@ -3413,7 +3626,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                     {
                         var dur = TimeSpan.FromMilliseconds(len);
@@ -3612,7 +3825,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                         DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
                 }
@@ -3791,7 +4004,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                         DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
                 }
@@ -3940,7 +4153,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Thread.Sleep(150);
                 if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len > 0)
                         DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
                 }
@@ -4050,7 +4263,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_player.State != VLCState.Playing)
                     break;
 
-                var len = _player.Length;
+                var len = CurrentLengthMs();
                 if (len <= 0)
                     len = Interlocked.Read(ref _lastKnownLengthMs);
                 var time = _player.Time;
@@ -4531,6 +4744,47 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// delivered audio past the claimed length the end is at least that far plus a lead, and once
     /// the input hit EOF the delivered length IS the length. A plausible estimate is left alone.
     /// </summary>
+    /// <summary>
+    /// The current input's length: VLC's, unless the file is a headerless VBR MP3 whose frames
+    /// were counted (see <see cref="CountMp3Length"/>). 0 stays 0: callers read it as "ended or
+    /// not open yet".
+    /// </summary>
+    private long CurrentLengthMs()
+    {
+        var len = _player.Length;
+        if (len <= 0) return len;
+        return _currentMediaPath is { } path && _countedMp3Lengths.TryGetValue(path, out var counted) && counted.LengthMs > 0
+            ? counted.LengthMs
+            : len;
+    }
+
+    /// <summary>
+    /// Counts the frames of a local MP3 off the calling thread (a long file is read end to end)
+    /// and, if it is a headerless VBR file still playing, re-reports its true length.
+    /// </summary>
+    private void CountMp3Length(string path)
+    {
+        if (IsPathlessMedia(path) ||
+            !string.Equals(Path.GetExtension(path), ".mp3", StringComparison.OrdinalIgnoreCase))
+            return;
+        long bytes;
+        try { bytes = new FileInfo(path).Length; } catch { return; }
+        if (_countedMp3Lengths.TryGetValue(path, out var known) && known.FileBytes == bytes)
+            return;
+        _ = Task.Run(() =>
+        {
+            var lengthMs = Mp3FrameScan.TryMeasureHeaderlessVbr(path, out var counted, out _)
+                ? (long)counted.TotalMilliseconds
+                : 0;
+            _countedMp3Lengths[path] = (bytes, lengthMs);
+            if (lengthMs <= 0) return;
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.CountedLength",
+                $"path={LogName(path)}, lengthMs={lengthMs}, vlcLengthMs={(_disposed ? -1 : _player.Length)}");
+            if (!_disposed && string.Equals(_currentMediaPath, path, StringComparison.OrdinalIgnoreCase))
+                DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(lengthMs));
+        });
+    }
+
     internal static long EngineReportedLengthMs(long vlcLengthMs, bool inputEnded, long deliveredMs)
     {
         if (deliveredMs <= 0)
@@ -4598,6 +4852,144 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.GaplessOpen",
             $"path={LogName(path)}, demux=avformat, startMs={startMs}, tailTrimFrames={frames}");
         return frames;
+    }
+
+    /// <summary>
+    /// A file that wedged LibVLC's mpg123 decoder this session (see DecoderWedgeDetector)
+    /// opens on FFmpeg's MP3 decoder instead, which skips damaged bytes and plays on
+    /// (harness: the junk file plays straight through on it). ",any" keeps a libvlc
+    /// without the avcodec plugin (plain Linux installs) playing on mpg123.
+    /// </summary>
+    private void ApplyMp3DecoderFallback(Media media, string path)
+    {
+        if (string.IsNullOrEmpty(path) || !_avcodecMp3Paths.ContainsKey(path)) return;
+        media.AddOption(":codec=avcodec,any");
+        DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DecoderFallback", $"path={LogName(path)}, codec=avcodec");
+    }
+
+    internal enum DecoderWedgeAction { ReopenOnAvcodec, SkipAhead, GiveUp }
+
+    /// <summary>
+    /// What to do about the <paramref name="attempt"/>th wedge on one file (attempts reset
+    /// after a minute without one). First reopen at the stuck position on FFmpeg's decoder,
+    /// losing nothing; if it wedges again anyway (no avcodec plugin), seek past the damage,
+    /// a little further each time, since a seek flushes the decoder; after that, give up on
+    /// the file so the queue moves on instead of sitting silent. Pure; internal for tests.
+    /// </summary>
+    internal static DecoderWedgeAction ChooseDecoderWedgeAction(bool alreadyOnAvcodec, int attempt)
+        => attempt >= 4 ? DecoderWedgeAction.GiveUp
+            : alreadyOnAvcodec ? DecoderWedgeAction.SkipAhead
+            : DecoderWedgeAction.ReopenOnAvcodec;
+
+    /// <summary>How far past the stuck position the <paramref name="attempt"/>th skip lands. Pure.</summary>
+    internal static long DecoderWedgeSkipMs(int attempt) => 1000L * Math.Max(1, attempt);
+
+    // VLC thread: count only, never call into libvlc here.
+    private void OnVlcLogForDecoderWedge(object? sender, LogEventArgs e)
+    {
+        try
+        {
+            if (_disposed || e.Level != LogLevel.Error || !DecoderWedgeDetector.IsWedgeLine(e.Module, e.Message))
+                return;
+            int errors;
+            var now = Environment.TickCount64;
+            Volatile.Write(ref _decoderWedgeLastLineMs, now);
+            lock (_decoderWedgeLock)
+            {
+                if (!_decoderWedge.Accept(now)) return;
+                errors = _decoderWedge.LastStormErrors;
+            }
+            // One watcher at a time; a storm that outlives it is reported again.
+            if (Interlocked.CompareExchange(ref _decoderWedgeWatching, 1, 0) != 0) return;
+            var sessionId = CurrentSessionId;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { RecoverFromDecoderWedge(sessionId, errors); }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "Decoder.WedgeRecovery.Threw", ex.Message);
+                }
+                finally { Volatile.Write(ref _decoderWedgeWatching, 0); }
+            });
+        }
+        catch { /* an exception into native code kills the process */ }
+    }
+
+    private void RecoverFromDecoderWedge(long sessionId, int errors)
+    {
+        var started = Environment.TickCount64;
+        var prev = HeardPositionMs();
+        long atMs;
+        while (true)
+        {
+            Thread.Sleep(DecoderWedgePollMs);
+            if (_disposed || sessionId != CurrentSessionId || _isPaused) return;
+            var cur = HeardPositionMs();
+            var now0 = Environment.TickCount64;
+            if (now0 - Volatile.Read(ref _decoderWedgeLastLineMs) > 1000)
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
+                    $"errors={errors}, reason=stormEnded, positionMs={cur}");
+                return;
+            }
+            if (cur - prev < DecoderWedgePollMs / 5)
+            {
+                atMs = cur;
+                break;
+            }
+            prev = cur;
+            if (now0 - started > DecoderWedgeWatchMs)
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
+                    $"errors={errors}, reason=positionAdvancing, positionMs={cur}");
+                return;
+            }
+        }
+        var path = _currentMediaPath;
+        if (string.IsNullOrEmpty(path)) return;
+
+        int attempt;
+        var now = Environment.TickCount64;
+        lock (_decoderWedgeLock)
+        {
+            if (!string.Equals(_decoderWedgePath, path, StringComparison.Ordinal) || now - _decoderWedgeLastMs > 60_000)
+            {
+                _decoderWedgePath = path;
+                _decoderWedgeAttempts = 0;
+            }
+            attempt = ++_decoderWedgeAttempts;
+            _decoderWedgeLastMs = now;
+        }
+        var action = ChooseDecoderWedgeAction(_avcodecMp3Paths.ContainsKey(path), attempt);
+        var at = TimeSpan.FromMilliseconds(atMs);
+        var summary = $"decoder=mpg123, errors={errors}, atMs={atMs}, attempt={attempt}, action={action}, path={LogName(path)}";
+        DebugLogger.Warn(DebugLogger.Category.Playback, "Decoder.Wedged", summary);
+        // The session log too: this is the line a user's Copy Logs has to show.
+        DebugLog.Write("Audio", $"MP3 decoder stuck on damaged data at {at:h\\:mm\\:ss} ({errors} errors); {action switch
+        {
+            DecoderWedgeAction.ReopenOnAvcodec => "reopening the file there on the FFmpeg decoder",
+            DecoderWedgeAction.SkipAhead => $"skipping {DecoderWedgeSkipMs(attempt) / 1000} s ahead",
+            _ => "giving up on this track",
+        }} — {LogName(path)}");
+
+        switch (action)
+        {
+            case DecoderWedgeAction.ReopenOnAvcodec:
+                _avcodecMp3Paths.TryAdd(path, 0);
+                // The Seek.Restart mechanism: a fresh open at the position.
+                lock (_seekGate) { _latestSeekMs = -1; }
+                _positionTimer.Stop();
+                Interlocked.Exchange(ref _pendingSeekMs, atMs > 0 ? atMs : -1);
+                _restartPausedRequest = false;
+                Play(path, _currentFallbackPath);
+                break;
+            case DecoderWedgeAction.SkipAhead:
+                Seek(TimeSpan.FromMilliseconds(atMs + DecoderWedgeSkipMs(attempt)));
+                break;
+            default:
+                PlaybackError?.Invoke(this, $"The MP3 decoder kept failing on damaged data at {at:h\\:mm\\:ss}.");
+                break;
+        }
     }
 
     /// <summary>
@@ -4877,7 +5269,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_currentMedia != null && !_isPaused)
                 {
                     ResetEndReachedPending();
-                    var fade = PlayPauseFadeArmed;
+                    // Not twice: a pause the sleep timer's fade-out already silenced lands
+                    // straight away (the fade-out was the fade).
+                    var fade = PlayPauseFadeArmed && !PlaybackFadeSilenced;
                     var drainMs = PausedOutputDrainMs(OutputLatency);
                     var vlcState = _player.State;
                     RunFadedPause(
@@ -5166,12 +5560,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         CancelSkipCts();
         CancelPreparedNext();
         ResetEndReachedPending();
-        // Engine: the seek's flush callback re-bases the active segment's
-        // position from this value (the flush itself clears the stale ring).
-        if (_gaplessEngine)
-            Interlocked.Exchange(
-                ref _enginePendingBaseMs[EngineSlotOf(_player)],
-                (long)position.TotalMilliseconds);
 
         // After a track ends (or is stopped) the audio output is torn down and
         // _player.Length reports 0, so the in-place seek below early-returns and the
@@ -5183,7 +5571,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if ((state == VLCState.Ended || state == VLCState.Stopped) &&
             !string.IsNullOrEmpty(_currentMediaPath))
         {
-            var endedLen = _player.Length;
+            var endedLen = CurrentLengthMs();
             if (endedLen <= 0) endedLen = Interlocked.Read(ref _lastKnownLengthMs);
             long restartMs = -1;
             if (endedLen > 0)
@@ -5203,7 +5591,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             return;
         }
 
-        var len = _player.Length;
+        var len = CurrentLengthMs();
         if (len <= 0)
         {
             DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
@@ -5218,6 +5606,12 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         var maxSeekMs = len - Math.Min(EndSeekGuardMs, len / 20);
         var clampedMs = (long)Math.Clamp(position.TotalMilliseconds, 0, maxSeekMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Request", $"targetMs={clampedMs}, playerState={_player.State}");
+        // Engine: the seek's flush callback re-bases the active segment's position from
+        // this value (the flush itself clears the stale ring). The clamped target, which is
+        // where VLC goes: the requested one put the clock ahead of the audio by the clamp
+        // (a 64:30 seek on a file VLC thought 62:27 long showed 64:34 over 62:31 audio).
+        if (_gaplessEngine)
+            Interlocked.Exchange(ref _enginePendingBaseMs[EngineSlotOf(_player)], clampedMs);
 
         // Restart-instead-of-seek for the start region. An in-place backward seek
         // to the beginning desyncs LibVLC's mmdevice output clock on files with
@@ -5346,7 +5740,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             var knownLenMs = Interlocked.Read(ref _lastKnownLengthMs);
             if (knownLenMs <= 0)
             {
-                try { knownLenMs = _player.Length; } catch { /* transitional state */ }
+                try { knownLenMs = CurrentLengthMs(); } catch { /* transitional state */ }
             }
             if (knownLenMs <= 0 || knownLenMs >= 500)
             {
@@ -5368,7 +5762,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // captured during normal playback.
         try
         {
-            var len = _player.Length;
+            var len = CurrentLengthMs();
             if (len <= 0)
                 len = Interlocked.Read(ref _lastKnownLengthMs);
             // Engine: the audible tail is still rendering — report the honest
@@ -5506,7 +5900,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 }
                 else
                 {
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len <= 0)
                         len = Interlocked.Read(ref _lastKnownLengthMs);
                     if (len > 0)
@@ -5581,7 +5975,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // _player.Length is reliable while playing but can return 0
                 // after EndReached. Capturing it here ensures the grace
                 // handler always has a valid fallback.
-                var len = _player.Length;
+                var len = CurrentLengthMs();
                 if (len > 0)
                     Interlocked.Exchange(ref _lastKnownLengthMs, len);
 
@@ -5678,7 +6072,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     if (_disposed || _currentMedia == null)
                         break;
 
-                    var len = _player.Length;
+                    var len = CurrentLengthMs();
                     if (len <= 0)
                     {
                         DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
@@ -5947,6 +6341,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             _equalizer = null;
         }
         DebugLog.VlcBridgeChanged -= OnVlcBridgeChanged;
+        try { _libVlc.Log -= OnVlcLogForDecoderWedge; } catch { }
         lock (_devBridgeLock)
         {
             if (_devBridgeAttached)
@@ -6078,10 +6473,39 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     internal static bool IsBenignVlcLogLine(string? module, string? message)
         => module == "imem" && message == "Invalid get/release function pointers";
 
+    /// <summary>
+    /// Whether a VLC line can only have come from the Linux keep-alive's silent stream
+    /// (<see cref="VlcSilenceKeepAlive"/>) when the splice engine renders the music.
+    /// The engine's players output through amem, which has no time_get (amem.c), so
+    /// VLC's drift correction (aout_DecSynchronize: "playback too late … up-sampling",
+    /// "playback way too early … playing silence", "timing screwed") returns before it
+    /// says or does anything for them; the keep-alive is the only player left on a real
+    /// output (pulse). GitHub #139: those lines in a report of skips read as the music
+    /// being resampled or flushed, but the harness (WSL, pulse null sink, process
+    /// freezes, pauses, GC storms, CPU burn) showed them only with the keep-alive on,
+    /// and the engine's delivered audio phase-continuous throughout. "buffer too late …
+    /// dropped" is checked before the output is asked anything and does hit amem, so it
+    /// is not one of them. Pure; internal for tests.
+    /// </summary>
+    internal static bool IsKeepAliveOutputLine(bool engineWithVlcKeepAlive, string? module, string? message)
+    {
+        if (!engineWithVlcKeepAlive || message == null)
+            return false;
+        if (module is "pulse" or "vlcpulse")
+            return true;
+        return module == "main" &&
+               (message.StartsWith("playback too late", StringComparison.Ordinal) ||
+                message.StartsWith("playback too early", StringComparison.Ordinal) ||
+                message.StartsWith("playback way too", StringComparison.Ordinal) ||
+                message.StartsWith("timing screwed", StringComparison.Ordinal));
+    }
+
     private void OnVlcLogForBridge(object? sender, LogEventArgs e)
     {
         if (IsBenignVlcLogLine(e.Module, e.Message)) return;
-        var msg = $"{e.Level} {e.Module}: {e.Message}";
+        var msg = IsKeepAliveOutputLine(_gaplessEngine && _keepAlive is VlcSilenceKeepAlive, e.Module, e.Message)
+            ? $"{e.Level} {e.Module} (keep-alive): {e.Message}"
+            : $"{e.Level} {e.Module}: {e.Message}";
         var now = Stopwatch.GetTimestamp();
 
         // Runs on the VLC thread that emitted the line, so everything under this lock

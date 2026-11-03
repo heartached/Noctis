@@ -272,13 +272,16 @@ public class LyricShareDialogTests
             Assert.True(PumpUntil(() => vm.Preview != null), "preview never rendered");
 
             var output = Path.Combine(dir, "clip.mp4");
+            var before = WorkClips();
+            string? work = null;
             var export = vm.ExportClipAsync(output);
-            Assert.True(PumpUntil(() => File.Exists(output), 10000), "ffmpeg stand-in never started");
+            Assert.True(PumpUntil(() => (work = NewWorkClip(before)) != null, 10000), "ffmpeg stand-in never started");
 
             vm.Detach(); // what closing the dialog does
 
             Assert.True(PumpUntil(() => export.IsCompleted, 8000), "the export kept running after the dialog closed");
             Assert.False(File.Exists(output), "the cut-off clip was left behind");
+            Assert.False(File.Exists(work), "the unfinished work file was left behind");
             Assert.False(vm.IsRendering);
         }
         finally
@@ -373,6 +376,87 @@ public class LyricShareDialogTests
         finally { vm.Detach(); }
     }
 
+    /// <summary>
+    /// Bug: the startup sweep meant for clip leftovers only enumerated directories, but the
+    /// still clip's frame is a file (noctis-clip-{guid}.png in the temp root). A crash or kill
+    /// mid-export left that multi-MB PNG behind for good.
+    /// </summary>
+    [Fact]
+    public void StartupSweep_RemovesAStaleClipFrame()
+    {
+        var stale = Path.Combine(Path.GetTempPath(), $"noctis-clip-{Guid.NewGuid():N}.png");
+        var fresh = Path.Combine(Path.GetTempPath(), $"noctis-clip-{Guid.NewGuid():N}.png");
+        File.WriteAllText(stale, "frame");
+        File.WriteAllText(fresh, "frame");
+        File.SetCreationTimeUtc(stale, DateTime.UtcNow.AddDays(-1));
+        try
+        {
+            Noctis.Helpers.PngExportHelper.SweepStaleTempDirs();
+            Assert.False(File.Exists(stale), "a day-old clip frame survived the sweep");
+            Assert.True(File.Exists(fresh), "a clip frame in use was swept");
+        }
+        finally
+        {
+            try { File.Delete(stale); } catch { }
+            try { File.Delete(fresh); } catch { }
+        }
+    }
+
+    /// <summary>A finished clip replaces the file picked to replace, and no work file stays.</summary>
+    [AvaloniaFact]
+    public void FinishedExport_ReplacesTheChosenFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-share-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var previous = App.Services;
+        try
+        {
+            string ffmpeg;
+            if (OperatingSystem.IsWindows())
+            {
+                ffmpeg = Path.Combine(dir, "ffmpeg.cmd");
+                File.WriteAllText(ffmpeg,
+                    "@echo off\r\nset \"last=\"\r\n:loop\r\nif \"%~1\"==\"\" goto done\r\nset \"last=%~1\"\r\nshift\r\ngoto loop\r\n" +
+                    ":done\r\n>\"%last%\" echo new clip\r\n");
+            }
+            else
+            {
+                ffmpeg = Path.Combine(dir, "ffmpeg");
+                File.WriteAllText(ffmpeg, "#!/bin/sh\nfor a; do last=\"$a\"; done\necho new clip > \"$last\"\n");
+                File.SetUnixFileMode(ffmpeg, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            App.Services = new FfmpegOnly(ffmpeg);
+            var audio = Path.Combine(dir, "song.flac");
+            File.WriteAllText(audio, "audio");
+            var output = Path.Combine(dir, "existing.mp4");
+            File.WriteAllText(output, "old clip");
+            var vm = new LyricShareViewModel(Song(filePath: audio), new[] { "one" }, 0);
+            try
+            {
+                var before = WorkClips();
+                var export = vm.ExportClipAsync(output);
+                Assert.True(PumpUntil(() => export.IsCompleted, 10000));
+                Assert.Equal(Localization.Loc.T("ShareLyrics.Saved"), export.Result);
+                Assert.Equal("new clip", File.ReadAllText(output).Trim());
+                Assert.Null(NewWorkClip(before));
+            }
+            finally { vm.Detach(); }
+        }
+        finally
+        {
+            App.Services = previous;
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    /// <summary>The clip's work files (ffmpeg's output while it runs) in the temp folder.</summary>
+    private static HashSet<string> WorkClips() =>
+        new(Directory.EnumerateFiles(Path.GetTempPath(), "noctis-clip-*.mp4"), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>A work file that was not there <paramref name="before"/>: this run's.</summary>
+    private static string? NewWorkClip(HashSet<string> before) =>
+        Directory.EnumerateFiles(Path.GetTempPath(), "noctis-clip-*.mp4").FirstOrDefault(f => !before.Contains(f));
+
     private static bool StartsWithPartial(string path)
     {
         try { return File.ReadAllText(path).StartsWith("partial"); }
@@ -437,6 +521,28 @@ public class LyricShareDialogTests
                 if (!vm.Lines[i].IsSelected) vm.ToggleLine(vm.Lines[i]);
             Assert.Equal(LyricShareViewModel.MaxLines, vm.SelectedCount);
             Assert.False(vm.Lines[8].IsSelected);
+            Assert.Equal(Localization.Loc.T("ShareLyrics.UpToLines", LyricShareViewModel.MaxLines), vm.StatusText);
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>
+    /// Bug: double-clicking a ninth line opened its edit box although the 8-line cap refused
+    /// to pick it. Every keystroke then changed a line that is not on the card, so the edit
+    /// silently never showed. With the cap reached the line stays as it is, and the footer
+    /// says why.
+    /// </summary>
+    [AvaloniaFact]
+    public void EditingANinthLine_IsRefused_LikePickingIt()
+    {
+        var vm = new LyricShareViewModel(Song(), Enumerable.Range(0, 12).Select(i => $"line {i}").ToList(), 0);
+        try
+        {
+            for (int i = 0; i < 8; i++)
+                if (!vm.Lines[i].IsSelected) vm.ToggleLine(vm.Lines[i]);
+            vm.BeginEdit(vm.Lines[9]);
+            Assert.False(vm.Lines[9].IsSelected);
+            Assert.False(vm.Lines[9].IsEditing, "an edit box opened for a line the card cannot take");
             Assert.Equal(Localization.Loc.T("ShareLyrics.UpToLines", LyricShareViewModel.MaxLines), vm.StatusText);
         }
         finally { vm.Detach(); }
@@ -841,6 +947,33 @@ public class LyricShareDialogTests
         }
     }
 
+    /// <summary>The four option drop-downs read as their labels: UIA named all four "" (10-25),
+    /// so a screen reader couldn't tell Layout from Format, Text or Background.</summary>
+    [AvaloniaFact]
+    public void OptionDropDowns_ReadAsTheirLabels()
+    {
+        EnsureAppStyles();
+        var vm = new LyricShareViewModel(Song(), new[] { "alpha", "beta" }, 0);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var names = new[] { "LayoutBox", "FormatBox", "TextColorBox", "BackgroundBox" }
+                .Select(n => Avalonia.Automation.AutomationProperties.GetName(Named<ComboBox>(win, n)))
+                .ToList();
+            Assert.Equal(new[]
+            {
+                Noctis.Localization.Loc.T("LyricShare.Layout"), Noctis.Localization.Loc.T("LyricShare.Format"),
+                Noctis.Localization.Loc.T("LyricShare.Text"), Noctis.Localization.Loc.T("LyricShare.Background"),
+            }, names);
+            Assert.All(names, n => Assert.False(string.IsNullOrWhiteSpace(n)));
+        }
+        finally
+        {
+            if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
+        }
+    }
+
     /// <summary>Esc in a line's edit box puts the text back and keeps the dialog open.</summary>
     [AvaloniaFact]
     public void EscapeWhileEditing_RestoresTheLine_AndKeepsTheDialog()
@@ -871,6 +1004,121 @@ public class LyricShareDialogTests
         finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
     }
 
+    /// <summary>
+    /// Owner 10-24: "when I hold down and move the scrollable bar to the side it disappears".
+    /// The Lines list's bar is only shown while the list is hovered; dragging the thumb and
+    /// drifting sideways off the list (into the gap or over the card preview) faded it out
+    /// mid-drag. While the thumb is held the bar stays shown and keeps scrolling, as an OS
+    /// scrollbar does; it fades once the button is released away from the list.
+    /// </summary>
+    [AvaloniaFact]
+    public void DraggingTheLinesThumb_Sideways_KeepsTheBarShown()
+    {
+        EnsureAppStyles();
+        Noctis.Helpers.ScrollBarThumbDrag.Install(); // as App does
+        var vm = new LyricShareViewModel(Song(), Enumerable.Range(0, 40).Select(i => $"lyric line number {i}").ToList(), 0);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var host = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<Noctis.Controls.PillDialogHost>().Single();
+            Assert.True(PumpUntil(() => host.Card is { Opacity: > 0.999 }), "open animation never settled");
+            var scroller = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<ScrollViewer>()
+                .Single(s => s.Classes.Contains("sl-lines"));
+            var bar = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(scroller).OfType<Avalonia.Controls.Primitives.ScrollBar>()
+                .Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.True(PumpUntil(() => bar.IsVisible && scroller.Extent.Height > scroller.Viewport.Height), "the list does not scroll");
+            var thumb = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(bar).OfType<Avalonia.Controls.Primitives.Thumb>().Single();
+            Assert.True(PumpUntil(() => thumb.Bounds.Height > 0));
+
+            // What is drawn: the bar and its thumb (either may carry the fade).
+            double Shown() => bar.Opacity * thumb.Opacity;
+            Assert.True(PumpUntil(() => Shown() < 0.001), $"the bar shows at rest ({Shown():0.00})");
+            var grab = thumb.TranslatePoint(new Point(thumb.Bounds.Width / 2, thumb.Bounds.Height / 2), win)!.Value;
+            win.MouseMove(grab);
+            Assert.True(PumpUntil(() => Shown() > 0.999), $"the bar never showed on hover ({Shown():0.00})");
+            win.MouseDown(grab, MouseButton.Left);
+
+            // Drift right off the list, over the card preview, and down: still dragging.
+            var preview = Named<Border>(win, "PreviewWell");
+            var off = new Point(preview.TranslatePoint(default, win)!.Value.X + 60, grab.Y + 120);
+            var listTopLeft = scroller.TranslatePoint(default, win)!.Value;
+            Assert.False(new Rect(listTopLeft, scroller.Bounds.Size).Contains(off), "the drift point is still inside the list");
+            win.MouseMove(off, RawInputModifiers.LeftMouseButton);
+            PumpUntil(() => false, 300);
+            Assert.True(Shown() > 0.999, $"the bar faded mid-drag ({Shown():0.00}, list :pointerover {scroller.IsPointerOver})");
+            Assert.True(scroller.Offset.Y > 0, "the drag stopped scrolling once the pointer left the bar");
+            // The track (app-wide style: shown while the bar is hovered) stays for the drag too.
+            var track = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(bar).OfType<Avalonia.Controls.Shapes.Rectangle>()
+                .Single(r => r.Name == "TrackRect");
+            Assert.True(PumpUntil(() => track.Opacity > 0.999), $"the track faded mid-drag ({track.Opacity:0.00})");
+
+            // Released away from the list: it fades as before.
+            win.MouseUp(off, MouseButton.Left);
+            win.MouseMove(new Point(off.X + 1, off.Y));
+            Assert.True(PumpUntil(() => Shown() < 0.001), $"the bar stayed after release ({Shown():0.00})");
+            Assert.True(PumpUntil(() => track.Opacity < 0.001), $"the track stayed after release ({track.Opacity:0.00})");
+            Assert.DoesNotContain(Noctis.Helpers.ScrollBarThumbDrag.DraggingClass, bar.Classes);
+        }
+        finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+    }
+
+    /// <summary>
+    /// Bug: the Lines list was mouse-only. Its rows were plain Panels that could not take
+    /// focus, so Tab went from Clear straight past the list and no line could be picked or
+    /// edited from the keyboard. Tab now lands on a row; Up/Down move, Space/Enter pick,
+    /// F2 edits and Enter hands the focus back to the row.
+    /// </summary>
+    [AvaloniaFact]
+    public void Lines_CanBePickedAndEdited_FromTheKeyboard()
+    {
+        EnsureAppStyles();
+        var vm = new LyricShareViewModel(Song(), new[] { "alpha", "beta", "gamma", "delta", "epsilon" }, 0);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var host = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<Noctis.Controls.PillDialogHost>().Single();
+            Assert.True(PumpUntil(() => host.Card is { Opacity: > 0.999 }), "open animation never settled");
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[4]); // keeps Clear enabled, the Tab stop before the list
+            PumpUntil(() => false, 30);
+            var clear = Named<Button>(win, "ClearButton");
+            Assert.True(clear.Focus(NavigationMethod.Tab));
+            SelectableLyricLine? Focused() => (win.FocusManager?.GetFocusedElement() as Control)?.DataContext as SelectableLyricLine;
+
+            win.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.True(Focused() == vm.Lines[0], $"Tab after Clear went to {win.FocusManager?.GetFocusedElement()}");
+
+            win.KeyPressQwerty(PhysicalKey.ArrowDown, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.Same(vm.Lines[1], Focused());
+            win.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.True(vm.Lines[1].IsSelected, "Space did not pick the focused line");
+            win.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            Assert.False(vm.Lines[1].IsSelected, "Enter did not drop the focused line");
+
+            win.KeyPressQwerty(PhysicalKey.F2, RawInputModifiers.None);
+            Assert.True(vm.Lines[1].IsEditing, "F2 did not edit the focused line");
+            Assert.True(PumpUntil(() => win.FocusManager?.GetFocusedElement() is TextBox), "the edit box never took focus");
+            win.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.False(vm.Lines[1].IsEditing);
+            Assert.Same(vm.Lines[1], Focused());
+
+            win.KeyPressQwerty(PhysicalKey.End, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.Same(vm.Lines[4], Focused());
+
+            // One Tab stop for the whole list: the next Tab leaves it.
+            win.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+            PumpUntil(() => false, 30);
+            Assert.Null(Focused());
+        }
+        finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+    }
+
     /// <summary>Esc during Save Video stops the export (status Cancelled, no cut-off file) and
     /// keeps the dialog; the next Esc closes it.</summary>
     [AvaloniaFact]
@@ -894,14 +1142,17 @@ public class LyricShareDialogTests
             {
                 Assert.True(PumpUntil(() => vm.CanExportVideo));
                 var output = Path.Combine(dir, "clip.mp4");
+                var before = WorkClips();
+                string? work = null;
                 var export = vm.ExportClipAsync(output);
-                Assert.True(PumpUntil(() => File.Exists(output), 10000), "ffmpeg stand-in never started");
+                Assert.True(PumpUntil(() => (work = NewWorkClip(before)) != null, 10000), "ffmpeg stand-in never started");
                 Assert.False(Named<Button>(win, "SaveVideoButton").IsEffectivelyEnabled);
 
                 win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
                 Assert.True(PumpUntil(() => export.IsCompleted, 8000), "Esc did not stop the export");
                 Assert.Equal(Localization.Loc.T("ShareLyrics.Cancelled"), export.Result);
                 Assert.False(File.Exists(output));
+                Assert.False(File.Exists(work));
                 Assert.Equal(0, closed);
 
                 win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
@@ -934,12 +1185,18 @@ public class LyricShareDialogTests
             var vm = new LyricShareViewModel(Song(filePath: audio), new[] { "one" }, 0);
             try
             {
+                var before = WorkClips();
+                string? work = null;
                 var export = vm.ExportClipAsync(output);
-                Assert.True(PumpUntil(() => vm.IsRendering && StartsWithPartial(output), 10000), "ffmpeg stand-in never started");
+                Assert.True(PumpUntil(() => vm.IsRendering && (work = NewWorkClip(before)) != null && StartsWithPartial(work), 10000),
+                    "ffmpeg stand-in never started");
                 vm.CancelExport();
                 Assert.True(PumpUntil(() => export.IsCompleted, 8000));
                 Assert.Equal(Localization.Loc.T("ShareLyrics.Cancelled"), export.Result);
                 Assert.True(File.Exists(output), "a file that was there before the run was deleted");
+                // Bug: ffmpeg wrote straight to the chosen path (-y truncates it at open), so a
+                // cancelled or failed replace left the cut-off clip where the old one was.
+                Assert.Equal("old clip", File.ReadAllText(output).Trim());
             }
             finally { vm.Detach(); }
         }
@@ -1018,5 +1275,44 @@ public class LyricShareDialogTests
                 owner.Close();
             }
         });
+    }
+
+    // ── Karaoke timing ──
+
+    /// <summary>
+    /// Bug: a line's last word with no end time swept until the next *picked* line began, or
+    /// for 2 s when it was the last pick, instead of until the next lyric line, capped at 2 s
+    /// as on the lyrics page (KaraokeSweep.ResolveOpenLastWordEnd). Picking lines 0 and 2 here
+    /// stretched "two" from 11 s to 30 s, over line 1 (sung at 11.5 s); picking line 0 alone
+    /// ran it to 13 s, past line 1's start.
+    /// </summary>
+    [AvaloniaFact]
+    public void OpenLastWord_EndsAtTheNextLyricLine_CappedLikeTheLyricsPage()
+    {
+        var lines = new[] { "one two", "three", "four five", "six" };
+        var stamps = new TimeSpan?[] { TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(11.5), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(34) };
+        IReadOnlyList<WordTiming> Words(params (string Text, double Start)[] w)
+            => w.Select(x => new WordTiming { Text = x.Text, Start = TimeSpan.FromSeconds(x.Start) }).ToList();
+        var words = new IReadOnlyList<WordTiming>?[]
+        {
+            Words(("one", 10), ("two", 11)), Words(("three", 11.5)), Words(("four", 30), ("five", 31)), Words(("six", 34)),
+        };
+        var vm = new LyricShareViewModel(Song(), lines, stamps, null, words);
+        try
+        {
+            double LastEnd(int cardLine) => vm.CardKaraoke[cardLine].Words![^1].EndSeconds;
+
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[0]);
+            Assert.Equal(11.5, LastEnd(0), 3);
+
+            vm.ToggleLine(vm.Lines[2]);
+            Assert.Equal(11.5, LastEnd(0), 3);
+
+            // "five" at 31 s, next line at 34 s: the page's 2 s cap, not the 3 s gap.
+            vm.ToggleLine(vm.Lines[3]);
+            Assert.Equal(33, LastEnd(1), 3);
+        }
+        finally { vm.Detach(); }
     }
 }

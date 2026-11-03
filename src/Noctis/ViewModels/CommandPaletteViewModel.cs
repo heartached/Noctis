@@ -129,10 +129,12 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Action("Play / Pause", "PlayIcon", () => _main.Player.PlayPauseCommand.Execute(null));
         Action("Next track", "NextIcon", () => _main.Player.NextCommand.Execute(null));
         Action("Previous track", "PreviousIcon", () => _main.Player.PreviousCommand.Execute(null));
-        Action("Add from YouTube…", "SearchIcon", () => _ = MetadataHelper.OpenYouTubeDownloadDialog(),
-            "Search or paste a link; downloads into your library folder");
         Action("Lyrics Studio…", "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLyricsStudioForLibrary(_main),
             "Time or transcribe lyrics for songs without synced lyrics");
+        Action("Find lyrics for library…", "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLibraryLyricsDialog(),
+            "Look up lyrics for every song, word-synced first");
+        Action("Find animated artwork for library…", "SettingsIcon", () => _ = MetadataHelper.OpenLibraryAnimatedArtworkDialog(),
+            "Add moving covers to albums from Apple Music");
         Action("Toggle shuffle", "ShuffleIcon", () => _main.Player.ToggleShuffleCommand.Execute(null));
         Action("Cycle repeat mode", "RepeatAllIcon", () => _main.Player.CycleRepeatCommand.Execute(null));
         Action("Toggle crossfade", "SettingsIcon",

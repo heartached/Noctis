@@ -1,0 +1,97 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        The Settings drop-down list, one file for every place that shows one (owner 10-29: the
+        plugin page's lists and the lists inside plugin windows must look and move exactly like
+        Settings' own). SettingsView includes it in its styles; PluginView.axaml includes it for
+        every plugin window.
+
+          ComboBox                     the filled pill shell, label centred, accent ring when open
+          its list (Border#PopupBorder) the rounded card with inset pill rows, the hovered row in
+                                       the menus' hover fill, the chosen one in the accent
+
+        Every list in the app opens and closes with the menus' pop (ComboBoxDropDownAnimator
+        runs MenuOpenAnimation.PopIn / PopOut: grows out of the click, rows settle in, shrinks
+        away), so that part needs no style.
+    -->
+
+    <!-- Every combo box: filled pill shell, label centred, and the pill-combo dropdown
+         (rounded popup, pill rows, accent highlight) so no combo has square rows. -->
+    <Style Selector="ComboBox">
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+        <Setter Property="CornerRadius" Value="999"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="Padding" Value="12,0,8,0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="ComboBox /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+        <Setter Property="CornerRadius" Value="999"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+    </Style>
+    <Style Selector="ComboBox /template/ Border#HighlightBackground">
+        <Setter Property="CornerRadius" Value="999"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+    </Style>
+    <!-- States skip server-pill: its fill and ring are drawn by the server-pill-shell
+         wrapper, so the combo's own chrome must stay clear in every state. -->
+    <Style Selector="ComboBox:not(.server-pill):pointerover /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
+    </Style>
+    <Style Selector="ComboBox:not(.server-pill):pressed /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
+    </Style>
+    <Style Selector="ComboBox:not(.server-pill):focus /template/ Border#Background, ComboBox:not(.server-pill):dropdownopen /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+    </Style>
+    <Style Selector="ComboBox:not(.server-pill):disabled /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+    </Style>
+    <Style Selector="ComboBox /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <!-- The list card's radius (OverlayCornerRadius, 16) and padding are the Fluent template's
+         own: a template value outranks a plain style setter, so none is set here. -->
+    <Style Selector="ComboBox ComboBoxItem">
+        <Setter Property="Margin" Value="4,1"/>
+        <Setter Property="Padding" Value="11,6"/>
+        <Setter Property="CornerRadius" Value="999"/>
+    </Style>
+    <Style Selector="ComboBox ComboBoxItem /template/ ContentPresenter">
+        <Setter Property="CornerRadius" Value="999"/>
+    </Style>
+    <!-- The hovered row: the same pill fill as a hovered menu row (Styles.axaml MenuItem). -->
+    <Style Selector="ComboBox ComboBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}"/>
+    </Style>
+    <!-- The chosen row: the accent. -->
+    <Style Selector="ComboBox ComboBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+    </Style>
+    <Style Selector="ComboBox ComboBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+    </Style>
+
+    <!-- A pill-field list (PillDialog.axaml's pill, used in plugin windows) gets the same card and
+         rows as Settings' pill-list ones. Its class selectors outrank the plain ones above (a
+         class is a trigger), so the card radius and rows are set again here for that class. -->
+    <Style Selector="ComboBox.pill-field /template/ Border#PopupBorder">
+        <Setter Property="CornerRadius" Value="{DynamicResource OverlayCornerRadius}"/>
+    </Style>
+    <Style Selector="ComboBox.pill-field ComboBoxItem">
+        <Setter Property="Margin" Value="4,1"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
+</Styles>

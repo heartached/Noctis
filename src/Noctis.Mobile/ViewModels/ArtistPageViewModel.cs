@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -89,7 +90,9 @@ public sealed record ArtistCard(ArtistCardKind Kind, Album Album)
 /// (<see cref="MobileLibrary.CreditsArtist"/>), so an album credited "Bruno Mars, Anderson
 /// .Paak &amp; Silk Sonic" is one of Bruno Mars's releases. The photo is Deezer's
 /// (<see cref="ShellViewModel.ArtistPhotos"/>, asked as the page opens); until it arrives, or
-/// without one, the newest release's cover stands in.
+/// without one, the newest release's cover stands in. The artist's own logo
+/// (<see cref="ShellViewModel.ArtistLogos"/>, Apple Music's artist logos) takes the name's place
+/// when there is a real one; never a made-up one.
 /// </summary>
 public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
 {
@@ -109,11 +112,13 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         Tint.Enabled = shell.ArtworkPageColors;
         _isFavourite = shell.FavoriteArtists.IsFavorite(name);
         _photo = shell.ArtistPhotos?.CachedPhoto(name);
+        _logo = shell.ArtistLogos?.CachedLogo(name);
         Shell.Library.Refreshed += OnRefreshed;
         Shell.Player.PropertyChanged += OnPlayerChanged;
         Shell.PropertyChanged += OnShellChanged;
         Rebuild();
         PhotoLoad = _photo == null ? LoadPhotoAsync(_photoCts.Token) : Task.CompletedTask;
+        LogoLoad = _logo == null ? LoadLogoAsync(_photoCts.Token) : Task.CompletedTask;
     }
 
     public ShellViewModel Shell { get; }
@@ -123,6 +128,17 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
 
     /// <summary>The photo lookup started with the page; tests await it.</summary>
     internal Task PhotoLoad { get; }
+
+    /// <summary>The logo lookup started with the page; tests await it.</summary>
+    internal Task LogoLoad { get; }
+
+    /// <summary>The artist's own logo, drawn instead of the name; null shows the name.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLogo), nameof(LogoPath))]
+    private ArtistLogo? _logo;
+
+    public bool HasLogo => Logo != null;
+    public string? LogoPath => Logo?.Path;
 
     /// <summary>Newest release first, then track order, then the artist's other songs: what Play plays.</summary>
     public IReadOnlyList<Track> Songs { get; private set; } = Array.Empty<Track>();
@@ -303,6 +319,25 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         catch (Exception ex)
         {
             DebugLog.Write("Artist", $"Artist photo failed: {ex.Message}");
+        }
+    }
+
+    private async Task LoadLogoAsync(CancellationToken ct)
+    {
+        if (Shell.ArtistLogos is not { } logos) return;
+        try
+        {
+            var logo = await logos.GetLogoAsync(Name, ct);
+            if (logo == null || ct.IsCancellationRequested) return;
+            Logo = logo;
+        }
+        catch (OperationCanceledException)
+        {
+            // The page closed first.
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Artist", $"Artist logo failed: {ex.Message}");
         }
     }
 

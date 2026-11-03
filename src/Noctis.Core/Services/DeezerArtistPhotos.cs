@@ -93,7 +93,10 @@ public sealed class DeezerArtistPhotos
                     ? nameNode.GetString()
                     : null;
                 var rank = RankMatch(resultName, candidate);
-                if (rank > bestRank)
+                // Deezer's search is fuzzy: an artist it lacks still answers with whoever
+                // shares a word ("Low" → "Lower Than Atlantis"), and taking that hit put a
+                // stranger's photo on the page (GitHub #141). An unrelated name is no match.
+                if (rank >= NoMatchRank || rank > bestRank)
                     continue;
                 if (rank < bestRank)
                 {
@@ -114,6 +117,79 @@ public sealed class DeezerArtistPhotos
         }
 
         return new Lookup(null, answered);
+    }
+
+    /// <summary>One row of a manual artist search (GitHub #141): who the account is, a small
+    /// photo for the row and the full-size one to save, in Deezer's own numbers.</summary>
+    public sealed record SearchHit(long Id, string Name, string? ThumbnailUrl, string? ImageUrl, long Fans, long Albums);
+
+    /// <summary>How many accounts a manual search lists.</summary>
+    public const int ManualSearchLimit = 25;
+
+    /// <summary>
+    /// Deezer's own answer for <paramref name="query"/>, in its order, for the user to pick from
+    /// ("Search Artist Info" on the artist page). Accounts without a photo are listed too: the
+    /// right artist may have none. An error status throws <see cref="HttpRequestException"/>.
+    /// </summary>
+    public async Task<IReadOnlyList<SearchHit>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        var hits = new List<SearchHit>();
+        if (string.IsNullOrWhiteSpace(query))
+            return hits;
+        using var response = await _http.GetAsync(
+            $"{SearchUrl}?q={Uri.EscapeDataString(query.Trim())}&limit={ManualSearchLimit}", ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct).ConfigureAwait(false);
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            return hits;
+        foreach (var item in data.EnumerateArray())
+        {
+            var hit = ReadHit(item);
+            if (hit != null)
+                hits.Add(hit);
+        }
+        return hits;
+    }
+
+    /// <summary>
+    /// The photo URL and fan count of one Deezer account, for an artist the user pinned to it.
+    /// A null <see cref="Lookup.Match"/> with <see cref="Lookup.Answered"/> true means the
+    /// account has no photo (or is gone); false means Deezer gave no usable answer.
+    /// </summary>
+    public async Task<Lookup> GetArtistAsync(long deezerId, CancellationToken ct = default)
+    {
+        using var response = await _http.GetAsync($"{ArtistUrl}/{deezerId}", ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+            return new Lookup(null, false);
+        var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct).ConfigureAwait(false);
+        using var doc = JsonDocument.Parse(json);
+        // A removed account answers 200 with { "error": { … } }.
+        if (doc.RootElement.TryGetProperty("error", out _))
+            return new Lookup(null, true);
+        var hit = ReadHit(doc.RootElement);
+        return hit?.ImageUrl is { } url
+            ? new Lookup(new Match(url, hit.Fans), true)
+            : new Lookup(null, true);
+    }
+
+    private static SearchHit? ReadHit(JsonElement item)
+    {
+        var id = ReadCount(item, "id");
+        var name = item.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
+        if (id <= 0 || string.IsNullOrWhiteSpace(name))
+            return null;
+        string? thumb = null;
+        foreach (var size in new[] { "picture_medium", "picture_big", "picture_xl" })
+        {
+            if (item.TryGetProperty(size, out var p) && p.ValueKind == JsonValueKind.String
+                && p.GetString() is { Length: > 0 } url && !IsPlaceholderUrl(url))
+            {
+                thumb = url;
+                break;
+            }
+        }
+        return new SearchHit(id, name.Trim(), thumb, GetBestImageUrl(item), ReadCount(item, "nb_fan"), ReadCount(item, "nb_album"));
     }
 
     /// <summary>
@@ -261,9 +337,13 @@ public sealed class DeezerArtistPhotos
         return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 
+    /// <summary><see cref="RankMatch"/>'s answer for a name that is not the asked one.</summary>
+    public const int NoMatchRank = 10;
+
     /// <summary>How well a search hit's name matches the asked one: 0 equal (diacritics folded,
-    /// case ignored), 1 equal without spaces, 2 starts with it, 3 contains it, 10 otherwise,
-    /// 100 nameless.</summary>
+    /// case ignored), 1 equal without spaces, 2 starts with it as whole words ("Ghost B.C." for
+    /// "Ghost", not "Ghostface Killah"), 3 contains it as whole words ("The Weeknd" for
+    /// "Weeknd", not "Asia" for "Sia"), 10 otherwise, 100 nameless.</summary>
     public static int RankMatch(string? resultName, string queryName)
     {
         if (string.IsNullOrWhiteSpace(resultName))
@@ -279,13 +359,30 @@ public sealed class DeezerArtistPhotos
         if (compactResult.Equals(compactQuery, StringComparison.OrdinalIgnoreCase))
             return 1;
 
-        if (result.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+        var at = IndexOfWholeWords(result, query);
+        if (at == 0)
             return 2;
-
-        if (result.Contains(query, StringComparison.OrdinalIgnoreCase))
+        if (at > 0)
             return 3;
 
-        return 10;
+        return NoMatchRank;
+    }
+
+    /// <summary>Where <paramref name="query"/> first occurs in <paramref name="text"/> with no
+    /// letter or digit glued to either end (case ignored), or -1.</summary>
+    private static int IndexOfWholeWords(string text, string query)
+    {
+        if (query.Length == 0)
+            return -1;
+        for (var at = text.IndexOf(query, StringComparison.OrdinalIgnoreCase); at >= 0;
+             at = text.IndexOf(query, at + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            var end = at + query.Length;
+            if ((at == 0 || !char.IsLetterOrDigit(text[at - 1]))
+                && (end == text.Length || !char.IsLetterOrDigit(text[end])))
+                return at;
+        }
+        return -1;
     }
 
     /// <summary>The names asked, in order: the full credit, then its primary artist when that

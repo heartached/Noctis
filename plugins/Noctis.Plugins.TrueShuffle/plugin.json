@@ -1,0 +1,28 @@
+{
+  "id": "dev.noctis.plugins.trueshuffle",
+  "name": "True Shuffle",
+  "version": "1.0.0",
+  "author": "Alfamin",
+  "description": "A fairer shuffle with modes like No repeats.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.TrueShuffle.dll",
+  "apiVersion": "1.5",
+  "minAppVersion": "1.6.6",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["playback.control", "library.read", "menu.commands", "notifications"],
+  "settings": [
+    { "key": "mode", "label": "Mode", "type": "choice",
+      "choices": ["Equal chance", "No repeats", "Discovery", "Never played", "For you"], "default": "No repeats",
+      "description": "How the next song is picked." },
+    { "key": "source", "label": "Shuffle", "type": "choice",
+      "choices": ["Current queue", "Whole library"], "default": "Current queue",
+      "description": "What the Shuffle button shuffles first." },
+    { "key": "forYouNew", "label": "For you: new songs", "type": "choice",
+      "choices": ["Familiar", "Balanced", "Adventurous"], "default": "Balanced",
+      "description": "How often For you plays songs you have not heard." },
+    { "key": "skipDisliked", "label": "Leave out songs marked Not liked", "type": "bool", "default": false,
+      "description": "Off: they get the same chance as others." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.TrueShuffle",
+  "icon": "icon.png"
+}

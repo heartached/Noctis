@@ -740,6 +740,12 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 // phone that played offline reports when. A retried batch (the reply was lost)
                 // repeats the same (device, id, time) and is counted once.
                 var times = p.All("time").ToList();
+                // Optional repeated noctisScrobble= (a Noctis phone), paired the same way: whether the
+                // play passed the scrobble rule and who sends it. Only "computer" goes on to this
+                // desktop's Last.fm / ListenBrainz; "phone" (the phone sent it itself), "no" (skipped)
+                // and an id without one (an older phone records a play when it starts, so it cannot
+                // tell a skip) are counted only. The retry guard above keeps the forward to once too.
+                var verdicts = p.All("noctisScrobble").ToList();
                 var now = DateTime.UtcNow;
                 var user = (ServerUser)ctx.Items["user"]!;
                 var who = ctx.Items["device"] is ServerDevice d ? $"{user.Name}/{d.DeviceId}" : user.Name;
@@ -748,7 +754,12 @@ public sealed partial class NoctisServer : IAsyncDisposable
                     if (Ids.TrackGuid(ids[i]) is not { } g) continue;
                     long? ms = i < times.Count && long.TryParse(times[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
                     if (ms is not null && !_recentScrobbles.Add($"{who}\n{g:N}\n{ms}")) continue;
-                    await _library.ScrobbleAsync(g, ScrobbleTime(ms, now)).ConfigureAwait(false);
+                    // Only the main account's plays reach this computer's Last.fm / ListenBrainz (another
+                    // account's are its owner's, not this computer's), and only timed ones: the retry
+                    // guard needs the time, so an untimed "computer" repeated would be sent each time.
+                    var forward = user.IsAdmin && ms is not null && i < verdicts.Count
+                        && string.Equals(verdicts[i], "computer", StringComparison.Ordinal);
+                    await _library.ScrobbleAsync(g, ScrobbleTime(ms, now), forward).ConfigureAwait(false);
                 }
                 return new JsonObject();
             }
@@ -804,8 +815,38 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 return new JsonObject { [method.Equals("getalbuminfo", StringComparison.OrdinalIgnoreCase) ? "albumInfo" : "albumInfo2"] = new JsonObject() };
             case "getscanstatus":
                 return new JsonObject { ["scanStatus"] = new JsonObject { ["scanning"] = _library.IsScanning, ["count"] = snap.Tracks.Count } };
-            case "getplayqueue":
+            // ── Pick Up on Computer: the standard play-queue calls. A phone saves its queue (the inbox
+            // keeps it for the desktop's window to offer); getPlayQueue hands it back to any client. ──
+            case "saveplayqueue":
+            {
+                var ids = p.All("id").Select(Ids.TrackGuid).Where(g => g.HasValue).Select(g => g!.Value);
+                var current = Ids.TrackGuid(p.Get("current"));
+                long.TryParse(p.Get("position"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var position);
+                // noctisAgeMs (Noctis extension): how long ago the phone captured it, so its clock never matters.
+                long.TryParse(p.Get("noctisAgeMs"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var age);
+                var device = ctx.Items["device"] is ServerDevice d ? d.DeviceName : ((ServerUser)ctx.Items["user"]!).Name;
+                // An empty save leaves nothing to offer (Subsonic's clears the queue).
+                if (PhoneHandoff.FromWire(ids, current, position, age, DateTime.UtcNow, device) is { } handoff)
+                    await _library.SavePlayQueueAsync(handoff).ConfigureAwait(false);
                 return new JsonObject();
+            }
+            case "getplayqueue":
+            {
+                if (_library.PlayQueue is not { } queue) return new JsonObject();
+                var entries = queue.TrackIds.Select(view.TrackById).Where(t => t != null).Select(t => (JsonNode)view.SongObject(t!)).ToArray();
+                return new JsonObject
+                {
+                    ["playQueue"] = new JsonObject
+                    {
+                        ["current"] = Ids.TrackId(queue.CurrentId),
+                        ["position"] = queue.PositionMs,
+                        ["username"] = ((ServerUser)ctx.Items["user"]!).Name,
+                        ["changed"] = queue.SavedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                        ["changedBy"] = queue.DeviceName,
+                        ["entry"] = new JsonArray(entries),
+                    },
+                };
+            }
             case "getlyrics":
                 return new JsonObject { ["lyrics"] = new JsonObject() };
             // ── Noctis extension: a song's lyrics as the desktop has them (sidecars + stored text) ──
@@ -842,6 +883,11 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 };
                 // The phone reads it each sync (sync on or off), so a renamed profile reaches it.
                 if (DisplayName() is { } displayName) status["displayName"] = displayName;
+                // Where this computer sends a phone's plays (the phone's Scrobbling page). Absent: it
+                // sends them nowhere (a host without scrobbling, or an older desktop). Only the main
+                // account's plays are forwarded (see "scrobble"), so only it is told the services.
+                if (_library.ScrobbleServices is { } services && ctx.Items["user"] is ServerUser { IsAdmin: true })
+                    status["scrobbling"] = new JsonObject { ["lastFm"] = services.LastFm, ["listenBrainz"] = services.ListenBrainz };
                 return new JsonObject { ["noctisSync"] = status };
             }
             case "getnoctissyncchanges":
@@ -1118,6 +1164,7 @@ internal sealed class LibraryView
     public Artist? Artist(string id) => Ids.ArtistGuid(id) is { } g ? _s.Artists.FirstOrDefault(a => a.Id == g) : null;
     public Album? Album(string id) => Ids.AlbumGuid(id) is { } g && _albums.TryGetValue(g, out var a) ? a : null;
     public Playlist? Playlist(string id) => Ids.PlaylistGuid(id) is { } g ? _s.Playlists.FirstOrDefault(p => p.Id == g) : null;
+    public Track? TrackById(Guid id) => _tracks.TryGetValue(id, out var t) ? t : null;
 
     public IEnumerable<Album> AlbumsOf(Artist artist)
         => _s.Albums.Where(a => string.Equals(a.Artist, artist.Name, StringComparison.OrdinalIgnoreCase)

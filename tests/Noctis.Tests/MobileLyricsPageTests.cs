@@ -6,6 +6,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
@@ -94,7 +95,13 @@ public class MobileLyricsPageTests
         var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
         var status = page.FindControl<TextBlock>("StatusText")!;
         Assert.True(status.IsEffectivelyVisible);
-        Assert.Equal("No lyrics", status.Text);
+        Assert.Equal("No Lyrics", status.Text);
+        Assert.True(page.FindControl<TextBlock>("StatusDetail")!.IsEffectivelyVisible);
+        Assert.True(page.FindControl<PathIcon>("EmptyGlyph")!.IsEffectivelyVisible);
+        Assert.False(page.FindControl<ScrollViewer>("LyricsScroll")!.IsEffectivelyVisible);
+        // Nothing to read: the transport stays up.
+        page.HideControlsIfPlaying();
+        Assert.True(page.ControlsShown);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
@@ -172,11 +179,11 @@ public class MobileLyricsPageTests
     private static Control LineContainer(LyricsPage page, int index) =>
         page.FindControl<ItemsControl>("LyricsList")!.ContainerFromIndex(index)!;
 
-    /// <summary>A finished word-timed line has every word at full progress; if its sweep stayed
-    /// visible it would stack on the base under the line's opacity (0.55 read as ~0.80 on the
-    /// device). Only the active line may show the sweep.</summary>
+    /// <summary>The desktop's word cell: each word is one KaraokeWordText drawing unsung and sung
+    /// text together (so a finished line cannot stack a sweep on its base, the old two-layer
+    /// cell's bug), and only the sung line's word layer is in the karaoke look (dim base).</summary>
     [AvaloniaFact]
-    public void FinishedLine_HidesTheSweep_ActiveLineShowsIt()
+    public void Words_UseTheDesktopCell_OnlyTheSungLineIsInKaraokeLook()
     {
         var (shell, player, files, root) = MakeShell();
         files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
@@ -190,16 +197,141 @@ public class MobileLyricsPageTests
         Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
 
         var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
-        var sungSweeps = LineContainer(page, 0).GetVisualDescendants().OfType<TextBlock>()
+        List<KaraokeWordText> Sweeps(int line) => LineContainer(page, line).GetVisualDescendants().OfType<KaraokeWordText>()
             .Where(t => t.Classes.Contains("word-sweep")).ToList();
-        var activeSweeps = LineContainer(page, 1).GetVisualDescendants().OfType<TextBlock>()
-            .Where(t => t.Classes.Contains("word-sweep")).ToList();
-        Assert.Equal(5, sungSweeps.Count);
-        Assert.All(sungSweeps, t => Assert.False(t.IsEffectivelyVisible));
-        Assert.Contains(LineContainer(page, 0).GetVisualDescendants().OfType<TextBlock>(),
-            t => t.Classes.Contains("word-base") && t.Text == "例えば" && t.IsEffectivelyVisible);
-        Assert.Single(activeSweeps);
-        Assert.All(activeSweeps, t => Assert.True(t.IsEffectivelyVisible));
+        ItemsControl WordLayer(int line) => LineContainer(page, line).GetVisualDescendants().OfType<ItemsControl>()
+            .First(i => i.Classes.Contains("word-layer"));
+        Assert.Equal(5, Sweeps(0).Count);
+        Assert.All(Sweeps(0), t => Assert.True(t.IsEffectivelyVisible));
+        Assert.All(Sweeps(0), t => Assert.Equal(1.0, t.BaseOpacity, 6));   // a line not being sung reads as plain text
+        Assert.Contains(Sweeps(0), t => t.Text == "例えば");
+        Assert.Single(Sweeps(1));
+        Assert.DoesNotContain("active", WordLayer(0).Classes);
+        Assert.Contains("active", WordLayer(1).Classes);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>The desktop's depth: the sung line sharp and at full size, the others blurred by
+    /// distance and resting at 0.96; browsing the lyrics sharpens every line.</summary>
+    [AvaloniaFact]
+    public void ActiveLineIsSharp_NeighboursBlurred_BrowsingSharpensAll()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 12).Select(i => $"[00:{i * 3:00}.50]line {i}"));
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(15.6));   // line 5
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        var lyrics = shell.Lyrics;
+        Assert.Equal(5, lyrics.ActiveLineIndex);
+        Assert.Equal(0, lyrics.Lines[5].BlurRadius);
+        Assert.Equal(5, lyrics.Lines[6].BlurRadius);    // next line
+        Assert.Equal(8, lyrics.Lines[4].BlurRadius);    // the line just sung recedes a step faster
+        Assert.Equal(8, lyrics.Lines[7].BlurRadius);
+        Assert.Equal(12, lyrics.Lines[11].BlurRadius);
+        Assert.True(lyrics.Lines[4].LineOpacity < lyrics.Lines[6].LineOpacity);
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var activeButton = LineContainer(page, 5).GetVisualDescendants().OfType<Button>().First();
+        Assert.Contains("active", activeButton.Classes);
+        Assert.IsType<BlurEffect>(LineContainer(page, 4).GetVisualDescendants().OfType<Button>().First().Effect);
+
+        page.BeginBrowse();
+        Assert.True(lyrics.IsBrowsing);
+        Assert.All(lyrics.Lines, l => Assert.Equal(0, l.BlurRadius));
+        Assert.All(lyrics.Lines, l => Assert.True(l.LineOpacity >= LyricsPageViewModel.BrowseOpacityFloor));
+        page.EndBrowse(scrollBack: false);
+        Assert.False(lyrics.IsBrowsing);
+        Assert.Equal(8, lyrics.Lines[4].BlurRadius);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>An explicit song carries the E badge after its title in the header.</summary>
+    [AvaloniaFact]
+    public void Header_ShowsTheEBadge_ForAnExplicitSong()
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var (view, window) = Mount(shell);
+        var clean = NewTrack();
+        var dirty = NewTrack();
+        dirty.IsExplicit = true;
+
+        shell.Player.PlayTracks(new[] { dirty, clean }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var badge = page.FindControl<Border>("HeaderExplicit")!;
+        Assert.True(badge.IsEffectivelyVisible);
+        Assert.True(badge.Classes.Contains("explicit-badge"));
+
+        shell.Player.NextCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.False(badge.IsVisible);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>Apple's header: the playing song's title and artist over the wash.</summary>
+    [AvaloniaFact]
+    public void Header_ShowsTheSong()
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        Assert.Equal("Song", page.FindControl<TextBlock>("HeaderTitle")!.Text);
+        Assert.Equal("Tester", page.FindControl<TextBlock>("HeaderArtist")!.Text);
+        Assert.True(page.FindControl<Control>("LyricsMore")!.IsEffectivelyVisible);
+        Assert.False(page.FindControl<Control>("EmptyState")!.IsEffectivelyVisible);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>While the song plays the page opens on the lines alone and the transport fades
+    /// away again after a touch (Apple Music's lyrics screen); pausing brings it up and keeps it.</summary>
+    [AvaloniaFact]
+    public void Controls_HideWhilePlaying_ComeBackOnPause()
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        Assert.True(shell.Player.IsPlaying);
+        Assert.False(page.ControlsShown);   // Apple's: the lines alone while the song plays
+        page.ShowControls();                // a touch
+        Assert.True(page.ControlsShown);
+        page.HideControlsIfPlaying();
+        Assert.False(page.ControlsShown);
+
+        shell.Player.TogglePlayPauseCommand.Execute(null);
+        Assert.False(shell.Player.IsPlaying);
+        Assert.True(page.ControlsShown);
+        page.HideControlsIfPlaying();
+        Assert.True(page.ControlsShown);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
@@ -240,6 +372,8 @@ public class MobileLyricsPageTests
         var line = LineContainer(page, 0).GetVisualDescendants().OfType<Button>().First();
         Assert.Contains("lyric-line", line.Classes);
         foreach (var b in new[] { line, plain }) b.Transitions = null;   // transitions are frame-driven
+        window.UpdateLayout();
+        var resting = line.RenderTransform?.Value ?? Matrix.Identity;   // 0.96 before the first line
         var presenter = line.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
         presenter.Transitions = null;
         var plainPresenter = plain.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
@@ -251,7 +385,7 @@ public class MobileLyricsPageTests
 
         Assert.NotEqual(Matrix.Identity, plain.RenderTransform!.Value);   // the simulation bites
         Assert.NotEqual(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(plainPresenter.Background).Color);
-        Assert.Equal(Matrix.Identity, line.RenderTransform?.Value ?? Matrix.Identity);
+        Assert.Equal(resting, line.RenderTransform?.Value ?? Matrix.Identity);
         var bg = presenter.Background;
         Assert.True(bg is null || (bg is ISolidColorBrush solid && solid.Color.A == 0), $"presenter background {bg}");
 
@@ -276,10 +410,10 @@ public class MobileLyricsPageTests
 
         Assert.True(shell.Lyrics.Lines[0].IsIntroPlaceholder);
         var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
-        Assert.Contains(LineContainer(page, 0).GetVisualDescendants().OfType<TextBlock>(),
-            t => t.Text == "•••" && t.IsEffectivelyVisible);
-        Assert.DoesNotContain(LineContainer(page, 1).GetVisualDescendants().OfType<TextBlock>(),
-            t => t.Text == "•••" && t.IsEffectivelyVisible);
+        Control Dots(int line) => LineContainer(page, line).GetVisualDescendants().OfType<StackPanel>().First(s => s.Name == "IntroDots");
+        Assert.True(Dots(0).IsEffectivelyVisible);
+        Assert.Equal(3, Dots(0).GetVisualChildren().OfType<Avalonia.Controls.Shapes.Ellipse>().Count());
+        Assert.False(Dots(1).IsEffectivelyVisible);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

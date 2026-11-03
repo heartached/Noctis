@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Album Town for Noctis, by Jafezy JD: your albums live in a little town as flat cover
+    creatures with floating hands and feet. Call a crowd of them to the plaza, watch them wander
+    and chat, and build the Apartments: drag albums and playlists into a grid of rooms where their
+    pets live, visit each other through the doors and chat.
+    Uses plugin API 1.4 (a view of its own, PlayTracks, ShowAlbum, the album fields on TrackInfo,
+    GetPlaylists).
+    `dotnet build -c Release` writes bin/Release/Noctis.Plugins.AlbumTown-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.AlbumTown</RootNamespace>
+    <Version>1.0.1</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <!-- Release builds also write bin/Release/Noctis.Plugins.AlbumTown-<version>.zip (DLL + plugin.json). -->
+  <Import Project="..\..\samples\PluginPackage.targets" />
+</Project>

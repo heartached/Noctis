@@ -28,7 +28,7 @@ public sealed record PluginInfo(string Id, string Name, string Version, string A
 
 /// <summary>
 /// What the host offers a plugin. Everything here is safe to call from the UI thread.
-/// Members added in API 1.1 and 1.2 have default bodies that throw <see cref="NotSupportedException"/>,
+/// Members added in API 1.1 to 1.6 have default bodies that throw <see cref="NotSupportedException"/>,
 /// so code compiled against an older kit (and any older implementation of this interface) keeps working;
 /// Noctis itself implements all of them. Hooks marked with a permission throw
 /// <see cref="PluginPermissionException"/> unless plugin.json declares it.
@@ -105,6 +105,41 @@ public interface IPluginHost
     /// two values, only in Noctis's library, never in file tags).</summary>
     ITrackAnalysisWriter TrackAnalysis => throw Missing("1.2");
 
+    // ── API 1.3 ──
+
+    /// <summary>API 1.3: adds a view of the plugin's own (a whole page, not a layer). Settings →
+    /// Plugins shows an "Open" button for it on the plugin's card, and Noctis shows the control
+    /// in a window of its own. <see cref="IPluginViewProvider.CreateView"/> runs each time the
+    /// window opens; the window closes when the plugin stops or the registration is disposed.</summary>
+    IDisposable RegisterView(IPluginViewProvider provider) => throw Missing("1.3");
+
+    /// <summary>API 1.3: opens a view this plugin registered (for example from a menu command).
+    /// False when it is not registered (anymore) or the plugin stopped.</summary>
+    bool OpenView(IPluginViewProvider provider) => throw Missing("1.3");
+
+    /// <summary>API 1.3: shows an album's page in the main window and brings the window forward.
+    /// <paramref name="albumId"/> is <see cref="TrackInfo.AlbumId"/>. False for an unknown album.</summary>
+    bool ShowAlbum(string albumId) => throw Missing("1.3");
+
+    // ── API 1.5 ──
+
+    /// <summary>API 1.5: changes how word-synced lyrics move (lyrics page, side panel, mini
+    /// player). Noctis keeps drawing the words, their sweep and glow; the effect only says where
+    /// each letter sits and how big it is (<see cref="ILyricsEffect"/>), and which lines read
+    /// right to left. One effect is used at a time: the latest registered. Dispose the result to
+    /// withdraw it (Noctis also does on disable); Noctis's own motion then comes back.</summary>
+    IDisposable RegisterLyricsEffect(ILyricsEffect effect) => throw Missing("1.5");
+
+    /// <summary>API 1.5, "library.import": adds audio files the plugin saved to the library
+    /// (see <see cref="ILibraryImport"/>).</summary>
+    ILibraryImport LibraryImport => throw Missing("1.5");
+
+    // ── API 1.6 ──
+
+    /// <summary>API 1.6, "audio.decode": decodes song files to mono PCM for offline analysis
+    /// (see <see cref="IAudioDecoder"/>).</summary>
+    IAudioDecoder AudioDecoder => throw Missing("1.6");
+
     private static NotSupportedException Missing(string api = "1.1")
         => new($"This Noctis build does not implement plugin API {api}. Set minAppVersion in plugin.json.");
 }
@@ -117,7 +152,9 @@ public interface INowPlaying
 
     bool IsPlaying { get; }
 
-    /// <summary>Playback position; polled, not a stream of events.</summary>
+    /// <summary>Playback position; polled, not a stream of events. It moves in steps (about every
+    /// 100 ms on desktop) and holds still for a moment after a seek: for anything finer, add the
+    /// time since the value last changed (docs/PLUGINS.md, "How exact A-B Loop is").</summary>
     TimeSpan Position { get; }
 
     /// <summary>A new track started (or playback was cleared: <see cref="Track"/> is null).</summary>
@@ -160,4 +197,42 @@ public interface IVisualLayerProvider
     string Name { get; }
 
     Control CreateLayer();
+}
+
+/// <summary>
+/// API 1.3: a view of the plugin's own, registered with <see cref="IPluginHost.RegisterView"/>.
+/// <see cref="CreateView"/> is called on the UI thread each time the user opens it; the control
+/// is detached when its window closes. Keep it cheap while hidden: stop timers when the control
+/// leaves the visual tree (DetachedFromVisualTree) or its window is minimized.
+/// </summary>
+public interface IPluginViewProvider
+{
+    /// <summary>Window title and button text ("Open &lt;Name&gt;").</summary>
+    string Name { get; }
+
+    /// <summary>Builds the view (UI thread), each time its window opens.</summary>
+    Control CreateView();
+
+    /// <summary>
+    /// API 1.5: the size the view's window opens at, in device-independent pixels (the client
+    /// area, without the title bar). Noctis sizes the window before it shows it and centres it on
+    /// the screen Noctis is on; the user can still resize it. null, or an axis that is not a
+    /// positive number, keeps Noctis's default (1000 × 680). Declare it as a public property on
+    /// the class that implements this interface; older Noctis versions ignore it.
+    /// </summary>
+    Avalonia.Size? PreferredWindowSize => null;
+
+    /// <summary>
+    /// API 1.5: the smallest size the user can shrink the window to, in device-independent pixels.
+    /// null (or an axis that is not a positive number) = Noctis's default of 480 × 360, lowered to
+    /// <see cref="PreferredWindowSize"/> when that is smaller.
+    /// </summary>
+    Avalonia.Size? MinWindowSize => null;
+
+    /// <summary>
+    /// API 1.5: opens the window at the size of the view's content instead of
+    /// <see cref="PreferredWindowSize"/> (on the axes it names), within the minimum size and the
+    /// screen. Once the user resizes the window it keeps the size they gave it.
+    /// </summary>
+    SizeToContent WindowSizeToContent => SizeToContent.Manual;
 }

@@ -13,8 +13,11 @@ internal sealed record SyncedTrackState(bool Favorite, int Rating, bool Disliked
 /// <summary>A phone-side favorite/rating/dislike change not yet pushed. Play counts never go this way (scrobbles do).</summary>
 internal sealed record PendingTrackState(bool Favorite, int Rating, bool Disliked, DateTime? FavoritedAt, DateTime UpdatedUtc);
 
-/// <summary>A finished play of a desktop song, sent as a scrobble on the next sync.</summary>
-internal sealed record PendingPlay(string Id, long Time);
+/// <summary>A play of a desktop song, sent as a scrobble on the next sync. <paramref name="Scrobble"/>:
+/// null for a play recorded without a verdict (counted only), else a <see cref="PlayScrobble"/>'s wire
+/// word; "pending" waits for the phone to tell whether it passed the scrobble rule
+/// (<see cref="PlayScrobbleWire"/>). A file from before the field reads as null.</summary>
+internal sealed record PendingPlay(string Id, long Time, string? Scrobble = null);
 
 /// <summary>Sync bookkeeping for one server + user: the ledger checkpoint and the last agreed state.</summary>
 internal sealed class NoctisSyncState
@@ -37,6 +40,9 @@ internal sealed class NoctisPendingState
     public string UserName { get; set; } = string.Empty;
     public Dictionary<string, PendingTrackState> Tracks { get; set; } = new();
     public List<PendingPlay> Plays { get; set; } = new();
+    /// <summary>The computer's playlists deleted on the phone (Guid "N" → when), sent as
+    /// tombstones on the next sync.</summary>
+    public Dictionary<string, DateTime> DeletedPlaylists { get; set; } = new();
 }
 
 /// <summary>The phone's own songs already sent to (or found on) the computer of one server + user,

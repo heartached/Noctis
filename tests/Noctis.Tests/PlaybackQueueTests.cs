@@ -68,19 +68,22 @@ public class PlaybackQueueTests
     }
 
     [Fact]
-    public void RepeatAll_restarts_the_cycle_from_where_the_user_started()
+    public void RepeatAll_started_mid_list_wraps_to_the_first_track()
     {
         var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(3);
-        q.ReplaceAll(t, 1);                     // current t1, upnext [t2]; cycle t1 t2 t0 (t0 lives only in the cycle)
+        q.ReplaceAll(t, 1);                     // current t1, upnext [t2]; cycle t0 t1 t2 (t0 lives only in the cycle)
         q.Advance(QueueAdvance.Natural);        // t2, queue now empty
 
         var cur = q.Advance(QueueAdvance.Natural);
 
-        Assert.Same(t[1], cur);                 // wrap restarts at the track the user started on
-        Assert.Equal(new[] { t[2], t[0] }, q.UpNext);
+        // The list's first track, as on a playlist: wrapping to the picked track replayed
+        // only the tail on the first pass (Discord 10-25).
+        Assert.Same(t[0], cur);
+        Assert.Equal(new[] { t[1], t[2] }, q.UpNext);
         Assert.Equal(new[] { t[2], t[1] }, q.History); // GitHub #124: kept for Back
+        Assert.Same(t[1], q.Advance(QueueAdvance.Natural));
         Assert.Same(t[2], q.Advance(QueueAdvance.Natural));
-        Assert.Same(t[0], q.Advance(QueueAdvance.Natural));
+        Assert.Same(t[0], q.Advance(QueueAdvance.Natural)); // and every pass after
     }
 
     [Fact]
@@ -192,6 +195,20 @@ public class PlaybackQueueTests
     }
 
     [Fact]
+    public void Songs_queued_while_shuffled_survive_shuffle_off()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(4); var next = new Track { Title = "next" }; var last = new Track { Title = "last" };
+        q.ReplaceAll(t, 0);                     // upnext t1..t3
+        q.SetShuffle(true, new Random(7));
+
+        q.AddNext(next);                        // Play Next while shuffled
+        q.Add(last);                            // Add to Queue while shuffled
+        q.SetShuffle(false);
+
+        Assert.Equal(new[] { next, t[1], t[2], t[3], last }, q.UpNext);
+    }
+
+    [Fact]
     public void History_is_capped()
     {
         var q = new PlaybackQueue(historyCap: 2); var t = Tracks(5);
@@ -205,7 +222,7 @@ public class PlaybackQueueTests
     public void Snapshot_and_Restore_round_trip_including_the_repeat_cycle()
     {
         var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(4);
-        q.ReplaceAll(t, 1);                     // cycle t1 t2 t3 t0; current t1
+        q.ReplaceAll(t, 1);                     // cycle t0 t1 t2 t3; current t1
         q.Advance(QueueAdvance.Natural);        // current t2, upnext [t3], history [t1]
         var byId = t.ToDictionary(x => x.Id);
 
@@ -216,8 +233,8 @@ public class PlaybackQueueTests
         Assert.Equal(q.History, r.History);
         Assert.Equal(RepeatMode.All, r.RepeatMode);
         Assert.Same(t[3], r.Advance(QueueAdvance.Natural));
-        Assert.Same(t[1], r.Advance(QueueAdvance.Natural)); // wrap: the cycle survived the round trip
-        Assert.Same(t[2], r.Advance(QueueAdvance.Natural));
+        Assert.Same(t[0], r.Advance(QueueAdvance.Natural)); // wrap: the cycle survived the round trip
+        Assert.Same(t[1], r.Advance(QueueAdvance.Natural));
     }
 
     [Fact]

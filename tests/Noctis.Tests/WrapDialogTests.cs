@@ -207,6 +207,53 @@ public class WrapDialogTests : IDisposable
         Assert.Equal(1, closed);
     }
 
+    /// <summary>Same bug as Share lyrics' line list (owner 10-24): the report's bar was shown
+    /// only while the report was hovered, so dragging its thumb sideways off the report faded
+    /// the bar out mid-drag. A held thumb stays shown and keeps scrolling.</summary>
+    [AvaloniaFact]
+    public void DraggingTheReportThumb_Sideways_KeepsTheBarShown()
+    {
+        EnsureAppStyles();
+        var (lib, events) = SampleData();
+        var vm = new WrapViewModel(new History(events), lib, new WrapArchiveService(ArchiveFile), _ => null);
+        var win = new WrapDialog(vm) { RequestedThemeVariant = ThemeVariant.Dark, Width = 1300, Height = 900 };
+        win.Show();
+        try
+        {
+            var host = win.GetVisualDescendants().OfType<PillDialogHost>().Single();
+            var scroller = win.FindControl<ScrollViewer>("ReportScroll")!;
+            Assert.True(PumpUntil(() => CardSettledOpen(host) && vm.HasData && scroller.Extent.Height > scroller.Viewport.Height + 50, 5000),
+                "the report does not scroll");
+            var bar = scroller.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>()
+                .Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+            var thumb = bar.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().Single();
+            Assert.True(PumpUntil(() => thumb.Bounds.Height > 0));
+            double Shown() => bar.Opacity * thumb.Opacity;
+            Assert.True(PumpUntil(() => Shown() < 0.001), $"the bar shows at rest ({Shown():0.00})");
+
+            var grab = thumb.TranslatePoint(new Point(thumb.Bounds.Width / 2, thumb.Bounds.Height / 2), win)!.Value;
+            win.MouseMove(grab);
+            Assert.True(PumpUntil(() => Shown() > 0.999), $"the bar never showed on hover ({Shown():0.00})");
+            win.MouseDown(grab, MouseButton.Left);
+            var off = new Point(grab.X + 120, grab.Y + 80);
+            Assert.False(new Rect(scroller.TranslatePoint(default, win)!.Value, scroller.Bounds.Size).Contains(off),
+                "the drift point is still inside the report");
+            win.MouseMove(off, RawInputModifiers.LeftMouseButton);
+            PumpUntil(() => false, 300);
+            Assert.True(Shown() > 0.999, $"the bar faded mid-drag ({Shown():0.00})");
+            Assert.True(scroller.Offset.Y > 0, "the drag stopped scrolling once the pointer left the bar");
+
+            win.MouseUp(off, MouseButton.Left);
+            win.MouseMove(new Point(off.X + 1, off.Y));
+            Assert.True(PumpUntil(() => Shown() < 0.001), $"the bar stayed after release ({Shown():0.00})");
+        }
+        finally
+        {
+            win.Close();
+            vm.Dispose();
+        }
+    }
+
     /// <summary>Owner 10-09: switching the share card between 1:1 and 9:16 left the old card
     /// on screen. Clicking a segment must re-render the preview at that shape.</summary>
     [AvaloniaFact]

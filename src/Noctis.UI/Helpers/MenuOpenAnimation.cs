@@ -113,6 +113,19 @@ public static class MenuOpenAnimation
     public static void SetPopAnchor(Control control, PixelPoint? value) => control.SetValue(PopAnchorProperty, value);
     public static PixelPoint? GetPopAnchor(Control control) => control.GetValue(PopAnchorProperty);
 
+    /// <summary>
+    /// Set on a <see cref="MenuFlyoutPresenter"/> (plugin windows): when it opens, the
+    /// <see cref="MenuFlyout"/> it belongs to gets <see cref="EnableFlyoutCloseProperty"/>, so a
+    /// plugin's menu closes with the pop like the app's own (a plugin can't set it: plugins only
+    /// see the SDK). The flyout is found on the control it opened from (Button.Flyout,
+    /// ContextFlyout or FlyoutBase.AttachedFlyout).
+    /// </summary>
+    public static readonly AttachedProperty<bool> AutoFlyoutCloseProperty =
+        AvaloniaProperty.RegisterAttached<MenuFlyoutPresenter, bool>("AutoFlyoutClose", typeof(MenuOpenAnimation));
+
+    public static void SetAutoFlyoutClose(MenuFlyoutPresenter presenter, bool value) => presenter.SetValue(AutoFlyoutCloseProperty, value);
+    public static bool GetAutoFlyoutClose(MenuFlyoutPresenter presenter) => presenter.GetValue(AutoFlyoutCloseProperty);
+
     private const double PopScale = 0.9;
     private const double PopDurationMs = 280;
     private const double PopFadeMs = 160;
@@ -198,6 +211,16 @@ public static class MenuOpenAnimation
             menu.Closed += OnPopMenuClosed;
         });
 
+        AutoFlyoutCloseProperty.Changed.AddClassHandler<MenuFlyoutPresenter>((presenter, args) =>
+        {
+            presenter.AttachedToVisualTree -= OnAutoFlyoutPresenterAttached;
+            if (!args.GetNewValue<bool>())
+                return;
+            presenter.AttachedToVisualTree += OnAutoFlyoutPresenterAttached;
+            if (TopLevel.GetTopLevel(presenter) is not null)
+                EnableOwnFlyoutClose(presenter);
+        });
+
         EnableFlyoutCloseProperty.Changed.AddClassHandler<MenuFlyout>((flyout, args) =>
         {
             flyout.Closing -= OnMenuFlyoutClosing;
@@ -271,7 +294,8 @@ public static class MenuOpenAnimation
                 return; // reopened or closing meanwhile; that run owns the card
 
             card.RenderTransformOrigin = PopOrigin(card);
-            var rows = card is ItemsControl items
+            // A menu is its own list; a drop-down's card (Border#PopupBorder) shows its ComboBox's rows.
+            var rows = (card as ItemsControl ?? card.TemplatedParent as ItemsControl) is { } items
                 ? items.GetRealizedContainers().Where(c => c.IsVisible).ToList()
                 : new List<Control>();
             foreach (var row in rows)
@@ -426,6 +450,55 @@ public static class MenuOpenAnimation
         menu.SetValue(LastRunProperty, 0L);
     }
 
+    // ── The pop for a card that is not a menu: every drop-down list (ComboBoxDropDownAnimator) ──
+
+    /// <summary>How long <see cref="PopOut"/> takes: the caller holds the real close this long.</summary>
+    public static TimeSpan PopCloseDuration => TimeSpan.FromMilliseconds(PopCloseMs);
+
+    /// <summary>
+    /// The menus' pop open on any card (owner 10-29: a drop-down list opens like a menu): it grows
+    /// out of the click that opened it while it fades in, then its rows settle in one after
+    /// another (a ComboBox's list card finds its rows on the ComboBox it belongs to). Drives
+    /// Opacity, or <see cref="FadeProperty"/> on a <see cref="UseFadeProperty"/> card.
+    /// </summary>
+    public static void PopIn(Control card)
+    {
+        ResetCloseState(card);
+        card.SetValue(LastRunProperty, Environment.TickCount64);
+        RunPop(card);
+    }
+
+    /// <summary>The menus' pop close on any card: inert at once, then shrinks back toward where it
+    /// grew from while it fades out, over <see cref="PopCloseDuration"/>. The caller closes the
+    /// popup when it lands (the card is left at its end state; <see cref="PopIn"/> resets it).</summary>
+    public static void PopOut(Control card)
+    {
+        card.SetValue(LastRunProperty, 0L); // an open still settling stops where it is
+        StartPopClose(card);
+    }
+
+    // ── AutoFlyoutClose: a plugin's MenuFlyout closes with the pop ──
+
+    private static void OnAutoFlyoutPresenterAttached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is MenuFlyoutPresenter presenter)
+            EnableOwnFlyoutClose(presenter);
+    }
+
+    private static void EnableOwnFlyoutClose(MenuFlyoutPresenter presenter)
+    {
+        if (presenter.Parent is not Popup popup)
+            return;
+        var target = popup.PlacementTarget ?? popup.Parent as Control;
+        if (target is null)
+            return;
+        var flyout = (target as Button)?.Flyout as MenuFlyout
+                     ?? target.ContextFlyout as MenuFlyout
+                     ?? FlyoutBase.GetAttachedFlyout(target) as MenuFlyout;
+        if (flyout is not null && !GetEnableFlyoutClose(flyout))
+            SetEnableFlyoutClose(flyout, true);
+    }
+
     /// <summary>The <see cref="PopAnchorProperty"/> point inside the card, clamped to its edges, so
     /// the card grows out of the corner the pointer is at even when the menu flipped up or left.
     /// Mapped through the popup's top level: the card fills it, and unlike the card it carries no
@@ -440,6 +513,10 @@ public static class MenuOpenAnimation
             return RelativePoint.TopLeft;
 
         var p = top.PointToClient(anchor.Value);
+        // A card in the window's overlay layer (plugin windows) doesn't start at the top level's
+        // corner: map through its parent, which carries no transform, to the card's own corner.
+        if (card.GetVisualParent() is { } parent && !ReferenceEquals(parent, top) && top.TranslatePoint(p, parent) is { } inParent)
+            p = new Point(inParent.X - card.Bounds.X, inParent.Y - card.Bounds.Y);
         return new RelativePoint(
             Math.Clamp(p.X, 0, size.Width), Math.Clamp(p.Y, 0, size.Height), RelativeUnit.Absolute);
     }

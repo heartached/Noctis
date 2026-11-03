@@ -118,7 +118,8 @@ public sealed class PlaylistImportService : IPlaylistImportService
             SuggestedName = parsed.SuggestedName,
             MatchedTrackIds = matchedIds,
             MatchedLabels = matchedLabels,
-            MissingLabels = missing
+            MissingLabels = missing,
+            Matches = matches,
         };
     }
 
@@ -135,6 +136,9 @@ public sealed class PlaylistImportService : IPlaylistImportService
         return playlist.Id;
     }
 
-    private static string Label(PlaylistImportEntry e)
+    public IReadOnlyList<Track> SearchLibrary(string query, int max)
+        => FuzzyTrackMatcher.Search(query, _library.Tracks.ToList(), max);
+
+    internal static string Label(PlaylistImportEntry e)
         => string.IsNullOrWhiteSpace(e.Artist) ? e.Title : $"{e.Artist} – {e.Title}";
 }

@@ -145,7 +145,7 @@ internal static class ExtendedTagIO
     /// <summary>The VORBIS_COMMENT fields of a plain FLAC, every non-blank value per key (keys
     /// case-insensitive), without reading any other block. Empty when the file has no comment
     /// block; false for anything <see cref="TryReadFlacLabel"/> leaves to TagLib.</summary>
-    private static bool TryReadFlacComments(Stream stream, out Dictionary<string, List<string>> fields)
+    internal static bool TryReadFlacComments(Stream stream, out Dictionary<string, List<string>> fields)
     {
         fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         try

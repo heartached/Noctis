@@ -28,6 +28,13 @@ public partial class DuplicateFinderViewModel : ViewModelBase
 
     public ObservableCollection<DupGroup> Groups { get; } = new();
 
+    /// <summary>What the list shows: each group's header followed by its copy rows, flat.
+    /// One virtualized list of equal-height rows instead of one item per group: groups are
+    /// 2-4 copies tall, so the panel's size estimate (the average of the few realized groups)
+    /// swung the extent while dragging the scrollbar and the thumb jumped. Set once per scan
+    /// (one Reset, not an Add per row).</summary>
+    [ObservableProperty] private IReadOnlyList<object> _entries = Array.Empty<object>();
+
     public event EventHandler? Closed;
 
     public DuplicateFinderViewModel(IDuplicateFinderService service)
@@ -51,11 +58,19 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         IsBusy = true;
         StatusMessage = ListMessage = L("DuplicateFinder.Scanning");
         Groups.Clear();
+        Entries = Array.Empty<object>();
         HasGroups = false;
 
         var found = await _service.FindAsync();
         foreach (var g in found)
             Groups.Add(new DupGroup(g, RecomputeSelection));
+        var entries = new List<object>(Groups.Count * 4);
+        foreach (var g in Groups)
+        {
+            entries.Add(g);
+            entries.AddRange(g.Rows);
+        }
+        Entries = entries;
 
         RecomputeSelection();
         HasGroups = Groups.Count > 0;

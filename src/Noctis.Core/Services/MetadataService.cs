@@ -145,6 +145,52 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>
+    /// The ReplayGain tags alone, for the ReplayGain column's backfill (GitHub #151): the FLAC
+    /// comment block alone, otherwise TagLib with no audio properties and lazy pictures, like
+    /// <see cref="ReadLabel"/>. Null when the file can't be read (try again later);
+    /// <see cref="ReplayGainValues.None"/> when it has no ReplayGain tags.
+    /// </summary>
+    public ReplayGainValues? ReadReplayGain(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return null;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack reads no ReplayGain either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return ReplayGainValues.None;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ReplayGainTags.TryReadFlac(stream, out var flac))
+                    return flac;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return ReplayGainTags.Read(file);
+        }
+        catch (TagLib.CorruptFileException)
+        {
+            return ReplayGainValues.None; // never readable: don't retry every launch
+        }
+        catch (TagLib.UnsupportedFormatException)
+        {
+            return ReplayGainValues.None;
+        }
+        catch (Exception)
+        {
+            return null; // locked, vanished, I/O error: the next pass tries again
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;
@@ -304,6 +350,8 @@ public class MetadataService : IMetadataService
         var duration = props.Duration;
         if (localPath != null && NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, IsLosslessFormat(codec ?? string.Empty, ext)))
             TryPopulateAudioMetricsWithFfprobe(localPath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
+        if (localPath != null)
+            ApplyCountedMp3Length(localPath, ext, ref bitrate, ref duration);
 
         // Preserve all credited performers so featured artists show in track rows.
         var artist = FirstNonEmpty(JoinTagValues(tag.Performers), tag.FirstPerformer, tag.FirstAlbumArtist, "Unknown Artist");
@@ -371,6 +419,8 @@ public class MetadataService : IMetadataService
         };
 
         PopulateReleaseType(track, file);
+        // From the tags already parsed: the Songs list's ReplayGain column (GitHub #151).
+        track.ApplyReplayGain(ReplayGainTags.Read(file));
 
         // Timed lyrics kept apart from the text field (SYLT, SYNCEDLYRICS) are the file's own
         // and win over a stored online result (#135). Left unassigned when the file has none,
@@ -434,6 +484,8 @@ public class MetadataService : IMetadataService
             };
             // Same folder/filename fallback as the TagLib path above.
             Helpers.FolderMetadata.TryApplyToTrack(track, MusicRootFolders);
+            // DSDIFF carries no ReplayGain we read: nothing for the backfill to look up.
+            track.ReplayGainChecked = true;
             return track;
         }
         catch
@@ -659,7 +711,10 @@ public class MetadataService : IMetadataService
             // file's lyrics with their timestamps stripped when those are LRC (Edit Info shows
             // them so), and rewriting it put plain text over timed lyrics in the tag on any
             // unrelated save, such as a title fix. Alias fields (UNSYNCEDLYRICS, …) count too.
-            if (!PlainLyricsMatch(EmbeddedLyrics.ReadText(file), track.Lyrics, track.SyncedLyrics))
+            // The main field alone counts as unchanged too: a row scanned before every LYRICS
+            // comment was read (#149) holds the first one, and writing it back dropped the rest.
+            if (!PlainLyricsMatch(EmbeddedLyrics.ReadText(file), track.Lyrics, track.SyncedLyrics)
+                && !PlainLyricsMatch(MainLyricsField(file), track.Lyrics, track.SyncedLyrics))
                 WritePlainLyrics(file, track.Lyrics);
             tag.Comment = string.IsNullOrWhiteSpace(track.Comment) ? null : track.Comment;
             tag.Grouping = string.IsNullOrWhiteSpace(track.Grouping) ? null : track.Grouping;
@@ -698,20 +753,17 @@ public class MetadataService : IMetadataService
     /// would otherwise keep the old text readable. An empty row clears only the main field, as
     /// before: a row scanned before aliases were read is empty while its file is not, and an
     /// unrelated save must not erase lyrics the app never showed (removals go through WriteLyrics).</summary>
+    private static string MainLyricsField(TagLib.File file)
+    {
+        try { return file.Tag.Lyrics ?? string.Empty; } catch { return string.Empty; }
+    }
+
     private static void WritePlainLyrics(TagLib.File file, string? plain)
     {
         var value = string.IsNullOrWhiteSpace(plain) ? null : plain;
         file.Tag.Lyrics = value;
         if (value == null) return;
-        if (file.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
-            foreach (var name in new[] { "UNSYNCEDLYRICS", "UNSYNCED LYRICS" })
-                xiph.RemoveField(name);
-        if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
-            foreach (var frame in id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>().ToList())
-                if (frame.Description is { } d && (d.Equals("LYRICS", StringComparison.OrdinalIgnoreCase)
-                    || d.Equals("UNSYNCEDLYRICS", StringComparison.OrdinalIgnoreCase)
-                    || d.Equals("UNSYNCED LYRICS", StringComparison.OrdinalIgnoreCase)))
-                    id3.RemoveFrame(frame);
+        EmbeddedLyrics.RemoveAliases(file, synced: false);
     }
 
     public bool WriteLyrics(string filePath, string? plain, string? synced, Func<EmbeddedLyricsText, bool>? onlyIf = null)
@@ -1002,6 +1054,7 @@ public class MetadataService : IMetadataService
             var duration = props.Duration;
             if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, isLossless))
                 TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
+            ApplyCountedMp3Length(filePath, ext, ref bitrate, ref duration);
 
             return new AudioFileInfo
             {
@@ -1260,6 +1313,17 @@ public class MetadataService : IMetadataService
 
         var estimated = (int)Math.Round((fileSize * 8d) / duration.TotalSeconds / 1000d);
         return estimated > 0 ? estimated : 0;
+    }
+
+    // A VBR MP3 with no Xing/VBRI header: TagLib's length is a first-frame bitrate guess
+    // (a 65-minute file read as 14:37), so count the frames instead (see Mp3FrameScan).
+    private static void ApplyCountedMp3Length(string path, string ext, ref int bitrate, ref TimeSpan duration)
+    {
+        if (ext == ".mp3" && Mp3FrameScan.TryMeasureHeaderlessVbr(path, out var counted, out var countedKbps))
+        {
+            duration = counted;
+            bitrate = countedKbps;
+        }
     }
 
     private static bool NeedsFfprobeFallback(int sampleRate, int bitsPerSample, int bitrate, TimeSpan duration, bool isLossless)

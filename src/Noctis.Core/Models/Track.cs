@@ -229,6 +229,13 @@ public partial class Track : ObservableObject
     /// tiles show Pause on it and Play otherwise; PlayerViewModel keeps it in sync.</summary>
     [ObservableProperty] private bool _isCurrentlyPlaying;
 
+    /// <summary>Transient flag (GitHub #154): its file was not on disk when the player last
+    /// looked (moved, deleted, drive unplugged). The queue shows the row dimmed and marked;
+    /// cleared again once the file is found. Not persisted.</summary>
+    [ObservableProperty]
+    [property: System.Text.Json.Serialization.JsonIgnore]
+    private bool _isFileMissing;
+
     /// <summary>Transient 1-based position within the list view currently displaying this track
     /// (set by the Folders pane). Drives the leading row-number column. Not persisted.</summary>
     [ObservableProperty]
@@ -255,6 +262,45 @@ public partial class Track : ObservableObject
     /// for the same reason as <see cref="Bpm"/>.</summary>
     [ObservableProperty]
     private string _musicalKey = string.Empty;
+
+    // ── ReplayGain (GitHub #151: Songs list column) ──
+    // A copy of the file's REPLAYGAIN_* tags for display and sorting. Playback still reads
+    // the file itself (VlcAudioPlayer.ReadReplayGainTags). Null = the file has no such tag.
+    // Observable so the background backfill and the ReplayGain scan update the column live.
+
+    /// <summary>REPLAYGAIN_TRACK_GAIN in dB. Null = none (or not read yet, see <see cref="ReplayGainChecked"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReplayGainFormatted))]
+    private double? _replayGainTrackDb;
+
+    /// <summary>REPLAYGAIN_TRACK_PEAK, linear (1.0 = full scale). Null = none.</summary>
+    [ObservableProperty]
+    private double? _replayGainTrackPeak;
+
+    /// <summary>REPLAYGAIN_ALBUM_GAIN in dB. Null = none.</summary>
+    [ObservableProperty]
+    private double? _replayGainAlbumDb;
+
+    /// <summary>True once the file's ReplayGain tags were read (by a scan or the backfill), with
+    /// or without a value. False on tracks indexed before the field existed: the background
+    /// backfill reads those once (LibraryService.RunTagBackfillsAsync).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ReplayGainChecked { get; set; }
+
+    /// <summary>Songs list cell: "-7.2 dB", blank when the file has no track gain.</summary>
+    [JsonIgnore]
+    public string ReplayGainFormatted => ReplayGainTrackDb is { } db ? $"{db:+0.0;-0.0;0.0} dB" : string.Empty;
+
+    /// <summary>Stores what a tag read found and marks the track read. Non-finite values
+    /// (a "nan dB" tag) count as none: JSON can't hold them and no player applies them.</summary>
+    public void ApplyReplayGain(Services.ReplayGainValues values)
+    {
+        static double? Finite(double? v) => v is { } d && double.IsFinite(d) ? d : null;
+        ReplayGainTrackDb = Finite(values.TrackGainDb);
+        ReplayGainTrackPeak = Finite(values.TrackPeak);
+        ReplayGainAlbumDb = Finite(values.AlbumGainDb);
+        ReplayGainChecked = true;
+    }
 
     // ── Lyrics (lazy, store-backed) ──
     //
@@ -730,6 +776,10 @@ public partial class Track : ObservableObject
     /// <summary>Formatted sample rate string.</summary>
     [JsonIgnore]
     public string SampleRateFormatted => SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A";
+
+    /// <summary>Date added in the user's short date format (Songs list column, GitHub #151).</summary>
+    [JsonIgnore]
+    public string DateAddedFormatted => DateAdded == default ? string.Empty : DateAdded.ToLocalTime().ToString("d");
 
     /// <summary>Formatted bits per sample string.</summary>
     [JsonIgnore]

@@ -72,7 +72,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
 
-    [ObservableProperty] private int _songCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
+    private int _songCount;
     [ObservableProperty] private int _albumCount;
     [ObservableProperty] private int _artistCount;
     [ObservableProperty] private int _favoriteCount;
@@ -83,9 +85,17 @@ public sealed partial class LibraryViewModel : ObservableObject
     private bool _isScanning;
     [ObservableProperty] private int _scanProgress;
 
+    /// <summary>When this run's last scan finished (local time); null until one has. Settings → Rescan Library says so.</summary>
+    [ObservableProperty] private DateTime? _lastScanLocal;
+
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private bool _hasFolders;
+
+    /// <summary>A folder, or songs without one (a computer's, signed in with no folder on the
+    /// phone): the Library rows, Edit and the sections show. Gated on a folder alone, a phone
+    /// streaming its computer's library saw only "Add your music".</summary>
+    public bool HasMusic => HasFolders || SongCount > 0;
 
     /// <summary>The last scan aborted on an unreadable root (a revoked SAF grant, spec §7):
     /// the page offers to re-pick the folder, which is how a dead grant is recovered.</summary>
@@ -120,12 +130,12 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>First launch: no folder yet, so the only thing to show is the way in. Held
     /// back until the settings have loaded, or a user with folders sees it flash on launch.</summary>
-    public bool ShowConnectCard => IsLoaded && !HasFolders;
+    public bool ShowConnectCard => IsLoaded && !HasMusic;
 
     /// <summary>The sections under the rows (Pinned and its hint): the rows show from the settings
     /// alone (<see cref="ApplySettings"/>), the sections wait for the library, or the pin hint
     /// flashed over a Pinned rail still loading.</summary>
-    public bool ShowSections => IsLoaded && HasFolders;
+    public bool ShowSections => IsLoaded && HasMusic;
 
     /// <summary>Any card above the Library sections (connect, reconnect, scan progress), so an
     /// empty card area takes no room.</summary>
@@ -154,10 +164,20 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public IEnumerable<Track> Favourites() => Songs.Where(t => t.IsFavorite);
 
+    /// <summary>
+    /// Recently Added's › list: the rail's rule (<see cref="MobileLibrary.RecentlyAddedAlbums"/>,
+    /// newest album first, no time limit) with each album's songs in track order. It took only
+    /// the last 30 days, newest file first: a library with nothing new showed a full rail over an
+    /// empty page, and a fresh album listed its songs backwards (the last file scanned is newest).
+    /// </summary>
     public IEnumerable<Track> RecentlyAdded()
     {
-        var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
-        return _library.Tracks.Where(t => t.DateAdded >= cutoff).OrderByDescending(t => t.DateAdded);
+        var tracks = _library.Tracks;
+        var albumNewest = tracks.Where(t => t.AlbumId != Guid.Empty).GroupBy(t => t.AlbumId)
+            .ToDictionary(g => g.Key, g => g.Max(t => t.DateAdded));
+        DateTime Added(Track t) => t.AlbumId != Guid.Empty ? albumNewest[t.AlbumId] : t.DateAdded;
+        return tracks.OrderByDescending(Added).ThenBy(t => t.AlbumId)
+            .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
     }
 
     public bool IsAlbumPinned(Guid albumId) => _pinnedAlbumIds.Contains(albumId);
@@ -166,8 +186,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public bool IsTrackPinned(Guid trackId) => _pinnedTrackIds.Contains(trackId);
 
-    /// <summary>The On Repeat rail's songs, in rail order (its › list).</summary>
-    public IEnumerable<Track> OnRepeatTracks() => OnRepeatRail.Select(r => r.Payload).OfType<Track>();
+    /// <summary>The On Repeat rail's songs, in rail order (its › list), as the library holds them
+    /// now: the rail keeps an unchanged tile across refreshes, and with it a Track from before a
+    /// rescan that re-read the file.</summary>
+    public IEnumerable<Track> OnRepeatTracks() =>
+        OnRepeatRail.Select(r => r.Payload).OfType<Track>().Select(t => _library.GetTrackById(t.Id) ?? t);
 
     /// <summary>A playlist's cover: the first of its tracks that has one.</summary>
     public string? PlaylistArtwork(Playlist playlist) =>
@@ -176,43 +199,54 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Pin or unpin an album on the Pinned rail (AppSettings.PinnedAlbumIds).</summary>
     public async Task SetAlbumPinnedAsync(Guid albumId, bool pinned)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PinnedAlbumIds.RemoveAll(id => id == albumId);
-        if (pinned) settings.PinnedAlbumIds.Add(albumId);
-        await SaveSettingsAsync(settings, "Pin");
-        _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
+        void Pin(List<Guid> ids)
+        {
+            ids.RemoveAll(id => id == albumId);
+            if (pinned) ids.Add(albumId);
+        }
+        List<Guid>? saved = null;
+        await UpdateSettingsAsync(s => { Pin(s.PinnedAlbumIds); saved = s.PinnedAlbumIds.ToList(); }, "Pin");
+        if (saved == null) Pin(saved = _pinnedAlbumIds.ToList());   // a failed save still applies this session
+        _pinnedAlbumIds = saved;
         AfterUserEdit();
     }
 
     /// <summary>Pin or unpin an artist on the Pinned rail (AppSettings.PinnedArtistNames).</summary>
     public async Task SetArtistPinnedAsync(string name, bool pinned)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PinnedArtistNames.RemoveAll(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
-        if (pinned) settings.PinnedArtistNames.Add(name);
-        await SaveSettingsAsync(settings, "Pin");
-        _pinnedArtistNames = settings.PinnedArtistNames.ToList();
+        void Pin(List<string> names)
+        {
+            names.RemoveAll(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+            if (pinned) names.Add(name);
+        }
+        List<string>? saved = null;
+        await UpdateSettingsAsync(s => { Pin(s.PinnedArtistNames); saved = s.PinnedArtistNames.ToList(); }, "Pin");
+        if (saved == null) Pin(saved = _pinnedArtistNames.ToList());
+        _pinnedArtistNames = saved;
         AfterUserEdit();
     }
 
     /// <summary>Pin or unpin a song on the Pinned rail (AppSettings.PinnedTrackIds).</summary>
     public async Task SetTrackPinnedAsync(Guid trackId, bool pinned)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PinnedTrackIds.RemoveAll(id => id == trackId);
-        if (pinned) settings.PinnedTrackIds.Add(trackId);
-        await SaveSettingsAsync(settings, "Pin");
-        _pinnedTrackIds = settings.PinnedTrackIds.ToList();
+        void Pin(List<Guid> ids)
+        {
+            ids.RemoveAll(id => id == trackId);
+            if (pinned) ids.Add(trackId);
+        }
+        List<Guid>? saved = null;
+        await UpdateSettingsAsync(s => { Pin(s.PinnedTrackIds); saved = s.PinnedTrackIds.ToList(); }, "Pin");
+        if (saved == null) Pin(saved = _pinnedTrackIds.ToList());
+        _pinnedTrackIds = saved;
         AfterUserEdit();
     }
 
     /// <summary>Saves the Library tab's row order and on/off state (Edit → Done).</summary>
     public async Task SaveLibraryRowKeysAsync(IReadOnlyList<string> keys)
     {
-        LibraryRowKeys = keys.ToList();
-        var settings = await _persistence.LoadSettingsAsync();
-        settings.PhoneLibraryRows = keys.ToList();
-        await SaveSettingsAsync(settings, "Library rows");
+        var rows = keys.ToList();
+        LibraryRowKeys = rows;
+        await UpdateSettingsAsync(s => s.PhoneLibraryRows = rows.ToList(), "Library rows");
     }
 
     public Task SetPlaylistPinnedAsync(Playlist playlist, bool pinned)
@@ -235,6 +269,39 @@ public sealed partial class LibraryViewModel : ObservableObject
         var now = DateTime.UtcNow;
         Append(playlist, tracks, now);
         return EditPlaylistAsync(playlist, p => Append(p, tracks, now));
+    }
+
+    /// <summary>Desktop parity (SidebarViewModel.RenamePlaylist): the new name and a ModifiedAt
+    /// bump, which is what carries the rename to the computer on the next sync.</summary>
+    public Task RenamePlaylistAsync(Playlist playlist, string name)
+    {
+        var now = DateTime.UtcNow;
+        return EditPlaylistAsync(playlist, p =>
+        {
+            p.Name = name;
+            p.ModifiedAt = now;
+        });
+    }
+
+    /// <summary>Desktop parity (SidebarViewModel.DeletePlaylistAsync): the playlist leaves
+    /// playlists.json, and the Pinned rail with it.</summary>
+    public Task DeletePlaylistAsync(Playlist playlist) =>
+        EditPlaylistsAsync(list => list.RemoveAll(p => p.Id == playlist.Id));
+
+    /// <summary>Desktop parity (PlaylistViewModel.RemoveTrack): the songs leave the playlist with
+    /// their "added" stamps (TrackAddedAt), and ModifiedAt moves so the sync carries it. Not for
+    /// a smart playlist, whose songs come from its rules.</summary>
+    public Task RemoveFromPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
+    {
+        if (playlist.IsSmartPlaylist || tracks.Count == 0) return Task.CompletedTask;
+        var now = DateTime.UtcNow;
+        var ids = tracks.Select(t => t.Id).ToHashSet();
+        return EditPlaylistAsync(playlist, p =>
+        {
+            if (p.TrackIds.RemoveAll(ids.Contains) == 0) return;
+            foreach (var id in ids) p.TrackAddedAt.Remove(id);
+            p.ModifiedAt = now;
+        });
     }
 
     /// <summary>Desktop parity (SidebarViewModel.AddTracksToPlaylist): each added song is stamped
@@ -294,21 +361,28 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     /// <summary>
-    /// A settings write from a user action. Logged, never thrown: these run from async command
-    /// and sheet handlers, and an exception escaping one reaches the UI thread and ends the app.
-    /// The edit still applies for this session, as a failed playlist save does.
+    /// A settings write from a user action: read, change and save with no other save of the file
+    /// in between (a plain load-then-save let another writer's save land in the gap, and the stale
+    /// copy written after it undid that save). <paramref name="change"/> runs off the UI thread
+    /// and only edits the settings. Logged, never thrown: these run from async command and sheet
+    /// handlers, and an exception escaping one reaches the UI thread and ends the app. The edit
+    /// still applies for this session, as a failed playlist save does.
     /// </summary>
-    private async Task SaveSettingsAsync(AppSettings settings, string what)
+    private async Task UpdateSettingsAsync(Action<AppSettings> change, string what)
     {
         try
         {
-            await _persistence.SaveSettingsAsync(settings);
+            await _persistence.UpdateSettingsAsync(change);
         }
         catch (Exception ex)
         {
             DebugLog.Write("Library", $"{what} settings save failed: {ex.Message}");
         }
     }
+
+    /// <summary>The desktop songs' offline copies changed: open lists (Downloaded, the Downloaded
+    /// filter) re-read.</summary>
+    public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
 
     /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
     private void AfterUserEdit()
@@ -326,9 +400,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void ApplySettings(AppSettings settings)
     {
         SetFolders(settings.MusicFolders);
-        _applyingSettings = true;
-        ScanOnStartup = settings.ScanOnStartup;
-        _applyingSettings = false;
+        // Not over the user's own flip: the start re-reads the settings (InitializeAsync) after the
+        // host applied them, and a flip in between was put back (its save still in flight).
+        if (!_scanOnStartupSetByUser)
+        {
+            _applyingSettings = true;
+            ScanOnStartup = settings.ScanOnStartup;
+            _applyingSettings = false;
+        }
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
         _pinnedArtistNames = settings.PinnedArtistNames.ToList();
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
@@ -348,8 +427,16 @@ public sealed partial class LibraryViewModel : ObservableObject
             // Even after a failed load: otherwise an empty library would show no connect card
             // and so no way to add music.
             IsLoaded = true;
+            if (_scanWhenLoaded)
+            {
+                _scanWhenLoaded = false;
+                _ = ScanAsync();
+            }
         }
     }
+
+    /// <summary>A scan asked for before the library loaded (<see cref="ScanAsync"/>), run once it has.</summary>
+    private bool _scanWhenLoaded;
 
     [RelayCommand] private void ToggleShelfLayout() => IsShelfGrid = !IsShelfGrid;
 
@@ -364,30 +451,36 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// rescans, which is how a folder whose access was lost comes back); a folder inside one
     /// already listed, or around one, is refused with a note, as the scan would list its songs
     /// twice (a SAF song's path carries the folder it was found through).
+    /// Concurrent: it awaits the scan it starts (minutes over SAF), and a command that may not
+    /// overlap is greyed out while it runs; a folder added mid-scan gets the second pass.
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task AddFolderAsync()
     {
         var picked = await _picker.PickFolderAsync();
         if (string.IsNullOrWhiteSpace(picked)) return;
 
-        var settings = await _persistence.LoadSettingsAsync();
-        if (!settings.MusicFolders.Any(f => FolderKey(f) == FolderKey(picked)))
+        string? refusal = null;
+        List<string>? folders = null;
+        await UpdateSettingsAsync(settings =>
         {
-            if (settings.MusicFolders.FirstOrDefault(f => IsInside(picked, f)) is { } covering)
+            if (!settings.MusicFolders.Any(f => FolderKey(f) == FolderKey(picked)))
             {
-                RefusePick(picked, $"Already covered by “{FolderName(covering)}”.");
-                return;
+                if (settings.MusicFolders.FirstOrDefault(f => IsInside(picked, f)) is { } covering)
+                    refusal = $"Already covered by “{FolderName(covering)}”.";
+                else if (settings.MusicFolders.FirstOrDefault(f => IsInside(f, picked)) is { } inner)
+                    refusal = $"“{FolderName(inner)}” is inside that folder. Remove it first.";
+                else
+                    settings.MusicFolders.Add(picked);
             }
-            if (settings.MusicFolders.FirstOrDefault(f => IsInside(f, picked)) is { } inner)
-            {
-                RefusePick(picked, $"“{FolderName(inner)}” is inside that folder. Remove it first.");
-                return;
-            }
-            settings.MusicFolders.Add(picked);
-            await SaveSettingsAsync(settings, "Folder");
+            folders = settings.MusicFolders.ToList();
+        }, "Folder");
+        if (refusal != null)
+        {
+            RefusePick(picked, refusal);
+            return;
         }
-        SetFolders(settings.MusicFolders);
+        SetFolders(folders ?? Folders.Append(picked).Distinct().ToList());
         await ScanAsync();
     }
 
@@ -398,10 +491,15 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// </summary>
     public async Task RemoveFolderAsync(string folder)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-        if (settings.MusicFolders.RemoveAll(f => f == folder) == 0) return;
-        await SaveSettingsAsync(settings, "Folder");
-        SetFolders(settings.MusicFolders);
+        var removed = 0;
+        List<string>? folders = null;
+        await UpdateSettingsAsync(settings =>
+        {
+            removed = settings.MusicFolders.RemoveAll(f => f == folder);
+            folders = settings.MusicFolders.ToList();
+        }, "Folder");
+        if (folders != null && removed == 0) return;
+        SetFolders(folders ?? Folders.Where(f => f != folder).ToList());
         _picker.ReleaseAccess(folder);
         await ScanAsync(evenWithoutFolders: true);
     }
@@ -463,25 +561,17 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _scanOnStartup = true;
 
     private bool _applyingSettings;
+    private bool _scanOnStartupSetByUser;
 
     partial void OnScanOnStartupChanged(bool value)
     {
-        if (!_applyingSettings) _ = SaveScanOnStartupAsync(value);
+        if (_applyingSettings) return;
+        _scanOnStartupSetByUser = true;
+        _ = SaveScanOnStartupAsync(value);
     }
 
-    private async Task SaveScanOnStartupAsync(bool value)
-    {
-        try
-        {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.ScanOnStartup = value;
-            await SaveSettingsAsync(settings, "Scan on startup");
-        }
-        catch (Exception ex)
-        {
-            DebugLog.Write("Library", $"Scan on startup save failed: {ex.Message}");
-        }
-    }
+    private Task SaveScanOnStartupAsync(bool value) =>
+        UpdateSettingsAsync(s => s.ScanOnStartup = value, "Scan on startup");
 
     /// <summary>The host calls this once the library has loaded at launch.</summary>
     public Task ScanAtStartupAsync() => ScanOnStartup && HasFolders ? ScanAsync() : Task.CompletedTask;
@@ -499,6 +589,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     private async Task ScanAsync(bool evenWithoutFolders = false)
     {
         _scanWithoutFolders |= evenWithoutFolders;
+        // At a cold start the folders (Rescan, Add Folder) show before the library has loaded.
+        // A scan then started from an empty library while the load filled it: every song was
+        // re-read as new (no favourites, plays, Date Added) and the two raced to publish.
+        if (!IsLoaded)
+        {
+            _scanWhenLoaded = true;
+            return;
+        }
         if (IsScanning)
         {
             _scanAgain = true;
@@ -522,6 +620,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             }
             while (_scanAgain);
             if (StatusText == "Scanning…") StatusText = string.Empty; // ScanAborted may have replaced it
+            if (HasFolders && !NeedsReconnect) LastScanLocal = DateTime.Now;
         }
         catch (Exception ex)
         {
@@ -566,6 +665,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private void RefreshFromLibrary()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var tracks = _library.Tracks;
         SongCount = tracks.Count;
         AlbumCount = _library.Albums.Count;
@@ -574,10 +674,20 @@ public sealed partial class LibraryViewModel : ObservableObject
         var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
         RecentlyAddedCount = tracks.Count(t => t.DateAdded >= cutoff);
         Songs.ReplaceAll(tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase));
+        var sorted = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         RefreshRails();
         RefreshRecents();
         Refreshed?.Invoke(this, EventArgs.Empty);
+        // Runs on each library update, a scan's progressive publishes too (every 1.5 s while it
+        // finds songs). Measured 10-20 on the emulator with 1206 songs: 5-12 ms each, 12-14 per
+        // re-reading scan, 3 per scan with no changes. Logged when slow, so a big library or a
+        // slow phone shows it.
+        var total = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        if (total >= SlowRefreshMs)
+            DebugLog.Write("Library", $"slow refresh: {tracks.Count} songs, sort {sorted:F0} ms, total {total:F0} ms (scanning={IsScanning})");
     }
+
+    private const double SlowRefreshMs = 100;
 
     /// <summary>
     /// A heart toggled: the count and the open lists re-read (Favorites, a filtered list). The

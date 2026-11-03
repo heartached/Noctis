@@ -67,8 +67,24 @@ public interface IAudioPlayer : IDisposable
     /// </summary>
     void SetExclusiveMode(bool enabled);
 
+    /// <summary>
+    /// Windows only: plays to the given MMDevice endpoint id instead of the Windows
+    /// default (Settings → Output → Output Device). Empty/null = follow the system
+    /// default. Applies to every output path (exclusive sink, gapless engine, VLC's
+    /// own mmdevice output); a device change while playing moves audio to the new
+    /// endpoint. No-op on other platforms.
+    /// </summary>
+    void SetOutputDevice(string? deviceId) { }
+
     /// <summary>True while audio is actually flowing through an exclusive-mode device stream.</summary>
     bool ExclusiveModeActive { get; }
+
+    /// <summary>
+    /// Exclusive Mode is on in Settings but this session fell back to shared output (the
+    /// device could not be opened, or it went away). The saved choice is kept; turning it
+    /// off and on again, or the next launch, retries.
+    /// </summary>
+    bool ExclusiveModePaused => false;
 
     /// <summary>True while the active output chain feeds the shared level meters (visualizer,
     /// beat pulse) from the PCM it renders. False when the native output plays the audio
@@ -80,7 +96,7 @@ public interface IAudioPlayer : IDisposable
     bool EqualizerActive { get; }
 
     /// <summary>Short description of the active output path for the signal-path
-    /// display, e.g. "WASAPI Exclusive — 44.1 kHz / 24-bit".</summary>
+    /// display, e.g. "WASAPI Exclusive, 44.1 kHz / 24-bit".</summary>
     string OutputDescription { get; }
 
     /// <summary>ReplayGain currently applied to the output in dB. 0 = bypass
@@ -153,6 +169,33 @@ public interface IAudioPlayer : IDisposable
     /// Settings compares it with the saved choice to say a restart is needed.
     /// </summary>
     bool HeadphoneSurroundActive => false;
+
+    /// <summary>
+    /// Mono Audio (L and R averaged onto both channels) and the left/right balance
+    /// (-1 left only … 0 centre … +1 right only), ramped click-free in the output's sample
+    /// stage. Exclusive Mode bypasses both (bit-perfect).
+    /// </summary>
+    void SetChannelMix(bool mono, double balance) { }
+
+    /// <summary>
+    /// True when the current output runs the sample stage that applies
+    /// <see cref="SetChannelMix"/> (false in Exclusive Mode and on outputs without one).
+    /// </summary>
+    bool ChannelMixAvailable => false;
+
+    /// <summary>
+    /// A playback fade layer (0..1) on top of the user's volume, which it never changes:
+    /// the sleep timer's fade-out. Reached linearly over <paramref name="rampMs"/>.
+    /// </summary>
+    void SetPlaybackFadeGain(double gain, int rampMs) { }
+
+    /// <summary>
+    /// Whether <paramref name="filePath"/> can be opened right now: false for a local file that
+    /// is not on disk (moved, deleted, its drive unplugged). Paths that are not files (streams,
+    /// audio CD) count as there. Asked fresh every time, so a file that comes back plays again
+    /// (GitHub #154).
+    /// </summary>
+    bool SourceExists(string filePath) => true;
 
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);

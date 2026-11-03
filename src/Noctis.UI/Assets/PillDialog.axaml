@@ -89,6 +89,17 @@
         <Setter Property="CornerRadius" Value="20" />
     </Style>
 
+    <!-- A well that scrolls (ClipToBounds, Padding="0,10", ScrollViewer.well-scroll inside):
+         the well clips to its rounded shape and a ScrollViewer's bar runs its full height at
+         the right edge, so the bar's ends were cut off by the right-hand corners (owner 10-17
+         lyrics panels). The well's 10px top and bottom padding plus this 10px keeps the bar a
+         full corner radius clear of each end, as SettingsScrollViewer does in its card. Pinned
+         by LyricsWellScrollbarTests. (Organize Files' preview used this too until its bar moved
+         out to the dialog's right edge, 10-27.) -->
+    <Style Selector="ScrollViewer.well-scroll /template/ ScrollBar:vertical">
+        <Setter Property="Margin" Value="2,10,0,10" />
+    </Style>
+
     <!-- ── Pop-over card: a search pop-up floating over the dialog (the editor's artwork and
          animated artwork search). The dialog card's own fill and rim, a tighter radius for its
          size, and a shadow that fits the flyout's padding (owner 10-08: same UI + animation

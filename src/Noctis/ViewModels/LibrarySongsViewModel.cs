@@ -105,6 +105,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("SongsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // A counted play raises no LibraryUpdated (see HomeViewModel.OnPlayCounted): the row's
+        // Plays cell ticked up live but a Plays sort never re-ranked (Discord, Andre 10-28).
+        _finishedPlays = new FinishedPlays(_player, ReRankFinished);
     }
 
     /// <summary>
@@ -121,7 +125,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _isActive = value;
             // Catch up on anything missed while hidden — covers back-navigation paths
             // that swap CurrentView without going through RefreshAndReturnSongs.
-            if (value) Refresh();
+            if (value)
+            {
+                Refresh();
+                FlushReRank();
+            }
         }
     }
 
@@ -309,11 +317,27 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void PlayFromHere(Track track)
     {
-        var tracks = FilteredTracks.ToList();
+        var tracks = PlayContext(track);
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
 
         _player.PlayFromRow(tracks, index);
+    }
+
+    /// <summary>
+    /// The list a played row continues with. A search narrows what is shown, not what plays
+    /// next (Discord, HypnoTized 10-24: search "through the", 1 result, "Nothing up next"):
+    /// with a search applied the row plays in the whole list, in the current sort, with the
+    /// favorites/quality narrowing kept, as Apple Music and Spotify do.
+    /// </summary>
+    private List<Track> PlayContext(Track track)
+    {
+        if (!HasActiveFilter)
+            return FilteredTracks.ToList();
+
+        var all = BuildFilteredAndSortedTracks(
+            _allTracks, string.Empty, SortColumn, SortAscending, ShowOnlyFavorites, QualityFilter);
+        return all.Contains(track) ? all : FilteredTracks.ToList();
     }
 
     [RelayCommand]
@@ -473,10 +497,85 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _viewArtistAction?.Invoke(artistName);
     }
 
+    // ── Live Plays re-rank (Discord, Andre 10-28) ──
+    // Apple Music's way: the Plays cell counts up in place at once (Track.PlayCount is
+    // observable), and the row moves to its new rank once its song is over (the next one
+    // starts or is counted), so the playing row never jumps out from under the pointer.
+    // Only the counted rows move; the other rows keep their place, scroll and selection.
+    private readonly FinishedPlays _finishedPlays;
+    private DispatcherTimer? _reRankRetry;
+    private const int ReRankRetryMs = 2000;
+
+    /// <summary>Set by the view: true while the user is busy with the list (rows
+    /// Ctrl-selected, or scrolled a moment ago). A pending re-rank waits until it passes.</summary>
+    public Func<bool>? IsUserBusy { get; set; }
+
+    private void FlushReRank()
+    {
+        _reRankRetry?.Stop();
+        _finishedPlays.Flush();
+    }
+
+    /// <summary>Moves the counted rows whose song is over to their new rank (FinishedPlays).
+    /// False keeps them pending: hidden (activation flushes) or busy (retried shortly).</summary>
+    private bool ReRankFinished(List<Track> finished)
+    {
+        // No other sort reads play counts, and switching to Plays sorts afresh anyway.
+        if (SortColumn != "Plays") return true;
+        if (!_isActive) return false;
+        if (IsUserBusy?.Invoke() == true)
+        {
+            if (_reRankRetry == null)
+            {
+                _reRankRetry = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ReRankRetryMs) };
+                _reRankRetry.Tick += (_, _) => FlushReRank();
+            }
+            _reRankRetry.Start();
+            return false;
+        }
+
+        ApplyFilterAndSort(reRanked: finished);
+        return true;
+    }
+
+    /// <summary>
+    /// Moves just <paramref name="reRanked"/> to their place in <paramref name="sorted"/>.
+    /// False when the list differs in more than those rows: the caller replaces it whole.
+    /// </summary>
+    private bool TryMoveIntoPlace(List<Track> sorted, List<Track> reRanked)
+    {
+        if (sorted.Count != FilteredTracks.Count) return false;
+        var moves = new List<(Track Track, int To)>();
+        foreach (var t in reRanked)
+        {
+            var to = sorted.IndexOf(t);
+            if (to >= 0) moves.Add((t, to));
+        }
+
+        if (moves.Count == 1)
+        {
+            var from = FilteredTracks.IndexOf(moves[0].Track);
+            if (from < 0) return false;
+            if (from != moves[0].To) FilteredTracks.Move(from, moves[0].To);
+        }
+        else if (moves.Count > 1)
+        {
+            // Out first, then in by target index: what is left already matches the sorted
+            // list, so each insert lands exactly.
+            foreach (var (t, _) in moves)
+                if (!FilteredTracks.Remove(t)) return false;
+            foreach (var (t, to) in moves.OrderBy(m => m.To))
+                FilteredTracks.Insert(to, t);
+        }
+        return FilteredTracks.SequenceEqual(sorted);
+    }
+
     /// <summary>A library reload was requested and hasn't landed yet (see ApplyFilterAndSort).</summary>
     private bool _reloadPending;
 
-    private async void ApplyFilterAndSort(bool refreshFromLibrary = false)
+    /// <param name="reRanked">Rows whose sort key changed in place (a counted play): when the
+    /// result differs only in them they are moved, not the whole list replaced.</param>
+    private async void ApplyFilterAndSort(bool refreshFromLibrary = false, List<Track>? reRanked = null)
     {
         try
         {
@@ -528,6 +627,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 _reloadPending = false;
             }
 
+            if (reRanked != null && !refreshFromLibrary && TryMoveIntoPlace(result, reRanked))
+                return;
             FilteredTracks.ReplaceAll(result);
             UpdateSummaryText();
         }
@@ -621,6 +722,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             "Bpm" => sortAsc ? ordered.ThenBy(x => x.Track.Bpm).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Bpm).ThenBy(x => x.Track.Title),
             "Bitrate" => sortAsc ? ordered.ThenBy(x => x.Track.Bitrate).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Bitrate).ThenBy(x => x.Track.Title),
             "SampleRate" => sortAsc ? ordered.ThenBy(x => x.Track.SampleRate).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.SampleRate).ThenBy(x => x.Track.Title),
+            // Track gain in dB (GitHub #151). Songs without one go last either way.
+            "ReplayGain" => sortAsc
+                ? ordered.ThenBy(x => x.Track.ReplayGainTrackDb is null).ThenBy(x => x.Track.ReplayGainTrackDb).ThenBy(x => x.Track.Title)
+                : ordered.ThenBy(x => x.Track.ReplayGainTrackDb is null).ThenByDescending(x => x.Track.ReplayGainTrackDb).ThenBy(x => x.Track.Title),
             "Duration" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
             "Date Added" => sortAsc ? ordered.ThenBy(x => x.Track.DateAdded) : ordered.ThenByDescending(x => x.Track.DateAdded),
             // GitHub #89: file last-write time (refreshed on rescan). Descending = newest first.
@@ -649,6 +754,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _searchDebounce.Stop();
             _searchDebounce = null;
         }
+
+        _reRankRetry?.Stop();
+        _reRankRetry = null;
+        _finishedPlays.Dispose();
 
         // Unsubscribe from library events
         if (_libraryUpdatedHandler != null)

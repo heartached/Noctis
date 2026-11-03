@@ -383,6 +383,89 @@ public class NoctisServerAccountTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Scrobble_ForwardsOnlyComputerVerdicts_OnceEvenWhenRetried_AndAnOldPhoneIsOnlyCounted()
+    {
+        var key = await SignInKey();
+        var t0 = DateTimeOffset.UtcNow.AddHours(-2).ToUnixTimeMilliseconds();
+        string Play(long time, string? verdict) => $"&id=tr-{_track.Id:N}&time={time}" + (verdict is null ? "" : $"&noctisScrobble={verdict}");
+
+        // Counted in Through Computer mode, sent by the phone itself, skipped.
+        var query = "submission=true" + Play(t0, "computer") + Play(t0 + 1, "phone") + Play(t0 + 2, "no");
+        await GetWithHeader("scrobble", key, query);
+        Assert.Equal(3, _lib.Scrobbles.Count);                                   // all three are counted
+        var forwarded = Assert.Single(_lib.Forwarded);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(t0).UtcDateTime, forwarded.Played);   // at the phone's time
+
+        await GetWithHeader("scrobble", key, query);                             // a retried batch
+        Assert.Equal(3, _lib.Scrobbles.Count);
+        Assert.Single(_lib.Forwarded);
+
+        // An older phone sends no verdict: it records a play when it starts, so it may be a skip.
+        await GetWithHeader("scrobble", key, "submission=true" + Play(t0 + 3, null));
+        Assert.Equal(4, _lib.Scrobbles.Count);
+        Assert.Single(_lib.Forwarded);
+        // Ids without a verdict next to ones with: unpaired ones are not forwarded.
+        await GetWithHeader("scrobble", key, $"submission=true&id=tr-{_track.Id:N}&time={t0 + 4}&noctisScrobble=COMPUTER&id=tr-{_track.Id:N}&time={t0 + 5}");
+        Assert.Equal(6, _lib.Scrobbles.Count);
+        Assert.Single(_lib.Forwarded);
+    }
+
+    [Fact]
+    public async Task Scrobble_AnotherAccountsComputerPlays_AreCountedButNeverReachTheOwnersLastFm()
+    {
+        _users.Create("bob", "another pass");
+        var (signIn, _) = await SignIn(user: "bob", password: "another pass", deviceId: "phone-0002");
+        var key = signIn.GetProperty("noctisSignIn").GetProperty("apiKey").GetString()!;
+        var t0 = DateTimeOffset.UtcNow.AddHours(-1).ToUnixTimeMilliseconds();
+
+        await GetWithHeader("scrobble", key, $"submission=true&id=tr-{_track.Id:N}&time={t0}&noctisScrobble=computer");
+
+        Assert.Single(_lib.Scrobbles);
+        Assert.Empty(_lib.Forwarded);
+    }
+
+    [Fact]
+    public async Task SyncStatus_AnotherAccount_IsNotToldTheComputerSendsItsPlays()
+    {
+        _lib.ScrobbleServices = (true, true);
+        _users.Create("bob", "another pass");
+        var (signIn, _) = await SignIn(user: "bob", password: "another pass", deviceId: "phone-0002");
+        var key = signIn.GetProperty("noctisSignIn").GetProperty("apiKey").GetString()!;
+
+        var status = (await GetWithHeader("getNoctisSyncStatus", key)).GetProperty("noctisSync");
+
+        // Its plays are never forwarded, so its phone must not offer Through Computer.
+        Assert.False(status.TryGetProperty("scrobbling", out _));
+    }
+
+    [Fact]
+    public async Task Scrobble_AComputerVerdictWithoutATime_IsNotForwarded_SoRepeatsCannotFloodLastFm()
+    {
+        var key = await SignInKey();
+        var query = $"submission=true&id=tr-{_track.Id:N}&noctisScrobble=computer";
+
+        await GetWithHeader("scrobble", key, query);
+        await GetWithHeader("scrobble", key, query);
+        await GetWithHeader("scrobble", key, query);
+
+        Assert.Equal(3, _lib.Scrobbles.Count);
+        Assert.Empty(_lib.Forwarded);
+    }
+
+    [Fact]
+    public async Task SyncStatus_SaysWhereTheComputerSendsPlays_OnlyWhenItForwardsThem()
+    {
+        var key = await SignInKey();
+        var before = (await GetWithHeader("getNoctisSyncStatus", key)).GetProperty("noctisSync");
+        Assert.False(before.TryGetProperty("scrobbling", out _));               // a host that forwards nothing
+
+        _lib.ScrobbleServices = (true, false);
+        var s = (await GetWithHeader("getNoctisSyncStatus", key)).GetProperty("noctisSync").GetProperty("scrobbling");
+        Assert.True(s.GetProperty("lastFm").GetBoolean());
+        Assert.False(s.GetProperty("listenBrainz").GetBoolean());
+    }
+
+    [Fact]
     public void ScrobbleTime_Bounds()
     {
         var now = new DateTime(2026, 9, 28, 12, 0, 0, DateTimeKind.Utc);
@@ -554,6 +637,14 @@ public class NoctisServerAccountTests : IAsyncLifetime
         public Task SetStarredAsync(IReadOnlyList<Guid> trackIds, IReadOnlyList<Guid> albumIds, IReadOnlyList<Guid> artistIds, bool starred) => Task.CompletedTask;
         public Task ScrobbleAsync(Guid trackId) => ScrobbleAsync(trackId, DateTime.UtcNow);
         public Task ScrobbleAsync(Guid trackId, DateTime playedUtc) { lock (Scrobbles) Scrobbles.Add((trackId, playedUtc)); return Task.CompletedTask; }
+        /// <summary>The plays sent on to the desktop's Last.fm / ListenBrainz.</summary>
+        public List<(Guid Id, DateTime Played)> Forwarded { get; } = new();
+        public Task ScrobbleAsync(Guid trackId, DateTime playedUtc, bool forward)
+        {
+            if (forward) lock (Scrobbles) Forwarded.Add((trackId, playedUtc));
+            return ScrobbleAsync(trackId, playedUtc);
+        }
+        public (bool LastFm, bool ListenBrainz)? ScrobbleServices { get; set; }
         public Task<Playlist> CreatePlaylistAsync(string name, IReadOnlyList<Guid> trackIds) => Task.FromResult(new Playlist { Name = name });
         public Task<bool> UpdatePlaylistAsync(Guid id, string? name, IReadOnlyList<Guid> add, IReadOnlyList<int> removeIndexes) => Task.FromResult(false);
         public Task<bool> DeletePlaylistAsync(Guid id) => Task.FromResult(false);

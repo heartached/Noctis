@@ -257,6 +257,7 @@ public class HomeEmptyLibraryTests
     {
         EnsureAppStyles();
         var (_, settings, _) = Build();
+        settings.SelectedSettingsTab = SettingsViewModel.TabLibrary; // pages join the tree when shown (#139)
         var view = new SettingsView { DataContext = settings };
         var win = new Window { Width = 920, Height = 720, Content = view };
         win.Show();

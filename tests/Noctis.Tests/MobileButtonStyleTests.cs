@@ -35,7 +35,11 @@ public class MobileButtonStyleTests
     {
         var (rig, window, view) = Open();
         using var _rig = rig;
-        var play = MobileFixtures.Named<Button>(view, "MiniPlayButton");
+        // Any icon-style button but the transport, which presses with Apple's own motion
+        // (TransportPress_KeepsTheButtonStill below).
+        var play = view.GetVisualDescendants().OfType<Button>()
+            .First(b => b.IsEffectivelyVisible && !b.Classes.Contains("tx")
+                        && new[] { "icon", "round", "glass-round" }.Any(b.Classes.Contains));
 
         var transitions = play.Transitions;
         Assert.NotNull(transitions);
@@ -52,6 +56,27 @@ public class MobileButtonStyleTests
         window.UpdateLayout();
         Assert.Equal(1, play.Opacity);
         Assert.Equal(1, Scale(play));
+        window.Close();
+    }
+
+    /// <summary>The mini player's Play and Next press with TransportGlyph's circle and dip
+    /// (Apple Music's), so the button itself neither dims nor shrinks.</summary>
+    [AvaloniaFact]
+    public void TransportPress_KeepsTheButtonStill()
+    {
+        var (rig, window, view) = Open();
+        using var _rig = rig;
+        foreach (var name in new[] { "MiniPlayButton", "MiniNextButton" })
+        {
+            var b = MobileFixtures.Named<Button>(view, name);
+            Assert.True(b.Classes.Contains("tx"), name);
+            b.Transitions = null;
+            Press(b, true);
+            window.UpdateLayout();
+            Assert.Equal(1, b.Opacity);
+            Assert.Equal(1, Scale(b));
+            Press(b, false);
+        }
         window.Close();
     }
 
@@ -79,9 +104,10 @@ public class MobileButtonStyleTests
     [AvaloniaFact]
     public void Pills_AreFullTouchTargets_WithRoundEnds()
     {
-        var (rig, window, view) = Open();
-        using var _rig = rig;
-        // Library's own pills (Settings' were rows of Apple's grouped cards since 10-12).
+        // Library's own pills (Settings' were rows of Apple's grouped cards since 10-12): the
+        // first-run card's, on a phone with no music yet.
+        using var rig = MobileFixtures.MakeRig();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
         window.UpdateLayout();
 
         var pills = view.GetVisualDescendants().OfType<Button>()
