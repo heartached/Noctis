@@ -196,8 +196,9 @@ public sealed class YouTubeImportView : UserControl
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        // Escape closes the window, as it closed the dialog.
-        if (e.Key == Key.Escape && TopLevel.GetTopLevel(this) is Window window)
+        // Escape closes the window, as it closed the dialog. Only the view's own window: shown
+        // in Settings it sits inside Noctis's main window, where Esc goes back to the plugin page.
+        if (e.Key == Key.Escape && TopLevel.GetTopLevel(this) is Window window && ReferenceEquals(window.Content, this))
         {
             e.Handled = true;
             window.Close();
