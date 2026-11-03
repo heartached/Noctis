@@ -3061,4 +3061,5 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LibrarySongs.Format" xml:space="preserve"><value>Формат</value><comment>Songs list column header: short codec name (GitHub #151)</comment></data>
   <data name="Columns.Reset" xml:space="preserve"><value>Сбросить столбцы</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Изменить ширину столбца «{0}»</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
+  <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
 </root>

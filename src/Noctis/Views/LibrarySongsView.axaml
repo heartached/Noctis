@@ -64,6 +64,8 @@
                        FontSize="12" FontWeight="SemiBold" Opacity="0.7" HorizontalAlignment="Center" VerticalAlignment="Center" />
             <Button controls:ColumnsPanel.Column="DateAdded" Content="{loc:T Main.DateAdded}" Command="{Binding SortCommand}" CommandParameter="Date Added"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
+            <Button controls:ColumnsPanel.Column="ReplayGain" Content="{loc:T LibrarySongs.ReplayGain}" Command="{Binding SortCommand}" CommandParameter="ReplayGain"
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
         </controls:ColumnHeaderPanel>
 
         <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
@@ -474,6 +476,11 @@
                             <TextBlock Text="{Binding DateAddedFormatted}"
                                        FontSize="12" Opacity="0.5"
                                        TextTrimming="CharacterEllipsis"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <Border controls:ColumnsPanel.Column="ReplayGain">
+                            <TextBlock Text="{Binding ReplayGainFormatted}"
+                                       FontSize="12" Opacity="0.5"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
 

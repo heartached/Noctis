@@ -485,6 +485,9 @@
                                         <MenuItem Header="{loc:T Main.SampleRate}" Command="{Binding PageSortCommand}" CommandParameter="SampleRate">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=SampleRate}"/></MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="{loc:T LibrarySongs.ReplayGain}" Command="{Binding PageSortCommand}" CommandParameter="ReplayGain">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=ReplayGain}"/></MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T Main.DateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Date Added">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Added'}"/></MenuItem.Icon>
                                         </MenuItem>

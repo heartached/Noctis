@@ -525,6 +525,8 @@ public class AppSettings : IJsonOnDeserializing
     public bool ShowComposerColumn { get; set; }
     public bool ShowFormatColumn { get; set; }
     public bool ShowDateAddedColumn { get; set; }
+    // The file's REPLAYGAIN_TRACK_GAIN (Track.ReplayGainTrackDb). Off by default.
+    public bool ShowReplayGainColumn { get; set; }
 
     /// <summary>Songs list column order (GitHub #151): column keys, comma-separated; empty =
     /// the default order. Read through <c>ColumnLayout.Load</c>, which drops unknown keys.</summary>

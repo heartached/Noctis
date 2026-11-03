@@ -36,6 +36,7 @@ public static class LibraryColumns
         new ColumnSpec { Key = "AlbumArtist", Label = Loc.T("Main.AlbumArtist"), Width = 150, MinWidth = 80, DefaultVisible = false, SortKey = "Album Artist" },
         new ColumnSpec { Key = "Composer", Label = Loc.T("LibrarySongs.Composer"), Width = 140, MinWidth = 80, DefaultVisible = false },
         new ColumnSpec { Key = "Format", Label = Loc.T("LibrarySongs.Format"), Width = 64, MinWidth = 44, DefaultVisible = false },
+        new ColumnSpec { Key = "ReplayGain", Label = Loc.T("LibrarySongs.ReplayGain"), Width = 84, MinWidth = 56, DefaultVisible = false, SortKey = "ReplayGain" },
         new ColumnSpec { Key = "DateAdded", Label = Loc.T("Main.DateAdded"), Width = 96, MinWidth = 70, DefaultVisible = false, SortKey = "Date Added" },
         new ColumnSpec { Key = More, Width = 42, Pinned = true },
     });
@@ -74,6 +75,7 @@ public static class LibraryColumns
             case "Composer": if (set is { } m) s.ShowComposerColumn = m; return s.ShowComposerColumn;
             case "Format": if (set is { } n) s.ShowFormatColumn = n; return s.ShowFormatColumn;
             case "DateAdded": if (set is { } o) s.ShowDateAddedColumn = o; return s.ShowDateAddedColumn;
+            case "ReplayGain": if (set is { } p) s.ShowReplayGainColumn = p; return s.ShowReplayGainColumn;
             default: return null;
         }
     }
@@ -96,6 +98,7 @@ public static class LibraryColumns
         nameof(SettingsViewModel.ShowComposerColumn) => "Composer",
         nameof(SettingsViewModel.ShowFormatColumn) => "Format",
         nameof(SettingsViewModel.ShowDateAddedColumn) => "DateAdded",
+        nameof(SettingsViewModel.ShowReplayGainColumn) => "ReplayGain",
         _ => null,
     };
 

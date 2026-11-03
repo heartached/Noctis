@@ -252,6 +252,9 @@
                                 <CheckBox Classes="metadata-pill-checkbox vo-column"
                                           Content="{loc:T LibrarySongs.Format}"
                                           IsChecked="{Binding Settings.ShowFormatColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T LibrarySongs.ReplayGain}"
+                                          IsChecked="{Binding Settings.ShowReplayGainColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Border>
                     </Grid>

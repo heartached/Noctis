@@ -1423,6 +1423,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showComposerColumn;
     [ObservableProperty] private bool _showFormatColumn;
     [ObservableProperty] private bool _showDateAddedColumn;
+    [ObservableProperty] private bool _showReplayGainColumn;
     [ObservableProperty] private string _songsColumnOrder = string.Empty;
     [ObservableProperty] private string _songsColumnWidths = string.Empty;
     [ObservableProperty] private string _artistListColumnOrder = string.Empty;
@@ -1445,6 +1446,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnShowComposerColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowFormatColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowDateAddedColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowReplayGainColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsColumnOrderChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsColumnWidthsChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistListColumnOrderChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -3333,6 +3335,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowComposerColumn = _settings.ShowComposerColumn;
             ShowFormatColumn = _settings.ShowFormatColumn;
             ShowDateAddedColumn = _settings.ShowDateAddedColumn;
+            ShowReplayGainColumn = _settings.ShowReplayGainColumn;
             SongsColumnOrder = _settings.SongsColumnOrder ?? string.Empty;
             SongsColumnWidths = _settings.SongsColumnWidths ?? string.Empty;
             ArtistListColumnOrder = _settings.ArtistListColumnOrder ?? string.Empty;
@@ -3842,6 +3845,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowComposerColumn = ShowComposerColumn;
         _settings.ShowFormatColumn = ShowFormatColumn;
         _settings.ShowDateAddedColumn = ShowDateAddedColumn;
+        _settings.ShowReplayGainColumn = ShowReplayGainColumn;
         _settings.SongsColumnOrder = SongsColumnOrder;
         _settings.SongsColumnWidths = SongsColumnWidths;
         _settings.ArtistListColumnOrder = ArtistListColumnOrder;
@@ -7892,6 +7896,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowComposerColumn = defaultSettings.ShowComposerColumn;
             ShowFormatColumn = defaultSettings.ShowFormatColumn;
             ShowDateAddedColumn = defaultSettings.ShowDateAddedColumn;
+            ShowReplayGainColumn = defaultSettings.ShowReplayGainColumn;
             SongsColumnOrder = defaultSettings.SongsColumnOrder;
             SongsColumnWidths = defaultSettings.SongsColumnWidths;
             ArtistListColumnOrder = defaultSettings.ArtistListColumnOrder;
