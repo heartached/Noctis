@@ -250,13 +250,15 @@ public class MobileAccountTests
     }
 
     [Fact]
-    public void Fingerprint_IsShownWhole_EightBytesALine()
+    public void Fingerprint_IsShownWhole_InFourDigitGroups_LikeTheComputer()
     {
         var shown = AccountPageViewModel.FormatFingerprint(Fingerprint);
         var lines = shown.Split('\n');
         Assert.Equal(4, lines.Length);
-        Assert.All(lines, l => Assert.Equal(8, l.Split(':').Length));
-        Assert.Equal(Fingerprint, string.Join(":", lines));
+        Assert.All(lines, l => Assert.Equal(4, l.Split(' ').Length));
+        Assert.Equal("ABCD EF01 2345 6789", lines[0]);
+        Assert.Equal(Fingerprint.Replace(":", ""), shown.Replace("\n", "").Replace(" ", ""));
+        Assert.Equal(Noctis.Services.Server.SecurityCode.Format(Fingerprint), shown);
     }
 
     // ── Sign in ──
@@ -279,7 +281,7 @@ public class MobileAccountTests
         Assert.Empty(account.SignIns);                                   // nothing sent before the user compares
         Assert.True(page.IsConfirmingFingerprint);
         Assert.False(page.IsFormVisible);
-        Assert.Equal(Fingerprint, page.FingerprintDisplay.Replace("\n", ":"));
+        Assert.Equal(Fingerprint.Replace(":", ""), page.FingerprintDisplay.Replace("\n", "").Replace(" ", ""));
         Assert.Equal("https://192.168.1.20:4747", page.ServerAddress);
 
         await page.TrustAndSignInCommand.ExecuteAsync(null);

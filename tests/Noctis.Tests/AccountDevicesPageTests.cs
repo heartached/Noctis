@@ -194,6 +194,15 @@ public class AccountDevicesPageTests : IDisposable
             Assert.True(vm.HasPairingQr);
             Assert.Matches(@"^New code in [12]:\d\d$", vm.PairingQrCountdown);
 
+            // Enter manually: no code is live while it is off screen; back to the QR, a new one.
+            var shown = vm.PairingQr;
+            vm.ShowManualPairingCommand.Execute(null);
+            Assert.False(vm.HasPairingQr);
+            Assert.False(vm.ShowsQrUnavailable);
+            vm.ShowQrPairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            Assert.NotSame(shown, vm.PairingQr);
+
             // Closing the panel takes the code away; reopening shows a new one.
             vm.TogglePairingCommand.Execute(null);
             Assert.False(vm.HasPairingQr);
@@ -220,6 +229,27 @@ public class AccountDevicesPageTests : IDisposable
             Assert.False(vm.HasPairingQr);
         }
         finally { await vm.StopNoctisServerAsync(); }
+    }
+
+    /// <summary>Owner 11-03: "Last synced" glided nowhere, it popped with the Sync switch; it now
+    /// sits in a CollapsibleContent like the page's other reveals, its icon a crisp 14px stroke.</summary>
+    [AvaloniaFact]
+    public void LastSynced_GlidesWithTheSyncSwitch_AndAdvancedStartsFolded()
+    {
+        var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
+        var view = new SettingsView { DataContext = vm };
+        var window = new Avalonia.Controls.Window { Width = 1000, Height = 900, Content = view };
+        window.Show();
+        try
+        {
+            var reveal = Avalonia.Controls.ControlExtensions.FindControl<Noctis.Controls.CollapsibleContent>(view, "LastSyncedReveal");
+            Assert.NotNull(reveal);
+            Assert.Equal("Glide", reveal!.Motion.ToString());
+            Assert.False(vm.IsPhoneAdvancedOpen);
+            vm.TogglePhoneAdvancedCommand.Execute(null);
+            Assert.True(vm.IsPhoneAdvancedOpen);
+        }
+        finally { window.Close(); }
     }
 
     [AvaloniaFact]
@@ -279,7 +309,7 @@ public class AccountDevicesPageTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void SecurityCode_ShowsEightBytesALine_LikeThePhone()
+    public void SecurityCode_ShowsFourDigitGroups_LikeThePhone()
     {
         var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
         var bytes = Enumerable.Range(0, 32).Select(i => i.ToString("X2")).ToArray();
@@ -287,8 +317,9 @@ public class AccountDevicesPageTests : IDisposable
 
         var lines = vm.NoctisServerFingerprintDisplay.Split('\n');
         Assert.Equal(4, lines.Length);
-        Assert.Equal("00:01:02:03:04:05:06:07", lines[0]);
-        Assert.Equal("18:19:1A:1B:1C:1D:1E:1F", lines[3]);
+        Assert.Equal("0001 0203 0405 0607", lines[0]);
+        Assert.Equal("1819 1A1B 1C1D 1E1F", lines[3]);
+        Assert.Equal(Noctis.Mobile.ViewModels.AccountPageViewModel.FormatFingerprint(vm.NoctisServerFingerprint), vm.NoctisServerFingerprintDisplay);
     }
 
     [AvaloniaFact]
