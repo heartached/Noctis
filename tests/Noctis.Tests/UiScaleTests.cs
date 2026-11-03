@@ -366,6 +366,65 @@ public class UiScaleTests : IDisposable
         box.Text = "";
     }
 
+    /// <summary>Discord (Mistery, 11-03): the PNG icons at 110% are the 48 px masks shrunk to
+    /// 22 px by area, so a stroke keeps its weight wherever it falls: every source column counts
+    /// once, none twice or not at all, and the total coverage is kept.</summary>
+    [Theory]
+    [InlineData(18)]
+    [InlineData(22)]
+    [InlineData(25)]
+    [InlineData(30)]
+    public void MaskIcon_AreaResample_KeepsEveryColumnsCoverage(int px)
+    {
+        const int n = 48;
+        var alpha = new byte[n * n];
+        for (var y = 0; y < n; y++)
+            for (var x = 0; x < n; x++)
+                alpha[y * n + x] = (byte)(x % 6 < 2 ? 255 : 0); // 2 px strokes every 6 px
+        var scaled = MaskIcon.AreaScaledAlpha(alpha, n, px);
+        double before = 0, after = 0;
+        foreach (var a in alpha) before += a;
+        foreach (var a in scaled) after += a;
+        Assert.Equal(before, after * n * n / (px * (double)px), before * 0.01);
+        // Rows are alike (the pattern is vertical): no row doubled or dropped (±1 rounding).
+        for (var y = 1; y < px; y++)
+            for (var x = 0; x < px; x++)
+                Assert.InRange(scaled[y * px + x], scaled[x] - 1, scaled[x] + 1);
+    }
+
+    /// <summary>Discord (Mistery, 11-03): sidebar icons blurry at 90% / 110%. Captures the sidebar
+    /// at each size and reports where each 20 px icon box lands on the device-pixel grid.
+    /// Explicit only: NOCTIS_TEST_SKIA=1 and NOCTIS_UISCALE_ICON_SHOTS = folder.</summary>
+    [AvaloniaFact]
+    public void Shots_SidebarIcons()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_UISCALE_ICON_SHOTS");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        foreach (var pct in new[] { 90, 100, 110, 125, 150 })
+        {
+            UiScale.SetFactor(pct / 100.0);
+            var vm = new SidebarViewModel(new TestPersistenceService(), new FakeLibraryService()) { TopBar = new TopBarViewModel() };
+            var view = new SidebarView { DataContext = vm, Width = 260, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };
+            var w = Track(new Window { Width = 600, Height = 900, Content = view, Background = Avalonia.Media.Brushes.Black });
+            w.Show();
+            Pump(400);
+            var boxes = view.GetVisualDescendants()
+                .Where(v => v.IsEffectivelyVisible && (v is Control c && c.Classes.Contains("nav-bitmap") || v is PathIcon p && p.Classes.Contains("nav-icon")))
+                .Select(v => OnScreen(v, w)).ToList();
+            static double Frac(double x) => Math.Abs(x - Math.Round(x));
+            var off = boxes.Count == 0 ? 0 : boxes.Average(r => Frac(r.X) + Frac(r.Y)) / 2;
+            Console.WriteLine($"icons {pct}%: {boxes.Count} boxes, mean off-grid {off:0.000} px, first "
+                + string.Join(" | ", boxes.Take(4).Select(r => $"{r.X:0.###},{r.Y:0.###} {r.Width:0.###}x{r.Height:0.###}")));
+            w.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"sidebar-{pct}.png"));
+            File.WriteAllLines(Path.Combine(dir, $"sidebar-{pct}.txt"),
+                boxes.Select(r => FormattableString.Invariant($"{r.X} {r.Y} {r.Width} {r.Height}")));
+            w.Close();
+        }
+        UiScale.SetFactor(1.0);
+    }
+
     /// <summary>Eyeball captures: Settings ▸ Appearance (with its picker open) and the main
     /// window at 100/150/200%. Explicit only: NOCTIS_TEST_SKIA=1 and NOCTIS_UI145_SHOTS = folder.</summary>
     [AvaloniaFact]

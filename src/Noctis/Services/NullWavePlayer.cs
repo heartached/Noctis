@@ -33,6 +33,9 @@ internal sealed class NullWavePlayer : IWavePlayer
     /// keep-alive stay off.</summary>
     internal static bool SilentMode { get; } = IsSilentAudio(Environment.GetEnvironmentVariable("NOCTIS_AOUT"));
 
+    /// <summary>Test harnesses only: sees every block this sink pulls (buffer, byte count, format).</summary>
+    internal static Action<byte[], int, WaveFormat>? Tap;
+
     private readonly object _gate = new();
     private IWaveProvider? _source;
     private Thread? _thread;
@@ -149,8 +152,10 @@ internal sealed class NullWavePlayer : IWavePlayer
                     var frames = (int)Math.Min(due, periodFrames);
                     // The data is discarded. A 0-byte read is end of stream for WasapiOut
                     // (it stops and raises PlaybackStopped); this sink does the same.
-                    if (source.Read(buffer, 0, frames * blockAlign) == 0)
+                    var read = source.Read(buffer, 0, frames * blockAlign);
+                    if (read == 0)
                         return;
+                    Tap?.Invoke(buffer, read, format);
                     rendered += frames;
                     due -= frames;
                 }

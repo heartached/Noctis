@@ -302,10 +302,25 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private string? _decoderWedgePath;
     private int _decoderWedgeAttempts;
     private long _decoderWedgeLastMs;
-    // Files that wedged mpg123 this session: opened on FFmpeg's MP3 decoder from then on,
-    // which resyncs over damaged data instead of failing every frame after it.
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _avcodecMp3Paths =
-        new(StringComparer.FromComparison(Helpers.PathComparison.Comparison));
+    // Files that wedged mpg123: opened on FFmpeg's MP3 decoder from then on (this session and
+    // the next ones), which resyncs over damaged data instead of failing every frame after it.
+    private readonly Mp3DecoderFallbackList _avcodecMp3Paths = new(DecoderFallbackListPathAtLaunch);
+    // The wedge's audible edges (Discord 11-03, a "crunch" at the damaged spot): the last
+    // frame mpg123 decoded before failing comes from the damaged bytes, and the ring ran dry
+    // on it mid-waveform. That frame is cut (one MP3 frame is 26 ms) and the audio before it
+    // faded out; the reopened input starts with a fade-in instead of at full level.
+    private const int DecoderDamageDropMs = 30;
+    private const int DecoderDamageFadeMs = 20;
+    private const int DecoderRecoveryFadeInMs = 20;
+    // The zeros mpg123 writes for frames it cannot decode before it stops are cut too, so the
+    // fade lands on the audio (up to this much; a run of real silence is no loss either).
+    private const int DecoderDamageSilenceMs = 500;
+    // A healthy decoder lands a block every few tens of ms (or waits on a full ring); one
+    // that wrote nothing for this long while the errors came is the one that hit the damage.
+    private const int DecoderWedgeWriterIdleMs = 200;
+    // Once the damage point is known the reopen waits only for the ring to run dry.
+    private const int DecoderDamagePollMs = 40;
+    private string? _decoderRecoveryOpenPath;
     // After a storm, act only once the audible position stands still while the errors keep
     // coming: the line names no player (the standby one may be preparing a file), and the
     // engine ring still plays out what was decoded before the damage. Harness: ~4 s of
@@ -1782,6 +1797,13 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// need it up front. Runtime changes go through <see cref="SetOutputDevice"/>.
     /// </summary>
     public static string? OutputDeviceAtLaunch { get; set; }
+
+    /// <summary>
+    /// Where the MP3 files that needed FFmpeg's decoder are remembered across restarts
+    /// (<see cref="Mp3DecoderFallbackList"/>). Program.Main sets it before the player is built;
+    /// null (tests) keeps the list in memory.
+    /// </summary>
+    public static string? DecoderFallbackListPathAtLaunch { get; set; }
 
     /// <inheritdoc />
     public bool HeadphoneSurroundActive { get; }
@@ -4837,6 +4859,13 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             sink.SampleRate, sink.Channels, slot, capacitySeconds: 20, Math.Max(0, basePositionMs));
         seg.Gain = EngineSegmentGain(slot, path);
         seg.TailTrimFrames = tailTrimFrames;
+        // The reopen after a decoder wedge: start on the music, faded in, not on priming zeros.
+        if (ReferenceEquals(player, _player) &&
+            string.Equals(Volatile.Read(ref _decoderRecoveryOpenPath), path, StringComparison.Ordinal))
+        {
+            Volatile.Write(ref _decoderRecoveryOpenPath, null);
+            seg.DropLeadingSilence(sink.SampleRate * DecoderRecoveryFadeInMs / 1000);
+        }
         Volatile.Write(ref _engineRgInput[slot], Tuple.Create(seg, path));
         Volatile.Write(ref _engineSegments[slot], seg);
         sink.Provider.Enqueue(seg);
@@ -4886,7 +4915,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// </summary>
     private void ApplyMp3DecoderFallback(Media media, string path)
     {
-        if (string.IsNullOrEmpty(path) || !_avcodecMp3Paths.ContainsKey(path)) return;
+        if (string.IsNullOrEmpty(path) || !_avcodecMp3Paths.Contains(path)) return;
         media.AddOption(":codec=avcodec,any");
         DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DecoderFallback", $"path={LogName(path)}, codec=avcodec");
     }
@@ -4939,29 +4968,71 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         catch { /* an exception into native code kills the process */ }
     }
 
+    /// <summary>
+    /// The storm comes from the current player when its segment is the one playing and its
+    /// writer went quiet while the errors came: then the newest audio in the ring is what
+    /// mpg123 decoded from the damaged bytes. Cuts and fades it (see DecoderDamageDropMs) and
+    /// returns the media position the damage starts at; -1 when the storm is not this
+    /// segment's (a standby preparing, an input that already ended).
+    /// </summary>
+    private long TrimDamagedEngineTail(int errors, out GaplessTrackSegment? seg, out long runsDryMs)
+    {
+        seg = null;
+        runsDryMs = -1;
+        if (!_gaplessEngine || _gaplessSink is not { } sink || _isPaused) return -1;
+        var active = Volatile.Read(ref _engineSegments[EngineSlotOf(_player)]);
+        if (active == null || !ReferenceEquals(sink.Provider.ActiveSegment, active)) return -1;
+        var idleMs = active.WriteIdleMs;
+        if (idleMs < DecoderWedgeWriterIdleMs) return -1;
+        seg = active;
+        var damageMs = seg.TrimDamagedTail(
+            sink.SampleRate * DecoderDamageDropMs / 1000, sink.SampleRate * DecoderDamageFadeMs / 1000,
+            sink.SampleRate * DecoderDamageSilenceMs / 1000);
+        if (damageMs < 0) return -1;
+        // Where the trimmed ring runs dry (the dropped zeros make it earlier than the damage).
+        var heardMs = seg.PositionMs;
+        runsDryMs = heardMs + seg.BufferedSamples / Math.Max(1, seg.Channels) * 1000L / seg.SampleRate;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.DamageTrimmed",
+            $"errors={errors}, damageMs={damageMs}, runsDryMs={runsDryMs}, heardMs={heardMs}, writerIdleMs={idleMs}");
+        return damageMs;
+    }
+
     private void RecoverFromDecoderWedge(long sessionId, int errors)
     {
         var started = Environment.TickCount64;
         var prev = HeardPositionMs();
+        var damageMs = TrimDamagedEngineTail(errors, out var damagedSeg, out var runsDryMs);
+        var prevTick = started;
         long atMs;
         while (true)
         {
-            Thread.Sleep(DecoderWedgePollMs);
+            Thread.Sleep(damagedSeg != null ? DecoderDamagePollMs : DecoderWedgePollMs);
             if (_disposed || sessionId != CurrentSessionId || _isPaused) return;
             var cur = HeardPositionMs();
             var now0 = Environment.TickCount64;
+            if (damagedSeg != null && cur >= runsDryMs &&
+                damagedSeg.WriteIdleMs >= DecoderWedgeWriterIdleMs)
+            {
+                // The trimmed ring has run dry and the decoder is still silent: reopen
+                // right at the damage.
+                atMs = damageMs;
+                break;
+            }
             if (now0 - Volatile.Read(ref _decoderWedgeLastLineMs) > 1000)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
                     $"errors={errors}, reason=stormEnded, positionMs={cur}");
                 return;
             }
+            if (now0 - prevTick < DecoderWedgePollMs)
+                continue; // the stand-still check keeps its own cadence
             if (cur - prev < DecoderWedgePollMs / 5)
             {
-                atMs = cur;
+                atMs = damageMs >= 0 && cur <= damageMs ? damageMs : cur;
                 break;
             }
             prev = cur;
+            prevTick = now0;
             if (now0 - started > DecoderWedgeWatchMs)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
@@ -4984,7 +5055,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             attempt = ++_decoderWedgeAttempts;
             _decoderWedgeLastMs = now;
         }
-        var action = ChooseDecoderWedgeAction(_avcodecMp3Paths.ContainsKey(path), attempt);
+        var action = ChooseDecoderWedgeAction(_avcodecMp3Paths.Contains(path), attempt);
         var at = TimeSpan.FromMilliseconds(atMs);
         var summary = $"decoder=mpg123, errors={errors}, atMs={atMs}, attempt={attempt}, action={action}, path={LogName(path)}";
         DebugLogger.Warn(DebugLogger.Category.Playback, "Decoder.Wedged", summary);
@@ -4999,7 +5070,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         switch (action)
         {
             case DecoderWedgeAction.ReopenOnAvcodec:
-                _avcodecMp3Paths.TryAdd(path, 0);
+                _avcodecMp3Paths.Add(path);
+                Volatile.Write(ref _decoderRecoveryOpenPath, path);
                 // The Seek.Restart mechanism: a fresh open at the position.
                 lock (_seekGate) { _latestSeekMs = -1; }
                 _positionTimer.Stop();

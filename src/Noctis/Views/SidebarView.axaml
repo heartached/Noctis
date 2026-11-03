@@ -36,8 +36,8 @@
         <!-- Row content colours are class-driven (not local values) so the selected accent pill
              (Styles.axaml, GitHub #87) can flip them to the accent-contrast colour, like the
              Settings rail's rail-bitmap. Accent-filled marks invert on the pill so they stay visible. -->
-        <Style Selector="ListBox.sidebar Border.nav-bitmap">
-            <Setter Property="Background" Value="{DynamicResource IslandForeground}" />
+        <Style Selector="ListBox.sidebar ctrl|MaskIcon.nav-bitmap">
+            <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
         </Style>
         <Style Selector="ListBox.sidebar PathIcon.nav-icon">
             <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
@@ -51,8 +51,8 @@
         <Style Selector="ListBox.sidebar Path.fav-heart-glyph">
             <Setter Property="Fill" Value="{DynamicResource AccentForegroundBrush}" />
         </Style>
-        <Style Selector="ListBox.sidebar ListBoxItem:selected Border.nav-bitmap">
-            <Setter Property="Background" Value="{DynamicResource AccentForegroundBrush}" />
+        <Style Selector="ListBox.sidebar ListBoxItem:selected ctrl|MaskIcon.nav-bitmap">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         </Style>
         <Style Selector="ListBox.sidebar ListBoxItem:selected PathIcon.nav-icon">
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
@@ -540,18 +540,15 @@
                                     <Grid Width="28"
                                           Height="28"
                                           VerticalAlignment="Center">
-                                        <Border Width="20"
-                                                Height="20"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                Classes="nav-bitmap"
-                                                IsVisible="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}">
-                                            <Border.OpacityMask>
-                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
-                                                            Stretch="Uniform" />
-                                            </Border.OpacityMask>
-                                        </Border>
+                                        <!-- PNG mask drawn at its exact pixel size on whole pixels (MaskIcon):
+                                             crisp at every Interface Size, not only 100%. -->
+                                        <ctrl:MaskIcon Width="20"
+                                                       Height="20"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Classes="nav-bitmap"
+                                                       Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                       IsVisible="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}" />
                                         <!-- Geometry icons (Visualizer, Lyrics Studio): same 20px box as the PNG masks. -->
                                         <PathIcon Width="20" Height="20"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
