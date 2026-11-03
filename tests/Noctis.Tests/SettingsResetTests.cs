@@ -137,6 +137,43 @@ public class SettingsResetTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(fresh.SyncDeviceId));
     }
 
+
+    /// <summary>
+    /// 11-03 audit: every bool flipped and every number nudged before the reset. The page view
+    /// state (Songs/Albums/Artists sort direction, Home/Album/Artist folded sections) survived
+    /// it: ResetSettingsToDefaults never put those view-model properties back, so the next save
+    /// wrote them over the defaults.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Reset_EveryFieldChanged_ThenNextSave_WritesTheSameFileAsAFreshInstall()
+    {
+        var dataDir = Path.Combine(_root, "every");
+        Directory.CreateDirectory(dataDir);
+        var persistence = new PersistenceService(dataDir);
+        var seeded = new AppSettings();
+        var baseline = new AppSettings();
+        foreach (var p in typeof(AppSettings).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!p.CanWrite || p.GetIndexParameters().Length > 0) continue;
+            if (p.PropertyType == typeof(bool)) p.SetValue(seeded, !(bool)p.GetValue(baseline)!);
+            else if (p.PropertyType == typeof(bool?)) p.SetValue(seeded, false);
+            else if (p.PropertyType == typeof(int)) p.SetValue(seeded, (int)p.GetValue(baseline)! + 1);
+            else if (p.PropertyType == typeof(double)) p.SetValue(seeded, (double)p.GetValue(baseline)! * 0.9 + 0.01);
+            else if (p.PropertyType == typeof(string)) p.SetValue(seeded, "zz");
+        }
+        await persistence.SaveSettingsAsync(seeded);
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        vm.SetAudioPlayer(new FakeAudioPlayer());
+        await vm.LoadAsync();
+        var defaults = new AppSettings { CommunityPluginsEnabled = false };
+        await persistence.SaveSettingsAsync(defaults);
+        vm.ResetSettingsToDefaults(defaults);
+        await vm.SaveAsync();
+        var afterReset = await persistence.LoadSettingsAsync();
+        var fresh = await FreshInstallSaveAsync();
+        Assert.Equal(new[] { nameof(AppSettings.SyncDeviceId) }, DifferingProperties(afterReset, fresh));
+    }
+
     /// <summary>
     /// "Add from YouTube" became a plugin (10-29): a settings.json that still carries its folder and
     /// a custom yt-dlp loads, and a save keeps both as they were (legacy fields nothing writes).

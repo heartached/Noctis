@@ -85,8 +85,13 @@ public partial class SettingsViewModel
     /// <summary>The account this computer's owner uses on their devices: the first admin, else the first account.</summary>
     public ServerUser? PrimaryAccount => ServerUsersList.FirstOrDefault(u => u.IsAdmin) ?? ServerUsersList.FirstOrDefault();
     public bool HasPrimaryAccount => PrimaryAccount is not null;
+    /// <summary>The account's name, empty without one (PrimaryAccount.Name logged a binding warning then).</summary>
+    public string PrimaryAccountName => PrimaryAccount?.Name ?? string.Empty;
     public string PrimaryAccountInitial => PrimaryAccount is { Name.Length: > 0 } u ? u.Name[..1].ToUpperInvariant() : "?";
-    public string PrimaryAccountSince => PrimaryAccount is { } u ? $"Since {u.CreatedUtc.ToLocalTime():MMMM yyyy}" : string.Empty;
+    /// <summary>"Since November 2026", in the app language (it was English with the OS's month names).</summary>
+    public string PrimaryAccountSince => PrimaryAccount is { } u
+        ? Localization.Loc.T("AccountSync.Since", u.CreatedUtc.ToLocalTime().ToString("MMMM yyyy", Localization.Loc.Instance.Culture))
+        : string.Empty;
     public IReadOnlyList<ServerUser> OtherAccounts => ServerUsersList.Where(u => !ReferenceEquals(u, PrimaryAccount)).ToList();
     public bool HasOtherAccounts => OtherAccounts.Count > 0;
 
@@ -99,6 +104,7 @@ public partial class SettingsViewModel
     {
         OnPropertyChanged(nameof(PrimaryAccount));
         OnPropertyChanged(nameof(HasPrimaryAccount));
+        OnPropertyChanged(nameof(PrimaryAccountName));
         OnPropertyChanged(nameof(PrimaryAccountInitial));
         OnPropertyChanged(nameof(PrimaryAccountSince));
         OnPropertyChanged(nameof(OtherAccounts));

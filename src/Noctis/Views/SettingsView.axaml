@@ -6231,7 +6231,7 @@
                              the one profile picture (no second avatar). -->
                         <TextBlock x:Name="AccountIdentityLine" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis"
                                    IsVisible="{Binding HasPrimaryAccount}">
-                            <Run Text="{Binding PrimaryAccount.Name, FallbackValue=''}" FontWeight="SemiBold"/>
+                            <Run Text="{Binding PrimaryAccountName}" FontWeight="SemiBold"/>
                             <Run Text=" · "/>
                             <Run Text="{Binding PrimaryAccountSince}"/>
                         </TextBlock>
@@ -7895,7 +7895,7 @@
                     Height="32" Padding="8,0,14,0" VerticalContentAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="16" Height="16"/>
-                    <TextBlock Text="{Binding OpenPluginViewEntry.PluginName, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding PluginViewName}" FontSize="12.5" FontWeight="SemiBold"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
                 </StackPanel>
             </Button>

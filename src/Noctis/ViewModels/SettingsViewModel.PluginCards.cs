@@ -48,13 +48,16 @@ public partial class SettingsViewModel
     public bool IsPluginPageVisible => IsPluginDetailOpen && !IsPluginViewOpen;
 
     /// <summary>The plugin view shown in place of its plugin's page ("Open Album Town"), or null.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPluginViewOpen), nameof(IsPluginPageVisible), nameof(PluginViewBackName))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPluginViewOpen), nameof(IsPluginPageVisible), nameof(PluginViewName), nameof(PluginViewBackName))]
     private PluginViewEntry? _openPluginViewEntry;
 
     /// <summary>The control the plugin made for <see cref="OpenPluginViewEntry"/>.</summary>
     [ObservableProperty] private Avalonia.Controls.Control? _pluginViewContent;
 
     public bool IsPluginViewOpen => OpenPluginViewEntry is not null;
+    /// <summary>The Back pill's text: the plugin's name, empty with no view open (the path through a
+    /// null OpenPluginViewEntry logged a binding warning every time Settings opened).</summary>
+    public string PluginViewName => OpenPluginViewEntry?.PluginName ?? string.Empty;
     /// <summary>The view's Back pill, for screen readers ("Back to A-B Loop"); it shows the plugin's name.</summary>
     public string PluginViewBackName => OpenPluginViewEntry is { } view ? Loc.T("Plugins.View.Back", view.PluginName) : "";
 

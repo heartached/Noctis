@@ -2537,6 +2537,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="AccountSync.Name" xml:space="preserve"><value>Name</value><comment>Create form watermark</comment></data>
   <data name="AccountSync.Password" xml:space="preserve"><value>Password (8+ characters)</value><comment>Create form watermark</comment></data>
   <data name="AccountSync.Create" xml:space="preserve"><value>Create</value><comment>Create form button</comment></data>
+  <data name="AccountSync.Since" xml:space="preserve"><value>Since {0}</value><comment>Under the profile name: when the account was made; {0} = month and year</comment></data>
   <data name="AccountSync.PairDevice" xml:space="preserve"><value>Connect a phone</value><comment>Account card button</comment></data>
   <data name="AccountSync.NewApiKey" xml:space="preserve"><value>New API key</value><comment>Account card button</comment></data>
   <data name="AccountSync.ChangePassword" xml:space="preserve"><value>Change password</value><comment>Account card button</comment></data>
