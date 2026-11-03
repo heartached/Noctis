@@ -17,6 +17,7 @@
     <StreamGeometry x:Key="SetIconPickUp">M5 4H14A2 2 0 0 1 16 6V12A2 2 0 0 1 14 14H5A2 2 0 0 1 3 12V6A2 2 0 0 1 5 4Z M16.6 9H19.4A1.6 1.6 0 0 1 21 10.6V18.4A1.6 1.6 0 0 1 19.4 20H16.6A1.6 1.6 0 0 1 15 18.4V10.6A1.6 1.6 0 0 1 16.6 9Z M7 18h5</StreamGeometry>
     <StreamGeometry x:Key="SetIconWarning">M12 3l9 16H3z M12 10v4M12 16.8v.2</StreamGeometry>
     <StreamGeometry x:Key="SetIconDoc">M7 3h7l4 4v14H7z M14 3v4h4M10 12h5M10 16h5</StreamGeometry>
+    <StreamGeometry x:Key="SetIconShield">M12 3l7 3v6c0 4.5-3 7.6-7 9c-4-1.4-7-4.5-7-9V6z M9 12l2 2l4-4</StreamGeometry>
     <StreamGeometry x:Key="SetIconGlobe">M3.5 12a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0Z M3.5 12h17M12 3.5c2.5 2.5 2.5 14.5 0 17M12 3.5c-2.5 2.5-2.5 14.5 0 17</StreamGeometry>
     <!-- The row's trailing marks: a link that leaves the app, and the Theme row's up/down pair. -->
     <StreamGeometry x:Key="SetIconExternal">M6 18l12-12M8 6h10v10</StreamGeometry>

@@ -217,6 +217,22 @@ public sealed class PhoneScrobblingTests : IDisposable
         Assert.Empty(_http.LastFmCalls);
     }
 
+    /// <summary>No account service (parked, or not built): no computer to send through, so a phone
+    /// left on the default Through Computer route sends its plays itself instead of losing them.</summary>
+    [Fact]
+    public async Task NoComputerRoute_ThePhoneSendsItsPlays_WhateverTheSavedRoute()
+    {
+        var persistence = NewPersistence();
+        await Connected(fromPhone: false, persistence: persistence);
+        var s = new PhoneScrobbler(persistence, new HttpClient(_http), _time) { AutoFlush = false, HasComputerRoute = false };
+        await s.LoadAsync();
+        Assert.True(s.FromPhone);
+        Play(s, Song("A"), 150);
+        await s.FlushAsync();
+        Assert.Equal(new[] { 1 }, _http.LastFmCalls);
+        Assert.Equal(0, s.PendingCount);
+    }
+
     [Fact]
     public async Task FromPhone_AQueuedPlayIsSentOnceAndNotAgain()
     {
@@ -509,6 +525,23 @@ public sealed class PhoneScrobblingTests : IDisposable
         Assert.Equal("ListenBrainz", vm.Summary);
         await scrobbler.DisconnectAsync(lastFm: false);
         Assert.Equal("Off", vm.Summary);
+    }
+
+    [AvaloniaFact]
+    public async Task Page_NoComputerRoute_HidesTheRouteAndShowsThePhonesServices()
+    {
+        var persistence = NewPersistence();
+        await Connected(fromPhone: false, persistence: persistence);
+        var scrobbler = new PhoneScrobbler(persistence, new HttpClient(_http), _time) { AutoFlush = false, HasComputerRoute = false };
+        await scrobbler.LoadAsync();
+        var (shell, _) = NewShell(scrobbler);
+        var vm = new ScrobblingSettingsViewModel(shell);
+        Assert.False(vm.HasComputerRoute);
+        Assert.True(vm.IsFromPhone);
+        Assert.True(vm.PhoneControlsEnabled);
+        Assert.Equal("Connected", vm.LastFmStatus);
+        Assert.Equal("Last.fm", vm.Summary);
+        Assert.DoesNotContain("sync", vm.Footnote);
     }
 
     [AvaloniaFact]

@@ -62,6 +62,10 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasStatusMessage))] private string _statusMessage = string.Empty;
 
     public bool IsThroughComputer => !IsFromPhone;
+
+    /// <summary>False with no account service: the Through Computer / From This Phone card hides and
+    /// the phone sends its plays itself.</summary>
+    public bool HasComputerRoute => _scrobbler.HasComputerRoute;
     public bool HasStatusMessage => StatusMessage.Length > 0;
 
     /// <summary>The Send Plays / Show Now Playing switches act on the phone's own sending only: they
@@ -104,7 +108,9 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
 
     private static string ComputerSubtitle(bool connected) => connected ? "On your computer" : "Set up on your computer";
 
-    public string Footnote => "A play counts after half the song or 4 minutes. Plays made offline wait here until the next sync.";
+    public string Footnote => HasComputerRoute
+        ? "A play counts after half the song or 4 minutes. Plays made offline wait here until the next sync."
+        : "A play counts after half the song or 4 minutes. Plays made offline wait here until the phone is back online.";
 
     partial void OnIsFromPhoneChanged(bool value)
     {
