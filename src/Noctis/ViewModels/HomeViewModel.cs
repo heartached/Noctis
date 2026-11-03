@@ -52,6 +52,57 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Recently played albums (grouped from playback history).</summary>
     public BulkObservableCollection<Album> RecentlyPlayedAlbums { get; } = new();
 
+    // ── New in Library (GitHub #159) ──
+    //
+    // The library's newest albums by date added, played or not, in the Albums row's tiles.
+    // Built from the in-memory library on each rebuild (a library publish dirties Home), so
+    // a scan or import shows up without any extra disk work.
+
+    /// <summary>Newest albums by date added, newest first.</summary>
+    public BulkObservableCollection<Album> NewInLibraryAlbums { get; } = new();
+
+    /// <summary>Shown when it has albums, except on the "nothing played yet" page, whose
+    /// centred prompt would sit on top of it.</summary>
+    public bool IsNewInLibraryVisible => NewInLibraryAlbums.Count > 0 && !ShowNothingPlayed;
+
+    /// <summary>Settings › Home: New in Library above the recently played Albums row.</summary>
+    public bool NewAlbumsFirst => _settings?.HomeNewAlbumsFirst ?? false;
+
+    /// <summary>How many albums the recently played Albums row shows (Settings, or its pill).</summary>
+    public int RecentAlbumsCount => _settings?.HomeRecentAlbumsCount ?? MaxRecentAlbums;
+
+    /// <summary>How many albums the New in Library row shows (Settings, or its pill).</summary>
+    public int NewAlbumsCount => _settings?.HomeNewAlbumsCount ?? DefaultNewAlbums;
+
+    private const int DefaultNewAlbums = 10;
+
+    /// <summary>Row pill: sets the recently played Albums row's size (saved in Settings).</summary>
+    [RelayCommand]
+    private void SetRecentAlbumsCount(object? count)
+    {
+        if (_settings != null && TryParseCount(count, out var n)) _settings.HomeRecentAlbumsCount = n;
+    }
+
+    /// <summary>Row pill: sets the New in Library row's size (saved in Settings).</summary>
+    [RelayCommand]
+    private void SetNewAlbumsCount(object? count)
+    {
+        if (_settings != null && TryParseCount(count, out var n)) _settings.HomeNewAlbumsCount = n;
+    }
+
+    private static bool TryParseCount(object? value, out int count)
+    {
+        count = value switch
+        {
+            int i => i,
+            string s when int.TryParse(s, out var p) => p,
+            _ => 0,
+        };
+        if (count <= 0) return false;
+        count = AppSettings.SnapHomeAlbumCount(count);
+        return true;
+    }
+
     // ── Albums rail ──
     //
     // The Home page's right-hand column: the album that played most recently as a
@@ -207,6 +258,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isHeavyRotationExpanded = true;
     [ObservableProperty] private bool _isRediscoveredExpanded = true;
     [ObservableProperty] private bool _isLastPlayedExpanded = true;
+    [ObservableProperty] private bool _isNewInLibraryExpanded = true;
 
     /// <summary>
     /// Heavy rotation shows only while it has rows AND the Appearance toggle is on.
@@ -237,6 +289,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// is where Add Folder lands a new user, and Home was just as blank there.
     /// </summary>
     [ObservableProperty] private bool _showNothingPlayed;
+
+    partial void OnShowNothingPlayedChanged(bool value) => OnPropertyChanged(nameof(IsNewInLibraryVisible));
 
     /// <summary>
     /// Set by the first <see cref="RefreshAsync"/>. That runs once the window has loaded the
@@ -297,6 +351,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         AdoptPersistedSectionState();
 
         HeavyRotationTracks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsHeavyRotationVisible));
+        NewInLibraryAlbums.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsNewInLibraryVisible));
         // Any row filling or emptying moves the "nothing played yet" state.
         foreach (var rows in new System.Collections.Specialized.INotifyCollectionChanged[]
                  { TopArtists, TopSongRows, LastPlayedRows, RecentlyPlayedAlbums, TimeRotationTracks, HeavyRotationTracks, RediscoveredTracks })
@@ -314,6 +369,18 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     UpdateAlbumTileSize(_lastAlbumUsableWidth);
                 else if (e.PropertyName == nameof(SettingsViewModel.IsScanning))
                     UpdateEmptyLibraryState();
+                else if (e.PropertyName == nameof(SettingsViewModel.HomeRecentAlbumsCount))
+                {
+                    OnPropertyChanged(nameof(RecentAlbumsCount));
+                    RefreshRecentAlbums(RecentHistoryNewestFirst(RecentAlbumsScan));
+                }
+                else if (e.PropertyName == nameof(SettingsViewModel.HomeNewAlbumsCount))
+                {
+                    OnPropertyChanged(nameof(NewAlbumsCount));
+                    _ = RefreshNewInLibraryAsync();
+                }
+                else if (e.PropertyName == nameof(SettingsViewModel.HomeNewAlbumsFirst))
+                    OnPropertyChanged(nameof(NewAlbumsFirst));
             };
         }
 
@@ -365,6 +432,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             IsHeavyRotationExpanded = _settings.HomeHeavyRotationExpanded;
             IsRediscoveredExpanded = _settings.HomeRediscoveredExpanded;
             IsLastPlayedExpanded = _settings.HomeLastPlayedExpanded;
+            IsNewInLibraryExpanded = _settings.HomeNewAlbumsExpanded;
         }
         finally
         {
@@ -407,6 +475,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         if (_settings != null && !_adoptingPersistedState) _settings.HomeLastPlayedExpanded = value;
     }
 
+    partial void OnIsNewInLibraryExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeNewAlbumsExpanded = value;
+    }
+
     /// <summary>
     /// Folds one Home section open or shut. Keyed by name rather than one command per
     /// section so the header template stays a single reusable button.
@@ -423,6 +496,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             case "HeavyRotation": IsHeavyRotationExpanded = !IsHeavyRotationExpanded; break;
             case "Rediscovered": IsRediscoveredExpanded = !IsRediscoveredExpanded; break;
             case "LastPlayed": IsLastPlayedExpanded = !IsLastPlayedExpanded; break;
+            case "NewInLibrary": IsNewInLibraryExpanded = !IsNewInLibraryExpanded; break;
         }
     }
 
@@ -442,7 +516,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
                 RecentlyPlayedAlbums.Insert(0, album);
 
-                while (RecentlyPlayedAlbums.Count > 10)
+                // The row's own size: this trimmed to 10 while a rebuild keeps 6, so a play of
+                // a new album grew the row to seven tiles until the next rebuild.
+                while (RecentlyPlayedAlbums.Count > RecentAlbumsCount)
                     RecentlyPlayedAlbums.RemoveAt(RecentlyPlayedAlbums.Count - 1);
 
                 RebuildRecentRail();
@@ -547,24 +623,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             // Player.History is a transport list — StopAndClear wipes it when a queue
             // plays to its end, and the shutdown snapshot then saves an empty history,
             // so both rows came back with only the current track after a restart.
-            var history = RecentHistoryNewestFirst();
-            // O(1) lookups via GetAlbumById
-            var recentAlbums = history
-                .Take(50)
-                .Select(t => t.AlbumId)
-                .Distinct()
-                .Take(MaxRecentAlbums)
-                .Select(id => _library.GetAlbumById(id))
-                .OfType<Album>()
-                .ToList();
-            // Only reset when the row actually changed: a Reset tears every tile down and
-            // Avalonia closes a ContextMenu whose owner leaves the tree, so the 500 ms
-            // refresh after a menu option (Favorites…) used to snap a re-opened menu shut.
-            if (!SameSequence(RecentlyPlayedAlbums, recentAlbums))
-                RecentlyPlayedAlbums.ReplaceAll(recentAlbums);
-            RebuildRecentRail();
+            var history = RecentHistoryNewestFirst(RecentAlbumsScan);
+            RefreshRecentAlbums(history);
             ReplaceLastPlayed(history);
             UpdateContinue();
+            await RefreshNewInLibraryAsync();
 
             // Top Artists: aggregate play count by artist name (using album-artist
             // grouping that the library already maintains), drop the "Unknown Artist"
@@ -1002,6 +1065,33 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         return new RecentRail(featured, tracks);
     }
 
+    /// <summary>
+    /// The recently played Albums row at its chosen size (GitHub #159). Only reset when the
+    /// row actually changed: a Reset tears every tile down and Avalonia closes a ContextMenu
+    /// whose owner leaves the tree, so the 500 ms refresh after a menu option (Favorites…)
+    /// used to snap a re-opened menu shut.
+    /// </summary>
+    private void RefreshRecentAlbums(IReadOnlyList<Track> historyNewestFirst)
+    {
+        // O(1) lookups via GetAlbumById
+        var recentAlbums = HomeRowsBuilder.BuildRecentAlbums(historyNewestFirst, _library.GetAlbumById, RecentAlbumsCount);
+        if (!SameSequence(RecentlyPlayedAlbums, recentAlbums))
+            RecentlyPlayedAlbums.ReplaceAll(recentAlbums);
+        RebuildRecentRail();
+    }
+
+    /// <summary>GitHub #159: New in Library from the in-memory albums, ranked off the UI thread.</summary>
+    private async Task RefreshNewInLibraryAsync()
+    {
+        var albums = _library.Albums;
+        var count = NewAlbumsCount;
+        var next = albums.Count == 0
+            ? new List<Album>()
+            : await Task.Run(() => HomeRowsBuilder.BuildNewInLibrary(albums, count));
+        if (!SameSequence(NewInLibraryAlbums, next))
+            NewInLibraryAlbums.ReplaceAll(next);
+    }
+
     private void RebuildRecentRail()
     {
         var rail = BuildRecentRail(RecentlyPlayedAlbums, MaxRailTracks);
@@ -1012,12 +1102,16 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>How far back the play log is scanned for the two recent rows.</summary>
     private const int RecentLogScan = 400;
 
+    /// <summary>Play-log window for the Albums row: deeper when the row is set to show many
+    /// albums (100 albums rarely fit in 400 plays). Id lookups only, no disk.</summary>
+    private int RecentAlbumsScan => Math.Max(RecentLogScan, RecentAlbumsCount * 40);
+
     /// <summary>
     /// Newest-first list of recently started tracks: the persisted play log when one is
     /// wired (survives restarts, queue replacement and the player's 50-item cap), else
     /// the player's in-memory History. Tracks no longer in the library are dropped.
     /// </summary>
-    private List<Track> RecentHistoryNewestFirst()
+    private List<Track> RecentHistoryNewestFirst(int scan = RecentLogScan)
     {
         var events = _playHistory?.Events;
         if (events == null || events.Count == 0)
@@ -1029,7 +1123,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             id => _library.GetTrackById(id) is { } t
                 ? (t.IsInInbox ? null : t) // played from the Inbox: not in the library yet
                 : (external ??= _player.GetExternalTracksById()).GetValueOrDefault(id),
-            RecentLogScan);
+            scan);
     }
 
     /// <summary>

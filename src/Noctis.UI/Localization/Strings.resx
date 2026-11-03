@@ -1022,6 +1022,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Home.Plays" xml:space="preserve"><value>plays</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.TopArtists" xml:space="preserve"><value>Top Artists</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.Albums" xml:space="preserve"><value>Albums</value><comment>Home right-hand rail header (last played album)</comment></data>
+  <data name="Home.NewInLibrary" xml:space="preserve"><value>New in Library</value><comment>Home section header: newest albums by date added (GitHub #159)</comment></data>
+  <data name="Home.ShowCount" xml:space="preserve"><value>Show</value><comment>Home album row size pill, followed by the number ("Show 10")</comment></data>
+  <data name="Home.AlbumCountTip" xml:space="preserve"><value>How many albums this row shows</value><comment>Home album row size pill tooltip / accessible name</comment></data>
   <data name="Home.PlayTip" xml:space="preserve"><value>Play</value><comment>ToolTip.Tip in HomeView.axaml</comment></data>
   <data name="Home.HeavyRotation" xml:space="preserve"><value>Heavy rotation</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.RepeatThesePastTwo" xml:space="preserve"><value>On repeat these past two weeks</value><comment>Text in HomeView.axaml</comment></data>
@@ -2780,6 +2783,12 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.Section.Artwork" xml:space="preserve"><value>Artwork</value><comment>Settings section label</comment></data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve"><value>Heavy Rotation</value><comment>Appearance › Home toggle</comment></data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve"><value>Show the "On repeat these past two weeks" row on the Home page.</value><comment>Appearance › Home toggle description</comment></data>
+  <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>Recently Played Albums</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeRecentAlbumsCountDesc" xml:space="preserve"><value>How many of the albums you played last the Albums row shows.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsCount" xml:space="preserve"><value>New in Library</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeNewAlbumsCountDesc" xml:space="preserve"><value>How many of your newest albums by date added Home shows, played or not.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsFirst" xml:space="preserve"><value>New in Library First</value><comment>Appearance › Home toggle</comment></data>
+  <data name="Settings.HomeNewAlbumsFirstDesc" xml:space="preserve"><value>Show New in Library above the recently played albums.</value><comment>Appearance › Home toggle description</comment></data>
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Taskbar</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Player island</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Mini player</value><comment>Settings section label</comment></data>

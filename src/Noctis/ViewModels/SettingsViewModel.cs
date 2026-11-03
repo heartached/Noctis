@@ -1555,6 +1555,19 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnHomeShowHeavyRotationChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeRediscoveredExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
+    // GitHub #159: Home's album row sizes and order (Appearance › Home, and each row's own pill).
+    [ObservableProperty] private int _homeRecentAlbumsCount = 6;
+    [ObservableProperty] private int _homeNewAlbumsCount = 10;
+    [ObservableProperty] private bool _homeNewAlbumsExpanded = true;
+    [ObservableProperty] private bool _homeNewAlbumsFirst;
+
+    public IReadOnlyList<int> HomeAlbumCountChoices => AppSettings.HomeAlbumCountChoices;
+
+    partial void OnHomeRecentAlbumsCountChanged(int value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeNewAlbumsCountChanged(int value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeNewAlbumsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeNewAlbumsFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
     // ── Noctis server (OpenSubsonic API for phones / other clients) ──
 
     private NoctisServer? _noctisServer;
@@ -3395,6 +3408,10 @@ public partial class SettingsViewModel : ViewModelBase
             HomeRediscoveredExpanded = _settings.HomeRediscoveredExpanded;
             HomeLastPlayedExpanded = _settings.HomeLastPlayedExpanded;
             HomeShowHeavyRotation = _settings.HomeShowHeavyRotation;
+            HomeRecentAlbumsCount = AppSettings.SnapHomeAlbumCount(_settings.HomeRecentAlbumsCount);
+            HomeNewAlbumsCount = AppSettings.SnapHomeAlbumCount(_settings.HomeNewAlbumsCount);
+            HomeNewAlbumsExpanded = _settings.HomeNewAlbumsExpanded;
+            HomeNewAlbumsFirst = _settings.HomeNewAlbumsFirst;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             BackgroundBlurAmount = Math.Clamp(_settings.BackgroundBlurAmount, 0, 1);
             Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(BackgroundBlurAmount);
@@ -3905,6 +3922,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeRediscoveredExpanded = HomeRediscoveredExpanded;
         _settings.HomeLastPlayedExpanded = HomeLastPlayedExpanded;
         _settings.HomeShowHeavyRotation = HomeShowHeavyRotation;
+        _settings.HomeRecentAlbumsCount = AppSettings.SnapHomeAlbumCount(HomeRecentAlbumsCount);
+        _settings.HomeNewAlbumsCount = AppSettings.SnapHomeAlbumCount(HomeNewAlbumsCount);
+        _settings.HomeNewAlbumsExpanded = HomeNewAlbumsExpanded;
+        _settings.HomeNewAlbumsFirst = HomeNewAlbumsFirst;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.BackgroundBlurAmount = Math.Clamp(BackgroundBlurAmount, 0, 1);
         _settings.UiScalePercent = AppSettings.SnapUiScale(UiScalePercent);
@@ -7841,6 +7862,9 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumPageTintWholePage = defaultSettings.AlbumPageTintWholePage;
             AlbumPageTintWholeWindow = defaultSettings.AlbumPageTintWholeWindow;
             HomeShowHeavyRotation = defaultSettings.HomeShowHeavyRotation;
+            HomeRecentAlbumsCount = defaultSettings.HomeRecentAlbumsCount;
+            HomeNewAlbumsCount = defaultSettings.HomeNewAlbumsCount;
+            HomeNewAlbumsFirst = defaultSettings.HomeNewAlbumsFirst;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;
             MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
