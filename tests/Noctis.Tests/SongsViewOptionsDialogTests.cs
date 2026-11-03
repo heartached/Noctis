@@ -141,12 +141,12 @@ public class SongsViewOptionsDialogTests
                 Assert.True(Named<RadioButton>(win, "AllSongsSegment").IsChecked);
                 Assert.False(Named<RadioButton>(win, "OnlyFavoritesSegment").IsChecked);
 
-                // Columns: the pill pop-ups' round checkbox, 8 + 4 + 4 in three filled wells
-                // (Year / Album Artist / Composer, Date Added and Format joined them in #151).
+                // Columns: the pill pop-ups' round checkbox, 8 + 4 + 5 in three filled wells
+                // (Year / Album Artist / Composer, Date Added, Format and ReplayGain joined them in #151).
                 var wells = Named<Grid>(win, "ColumnWells").Children.OfType<Border>().ToList();
                 Assert.Equal(3, wells.Count);
                 Assert.All(wells, w => Assert.Contains("pill-well", w.Classes));
-                Assert.Equal(new[] { 8, 4, 4 }, wells.Select(w => w.GetVisualDescendants().OfType<CheckBox>().Count()).ToArray());
+                Assert.Equal(new[] { 8, 4, 5 }, wells.Select(w => w.GetVisualDescendants().OfType<CheckBox>().Count()).ToArray());
                 Assert.All(wells.SelectMany(w => w.GetVisualDescendants().OfType<CheckBox>()),
                     c => Assert.Contains("metadata-pill-checkbox", c.Classes));
                 // The Artwork toggle is the one bound to the artwork thumbnails.
@@ -330,17 +330,17 @@ public class SongsViewOptionsDialogTests
         var low = new Track
         {
             Id = Guid.NewGuid(), Title = "B low", Artist = "A", AlbumArtist = "A", Album = "A", Genre = "A",
-            Duration = TimeSpan.FromMinutes(1), PlayCount = 1, IsFavorite = false, Rating = 1, Year = 1990, Bpm = 90,
+            Duration = TimeSpan.FromMinutes(1), PlayCount = 1, IsFavorite = false, Rating = 1, Year = 1990, Bpm = 90, ReplayGainTrackDb = -9.0,
             Bitrate = 128, SampleRate = 44100, DateAdded = new DateTime(2020, 1, 1), LastModified = new DateTime(2020, 1, 1),
         };
         var high = new Track
         {
             Id = Guid.NewGuid(), Title = "A high", Artist = "Z", AlbumArtist = "Z", Album = "Z", Genre = "Z",
-            Duration = TimeSpan.FromMinutes(9), PlayCount = 9, IsFavorite = true, Rating = 5, Year = 2020, Bpm = 180,
+            Duration = TimeSpan.FromMinutes(9), PlayCount = 9, IsFavorite = true, Rating = 5, Year = 2020, Bpm = 180, ReplayGainTrackDb = 1.5,
             Bitrate = 1411, SampleRate = 96000, DateAdded = new DateTime(2024, 1, 1), LastModified = new DateTime(2024, 1, 1),
         };
         var tracks = new List<Track> { low, high };
-        Assert.Equal(15, vm.SortOptions.Count);
+        Assert.Equal(16, vm.SortOptions.Count);
         foreach (var option in vm.SortOptions)
         {
             var ascFirst = LibrarySongsViewModel.BuildFilteredAndSortedTracks(tracks, "", option.Key, true, false, "All")[0];
