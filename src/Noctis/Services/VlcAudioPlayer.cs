@@ -656,7 +656,31 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 vlcArgs.Add(tok);
         }
 
+        // libvlc's plugins cache: without it every bundled plugin DLL stays loaded (see
+        // VlcPluginCache). Rebuilt by libvlc itself on the start that finds it missing/stale.
+        var pluginsDir = VlcPluginCache.BundledPluginsDirectory();
+        string? pluginsFingerprint = null;
+        var pluginCacheStartedUtc = DateTime.UtcNow;
+        if (pluginsDir != null)
+        {
+            try
+            {
+                pluginsFingerprint = VlcPluginCache.Fingerprint(pluginsDir);
+                if (VlcPluginCache.NeedsRebuild(pluginsDir, pluginsFingerprint))
+                    vlcArgs.Add(VlcPluginCache.ResetArg);
+                else
+                    pluginsFingerprint = null; // up to date: nothing to record afterwards
+            }
+            catch { pluginsFingerprint = null; }
+        }
+
         _libVlc = new LibVLC(vlcArgs.ToArray());
+
+        if (pluginsDir != null && pluginsFingerprint != null)
+        {
+            var built = VlcPluginCache.RecordBuilt(pluginsDir, pluginsFingerprint, pluginCacheStartedUtc);
+            DebugLog.Write("Playback", $"libvlc plugins cache rebuilt: {(built ? "saved" : "not saved (folder not writable?)")}");
+        }
 
         // Identify our audio session as "Noctis" in the Windows Volume Mixer
         // (and as the network user agent) instead of LibVLC's default

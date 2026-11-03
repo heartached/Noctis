@@ -196,7 +196,8 @@ public sealed class GaplessSink : IDisposable
         // audible in the air but invisible to any PCM tap. Logging inter-read
         // gaps turns those into session-log lines with timestamps. It also
         // boosts the render thread on first read (see StallProbe).
-        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs));
+        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs),
+            () => !Provider.Parked && Provider.ActiveSegment != null);
         _renderSource = _probe;
         (_out, _outDevice, _) = CreateOutput();
         // Render immediately: the provider always returns full buffers (silence
@@ -871,16 +872,18 @@ public sealed class GaplessSink : IDisposable
 
         private readonly ISampleProvider _inner;
         private readonly int _thresholdMs;
+        private readonly Func<bool> _audible;
         private long _lastReadTick;
         private TimeSpan _lastGcPause;
         private int _lastGen0, _lastGen1, _lastGen2;
         private bool _boosted;
         public WaveFormat WaveFormat => _inner.WaveFormat;
 
-        public StallProbe(ISampleProvider inner, int thresholdMs)
+        public StallProbe(ISampleProvider inner, int thresholdMs, Func<bool> audible)
         {
             _inner = inner;
             _thresholdMs = thresholdMs;
+            _audible = audible;
         }
 
         // The boost latches per render thread; a rebuilt WasapiOut spins up a
@@ -936,7 +939,11 @@ public sealed class GaplessSink : IDisposable
                 // DebugLog's lock into CrashJournal's AutoFlush file write, and that time
                 // landed inside the NEXT gap — one stall could log its way into the next.
                 var meta = $"gapMs={gapMs:F1}, gcPauseMs={(gcPause - _lastGcPause).TotalMilliseconds:F1}, " +
-                           $"gcs={gen0 - _lastGen0}/{gen1 - _lastGen1}/{gen2 - _lastGen2}";
+                           $"gcs={gen0 - _lastGen0}/{gen1 - _lastGen1}/{gen2 - _lastGen2}, " +
+                           // A gap while the provider renders zeros (paused, nothing loaded,
+                           // the idle stream after startup) is not heard; say which it was
+                           // (11-03: a startup trim's 120 ms gap read as an audible stall).
+                           $"audible={_audible()}";
                 ThreadPool.QueueUserWorkItem(static m =>
                 {
                     try { DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.RenderStall", m); }

@@ -104,6 +104,11 @@ Root: HKA; Subkey: "Software\Classes\.m4b\OpenWithProgids"; ValueType: none; Val
 ; and nothing in the app consumes it.
 Source: "publish\win-x64\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[UninstallDelete]
+; libvlc's plugins cache, written by the app on first start (Services/VlcPluginCache.cs).
+Type: files; Name: "{app}\libvlc\win-x64\plugins\plugins.dat"
+Type: files; Name: "{app}\libvlc\win-x64\plugins\plugins.dat.noctis"
+
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
