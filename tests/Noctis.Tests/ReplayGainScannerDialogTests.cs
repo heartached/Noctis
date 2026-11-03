@@ -257,6 +257,88 @@ public class ReplayGainScannerDialogTests
         Assert.Contains("A: " + (-7.1).ToString("+0.00;-0.00;0.00") + " dB", album.Jobs[0].GainsText);
     }
 
+    private static string RgFlac(string dir, string name, string? gain)
+    {
+        var path = Path.Combine(dir, name);
+        File.Move(ReplayGainWriteTests.CreateFlac(dir), path);
+        if (gain != null)
+        {
+            using var f = TagLib.File.Create(path);
+            ((TagLib.Ogg.XiphComment)f.GetTag(TagLib.TagTypes.Xiph, true)).SetField("REPLAYGAIN_TRACK_GAIN", gain);
+            f.Save();
+        }
+        return path;
+    }
+
+    /// <summary>GitHub #161: songs that already have a ReplayGain value start unticked, from
+    /// the library's copy at once or from a tag read for songs it never read; only songs
+    /// without one are pre-selected. All stay listed and can be ticked to re-scan. A box the
+    /// user already set is left alone, and the read fills the Songs list's column (#158).</summary>
+    [AvaloniaFact]
+    public void Open_PreselectsOnlySongsWithoutReplayGain()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "NoctisTests", "rg161-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var tracks = Tracks(5);
+            tracks[0].ApplyReplayGain(new ReplayGainValues(-6.0, null, null)); // library knows: has one
+            tracks[1].ApplyReplayGain(ReplayGainValues.None);                   // library knows: none
+            tracks[2].FilePath = RgFlac(dir, "c.flac", "-8.20 dB");             // never read: has one
+            tracks[3].FilePath = RgFlac(dir, "d.flac", null);                   // never read: none
+            tracks[4].FilePath = RgFlac(dir, "e.flac", "nan dB");               // a value the player ignores
+
+            var vm = new ReplayGainScannerViewModel(tracks, new FakeScanner(), new FakeLibraryService());
+            // The library's copy settles its rows before any read.
+            Assert.False(vm.Jobs[0].IsIncluded);
+            Assert.Equal(ReplayGainScannerViewModel.RgState.Tagged, vm.Jobs[0].State);
+            Assert.True(vm.Jobs[1].IsIncluded);
+
+            Assert.True(PumpUntil(() => !vm.Jobs[2].IsIncluded), "the tagged file was never unticked");
+            PumpUntil(() => false, 100);
+            Assert.Equal(new[] { false, true, false, true, true }, vm.Jobs.Select(j => j.IsIncluded));
+            Assert.Equal(ReplayGainScannerViewModel.RgState.Tagged, vm.Jobs[2].State);
+            Assert.Equal(ReplayGainScannerViewModel.RgState.Pending, vm.Jobs[3].State);
+            Assert.Equal("Scan ReplayGain · 3 tracks", vm.TitleText);
+            Assert.True(vm.StartCommand.CanExecute(null));
+            // #158: what the dialog read is on the track for the Songs list's column too.
+            Assert.Equal(-8.2, tracks[2].ReplayGainTrackDb);
+            Assert.True(tracks[3].ReplayGainChecked);
+            Assert.Null(tracks[4].ReplayGainTrackDb);
+
+            // Still there to tick: a re-scan.
+            vm.Jobs[2].IsIncluded = true;
+            Assert.Equal("Scan ReplayGain · 4 tracks", vm.TitleText);
+            Assert.Equal(ReplayGainScannerViewModel.RgState.Tagged, vm.Jobs[2].State);
+
+            // A box the user set before the read finished keeps their choice.
+            var row = vm.Jobs[3];
+            row.IsIncluded = false;
+            row.IsIncluded = true;
+            row.PreselectTagged();
+            Assert.True(row.IsIncluded);
+            Assert.True(row.HadTags);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    /// <summary>GitHub #161: when every song already has ReplayGain nothing is ticked, so Scan
+    /// is off, and the footer says why.</summary>
+    [Fact]
+    public void Open_EverySongTagged_NothingTicked_FooterSaysWhy()
+    {
+        var tracks = Tracks(2);
+        foreach (var t in tracks) t.ApplyReplayGain(new ReplayGainValues(-6.0, null, null));
+        var vm = new ReplayGainScannerViewModel(tracks, new FakeScanner(), new FakeLibraryService());
+        Assert.All(vm.Jobs, j => Assert.False(j.IsIncluded));
+        Assert.False(vm.StartCommand.CanExecute(null));
+        Assert.Equal(Loc.T("ReplayGainScanner.AllTagged"), vm.StatusMessage);
+
+        vm.Jobs[0].IsIncluded = true;
+        Assert.True(vm.StartCommand.CanExecute(null));
+        Assert.Equal("Scan ReplayGain · 1 track", vm.TitleText);
+    }
+
     /// <summary>Bug: a row unticked for a scan that was then cancelled kept "Skipped" after
     /// it was ticked back in.</summary>
     [Fact]

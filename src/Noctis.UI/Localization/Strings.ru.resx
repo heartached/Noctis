@@ -1967,6 +1967,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="ReplayGainScanner.Stop" xml:space="preserve"><value>Остановить</value><comment>Cancel button while a scan runs, ReplayGainScannerDialog</comment></data>
   <data name="ReplayGainScanner.NoFfmpeg" xml:space="preserve"><value>ffmpeg не найден — укажите путь в «Настройки → Дополнительно → Вспомогательные программы».</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.TickOne" xml:space="preserve"><value>Отметьте хотя бы один трек для сканирования.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.AllTagged" xml:space="preserve"><value>У всех треков здесь уже есть ReplayGain. Отметьте трек, чтобы просканировать его заново.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Scanning" xml:space="preserve"><value>Сканирование…</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Finished" xml:space="preserve"><value>Готово · просканировано: {0}</value><comment>Status in ReplayGainScannerViewModel; {0} tracks tagged</comment></data>
   <data name="ReplayGainScanner.FinishedFailed" xml:space="preserve"><value>с ошибкой: {0}</value><comment>Status suffix in ReplayGainScannerViewModel; {0} tracks failed</comment></data>
