@@ -647,6 +647,28 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Settings toggle (Appearance): show the "Heavy rotation" row on Home at all.</summary>
     public bool HomeShowHeavyRotation { get; set; } = true;
 
+    // GitHub #159: how many albums Home's Albums (recently played) and New in Library rows
+    // show, and which of the two comes first. Defaults keep the Albums row as it was (six).
+
+    /// <summary>Albums shown in Home's recently played Albums row; one of <see cref="HomeAlbumCountChoices"/>.</summary>
+    public int HomeRecentAlbumsCount { get; set; } = 6;
+
+    /// <summary>Albums shown in Home's New in Library row (newest added first); one of <see cref="HomeAlbumCountChoices"/>.</summary>
+    public int HomeNewAlbumsCount { get; set; } = 10;
+
+    /// <summary>Whether Home's "New in Library" section shows its rows.</summary>
+    public bool HomeNewAlbumsExpanded { get; set; } = true;
+
+    /// <summary>Show New in Library above the recently played Albums row (default: below it).</summary>
+    public bool HomeNewAlbumsFirst { get; set; }
+
+    /// <summary>The counts the Home album rows offer (Settings picker and the row's own pill).</summary>
+    public static IReadOnlyList<int> HomeAlbumCountChoices { get; } = new[] { 6, 10, 20, 50, 100 };
+
+    /// <summary>The nearest of <see cref="HomeAlbumCountChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapHomeAlbumCount(int count) =>
+        HomeAlbumCountChoices.MinBy(c => Math.Abs((long)c - count));
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look. Shown as "Glass Opacity" (GitHub #104): with Liquid Glass
@@ -1196,6 +1218,8 @@ public class AppSettings : IJsonOnDeserializing
         SleepTimerFadeSeconds = SnapSleepTimerFadeSeconds(SleepTimerFadeSeconds);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         UiScalePercent = SnapUiScale(UiScalePercent);
+        HomeRecentAlbumsCount = SnapHomeAlbumCount(HomeRecentAlbumsCount);
+        HomeNewAlbumsCount = SnapHomeAlbumCount(HomeNewAlbumsCount);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         BackgroundBlurAmount = double.IsFinite(BackgroundBlurAmount)
             ? Math.Clamp(BackgroundBlurAmount, 0, 1)

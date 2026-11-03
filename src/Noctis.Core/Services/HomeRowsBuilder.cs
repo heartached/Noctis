@@ -118,6 +118,44 @@ public static class HomeRowsBuilder
     }
 
     /// <summary>
+    /// The albums of a newest-first history, most recently played first, at most
+    /// <paramref name="max"/>. Albums <paramref name="resolve"/> can't find (no album id, a
+    /// file played in place) are skipped without taking a slot.
+    /// </summary>
+    public static List<Album> BuildRecentAlbums(IEnumerable<Track> historyNewestFirst, Func<Guid, Album?> resolve, int max)
+    {
+        var seen = new HashSet<Guid>();
+        var result = new List<Album>(Math.Min(max, 128));
+        if (max <= 0) return result;
+        foreach (var t in historyNewestFirst)
+        {
+            if (t.AlbumId == Guid.Empty || !seen.Add(t.AlbumId)) continue;
+            if (resolve(t.AlbumId) is not { } album) continue;
+            result.Add(album);
+            if (result.Count >= max) break;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// GitHub #159: the library's newest albums by date added (an album's newest track, as the
+    /// Albums page's Date Added sort), played or not; at most <paramref name="max"/>. Ties fall
+    /// back to the album name so a folder added in one go keeps a stable order.
+    /// </summary>
+    public static List<Album> BuildNewInLibrary(IEnumerable<Album> albums, int max)
+    {
+        if (max <= 0) return new List<Album>();
+        return albums
+            .Where(a => a.Tracks is { Count: > 0 })
+            .Select(a => (Album: a, Added: a.Tracks.Max(t => t.DateAdded)))
+            .OrderByDescending(x => x.Added)
+            .ThenBy(x => x.Album.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Take(max)
+            .Select(x => x.Album)
+            .ToList();
+    }
+
+    /// <summary>
     /// The most recent distinct tracks from a newest-first history: a track that was played
     /// twice keeps only its newest position.
     /// </summary>
