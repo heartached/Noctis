@@ -2623,6 +2623,7 @@ public class LibraryService : ILibraryService
         target.VolumeAdjust = source.VolumeAdjust;
         target.EqPreset = source.EqPreset;
         target.LyricsOffsetMs = source.LyricsOffsetMs;
+        target.NoLyrics = source.NoLyrics;
         target.SavedPositionMs = source.SavedPositionMs;
         target.DateAdded = source.DateAdded;
         target.AddedIndividually = source.AddedIndividually;

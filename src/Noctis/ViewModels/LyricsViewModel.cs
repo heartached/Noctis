@@ -581,6 +581,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _canRemoveLyrics;
 
+    /// <summary>GitHub #162: the song on the page is marked as having no lyrics — the page says
+    /// so (with Undo) instead of offering a search, and nothing searches for it automatically.</summary>
+    [ObservableProperty]
+    private bool _isMarkedNoLyrics;
+
     /// <summary>Status text for save operation feedback.</summary>
     [ObservableProperty]
     private string _saveStatusText = string.Empty;
@@ -1218,6 +1223,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         var track = _currentTrack;
         if (track == null) return;
+        // Marked as having no lyrics (GitHub #162): only Search Lyrics' dialog may look any up.
+        if (track.NoLyrics) return;
 
         DebugLogger.Info(DebugLogger.Category.Lyrics, "SearchLyrics", $"artist={track.Artist}, title={track.Title}");
         var generation = ++_searchGeneration;
@@ -1638,6 +1645,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         (sources, artist, title, ct) => SearchSourcesAsync(sources, artist, title, track.Duration.TotalSeconds, track.Album ?? "", ct),
         (result, source) => ApplySearchedLyrics(track, result, source))
     {
+        // GitHub #162: "No Lyrics" in the footer marks the song (Undo when it already is).
+        SetNoLyrics = marked =>
+        {
+            if (!ReferenceEquals(_currentTrack, track)) SetNoLyricsMark(track, marked);
+            else if (marked) _ = MarkNoLyricsCommand.ExecuteAsync(null);
+            else UnmarkNoLyricsCommand.Execute(null);
+        },
         // lrc.red's row offers its model only while lrc.red is on in Settings. Its answer, once
         // used, is credited on the page as the model's.
         SyncWithLrcRedModel = LrcRed is { } lrcRed
@@ -1726,6 +1740,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     internal void ApplySearchedLyrics(Track track, LrcLibResult result, string source)
     {
         if (!result.HasLyrics) return;
+        // Lyrics picked by hand: the song has lyrics after all (GitHub #162).
+        SetNoLyricsMark(track, false);
 
         if (_currentTrack == null || _currentTrack.Id != track.Id)
         {
@@ -2481,6 +2497,65 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         SaveStatusText = string.Empty;
     }
 
+    // ── Marked as having no lyrics (GitHub #162) ──
+
+    /// <summary>Probe source of a song marked as having no lyrics: nothing is read for it.</summary>
+    private const string NoLyricsSource = "NoLyrics";
+
+    /// <summary>
+    /// Marks the song on the page as having no lyrics (an instrumental): no automatic lookup
+    /// searches it again, and the lyrics it has from this app go as Remove Lyrics takes them —
+    /// the cache, sidecars this app wrote, lyrics this page put in the tags. The user's own
+    /// lyrics files and tags stay; while marked, the page shows none of them.
+    /// </summary>
+    [RelayCommand]
+    private async Task MarkNoLyrics()
+    {
+        if (_currentTrack is not { } track) return;
+        SetNoLyricsMark(track, true);
+        // A search in flight must not land over the mark.
+        ++_searchGeneration;
+        IsSearching = false;
+        SearchFailedMessage = string.Empty;
+        if (!IsPreviewActive) await RemoveLyrics();
+        if (!ReferenceEquals(_currentTrack, track)) return;
+        ShowSearchButton = false;
+        IsMarkedNoLyrics = !IsPreviewActive;
+    }
+
+    /// <summary>Takes the mark off again; the page offers Search Lyrics, but nothing searches on its own until the next session.</summary>
+    [RelayCommand]
+    private void UnmarkNoLyrics()
+    {
+        if (_currentTrack is not { } track) return;
+        SetNoLyricsMark(track, false);
+        // As after Remove Lyrics: the automatic download doesn't fetch the junk straight back.
+        _autoDownloadTried.Add(track.Id);
+        LoadLyricsForTrack(track);
+    }
+
+    /// <summary>Sets the mark on the song and on the library's instance of it (the one saved), and saves.</summary>
+    internal void SetNoLyricsMark(Track track, bool marked)
+    {
+        var changed = track.NoLyrics != marked;
+        track.NoLyrics = marked;
+        if (_library.GetTrackById(track.Id) is { } libraryTrack && libraryTrack.NoLyrics != marked)
+        {
+            libraryTrack.NoLyrics = marked;
+            changed = true;
+        }
+        if (ReferenceEquals(_currentTrack, track) && !marked) IsMarkedNoLyrics = false;
+        if (!changed) return;
+        DebugLogger.Info(DebugLogger.Category.Lyrics, "NoLyricsMark", $"marked={marked}, title={track.Title}");
+        _ = SaveLibraryQuietlyAsync();
+    }
+
+    private async Task SaveLibraryQuietlyAsync()
+    {
+        try { await _library.SaveAsync(); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsMark:SaveFailed", ex.Message); }
+    }
+
     private void ShowStatusText(string text, int durationMs = 3000)
     {
         _statusClearCts?.Cancel();
@@ -3043,6 +3118,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         CanSaveTtmlToFile = false;
         _localSyncedForSave = null;
         CanRemoveLyrics = false;
+        IsMarkedNoLyrics = false;
         SaveStatusText = string.Empty;
         IsAutoFollowPaused = false;
         HasAlternateLyrics = false;
@@ -3119,6 +3195,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 if (previewLines.Count > 0)
                     return new LocalLyricsProbe(previewLines, null, PreviewSource, FromCache: false);
             }
+            // Marked as having no lyrics (GitHub #162): whatever lies around for it is not shown.
+            if (track.NoLyrics)
+                return new LocalLyricsProbe(null, null, NoLyricsSource, FromCache: false);
             return ProbeLocalLyricSources(track, joinSplitWords, uiLanguage);
         });
         // Visible in Settings ▸ About ▸ Developer Mode ▸ Copy Logs: how long the
@@ -3389,9 +3468,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         // No lyrics found — the stale lines were left up during the probe
         // (deferred clear), so empty the collections here, then show search only.
-        DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
         LyricLines.Clear();
         UnsyncedLines.Clear();
+        if (probe.Source == NoLyricsSource)
+        {
+            // "Marked as no lyrics" with Undo instead of the search pill; no automatic search.
+            IsMarkedNoLyrics = true;
+            AutoSelectTab();
+            RefreshActiveLyricPosition();
+            return;
+        }
+        DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
         ShowSearchButton = true;
         AutoSelectTab();
         RefreshActiveLyricPosition();
@@ -3413,6 +3500,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         if (!_player.LyricsAutoDownload || !IsAnyLyricsSurfaceVisible) return;
         if (_currentTrack is not { } track || !ShowSearchButton || IsSearching || IsPreviewActive) return;
+        if (track.NoLyrics) return;
         if (!_autoDownloadTried.Add(track.Id)) return;
         DebugLogger.Info(DebugLogger.Category.Lyrics, "AutoDownload", $"title={track.Title}");
         SearchLyricsCommand.Execute(null);

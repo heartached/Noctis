@@ -223,6 +223,119 @@ public class LyricsAutoDownloadTests : IDisposable
         Assert.Equal(1, rig.LrcLib.Calls);
     }
 
+    // ── Marked as no lyrics (GitHub #162) ──
+
+    [AvaloniaFact]
+    public async Task SongMarkedAsNoLyrics_IsNeverSearched_AndThePageSaysSo()
+    {
+        var rig = Mount(new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) });
+        rig.Track.NoLyrics = true;
+        rig.Vm.SetLyricsSurfaceVisible(true);
+
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+        rig.Vm.SearchLyricsCommand.Execute(null); // the page's automatic search entry
+        await SettleAsync(rig.Vm);
+
+        Assert.Equal(0, rig.LrcLib.Calls);
+        Assert.True(rig.Vm.IsMarkedNoLyrics);
+        Assert.False(rig.Vm.ShowSearchButton);
+        Assert.Empty(rig.Vm.LyricLines);
+    }
+
+    [AvaloniaFact]
+    public async Task Marking_TakesTheFetchedLyricsAway_AndUndoDoesNotFetchThemBack()
+    {
+        var rig = Mount(new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) });
+        rig.Vm.SetLyricsSurfaceVisible(true);
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await PumpUntilAsync(() => rig.Vm.LyricsSourceName == "LRCLIB");
+        await DrainAsync();
+        var cache = Path.Combine(LyricsViewModel.LyricsCacheDir, $"{rig.Track.Id}.lrc");
+        Assert.True(File.Exists(Side(rig.Track, ".lrc")));
+        Assert.True(File.Exists(cache));
+
+        await rig.Vm.MarkNoLyricsCommand.ExecuteAsync(null);
+        await DrainAsync();
+
+        Assert.True(rig.Track.NoLyrics);
+        Assert.True(rig.Vm.IsMarkedNoLyrics);
+        Assert.False(rig.Vm.ShowSearchButton);
+        Assert.Empty(rig.Vm.LyricLines);
+        Assert.False(File.Exists(Side(rig.Track, ".lrc"))); // the app's own sidecar
+        Assert.False(File.Exists(cache));
+
+        rig.Vm.SetLyricsSurfaceVisible(false);
+        rig.Vm.SetLyricsSurfaceVisible(true);
+        await SettleAsync(rig.Vm);
+        rig.Vm.UnmarkNoLyricsCommand.Execute(null);
+        await SettleAsync(rig.Vm);
+
+        Assert.False(rig.Track.NoLyrics);
+        Assert.False(rig.Vm.IsMarkedNoLyrics);
+        Assert.True(rig.Vm.ShowSearchButton);
+        Assert.Equal(1, rig.LrcLib.Calls);
+    }
+
+    [AvaloniaFact]
+    public async Task LyricsPickedInSearchLyrics_TakeTheMarkOff()
+    {
+        var rig = Mount(new StubLrcLib());
+        rig.Track.NoLyrics = true;
+        rig.Vm.SetLyricsSurfaceVisible(true);
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+        Assert.True(rig.Vm.IsMarkedNoLyrics);
+
+        rig.Vm.ApplySearchedLyrics(rig.Track, Result(synced: Lrc), "LRCLIB");
+        await DrainAsync();
+
+        Assert.False(rig.Track.NoLyrics);
+        Assert.False(rig.Vm.IsMarkedNoLyrics);
+        Assert.Contains(rig.Vm.LyricLines, l => l.Text == "line timed");
+    }
+
+    [AvaloniaFact]
+    public async Task SearchLyricsDialog_MarksAndUnmarks()
+    {
+        var rig = Mount(new StubLrcLib(), autoDownload: false);
+        rig.Vm.SetLyricsSurfaceVisible(true);
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+
+        var dialog = rig.Vm.CreateLyricsSearchViewModel(rig.Track);
+        Assert.True(dialog.CanMarkNoLyrics);
+        Assert.Equal(Noctis.Localization.Loc.T("LyricsSearch.MarkNoLyrics"), dialog.NoLyricsLabel);
+        dialog.ToggleNoLyricsCommand.Execute(null);
+        await SettleAsync(rig.Vm);
+        Assert.True(rig.Track.NoLyrics);
+        Assert.True(rig.Vm.IsMarkedNoLyrics);
+
+        var again = rig.Vm.CreateLyricsSearchViewModel(rig.Track);
+        Assert.Equal(Noctis.Localization.Loc.T("LyricsSearch.UnmarkNoLyrics"), again.NoLyricsLabel);
+        again.ToggleNoLyricsCommand.Execute(null);
+        await SettleAsync(rig.Vm);
+        Assert.False(rig.Track.NoLyrics);
+        Assert.True(rig.Vm.ShowSearchButton);
+    }
+
+    [Fact]
+    public async Task NoLyricsMark_SurvivesRestartAndRescan()
+    {
+        var root = Path.Combine(_dir, "data");
+        var track = new Track { Id = Guid.NewGuid(), Title = "T", FilePath = "x.mp3", NoLyrics = true };
+        await new PersistenceService(root).SaveLibraryAsync(new List<Track> { track });
+        var reloaded = Assert.Single((await new PersistenceService(root).LoadLibraryAsync())!);
+        Assert.True(reloaded.NoLyrics);
+
+        // Rescan of a changed file: the fresh tag read inherits the user's state.
+        var copy = typeof(LibraryService).GetMethod("CopyMutableTrackState",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var fresh = new Track { Id = track.Id, Title = "T", FilePath = "x.mp3" };
+        copy.Invoke(null, new object[] { reloaded, fresh });
+        Assert.True(fresh.NoLyrics);
+    }
+
     // ── Preferred lyrics type ──
 
     [Fact]

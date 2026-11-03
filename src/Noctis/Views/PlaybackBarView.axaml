@@ -1442,6 +1442,22 @@
                                             <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyricsPanel}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- GitHub #162: the song has no lyrics (an instrumental) — nothing
+                                         searches it automatically any more; Undo from the same place. -->
+                                    <MenuItem Header="{loc:T PlaybackBar.MarkNoLyrics}"
+                                              Command="{Binding MarkCurrentTrackNoLyricsCommand}"
+                                              IsVisible="{Binding CanMarkNoLyrics}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T PlaybackBar.UnmarkNoLyrics}"
+                                              Command="{Binding UnmarkCurrentTrackNoLyricsCommand}"
+                                              IsVisible="{Binding IsLyricsMarkedNoLyrics}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="{loc:T PlaybackBar.RemoveLyrics}" Classes="danger"
                                               Command="{Binding RemoveCurrentTrackLyricsCommand}"
                                               IsVisible="{Binding IsLyricsPageActive}">

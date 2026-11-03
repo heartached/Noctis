@@ -54,6 +54,26 @@ public partial class LyricsSearchViewModel : ViewModelBase
         _selectedSource = AutoLabel;
         _artist = LyricsSearchSelector.IsUnknownArtist(track.Artist) ? string.Empty : track.Artist ?? string.Empty;
         _title = track.Title ?? string.Empty;
+        IsMarkedNoLyrics = track.NoLyrics;
+    }
+
+    /// <summary>GitHub #162: marks (true) or unmarks the song as having no lyrics; set by the
+    /// lyrics page. Null: the footer doesn't offer it.</summary>
+    internal Action<bool>? SetNoLyrics { get; init; }
+
+    /// <summary>The song is marked as having no lyrics: the footer offers to unmark it.</summary>
+    public bool IsMarkedNoLyrics { get; }
+
+    public bool CanMarkNoLyrics => SetNoLyrics != null;
+
+    public string NoLyricsLabel => Loc.T(IsMarkedNoLyrics ? "LyricsSearch.UnmarkNoLyrics" : "LyricsSearch.MarkNoLyrics");
+
+    /// <summary>"No Lyrics" / "Has Lyrics": marks or unmarks the song, then closes.</summary>
+    [RelayCommand]
+    private void ToggleNoLyrics()
+    {
+        SetNoLyrics?.Invoke(!IsMarkedNoLyrics);
+        Close();
     }
 
     /// <summary>The picker's first entry: search every Auto source and mark the best answer.</summary>

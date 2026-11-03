@@ -496,6 +496,11 @@ public partial class Track : ObservableObject
     /// App-only state: lyric files are never rewritten. 0 = as timed.</summary>
     public int LyricsOffsetMs { get; set; }
 
+    /// <summary>GitHub #162: the user marked this song as having no lyrics (an instrumental):
+    /// no automatic lookup searches lyrics for it and the lyrics page says so. App-only state,
+    /// kept in library.json like <see cref="LyricsOffsetMs"/>; finding lyrics by hand clears it.</summary>
+    public bool NoLyrics { get; set; }
+
     /// <summary>Saved playback position in milliseconds (for RememberPlaybackPosition).</summary>
     public long SavedPositionMs { get; set; }
 
