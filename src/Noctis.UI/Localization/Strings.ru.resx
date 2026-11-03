@@ -204,6 +204,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Latest" xml:space="preserve"><value>Последняя</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Installed" xml:space="preserve"><value>Установлена</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ComingSoon" xml:space="preserve"><value>Скоро</value><comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment></data>
+  <data name="Settings.Beta" xml:space="preserve"><value>Бета</value><comment>Badge on the Account and Phone app cards in SettingsView.axaml</comment></data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve"><value>Журнал сеанса для отчётов об ошибках.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CopyLogs" xml:space="preserve"><value>Копировать журнал</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Clear" xml:space="preserve"><value>Очистить</value><comment>Text in SettingsView.axaml</comment></data>

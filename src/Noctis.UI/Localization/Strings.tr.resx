@@ -153,6 +153,7 @@
   <data name="Settings.Latest" xml:space="preserve"><value>En son</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Installed" xml:space="preserve"><value>Kurulu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ComingSoon" xml:space="preserve"><value>Yakında</value><comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment></data>
+  <data name="Settings.Beta" xml:space="preserve"><value>Beta</value><comment>Badge on the Account and Phone app cards in SettingsView.axaml</comment></data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve"><value>Hata bildirimleri için oturum günlüğü.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CopyLogs" xml:space="preserve"><value>Günlükleri Kopyala</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Clear" xml:space="preserve"><value>Temizle</value><comment>Text in SettingsView.axaml</comment></data>

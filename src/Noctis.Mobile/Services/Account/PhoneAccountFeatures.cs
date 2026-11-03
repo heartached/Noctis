@@ -10,5 +10,5 @@ namespace Noctis.Mobile.Services.Account;
 /// </summary>
 public static class PhoneAccountFeatures
 {
-    public static readonly bool Enabled = false;
+    public static readonly bool Enabled = true;
 }

@@ -488,6 +488,9 @@
     <value>近日公開</value>
     <comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.Beta" xml:space="preserve">
+    <value>ベータ</value>
+  </data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve">
     <value>バグレポートのセッションログ。</value>
     <comment>Text in SettingsView.axaml</comment>

@@ -488,6 +488,9 @@
     <value>Bientôt disponible</value>
     <comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.Beta" xml:space="preserve">
+    <value>Bêta</value>
+  </data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve">
     <value>Journal de session pour les rapports de bogue.</value>
     <comment>Text in SettingsView.axaml</comment>

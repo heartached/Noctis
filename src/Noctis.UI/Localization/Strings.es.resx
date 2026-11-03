@@ -488,6 +488,9 @@
     <value>Próximamente</value>
     <comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.Beta" xml:space="preserve">
+    <value>Beta</value>
+  </data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve">
     <value>Registro de sesiones para informes de errores.</value>
     <comment>Text in SettingsView.axaml</comment>
