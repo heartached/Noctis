@@ -263,6 +263,45 @@ public partial class Track : ObservableObject
     [ObservableProperty]
     private string _musicalKey = string.Empty;
 
+    // ── ReplayGain (GitHub #151: Songs list column) ──
+    // A copy of the file's REPLAYGAIN_* tags for display and sorting. Playback still reads
+    // the file itself (VlcAudioPlayer.ReadReplayGainTags). Null = the file has no such tag.
+    // Observable so the background backfill and the ReplayGain scan update the column live.
+
+    /// <summary>REPLAYGAIN_TRACK_GAIN in dB. Null = none (or not read yet, see <see cref="ReplayGainChecked"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReplayGainFormatted))]
+    private double? _replayGainTrackDb;
+
+    /// <summary>REPLAYGAIN_TRACK_PEAK, linear (1.0 = full scale). Null = none.</summary>
+    [ObservableProperty]
+    private double? _replayGainTrackPeak;
+
+    /// <summary>REPLAYGAIN_ALBUM_GAIN in dB. Null = none.</summary>
+    [ObservableProperty]
+    private double? _replayGainAlbumDb;
+
+    /// <summary>True once the file's ReplayGain tags were read (by a scan or the backfill), with
+    /// or without a value. False on tracks indexed before the field existed: the background
+    /// backfill reads those once (LibraryService.RunTagBackfillsAsync).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ReplayGainChecked { get; set; }
+
+    /// <summary>Songs list cell: "-7.2 dB", blank when the file has no track gain.</summary>
+    [JsonIgnore]
+    public string ReplayGainFormatted => ReplayGainTrackDb is { } db ? $"{db:+0.0;-0.0;0.0} dB" : string.Empty;
+
+    /// <summary>Stores what a tag read found and marks the track read. Non-finite values
+    /// (a "nan dB" tag) count as none: JSON can't hold them and no player applies them.</summary>
+    public void ApplyReplayGain(Services.ReplayGainValues values)
+    {
+        static double? Finite(double? v) => v is { } d && double.IsFinite(d) ? d : null;
+        ReplayGainTrackDb = Finite(values.TrackGainDb);
+        ReplayGainTrackPeak = Finite(values.TrackPeak);
+        ReplayGainAlbumDb = Finite(values.AlbumGainDb);
+        ReplayGainChecked = true;
+    }
+
     // ── Lyrics (lazy, store-backed) ──
     //
     // These two strings used to be plain persisted properties, which made them

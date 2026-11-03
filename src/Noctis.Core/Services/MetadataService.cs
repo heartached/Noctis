@@ -145,6 +145,52 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>
+    /// The ReplayGain tags alone, for the ReplayGain column's backfill (GitHub #151): the FLAC
+    /// comment block alone, otherwise TagLib with no audio properties and lazy pictures, like
+    /// <see cref="ReadLabel"/>. Null when the file can't be read (try again later);
+    /// <see cref="ReplayGainValues.None"/> when it has no ReplayGain tags.
+    /// </summary>
+    public ReplayGainValues? ReadReplayGain(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return null;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack reads no ReplayGain either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return ReplayGainValues.None;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ReplayGainTags.TryReadFlac(stream, out var flac))
+                    return flac;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return ReplayGainTags.Read(file);
+        }
+        catch (TagLib.CorruptFileException)
+        {
+            return ReplayGainValues.None; // never readable: don't retry every launch
+        }
+        catch (TagLib.UnsupportedFormatException)
+        {
+            return ReplayGainValues.None;
+        }
+        catch (Exception)
+        {
+            return null; // locked, vanished, I/O error: the next pass tries again
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;
@@ -373,6 +419,8 @@ public class MetadataService : IMetadataService
         };
 
         PopulateReleaseType(track, file);
+        // From the tags already parsed: the Songs list's ReplayGain column (GitHub #151).
+        track.ApplyReplayGain(ReplayGainTags.Read(file));
 
         // Timed lyrics kept apart from the text field (SYLT, SYNCEDLYRICS) are the file's own
         // and win over a stored online result (#135). Left unassigned when the file has none,
@@ -436,6 +484,8 @@ public class MetadataService : IMetadataService
             };
             // Same folder/filename fallback as the TagLib path above.
             Helpers.FolderMetadata.TryApplyToTrack(track, MusicRootFolders);
+            // DSDIFF carries no ReplayGain we read: nothing for the backfill to look up.
+            track.ReplayGainChecked = true;
             return track;
         }
         catch

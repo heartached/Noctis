@@ -2543,39 +2543,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // frames. The default read style materialises every embedded picture
             // (a 16 MB cover PNG became a 16 MB dead array per track change).
             using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.Average | TagLib.ReadStyle.PictureLazy);
-            double? track = null, album = null;
-
-            if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
-            {
-                track ??= ReadTxxx(id3, "REPLAYGAIN_TRACK_GAIN");
-                album ??= ReadTxxx(id3, "REPLAYGAIN_ALBUM_GAIN");
-            }
-            if (file.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
-            {
-                track ??= ParseDb(xiph.GetField("REPLAYGAIN_TRACK_GAIN").FirstOrDefault());
-                album ??= ParseDb(xiph.GetField("REPLAYGAIN_ALBUM_GAIN").FirstOrDefault());
-            }
-            // MP4 / M4A / ALAC / AAC: RG lives in iTunes freeform atoms.
-            if (file.GetTag(TagLib.TagTypes.Apple, false) is TagLib.Mpeg4.AppleTag apple)
-            {
-                track ??= ParseDb(apple.GetDashBox("com.apple.iTunes", "REPLAYGAIN_TRACK_GAIN"));
-                album ??= ParseDb(apple.GetDashBox("com.apple.iTunes", "REPLAYGAIN_ALBUM_GAIN"));
-            }
-            // WavPack / Monkey's Audio, and MP3s tagged by mp3gain/foobar2000: APEv2
-            // (item keys are case-insensitive).
-            if (file.GetTag(TagLib.TagTypes.Ape, false) is TagLib.Ape.Tag ape)
-            {
-                track ??= ParseDb(ape.GetItem("REPLAYGAIN_TRACK_GAIN")?.ToString());
-                album ??= ParseDb(ape.GetItem("REPLAYGAIN_ALBUM_GAIN")?.ToString());
-            }
-            // WMA: only an ASF tag, which is where the in-app scanner writes. Descriptor
-            // names match case-sensitively, and foobar2000 writes them lower-case.
-            if (file.GetTag(TagLib.TagTypes.Asf, false) is TagLib.Asf.Tag asf)
-            {
-                track ??= ParseDb(asf.GetDescriptorString("REPLAYGAIN_TRACK_GAIN", "replaygain_track_gain"));
-                album ??= ParseDb(asf.GetDescriptorString("REPLAYGAIN_ALBUM_GAIN", "replaygain_album_gain"));
-            }
-            return (track, album);
+            // The shared reader (Noctis.Core): the library's ReplayGain column reads the same values.
+            var rg = ReplayGainTags.Read(file);
+            return (rg.TrackGainDb, rg.AlbumGainDb);
         }
         catch (Exception ex)
         {
@@ -2583,25 +2553,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 $"{ex.GetType().Name}, file={Path.GetFileName(filePath)}");
             return (null, null);
         }
-    }
-
-    private static double? ReadTxxx(TagLib.Id3v2.Tag id3, string desc)
-    {
-        var frame = id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>()
-            .FirstOrDefault(f => string.Equals(f.Description, desc, StringComparison.OrdinalIgnoreCase));
-        return ParseDb(frame?.Text.FirstOrDefault());
-    }
-
-    private static double? ParseDb(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        var token = s.Trim();
-        // RG values are stored like "-7.84 dB". Strip the unit.
-        var spaceIdx = token.IndexOf(' ');
-        if (spaceIdx > 0) token = token.Substring(0, spaceIdx);
-        return double.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)
-            ? d
-            : null;
     }
 
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false)
