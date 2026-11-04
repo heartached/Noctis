@@ -529,10 +529,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Фоновое видео для текста</value>
     <comment>Album page menu</comment>
   </data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>Выбрать видео для этого альбома…</value>
-    <comment>Album page menu</comment>
-  </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
     <value>Видео по умолчанию</value>
     <comment>Album page menu</comment>
@@ -1335,10 +1331,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve">
     <value>Матовый фон</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve">
-    <value>Размывать рабочий стол за мини-плеером (классический дизайн).</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PLAYBACK" xml:space="preserve">
@@ -7701,9 +7693,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Plugins.CommunityTitle" xml:space="preserve">
     <value>Плагины сообщества</value>
   </data>
-  <data name="Plugins.CommunityLine" xml:space="preserve">
-    <value>Разрешает запуск установленных плагинов. Они могут всё, что может Noctis, поэтому используйте только те, которым доверяете.</value>
-  </data>
   <data name="Plugins.CustomTitle" xml:space="preserve">
     <value>Своя категория</value>
   </data>
@@ -7830,9 +7819,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve">
     <value>Управлять воспроизведением: запуск, пауза, переключение и перемотка</value>
   </data>
-  <data name="Plugins.Perm.LibraryRead" xml:space="preserve">
-    <value>Искать в медиатеке (названия, исполнители, альбомы, пути к файлам, число прослушиваний)</value>
-  </data>
   <data name="Plugins.Perm.Network" xml:space="preserve">
     <value>Подключаться к интернету</value>
   </data>
@@ -7866,17 +7852,11 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Plugins.TurnOnTitle" xml:space="preserve">
     <value>Включить плагины сообщества?</value>
   </data>
-  <data name="Plugins.TurnOnBody" xml:space="preserve">
-    <value>Noctis будет загружать плагины, которые вы включите. Каждый из них при первом запуске запросит ваше одобрение.</value>
-  </data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve">
     <value>Включить</value>
   </data>
   <data name="Plugins.RemoveTitle" xml:space="preserve">
     <value>Удалить {0}?</value>
-  </data>
-  <data name="Plugins.RemoveBody" xml:space="preserve">
-    <value>Папка плагина будет удалена. Его данные и настройки сохранятся, если не поставить флажок, — при переустановке плагин продолжит с того же места.</value>
   </data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve">
     <value>Также удалить его данные и настройки</value>
@@ -7959,6 +7939,8 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Plugins.Get.WrongPackage" xml:space="preserve">
     <value>Загруженный файл — не {0} {1}, поэтому он не установлен.</value>
   </data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve">
     <value>Сервер Noctis</value>
@@ -8301,66 +8283,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Закрыть</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>Добавить с YouTube</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>Найдите или вставьте ссылку — загрузка в вашу медиатеку</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>Добавить с YouTube</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>Найдите или вставьте ссылку. Сохраняется в медиатеку вместе с обложкой.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>Найдите или вставьте ссылку</value>
-    <comment>Search box watermark</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>Найти</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>Однократная настройка</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Для загрузки нужен yt-dlp. Noctis установит его один раз и будет обновлять.</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>Установить yt-dlp</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>Скачать</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>Сохраняется в</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>Найдите песню и скачайте её в свою медиатеку.</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>Закрыть</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTube.UpdateTool" xml:space="preserve">
-    <value>Обновить</value>
-    <comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment>
-  </data>
-  <data name="YouTube.UpdateToolTip" xml:space="preserve">
-    <value>Установить собственную актуальную копию yt-dlp для Noctis.</value>
-    <comment>Tooltip of the footer Update button</comment>
-  </data>
   <data name="Import.Hint.Spotify" xml:space="preserve">
     <value>Spotify это блокирует. Экспортируйте плейлист через Exportify, затем выберите CSV-файл.</value>
     <comment>Import Playlist: a Spotify link was pasted</comment>
@@ -8389,93 +8311,18 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Открыть TuneMyMusic</value>
     <comment>Button: opens tunemymusic.com (a product name, keep it)</comment>
   </data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="YouTube.Installing" xml:space="preserve">
     <value>Установка…</value>
     <comment>Install button label while yt-dlp downloads</comment>
   </data>
-  <data name="YouTube.Status.NoFolder" xml:space="preserve">
-    <value>Сначала добавьте папку с музыкой в «Настройки → Медиатека».</value>
-    <comment>Footer status: no library folder to save into</comment>
+  <data name="YouTube.UpdateTool" xml:space="preserve">
+    <value>Обновить</value>
+    <comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment>
   </data>
-  <data name="YouTube.Status.InstallingTool" xml:space="preserve">
-    <value>Загрузка yt-dlp…</value>
-    <comment>Footer status while yt-dlp installs</comment>
-  </data>
-  <data name="YouTube.Status.Ready" xml:space="preserve">
-    <value>yt-dlp готов.</value>
-    <comment>Footer status after yt-dlp installed</comment>
-  </data>
-  <data name="YouTube.Status.InstallFailed" xml:space="preserve">
-    <value>Не удалось установить yt-dlp — {0}</value>
-    <comment>Footer status; {0} = error message</comment>
-  </data>
-  <data name="YouTube.Status.InstallFirst" xml:space="preserve">
-    <value>Сначала установите yt-dlp.</value>
-    <comment>Footer status: search pressed before setup</comment>
-  </data>
-  <data name="YouTube.Status.ReadingLink" xml:space="preserve">
-    <value>Чтение ссылки…</value>
-    <comment>Footer status while a pasted link resolves</comment>
-  </data>
-  <data name="YouTube.Status.Searching" xml:space="preserve">
-    <value>Поиск…</value>
-    <comment>Footer status while searching</comment>
-  </data>
-  <data name="YouTube.Status.NothingFound" xml:space="preserve">
-    <value>Ничего не найдено.</value>
-    <comment>Footer status: search returned no results</comment>
-  </data>
-  <data name="YouTube.Status.SearchFailed" xml:space="preserve">
-    <value>Ошибка поиска — {0}</value>
-    <comment>Footer status; {0} = error message</comment>
-  </data>
-  <data name="YouTube.Row.Starting" xml:space="preserve">
-    <value>Запуск…</value>
-    <comment>Result card status when a download begins</comment>
-  </data>
-  <data name="YouTube.Row.InLibrary" xml:space="preserve">
-    <value>В вашей медиатеке</value>
-    <comment>Result card status after the download was imported</comment>
-  </data>
-  <data name="YouTube.Row.SavedToFolder" xml:space="preserve">
-    <value>Сохранено в папку</value>
-    <comment>Result card status: saved but not imported</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>ЗАГРУЗКИ С YOUTUBE</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>Добавление песен с YouTube</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>Найдите или вставьте ссылку для загрузки.</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>Открыть загрузчик</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>Папка загрузок</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>Если пусто, используется папка «YouTube» внутри вашей первой папки с музыкой.</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve">
-    <value>yt-dlp</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>Установить / обновить</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>Свой путь к yt-dlp (необязательно)</value>
-    <comment>Path watermark</comment>
+  <data name="YouTube.UpdateToolTip" xml:space="preserve">
+    <value>Установить собственную актуальную копию yt-dlp для Noctis.</value>
+    <comment>Tooltip of the footer Update button</comment>
   </data>
   <data name="YtDlp.Version" xml:space="preserve">
     <value>yt-dlp {0}</value>
@@ -9610,14 +9457,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Menu.FetchLyrics" xml:space="preserve">
     <value>Найти и сохранить текст</value>
     <comment>v2 right-click menu, Lyrics submenu</comment>
-  </data>
-  <data name="Menu.LyricsStudio" xml:space="preserve">
-    <value>Открыть в Студии текстов…</value>
-    <comment>v2 right-click menu, Lyrics submenu</comment>
-  </data>
-  <data name="Menu.ChooseSongVideo" xml:space="preserve">
-    <value>Выбрать видео для этой песни…</value>
-    <comment>v2 right-click menu, Lyrics Background Video submenu</comment>
   </data>
   <data name="Menu.StartRadio" xml:space="preserve">
     <value>Запустить радио</value>
