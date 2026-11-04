@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -19,29 +20,40 @@ namespace Noctis.Mobile.Views;
 /// <summary>
 /// Every ⋯ menu on the phone (<see cref="ShellViewModel.PopMenu"/>: a song's, album's, playlist's
 /// or artist's actions, or the Library tab's): the glass card grows out of <see cref="Anchor"/>,
-/// the ⋯ button tapped (or the row or tile held), as the desktop's right-click menu does (Noctis.UI
-/// MenuOpenAnimation's Pop, the same numbers): scale 0.9 → 1 from the button with the soft
-/// decelerate, a quick fade, the rows settling in one after another; closing is that motion
-/// reversed, quicker. It opens down from the button when it fits above the mini player and tab
-/// bar, else up from it, else wherever it has the most room, its rows then scrolling.
+/// the ⋯ button tapped (or the row or tile held), as Apple's context menus and the desktop's
+/// right-click menu do: a short spring from 0.85 round the button, the frost, the rows and a light
+/// dim behind fading in together; closing heads back into the button, quicker (the numbers and
+/// the old ones beside them: the constants below). It opens down from the button when it fits
+/// above the mini player and tab bar, else up from it, else wherever it has the most room, its
+/// rows then scrolling.
 /// Like the desktop's glass menus it fades the GlassPanel's own <see cref="GlassPanel.Fade"/> and
-/// the rows' Opacity, never an ancestor's Opacity, which the GPU backend does not apply to the
-/// frost. Only RenderTransform and those two move per frame.
+/// the body's Opacity, never an ancestor's Opacity, which the GPU backend does not apply to the
+/// frost. Only RenderTransform and those (and the dim's Opacity) move per frame.
 /// </summary>
 public partial class PopMenu : UserControl
 {
-    private const double PopScale = 0.9;
-    private const double PopDurationMs = 280;
-    private const double PopFadeMs = 160;
-    private const double PopRowDurationMs = 240;
-    private const double PopRowStaggerMs = 16;
-    private const double PopRowOffsetY = 6;
-    private const int PopStaggeredRows = 10;
-    internal const double PopCloseMs = 150;
-    private const double PopCloseScale = 0.94;
-    // Soft decelerate (easeOutQuint-like) to open, accelerate out to close: the desktop's curves.
-    private static readonly Avalonia.Animation.Easings.Easing PopEase = new CubicBezierEase(0.22, 1, 0.36, 1);
-    private static readonly Avalonia.Animation.Easings.Easing PopCloseEase = new CubicBezierEase(0.4, 0, 1, 1);
+    // The phone's pop (tester 11-04: the desktop numbers read awkward on a phone). Measured old
+    // -> new: open 280 ms easeOutQuint (0.22,1,0.36,1) from 0.9, fade 160 ms, rows staggered in
+    // over up to 400 ms -> 340 ms spring (PopSpringEase, zeta 0.75: 90 % in ~85 ms, a 2.8 %
+    // overshoot, settled by the end) from 0.85, the frost, the content and the dim in over
+    // 160 ms on the desktop dialogs' long ease-out (0.16,1,0.3,1), rows fading with the card and
+    // never moving on their own. Close 150 ms accelerate (0.4,0,1,1) to 0.94 -> 200 ms back to
+    // 0.85 at the anchor: the shrink on a quick ease-out (0.2,0,0,1), so it visibly heads home,
+    // the fade on the accelerate, so it is gone as it lands.
+    internal const double PopScale = 0.85;
+    internal const double PopOpenMs = 340;
+    internal const double PopFadeMs = 160;
+    internal const double PopCloseMs = 200;
+    internal const double PopCloseScale = 0.85;
+    /// <summary>The bottom sheets' pose (Add to Playlist, Rename, the album note): the desktop
+    /// dialogs' (PillDialogHost) rise and grow, not the menu's deep scale, which pinched a
+    /// full-width card in at its sides.</summary>
+    internal static readonly PopPose SheetPose = new(0.94, 24);
+    internal static readonly PopPose MenuPose = new(PopScale, 0);
+    internal static readonly Avalonia.Animation.Easings.Easing PopEase = new PopSpringEase();
+    internal static readonly Avalonia.Animation.Easings.Easing PopFadeEase = new CubicBezierEase(0.16, 1, 0.3, 1);
+    internal static readonly Avalonia.Animation.Easings.Easing PopCloseEase = new CubicBezierEase(0.2, 0, 0, 1);
+    internal static readonly Avalonia.Animation.Easings.Easing PopCloseFadeEase = new CubicBezierEase(0.4, 0, 1, 1);
 
     /// <summary>The card's width for an item's menu, and for the Library's three rows.</summary>
     internal const double ItemWidth = 250, LibraryWidth = 250;
@@ -162,49 +174,15 @@ public partial class PopMenu : UserControl
         Place();
         UpdateLayout();
 
-        // Start values with no transitions (they snap), the targets a frame later with them.
-        PopFrom(Card, Glass, Body, Origin());
-
-        Dispatcher.UIThread.Post(() =>
+        // Start values with no transitions (they snap), the targets once that pose has been
+        // drawn. The first frame of a freshly built menu is the slow one: a run started inside it
+        // (a dispatcher post, as before) had covered most of its course before anything was seen,
+        // so the card all but appeared at full size and then crept the last few pixels.
+        PopFrom(Card, Glass, Body, Origin(), MenuPose, Dim);
+        AfterFirstFrame(this, () =>
         {
-            if (run != _run) return;
-            var rows = Rows();
-            foreach (var row in rows)
-            {
-                row.Transitions = null;
-                row.Opacity = 0;
-                row.RenderTransform = TransformOperations.Parse($"translateY({PopRowOffsetY}px)");
-            }
-
-            PopIn(Card, Glass, Body);
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (run != _run) return;
-                for (var i = 0; i < rows.Count; i++)
-                {
-                    var delay = TimeSpan.FromMilliseconds(Math.Min(i, PopStaggeredRows) * PopRowStaggerMs);
-                    var duration = TimeSpan.FromMilliseconds(PopRowDurationMs);
-                    rows[i].Transitions = new Transitions
-                    {
-                        new DoubleTransition { Property = OpacityProperty, Duration = duration, Delay = delay, Easing = new CubicEaseOut() },
-                        new TransformOperationsTransition { Property = RenderTransformProperty, Duration = duration, Delay = delay, Easing = PopEase },
-                    };
-                    rows[i].Opacity = 1;
-                    rows[i].RenderTransform = TransformOperations.Parse("translateY(0px)");
-                }
-                // Once every row has landed, hand the rows back to their styles.
-                DispatcherTimer.RunOnce(() =>
-                {
-                    foreach (var row in rows)
-                    {
-                        row.Transitions = null;
-                        row.ClearValue(OpacityProperty);
-                        row.ClearValue(RenderTransformProperty);
-                    }
-                }, TimeSpan.FromMilliseconds(PopRowDurationMs + PopStaggeredRows * PopRowStaggerMs + 60));
-            }, DispatcherPriority.Render);
-        }, DispatcherPriority.Render);
+            if (run == _run) PopIn(Card, Glass, Body, Dim);
+        });
     }
 
     /// <summary>
@@ -228,7 +206,7 @@ public partial class PopMenu : UserControl
         if (!IsVisible) return;
         var run = ++_run;
         IsHitTestVisible = false;
-        PopOut(Card, Glass, Body);
+        PopOut(Card, Glass, Body, MenuPose, Dim);
 
         DispatcherTimer.RunOnce(() =>
         {
@@ -236,62 +214,103 @@ public partial class PopMenu : UserControl
             IsVisible = false;
             MenuContent.Content = null;
             Anchor = null;
-            PopDone(Card, Glass, Body);
+            PopDone(Card, Glass, Body, Dim);
         }, TimeSpan.FromMilliseconds(PopCloseMs));
     }
 
     /// <summary>
-    /// The pop's start, snapped (no transitions): <paramref name="card"/> scaled down round
-    /// <paramref name="origin"/>, its glass and <paramref name="body"/> faded out. Shared with the
-    /// Add to Playlist sheet (ContextSheet), so every glass pop-up opens and closes alike.
+    /// The pop's start, snapped (no transitions): <paramref name="card"/> at
+    /// <paramref name="pose"/> round <paramref name="origin"/>, its glass, <paramref name="body"/>
+    /// and <paramref name="scrim"/> faded out. Shared with the bottom sheets (ContextSheet,
+    /// PromptSheet, AlbumNoteSheet), so every glass pop-up opens and closes alike.
     /// </summary>
-    internal static void PopFrom(Control card, GlassPanel glass, Control body, RelativePoint origin)
+    internal static void PopFrom(Control card, GlassPanel glass, Control body, RelativePoint origin, PopPose pose, Control? scrim = null)
     {
-        PopDone(card, glass, body);
+        PopDone(card, glass, body, scrim);
         glass.Fade = 0;
         body.Opacity = 0;
-        card.RenderTransform = TransformOperations.Parse(Scale(PopScale));
+        if (scrim != null) scrim.Opacity = 0;
+        card.RenderTransform = pose.Transform();
         card.RenderTransformOrigin = origin;
     }
 
-    /// <summary>The pop: scale up to full size with the soft decelerate, the glass and body fading in
-    /// quickly. Run a frame after <see cref="PopFrom"/>, so the start values have been drawn.</summary>
-    internal static void PopIn(Control card, GlassPanel glass, Control body)
+    /// <summary>The pop: the card springs to full size (<see cref="PopOpenMs"/>) while the glass,
+    /// the body and the dim behind fade in together (<see cref="PopFadeMs"/>). Run once the
+    /// <see cref="PopFrom"/> pose has been drawn (<see cref="AfterFirstFrame"/>). Only
+    /// RenderTransform, Opacity and the glass's Fade move: no layout per frame.</summary>
+    internal static void PopIn(Control card, GlassPanel glass, Control body, Control? scrim = null)
     {
         var fade = TimeSpan.FromMilliseconds(PopFadeMs);
-        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = fade, Easing = new CubicEaseOut() } };
-        body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = fade, Easing = new CubicEaseOut() } };
+        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = fade, Easing = PopFadeEase } };
+        body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = fade, Easing = PopFadeEase } };
+        if (scrim != null)
+            scrim.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = fade, Easing = PopFadeEase } };
         card.Transitions = new Transitions
         {
-            new TransformOperationsTransition { Property = RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(PopDurationMs), Easing = PopEase },
+            new TransformOperationsTransition { Property = RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(PopOpenMs), Easing = PopEase },
         };
         glass.Fade = 1;
         body.Opacity = 1;
-        card.RenderTransform = TransformOperations.Parse(Scale(1));
+        if (scrim != null) scrim.Opacity = 1;
+        card.RenderTransform = PopPose.Rest.Transform();
     }
 
-    /// <summary>The pop reversed, quicker: shrink back toward where it grew from while fading out
-    /// (<see cref="PopCloseMs"/>); hide the card once it is done.</summary>
-    internal static void PopOut(Control card, GlassPanel glass, Control body)
+    /// <summary>The pop reversed, quicker (<see cref="PopCloseMs"/>): back to
+    /// <paramref name="pose"/> toward where it grew from on a quick ease-out while the glass, the
+    /// body and the dim fade on an accelerate; hide the card once it is done.</summary>
+    internal static void PopOut(Control card, GlassPanel glass, Control body, PopPose pose, Control? scrim = null)
     {
         var duration = TimeSpan.FromMilliseconds(PopCloseMs);
-        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseEase } };
-        body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseEase } };
+        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseFadeEase } };
+        body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
+        if (scrim != null)
+            scrim.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
         card.Transitions = new Transitions
         {
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = duration, Easing = PopCloseEase },
         };
         glass.Fade = 0;
         body.Opacity = 0;
-        card.RenderTransform = TransformOperations.Parse(Scale(PopCloseScale));
+        if (scrim != null) scrim.Opacity = 0;
+        card.RenderTransform = pose.Transform();
     }
 
     /// <summary>Drops the pop's transitions once it has finished.</summary>
-    internal static void PopDone(Control card, GlassPanel glass, Control body)
+    internal static void PopDone(Control card, GlassPanel glass, Control body, Control? scrim = null)
     {
         card.Transitions = null;
         glass.Transitions = null;
         body.Transitions = null;
+        if (scrim != null) scrim.Transitions = null;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> two frames on (the one that lays out and draws the start
+    /// pose, then the next: Motion's rule), each request marking <paramref name="control"/> for
+    /// redraw so a still screen still ticks. Off screen, after the dispatcher's layout work; and
+    /// should no frame come (the app just went to the background), after half a second anyway.
+    /// </summary>
+    internal static void AfterFirstFrame(Control control, Action action)
+    {
+        var done = false;
+        void Once()
+        {
+            if (done) return;
+            done = true;
+            action();
+        }
+        if (TopLevel.GetTopLevel(control) is not { } top)
+        {
+            Dispatcher.UIThread.Post(Once, DispatcherPriority.Background);
+            return;
+        }
+        top.RequestAnimationFrame(_ =>
+        {
+            top.RequestAnimationFrame(_ => Once());
+            control.InvalidateVisual();
+        });
+        control.InvalidateVisual();
+        DispatcherTimer.RunOnce(Once, TimeSpan.FromMilliseconds(500));
     }
 
     /// <summary>
@@ -377,16 +396,16 @@ public partial class PopMenu : UserControl
         var y = at.Y + anchor.Bounds.Height / 2 - card.Y;
         return new RelativePoint(Math.Clamp(x, 0, card.Width), Math.Clamp(y, 0, card.Height), RelativeUnit.Absolute);
     }
+}
 
-    /// <summary>The card's visible rows (the tile row, each action; a sort menu's choices), top
-    /// to bottom.</summary>
-    private List<Control> Rows() =>
-        MenuContent.Presenter?.Child is StackPanel rows
-            ? rows.Children.Where(c => c.IsVisible && c is not Border)
-                .SelectMany(c => c is ItemsControl items ? items.GetRealizedContainers().Where(r => r.IsVisible) : new[] { c })
-                .ToList()
-            : new List<Control>();
+/// <summary>A pop-up's resting-apart pose: how small it is and how far below where it lands.</summary>
+internal readonly record struct PopPose(double Scale, double Rise)
+{
+    public static readonly PopPose Rest = new(1, 0);
 
-    private static string Scale(double scale) =>
-        $"scale({scale.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
+    /// <summary>The same operation list at every pose, so the transition interpolates them.</summary>
+    public ITransform Transform() => TransformOperations.Parse(
+        $"translateY({Px(Rise)}px) scale({Px(Scale)})");
+
+    private static string Px(double v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 }

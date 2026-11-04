@@ -1,7 +1,5 @@
 using System.ComponentModel;
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
@@ -84,25 +82,18 @@ public partial class PromptSheet : UserControl
         IsHitTestVisible = true;
         UpdateLayout();
 
-        Scrim.Transitions = null;
-        Scrim.Opacity = 0;
-        PopMenu.PopFrom(PromptPop, PromptGlass, PromptBody, new RelativePoint(0.5, 1, RelativeUnit.Relative));
-        Dispatcher.UIThread.Post(() =>
+        PopMenu.PopFrom(PromptPop, PromptGlass, PromptBody, new RelativePoint(0.5, 1, RelativeUnit.Relative), PopMenu.SheetPose, Scrim);
+        PopMenu.AfterFirstFrame(this, () =>
         {
             if (run != _run) return;
-            Scrim.Transitions = new Transitions
-            {
-                new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs * 2), Easing = new CubicEaseOut() },
-            };
-            Scrim.Opacity = 1;
-            PopMenu.PopIn(PromptPop, PromptGlass, PromptBody);
+            PopMenu.PopIn(PromptPop, PromptGlass, PromptBody, Scrim);
             if (prompt.HasField)
             {
                 // The name selected, ready to be typed over (Apple's rename field).
                 PromptField.Focus();
                 PromptField.SelectAll();
             }
-        }, DispatcherPriority.Render);
+        });
     }
 
     /// <summary>The pop reversed: inert at once (a fading card must never take a tap), the
@@ -114,19 +105,13 @@ public partial class PromptSheet : UserControl
         IsHitTestVisible = false;
         // Focus off the field takes the keyboard down (AccountPage's way, onto a button).
         if (PromptField.IsFocused) PromptCancel.Focus();
-        Scrim.Transitions = new Transitions
-        {
-            new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs), Easing = new CubicEaseIn() },
-        };
-        Scrim.Opacity = 0;
-        PopMenu.PopOut(PromptPop, PromptGlass, PromptBody);
+        PopMenu.PopOut(PromptPop, PromptGlass, PromptBody, PopMenu.SheetPose, Scrim);
         DispatcherTimer.RunOnce(() =>
         {
             if (run != _run) return;
             IsVisible = false;
             PromptBody.DataContext = null;
-            Scrim.Transitions = null;
-            PopMenu.PopDone(PromptPop, PromptGlass, PromptBody);
+            PopMenu.PopDone(PromptPop, PromptGlass, PromptBody, Scrim);
             PromptCard.Margin = default;
         }, TimeSpan.FromMilliseconds(PopMenu.PopCloseMs));
     }

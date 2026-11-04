@@ -92,6 +92,9 @@
     </UserControl.Styles>
 
     <Panel>
+        <!-- Apple's light dim behind an open menu, fading with the card (PopMenu.PopIn/PopOut);
+             a flat colour, no blur: cheap on a mid-range phone. -->
+        <Border Name="Dim" Background="#2E000000" Opacity="0" IsHitTestVisible="False" />
         <!-- A tap anywhere off the card closes it (and goes no further). -->
         <Border Name="Catcher" Background="Transparent" PointerPressed="OnCatcherPressed" />
 

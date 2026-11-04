@@ -1,7 +1,5 @@
 using System.ComponentModel;
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
@@ -62,19 +60,12 @@ public partial class ContextSheet : UserControl
         IsHitTestVisible = true;
         UpdateLayout();
 
-        Scrim.Transitions = null;
-        Scrim.Opacity = 0;
-        PopMenu.PopFrom(SheetPop, SheetGlass, SheetBody, new RelativePoint(0.5, 1, RelativeUnit.Relative));
-        Dispatcher.UIThread.Post(() =>
+        PopMenu.PopFrom(SheetPop, SheetGlass, SheetBody, new RelativePoint(0.5, 1, RelativeUnit.Relative), PopMenu.SheetPose, Scrim);
+        PopMenu.AfterFirstFrame(this, () =>
         {
             if (run != _run) return;
-            Scrim.Transitions = new Transitions
-            {
-                new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs * 2), Easing = new CubicEaseOut() },
-            };
-            Scrim.Opacity = 1;
-            PopMenu.PopIn(SheetPop, SheetGlass, SheetBody);
-        }, DispatcherPriority.Render);
+            PopMenu.PopIn(SheetPop, SheetGlass, SheetBody, Scrim);
+        });
     }
 
     /// <summary>The pop reversed: inert at once (a fading card must never take a tap), then gone.</summary>
@@ -83,19 +74,13 @@ public partial class ContextSheet : UserControl
         if (!IsVisible) return;
         var run = ++_run;
         IsHitTestVisible = false;
-        Scrim.Transitions = new Transitions
-        {
-            new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs), Easing = new CubicEaseIn() },
-        };
-        Scrim.Opacity = 0;
-        PopMenu.PopOut(SheetPop, SheetGlass, SheetBody);
+        PopMenu.PopOut(SheetPop, SheetGlass, SheetBody, PopMenu.SheetPose, Scrim);
         DispatcherTimer.RunOnce(() =>
         {
             if (run != _run) return;
             IsVisible = false;
             SheetContent.Content = null;
-            Scrim.Transitions = null;
-            PopMenu.PopDone(SheetPop, SheetGlass, SheetBody);
+            PopMenu.PopDone(SheetPop, SheetGlass, SheetBody, Scrim);
         }, TimeSpan.FromMilliseconds(PopMenu.PopCloseMs));
     }
 
