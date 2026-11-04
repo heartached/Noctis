@@ -2648,14 +2648,23 @@ public partial class MetadataViewModel : ViewModelBase
             AnimatedCoverChanging?.Invoke(this, EventArgs.Empty);
             await _animatedCovers.RemoveAsync(_track, animScope);
         }
-        else if (oldAlbumId != _track.AlbumId)
+        else if (oldAlbumId != _track.AlbumId && _track.AlbumId != Track.UnknownAlbumBucketId)
         {
+            // The album's loop follows the re-keyed songs. Moved only when the whole album was
+            // edited: one song moved to another album leaves the rest of its old album behind,
+            // and moving the loop took theirs away (copied instead, as the still cover is).
+            // Never onto the shared Unknown-Album bucket (see the still cover above).
             foreach (var ext in new[] { ".mp4", ".webm" })
             {
                 var oldP = _persistence.GetAnimatedCoverPath(oldAlbumId, null, ext);
                 if (File.Exists(oldP))
                 {
-                    try { File.Move(oldP, _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext), true); }
+                    var newP = _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext);
+                    try
+                    {
+                        if (_albumScoped) File.Move(oldP, newP, true);
+                        else File.Copy(oldP, newP, true);
+                    }
                     catch { }
                 }
             }
