@@ -14,8 +14,9 @@ public enum Handover
 }
 
 /// <summary>
-/// Every number that shapes the motion, read once from the settings (ported from Lyric Motion's
-/// Tuning.cs). Lengths are in em of the lyric font size, so the motion scales with the window.
+/// Every number that shapes the motion, read once from the settings. The values are the ones
+/// Lyric Motion uses where it is built into Noctis Plus (its Tuning.cs), so the plugin moves the
+/// same way. Lengths are in em of the lyric font size, times in seconds.
 /// Immutable: a settings change makes a new one, the frame path only reads it.
 /// </summary>
 public sealed class Tuning
@@ -35,12 +36,34 @@ public sealed class Tuning
 
     public bool Moves => Animation != Handover.Off;
 
+    public bool Flow => Animation == Handover.Flowing;
+
     /// <summary>
-    /// How wide the band a letter comes up in is, as a share of its word, on top of the letter's
-    /// own share: 0 = each letter is up exactly when the highlight has crossed it (crisp), more =
-    /// the last letters finish a moment into the next word.
+    /// How much of the band a letter comes up in is left standing past the end of its word:
+    /// 0 = the last letter is up exactly when the word is over, 1 = it finishes at the pace of
+    /// the letters in the middle of the word.
     /// </summary>
-    public double Tail => Animation switch { Handover.Flowing => 0.8, Handover.Smooth => 0.35, _ => 0 };
+    public double Tail => Animation switch { Handover.Flowing => 1, Handover.Smooth => SmoothTail, _ => 0 };
+
+    /// <summary>The shortest time a letter takes to come up; 0 = exactly with the fill.</summary>
+    public double LetterRise => Animation switch { Handover.Flowing => LetterRiseSec, Handover.Smooth => SmoothRiseSec, _ => 0 };
+
+    /// <summary>The two numbers of the smooth word-by-word look.</summary>
+    public const double SmoothTail = 0.5, SmoothRiseSec = 0.12;
+
+    /// <summary>The shortest time a letter takes to come up in the flowing look.</summary>
+    public const double LetterRiseSec = 0.2;
+
+    /// <summary>The shortest time a word takes to float up.</summary>
+    public const double MinRiseSec = 0.16;
+
+    /// <summary>How long a word in one piece takes to float up.</summary>
+    public double RiseSec(double durationSec) => Animation == Handover.Smooth
+        ? Math.Max(durationSec + Math.Min(0.2 * durationSec, 0.06), MinRiseSec + 0.02)
+        : Math.Max(durationSec, MinRiseSec);
+
+    /// <summary>How far a sung word floats up (AMLL: 0.05 em). It stays up until its line ends.</summary>
+    public double LiftEm => 0.05 * Intensity;
 
     /// <summary>How much an ordinary word's letters grow (none on quick words: a rap verse would flicker).</summary>
     public double WordGrow(double ms) => 0.018 * Intensity * Curves.SmoothStep(160, 420, ms);
@@ -55,26 +78,27 @@ public sealed class Tuning
 
     public double Grow(double ms, bool lastWordOfLine) => ms >= HeldMs ? HeldGrow(ms, lastWordOfLine) : WordGrow(ms);
 
-    /// <summary>A long note's glow at its fullest, as a share of Noctis's own glow.</summary>
+    /// <summary>
+    /// A long note's glow at its fullest, as a share of Noctis's own glow. Noctis Plus draws its own
+    /// halo at 0.2 to 0.5 opacity; through the plugin API the glow can only be a share of Noctis's,
+    /// so the same curve is given relative to its top (0.5).
+    /// </summary>
     public double HeldGlow(double ms, bool lastWordOfLine)
     {
         if (!Glow || ms < HeldMs) return 0;
-        var glow = Curves.Lerp(0.4, 1.0, Curves.SmoothStep(HeldMs, HeldMs + 2000, ms)) * Intensity;
+        var glow = Curves.Lerp(0.2, 0.5, Curves.SmoothStep(HeldMs, HeldMs + 2000, ms)) * Intensity;
         if (lastWordOfLine) glow *= 1.1;
-        return Math.Min(glow, 1.0);
+        return Math.Min(1, glow / 0.5);
     }
 
     /// <summary>Growth below this cannot be seen: such a word moves in one piece.</summary>
     public const double LetterGrowFloor = 0.004;
 
-    /// <summary>A long note that cannot be shown in letters grows as a whole, a little less.</summary>
+    /// <summary>A word in one piece grows a little less.</summary>
     public const double WholeWordShare = 0.7;
 
     /// <summary>How far a letter rises on top of the word's float, in em per unit of growth.</summary>
     public const double LiftPerGrow = 0.5;
-
-    /// <summary>How far a sung word floats (AMLL: 0.05 em), scaled by Noctis's own float.</summary>
-    public double LiftEm => 0.05 * Intensity;
 
     /// <summary>Longest word (in letters) that is split; longer ones stay whole.</summary>
     public const int MaxLetters = 14;
@@ -88,7 +112,7 @@ public sealed class Tuning
         {
             Animation = animation.StartsWith("off", StringComparison.Ordinal) ? Handover.Off
                 : animation.StartsWith("flow", StringComparison.Ordinal) ? Handover.Flowing
-                : animation.StartsWith("crisp", StringComparison.Ordinal) ? Handover.Crisp
+                : animation.Contains("crisp", StringComparison.Ordinal) ? Handover.Crisp
                 : Handover.Smooth,
             Intensity = strength switch { "subtle" => 0.7, "expressive" => 1.4, _ => 1.0 },
             Letters = settings.GetBool("letters", true),
@@ -119,13 +143,5 @@ public static class Curves
     {
         var t = Clamp01(x);
         return t * t * t * (t * (t * 6 - 15) + 10);
-    }
-
-    /// <summary>One even swell over 0..1: 0 at both ends, largest in the middle.</summary>
-    public static double Hill(double u)
-    {
-        u = Clamp01(u);
-        var s = Math.Sin(Math.PI * u);
-        return s * s;
     }
 }
