@@ -3178,4 +3178,5 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>Not enough space there: your data needs {0}, and only {1} is free.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>Couldn't move your data: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Move cancelled. Your data stays where it is.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>Getting ready…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
 </root>

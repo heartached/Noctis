@@ -6894,4 +6894,5 @@
   <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>Pas assez d'espace : vos données ont besoin de {0}, et seulement {1} est libre.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>Impossible de déplacer vos données : {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Déplacement annulé. Vos données restent en place.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>Préparation…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
 </root>

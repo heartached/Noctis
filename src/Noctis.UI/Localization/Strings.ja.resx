@@ -6894,4 +6894,5 @@
   <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>空き容量が足りません: データに {0} 必要ですが、空きは {1} です。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>データを移動できませんでした: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>移動をキャンセルしました。データはそのままです。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>準備しています…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
 </root>

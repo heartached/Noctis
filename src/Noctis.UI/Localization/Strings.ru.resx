@@ -3178,4 +3178,5 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>Недостаточно места: данным нужно {0}, а свободно только {1}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>Не удалось перенести данные: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Перенос отменён. Данные остаются на месте.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>Подготовка…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
 </root>

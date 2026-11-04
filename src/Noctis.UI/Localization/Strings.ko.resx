@@ -6894,4 +6894,5 @@
   <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>공간이 부족합니다: 데이터에 {0}이(가) 필요하지만 여유 공간은 {1}입니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>데이터를 이동하지 못했습니다: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>이동이 취소되었습니다. 데이터는 그대로 있습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>준비 중…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
 </root>

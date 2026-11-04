@@ -6894,4 +6894,5 @@
   <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>لا توجد مساحة كافية: تحتاج بياناتك إلى {0}، والمساحة المتاحة {1} فقط.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>تعذّر نقل بياناتك: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>تم إلغاء النقل. تبقى بياناتك في مكانها.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>جارٍ التحضير…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
 </root>

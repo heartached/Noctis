@@ -147,6 +147,10 @@ public partial class SettingsViewModel
         var pointer = DataLocation.ReadPointer(home);
         var hadPendingMove = pointer?.PendingMoveTo is not null;
 
+        // Checking and measuring a big data folder takes a while (minutes for a large artwork
+        // folder); without this the card shows nothing until the copy starts.
+        SetDataFolderStatus(Loc.T("Settings.DataFolderPreparing"), error: false);
+
         DataLocation.MovePlan plan;
         try { plan = await Task.Run(() => DataLocation.PlanChange(current, picked, home)); }
         catch (Exception ex)
