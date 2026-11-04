@@ -1039,6 +1039,14 @@
     <value>ترتفع الكلمات المغنّاة قليلاً وتتوهج النغمات الممتدة، كما في Apple Music. عند الإيقاف تبقى الكلمات المتزامنة كلمة بكلمة ثابتة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
+    <value>توسيط المشغّل عندما لا توجد كلمات للأغنية</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
+    <value>عندما لا توجد كلمات للأغنية أو تكون موسيقى بلا غناء، تنقل صفحة الكلمات الغلاف ومعلومات الأغنية وعناصر التحكم إلى المنتصف.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>عتامة شريط التشغيل</value>
     <comment>Text in SettingsView.axaml</comment>

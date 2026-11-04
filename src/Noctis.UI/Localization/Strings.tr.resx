@@ -291,6 +291,8 @@
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>TTML sözleri kelimeleri hecelere böldüğünde kelimeleri bütün tut.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Parlama ve Yükselme</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Söylenen kelimeler hafifçe yükselir, uzatılan notalar parlar (Apple Music gibi). Kapalıyken kelime senkronlu sözler sabit kalır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Sözü Olmayan Şarkıda Oynatıcıyı Ortala</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Şarkının sözü yoksa ya da enstrümantalse, söz sayfası kapağı, şarkı bilgisini ve kontrolleri ortaya taşır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Oynatıcı Çubuğu Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>Oynatma çubuğunun arka planının ne kadar dolgun göründüğü.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Oynatıcı Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>

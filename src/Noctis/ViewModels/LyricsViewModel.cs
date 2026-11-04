@@ -586,6 +586,36 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isMarkedNoLyrics;
 
+    partial void OnIsMarkedNoLyricsChanged(bool value) => UpdateNoLyricsCentered();
+
+    /// <summary>
+    /// The lyrics page centres the player (cover, track info, controls) instead of the
+    /// split layout: Settings ▸ "Center the player when a song has no lyrics" is on and the
+    /// song is KNOWN to have none — nothing found (instrumental included: that search ends
+    /// on the Search Lyrics state too) or marked as having none. While lyrics are still
+    /// loading (the local probe, an online search, a track change before its load lands)
+    /// the layout holds whatever it was, so a load never bounces the page between the two
+    /// layouts; lines arriving switch it back to split.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isNoLyricsCentered;
+
+    /// <summary>Set while a no-lyrics result may start the automatic download straight away:
+    /// that search is still loading, so the page must not centre for the instant between.</summary>
+    private bool _holdNoLyricsCentered;
+
+    internal void UpdateNoLyricsCentered()
+    {
+        if (_holdNoLyricsCentered) return;
+        if (!_player.LyricsCenterWhenNoLyrics || _player.CurrentTrack == null)
+            IsNoLyricsCentered = false;
+        else if (ShowSearchButton || IsMarkedNoLyrics)
+            IsNoLyricsCentered = true;
+        else if (LyricLines.Count > 0 || UnsyncedLines.Count > 0)
+            IsNoLyricsCentered = false;
+        // Otherwise still loading: hold.
+    }
+
     /// <summary>Status text for save operation feedback.</summary>
     [ObservableProperty]
     private string _saveStatusText = string.Empty;
@@ -703,6 +733,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // files keep today's content-hugging layout untouched.
         LyricLines.CollectionChanged += (_, _) =>
             HasDuetLines = LyricLines.Any(l => l.Voice != LyricVoice.Default);
+
+        // Lines arriving is what ends a centred no-lyrics layout (see UpdateNoLyricsCentered).
+        LyricLines.CollectionChanged += (_, _) => UpdateNoLyricsCentered();
+        UnsyncedLines.CollectionChanged += (_, _) => UpdateNoLyricsCentered();
 
         // Subscribe to track changes to update lyrics
         _player.TrackStarted += OnTrackStarted;
@@ -2985,6 +3019,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
             RefreshHeaderCredits();
 
+        if (e.PropertyName is nameof(PlayerViewModel.CurrentTrack) or nameof(PlayerViewModel.LyricsCenterWhenNoLyrics))
+            UpdateNoLyricsCentered();
+
         // A different track took over: a Studio preview belongs to its own track only.
         if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) &&
             _previewTrackId != null && _player.CurrentTrack?.Id != _previewTrackId)
@@ -3479,10 +3516,21 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
         }
         DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
-        ShowSearchButton = true;
-        AutoSelectTab();
-        RefreshActiveLyricPosition();
-        MaybeAutoDownloadLyrics();
+        // The automatic download may start right here; until it answers the lyrics are
+        // still loading, so the centred layout waits for its outcome.
+        _holdNoLyricsCentered = true;
+        try
+        {
+            ShowSearchButton = true;
+            AutoSelectTab();
+            RefreshActiveLyricPosition();
+            MaybeAutoDownloadLyrics();
+        }
+        finally
+        {
+            _holdNoLyricsCentered = false;
+        }
+        UpdateNoLyricsCentered();
     }
 
     // Songs the automatic download already searched for this session: a song with no lyrics
@@ -3696,7 +3744,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Whether the lyric share-card entry point should be visible.</summary>
     public bool ShareAvailable => _player.CurrentTrack != null && !IsSearching && !ShowSearchButton;
 
-    partial void OnShowSearchButtonChanged(bool value) => OnPropertyChanged(nameof(ShareAvailable));
+    partial void OnShowSearchButtonChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShareAvailable));
+        UpdateNoLyricsCentered();
+    }
     partial void OnIsSearchingChanged(bool value) => OnPropertyChanged(nameof(ShareAvailable));
 
     /// <summary>

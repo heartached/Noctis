@@ -1039,6 +1039,14 @@
     <value>Las palabras cantadas se elevan suavemente y las notas sostenidas brillan, como en Apple Music. Desactivado, la letra sincronizada por palabras queda quieta.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
+    <value>Centrar el reproductor si la canción no tiene letra</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
+    <value>Si una canción no tiene letra o es instrumental, la página de letras mueve la portada, la información y los controles al centro.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>Opacidad de la barra de reproducción</value>
     <comment>Text in SettingsView.axaml</comment>

@@ -1116,6 +1116,11 @@ public class AppSettings : IJsonOnDeserializing
     /// sweep alone marks the vocal).</summary>
     public bool LyricsGlowAndLift { get; set; } = true;
 
+    /// <summary>The full-screen lyrics page slides the cover, track info and controls to the
+    /// middle when the song has no lyrics (none found, instrumental, or marked as none),
+    /// instead of leaving the lyrics half empty. Ships on.</summary>
+    public bool LyricsCenterWhenNoLyrics { get; set; } = true;
+
     /// <summary>Show a TTML file's translation under each lyric line (issue #78).</summary>
     public bool LyricsShowTranslations { get; set; } = true;
 

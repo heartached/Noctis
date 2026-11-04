@@ -1039,6 +1039,14 @@
     <value>부른 단어가 살짝 떠오르고 길게 끄는 음이 빛납니다(Apple Music처럼). 끄면 단어 동기화 가사가 움직이지 않습니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
+    <value>가사가 없는 곡은 플레이어를 가운데로</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
+    <value>가사가 없거나 연주곡이면 가사 페이지에서 앨범 아트, 곡 정보, 컨트롤을 가운데로 옮깁니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>재생 바 불투명도</value>
     <comment>Text in SettingsView.axaml</comment>
