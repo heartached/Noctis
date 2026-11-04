@@ -156,18 +156,30 @@ public class GlassMenus169Tests
         finally { win.Close(); }
     }
 
+    /// <summary>Whole app: a menu in a window that is no overlay host (mini player, dialogs,
+    /// plugin windows) frosts too, in its own native popup (no overlay layer: it may reach past
+    /// a small window), over the GlassMenuBackdrop.</summary>
     [AvaloniaFact]
-    public void ContextMenu_InAWindowThatIsNoGlassHost_StaysPlain()
+    public void ContextMenu_InAWindowThatIsNoGlassHost_FrostsInItsOwnPopup()
     {
-        var (menu, _, owner) = Menu();
+        var (menu, sub, owner) = Menu();
         var win = HostWindow(owner, host: false);
         try
         {
             AppGlass.Set(true, Colors.Black, Colors.Black);
             menu.Open(owner);
             Dispatcher.UIThread.RunJobs();
-            Assert.False(PopupOf(menu).ShouldUseOverlayLayer);
-            Assert.DoesNotContain(GlassMenus.GlassClass, menu.Classes);
+            Assert.False(PopupOf(menu).IsSet(Popup.ShouldUseOverlayLayerProperty));
+            Assert.Contains(GlassMenus.GlassClass, menu.Classes);
+            Assert.DoesNotContain(GlassMenus.OverlayClass, menu.Classes);
+            var backdrop = Single<GlassMenuBackdrop>(menu);
+            Assert.IsType<GlassPanel>(backdrop.Child);
+            Assert.Same(menu.Background, backdrop.Background);
+            // Its submenu stays in a popup of its own as well, and frosts.
+            var card = OpenSubmenu(sub);
+            Assert.False(SubmenuPopup(sub).ShouldUseOverlayLayer);
+            Assert.NotNull(GlassMenus.FrostOf(card));
+            sub.IsSubMenuOpen = false;
             menu.Close();
         }
         finally
@@ -189,7 +201,8 @@ public class GlassMenus169Tests
             Dispatcher.UIThread.RunJobs();
             var card = OpenSubmenu(sub);
             Assert.True(SubmenuPopup(sub).ShouldUseOverlayLayer);
-            var glass = Assert.IsType<GlassPanel>(card.Child);
+            var glass = Assert.IsType<GlassPanel>(GlassMenus.FrostOf(card));
+            Assert.IsType<GlassMenuBackdrop>(card.Child);
             Assert.Equal(new Thickness(6), glass.Padding);
             Assert.Equal(new CornerRadius(16), glass.CornerRadius);
             Assert.Null(card.Background);
