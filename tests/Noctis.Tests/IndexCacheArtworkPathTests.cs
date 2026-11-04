@@ -65,7 +65,7 @@ public class IndexCacheArtworkPathTests : IDisposable
             Write(Path.Combine(newRoot, name), File.ReadAllText(Path.Combine(oldRoot, name)));
         Directory.CreateDirectory(Path.Combine(newRoot, "artwork"));
         File.Copy(old.GetArtworkPath(albumId), Path.Combine(newRoot, "artwork", $"{albumId}.jpg"));
-        Directory.Delete(oldRoot, recursive: true);
+        // (The old folder stays: the first library's background backfills still write there.)
 
         var moved = new PersistenceService(newRoot);
         var second = new LibraryService(new MetadataService(), moved, new SqliteLibraryIndexService(moved), new NoctisAccountLibraryTests.NoOpAudit());
