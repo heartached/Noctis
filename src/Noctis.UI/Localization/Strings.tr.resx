@@ -2475,4 +2475,5 @@
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>Albümlerde bul</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Eşleşen albüm yok</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Aramayı temizle</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>"{0}" dosyasına etiket yazılamadı: DSDIFF (.dff) dosyalarının etiketleri salt okunurdur. Etiketleri düzenlemek için dosyayı DSD (.dsf) biçimine dönüştürün.</value></data>
 </root>

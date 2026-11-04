@@ -7391,4 +7391,5 @@
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>البحث في الألبومات</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>لا توجد ألبومات مطابقة</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>مسح البحث</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>تعذّر كتابة الوسوم في "{0}": وسوم ملفات DSDIFF (.dff) للقراءة فقط. حوّل الملف إلى DSD (.dsf) لتعديل وسومه.</value></data>
 </root>

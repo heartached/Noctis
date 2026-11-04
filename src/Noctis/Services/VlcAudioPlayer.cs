@@ -2204,6 +2204,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (t.Data.Audio.Channels > 0) channels = (int)t.Data.Audio.Channels;
                 break;
             }
+            // DSD media is never parsed (callback input); its PCM format is ours to tell.
+            if (DsdPcmInput.TryGetFormat(media, out var dsdRate, out var dsdChannels))
+                (rate, channels) = (dsdRate, dsdChannels);
             // amem delivers the wrong amount of audio from 262144 Hz up (see AmemRate), so a
             // 352.8/384 kHz source opens the device at 176.4/192 kHz and VLC resamples 2:1.
             // The sink renders at most stereo (LibVLC downmixes to what we pin below).
@@ -2911,7 +2914,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             int mp3TailTrimFrames;
             try
             {
-                media = new Media(_libVlc, normalizedPath, isRemote ? FromType.FromLocation : FromType.FromPath);
+                media = (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, normalizedPath))
+                        ?? new Media(_libVlc, normalizedPath, isRemote ? FromType.FromLocation : FromType.FromPath);
                 if (!isRemote)
                     ApplyReadAhead(media);
                 mp3TailTrimFrames = ApplyMp3Demux(media, normalizedPath, startPositionMs);
@@ -2937,7 +2941,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     media.AddOption(":audio-replay-gain-default=-7.0");
                 }
 
-                var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
+                var parseTask = DsdPcmInput.IsDsdMedia(media)
+                    ? Task.FromResult(MediaParsedStatus.Done) // see DsdPcmInput.IsDsdMedia
+                    : media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
                 bool parsed;
                 try
                 {
@@ -3431,7 +3437,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // headers must be parsed over the network.
             var media = isCd
                 ? CreateAudioCdMedia(_libVlc, filePath)
-                : new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
+                // DSD: decoded to PCM here, LibVLC 3 has no DSD decoder (see DsdPcmInput).
+                : (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, filePath))
+                  ?? new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
             if (!isCd && !isRemote)
                 ApplyReadAhead(media);
             // Off the engine the playback-speed button is LibVLC's rate; only media
@@ -3447,7 +3455,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // edit landing mid-parse must not abort the track being opened.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(openCancel);
             cts.CancelAfter(8000);
-            var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
+            var parseTask = DsdPcmInput.IsDsdMedia(media)
+                ? Task.FromResult(MediaParsedStatus.Done) // see DsdPcmInput.IsDsdMedia
+                : media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
             var clipParseTimedOut = false;
             try
             {
@@ -3486,13 +3496,15 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     ApplyReplayGain(_rgMode, _rgPreampDb);
                 targetVolume = GetTargetVlcVolume();
 
-                media = new Media(_libVlc, filePath, FromType.FromPath);
+                media = DsdPcmInput.TryCreateMedia(_libVlc, filePath) ?? new Media(_libVlc, filePath, FromType.FromPath);
                 ApplyReadAhead(media);
                 if (!_gaplessEngine)
                     media.AddOption(":audio-time-stretch");
                 using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                 fallbackCts.CancelAfter(8000);
-                parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+                parseTask = DsdPcmInput.IsDsdMedia(media)
+                    ? Task.FromResult(MediaParsedStatus.Done)
+                    : media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
                 try
                 {
                     parseTask.Wait(fallbackCts.Token);

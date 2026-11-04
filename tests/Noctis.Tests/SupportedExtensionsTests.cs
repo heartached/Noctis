@@ -28,13 +28,10 @@ public class SupportedExtensionsTests
         => Assert.False(new Track { FilePath = "song" + ext }.IsLossless);
 
     [Fact]
-    public void EverySupportedExtension_ExceptDsd_MapsToACodecShortName()
+    public void EverySupportedExtension_MapsToACodecShortName()
     {
         foreach (var ext in MetadataService.SupportedExtensions)
         {
-            if (ext is ".dsf" or ".dff")
-                continue; // surfaced in the library, playback pending (no VLC 3.x DSD codec)
-
             var track = new Track { FilePath = "song" + ext };
             Assert.False(string.IsNullOrEmpty(track.CodecShortName),
                 $"'{ext}' is importable but maps to no codec label");

@@ -256,6 +256,20 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
     private static double ClampGain(double db)
         => double.IsFinite(db) ? System.Math.Clamp(db, -30.0, 20.0) : 0.0;
 
+    /// <summary>
+    /// The ebur128 filter chain for <paramref name="source"/>. DSD is measured at the level the
+    /// player decodes it at: ffmpeg's DSD decoder outputs the plain modulation level, Noctis'
+    /// (<see cref="Dsd.DsdPcmDecoder"/>) adds +6 dB, so without the same boost here a DSD
+    /// track's ReplayGain would leave it 6 dB too loud.
+    /// </summary>
+    internal static string LoudnessFilter(string source)
+    {
+        const string ebur128 = "ebur128=peak=true:framelog=verbose";
+        return Dsd.DsdStreamInfo.IsDsdPath(source)
+            ? FormattableString.Invariant($"volume={Dsd.DsdPcmDecoder.GainDb:0.####}dB,{ebur128}")
+            : ebur128;
+    }
+
     private static async Task<LoudnessResult> MeasureAsync(string ffmpeg, string source, bool background, CancellationToken ct)
     {
         // ebur128 prints a summary block to stderr when `peak=true` is set.
@@ -272,7 +286,7 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             CreateNoWindow = true,
         };
         foreach (var a in new[] { "-nostats", "-hide_banner", "-i", source, "-map", "0:a:0",
-                                  "-af", "ebur128=peak=true:framelog=verbose", "-f", "null", "-" })
+                                  "-af", LoudnessFilter(source), "-f", "null", "-" })
             psi.ArgumentList.Add(a);
 
         try

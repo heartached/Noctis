@@ -7391,4 +7391,5 @@
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>アルバムを検索</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>一致するアルバムはありません</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>検索を消去</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>「{0}」にタグを書き込めませんでした：DSDIFF（.dff）ファイルのタグは読み取り専用です。タグを編集するには DSD（.dsf）に変換してください。</value></data>
 </root>

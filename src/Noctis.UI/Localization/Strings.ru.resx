@@ -3675,4 +3675,5 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>Поиск в альбомах</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Альбомы не найдены</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Очистить поиск</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Не удалось записать теги в «{0}»: теги файлов DSDIFF (.dff) доступны только для чтения. Конвертируйте файл в DSD (.dsf), чтобы изменить теги.</value></data>
 </root>

@@ -2807,7 +2807,9 @@ public partial class PlayerViewModel : ViewModelBase
             ? track.CodecShortName
             : Path.GetExtension(track.FilePath).TrimStart('.').ToUpperInvariant();
         var sourceDetail = codec;
-        if (track.BitsPerSample > 0 && track.SampleRate > 0)
+        if (track.DsdRateLabel is { } dsd)
+            sourceDetail += $" {dsd} (decoded to PCM)"; // DsdPcmInput: no native DSD output
+        else if (track.BitsPerSample > 0 && track.SampleRate > 0)
             sourceDetail += $" {track.BitsPerSample}-bit / {track.SampleRate / 1000.0:0.#} kHz";
         else if (track.SampleRate > 0)
             sourceDetail += $" {track.SampleRate / 1000.0:0.#} kHz";

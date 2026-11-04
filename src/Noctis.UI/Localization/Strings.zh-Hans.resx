@@ -7391,4 +7391,5 @@
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>在专辑中查找</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>没有匹配的专辑</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>清除搜索</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>无法写入“{0}”的标签：DSDIFF (.dff) 文件的标签为只读。请将其转换为 DSD (.dsf) 后再编辑标签。</value></data>
 </root>

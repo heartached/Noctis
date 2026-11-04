@@ -59,9 +59,9 @@ public class MetadataService : IMetadataService
         // the bundled VLC ships an asf demuxer + WMA decoders in libavcodec).
         // Like .mp4 above, a video-bearing .asf plays audio-only (--no-video).
         ".asf",
-        // DSD: .dsf is read by TagLib; .dff is read by DsdiffReader (TagLib ships no
-        // DSDIFF parser). Both now surface in the library, but playback is not yet
-        // supported — the bundled VLC 3.x has no DSD demuxer/decoder.
+        // DSD: .dsf is read (and tagged, ID3v2) by TagLib; .dff is read by DsdiffReader
+        // (TagLib ships no DSDIFF parser, so .dff tags are read-only). LibVLC 3 has no DSD
+        // decoder, so the player decodes both to PCM itself (DsdPcmInput / DsdPcmDecoder).
         ".dsf", ".dff"
     };
 

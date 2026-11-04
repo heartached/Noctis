@@ -7391,4 +7391,5 @@
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>Buscar en Álbumes</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Ningún álbum coincide</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Borrar búsqueda</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>No se pudieron escribir las etiquetas en «{0}»: las etiquetas de los archivos DSDIFF (.dff) son de solo lectura. Conviértelo a DSD (.dsf) para editarlas.</value></data>
 </root>

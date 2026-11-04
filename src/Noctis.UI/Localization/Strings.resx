@@ -3675,4 +3675,5 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>Find in Albums</value><comment>Search field placeholder on the Albums page</comment></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>No albums match</value><comment>Albums page search with no results</comment></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Clear Search</value><comment>Screen reader: the list pages' search field clear button</comment></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Couldn’t write tags to "{0}": tags in DSDIFF (.dff) files are read-only. Convert it to DSD (.dsf) to edit its tags.</value><comment>Tag editor save error for a .dff file. {0} = file name</comment></data>
 </root>

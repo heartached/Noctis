@@ -7391,4 +7391,5 @@
   <data name="Mobile.Albums.Find" xml:space="preserve"><value>Rechercher dans Albums</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Aucun album trouvé</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Effacer la recherche</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Impossible d’écrire les tags dans « {0} » : les tags des fichiers DSDIFF (.dff) sont en lecture seule. Convertissez-le en DSD (.dsf) pour les modifier.</value></data>
 </root>
