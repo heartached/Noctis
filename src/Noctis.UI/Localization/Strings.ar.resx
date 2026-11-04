@@ -7237,7 +7237,13 @@
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>حبر</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>دخان</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>منتصف الليل</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>النمط الداكن: {0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>النظام، {0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>مطابقة الجهاز</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>يكون Noctis فاتحًا عندما يكون هاتفك في الوضع الفاتح، و{0} عندما يكون في الوضع الداكن.</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>فاتح وداكن</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>تلوّن السمة الملوّنة الصفحات والبطاقات والزجاج، وتتناسق مع الخلفية التي تحمل الاسم نفسه.</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>مطابقة السمة</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>للسمات الملوّنة لون مميّز خاص بها. اختيار لون أدناه يوقف هذا الخيار.</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>هل تريد إزالة “{0}”؟ ستخرج أغانيه من مكتبتك على هذا الهاتف. تبقى الملفات في مكانها.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>هل تريد إزالة “{0}”؟</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>ستخرج أغانيه من مكتبتك على هذا الهاتف. تبقى الملفات في مكانها.</value></data>

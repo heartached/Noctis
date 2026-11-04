@@ -3521,7 +3521,13 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>Чернила</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>Дым</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Полночь</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>Тёмный стиль: {0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Как в системе, {0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Как на устройстве</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis светлый, когда телефон в светлом режиме, и «{0}», когда в тёмном.</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Светлая и тёмные</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Цветная тема окрашивает страницы, карточки и стекло и сочетается с одноимённым фоном.</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Как в теме</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>У цветных тем свой акцентный цвет. Выбор цвета ниже отключает этот переключатель.</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>Удалить «{0}»? Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>Удалить «{0}»?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>

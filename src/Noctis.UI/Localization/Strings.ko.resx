@@ -7237,7 +7237,13 @@
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>잉크</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>스모크</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>미드나이트</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>다크 스타일: {0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>시스템, {0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>기기와 동일하게</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>휴대폰이 라이트 모드일 때는 라이트, 다크 모드일 때는 {0}(으)로 표시됩니다.</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>라이트 및 다크</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>컬러 테마는 페이지, 카드, 글래스에 색을 입히며 같은 이름의 배경과 어울립니다.</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>테마와 동일하게</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>컬러 테마에는 고유한 강조 색상이 있습니다. 아래에서 색상을 선택하면 꺼집니다.</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>‘{0}’을(를) 제거하시겠습니까? 이 폴더의 노래가 이 휴대폰의 라이브러리에서 빠집니다. 파일은 그대로 유지됩니다.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>‘{0}’을(를) 제거하시겠습니까?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>이 폴더의 노래가 이 휴대폰의 라이브러리에서 빠집니다. 파일은 그대로 유지됩니다.</value></data>

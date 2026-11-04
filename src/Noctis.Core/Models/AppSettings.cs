@@ -132,6 +132,16 @@ public class AppSettings : IJsonOnDeserializing
     /// <see cref="Theme"/>) or "Light".</summary>
     public string MobileAppearance { get; set; } = "System";
 
+    /// <summary>Phone, Settings › Theme: the dark theme ("Ink", "Smoke", "Dark", "Midnight" or a
+    /// colour theme named after its background, "forest"), shown when <see cref="MobileAppearance"/>
+    /// is "Dark", or "System" on a dark phone. Empty until the phone first starts with themes: it
+    /// is then migrated from <see cref="Theme"/> and <see cref="MobileBackground"/> (PhoneThemes).</summary>
+    public string MobileThemeName { get; set; } = "";
+
+    /// <summary>Phone, Settings › Accent › Match Theme: a colour theme's own accent is used instead
+    /// of <see cref="AccentColorHex"/>. Themes without one (Light, the dark styles) keep the accent.</summary>
+    public bool MobileAccentFollowsTheme { get; set; } = true;
+
     /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
     public double MobileLyricsTextScale { get; set; } = 1.0;
 

@@ -27,69 +27,71 @@ public sealed class MobileTheme
     /// <summary>
     /// The phone's own surface palette (iOS-style pages, grouped pages, cards, hairlines,
     /// floating chrome), keyed per variant so the always-dark scopes (Now Playing, Lyrics) pick
-    /// the Dark set. Ink and Dark take Apple's pure black; Smoke and Midnight keep their own
-    /// slate and blue-black, with surfaces stepped up from them the same way.
+    /// the Dark set; the colours are the theme's (<see cref="PhoneThemes"/>). Ink and Dark take
+    /// Apple's pure black; Smoke and Midnight keep their own slate and blue-black, and a colour
+    /// theme its background's floor, with surfaces stepped up from them the same way.
     /// The chrome brush is the Liquid Glass tint (translucent: what passes beneath shows
     /// through it), its outline the hairline rim every floating pill carries, and the selected
     /// brush the tab bar's inner capsule: a grey on light glass, darker than the pill on dark.
-    /// Light's secondary text is Apple's secondaryLabel (#3C3C43 at 60 %), translucent, so it
-    /// keeps its contrast on the grey fills it also sits on (the search field's magnifier read
-    /// 2.97:1 as an opaque #8A8A8E); on a white page it is that same #8A8A8E. The explicit badge
-    /// is the desktop's half-grey on dark, and Apple's secondary grey on Light, where the half-grey
-    /// over white left its white "E" at 1.8:1.
+    /// Secondary text is translucent, Apple's secondaryLabel, as opaque as WCAG AA needs on the
+    /// page, the grouped rows and the cards (PhoneThemes.Secondary). The explicit badge is the
+    /// desktop's half-grey on dark, and Apple's secondary grey on Light, where the half-grey
+    /// over white left its white "E" at 1.8:1. A colour theme also tints the desktop keys the
+    /// phone shows on its pages (HomeCardBackground's tiles, SecondaryTextBrush).
     /// </summary>
     public static ResourceDictionary BuildPalette(string? darkTheme = null)
     {
-        static SolidColorBrush B(string hex) => new(Color.Parse(hex));
-        static ResourceDictionary Dark(string page, string grouped, string card, string separator, string fill,
-            string chrome, string secondary, string chevron) => new()
-        {
-            ["PhoneBackgroundBrush"] = B(page),
-            ["PhoneGroupedBackgroundBrush"] = B(grouped),
-            ["PhoneSheetBackgroundBrush"] = B(grouped),
-            ["PhoneCardBrush"] = B(card),
-            ["PhoneSeparatorBrush"] = B(separator),
-            ["PhoneFillBrush"] = B(fill),
-            ["PhoneChromeBrush"] = B(chrome),
-            ["PhoneChromeOutlineBrush"] = B("#30FFFFFF"),
-            ["PhoneChromeSelectedBrush"] = B("#99000000"),
-            ["PhoneSecondaryTextBrush"] = B(secondary),
-            ["PhoneChevronBrush"] = B(chevron),
-            ["PhoneExplicitBadgeBrush"] = B("#88888888"),
-        };
+        static SolidColorBrush B(Color c) => new(c);
+        var light = PhoneThemes.Find(PhoneThemes.Light)!;
+        var dark = PhoneThemes.DarkOrInk(darkTheme);
         var palette = new ResourceDictionary();
         palette.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
         {
-            ["PhoneBackgroundBrush"] = B("#FFFFFF"),
-            ["PhoneGroupedBackgroundBrush"] = B("#F2F2F7"),
-            ["PhoneSheetBackgroundBrush"] = B("#F2F2F7"),
-            ["PhoneCardBrush"] = B("#FFFFFF"),
-            ["PhoneSeparatorBrush"] = B("#D8D8DC"),
-            ["PhoneFillBrush"] = B("#1F767680"),
-            ["PhoneChromeBrush"] = B("#99FAFAFA"),
-            ["PhoneChromeOutlineBrush"] = B("#21000000"),
-            ["PhoneChromeSelectedBrush"] = B("#12000000"),
-            ["PhoneSecondaryTextBrush"] = B("#993C3C43"),
-            ["PhoneChevronBrush"] = B("#C4C4C7"),
-            ["PhoneExplicitBadgeBrush"] = B("#8A8A8E"),
+            ["PhoneBackgroundBrush"] = B(light.Page),
+            ["PhoneGroupedBackgroundBrush"] = B(light.Grouped),
+            ["PhoneSheetBackgroundBrush"] = B(light.Grouped),
+            ["PhoneCardBrush"] = B(light.Card),
+            ["PhoneSeparatorBrush"] = B(light.Separator),
+            ["PhoneFillBrush"] = B(light.Fill),
+            ["PhoneChromeBrush"] = B(light.Chrome),
+            ["PhoneChromeOutlineBrush"] = B(Color.Parse("#21000000")),
+            ["PhoneChromeSelectedBrush"] = B(Color.Parse("#12000000")),
+            ["PhoneSecondaryTextBrush"] = B(light.Secondary),
+            ["PhoneChevronBrush"] = B(light.Chevron),
+            ["PhoneExplicitBadgeBrush"] = B(Color.Parse("#8A8A8E")),
         };
-        palette.ThemeDictionaries[ThemeVariant.Dark] = darkTheme switch
+        var darkSet = new ResourceDictionary
         {
-            "Smoke" => Dark("#22242C", "#2A2D38", "#343844", "#3E4250", "#2A2D38", "#B3343844", "#9A9EAB", "#5E6270"),
-            "Midnight" => Dark("#0E1322", "#161D31", "#1E2740", "#2A3552", "#1A2238", "#B31E2740", "#8A93AD", "#4A5372"),
-            _ => Dark("#000000", "#1C1C1E", "#2C2C2E", "#38383A", "#1C1C1E", "#B32C2C2F", "#8D8D93", "#5A5A5E"),
+            ["PhoneBackgroundBrush"] = B(dark.Page),
+            ["PhoneGroupedBackgroundBrush"] = B(dark.Grouped),
+            ["PhoneSheetBackgroundBrush"] = B(dark.Grouped),
+            ["PhoneCardBrush"] = B(dark.Card),
+            ["PhoneSeparatorBrush"] = B(dark.Separator),
+            ["PhoneFillBrush"] = B(dark.Fill),
+            ["PhoneChromeBrush"] = B(dark.Chrome),
+            ["PhoneChromeOutlineBrush"] = B(Color.Parse("#30FFFFFF")),
+            ["PhoneChromeSelectedBrush"] = B(Color.Parse("#99000000")),
+            ["PhoneSecondaryTextBrush"] = B(dark.Secondary),
+            ["PhoneChevronBrush"] = B(dark.Chevron),
+            ["PhoneExplicitBadgeBrush"] = B(Color.Parse("#88888888")),
         };
+        if (dark.Group == PhoneThemes.Colour)
+        {
+            darkSet["HomeCardBackground"] = B(dark.Grouped);
+            darkSet["SecondaryTextBrush"] = B(dark.Secondary);
+        }
+        palette.ThemeDictionaries[ThemeVariant.Dark] = darkSet;
         return palette;
     }
 
     /// <summary>The theme last applied ("Light" or a dark theme), or null.</summary>
     public string? ThemeName { get; private set; }
 
-    /// <summary>The theme to run: Light, or the chosen dark theme (Ink when the saved name is a
-    /// desktop-only one such as "Gray").</summary>
+    /// <summary>The theme to run: Light, or the chosen dark theme, a dark style or a colour theme
+    /// (Ink when the saved name is a desktop-only one such as "Gray").</summary>
     public static string Resolve(string? appearance, string? darkTheme, PlatformThemeVariant system)
     {
-        var dark = darkTheme != null && DarkThemes.Contains(darkTheme) ? darkTheme : "Ink";
+        var dark = PhoneThemes.DarkOrInk(darkTheme).Id;
         return appearance switch
         {
             "Light" => "Light",
@@ -103,11 +105,13 @@ public sealed class MobileTheme
         Remove(app);
         var light = themeName == "Light";
         app.RequestedThemeVariant = light ? ThemeVariant.Light : ThemeVariant.Dark;
-        if (!light && DarkThemes.Contains(themeName))
+        if (!light)
         {
+            // A colour theme stands on Ink's desktop keys; the palette tints what the phone shows.
+            var overlay = DarkThemes.Contains(themeName) ? themeName : "Ink";
             _overlay = new ResourceInclude(new Uri("avares://Noctis.UI/"))
             {
-                Source = new Uri($"avares://Noctis.UI/Assets/Themes/{themeName}.axaml"),
+                Source = new Uri($"avares://Noctis.UI/Assets/Themes/{overlay}.axaml"),
             };
             app.Resources.MergedDictionaries.Add(_overlay);
         }

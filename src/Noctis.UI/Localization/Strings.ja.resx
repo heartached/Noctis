@@ -7237,7 +7237,13 @@
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>インク</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>スモーク</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>ミッドナイト</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>ダークスタイル：{0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>システム、{0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>デバイスに合わせる</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>スマートフォンがライトモードのときはライト、ダークモードのときは{0}になります。</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>ライトとダーク</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>カラーテーマはページ、カード、ガラスに色を付け、同じ名前の背景と調和します。</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>テーマに合わせる</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>カラーテーマには専用のアクセントカラーがあります。下で色を選ぶとオフになります。</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>「{0}」を削除しますか？このフォルダの曲は、このスマートフォンのライブラリから外れます。ファイルはそのまま残ります。</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>「{0}」を削除しますか？</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>このフォルダの曲は、このスマートフォンのライブラリから外れます。ファイルはそのまま残ります。</value></data>

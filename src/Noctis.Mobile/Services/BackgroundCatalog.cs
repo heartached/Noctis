@@ -140,7 +140,7 @@ public static class BackgroundCatalog
         return FromHsv((h + degrees + 360) % 360, s, v);
     }
 
-    private static void ToHsv(Color c, out double h, out double s, out double v)
+    internal static void ToHsv(Color c, out double h, out double s, out double v)
     {
         double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
         var max = Math.Max(r, Math.Max(g, b));
@@ -150,7 +150,7 @@ public static class BackgroundCatalog
         h = d == 0 ? 0 : max == r ? 60 * (((g - b) / d + 6) % 6) : max == g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
     }
 
-    private static Color FromHsv(double h, double s, double v)
+    internal static Color FromHsv(double h, double s, double v)
     {
         var c = v * s;
         var x = c * (1 - Math.Abs(h / 60 % 2 - 1));

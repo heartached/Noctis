@@ -30,7 +30,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     private const string LogTag = "Noctis";
 
     private readonly MobileTheme _theme = new();
-    private (string Appearance, string DarkTheme, string Accent) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent);
+    private (string Appearance, string DarkTheme, string Accent, bool AccentFollowsTheme) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent, true);
     private PlatformThemeVariant? _appliedSystem;
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
@@ -298,7 +298,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             var cultureBefore = Loc.Instance.Culture.Name;
             Loc.Instance.SetCulture(settings.Language);
             if (Loc.Instance.Culture.Name != cultureBefore) _shell!.Relabel();
-            ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
+            // Themes came in after the dark styles: the first start migrates Theme + Background once.
+            if (await PhoneThemes.MigrateAsync(persistence, settings))
+                DebugLog.Write("Theme", $"Migrated to the {settings.MobileThemeName} theme (Match Theme {settings.MobileAccentFollowsTheme})");
+            ApplyTheme(settings.MobileAppearance, PhoneThemes.DarkThemeFor(settings), settings.AccentColorHex, settings.MobileAccentFollowsTheme);
             // Settings › Background, before the first page paints rather than after the library loads.
             _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
@@ -357,15 +360,21 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     public void OnVolumeKey() => _volume?.NotifyChanged();
 
     /// <summary>Settings (and startup, and a system dark-mode switch) re-theme through here.</summary>
-    public void ApplyTheme(string appearance, string darkTheme, string accentHex)
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex) =>
+        ApplyTheme(appearance, darkTheme, accentHex, _themeChoice.AccentFollowsTheme);
+
+    /// <summary>A colour theme's own accent wins while <paramref name="accentFollowsTheme"/> (Match Theme).</summary>
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme)
     {
-        _themeChoice = (appearance, darkTheme, accentHex);
+        _themeChoice = (appearance, darkTheme, accentHex, accentFollowsTheme);
         var system = SystemVariant();
         _appliedSystem = system;
         var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
-        DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
-        _theme.Apply(this, resolved, accentHex);
-        _shell?.Background.Reassert();   // the theme rebuilt its palette: the background mesh goes back on top
+        var accent = PhoneThemes.EffectiveAccent(resolved, accentHex, accentFollowsTheme);
+        DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}, accent {accent}");
+        _theme.Apply(this, resolved, accent);
+        // The theme rebuilt its palette: the background mesh goes back on top, its glass in the theme's colours.
+        _shell?.Background.Reassert(PhoneThemes.DarkOrInk(darkTheme).Id);
         // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
         Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
     }
@@ -419,7 +428,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     public void OnConfigurationChanged()
     {
         if (SystemVariant() == _appliedSystem) return;   // rotation, font scale, our own night-mode echo
-        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent);
+        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent, _themeChoice.AccentFollowsTheme);
     }
 
     /// <summary>
