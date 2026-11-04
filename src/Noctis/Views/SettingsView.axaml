@@ -3178,12 +3178,17 @@
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </Grid>
+                    <!-- How full the cache is: a thin bar plus "312 MB of 1 GB used", Clear on the right. -->
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextWrapping="Wrap">
-                            <Run Text="{loc:T Settings.AnimArtCacheInUse}"/>
-                            <Run Text="{Binding AnimatedArtworkCacheUsage}"/>
-                        </TextBlock>
+                        <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <ProgressBar Minimum="0" Maximum="100"
+                                         Value="{Binding AnimatedArtworkCacheUsedPercent}"
+                                         Height="4" CornerRadius="2"/>
+                            <TextBlock Text="{Binding AnimatedArtworkCacheUsage}"
+                                       FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                        </StackPanel>
                         <Button Grid.Column="1"
+                                IsEnabled="{Binding HasAnimatedArtworkCache}"
                                 AutomationProperties.Name="{loc:T Settings.ClearCache}"
                                 Command="{Binding ClearAnimatedArtworkCacheCommand}"
                                 Classes="pill-action"

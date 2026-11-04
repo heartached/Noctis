@@ -6856,7 +6856,7 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
-    <value>عند فتح ألبوم، يبحث عن غلافه المتحرك في Apple Music (المطابقات الواضحة فقط) ويحفظه في ذاكرة مؤقتة لا تتجاوز الحجم أدناه. الأغلفة التي تختارها بنفسك تُحفظ بشكل منفصل ولا تُحذف أبدًا.</value>
+    <value>يبحث عن الغلاف المتحرك للألبوم عند فتحه.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve">
@@ -6864,15 +6864,15 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>عند امتلائها، تُحذف أولًا أغلفة الألبومات التي فتحتها منذ أطول مدة.</value>
+    <value>عند امتلائها، تُحذف أقدم الأغلفة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
-    <value>المستخدم:</value>
+  <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
+    <value>{0} من {1} مستخدم</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DataFolder" xml:space="preserve"><value>مجلد البيانات</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
-  <data name="Settings.DataFolderHint" xml:space="preserve"><value>المكان الذي يحفظ فيه Noctis مكتبتك والصور الفنية والأغلفة المتحركة والكلمات وذاكرة التخزين المؤقت. اختر مجلدًا على محرك أقراص آخر لتوفير المساحة، أو مجلدًا يحتوي بالفعل على بيانات Noctis من جهاز كمبيوتر آخر.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>مكان حفظ مكتبتك وأغلفتك وذاكرة التخزين المؤقت. انقله إلى قرص آخر لتوفير المساحة.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderChange" xml:space="preserve"><value>تغيير المجلد</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>استخدام الافتراضي</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>اختر مكان حفظ بيانات Noctis</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>

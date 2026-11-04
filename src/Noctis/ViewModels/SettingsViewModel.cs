@@ -523,6 +523,12 @@ public partial class SettingsViewModel : ViewModelBase
             _ = RefreshStorageInfoAsync();
             RefreshDataFolderState();
         }
+        // Albums opened since the last look filled the animated artwork cache; the usage
+        // line was read once at launch and kept saying "0 B".
+        else if (tab == TabAppearance && AnimatedArtworkAutoFetch)
+        {
+            _ = RefreshAnimatedArtworkCacheUsageAsync();
+        }
     }
 
     // ── Profile ──

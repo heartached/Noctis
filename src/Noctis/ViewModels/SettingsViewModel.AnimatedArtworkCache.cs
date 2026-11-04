@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -18,8 +19,16 @@ public partial class SettingsViewModel
     /// <summary>The cache cap in MB, one of <see cref="AppSettings.AnimatedArtworkCacheSizeChoices"/>.</summary>
     [ObservableProperty] private int _animatedArtworkCacheMb = 1024;
 
-    /// <summary>How much the cache holds now ("312.4 MB").</summary>
+    /// <summary>How much the cache holds against its cap ("312.4 MB of 1 GB used").</summary>
     [ObservableProperty] private string _animatedArtworkCacheUsage = string.Empty;
+
+    /// <summary>The same as a 0-100 fill for the usage bar.</summary>
+    [ObservableProperty] private double _animatedArtworkCacheUsedPercent;
+
+    /// <summary>Anything to clear: Clear Cache is greyed out on an empty cache.</summary>
+    [ObservableProperty] private bool _hasAnimatedArtworkCache;
+
+    private long _animatedArtworkCacheSizeBytes;
 
     /// <summary>One cache size in the picker.</summary>
     public sealed record CacheSizeOption(int Megabytes, string Label)
@@ -80,7 +89,18 @@ public partial class SettingsViewModel
             first?.Invoke();
             return files.SizeBytes();
         });
-        AnimatedArtworkCacheUsage = FormatBytes(bytes);
+        _animatedArtworkCacheSizeBytes = bytes;
+        UpdateAnimatedArtworkCacheUsageText();
+    }
+
+    private void UpdateAnimatedArtworkCacheUsageText()
+    {
+        var bytes = _animatedArtworkCacheSizeBytes;
+        var cap = AnimatedArtworkCacheBytes;
+        var capLabel = SelectedAnimatedArtworkCacheSizeOption?.Label ?? FormatBytes(cap);
+        AnimatedArtworkCacheUsage = Loc.T("Settings.AnimArtCacheUsedOf", FormatBytes(bytes), capLabel);
+        AnimatedArtworkCacheUsedPercent = cap > 0 ? Math.Min(100, bytes * 100.0 / cap) : 0;
+        HasAnimatedArtworkCache = bytes > 0;
     }
 
     private void LoadAnimatedArtworkCacheSettings()

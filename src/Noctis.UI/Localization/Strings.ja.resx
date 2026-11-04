@@ -6856,7 +6856,7 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
-    <value>アルバムを開くと Apple Music でアニメーションカバーを探し（確実に一致するものだけ）、下のサイズを超えないキャッシュに保存します。自分で選んだカバーは別に保存され、削除されません。</value>
+    <value>アルバムを開くと、アニメーションカバーを探します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve">
@@ -6864,15 +6864,15 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>いっぱいになると、最も前に開いたアルバムのカバーから削除されます。</value>
+    <value>いっぱいになると、古いカバーから削除されます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
-    <value>使用中:</value>
+  <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
+    <value>{1} 中 {0} 使用</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DataFolder" xml:space="preserve"><value>データフォルダー</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
-  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Noctis がライブラリ、アートワーク、アニメーションカバー、歌詞、キャッシュを保存する場所です。空き容量を増やすには別のドライブのフォルダーを、別のコンピューターの Noctis データを使うにはそのフォルダーを選択します。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>ライブラリ、カバー、キャッシュの保存場所です。別のドライブに移して容量を節約できます。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderChange" xml:space="preserve"><value>フォルダーを変更</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>デフォルトに戻す</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Noctis のデータを保存する場所を選択</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
