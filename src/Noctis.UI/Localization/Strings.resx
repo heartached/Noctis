@@ -3521,7 +3521,13 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>Ink</value><comment>Dark style name (near-black)</comment></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>Smoke</value><comment>Dark style name (grey)</comment></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Midnight</value><comment>Dark style name (deep blue)</comment></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>Dark style: {0}</value><comment>Theme menu row; a tap steps to the next style. {0} = style name</comment></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>System, {0}</value><comment>Theme row value with Match Device on. {0} = the dark theme</comment></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Match Device</value><comment>Theme page switch: follow the phone's light/dark mode</comment></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis is Light while your phone is in light mode and {0} while it is in dark mode.</value><comment>Under Match Device. {0} = the dark theme</comment></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Light and Dark</value><comment>Theme page group header</comment></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>A colour theme tints the pages, cards and glass, and pairs with the background of the same name.</value><comment>Theme page footnote under the colour themes</comment></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Match Theme</value><comment>Accent page switch: use the colour theme's own accent</comment></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Colour themes have their own accent. Picking a colour below turns this off.</value><comment>Under Match Theme</comment></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>Remove “{0}”? Its songs leave your library on this phone. The files stay where they are.</value><comment>Screen reader. {0} = folder</comment></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>Remove “{0}”?</value><comment>Prompt title. {0} = folder</comment></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Its songs leave your library on this phone. The files stay where they are.</value><comment>Prompt</comment></data>

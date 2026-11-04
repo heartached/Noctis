@@ -7237,7 +7237,13 @@
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>墨黑</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>煙灰</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>午夜藍</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>深色風格：{0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>跟隨系統，{0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>跟隨裝置</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>手機處於淺色模式時 Noctis 為淺色，處於深色模式時為{0}。</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>淺色與深色</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>彩色主題會為頁面、卡片和玻璃著色，並與同名背景相配。</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>跟隨主題</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>彩色主題有自己的強調色。在下方選擇顏色會關閉此項。</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>要移除「{0}」嗎？其中的歌曲會從這支手機的資料庫中移除。檔案本身維持不變。</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>要移除「{0}」嗎？</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>其中的歌曲會從這支手機的資料庫中移除。檔案本身維持不變。</value></data>

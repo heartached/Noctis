@@ -7237,7 +7237,13 @@
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>Tinta</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>Humo</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Medianoche</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>Estilo oscuro: {0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Sistema, {0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Igual que el dispositivo</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis usa Claro cuando tu teléfono está en modo claro y {0} cuando está en modo oscuro.</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Claro y oscuro</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Un tema de color tiñe las páginas, las tarjetas y el cristal, y combina con el fondo del mismo nombre.</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Igual que el tema</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Los temas de color tienen su propio color de acento. Elegir un color abajo lo desactiva.</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>¿Quitar «{0}»? Sus canciones saldrán de tu biblioteca en este teléfono. Los archivos se quedan donde están.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>¿Quitar «{0}»?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Sus canciones saldrán de tu biblioteca en este teléfono. Los archivos se quedan donde están.</value></data>

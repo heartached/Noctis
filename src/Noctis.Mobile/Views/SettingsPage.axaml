@@ -10,8 +10,7 @@
     <!-- Settings as Apple Music's account sheet, redesigned (10-28): a large title that collapses
          into the header, the profile card with the library's numbers, then sections of rows
          (a round glyph chip, the label, the value in grey, a chevron). Rows push pages inside the
-         sheet (they slide in from the right under a back button), open the Theme glass menu, flip
-         a switch or leave the app. Shared look: GroupedStyles.axaml. -->
+         sheet (they slide in from the right under a back button), flip a switch or leave the app. Shared look: GroupedStyles.axaml. -->
 
     <UserControl.Styles>
         <StyleInclude Source="avares://Noctis.Mobile/Views/GroupedStyles.axaml" />
@@ -341,7 +340,67 @@
                 </ControlTemplate>
             </Setter>
         </Style>
+        <!-- Settings › Theme: each theme's preview in the chip's place, its page with a card at the
+             top and the chrome glass at the bottom, a colour theme's accent on the glass. -->
+        <Style Selector="Border.theme-preview">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PhoneChromeOutlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Margin" Value="0,0,14,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.theme-preview-card">
+            <Setter Property="Height" Value="9" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Margin" Value="4,4,4,0" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style Selector="Border.theme-preview-chrome">
+            <Setter Property="Height" Value="8" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Margin" Value="4,0,4,4" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+        </Style>
+        <Style Selector="Ellipse.theme-preview-accent">
+            <Setter Property="Width" Value="4" />
+            <Setter Property="Height" Value="4" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ItemsControl.theme-list ContentPresenter:nth-child(1) Border.row-separator">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
     </UserControl.Styles>
+
+    <UserControl.Resources>
+        <!-- One Settings › Theme row: preview, name, a tick on the one in use; a tap applies it. -->
+        <DataTemplate x:Key="ThemeRowTemplate" x:DataType="vm:ThemeRow">
+            <StackPanel>
+                <Border Classes="row-separator chipped" />
+                <Button Classes="row" Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).ChooseThemeCommand}"
+                        CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                    <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="theme-preview" Background="{Binding PageBrush}">
+                            <Panel>
+                                <Border Classes="theme-preview-card" Background="{Binding CardBrush}" />
+                                <Border Classes="theme-preview-chrome" Background="{Binding ChromeBrush}">
+                                    <Ellipse Classes="theme-preview-accent" Fill="{Binding AccentBrush}" IsVisible="{Binding HasAccent}" />
+                                </Border>
+                            </Panel>
+                        </Border>
+                        <TextBlock Grid.Column="1" Classes="row-label" Text="{Binding Name}" />
+                        <PathIcon Grid.Column="2" Classes="language-check" Data="{DynamicResource PhCheck}"
+                                  Width="16" Height="16" Foreground="{DynamicResource AccentTextBrush}"
+                                  IsVisible="{Binding IsSelected}" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
 
     <Panel Classes="grouped-root">
         <Border Name="PageBackdrop" Classes="grouped-backdrop" />
@@ -430,7 +489,7 @@
                             </Border>
                         </StackPanel>
 
-                        <!-- Appearance: Background, Accent and Player Bar are pages; Theme opens the glass menu. -->
+                        <!-- Appearance: Background, Theme, Accent, Player Bar and Language are pages. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Appearance}" />
                             <Border Name="AppearanceCard" Classes="group-card">
@@ -446,12 +505,13 @@
                                         </Grid>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
-                                    <Button Name="ThemeRow" Classes="row" Command="{Binding ShowThemeMenuCommand}" AutomationProperties.Name="{Binding ThemeRowName}">
+                                    <Button Name="ThemeRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Theme}" AutomationProperties.Name="{Binding ThemeRowName}">
                                         <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon Data="{DynamicResource SetIconTheme}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Theme}" />
                                             <TextBlock Grid.Column="2" Name="ThemeValueLabel" Classes="row-value" Text="{Binding ThemeValue}" />
-                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </Grid>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
@@ -739,6 +799,16 @@
 
                         <!-- Accent: the nine colours, then whether album and artist pages take the cover's colour. -->
                         <StackPanel Name="AccentPane" Classes="grouped-content" IsVisible="{Binding ShowsAccentPane}">
+                            <!-- A colour theme's own accent (its hue), while on; a swatch below turns it off. -->
+                            <StackPanel IsVisible="{Binding ShowsMatchTheme}">
+                                <Border Name="MatchThemeCard" Classes="group-card">
+                                    <ToggleButton Name="MatchThemeSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Accent.MatchTheme}"
+                                                  IsChecked="{Binding AccentFollowsTheme}">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Accent.MatchTheme}" />
+                                    </ToggleButton>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Accent.MatchThemeFootnote}" />
+                            </StackPanel>
                             <StackPanel>
                                 <Border Classes="group-card">
                                     <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding SelectedAccent}">
@@ -853,6 +923,37 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Theme (beta feedback 11-04): Match Device, then Light and the dark styles, then a dark
+                             theme for each Colour background. A theme tints the page, the cards and rows, the
+                             hairlines, the secondary text and the glass (tab bar, mini player, menus); a tap
+                             applies it at once (PhoneThemes). -->
+                        <StackPanel Name="ThemePane" Classes="grouped-content" IsVisible="{Binding ShowsThemePane}">
+                            <StackPanel>
+                                <Border Name="MatchDeviceCard" Classes="group-card">
+                                    <ToggleButton Name="MatchDeviceSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Theme.MatchDevice}"
+                                                  IsChecked="{Binding MatchDevice}">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Theme.MatchDevice}" />
+                                    </ToggleButton>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{Binding MatchDeviceFootnote}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="group-caption" Text="{loc:T Mobile.Theme.LightAndDark}" />
+                                <Border Name="StandardThemeCard" Classes="group-card">
+                                    <ItemsControl Name="StandardThemeList" Classes="theme-list" ItemsSource="{Binding StandardThemes}"
+                                                  ItemTemplate="{StaticResource ThemeRowTemplate}" />
+                                </Border>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="group-caption" Text="{loc:T Mobile.Background.Colour}" />
+                                <Border Name="ColourThemeCard" Classes="group-card">
+                                    <ItemsControl Name="ColourThemeList" Classes="theme-list" ItemsSource="{Binding ColourThemes}"
+                                                  ItemTemplate="{StaticResource ThemeRowTemplate}" />
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Theme.ColourFootnote}" />
                             </StackPanel>
                         </StackPanel>
 

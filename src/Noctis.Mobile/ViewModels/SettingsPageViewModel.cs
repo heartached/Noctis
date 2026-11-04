@@ -1,7 +1,9 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
@@ -50,7 +52,34 @@ public sealed record SettingsFolder(string Root, string Name, bool AccessLost)
 public sealed record LicenseEntry(string Name, string License, string Detail);
 
 /// <summary>Settings is one sheet: its top level, or one of the pages pushed inside it.</summary>
-public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language }
+public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme }
+
+/// <summary>One line of Settings › Theme: a small preview of the theme (its page, a card and the
+/// chrome glass on it, its accent when it has one), its name, and a tick on the one in use.</summary>
+public sealed partial class ThemeRow : ObservableObject
+{
+    internal ThemeRow(PhoneThemeChoice choice)
+    {
+        Choice = choice;
+        PageBrush = new ImmutableSolidColorBrush(choice.Page);
+        CardBrush = new ImmutableSolidColorBrush(choice.Card);
+        ChromeBrush = new ImmutableSolidColorBrush(PhoneThemes.Over(choice.Chrome, choice.Page));
+        AccentBrush = choice.Accent is { } a ? new ImmutableSolidColorBrush(a) : null;
+    }
+
+    internal PhoneThemeChoice Choice { get; }
+    public string Id => Choice.Id;
+    public string Name => Choice.Name;
+    public IBrush PageBrush { get; }
+    public IBrush CardBrush { get; }
+    public IBrush ChromeBrush { get; }
+    public IBrush? AccentBrush { get; }
+    public bool HasAccent => AccentBrush != null;
+
+    internal void Relabel() => OnPropertyChanged(nameof(Name));
+
+    [ObservableProperty] private bool _isSelected;
+}
 
 /// <summary>One line of Settings › Language: "System language" (follow the phone) or a shipped
 /// translation, its own name first ("Русский") and the English one under it.</summary>
@@ -149,7 +178,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
         nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
-        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane))]
+        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane), nameof(ShowsThemePane))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
@@ -165,6 +194,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowsWhatsNewPane => ShownSubPane == SettingsPane.WhatsNew;
     public bool ShowsLicensesPane => ShownSubPane == SettingsPane.Licenses;
     public bool ShowsLanguagePane => ShownSubPane == SettingsPane.Language;
+    public bool ShowsThemePane => ShownSubPane == SettingsPane.Theme;
 
     /// <summary>The header's title: "Settings", or the pushed page's name.</summary>
     public string HeaderTitle => Pane switch
@@ -180,6 +210,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         SettingsPane.WhatsNew => Loc.T("Mobile.Settings.WhatsNew"),
         SettingsPane.Licenses => Loc.T("Mobile.Settings.Licenses"),
         SettingsPane.Language => Loc.T("Settings.Language.Title"),
+        SettingsPane.Theme => Loc.T("Mobile.Settings.Theme"),
         _ => Title,
     };
 
@@ -328,8 +359,14 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     // ── Appearance ──
 
-    /// <summary>The Theme row's value: System, Light or Dark.</summary>
-    public string ThemeValue => ThemeLabel(Appearance);
+    /// <summary>The Theme row's value: Light, the dark theme ("Forest"), or with Match Device on
+    /// "System, Forest" (Light on a light phone, the dark theme on a dark one).</summary>
+    public string ThemeValue => Appearance switch
+    {
+        "Light" => ThemeLabel("Light"),
+        "Dark" => PhoneThemes.DarkOrInk(DarkTheme).Name,
+        _ => Loc.T("Mobile.Theme.SystemWith", PhoneThemes.DarkOrInk(DarkTheme).Name),
+    };
 
     /// <summary>An appearance ("System", "Light", "Dark") or dark style ("Ink", "Smoke", "Midnight") as shown;
     /// the English name is the saved value.</summary>
@@ -352,11 +389,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string AccentRowName => Named(Loc.T("Mobile.Settings.Accent"), AccentName);
 
     /// <summary>The accent's dot on the Accent row.</summary>
-    public IBrush AccentBrush => Color.TryParse(_accentHex, out var colour) ? new ImmutableSolidColorBrush(colour) : Accents[0].Brush;
+    public IBrush AccentBrush => UsesThemeAccent && PhoneThemes.DarkOrInk(DarkTheme).Accent is { } own ? new ImmutableSolidColorBrush(own)
+        : Color.TryParse(_accentHex, out var colour) ? new ImmutableSolidColorBrush(colour) : Accents[0].Brush;
 
     /// <summary>The accent's preset name ("Crimson"); a saved accent outside the nine keeps the
     /// name it was saved with ("Scarlet"), else "Custom" (a colour picked on the desktop).</summary>
-    public string AccentName =>
+    public string AccentName => UsesThemeAccent ? Loc.T("Mobile.Accent.MatchTheme") :
         AccentPresetName is var name && Accents.Any(a => a.Name == name) ? Loc.T("Mobile.Accent." + name)
         : name == CustomAccent ? Loc.T("Mobile.Accent.Custom")
         : name;
@@ -380,19 +418,98 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public string PlayerBarRowName => Named(Loc.T("Mobile.Settings.PlayerBar"), PlayerBarValue);
 
-    /// <summary>The Theme row: System / Light / Dark on the glass pop menu (the one ticked is
-    /// exposed as selected), then the dark style, which a tap steps to the next.</summary>
-    [RelayCommand]
-    private void ShowThemeMenu()
+    // ── Theme ──
+
+    /// <summary>Settings › Theme's first list: Light and the four dark styles.</summary>
+    public IReadOnlyList<ThemeRow> StandardThemes => _standardThemes ??= BuildThemeRows(PhoneThemes.Standards);
+
+    /// <summary>The colour themes, one per Colour background (same name).</summary>
+    public IReadOnlyList<ThemeRow> ColourThemes => _colourThemes ??= BuildThemeRows(PhoneThemes.Colours);
+
+    private IReadOnlyList<ThemeRow>? _standardThemes, _colourThemes;
+
+    private IReadOnlyList<ThemeRow> BuildThemeRows(IEnumerable<PhoneThemeChoice> choices)
     {
-        var items = new List<OptionsMenuItem>();
-        foreach (var look in new[] { "System", "Light", "Dark" })
-            items.Add(new OptionsMenuItem(Shell, ThemeLabel(look), Appearance == look, () => Appearance = look));
-        items.Add(new OptionsMenuItem(Shell, Loc.T("Mobile.Theme.DarkStyle", ThemeLabel(DarkTheme)), false, NextDarkTheme) { StartsGroup = true });
-        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+        var rows = choices.Select(c => new ThemeRow(c)).ToList();
+        foreach (var row in rows) row.IsSelected = IsThemeInUse(row.Choice);
+        return rows;
     }
 
-    private void NextDarkTheme() => DarkTheme = DarkThemes[(DarkThemes.ToList().IndexOf(DarkTheme) + 1) % DarkThemes.Count];
+    private IEnumerable<ThemeRow> ThemeRows =>
+        (_standardThemes ?? Array.Empty<ThemeRow>()).Concat(_colourThemes ?? Array.Empty<ThemeRow>());
+
+    /// <summary>Light while Light is picked; the dark theme otherwise (alone, or Match Device's dark side).</summary>
+    private bool IsThemeInUse(PhoneThemeChoice choice) =>
+        choice.IsLight ? Appearance == "Light" : Appearance != "Light" && choice.Id == DarkTheme;
+
+    private void SyncThemeTicks()
+    {
+        foreach (var row in ThemeRows) row.IsSelected = IsThemeInUse(row.Choice);
+    }
+
+    /// <summary>Match Device (Apple's Automatic): Light on a light phone, the dark theme on a dark
+    /// one. Turned off it keeps what shows now.</summary>
+    public bool MatchDevice
+    {
+        get => Appearance == "System";
+        set
+        {
+            if (value == MatchDevice) return;
+            Appearance = value ? "System" : Application.Current?.ActualThemeVariant == ThemeVariant.Light ? "Light" : "Dark";
+        }
+    }
+
+    /// <summary>Under the Match Device switch: which theme each mode shows.</summary>
+    public string MatchDeviceFootnote => Loc.T("Mobile.Theme.MatchDeviceFootnote", PhoneThemes.DarkOrInk(DarkTheme).Name);
+
+    /// <summary>A tap applies the theme at once. Light turns Match Device off; a dark theme becomes
+    /// the dark side (and shows now, unless Match Device is on and the phone is light).</summary>
+    [RelayCommand]
+    private void ChooseTheme(ThemeRow? row)
+    {
+        if (row == null) return;
+        if (row.Choice.IsLight)
+        {
+            Appearance = "Light";
+            return;
+        }
+        var fields = SavedFields.None;
+        _themeBatch = true;
+        try
+        {
+            if (DarkTheme != row.Id) { DarkTheme = row.Id; fields |= SavedFields.DarkTheme; }
+            if (Appearance == "Light") { Appearance = "Dark"; fields |= SavedFields.Appearance; }
+        }
+        finally
+        {
+            _themeBatch = false;
+        }
+        if (fields != SavedFields.None) ThemeChanged(fields);
+    }
+
+    // Set while one pick moves two fields: one re-theme, one save.
+    private bool _themeBatch;
+
+    /// <summary>Settings › Accent › Match Theme: a colour theme's own accent instead of the chosen
+    /// one. Picking a swatch turns it off.</summary>
+    public bool AccentFollowsTheme
+    {
+        get => _accentFollowsTheme;
+        set
+        {
+            if (!SetProperty(ref _accentFollowsTheme, value)) return;
+            AccentChanged();
+            ThemeChanged(SavedFields.AccentFollows);
+        }
+    }
+
+    private bool _accentFollowsTheme = true;
+
+    /// <summary>The dark theme has its own accent (a colour theme): the Match Theme switch shows.</summary>
+    public bool ShowsMatchTheme => PhoneThemes.DarkOrInk(DarkTheme).Accent != null;
+
+    /// <summary>The theme's accent is the one worn (Match Theme on, a colour theme, not Light).</summary>
+    public bool UsesThemeAccent => AccentFollowsTheme && ShowsMatchTheme && Appearance != "Light";
 
     // ── Lyrics ──
 
@@ -660,9 +777,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowAccountGlyph => !HasAccountAvatar && AccountInitials.Length == 0;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ThemeValue), nameof(ThemeRowName))]
+    [NotifyPropertyChangedFor(nameof(ThemeValue), nameof(ThemeRowName), nameof(MatchDevice))]
     private string _appearance = "System";
-    [ObservableProperty] private string _darkTheme = "Ink";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ThemeValue), nameof(ThemeRowName), nameof(MatchDeviceFootnote), nameof(ShowsMatchTheme))]
+    private string _darkTheme = "Ink";
     [ObservableProperty] private AccentSwatch? _selectedAccent;
     [ObservableProperty] private double _lyricsTextScale = 1.0;
     [ObservableProperty]
@@ -712,7 +831,13 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 if (!kept.HasFlag(SavedFields.Appearance))
                     Appearance = MobileTheme.Appearances.Contains(settings.MobileAppearance) ? settings.MobileAppearance : "System";
                 if (!kept.HasFlag(SavedFields.DarkTheme))
-                    DarkTheme = MobileTheme.DarkThemes.Contains(settings.Theme) ? settings.Theme : "Ink";
+                    DarkTheme = PhoneThemes.DarkThemeFor(settings);
+                if (!kept.HasFlag(SavedFields.AccentFollows))
+                {
+                    _accentFollowsTheme = settings.MobileAccentFollowsTheme;
+                    OnPropertyChanged(nameof(AccentFollowsTheme));
+                    AccentChanged();
+                }
                 if (!kept.HasFlag(SavedFields.Accent))
                 {
                     _accentHex = string.IsNullOrWhiteSpace(settings.AccentColorHex) ? MobileTheme.DefaultAccent : settings.AccentColorHex;
@@ -734,7 +859,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         _loaded = true;
         if (_setBeforeLoad == SavedFields.None) return;
         // The early change re-themed over the defaults: once more with the loaded rest.
-        if ((_setBeforeLoad & ~(SavedFields.TextScale | SavedFields.Language)) != SavedFields.None) Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
+        if ((_setBeforeLoad & ~(SavedFields.TextScale | SavedFields.Language)) != SavedFields.None) ApplyTheme();
         QueueSave(_setBeforeLoad);
     }
 
@@ -805,6 +930,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public override void Relabel()
     {
         _languageChoices = null;
+        foreach (var row in ThemeRows) row.Relabel();
         base.Relabel();
         Background.Relabel();
         Scrobbling.Relabel();
@@ -815,8 +941,15 @@ public sealed partial class SettingsPageViewModel : MobilePage
     partial void OnSelectedAccentChanged(AccentSwatch? value)
     {
         if (value != null) _accentHex = value.Hex;
+        var fields = SavedFields.Accent;
+        // A swatch picked while the theme's accent showed: the pick is what the user wants to see.
+        if (value != null && !_loading && UsesThemeAccent)
+        {
+            SetProperty(ref _accentFollowsTheme, false, nameof(AccentFollowsTheme));
+            fields |= SavedFields.AccentFollows;
+        }
         AccentChanged();
-        ThemeChanged(SavedFields.Accent);
+        ThemeChanged(fields);
     }
 
     private void AccentChanged()
@@ -824,6 +957,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         OnPropertyChanged(nameof(AccentName));
         OnPropertyChanged(nameof(AccentRowName));
         OnPropertyChanged(nameof(AccentBrush));
+        OnPropertyChanged(nameof(UsesThemeAccent));
     }
 
     /// <summary>The lyrics follow each step at once; settings.json is written once the slider
@@ -850,15 +984,19 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     private void ThemeChanged(SavedFields field)
     {
-        if (_loading) return;
-        Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
+        SyncThemeTicks();
+        if ((field & (SavedFields.DarkTheme | SavedFields.Appearance)) != 0) AccentChanged();
+        if (_loading || _themeBatch) return;
+        ApplyTheme();
         if (!_loaded) _setBeforeLoad |= field;
         else QueueSave(field);
     }
 
+    private void ApplyTheme() => Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex, AccentFollowsTheme);
+
     /// <summary>The settings.json fields a save writes: only those the user changed.</summary>
     [Flags]
-    private enum SavedFields { None = 0, Appearance = 1, DarkTheme = 2, Accent = 4, TextScale = 8, Language = 16 }
+    private enum SavedFields { None = 0, Appearance = 1, DarkTheme = 2, Accent = 4, TextScale = 8, Language = 16, AccentFollows = 32 }
 
     /// <summary>Saves one after another. Its own chain, not <see cref="PendingSave"/>: a slider's
     /// delayed save is PendingSave while it waits, and must not queue behind itself.</summary>
@@ -877,10 +1015,17 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 if (fields.HasFlag(SavedFields.Appearance)) settings.MobileAppearance = Appearance;
                 if (fields.HasFlag(SavedFields.DarkTheme))
                 {
-                    settings.Theme = DarkTheme;
-                    // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
-                    settings.ThemeV2Migrated = true;
+                    settings.MobileThemeName = DarkTheme;
+                    // The desktop shares Theme: only its own four dark styles go there (a colour
+                    // theme is the phone's alone, and the desktop keeps what it had).
+                    if (MobileTheme.DarkThemes.Contains(DarkTheme))
+                    {
+                        settings.Theme = DarkTheme;
+                        // An explicit pick: the desktop's v1→v2 migration must never rewrite a chosen "Dark".
+                        settings.ThemeV2Migrated = true;
+                    }
                 }
+                if (fields.HasFlag(SavedFields.AccentFollows)) settings.MobileAccentFollowsTheme = AccentFollowsTheme;
                 if (fields.HasFlag(SavedFields.Accent))
                 {
                     settings.AccentColorHex = _accentHex;

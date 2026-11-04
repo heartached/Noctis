@@ -2321,7 +2321,13 @@
   <data name="Mobile.Theme.Ink" xml:space="preserve"><value>Mürekkep</value></data>
   <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>Duman</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Gece Yarısı</value></data>
-  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>Koyu stil: {0}</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Sistem, {0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Cihazla Eşleştir</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Telefonunuz açık moddayken Noctis Açık, koyu moddayken {0} olur.</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Açık ve Koyu</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Renkli tema sayfaları, kartları ve camı renklendirir; aynı adlı arka planla uyumludur.</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Temayla Eşleştir</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Renkli temaların kendi vurgu rengi vardır. Aşağıdan bir renk seçmek bunu kapatır.</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>“{0}” kaldırılsın mı? Şarkıları bu telefondaki kitaplığından çıkar. Dosyalar olduğu yerde kalır.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>“{0}” kaldırılsın mı?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Şarkıları bu telefondaki kitaplığından çıkar. Dosyalar olduğu yerde kalır.</value></data>
