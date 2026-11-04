@@ -77,8 +77,8 @@ public sealed class AnimatedArtworkBulkService
     /// the title and the artist close, and nothing that looks like a karaoke/tribute record.</summary>
     internal static bool IsConfident(ITunesArtworkService.ArtworkCandidate c, string album, string artist)
         => artist.Length > 0
-           && AnimatedArtworkMatcher.TitleSimilarity(c.CollectionName, album) >= 0.9
-           && AnimatedArtworkMatcher.ArtistSimilarity(c.ArtistName, artist) >= 0.85
+           && AnimatedArtworkMatcher.TitleSimilarity(c.CollectionName, album) >= AnimatedArtworkMatcher.SameTitle
+           && AnimatedArtworkMatcher.ArtistSimilarity(c.ArtistName, artist) >= AnimatedArtworkMatcher.SameArtist
            && !AnimatedArtworkMatcher.LooksLikeJunk(c.CollectionName, c.ArtistName, album);
 
     public async Task<AnimatedArtworkBulkSummary> RunAsync(
@@ -109,7 +109,7 @@ public sealed class AnimatedArtworkBulkService
                 {
                     try
                     {
-                        var saved = await FindAndSaveAsync(rep, gate, ct).ConfigureAwait(false);
+                        var saved = await FindAndSaveAsync(album, gate, ct).ConfigureAwait(false);
                         if (saved) { found++; outcome = "animated artwork saved"; }
                         else { notFound++; outcome = "none found"; }
                         ledger.Record(rep.AlbumId, saved ? 1 : 0);
@@ -138,13 +138,42 @@ public sealed class AnimatedArtworkBulkService
         return new AnimatedArtworkBulkSummary(found, notFound, skipped, failed) { CheckedBefore = before };
     }
 
-    private async Task<bool> FindAndSaveAsync(Track rep, PoliteGate gate, CancellationToken ct)
+    private async Task<bool> FindAndSaveAsync(IReadOnlyList<Track> album, PoliteGate gate, CancellationToken ct)
     {
-        var album = rep.Album.Trim();
+        var rep = album[0];
+        var temp = Path.Combine(Path.GetTempPath(), $"noctis-bulkanim-{Guid.NewGuid():N}.mp4");
+        try
+        {
+            if (!await FindAndDownloadAsync(album, gate, temp, ct).ConfigureAwait(false)) return false;
+            await _covers.ImportAsync(rep, temp, AnimatedCoverScope.Album).ConfigureAwait(false);
+            return true;
+        }
+        finally
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); } catch { /* temp file, best effort */ }
+        }
+    }
+
+    /// <summary>
+    /// The one lookup both the whole-library run and the fetch on opening an album use: the
+    /// store albums that clearly are this one (<see cref="IsConfident"/>; ranked with the
+    /// album's year and song count as tie-breaks), the first with a square loop downloaded to
+    /// <paramref name="destination"/>. False when none qualifies; nothing is written then.
+    /// </summary>
+    internal async Task<bool> FindAndDownloadAsync(IReadOnlyList<Track> album, PoliteGate gate, string destination, CancellationToken ct)
+    {
+        var rep = album[0];
+        var title = rep.Album.Trim();
         var artist = AlbumArtist(rep).Trim();
+        if (title.Length == 0 || artist.Length == 0) return false;
         await gate.WaitTurnAsync(ct).ConfigureAwait(false);
-        var ranked = await _find(new ITunesArtworkService.AnimatedArtworkQuery(album, artist, artist, Typed: false), ct).ConfigureAwait(false);
-        foreach (var candidate in ranked.Where(r => IsConfident(r.Candidate, album, artist)).Take(CandidatesToOpen))
+        var query = new ITunesArtworkService.AnimatedArtworkQuery(title, artist, artist, Typed: false)
+        {
+            Year = album.Select(t => t.Year).FirstOrDefault(y => y > 0),
+            TrackCount = album.Count,
+        };
+        var ranked = await _find(query, ct).ConfigureAwait(false);
+        foreach (var candidate in ranked.Where(r => IsConfident(r.Candidate, title, artist)).Take(CandidatesToOpen))
         {
             await gate.WaitTurnAsync(ct).ConfigureAwait(false);
             var page = await _open(candidate.Candidate, ct).ConfigureAwait(false);
@@ -153,19 +182,14 @@ public sealed class AnimatedArtworkBulkService
 
             // The 1080p tier when there is one (the editor's default pick), not the 4K file.
             var variant = page.Variants[0];
-            var temp = Path.Combine(Path.GetTempPath(), $"noctis-bulkanim-{Guid.NewGuid():N}.mp4");
-            try
+            await gate.WaitTurnAsync(ct).ConfigureAwait(false);
+            if (!await _download(variant, destination, ct).ConfigureAwait(false))
             {
-                await gate.WaitTurnAsync(ct).ConfigureAwait(false);
-                if (!await _download(variant, temp, ct).ConfigureAwait(false)) continue;
-                await _covers.ImportAsync(rep, temp, AnimatedCoverScope.Album).ConfigureAwait(false);
-                DebugLog.Write(ITunesArtworkService.LogSource, $"bulk: \"{album}\" by {artist} -> \"{page.Title}\" ({variant.Label})");
-                return true;
+                try { if (File.Exists(destination)) File.Delete(destination); } catch { /* best effort */ }
+                continue;
             }
-            finally
-            {
-                try { if (File.Exists(temp)) File.Delete(temp); } catch { /* temp file, best effort */ }
-            }
+            DebugLog.Write(ITunesArtworkService.LogSource, $"auto: \"{title}\" by {artist} -> \"{page.Title}\" ({variant.Label})");
+            return true;
         }
         return false;
     }
