@@ -80,6 +80,8 @@ public static class ComboBoxDropDownAnimator
                 // Our own re-assert during the closing fade: nothing to animate in.
                 if (state.ClosingHeld) return;
                 if (FindPopup(box) is not { Child: Control body } popup) return;
+                // Liquid Glass first: it picks what the motion fades (GitHub #169).
+                GlassMenus.ApplyCardPopup(popup);
                 InstallDismiss(box, state, popup);
                 MenuOpenAnimation.PopIn(body);
                 return;
@@ -181,15 +183,18 @@ public static class ComboBoxDropDownAnimator
     }
 
     /// <summary>The real close fires when the fade-out lands on 0, so the two can never drift
-    /// apart (a timer could close early on a slow frame, or leave a blank popup behind).</summary>
+    /// apart (a timer could close early on a slow frame, or leave a blank popup behind). The
+    /// fade is Opacity, or MenuOpenAnimation.Fade on a Liquid Glass list (GlassMenus): watching
+    /// only Opacity left a glass list open for good after its fade.</summary>
     private static void WatchFadeOut(ComboBox box, State state, Control body)
     {
         if (ReferenceEquals(state.WatchedBody, body)) return;
         state.WatchedBody = body;
         body.PropertyChanged += (_, e) =>
         {
-            if (e.Property != Visual.OpacityProperty || !state.ClosingHeld) return;
-            if (body.Opacity > 0.001) return;
+            if (!state.ClosingHeld) return;
+            var fade = MenuOpenAnimation.FadePropertyOf(body);
+            if (e.Property != fade || body.GetValue(fade) > 0.001) return;
             box.SetCurrentValue(ComboBox.IsDropDownOpenProperty, false);
         };
     }
@@ -198,15 +203,16 @@ public static class ComboBoxDropDownAnimator
         box.GetVisualDescendants().OfType<Popup>().FirstOrDefault(p => p.Name == "PART_Popup");
 
     /// <summary>The same curves for a Flyout that should read as a drop-down (<see cref="DropDownFlyoutMotion"/>).</summary>
-    internal static Transitions BuildOpen() => Build(OpenDuration, OpenEase);
-    internal static Transitions BuildClose() => Build(CloseDuration, CloseEase);
+    internal static Transitions BuildOpen(AvaloniaProperty? fade = null) => Build(OpenDuration, OpenEase, fade);
+    internal static Transitions BuildClose(AvaloniaProperty? fade = null) => Build(CloseDuration, CloseEase, fade);
 
     /// <summary>Open and close get their own curves, so the transition set is rebuilt per
     /// phase. The fade lands a touch before the transform so the sheet never shows a hard
-    /// edge while it is still moving.</summary>
-    private static Transitions Build(TimeSpan duration, Avalonia.Animation.Easings.Easing ease) => new()
+    /// edge while it is still moving. <paramref name="fade"/>: what fades (Opacity, or
+    /// MenuOpenAnimation.Fade on a Liquid Glass card).</summary>
+    private static Transitions Build(TimeSpan duration, Avalonia.Animation.Easings.Easing ease, AvaloniaProperty? fade) => new()
     {
-        new DoubleTransition { Property = Visual.OpacityProperty, Duration = duration * 0.85, Easing = ease },
+        new DoubleTransition { Property = fade ?? Visual.OpacityProperty, Duration = duration * 0.85, Easing = ease },
         new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Easing = ease },
     };
 }

@@ -353,6 +353,8 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="32,24,32,40" />
+            <!-- An option menu: its card frosts with Liquid Glass (GlassMenus, GitHub #169). -->
+            <Setter Property="(helpers:GlassMenus.Track)" Value="True" />
         </Style>
         <Style Selector="TextBlock.studio-pop-label">
             <Setter Property="FontSize" Value="12" />

@@ -150,8 +150,10 @@ public class GlassUniform104Tests
         }
     }
 
+    /// <summary>GitHub #169 (whole app): a menu in any other window frosts too, but keeps its
+    /// native popup (frosted over a copy of the window, GlassMenuBackdrop).</summary>
     [AvaloniaFact]
-    public void Menu_InAWindowThatIsNoGlassHost_IsNeverTouched()
+    public void Menu_InAWindowThatIsNoGlassHost_FrostsInItsOwnPopup()
     {
         AddToPlaylistDialogTests.EnsureAppStyles();
         var button = new Button { Content = "…" };
@@ -164,7 +166,9 @@ public class GlassUniform104Tests
             flyout.ShowAt(button);
             Dispatcher.UIThread.RunJobs();
             Assert.False(flyout.Popup.ShouldUseOverlayLayer);
-            Assert.DoesNotContain(GlassMenus.GlassClass, ((Control)flyout.Popup.Child!).Classes);
+            var presenter = (Control)flyout.Popup.Child!;
+            Assert.Contains(GlassMenus.GlassClass, presenter.Classes);
+            Assert.DoesNotContain(GlassMenus.OverlayClass, presenter.Classes);
             flyout.Hide();
         }
         finally

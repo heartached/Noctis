@@ -51,7 +51,7 @@ public static class MenuChrome
         PaddingProperty.Changed.AddClassHandler<Control>((c, e) =>
         {
             // A submenu card frosted by Liquid Glass hands its padding to its GlassPanel.
-            if (c is Border { Child: Noctis.Controls.GlassPanel glass } frosted && GlassMenus.GetSubmenuGlass(frosted))
+            if (c is Border frosted && GlassMenus.GetSubmenuGlass(frosted) && GlassMenus.FrostOf(frosted) is { } glass)
             {
                 glass.Padding = e.GetNewValue<Thickness?>() ?? default;
                 return;
@@ -78,7 +78,7 @@ public static class MenuChrome
 
     /// <summary>Gives <paramref name="b"/> the submenu card look, or clears it. A card frosted by
     /// Liquid Glass (<see cref="GlassMenus.SubmenuGlassProperty"/>) is painted by its GlassPanel:
-    /// it keeps its cleared fill and edge, and gets them back when the glass comes off.</summary>
+    /// its fill and edge are left alone (masked meanwhile) and applied when the glass comes off.</summary>
     internal static void ApplySubmenuCard(Border b, bool on)
     {
         var frosted = GlassMenus.GetSubmenuGlass(b);
