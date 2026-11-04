@@ -532,10 +532,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Vidéo de fond des paroles</value>
     <comment>Album page menu</comment>
   </data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>Choisissez une vidéo pour cet album…</value>
-    <comment>Album page menu</comment>
-  </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
     <value>Utiliser la vidéo par défaut</value>
     <comment>Album page menu</comment>
@@ -5470,6 +5466,8 @@ Deezer et TIDAL : collez le lien.</value>
   <data name="Plugins.None" xml:space="preserve">
     <value>Aucune extension installée pour l'instant.</value>
   </data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve">
     <value>Serveur Noctis</value>
@@ -5620,94 +5618,7 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Fermer</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>Ajouter depuis YouTube</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>Recherchez ou collez un lien - téléchargements dans votre bibliothèque</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>Ajouter depuis YouTube</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>Recherchez ou collez un lien. Enregistré dans votre bibliothèque avec de l'art de couverture.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>Rechercher sur YouTube ou coller un lien…</value>
-    <comment>Search box watermark</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>Chercher</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>Configuration unique</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Noctis utilise yt-dlp (gratuit, open source) pour parler à YouTube. Il est téléchargé une fois dans le dossier de Noctis et mis à jour à partir d'ici.</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>Installer yt-dlp</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>Télécharger</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>Enregistre vers</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>Les résultats apparaissent ici. Les téléchargements se trouvent dans le dossier de votre bibliothèque, marqués et avec une pochette d'art.</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>Fermer</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>TÉLÉCHARGEMENT DE YOUTUBE</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>Ajouter des chansons depuis YouTube</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>Recherchez ou collez un lien à télécharger.</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>Ouvrir le téléchargeur</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>Télécharger le dossier</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>Vide utilise un dossier &quot;YouTube&quot; dans votre premier dossier musical.</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve">
-    <value>dlp yt</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>Installer / mettre à jour</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>Chemin d'accès personnalisé vers yt-dlp (facultatif)</value>
-    <comment>Path watermark</comment>
-  </data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="Upmix.Title" xml:space="preserve">
     <value>amalgame multi-canaux</value>
     <comment>Audio card title</comment>
