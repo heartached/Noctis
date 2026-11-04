@@ -142,14 +142,14 @@ public sealed partial class ShellViewModel
     /// the song playing is the phone's own (the computer has no such song to continue).</summary>
     private PlayQueueShare? CaptureQueueShare()
     {
-        if (Account is not { } account || Player.CurrentTrack is not { } current || !account.IsRemote(current)) return null;
-        var ids = new List<Guid> { current.Id };
+        if (Account is not { } account || Player.CurrentTrack is not { } current || account.DesktopIdOf(current) is not { } currentId) return null;
+        var ids = new List<Guid> { currentId };
         foreach (var t in Player.UpNext)
         {
             if (ids.Count >= PhoneHandoff.MaxTracks) break;
-            if (account.IsRemote(t)) ids.Add(t.Id);
+            if (account.DesktopIdOf(t) is { } id) ids.Add(id);
         }
-        return new PlayQueueShare(ids, current.Id, (long)Math.Max(0, Player.Position.TotalMilliseconds));
+        return new PlayQueueShare(ids, currentId, (long)Math.Max(0, Player.Position.TotalMilliseconds));
     }
 
     private void OnPlayerChangedForPickUp(PropertyChangedEventArgs e)

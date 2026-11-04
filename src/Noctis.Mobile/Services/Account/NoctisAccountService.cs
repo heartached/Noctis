@@ -74,6 +74,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private NoctisServerClient? _client;
     private NoctisSyncState _sync;
     private NoctisPendingState _pending;
+    /// <summary>Phone track id → desktop song id, the reverse of <see cref="NoctisSyncState.Links"/> (under _gate).</summary>
+    private Dictionary<Guid, Guid> _linkedByLocal = new();
 
     private Task<NoctisSyncResult>? _syncTask;
     private CancellationTokenSource? _syncCts;
@@ -172,6 +174,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         _deviceId = _store.LoadOrCreateDeviceId();
         _account = _store.LoadAccount();
         _sync = _store.LoadSyncState();
+        RebuildLinkIndexLocked();
         _pending = _store.LoadPending();
         // A play the last run held for its verdict can no longer get one (the song's clock went
         // with that run): counted only, never sent on to Last.fm.
@@ -284,6 +287,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (!SameIdentity(_sync.ServerUrl, _sync.UserName, account) || !SameIdentity(_pending.ServerUrl, _pending.UserName, account))
             {
                 _sync = new NoctisSyncState { ServerUrl = account.ServerUrl, UserName = account.UserName };
+                RebuildLinkIndexLocked();
                 _pending = new NoctisPendingState { ServerUrl = account.ServerUrl, UserName = account.UserName };
                 _store.SaveSyncState(_sync);
                 _store.SavePending(_pending);
@@ -349,6 +353,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             _store.DeleteAccount();
             _store.DeleteSyncData();
             _sync = new NoctisSyncState();
+            RebuildLinkIndexLocked();
             _pending = new NoctisPendingState();
             _client?.Dispose();
             _client = null;
@@ -474,8 +479,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
         var albumArtists = await client.GetAlbumArtistsAsync(ct).ConfigureAwait(false);
         var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
-        var tracks = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
-        RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count, tracks.Count);
+        var (tracks, linked) = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
+        RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count + linked, tracks.Count + linked);
 
         // 2. Covers.
         await SyncCoversAsync(client, tracks, ct).ConfigureAwait(false);
@@ -539,7 +544,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         // 7. Lyrics for downloaded songs that have none saved (after LastSyncUtc, so they count as current).
         await PrefetchDownloadedLyricsAsync(ct).ConfigureAwait(false);
         if (syncOff is not null) throw syncOff;
-        return new NoctisSyncResult(tracks.Count, playlistCount, pulled, pushed, plays);
+        return new NoctisSyncResult(tracks.Count + linked, playlistCount, pulled, pushed, plays);
     }
 
     /// <summary>
@@ -571,7 +576,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// <param name="keepUnlisted">The catalog may be partial (desktop scanning or changing): desktop
     /// songs already here that it does not list stay, instead of leaving (and dropping out of the
     /// queue) until the next sync brings them back as new songs.</param>
-    private async Task<List<Track>> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists,
+    /// <returns>The desktop songs added as their own rows, and how many more the phone already has
+    /// as its own files (linked: one song, the local file plays, see <see cref="UpdateLinks"/>).</returns>
+    private async Task<(List<Track> Tracks, int Linked)> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists,
         bool keepUnlisted, CancellationToken ct)
     {
         var known = new HashSet<Guid>(_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
@@ -580,14 +587,19 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             // Same rule as a scan: an empty answer never wipes a populated set. A desktop that is
             // still loading its library at startup lists nothing for a moment.
             DebugLog.Write("Account", $"catalog: the desktop listed no songs; keeping the {known.Count} already here");
-            return _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList();
+            int kept;
+            lock (_gate) kept = _sync.Links.Count;
+            return (_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList(), kept);
         }
+        var links = UpdateLinks(songs, keepUnlisted, out var fresh);
         var now = UtcNow;
         var tracks = new List<Track>(songs.Count);
         lock (_gate)
         {
             foreach (var song in songs)
             {
+                // The phone has this one as a file of its own: no second row.
+                if (links.ContainsKey(song.Id)) continue;
                 var track = MapSong(song, albumArtists, now);
                 _suffixes[song.Id] = song.Suffix;
                 if (song.Size > 0) _sizes[song.Id] = song.Size;
@@ -616,41 +628,66 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (keepUnlisted)
         {
             var listed = new HashSet<Guid>(songs.Select(s => s.Id));
-            var unlisted = _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id)).ToList();
+            var unlisted = _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id) && !links.ContainsKey(t.Id)).ToList();
             if (unlisted.Count > 0) DebugLog.Write("Account", $"catalog: keeping {unlisted.Count} songs the desktop did not list this time");
             tracks.AddRange(unlisted);
         }
         SaveSyncState();
         await _library.ReplaceRemoteTracksAsync(tracks, ct).ConfigureAwait(false);
+        if (links.Count > 0) DiscardDownloadsOf(links.Keys);
 
         // Known songs: the catalog's favorite/rating (unless an edit is pending); counts only grow.
-        var updates = new List<(Track Track, bool Favorite, int Rating, int PlayCount, bool Preferences)>();
+        // A song just linked to a file of the phone's own: that file takes the desktop's state and
+        // keeps what the phone had where the desktop has nothing.
+        var updates = new List<(Track Track, bool Favorite, int Rating, bool? Disliked, int PlayCount, bool Preferences)>();
+        var pendingChanged = false;
         lock (_gate)
         {
             foreach (var song in songs)
             {
-                if (!known.Contains(song.Id)) continue;
-                var lib = _library.GetTrackById(song.Id);
-                if (lib is null || lib.SourceType != SourceType.NoctisServer) continue;
                 var hex = song.Id.ToString("N");
+                if (links.TryGetValue(song.Id, out var own) && fresh.Contains(song.Id))
+                {
+                    bool fav, disliked;
+                    int rating;
+                    if (_pending.Tracks.TryGetValue(hex, out var p)) (fav, rating, disliked) = (p.Favorite, p.Rating, p.Disliked);
+                    else
+                    {
+                        (fav, rating, disliked) = (own.IsFavorite || song.Starred, song.UserRating > 0 ? song.UserRating : own.Rating, own.IsDisliked);
+                        SetBaselineLocked(hex, song.Starred, song.UserRating, false);
+                        if (fav != song.Starred || rating != song.UserRating || disliked)
+                        {
+                            _pending.Tracks[hex] = new PendingTrackState(fav, rating, disliked,
+                                fav ? own.FavoritedAt ?? now : null, now);
+                            pendingChanged = true;
+                        }
+                    }
+                    updates.Add((own, fav, rating, disliked, song.PlayCount, true));
+                    continue;
+                }
+                var lib = links.TryGetValue(song.Id, out var linkedTrack) ? linkedTrack
+                    : known.Contains(song.Id) ? _library.GetTrackById(song.Id) : null;
+                if (lib is null || (lib.SourceType != SourceType.NoctisServer && !links.ContainsKey(song.Id))) continue;
                 var preferences = !_pending.Tracks.ContainsKey(hex);
                 if (preferences) SetBaselineLocked(hex, song.Starred, song.UserRating, lib.IsDisliked);
                 if ((preferences && (lib.IsFavorite != song.Starred || lib.Rating != song.UserRating)) || song.PlayCount > lib.PlayCount)
-                    updates.Add((lib, song.Starred, song.UserRating, song.PlayCount, preferences));
+                    updates.Add((lib, song.Starred, song.UserRating, null, song.PlayCount, preferences));
             }
         }
+        if (pendingChanged) SchedulePendingSave();
         if (updates.Count > 0)
         {
             SaveSyncState();
             var favoriteChanged = new List<Track>();
             await OnUiAsync(() =>
             {
-                foreach (var (t, fav, rating, count, preferences) in updates)
+                foreach (var (t, fav, rating, disliked, count, preferences) in updates)
                 {
                     if (preferences)
                     {
                         if (t.IsFavorite != fav) { t.IsFavorite = fav; favoriteChanged.Add(t); }
                         t.Rating = rating;
+                        if (disliked is { } d) t.IsDisliked = d;
                     }
                     if (count > t.PlayCount) t.PlayCount = count;
                 }
@@ -658,7 +695,88 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             await _library.SaveTrackUserStateAsync(updates.Select(u => u.Track).ToList()).ConfigureAwait(false);
             if (favoriteChanged.Count > 0) await OnUiAsync(() => _library.NotifyFavoritesChanged(favoriteChanged)).ConfigureAwait(false);
         }
-        return tracks;
+        return (tracks, links.Count);
+    }
+
+    /// <summary>
+    /// Pairs desktop songs with the phone's own files (<see cref="NoctisLocalMatcher"/>) and records
+    /// the pairs in the sync state. A pair ends when its file left the library or the desktop dropped
+    /// the song (its id goes to <see cref="NoctisSyncState.Retired"/> until the playlists are pointed
+    /// back); the desktop song then shows up as its own row again and streams. Returns desktop id ->
+    /// the phone's track; <paramref name="fresh"/> holds the pairs formed by this call.
+    /// </summary>
+    private Dictionary<Guid, Track> UpdateLinks(List<RemoteSong> songs, bool keepUnlisted, out HashSet<Guid> fresh)
+    {
+        var sticky = new Dictionary<Guid, Guid>();
+        lock (_gate)
+            foreach (var (d, l) in _sync.Links)
+                if (NoctisRemoteIds.TryParseSyncId(d, out var did) && NoctisRemoteIds.TryParseSyncId(l, out var lid)) sticky[did] = lid;
+
+        var matched = NoctisLocalMatcher.Match(songs, _library.Tracks, sticky);
+        if (keepUnlisted)
+        {
+            // A partial catalog proves nothing about the songs it left out: their pairs stay.
+            var listed = new HashSet<Guid>(songs.Select(s => s.Id));
+            var taken = new HashSet<Guid>(matched.Values);
+            foreach (var (d, l) in sticky)
+                if (!listed.Contains(d) && _library.GetTrackById(l) is { SourceType: SourceType.Local } && taken.Add(l)) matched[d] = l;
+        }
+
+        var result = new Dictionary<Guid, Track>(matched.Count);
+        foreach (var (d, l) in matched)
+            if (_library.GetTrackById(l) is { SourceType: SourceType.Local } t) result[d] = t;
+        fresh = new HashSet<Guid>(result.Keys.Where(d => !sticky.TryGetValue(d, out var old) || old != result[d].Id));
+
+        lock (_gate)
+        {
+            foreach (var (d, l) in sticky)
+                if (!result.TryGetValue(d, out var t) || t.Id != l) _sync.Retired[l.ToString("N")] = d.ToString("N");
+            _sync.Links = result.ToDictionary(kv => kv.Key.ToString("N"), kv => kv.Value.Id.ToString("N"));
+            foreach (var t in result.Values) _sync.Retired.Remove(t.Id.ToString("N"));
+            RebuildLinkIndexLocked();
+        }
+        if (fresh.Count > 0 || sticky.Count != result.Count)
+            DebugLog.Write("Account", $"catalog: {result.Count} desktop songs are files already on the phone ({fresh.Count} new)");
+        return result;
+    }
+
+    private void RebuildLinkIndexLocked()
+    {
+        var map = new Dictionary<Guid, Guid>(_sync.Links.Count);
+        foreach (var (d, l) in _sync.Links)
+            if (NoctisRemoteIds.TryParseSyncId(d, out var did) && NoctisRemoteIds.TryParseSyncId(l, out var lid)) map[lid] = did;
+        _linkedByLocal = map;
+    }
+
+    /// <summary>The desktop song a track stands for: itself when it is a desktop row, or the desktop
+    /// song the phone's own file was paired with. Null for a song only the phone has.</summary>
+    public Guid? DesktopIdOf(Track track)
+    {
+        if (track is null) return null;
+        if (IsRemote(track)) return track.Id;
+        if (track.SourceType != SourceType.Local) return null;
+        lock (_gate) return _linkedByLocal.TryGetValue(track.Id, out var d) ? d : null;
+    }
+
+    /// <summary>The phone's track a synced id points at: the desktop row, or the file paired with it.</summary>
+    private Track? ResolveSyncTarget(Guid desktopId)
+    {
+        var lib = _library.GetTrackById(desktopId);
+        if (lib is { SourceType: SourceType.NoctisServer }) return lib;
+        if (_sync.Links.TryGetValue(desktopId.ToString("N"), out var l) && NoctisRemoteIds.TryParseSyncId(l, out var lid)
+            && _library.GetTrackById(lid) is { SourceType: SourceType.Local } own) return own;
+        return null;
+    }
+
+    /// <summary>A desktop song that now plays from a file on the phone has no use for its download.</summary>
+    private void DiscardDownloadsOf(IEnumerable<Guid> ids)
+    {
+        foreach (var id in ids)
+        {
+            DownloadedFile? f;
+            lock (_downloadCommit) _downloaded.TryRemove(id, out f);
+            if (f != null) NoctisServerClient.TryDelete(f.Path);
+        }
     }
 
     private static Track MapSong(RemoteSong s, Dictionary<Guid, string> albumArtists, DateTime now)
@@ -855,8 +973,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         {
             foreach (var (id, item) in items)
             {
-                var lib = _library.GetTrackById(id);
-                if (lib is null || lib.SourceType != SourceType.NoctisServer) continue;
+                var lib = ResolveSyncTarget(id);
+                if (lib is null) continue;
                 var state = ParseTrackState(item.Payload, now);
                 var hex = id.ToString("N");
                 var preferences = true;
@@ -1047,6 +1165,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             }
         }
 
+        if (RepointPlaylists(phone, agreed)) changed = true;
+
         var toPush = new List<(string Hex, PlaylistSyncState State)>();
         foreach (var (hex, at) in deleted)
             toPush.Add((hex, PlaylistSyncState.Tombstone(Guid.Empty, NotAfter(Utc(at), now) ?? now)));
@@ -1062,7 +1182,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 NoctisServerClient.Cap(local.Name ?? string.Empty, MaxPlaylistName)!,
                 NoctisServerClient.Cap(local.Description ?? string.Empty, MaxPlaylistDescription)!,
                 IsSyncColor(local.Color) ? local.Color! : string.Empty,
-                local.TrackIds.Where(g => g != Guid.Empty).Take(MaxPlaylistTracks).ToList(),
+                DesktopTrackIds(local.TrackIds),
                 modified, Deleted: false)));
         }
 
@@ -1104,6 +1224,50 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         if (resolved.Count > 0) SchedulePendingSave();
         return (agreed.Count, toPush.Count);
+    }
+
+    /// <summary>
+    /// A desktop playlist lists the desktop's song ids. A song the phone has as a file of its own
+    /// shows once, as that file, so the playlist points at the file's id; when the pair ends (the
+    /// file was deleted, or sign-in changed) it points back at the desktop song.
+    /// </summary>
+    private bool RepointPlaylists(List<Playlist> phone, Dictionary<string, PlaylistSyncState> agreed)
+    {
+        Dictionary<Guid, Guid> toLocal = new(), retired = new();
+        lock (_gate)
+        {
+            foreach (var (d, l) in _sync.Links)
+                if (NoctisRemoteIds.TryParseSyncId(d, out var did) && NoctisRemoteIds.TryParseSyncId(l, out var lid)) toLocal[did] = lid;
+            foreach (var (l, d) in _sync.Retired)
+                if (NoctisRemoteIds.TryParseSyncId(l, out var lid) && NoctisRemoteIds.TryParseSyncId(d, out var did)) retired[lid] = did;
+        }
+        if (toLocal.Count == 0 && retired.Count == 0) return false;
+        var changed = false;
+        foreach (var playlist in phone)
+        {
+            if (!agreed.ContainsKey(playlist.Id.ToString("N"))) continue;
+            var ids = playlist.TrackIds;
+            for (var i = 0; i < ids.Count; i++)
+            {
+                if (toLocal.TryGetValue(ids[i], out var local)) { ids[i] = local; changed = true; }
+                else if (retired.TryGetValue(ids[i], out var desktop) && _library.GetTrackById(desktop) is not null) { ids[i] = desktop; changed = true; }
+            }
+        }
+        lock (_gate)
+        {
+            // Pointed back wherever the desktop song is on the phone again; the rest wait for it.
+            foreach (var (l, d) in retired)
+                if (_library.GetTrackById(d) is not null) _sync.Retired.Remove(l.ToString("N"));
+        }
+        return changed;
+    }
+
+    /// <summary>A phone playlist's songs as the desktop knows them (a paired file under its desktop song's id).</summary>
+    private List<Guid> DesktopTrackIds(IEnumerable<Guid> ids)
+    {
+        Dictionary<Guid, Guid> map;
+        lock (_gate) map = _linkedByLocal;
+        return ids.Where(g => g != Guid.Empty).Take(MaxPlaylistTracks).Select(g => map.TryGetValue(g, out var d) ? d : g).ToList();
     }
 
     private static bool IsSyncColor(string? color) =>
@@ -1173,14 +1337,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     private void Record(Track track, DateTime playedUtc, string? scrobble)
     {
-        if (!IsRemote(track)) return;
+        if (DesktopIdOf(track) is not { } desktopId) return;
         var utc = playedUtc.Kind == DateTimeKind.Local ? playedUtc.ToUniversalTime() : DateTime.SpecifyKind(playedUtc, DateTimeKind.Utc);
         var ms = Math.Clamp(new DateTimeOffset(utc).ToUnixTimeMilliseconds(), 0, _time.GetUtcNow().ToUnixTimeMilliseconds());
         lock (_gate)
         {
             // One song plays at a time: a play still held when the next starts never counted.
             if (scrobble == PlayScrobbleWire.Pending) DecideHeld(_ => true, PlayScrobble.No);
-            _pending.Plays.Add(new PendingPlay(track.Id.ToString("N"), ms, scrobble));
+            _pending.Plays.Add(new PendingPlay(desktopId.ToString("N"), ms, scrobble));
             if (_pending.Plays.Count > MaxQueuedPlays) _pending.Plays.RemoveRange(0, _pending.Plays.Count - MaxQueuedPlays);
         }
         SchedulePendingSave();
@@ -1188,8 +1352,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public void DecidePlay(Track track, PlayScrobble verdict)
     {
-        if (!IsRemote(track)) return;
-        var id = track.Id.ToString("N");
+        if (DesktopIdOf(track) is not { } desktopId) return;
+        var id = desktopId.ToString("N");
         bool decided;
         lock (_gate) decided = DecideHeld(p => p.Id == id, verdict, latestOnly: true);
         if (decided) SchedulePendingSave();
@@ -1252,8 +1416,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         var changed = false;
         foreach (var t in tracks)
         {
-            if (t is null || !IsRemote(t)) continue;
-            var hex = t.Id.ToString("N");
+            if (t is null || DesktopIdOf(t) is not { } desktopId) continue;
+            var hex = desktopId.ToString("N");
             var fav = t.IsFavorite;
             var rating = Math.Clamp(t.Rating, 0, 5);
             var disliked = t.IsDisliked;
@@ -1333,6 +1497,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     Seq = _sync.Seq,
                     Baseline = new Dictionary<string, SyncedTrackState>(_sync.Baseline),
                     Playlists = new Dictionary<string, PlaylistSyncState>(_sync.Playlists),
+                    Links = new Dictionary<string, string>(_sync.Links),
+                    Retired = new Dictionary<string, string>(_sync.Retired),
                 };
             }
             try { _store.SaveSyncState(copy); }

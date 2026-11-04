@@ -621,7 +621,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account is not { } account || Player.CurrentTrack is not { } track) return;
         try
         {
-            if (!account.IsRemote(track)) return;
+            if (account.DesktopIdOf(track) is null) return;
             // With the scrobbler following playback, the play waits for its verdict (Through
             // Computer then has the computer send it on, once, only if it counted). Without one
             // nothing would ever decide it: it is sent as a plain count.

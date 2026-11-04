@@ -31,6 +31,12 @@ internal sealed class NoctisSyncState
     public Dictionary<string, SyncedTrackState> Baseline { get; set; } = new();
     /// <summary>Last agreed version of each desktop playlist (Guid "N" → state).</summary>
     public Dictionary<string, PlaylistSyncState> Playlists { get; set; } = new();
+    /// <summary>Desktop songs the phone already has as its own files (desktop id "N" → the phone
+    /// track's id "N"): one song in the library, the file plays, state syncs under the desktop id.</summary>
+    public Dictionary<string, string> Links { get; set; } = new();
+    /// <summary>Links that ended (the local file left, or the desktop dropped the song), phone id →
+    /// desktop id, until the synced playlists are pointed back at the desktop song.</summary>
+    public Dictionary<string, string> Retired { get; set; } = new();
 }
 
 /// <summary>Phone changes waiting for the next sync. Written on every change.</summary>
