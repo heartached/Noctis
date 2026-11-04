@@ -1192,13 +1192,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>"Español (Spanish)", "中文（简体） (Chinese, Simplified)"; just "English" when both names agree.</summary>
-    internal static string DescribeCulture(string code)
-    {
-        var culture = System.Globalization.CultureInfo.GetCultureInfo(code);
-        var native = char.ToUpperInvariant(culture.NativeName[0]) + culture.NativeName[1..];
-        var english = culture.EnglishName.Replace(" (", ", ").TrimEnd(')');
-        return string.Equals(native, english, StringComparison.OrdinalIgnoreCase) ? native : $"{native} ({english})";
-    }
+    internal static string DescribeCulture(string code) => Loc.DescribeCulture(code);
 
     [ObservableProperty] private LanguageOption? _languageChoice;
     private bool _relabelingLanguages;

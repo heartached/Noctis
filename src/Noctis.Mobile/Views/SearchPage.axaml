@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:models="using:Noctis.Models"
@@ -10,7 +11,9 @@
         <!-- The title, with the sort menu in the header's glass pill (as Library's tools are), so
              the chip row below has the full width to scroll in. -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Classes="tab-header">
-            <TextBlock Classes="title" Text="Search" />
+            <views:FitWidth Name="SearchTitleFit" VerticalAlignment="Center">
+                <TextBlock Name="SearchTitle" Classes="title" Text="{loc:T Mobile.Search}" TextTrimming="CharacterEllipsis" />
+            </views:FitWidth>
             <controls:GlassPanel Grid.Column="1" Name="SortGlass" Classes="header-glass" IsVisible="{Binding HasQuery}">
                 <Button Name="SortButton" Classes="glass-round" Classes.on="{Binding IsSorted}" Command="{Binding ShowSortMenuCommand}">
                     <PathIcon Data="{DynamicResource PhSort}" />
@@ -21,7 +24,7 @@
         </Grid>
         <!-- Apple's search field: a filled capsule with the magnifier, no border (MobileStyles). -->
         <TextBox Grid.Row="1" Name="SearchBox" Classes="search-field" Margin="16,0,16,12" Text="{Binding Query}"
-                 PlaceholderText="Artists, songs, albums, playlists" />
+                 PlaceholderText="{loc:T Mobile.Search.Placeholder}" />
 
         <!-- A chip per kind of result, with its icon, right under the box. -->
         <ScrollViewer Grid.Row="2" Name="ScopeBar" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
@@ -31,43 +34,43 @@
                         Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.All}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource ChipAllMusicIcon}" Width="17" Height="17" />
-                        <TextBlock Text="All" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Mobile.Search.All}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
                 <Button Name="ScopeSongs" Classes="text-chip" Classes.selected="{Binding IsSongsScope}"
                         Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Songs}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource ChipSongsIcon}" Width="17" Height="17" />
-                        <TextBlock Text="Songs" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Nav.Songs}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
                 <Button Name="ScopeAlbums" Classes="text-chip" Classes.selected="{Binding IsAlbumsScope}"
                         Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Albums}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource ChipAlbumsIcon}" Width="17" Height="17" />
-                        <TextBlock Text="Albums" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Nav.Albums}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
                 <Button Name="ScopeArtists" Classes="text-chip" Classes.selected="{Binding IsArtistsScope}"
                         Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Artists}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource ChipArtistsIcon}" Width="17" Height="17" />
-                        <TextBlock Text="Artists" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Nav.Artists}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
                 <Button Name="ScopePlaylists" Classes="text-chip" Classes.selected="{Binding IsPlaylistsScope}"
                         Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Playlists}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource ChipPlaylistsIcon}" Width="17" Height="17" />
-                        <TextBlock Text="Playlists" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Nav.Playlists}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </StackPanel>
         </ScrollViewer>
 
-        <TextBlock Grid.Row="3" Name="SearchPrompt" Classes="subtle" Text="Search your library" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="3" Name="SearchPrompt" Classes="subtle" Text="{loc:T Mobile.Search.Hint}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowPrompt}" />
-        <TextBlock Grid.Row="3" Name="NoResults" Classes="subtle" Text="No results" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="3" Name="NoResults" Classes="subtle" Text="{loc:T Mobile.Search.NoResults}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
         <ScrollViewer Classes="page-scroll" Grid.Row="3" Name="ResultsScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasQuery}">
@@ -88,7 +91,7 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
                                         <TextBlock Classes="row-title" FontSize="18" FontWeight="Bold" Text="{Binding Featured.Name}" />
-                                        <TextBlock Classes="row-sub" Text="Artist" />
+                                        <TextBlock Classes="row-sub" Text="{loc:T Mobile.Artist}" />
                                     </StackPanel>
                                 </Grid>
                             </Button>
@@ -121,7 +124,7 @@
                     <Button Classes="row" Name="SongsHeader" Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Songs}"
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
-                            <TextBlock Classes="section" Text="Songs" />
+                            <TextBlock Classes="section" Text="{loc:T Nav.Songs}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
@@ -148,7 +151,7 @@
                     <Button Classes="row" Name="AlbumsHeader" Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Albums}"
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
-                            <TextBlock Classes="section" Text="Albums" />
+                            <TextBlock Classes="section" Text="{loc:T Nav.Albums}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
@@ -197,7 +200,7 @@
                     <Button Classes="row" Name="ArtistsHeader" Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Artists}"
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
-                            <TextBlock Classes="section" Text="Artists" />
+                            <TextBlock Classes="section" Text="{loc:T Nav.Artists}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
@@ -227,7 +230,7 @@
                     <Button Classes="row" Name="PlaylistsHeader" Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Playlists}"
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
-                            <TextBlock Classes="section" Text="Playlists" />
+                            <TextBlock Classes="section" Text="{loc:T Nav.Playlists}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>

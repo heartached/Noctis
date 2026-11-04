@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -34,11 +35,11 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
     /// <paramref name="artworkPath"/> (the cover the row showed).</summary>
     public static ContextSheetViewModel ForArtist(ShellViewModel shell, Artist artist, string? artworkPath) =>
-        new(shell, artist.Name, "Artist", shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
+        new(shell, artist.Name, Loc.T("Mobile.Artist"), shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
             MobileLibrary.SongsBy(shell.Library.Service, artist.Name)) { Artist = artist };
 
     public static ContextSheetViewModel ForPlaylist(ShellViewModel shell, Playlist playlist) =>
-        new(shell, playlist.Name, playlist.TrackIds.Count == 1 ? "1 song" : $"{playlist.TrackIds.Count} songs",
+        new(shell, playlist.Name, Loc.Plural("Mobile.Count.Songs", playlist.TrackIds.Count),
             shell.Library.PlaylistArtwork(playlist), shell.ResolvePlaylist(playlist).ToList()) { Playlist = playlist };
 
     public string Title { get; }
@@ -93,10 +94,10 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public bool IsArtist => Artist != null;
 
     public bool IsFavourite => Tracks.Count > 0 && Tracks.All(t => t.IsFavorite);
-    public string FavouriteLabel => IsFavourite ? "Remove from Favorites" : "Favorite";
+    public string FavouriteLabel => IsFavourite ? Loc.T("Mobile.RemoveFromFavorites") : Loc.T("Mobile.Favorite");
 
     /// <summary>The quick-action tile's short label: what the heart shows now.</summary>
-    public string FavouriteTileLabel => IsFavourite ? "Favorited" : "Favorite";
+    public string FavouriteTileLabel => IsFavourite ? Loc.T("Mobile.Favorited") : Loc.T("Mobile.Favorite");
 
     /// <summary>Anything can be pinned to Home → Pinned: albums, artists, playlists and songs.</summary>
     public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;
@@ -107,8 +108,8 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         : Track != null && _shell.Library.IsTrackPinned(Track.Id);
     // Pins show on Home (its Pinned rail) since Home became the start tab: "Pin to Library"
     // sent people looking for them in the Library tab.
-    public string PinLabel => IsPinned ? "Unpin" : "Pin to Home";
-    public string PinTileLabel => IsPinned ? "Pinned" : "Pin";
+    public string PinLabel => IsPinned ? Loc.T("Mobile.Unpin") : Loc.T("Mobile.PinToHome");
+    public string PinTileLabel => IsPinned ? Loc.T("Mobile.PinnedTile") : Loc.T("Mobile.Pin");
 
     // Not on that album's or artist's own page (it pushed the same page again), unless the
     // player covers it: then the row uncovers the page.
@@ -133,7 +134,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public bool CanDownload => _shell.Account is { IsSignedIn: true } && NotDownloaded.Any();
     public bool CanRemoveDownload => _shell.Account != null && Downloaded.Any();
 
-    public string DownloadLabel => Album != null ? "Download album" : Playlist != null ? "Download playlist" : "Download";
+    public string DownloadLabel => Album != null ? Loc.T("Mobile.DownloadAlbum") : Playlist != null ? Loc.T("Mobile.DownloadPlaylist") : Loc.T("Mobile.Download");
 
     /// <summary>Every desktop song here already has its offline copy: the tile shows a check.</summary>
     public bool IsAllDownloaded => _shell.Account != null && RemoteTracks.Count > 0 && !NotDownloaded.Any();
@@ -141,8 +142,8 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The Download tile shows for desktop songs only (a phone's own files are already offline).</summary>
     public bool ShowDownloadTile => CanDownload || IsAllDownloaded;
 
-    public string DownloadTileLabel => IsAllDownloaded ? "Downloaded" : "Download";
-    public string RemoveDownloadLabel => Track != null ? "Remove download" : "Remove downloads";
+    public string DownloadTileLabel => IsAllDownloaded ? Loc.T("Mobile.Downloaded") : Loc.T("Mobile.Download");
+    public string RemoveDownloadLabel => Track != null ? Loc.T("Mobile.RemoveDownload") : Loc.T("Mobile.Account.RemoveDownloads");
 
     /// <summary>The sheet's second page: pick a playlist or name a new one.</summary>
     [ObservableProperty] private bool _isPickingPlaylist;
@@ -208,7 +209,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The short glass banner after Add to Playlist (the player's notice banner), as
     /// Apple's "Added to …": says so too when every song was there already (nothing was added).</summary>
     private void Added(string name, bool already) =>
-        _shell.Player.Notice = already ? $"Already in {name}" : $"Added to {name}";
+        _shell.Player.Notice = already ? Loc.T("Mobile.AlreadyIn", name) : Loc.T("Mobile.AddedTo", name);
 
     [RelayCommand]
     private async Task CreatePlaylistAsync()

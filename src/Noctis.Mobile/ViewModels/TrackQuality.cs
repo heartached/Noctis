@@ -1,4 +1,5 @@
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -13,7 +14,7 @@ namespace Noctis.Mobile.ViewModels;
 public sealed record TrackQuality(string Label, string Detail, string Meaning, bool IsLossless)
 {
     /// <summary>The Hi-Res line: Core's lossless sentence says nothing about the resolution.</summary>
-    public const string HiResMeaning = "Beyond 24-bit/48 kHz: more resolution than a CD or standard Lossless holds.";
+    public static string HiResMeaning => Loc.T("Mobile.Quality.HiResMeaning");
 
     public static TrackQuality? Of(Track? track)
     {

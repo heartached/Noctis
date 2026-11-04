@@ -359,6 +359,21 @@ public sealed partial class ShellViewModel : ObservableObject
     /// first use, after the host has set <see cref="Account"/> (it decides the Downloaded row).</summary>
     public LibraryRowsViewModel LibraryRows => _libraryRows ??= new LibraryRowsViewModel(this);
 
+    /// <summary>
+    /// The UI language changed (Settings › Language, or the saved one applied at start). The
+    /// {loc:T} labels re-read on their own; this re-reads what the view models build in code:
+    /// the Library rows, the rails, the player's lines and every open page (Settings among them).
+    /// </summary>
+    public void Relabel()
+    {
+        foreach (var row in LibraryRows.Rows) row.Relabel();
+        Library.Relabel();
+        Player.Relabel();
+        _playlistsRoot?.Relabel();
+        _favoritesRoot?.Relabel();
+        foreach (var page in Pages) page.Relabel();
+    }
+
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
     public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
@@ -382,7 +397,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
+        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -792,11 +807,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
-    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { OffersFavouritesFilter = false });
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { OffersFavouritesFilter = false });
 
-    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Recently Added", Library.RecentlyAdded));
+    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Mobile.RecentlyAdded", Library.RecentlyAdded));
 
     [RelayCommand] private void OpenAlbums() => Navigate(new AlbumGridPageViewModel(this));
 
@@ -805,11 +820,11 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand] private void OpenPlaylists() => Navigate(new PlaylistListPageViewModel(this));
 
     // Library sections' › headers.
-    [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Pinned", () => Library.PinnedRail));
+    [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Mobile.Pinned", () => Library.PinnedRail));
 
-    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "On Repeat", Library.OnRepeatTracks));
+    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks));
 
-    [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Recently Played", () => Library.RecentlyPlayedRail));
+    [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
@@ -873,11 +888,11 @@ public sealed partial class ShellViewModel : ObservableObject
     public void AskRenamePlaylist(Playlist playlist)
     {
         var current = CurrentPlaylist(playlist);
-        ShowPrompt(new PromptViewModel(this, "Rename Playlist", string.Empty,
-            new[] { new PromptAction("Save", p => RenamePlaylistAsync(current, p.Entered)) })
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.RenamePlaylist"), string.Empty,
+            new[] { new PromptAction(Loc.T("Mobile.Save"), p => RenamePlaylistAsync(current, p.Entered)) })
         {
             HasField = true,
-            FieldPlaceholder = "Playlist Name",
+            FieldPlaceholder = Loc.T("Mobile.PlaylistName"),
             FieldText = current.Name,
         });
     }
@@ -895,9 +910,9 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         var current = CurrentPlaylist(playlist);
         var synced = Account?.IsSyncedPlaylist(current.Id) == true;
-        ShowPrompt(new PromptViewModel(this, $"Delete “{current.Name}”?",
-            synced ? "It's deleted from your computer too. This can't be undone." : "This can't be undone. The songs stay in your library.",
-            new[] { new PromptAction("Delete Playlist", _ => DeletePlaylistAsync(current), isDestructive: true) }));
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.DeletePlaylistQuestion", current.Name),
+            synced ? Loc.T("Mobile.DeletePlaylistSynced") : Loc.T("Mobile.DeletePlaylistLocal"),
+            new[] { new PromptAction(Loc.T("Mobile.DeletePlaylist"), _ => DeletePlaylistAsync(current), isDestructive: true) }));
     }
 
     /// <summary>Deletes the playlist (and its page, if it is the one on top); one of the
@@ -945,8 +960,8 @@ public sealed partial class ShellViewModel : ObservableObject
                 // A song plays the rail it sits on: On Repeat, else the pinned songs.
                 var onRepeat = Library.OnRepeatRail.Select(CurrentPayload).OfType<Track>().ToList();
                 var pinned = Library.PinnedRail.Select(CurrentPayload).OfType<Track>().ToList();
-                if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, "On Repeat");
-                else if (pinned.IndexOf(track) is var p and >= 0) Player.PlayTracks(pinned, p, "Pinned");
+                if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, Loc.T("Mobile.OnRepeat"));
+                else if (pinned.IndexOf(track) is var p and >= 0) Player.PlayTracks(pinned, p, Loc.T("Mobile.Pinned"));
                 else Player.PlayTracks(new[] { track }, 0, null);
                 break;
         }

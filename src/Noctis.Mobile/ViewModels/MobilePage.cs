@@ -1,5 +1,6 @@
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -41,4 +42,15 @@ public abstract partial class MobilePage : ObservableObject
     public virtual bool TryGoBackWithin() => false;
 
     public override string ToString() => Title;
+
+    /// <summary>The UI language changed: every binding on the page re-reads (titles, counts,
+    /// row values built in code). Pages with child view models add theirs.</summary>
+    public virtual void Relabel() => OnPropertyChanged(string.Empty);
+
+    /// <summary>A page title given as a Strings.resx key ("Mobile.RecentlyAdded", "Nav.Songs") reads
+    /// in the current language, so an open page follows a language switch; any other text (an
+    /// artist's or playlist's name) shows as given.</summary>
+    protected static string Localized(string titleOrKey) =>
+        titleOrKey.StartsWith("Mobile.", StringComparison.Ordinal) || titleOrKey.StartsWith("Nav.", StringComparison.Ordinal)
+            ? Loc.T(titleOrKey) : titleOrKey;
 }

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:models="using:Noctis.Models"
@@ -198,18 +199,18 @@
                          has one (Doja Cat's blue). The star sits right, where Apple has it. -->
                     <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="26" Margin="0,16,0,12">
                         <Button Name="ShuffleButton" Classes="round artist-round" Command="{Binding ShuffleCommand}" VerticalAlignment="Center"
-                                AutomationProperties.Name="Shuffle">
+                                AutomationProperties.Name="{loc:T Mobile.Shuffle}">
                             <PathIcon Data="{DynamicResource PhShuffle}" />
                         </Button>
                         <Button Name="PlayButton" Classes="round artist-round artist-play" Command="{Binding PlayCommand}" VerticalAlignment="Center"
-                                AutomationProperties.Name="Play">
+                                AutomationProperties.Name="{loc:T Mobile.Play}">
                             <!-- The desktop's play triangle sits 1.43 of its 24 right of the box's middle
                                  (its ink runs 5 to 21.86): moved back so the ink is dead centre (owner
                                  10-20: "center middle of the button"). Same for the stars' ink below. -->
                             <PathIcon Name="PlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.79px, 0px)" />
                         </Button>
                         <Button Name="FavouriteButton" Classes="round artist-round" Command="{Binding ToggleFavouriteCommand}" VerticalAlignment="Center"
-                                AutomationProperties.Name="Favourite">
+                                AutomationProperties.Name="{loc:T Mobile.Favorite}">
                             <Panel>
                                 <PathIcon Name="StarOutline" Data="{DynamicResource PhStar}" IsVisible="{Binding !IsFavourite}"
                                           RenderTransform="translate(0px, 0.24px)" />
@@ -281,7 +282,7 @@
                 <StackPanel Name="TopSongsSection" Margin="0,22,0,0" IsVisible="{Binding HasTopSongs}">
                     <Button Name="TopSongsHeader" Classes="row artist-section" Command="{Binding OpenAllSongsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
-                            <TextBlock Text="Top Songs" />
+                            <TextBlock Text="{loc:T Mobile.Artist.TopSongs}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
@@ -355,7 +356,7 @@
                 <StackPanel Name="AlbumsSection" Margin="0,22,0,0" IsVisible="{Binding HasAlbums}">
                     <Button Name="AlbumsHeader" Classes="row artist-section" Command="{Binding OpenAlbumsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
-                            <TextBlock Text="Albums" />
+                            <TextBlock Text="{loc:T Nav.Albums}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
@@ -373,7 +374,7 @@
                 <StackPanel Name="SinglesSection" Margin="0,18,0,0" IsVisible="{Binding HasSingles}">
                     <Button Name="SinglesHeader" Classes="row artist-section" Command="{Binding OpenSinglesCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
-                            <TextBlock Text="Singles &amp; EPs" />
+                            <TextBlock Text="{loc:T Mobile.Artist.SinglesEps}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
@@ -391,7 +392,7 @@
                 <StackPanel Name="AppearsOnSection" Margin="0,18,0,0" IsVisible="{Binding HasAppearsOn}">
                     <Button Name="AppearsOnHeader" Classes="row artist-section" Command="{Binding OpenAppearsOnCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
-                            <TextBlock Text="Appears On" />
+                            <TextBlock Text="{loc:T Mobile.Artist.AppearsOn}" />
                             <PathIcon Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>

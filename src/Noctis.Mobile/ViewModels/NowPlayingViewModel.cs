@@ -6,6 +6,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -26,9 +27,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     // Circuit breaker for the error→skip loop (a folder of dead URIs after a revoked grant).
     private const int MaxConsecutiveErrors = 5;
 
-    internal const string ComputerUnreachableSkipping = "Can't reach your computer. Playing your downloaded songs.";
-    internal const string ComputerUnreachableStopped = "Can't reach your computer. Open Noctis on it, or play songs you've downloaded.";
-    internal const string TooManyErrors = "Several songs in a row couldn't be played, so playback stopped.";
+    internal static string ComputerUnreachableSkipping => Loc.T("Mobile.Player.UnreachableSkipping");
+    internal static string ComputerUnreachableStopped => Loc.T("Mobile.Player.UnreachableStopped");
+    internal static string TooManyErrors => Loc.T("Mobile.Player.TooManyErrors");
 
     private readonly IAudioPlayer _player;
     private readonly ILibraryService _library;
@@ -157,7 +158,14 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     public bool HasSourceLabel => !string.IsNullOrEmpty(SourceLabel);
 
-    public string PlayingFromText => HasSourceLabel ? $"Playing from {SourceLabel}" : string.Empty;
+    /// <summary>The UI language changed: "Playing from …" and "Track 3 of 12" re-read.</summary>
+    public void Relabel()
+    {
+        OnPropertyChanged(nameof(PlayingFromText));
+        SyncUpNext();
+    }
+
+    public string PlayingFromText => HasSourceLabel ? Loc.T("Mobile.Player.PlayingFrom", SourceLabel!) : string.Empty;
 
     /// <summary>"Track 3 of 12": the current track's place in this queue, counting the tracks
     /// added to it since. Empty when stopped or when the place is unknown (see
@@ -588,7 +596,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // _queue.Current, not CurrentTrack: a queue that ran out keeps its last track loaded
         // for the mini bar, but has no place left to number.
         QueuePositionText = _queue.Current != null && _queue.PlayedInQueue is { } played
-            ? $"Track {played + 1} of {played + 1 + _queue.UpNext.Count}"
+            ? Loc.T("Mobile.Player.TrackOf", played + 1, played + 1 + _queue.UpNext.Count)
             : string.Empty;
     }
 

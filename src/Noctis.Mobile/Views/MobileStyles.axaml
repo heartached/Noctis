@@ -447,6 +447,9 @@
         <Setter Property="FontSize" Value="10.5" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="HorizontalAlignment" Value="Center" />
+        <!-- A long translated label shrinks first (FitWidth in ShellView), then trims. -->
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="MaxLines" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
     </Style>
     <Style Selector="Button.tab.selected PathIcon">

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:models="using:Noctis.Models"
@@ -11,15 +12,17 @@
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
                 <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
-            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <views:FitWidth Grid.Column="1" Name="TitleFit" VerticalAlignment="Center">
+                <TextBlock Classes="title" FontSize="26" Text="{Binding Title}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </views:FitWidth>
             <!-- Embedded (the Favorites tab), the tab's own header carries the same pill. -->
             <views:ListTools Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" />
             <!-- A playlist's page: its ⋯ in a round glass button (Apple's), the playlist's menu with
                  Rename and Delete Playlist. Shown on an empty playlist too, where the tools are not. -->
             <controls:GlassPanel Grid.Column="3" Classes="header-glass" Margin="8,0,0,0" IsVisible="{Binding IsPlaylist}">
                 <Button Name="PlaylistMoreButton" Classes="glass-round" Command="{Binding ShowPlaylistMenuCommand}"
-                        AutomationProperties.Name="More">
+                        AutomationProperties.Name="{loc:T Mobile.More}">
                     <PathIcon Data="{DynamicResource PhMore}" />
                 </Button>
             </controls:GlassPanel>
@@ -32,17 +35,17 @@
                 <Button Classes="pill-accent" Command="{Binding PlayAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" />
-                        <TextBlock Text="Play" />
+                        <TextBlock Text="{loc:T Mobile.Play}" />
                     </StackPanel>
                 </Button>
                 <Button Classes="pill" Command="{Binding ShuffleAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
-                        <TextBlock Text="Shuffle" />
+                        <TextBlock Text="{loc:T Mobile.Shuffle}" />
                     </StackPanel>
                 </Button>
             </StackPanel>
-            <TextBox Name="ListSearchBox" Classes="search-field" Margin="16,0,16,8" PlaceholderText="Search in this list"
+            <TextBox Name="ListSearchBox" Classes="search-field" Margin="16,0,16,8" PlaceholderText="{loc:T Mobile.SongList.Find}"
                      Text="{Binding FilterText}" IsVisible="{Binding IsSearchOpen}" />
             <!-- Its own line: the toolbar has no room left for it on a phone. -->
             <TextBlock Name="CountLabel" Classes="subtle" FontSize="13" Margin="22,0,20,4" Text="{Binding CountText}" />

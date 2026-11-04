@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -62,12 +63,12 @@ public sealed record ArtistCard(ArtistCardKind Kind, Album Album)
     {
         ArtistCardKind.Featured => Album.ReleaseType switch
         {
-            ReleaseType.Single => "FEATURED SINGLE",
-            ReleaseType.EP => "FEATURED EP",
-            _ => "FEATURED ALBUM",
+            ReleaseType.Single => Loc.T("Mobile.Artist.FeaturedSingle"),
+            ReleaseType.EP => Loc.T("Mobile.Artist.FeaturedEp"),
+            _ => Loc.T("Mobile.Artist.FeaturedAlbum"),
         },
-        ArtistCardKind.MostPlayed => "MOST PLAYED",
-        _ => Album.ReleaseType == ReleaseType.EP ? "LATEST EP" : "LATEST SINGLE",
+        ArtistCardKind.MostPlayed => Loc.T("Mobile.Artist.MostPlayed"),
+        _ => Album.ReleaseType == ReleaseType.EP ? Loc.T("Mobile.Artist.LatestEp") : Loc.T("Mobile.Artist.LatestSingle"),
     };
 
     /// <summary>"SEP 12, 2025" from the release-date tag, else the year, else empty.</summary>
@@ -76,7 +77,7 @@ public sealed record ArtistCard(ArtistCardKind Kind, Album Album)
     /// <summary>The kicker: the label, then the date when there is one.</summary>
     public string Kicker => DateText.Length > 0 ? $"{Label} · {DateText}" : Label;
 
-    public string SongsText => Album.TrackCount == 1 ? "1 song" : $"{Album.TrackCount.ToString(CultureInfo.InvariantCulture)} songs";
+    public string SongsText => Loc.Plural("Mobile.Count.Songs", Album.TrackCount);
 
     public bool IsExplicit => Album.IsExplicit;
 }
@@ -415,11 +416,11 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         if (card is { Album.Tracks.Count: > 0 }) Shell.Player.PlayTracks(card.Album.Tracks, 0, card.Album.Name);
     }
 
-    [RelayCommand] private void OpenAlbums() => OpenRail("Albums", () => Albums);
+    [RelayCommand] private void OpenAlbums() => OpenRail("Nav.Albums", () => Albums);
 
-    [RelayCommand] private void OpenSingles() => OpenRail("Singles & EPs", () => Singles);
+    [RelayCommand] private void OpenSingles() => OpenRail("Mobile.Artist.SinglesEps", () => Singles);
 
-    [RelayCommand] private void OpenAppearsOn() => OpenRail("Appears On", () => AppearsOn);
+    [RelayCommand] private void OpenAppearsOn() => OpenRail("Mobile.Artist.AppearsOn", () => AppearsOn);
 
     private void OpenRail(string title, Func<IReadOnlyList<ArtistRelease>> releases) =>
         Shell.Navigate(new RailGridPageViewModel(Shell, title, () => releases().Select(r => RailItem.ForAlbum(r.Album))));

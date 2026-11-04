@@ -5,6 +5,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -48,8 +49,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             UnavailableFolders = roots;
             NeedsReconnect = true;
             StatusText = roots.Length == 1
-                ? $"“{FolderName(roots[0])}” is unavailable. Reconnect it and rescan."
-                : $"{roots.Length} folders are unavailable. Reconnect them and rescan.";
+                ? Loc.T("Mobile.Library.FolderUnavailable", FolderName(roots[0]))
+                : Loc.Plural("Mobile.Library.FoldersUnavailable", roots.Length);
         });
     }
 
@@ -384,6 +385,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// filter) re-read.</summary>
     public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>The UI language changed: the rails' subtitles ("Artist", "12 songs") and the open
+    /// pages' rows are rebuilt; the library itself is unchanged.</summary>
+    public void Relabel() => AfterUserEdit();
+
     /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
     private void AfterUserEdit()
     {
@@ -467,9 +472,9 @@ public sealed partial class LibraryViewModel : ObservableObject
             if (!settings.MusicFolders.Any(f => FolderKey(f) == FolderKey(picked)))
             {
                 if (settings.MusicFolders.FirstOrDefault(f => IsInside(picked, f)) is { } covering)
-                    refusal = $"Already covered by “{FolderName(covering)}”.";
+                    refusal = Loc.T("Mobile.Library.AlreadyCovered", FolderName(covering));
                 else if (settings.MusicFolders.FirstOrDefault(f => IsInside(f, picked)) is { } inner)
-                    refusal = $"“{FolderName(inner)}” is inside that folder. Remove it first.";
+                    refusal = Loc.T("Mobile.Library.InsideFolder", FolderName(inner));
                 else
                     settings.MusicFolders.Add(picked);
             }
@@ -612,20 +617,20 @@ public sealed partial class LibraryViewModel : ObservableObject
                 // Each pass judges the folders afresh: one back in reach is no longer flagged.
                 UnavailableFolders = Array.Empty<string>();
                 NeedsReconnect = false;
-                StatusText = "Scanning…";
+                StatusText = Loc.T("Mobile.Library.Scanning");
                 var folders = (await _persistence.LoadSettingsAsync()).MusicFolders.ToList();
                 if (folders.Count == 0 && !_scanWithoutFolders) break;
                 _scanWithoutFolders = false;
                 await _library.ScanAsync(folders);
             }
             while (_scanAgain);
-            if (StatusText == "Scanning…") StatusText = string.Empty; // ScanAborted may have replaced it
+            if (StatusText == Loc.T("Mobile.Library.Scanning")) StatusText = string.Empty; // ScanAborted may have replaced it
             if (HasFolders && !NeedsReconnect) LastScanLocal = DateTime.Now;
         }
         catch (Exception ex)
         {
             DebugLog.Write("Library", $"Phone scan failed: {ex.Message}");
-            StatusText = "Scan failed. See the log.";
+            StatusText = Loc.T("Mobile.Library.ScanFailed");
         }
         finally
         {

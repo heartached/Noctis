@@ -6895,4 +6895,479 @@
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>無法搬移資料：{0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>已取消搬移。資料保持不變。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>正在準備…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
+  <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <data name="Mobile.BackToSettings" xml:space="preserve"><value>返回設定</value></data>
+  <data name="Mobile.Account.SignInTitle" xml:space="preserve"><value>登入你的電腦</value></data>
+  <data name="Mobile.Account.SignInSubtitle" xml:space="preserve"><value>直接在這裡串流和下載電腦上的音樂。</value></data>
+  <data name="Mobile.Account.ScanQrHeader" xml:space="preserve"><value>掃描 QR 碼</value></data>
+  <data name="Mobile.Account.QrStep1" xml:space="preserve"><value>在電腦上開啟 Noctis ›「設定」›「帳戶與裝置」</value></data>
+  <data name="Mobile.Account.QrStep2" xml:space="preserve"><value>開啟「在手機上使用 Noctis」，然後按一下「連接手機」</value></data>
+  <data name="Mobile.Account.QrStep3" xml:space="preserve"><value>點一下「掃描 QR 碼」，將相機對準 QR 碼</value></data>
+  <data name="Mobile.Account.ScanQrButton" xml:space="preserve"><value>掃描 QR 碼</value></data>
+  <data name="Mobile.Account.ManualHeader" xml:space="preserve"><value>手動輸入</value></data>
+  <data name="Mobile.Account.ManualStep1" xml:space="preserve"><value>在電腦上按一下「連接手機」，然後按一下「手動輸入」</value></data>
+  <data name="Mobile.Account.ManualStep2" xml:space="preserve"><value>輸入電腦上顯示的位址、你的電子郵件和密碼</value></data>
+  <data name="Mobile.Account.ManualStep3" xml:space="preserve"><value>確認安全碼是否相符</value></data>
+  <data name="Mobile.Account.ServerAddress" xml:space="preserve"><value>伺服器位址</value></data>
+  <data name="Mobile.Account.EmailOrUsername" xml:space="preserve"><value>電子郵件或使用者名稱</value></data>
+  <data name="Mobile.Account.Password" xml:space="preserve"><value>密碼</value></data>
+  <data name="Mobile.Account.Required" xml:space="preserve"><value>必填</value></data>
+  <data name="Mobile.Account.ShowPassword" xml:space="preserve"><value>顯示密碼</value></data>
+  <data name="Mobile.Account.SignIn" xml:space="preserve"><value>登入</value></data>
+  <data name="Mobile.Account.CheckCodeTitle" xml:space="preserve"><value>確認安全碼</value></data>
+  <data name="Mobile.Account.CheckCodeText" xml:space="preserve"><value>你的電腦會在「連接手機」下方顯示安全碼。只有與這裡的安全碼相符時才登入。</value></data>
+  <data name="Mobile.Account.TrustAndSignIn" xml:space="preserve"><value>信任並登入</value></data>
+  <data name="Mobile.Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>立即同步</value></data>
+  <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>全部下載</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>將電腦上的所有歌曲保留在這支手機上，不需連線也能播放。</value></data>
+  <data name="Mobile.Downloaded" xml:space="preserve"><value>已下載</value></data>
+  <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>移除所有下載項目</value></data>
+  <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>移除下載項目</value></data>
+  <data name="Mobile.Account.SignOut" xml:space="preserve"><value>登出</value></data>
+  <data name="Mobile.NoAlbums" xml:space="preserve"><value>沒有專輯</value></data>
+  <data name="Mobile.Play" xml:space="preserve"><value>播放</value></data>
+  <data name="Mobile.Album.More" xml:space="preserve"><value>更多</value></data>
+  <data name="Mobile.Album.RecordLabel" xml:space="preserve"><value>唱片公司</value></data>
+  <data name="Mobile.Artists.Find" xml:space="preserve"><value>在藝人中尋找</value></data>
+  <data name="Mobile.Artists.NoMatch" xml:space="preserve"><value>沒有相符的藝人</value></data>
+  <data name="Mobile.Artists.None" xml:space="preserve"><value>沒有藝人</value></data>
+  <data name="Mobile.Shuffle" xml:space="preserve"><value>隨機播放</value></data>
+  <data name="Mobile.Favorite" xml:space="preserve"><value>收藏</value></data>
+  <data name="Mobile.Artist.TopSongs" xml:space="preserve"><value>熱門歌曲</value></data>
+  <data name="Mobile.Artist.SinglesEps" xml:space="preserve"><value>單曲與 EP</value></data>
+  <data name="Mobile.Artist.AppearsOn" xml:space="preserve"><value>參與作品</value></data>
+  <data name="Mobile.AddToPlaylist" xml:space="preserve"><value>加入播放清單</value></data>
+  <data name="Mobile.NewPlaylist" xml:space="preserve"><value>新增播放清單</value></data>
+  <data name="Mobile.Pinned" xml:space="preserve"><value>已釘選</value></data>
+  <data name="Mobile.Home.PinnedHint" xml:space="preserve"><value>按住專輯、藝人、播放清單或歌曲並選擇「釘選」，即可將其保留在這裡。</value></data>
+  <data name="Mobile.RecentlyPlayed" xml:space="preserve"><value>最近播放</value></data>
+  <data name="Mobile.OnRepeat" xml:space="preserve"><value>反覆聆聽</value></data>
+  <data name="Mobile.Notice.AddMusicTitle" xml:space="preserve"><value>加入你的音樂</value></data>
+  <data name="Mobile.Notice.AddMusicText" xml:space="preserve"><value>選擇存放音樂的資料夾。Noctis 會直接讀取其中的檔案，絕不會上傳任何內容。</value></data>
+  <data name="Mobile.Notice.ChooseFolder" xml:space="preserve"><value>選擇資料夾</value></data>
+  <data name="Mobile.Notice.ReconnectFolder" xml:space="preserve"><value>重新連接資料夾</value></data>
+  <data name="Mobile.More" xml:space="preserve"><value>更多</value></data>
+  <data name="Mobile.RecentlyAdded" xml:space="preserve"><value>最近加入</value></data>
+  <data name="Mobile.Lyrics.Close" xml:space="preserve"><value>關閉歌詞</value></data>
+  <data name="Mobile.Lyrics.Translation" xml:space="preserve"><value>翻譯</value></data>
+  <data name="Mobile.Lyrics.Romaji" xml:space="preserve"><value>羅馬拼音</value></data>
+  <data name="Mobile.PlaybackPosition" xml:space="preserve"><value>播放位置</value></data>
+  <data name="Mobile.Previous" xml:space="preserve"><value>上一首</value></data>
+  <data name="Mobile.PlayPause" xml:space="preserve"><value>播放或暫停</value></data>
+  <data name="Mobile.Next" xml:space="preserve"><value>下一首</value></data>
+  <data name="Mobile.Output" xml:space="preserve"><value>輸出</value></data>
+  <data name="Mobile.AudioQuality" xml:space="preserve"><value>音質</value></data>
+  <data name="Mobile.Volume" xml:space="preserve"><value>音量</value></data>
+  <data name="Mobile.Playlists.Find" xml:space="preserve"><value>在播放清單中搜尋</value></data>
+  <data name="Mobile.Playlists.None" xml:space="preserve"><value>還沒有播放清單。按住一首歌曲即可建立。</value></data>
+  <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>沒有相符的播放清單</value></data>
+  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>搜尋播放清單</value></data>
+  <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>排序播放清單</value></data>
+  <data name="Mobile.PlayNext" xml:space="preserve"><value>下一首播放</value></data>
+  <data name="Mobile.AddToQueue" xml:space="preserve"><value>加入佇列</value></data>
+  <data name="Mobile.GoToAlbum" xml:space="preserve"><value>前往專輯</value></data>
+  <data name="Mobile.GoToArtist" xml:space="preserve"><value>前往藝人</value></data>
+  <data name="Mobile.Rename" xml:space="preserve"><value>重新命名</value></data>
+  <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>從播放清單中移除</value></data>
+  <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>刪除播放清單</value></data>
+  <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>加入資料夾…</value></data>
+  <data name="Mobile.RescanLibrary" xml:space="preserve"><value>重新掃描資料庫</value></data>
+  <data name="Mobile.OK" xml:space="preserve"><value>好</value></data>
+  <data name="Mobile.ProfileButton" xml:space="preserve"><value>個人檔案與設定</value></data>
+  <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>待播清單</value></data>
+  <data name="Mobile.Queue.Clear" xml:space="preserve"><value>清除</value></data>
+  <data name="Mobile.Queue.Empty" xml:space="preserve"><value>待播清單是空的</value></data>
+  <data name="Mobile.Repeat" xml:space="preserve"><value>重複播放</value></data>
+  <data name="Mobile.NothingHere" xml:space="preserve"><value>這裡還沒有內容</value></data>
+  <data name="Mobile.Search" xml:space="preserve"><value>搜尋</value></data>
+  <data name="Mobile.Search.Placeholder" xml:space="preserve"><value>藝人、歌曲、專輯、播放清單</value></data>
+  <data name="Mobile.Search.All" xml:space="preserve"><value>全部</value></data>
+  <data name="Mobile.Search.Hint" xml:space="preserve"><value>搜尋你的資料庫</value></data>
+  <data name="Mobile.Search.NoResults" xml:space="preserve"><value>沒有結果</value></data>
+  <data name="Mobile.Artist" xml:space="preserve"><value>藝人</value></data>
+  <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>慢動作</value></data>
+  <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>色彩緩緩流動</value></data>
+  <data name="Mobile.Background.Strength" xml:space="preserve"><value>強度</value></data>
+  <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>取自封面</value></data>
+  <data name="Mobile.NowPlaying" xml:space="preserve"><value>正在播放</value></data>
+  <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>隨每首歌曲的封面變化</value></data>
+  <data name="Mobile.Off" xml:space="preserve"><value>關閉</value></data>
+  <data name="Mobile.Background.OffHint" xml:space="preserve"><value>純色主題色彩</value></data>
+  <data name="Mobile.Background.Neutral" xml:space="preserve"><value>中性色</value></data>
+  <data name="Mobile.Background.Colour" xml:space="preserve"><value>彩色</value></data>
+  <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>本週</value></data>
+  <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>尚未播放任何內容</value></data>
+  <data name="Mobile.ShowAll" xml:space="preserve"><value>顯示全部</value></data>
+  <data name="Mobile.History.Header" xml:space="preserve"><value>記錄</value></data>
+  <data name="Mobile.History.Keep" xml:space="preserve"><value>保留記錄</value></data>
+  <data name="Mobile.History.CountAfter" xml:space="preserve"><value>計為播放的時間</value></data>
+  <data name="Mobile.History.Share" xml:space="preserve"><value>與電腦共享</value></data>
+  <data name="Mobile.History.ShareHint" xml:space="preserve"><value>兩邊的播放次數和最近播放保持一致</value></data>
+  <data name="Mobile.History.ClearName" xml:space="preserve"><value>清除聆聽記錄</value></data>
+  <data name="Mobile.History.ClearRow" xml:space="preserve"><value>清除聆聽記錄…</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>清除這支手機上的播放記錄。已傳送到 Last.fm 的記錄仍會保留在那裡。</value></data>
+  <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>這支手機</value></data>
+  <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>電腦</value></data>
+  <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>服務</value></data>
+  <data name="Mobile.Scrobbling.ThroughComputer" xml:space="preserve"><value>透過電腦</value></data>
+  <data name="Mobile.Scrobbling.FromPhone" xml:space="preserve"><value>從這支手機</value></data>
+  <data name="Mobile.Scrobbling.WhileListening" xml:space="preserve"><value>聆聽時</value></data>
+  <data name="Mobile.Scrobbling.SendPlays" xml:space="preserve"><value>傳送播放記錄</value></data>
+  <data name="Mobile.Scrobbling.ShowNowPlaying" xml:space="preserve"><value>顯示正在播放</value></data>
+  <data name="Mobile.Scrobbling.Waiting" xml:space="preserve"><value>等待傳送</value></data>
+  <data name="Mobile.Settings.OnPhone" xml:space="preserve"><value>僅在手機上</value></data>
+  <data name="Mobile.Settings.Appearance" xml:space="preserve"><value>外觀</value></data>
+  <data name="Mobile.Settings.Background" xml:space="preserve"><value>背景</value></data>
+  <data name="Mobile.Settings.Theme" xml:space="preserve"><value>主題</value></data>
+  <data name="Mobile.Settings.Accent" xml:space="preserve"><value>強調色</value></data>
+  <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>播放列</value></data>
+  <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音樂資料夾</value></data>
+  <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>下載</value></data>
+  <data name="Mobile.Settings.Listening" xml:space="preserve"><value>聆聽</value></data>
+  <data name="Mobile.Settings.Scrobbling" xml:space="preserve"><value>Scrobbling</value></data>
+  <data name="Mobile.Settings.ListeningHistory" xml:space="preserve"><value>聆聽記錄</value></data>
+  <data name="Mobile.Settings.PickUpName" xml:space="preserve"><value>在電腦上繼續，你的佇列和播放進度會跟著你</value></data>
+  <data name="Mobile.Settings.PickUp" xml:space="preserve"><value>在電腦上繼續</value></data>
+  <data name="Mobile.Settings.PickUpHint" xml:space="preserve"><value>你的佇列和播放進度會跟著你</value></data>
+  <data name="Mobile.Settings.Help" xml:space="preserve"><value>說明</value></data>
+  <data name="Mobile.Settings.ReportName" xml:space="preserve"><value>回報問題，將在瀏覽器中開啟</value></data>
+  <data name="Mobile.Settings.Report" xml:space="preserve"><value>回報問題</value></data>
+  <data name="Mobile.Settings.ExportLogs" xml:space="preserve"><value>匯出記錄檔</value></data>
+  <data name="Mobile.Settings.WebsiteName" xml:space="preserve"><value>Noctis 網站，將在瀏覽器中開啟</value></data>
+  <data name="Mobile.Settings.Website" xml:space="preserve"><value>Noctis 網站</value></data>
+  <data name="Mobile.Settings.PrivacyName" xml:space="preserve"><value>隱私權政策，將在瀏覽器中開啟</value></data>
+  <data name="Mobile.Settings.Privacy" xml:space="preserve"><value>隱私權政策</value></data>
+  <data name="Mobile.Settings.About" xml:space="preserve"><value>關於</value></data>
+  <data name="Mobile.Settings.Version" xml:space="preserve"><value>版本</value></data>
+  <data name="Mobile.Settings.WhatsNew" xml:space="preserve"><value>新功能</value></data>
+  <data name="Mobile.Settings.Licenses" xml:space="preserve"><value>開放原始碼授權</value></data>
+  <data name="Mobile.Settings.Tagline" xml:space="preserve"><value>Noctis · 在你的裝置上，播放你的音樂。</value></data>
+  <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>已失去存取權。請重新加入此資料夾以播放其中的歌曲。</value></data>
+  <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>無法使用。請重新連接其儲存裝置，然後重新掃描。</value></data>
+  <data name="Mobile.Folders.None" xml:space="preserve"><value>尚無音樂資料夾</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>這支手機上的資料庫由這些資料夾中的音樂組成。</value></data>
+  <data name="Mobile.Folders.Add" xml:space="preserve"><value>加入資料夾</value></data>
+  <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>啟動時掃描</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>每次開啟 Noctis 時在這些資料夾中尋找新歌曲。</value></data>
+  <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>專輯色彩</value></data>
+  <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>依封面為頁面上色</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>專輯和藝人頁面會採用封面色彩的深色調，並使用白色文字。關閉時則使用一般的淺色或深色主題。</value></data>
+  <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>進度色彩</value></data>
+  <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>進度線</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>「進度色彩」會在歌曲播放時以封面色彩填滿播放列。「進度線」會沿著播放列底部繪製一條細線。兩者都關閉時，播放列為純玻璃效果。</value></data>
+  <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>僅透過 Wi-Fi 下載</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>電腦上的歌曲只會透過 Wi-Fi 下載，絕不使用行動數據。串流播放不受影響。</value></data>
+  <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>已使用的儲存空間</value></data>
+  <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>移除所有下載項目</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>移除的下載項目仍會保留在你的電腦上，並可繼續串流播放。</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis 本身採用 MIT 授權。</value></data>
+  <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>顯示翻譯</value></data>
+  <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>顯示羅馬拼音</value></data>
+  <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>顯示背景人聲</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>如果歌詞包含背景人聲，會以較小的文字顯示在該行下方。</value></data>
+  <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>文字大小</value></data>
+  <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>歌詞文字大小</value></data>
+  <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>最低行不透明度</value></data>
+  <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>最低行不透明度</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>讓每一行都保持隱約可見，方便點一下任一行跳到該處。設為 0% 時會隱藏離目前行較遠的行。</value></data>
+  <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>合併拆開的單字</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>當 TTML 歌詞將單字拆成音節時，保持單字完整。</value></data>
+  <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>線上尋找歌詞</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>當歌曲沒有歌詞檔案，標籤中也沒有歌詞時，會像桌面版一樣依標題、藝人和長度向 LRCLIB 查詢。找到的歌詞會保留在手機上。</value></data>
+  <data name="Mobile.ShowTabs" xml:space="preserve"><value>顯示標籤列</value></data>
+  <data name="Mobile.SongList.Find" xml:space="preserve"><value>在此列表中搜尋</value></data>
+  <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} 首歌曲</value></data>
+  <data name="Mobile.Count.Albums" xml:space="preserve"><value>{0} 張專輯</value></data>
+  <data name="Mobile.Count.Hours" xml:space="preserve"><value>{0} 小時</value></data>
+  <data name="Mobile.Count.Minutes" xml:space="preserve"><value>{0} 分鐘</value></data>
+  <data name="Mobile.Count.Seconds" xml:space="preserve"><value>{0} 秒</value></data>
+  <data name="Mobile.RemoveFromFavorites" xml:space="preserve"><value>取消收藏</value></data>
+  <data name="Mobile.Favorited" xml:space="preserve"><value>已收藏</value></data>
+  <data name="Mobile.Unpin" xml:space="preserve"><value>取消釘選</value></data>
+  <data name="Mobile.PinToHome" xml:space="preserve"><value>釘選到首頁</value></data>
+  <data name="Mobile.PinnedTile" xml:space="preserve"><value>已釘選</value></data>
+  <data name="Mobile.Pin" xml:space="preserve"><value>釘選</value></data>
+  <data name="Mobile.DownloadAlbum" xml:space="preserve"><value>下載專輯</value></data>
+  <data name="Mobile.DownloadPlaylist" xml:space="preserve"><value>下載播放清單</value></data>
+  <data name="Mobile.Download" xml:space="preserve"><value>下載</value></data>
+  <data name="Mobile.RemoveDownload" xml:space="preserve"><value>移除下載項目</value></data>
+  <data name="Mobile.AlreadyIn" xml:space="preserve"><value>已在「{0}」中</value></data>
+  <data name="Mobile.AddedTo" xml:space="preserve"><value>已加入「{0}」</value></data>
+  <data name="Mobile.Sort.Ascending" xml:space="preserve"><value>遞增</value></data>
+  <data name="Mobile.Sort.Descending" xml:space="preserve"><value>遞減</value></data>
+  <data name="Mobile.SelectedName" xml:space="preserve"><value>{0}，已選取</value></data>
+  <data name="Mobile.Sort.Title" xml:space="preserve"><value>標題</value></data>
+  <data name="Mobile.Sort.RecentlyUpdated" xml:space="preserve"><value>最近更新</value></data>
+  <data name="Mobile.Sort.MostRelevant" xml:space="preserve"><value>最相關</value></data>
+  <data name="Mobile.Sort.ReleaseYear" xml:space="preserve"><value>發行年份</value></data>
+  <data name="Mobile.Sort.MostPlayed" xml:space="preserve"><value>最常播放</value></data>
+  <data name="Mobile.Sort.PlaylistOrder" xml:space="preserve"><value>播放清單順序</value></data>
+  <data name="Mobile.Sort.DefaultOrder" xml:space="preserve"><value>預設順序</value></data>
+  <data name="Mobile.Sort.Artist" xml:space="preserve"><value>藝人</value></data>
+  <data name="Mobile.Sort.Album" xml:space="preserve"><value>專輯</value></data>
+  <data name="Mobile.Sort.DateAdded" xml:space="preserve"><value>加入日期</value></data>
+  <data name="Mobile.Sort.Time" xml:space="preserve"><value>長度</value></data>
+  <data name="Mobile.Search.PlaylistSubtitle" xml:space="preserve"><value>播放清單 · {0}</value></data>
+  <data name="Mobile.SongList.NoSongs" xml:space="preserve"><value>沒有歌曲</value></data>
+  <data name="Mobile.SongList.NoMatch" xml:space="preserve"><value>沒有相符的歌曲</value></data>
+  <data name="Mobile.SongList.CountOf" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="Mobile.Album.Disc" xml:space="preserve"><value>光碟 {0}</value></data>
+  <data name="Mobile.Album.ListJoin" xml:space="preserve"><value>{0}，{1}</value></data>
+  <data name="Mobile.Artist.FeaturedSingle" xml:space="preserve"><value>精選單曲</value></data>
+  <data name="Mobile.Artist.FeaturedEp" xml:space="preserve"><value>精選 EP</value></data>
+  <data name="Mobile.Artist.FeaturedAlbum" xml:space="preserve"><value>精選專輯</value></data>
+  <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>最常播放</value></data>
+  <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>最新 EP</value></data>
+  <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>最新單曲</value></data>
+  <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>無法連線到你的電腦。正在播放已下載的歌曲。</value></data>
+  <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>無法連線到你的電腦。請在電腦上開啟 Noctis，或播放已下載的歌曲。</value></data>
+  <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>連續多首歌曲無法播放，因此已停止播放。</value></data>
+  <data name="Mobile.Player.PlayingFrom" xml:space="preserve"><value>正在播放：{0}</value></data>
+  <data name="Mobile.Player.TrackOf" xml:space="preserve"><value>第 {0} 首，共 {1} 首</value></data>
+  <data name="Mobile.Quality.HiResMeaning" xml:space="preserve"><value>超過 24 位元/48 kHz：解析度高於 CD 或標準無損。</value></data>
+  <data name="Mobile.RenamePlaylist" xml:space="preserve"><value>重新命名播放清單</value></data>
+  <data name="Mobile.Save" xml:space="preserve"><value>儲存</value></data>
+  <data name="Mobile.PlaylistName" xml:space="preserve"><value>播放清單名稱</value></data>
+  <data name="Mobile.DeletePlaylistQuestion" xml:space="preserve"><value>要刪除「{0}」嗎？</value></data>
+  <data name="Mobile.DeletePlaylistSynced" xml:space="preserve"><value>它也會從你的電腦上刪除。此動作無法復原。</value></data>
+  <data name="Mobile.DeletePlaylistLocal" xml:space="preserve"><value>此動作無法復原。歌曲仍會保留在你的資料庫中。</value></data>
+  <data name="Mobile.Library.FolderUnavailable" xml:space="preserve"><value>「{0}」無法使用。請重新連接後重新掃描。</value></data>
+  <data name="Mobile.Library.FoldersUnavailable" xml:space="preserve"><value>{0} 個資料夾無法使用。請重新連接後重新掃描。</value></data>
+  <data name="Mobile.Library.AlreadyCovered" xml:space="preserve"><value>已包含在「{0}」中。</value></data>
+  <data name="Mobile.Library.InsideFolder" xml:space="preserve"><value>「{0}」位於該資料夾內。請先將其移除。</value></data>
+  <data name="Mobile.Library.Scanning" xml:space="preserve"><value>正在掃描…</value></data>
+  <data name="Mobile.Library.ScanFailed" xml:space="preserve"><value>掃描失敗。請查看記錄檔。</value></data>
+  <data name="Mobile.Lyrics.Searching" xml:space="preserve"><value>正在搜尋歌詞…</value></data>
+  <data name="Mobile.Lyrics.Loading" xml:space="preserve"><value>正在載入歌詞…</value></data>
+  <data name="Mobile.Lyrics.Instrumental" xml:space="preserve"><value>純音樂</value></data>
+  <data name="Mobile.Lyrics.None" xml:space="preserve"><value>沒有歌詞</value></data>
+  <data name="Mobile.Lyrics.NotSynced" xml:space="preserve"><value>沒有同步歌詞</value></data>
+  <data name="Mobile.Lyrics.InstrumentalDetail" xml:space="preserve"><value>這首歌沒有可以跟著唱的歌詞。</value></data>
+  <data name="Mobile.Lyrics.OnlineFailedDetail" xml:space="preserve"><value>這首歌沒有歌詞檔案，標籤中也沒有歌詞，而且無法連線到線上歌詞服務。下次播放這首歌時會再次查詢。</value></data>
+  <data name="Mobile.Lyrics.NoneOnlineDetail" xml:space="preserve"><value>這首歌沒有歌詞檔案，標籤中也沒有歌詞，線上也找不到歌詞。</value></data>
+  <data name="Mobile.Lyrics.NoneDetail" xml:space="preserve"><value>這首歌沒有歌詞檔案，標籤中也沒有歌詞。</value></data>
+  <data name="Mobile.Lyrics.FromLrclib" xml:space="preserve"><value>歌詞來自 LRCLIB</value></data>
+  <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>預覽 · {0}</value></data>
+  <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>歌曲標題</value></data>
+  <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>省電模式已開啟，因此色彩保持靜止。</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>動態效果會稍微多耗一點電。開啟省電模式時會暫停。</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="Mobile.History.Forever" xml:space="preserve"><value>永久</value></data>
+  <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 年</value></data>
+  <data name="Mobile.History.Days" xml:space="preserve"><value>{0} 天</value></data>
+  <data name="Mobile.History.Immediately" xml:space="preserve"><value>立即</value></data>
+  <data name="Mobile.Time.Seconds" xml:space="preserve"><value>{0} 秒</value></data>
+  <data name="Mobile.Time.Minutes" xml:space="preserve"><value>{0} 分鐘</value></data>
+  <data name="Mobile.Time.Hours" xml:space="preserve"><value>{0} 小時</value></data>
+  <data name="Mobile.Time.HoursMinutes" xml:space="preserve"><value>{0} 小時 {1} 分鐘</value></data>
+  <data name="Mobile.Time.Days" xml:space="preserve"><value>{0} 天</value></data>
+  <data name="Mobile.Time.Months" xml:space="preserve"><value>{0} 個月</value></data>
+  <data name="Mobile.Time.Now" xml:space="preserve"><value>剛剛</value></data>
+  <data name="Mobile.History.WeekHours" xml:space="preserve"><value>本週 {0} 小時</value></data>
+  <data name="Mobile.History.WeekMinutes" xml:space="preserve"><value>本週 {0} 分鐘</value></data>
+  <data name="Mobile.Count.Plays" xml:space="preserve"><value>{0} 次播放</value></data>
+  <data name="Mobile.Count.Scrobbles" xml:space="preserve"><value>{0} 次 Scrobble</value></data>
+  <data name="Mobile.History.KeepDetail" xml:space="preserve"><value>早於此期限的播放記錄會從這支手機上移除。</value></data>
+  <data name="Mobile.History.CountAfterDetail" xml:space="preserve"><value>一首歌需要聽多久才算一次播放。Last.fm Scrobbling 有自己的規則。</value></data>
+  <data name="Mobile.History.ClearQuestion" xml:space="preserve"><value>要清除聆聽記錄嗎？</value></data>
+  <data name="Mobile.History.ClearDetail" xml:space="preserve"><value>這會移除這支手機上的所有播放記錄。已傳送到 Last.fm 的記錄仍會保留在那裡。</value></data>
+  <data name="Mobile.Scrobbling.RouteFromPhone" xml:space="preserve"><value>手機會自行計算你的播放記錄，並直接傳送到 Last.fm 和 ListenBrainz。不會重複傳送。</value></data>
+  <data name="Mobile.Scrobbling.RouteSignIn" xml:space="preserve"><value>在「帳號」中登入你的電腦後，手機同步時播放記錄就會傳送到電腦。</value></data>
+  <data name="Mobile.Scrobbling.RouteNotShared" xml:space="preserve"><value>「聆聽記錄」中的「與電腦共享」已關閉，因此播放記錄只會保留在這支手機上。</value></data>
+  <data name="Mobile.Scrobbling.RouteUnknown" xml:space="preserve"><value>手機同步時，播放記錄會傳送到你的電腦。電腦上的最新版 Noctis 會再將其傳送到 Last.fm 和 ListenBrainz。</value></data>
+  <data name="Mobile.Scrobbling.RouteNoServices" xml:space="preserve"><value>手機同步時，播放記錄會傳送到你的電腦。在電腦上連接 Last.fm 或 ListenBrainz 即可繼續傳送。</value></data>
+  <data name="Mobile.Scrobbling.RouteComputer" xml:space="preserve"><value>手機同步時，播放記錄會傳送到你的電腦，再由電腦傳送符合條件的記錄。只存在於這支手機上的歌曲記錄會留在這裡。不會重複傳送。</value></data>
+  <data name="Mobile.Scrobbling.Connected" xml:space="preserve"><value>已連接</value></data>
+  <data name="Mobile.Scrobbling.NotConnected" xml:space="preserve"><value>未連接</value></data>
+  <data name="Mobile.Scrobbling.OnComputer" xml:space="preserve"><value>在電腦上</value></data>
+  <data name="Mobile.Scrobbling.LastFmPitch" xml:space="preserve"><value>分享你在聽的音樂</value></data>
+  <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>開放、免費的聆聽統計</value></data>
+  <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>在你的電腦上</value></data>
+  <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>在電腦上設定</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>聽完一首歌的一半或 4 分鐘即計為一次播放。離線時的播放記錄會在這裡等待下次同步。</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>聽完一首歌的一半或 4 分鐘即計為一次播放。離線時的播放記錄會在這裡等待手機恢復連線。</value></data>
+  <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>無法連線到 Last.fm。請再試一次。</value></data>
+  <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>在 Last.fm 上授權 Noctis</value></data>
+  <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>在 Last.fm 上登入並點一下「Allow」，然後回到這裡點一下「完成」。</value></data>
+  <data name="Mobile.Scrobbling.LastFmNotApproved" xml:space="preserve"><value>Last.fm 尚未收到你的授權。請在瀏覽器中授權 Noctis，然後再試一次。</value></data>
+  <data name="Mobile.Scrobbling.ConnectListenBrainz" xml:space="preserve"><value>連接 ListenBrainz</value></data>
+  <data name="Mobile.Scrobbling.TokenDetail" xml:space="preserve"><value>貼上 listenbrainz.org/profile 上的使用者權杖。</value></data>
+  <data name="Mobile.Scrobbling.Connect" xml:space="preserve"><value>連接</value></data>
+  <data name="Mobile.Scrobbling.ListenBrainzUnreachable" xml:space="preserve"><value>無法連線到 ListenBrainz。請再試一次。</value></data>
+  <data name="Mobile.Scrobbling.TokenRejected" xml:space="preserve"><value>ListenBrainz 不接受該權杖。</value></data>
+  <data name="Mobile.Scrobbling.UserToken" xml:space="preserve"><value>使用者權杖</value></data>
+  <data name="Mobile.Scrobbling.SetUpDetail" xml:space="preserve"><value>在電腦上的 Noctis 中連接 Last.fm 和 ListenBrainz。或選擇「從這支手機」，改在這裡登入。</value></data>
+  <data name="Mobile.Scrobbling.DisconnectQuestion" xml:space="preserve"><value>要中斷與 {0} 的連接嗎？</value></data>
+  <data name="Mobile.Scrobbling.DisconnectDetail" xml:space="preserve"><value>等待傳送給它的播放記錄會被捨棄。你在該網站上的 Scrobble 記錄仍會保留。</value></data>
+  <data name="Mobile.Scrobbling.Disconnect" xml:space="preserve"><value>中斷連接</value></data>
+  <data name="Mobile.BackgroundName.Graphite" xml:space="preserve"><value>石墨</value></data>
+  <data name="Mobile.BackgroundName.Ash" xml:space="preserve"><value>灰燼</value></data>
+  <data name="Mobile.BackgroundName.PlumInk" xml:space="preserve"><value>梅墨</value></data>
+  <data name="Mobile.BackgroundName.Olive" xml:space="preserve"><value>橄欖</value></data>
+  <data name="Mobile.BackgroundName.Slate" xml:space="preserve"><value>岩灰</value></data>
+  <data name="Mobile.BackgroundName.Pine" xml:space="preserve"><value>松綠</value></data>
+  <data name="Mobile.BackgroundName.Sand" xml:space="preserve"><value>沙色</value></data>
+  <data name="Mobile.BackgroundName.Mist" xml:space="preserve"><value>薄霧</value></data>
+  <data name="Mobile.BackgroundName.Ember" xml:space="preserve"><value>餘燼</value></data>
+  <data name="Mobile.BackgroundName.Harbour" xml:space="preserve"><value>港灣</value></data>
+  <data name="Mobile.BackgroundName.Amber" xml:space="preserve"><value>琥珀</value></data>
+  <data name="Mobile.BackgroundName.Dusk" xml:space="preserve"><value>暮色</value></data>
+  <data name="Mobile.BackgroundName.Rose" xml:space="preserve"><value>玫瑰</value></data>
+  <data name="Mobile.BackgroundName.Lagoon" xml:space="preserve"><value>潟湖</value></data>
+  <data name="Mobile.BackgroundName.Orchid" xml:space="preserve"><value>蘭紫</value></data>
+  <data name="Mobile.BackgroundName.Forest" xml:space="preserve"><value>森林</value></data>
+  <data name="Mobile.BackgroundName.Coral" xml:space="preserve"><value>珊瑚</value></data>
+  <data name="Mobile.BackgroundName.Iris" xml:space="preserve"><value>鳶尾</value></data>
+  <data name="Mobile.BackgroundName.Cobalt" xml:space="preserve"><value>鈷藍</value></data>
+  <data name="Mobile.BackgroundName.Mint" xml:space="preserve"><value>薄荷</value></data>
+  <data name="Mobile.Accent.Crimson" xml:space="preserve"><value>緋紅</value></data>
+  <data name="Mobile.Accent.Tangerine" xml:space="preserve"><value>橘橙</value></data>
+  <data name="Mobile.Accent.Gold" xml:space="preserve"><value>金色</value></data>
+  <data name="Mobile.Accent.Emerald" xml:space="preserve"><value>翡翠綠</value></data>
+  <data name="Mobile.Accent.Teal" xml:space="preserve"><value>青綠</value></data>
+  <data name="Mobile.Accent.Cerulean" xml:space="preserve"><value>天藍</value></data>
+  <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>靛藍</value></data>
+  <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>蘭紫</value></data>
+  <data name="Mobile.Accent.Rose" xml:space="preserve"><value>玫瑰</value></data>
+  <data name="Mobile.Accent.Custom" xml:space="preserve"><value>自訂</value></data>
+  <data name="Mobile.Theme.System" xml:space="preserve"><value>跟隨系統</value></data>
+  <data name="Mobile.Theme.Light" xml:space="preserve"><value>淺色</value></data>
+  <data name="Mobile.Theme.Dark" xml:space="preserve"><value>深色</value></data>
+  <data name="Mobile.Theme.Ink" xml:space="preserve"><value>墨黑</value></data>
+  <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>煙灰</value></data>
+  <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>午夜藍</value></data>
+  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>深色風格：{0}</value></data>
+  <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>要移除「{0}」嗎？其中的歌曲會從這支手機的資料庫中移除。檔案本身維持不變。</value></data>
+  <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>要移除「{0}」嗎？</value></data>
+  <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>其中的歌曲會從這支手機的資料庫中移除。檔案本身維持不變。</value></data>
+  <data name="Mobile.Folders.Remove" xml:space="preserve"><value>移除資料夾</value></data>
+  <data name="Mobile.Folders.ReadOnlyChosen" xml:space="preserve"><value>Noctis 只能讀取你在這裡選擇的資料夾。</value></data>
+  <data name="Mobile.Folders.NoneValue" xml:space="preserve"><value>無</value></data>
+  <data name="Mobile.Folders.RowNameWarning" xml:space="preserve"><value>{0}，{1}，有資料夾失去存取權或無法連接</value></data>
+  <data name="Mobile.Settings.LastScan" xml:space="preserve"><value>上次掃描：{0}</value></data>
+  <data name="Mobile.Settings.RescanHint" xml:space="preserve"><value>在你的資料夾中尋找新歌曲</value></data>
+  <data name="Mobile.Settings.ScanToday" xml:space="preserve"><value>今天 {0}</value></data>
+  <data name="Mobile.Settings.ScanYesterday" xml:space="preserve"><value>昨天 {0}</value></data>
+  <data name="Mobile.Settings.ScanOnDay" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="Mobile.Settings.AddFolderToScan" xml:space="preserve"><value>加入音樂資料夾以進行掃描。</value></data>
+  <data name="Mobile.Settings.ColourAndLine" xml:space="preserve"><value>色彩和線條</value></data>
+  <data name="Mobile.Settings.Plain" xml:space="preserve"><value>純色</value></data>
+  <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>皆已開啟</value></data>
+  <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>翻譯已開啟</value></data>
+  <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>羅馬拼音已開啟</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>在 {0} 上開啟 Noctis 時，它會提示你從這裡正在播放的歌曲繼續。</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>在電腦上開啟 Noctis 時，它會提示你從這裡正在播放的歌曲繼續。</value></data>
+  <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>僅限 Wi-Fi</value></data>
+  <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>任何網路</value></data>
+  <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>要移除所有下載項目嗎？</value></data>
+  <data name="Mobile.Downloads.RemoveDetail" xml:space="preserve"><value>{0}將從這支手機上移除。它們仍會保留在你的電腦上，並可繼續串流播放。</value></data>
+  <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>移除下載項目</value></data>
+  <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} 首歌曲</value></data>
+  <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} 個播放清單</value></data>
+  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>「設定」重新設計：最上方是你的個人檔案和資料庫統計，下方依序是外觀、資料庫、聆聽、說明和關於。</value></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>「下載」有了專屬頁面，包含「僅透過 Wi-Fi 下載」（預設開啟）和「移除所有下載項目」。</value></data>
+  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>「開放原始碼授權」列出了建構 Noctis 所用的元件。</value></data>
+  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis 支援你的語言：可在「設定」›「語言」中選擇，或跟隨手機設定。</value></data>
+  <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>內建的 ALAC 解碼器，以未經修改的 FFmpeg 6.0 原始碼建構，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value></data>
+  <data name="Mobile.License.Media3" xml:space="preserve"><value>播放、媒體工作階段以及解碼器的 JNI 包裝層。</value></data>
+  <data name="Mobile.License.Avalonia" xml:space="preserve"><value>使用者介面框架。</value></data>
+  <data name="Mobile.License.Inter" xml:space="preserve"><value>字體，透過 Avalonia.Fonts.Inter 提供。</value></data>
+  <data name="Mobile.License.Mvvm" xml:space="preserve"><value>檢視模型的底層架構。</value></data>
+  <data name="Mobile.License.TagLib" xml:space="preserve"><value>讀取歌曲標籤和封面。</value></data>
+  <data name="Mobile.License.Sqlite" xml:space="preserve"><value>資料庫的資料儲存；SQLite 本身屬於公共領域。</value></data>
+  <data name="Mobile.License.Skia" xml:space="preserve"><value>繪圖。</value></data>
+  <data name="Mobile.License.AndroidX" xml:space="preserve"><value>適用於 .NET 的 Android 支援程式庫。</value></data>
+  <data name="Mobile.License.CodeScanner" xml:space="preserve"><value>「帳號」頁面中的「掃描 QR 碼」。由 Google Play 服務執行相機，只回傳 QR 碼的文字。</value></data>
+  <data name="Mobile.Settings.ExportHint" xml:space="preserve"><value>已移除金鑰和密碼</value></data>
+  <data name="Mobile.Settings.SignedInAs" xml:space="preserve"><value>已登入為 {0} · {1}</value></data>
+  <data name="Mobile.Settings.SyncedWith" xml:space="preserve"><value>已與 {0} 同步</value></data>
+  <data name="Mobile.Settings.SyncPitch" xml:space="preserve"><value>將資料庫與電腦上的 Noctis 同步</value></data>
+  <data name="Mobile.Settings.ExportUnavailable" xml:space="preserve"><value>這裡無法匯出</value></data>
+  <data name="Mobile.Settings.LogSaved" xml:space="preserve"><value>記錄檔已儲存</value></data>
+  <data name="Mobile.Settings.ExportCancelled" xml:space="preserve"><value>已取消匯出</value></data>
+  <data name="Mobile.Settings.LogFailed" xml:space="preserve"><value>無法儲存記錄檔</value></data>
+  <data name="Mobile.Account.Title" xml:space="preserve"><value>帳號</value></data>
+  <data name="Mobile.Account.SignOutQuestion" xml:space="preserve"><value>要登出 {0} 嗎？</value></data>
+  <data name="Mobile.Account.StopSending" xml:space="preserve"><value>停止傳送</value></data>
+  <data name="Mobile.Account.SendSongs" xml:space="preserve"><value>將手機上的歌曲傳送到電腦</value></data>
+  <data name="Mobile.Account.SendTile" xml:space="preserve"><value>傳送到電腦</value></data>
+  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>請輸入你的電子郵件或使用者名稱，以及密碼。</value></data>
+  <data name="Mobile.Account.Connecting" xml:space="preserve"><value>正在連線到你的電腦…</value></data>
+  <data name="Mobile.Account.SigningIn" xml:space="preserve"><value>正在登入…</value></data>
+  <data name="Mobile.Account.ScannerUnavailable" xml:space="preserve"><value>這支手機上的掃描器尚未就緒。請稍後再試，或在下方使用電腦的位址登入。</value></data>
+  <data name="Mobile.Account.NotAPairingCode" xml:space="preserve"><value>這不是 Noctis 登入碼。請掃描電腦上「連接手機」下方的 QR 碼。</value></data>
+  <data name="Mobile.Account.Syncing" xml:space="preserve"><value>正在同步…</value></data>
+  <data name="Mobile.Account.SyncedCounts" xml:space="preserve"><value>已同步 {0}和 {1}</value></data>
+  <data name="Mobile.Account.SongsUpdatedSyncOff" xml:space="preserve"><value>歌曲已更新。你的電腦上已關閉同步。</value></data>
+  <data name="Mobile.Account.StartingDownloads" xml:space="preserve"><value>正在開始下載…</value></data>
+  <data name="Mobile.Account.DownloadsFinished" xml:space="preserve"><value>下載完成{0}</value></data>
+  <data name="Mobile.Account.Checking" xml:space="preserve"><value>正在檢查電腦上已有的內容…</value></data>
+  <data name="Mobile.Account.SendStopped" xml:space="preserve"><value>已停止。再點一下即可傳送其餘內容。</value></data>
+  <data name="Mobile.Account.RemovingDownloads" xml:space="preserve"><value>正在移除下載項目…</value></data>
+  <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>登出</value></data>
+  <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>登出並移除下載項目</value></data>
+  <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>來自該電腦的歌曲會從這支手機的資料庫中移除。你隨時可以再次登入。</value></data>
+  <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>正在登出…</value></data>
+  <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>發生錯誤。請再試一次。</value></data>
+  <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>同步完成</value></data>
+  <data name="Mobile.Account.LastSyncFailed" xml:space="preserve"><value>上次同步未完成。點一下「立即同步」再試一次。</value></data>
+  <data name="Mobile.Account.NameOnServer" xml:space="preserve"><value>{1} 上的 {0}</value></data>
+  <data name="Mobile.Account.OnServer" xml:space="preserve"><value>在 {0} 上</value></data>
+  <data name="Mobile.Account.DownloadedStorage" xml:space="preserve"><value>已下載：{0}</value></data>
+  <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>電腦上缺少 {0}</value></data>
+  <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} 失敗</value></data>
+  <data name="Mobile.Account.Downloading" xml:space="preserve"><value>正在下載 {0}/{1}{2}</value></data>
+  <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>無法連線到你的電腦。請確認電腦上已開啟 Noctis、「在手機上使用 Noctis」已開啟，而且兩者連接的是同一個 Wi-Fi。</value></data>
+  <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>你電腦的安全碼已變更。請登出後再次登入，以信任新的安全碼。</value></data>
+  <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>登入期間你電腦的安全碼已變更。請再試一次並確認安全碼。</value></data>
+  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>電子郵件、使用者名稱或密碼錯誤。</value></data>
+  <data name="Mobile.Account.Error.LockedOut" xml:space="preserve"><value>登入失敗次數過多。請等待幾分鐘後再試一次。</value></data>
+  <data name="Mobile.Account.Error.SyncDisabled" xml:space="preserve"><value>你的電腦上已關閉同步。請在「設定」›「帳戶與裝置」中開啟「與手機同步」。</value></data>
+  <data name="Mobile.Account.Error.SignedOut" xml:space="preserve"><value>你的電腦已將這支手機登出。請再次登入。</value></data>
+  <data name="Mobile.Account.Error.InvalidAddress" xml:space="preserve"><value>請輸入「連接手機」下方顯示的電腦位址，例如 192.168.1.20 或 https://192.168.1.20:4747。</value></data>
+  <data name="Mobile.Account.Error.StorageFull" xml:space="preserve"><value>你的手機儲存空間快滿了，因此下載已停止（一律保留 1.5 GB 可用空間）。請移除一些下載項目或釋放空間。</value></data>
+  <data name="Mobile.Account.Error.FileMissing" xml:space="preserve"><value>你的電腦上找不到這首歌的檔案。</value></data>
+  <data name="Mobile.Account.Error.NotNoctis" xml:space="preserve"><value>該位址有回應，但不是 Noctis。請檢查「連接手機」下方顯示的位址和連接埠。</value></data>
+  <data name="Mobile.Account.Error.UnknownHost" xml:space="preserve"><value>沒有電腦回應該名稱。請輸入「連接手機」下方顯示的位址，例如 192.168.1.20。</value></data>
+  <data name="Mobile.Account.Error.Outdated" xml:space="preserve"><value>你電腦上的 Noctis 版本過舊，無法連接手機。請更新後再試一次。</value></data>
+  <data name="Mobile.Account.Error.WifiRequired" xml:space="preserve"><value>下載已設為僅限 Wi-Fi。請連接 Wi-Fi，或在「設定」›「下載」中變更此設定。</value></data>
+  <data name="Mobile.Account.Error.Other" xml:space="preserve"><value>你的電腦無法完成該動作。請稍後再試一次。</value></data>
+  <data name="Mobile.Account.Error.PairingExpired" xml:space="preserve"><value>此 QR 碼已過期或已被使用。請掃描電腦目前顯示的新 QR 碼。</value></data>
+  <data name="Mobile.Account.Error.QrWrongComputer" xml:space="preserve"><value>該位址上的電腦不是顯示 QR 碼的那一台，因此沒有傳送任何內容。請確認你的手機連接的是同一個 Wi-Fi，然後再掃描一次。</value></data>
+  <data name="Mobile.Account.Error.QrUnreachable" xml:space="preserve"><value>無法連線到你的電腦。請確認你的手機和電腦連接的是同一個 Wi-Fi，然後再掃描一次。</value></data>
+  <data name="Mobile.Account.CountOf" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="Mobile.Account.GettingLibrary" xml:space="preserve"><value>正在取得你的資料庫…</value></data>
+  <data name="Mobile.Account.GettingCovers" xml:space="preserve"><value>正在取得封面…</value></data>
+  <data name="Mobile.Account.SyncingFavorites" xml:space="preserve"><value>正在同步收藏和評分…</value></data>
+  <data name="Mobile.Account.SyncingPlaylists" xml:space="preserve"><value>正在同步播放清單…</value></data>
+  <data name="Mobile.Account.SendingPlays" xml:space="preserve"><value>正在傳送播放記錄…</value></data>
+  <data name="Mobile.Account.SentOf" xml:space="preserve"><value>已傳送 {0}/{1}</value></data>
+  <data name="Mobile.Account.SendingOf" xml:space="preserve"><value>正在傳送 {0}/{1}</value></data>
+  <data name="Mobile.Account.AllOnComputer" xml:space="preserve"><value>所有內容都已在你的電腦上</value></data>
+  <data name="Mobile.Account.NothingToSend" xml:space="preserve"><value>這支手機上沒有可傳送的歌曲</value></data>
+  <data name="Mobile.Account.Sent" xml:space="preserve"><value>已傳送 {0}</value></data>
+  <data name="Mobile.Account.AlreadyOnComputer" xml:space="preserve"><value>{0} 已在你的電腦上</value></data>
+  <data name="Mobile.Size.GB" xml:space="preserve"><value>{0} GB</value></data>
+  <data name="Mobile.Size.MB" xml:space="preserve"><value>{0} MB</value></data>
+  <data name="Mobile.Account.NotSynced" xml:space="preserve"><value>尚未同步</value></data>
+  <data name="Mobile.Account.SyncedNow" xml:space="preserve"><value>剛剛同步</value></data>
+  <data name="Mobile.Account.SyncedMinutes" xml:space="preserve"><value>{0} 分鐘前同步</value></data>
+  <data name="Mobile.Account.SyncedHours" xml:space="preserve"><value>{0} 小時前同步</value></data>
+  <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>昨天同步</value></data>
+  <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0} 天前同步</value></data>
+  <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>{0} 同步</value></data>
+  <data name="Mobile.Language.System" xml:space="preserve"><value>跟隨系統</value></data>
+  <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis 已失去這首歌所在資料夾的存取權。請在「設定」→「資料庫」中重新加入該資料夾。</value></data>
+  <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>這支手機無法解碼{0}，因此已略過這首歌。</value></data>
+  <data name="Mobile.Player.UnknownFormat" xml:space="preserve"><value>不明格式</value></data>
+  <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>不明曲目</value></data>
+  <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD 卡</value></data>
+  <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>播放清單</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>除非你在這裡選擇語言，否則 Noctis 會跟隨手機的語言。翻譯由社群提供。</value></data>
+  <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>正在掃描… {0} 個檔案</value></data>
+  <data name="Mobile.MoreFor" xml:space="preserve"><value>「{0}」的更多選項</value></data>
+  <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。強調色會套用到按鈕、開關和醒目提示。</value></data>
+  <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>已使用的儲存空間，{0}</value></data>
 </root>

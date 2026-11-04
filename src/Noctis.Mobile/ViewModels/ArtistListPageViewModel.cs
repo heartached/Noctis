@@ -49,7 +49,7 @@ public sealed record ArtistListItem(Artist Artist, string? CoverPath) : INotifyP
     public override int GetHashCode() => HashCode.Combine(Artist.Name, CoverPath);
 
     public string Subtitle =>
-        $"{Artist.AlbumCount} album{(Artist.AlbumCount == 1 ? "" : "s")} · {Artist.TrackCount} song{(Artist.TrackCount == 1 ? "" : "s")}";
+        $"{Loc.Plural("Mobile.Count.Albums", Artist.AlbumCount)} · {Loc.Plural("Mobile.Count.Songs", Artist.TrackCount)}";
 
     /// <summary>What a circle without a picture shows ("Bruno Mars" → "BM").</summary>
     public string Initials => ArtistIndex.Initials(Name);

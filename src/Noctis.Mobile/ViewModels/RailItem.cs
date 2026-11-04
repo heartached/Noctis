@@ -1,4 +1,5 @@
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -16,13 +17,13 @@ public sealed record RailItem(RailItemKind Kind, string Title, string Subtitle, 
     public static RailItem ForTrack(Track track) => new(RailItemKind.Track, track.Title, track.Artist, track.AlbumArtworkPath, track);
 
     public static RailItem ForArtist(Artist artist, string? artworkPath) =>
-        new(RailItemKind.Artist, artist.Name, "Artist", artworkPath, artist);
+        new(RailItemKind.Artist, artist.Name, Loc.T("Mobile.Artist"), artworkPath, artist);
 
     /// <summary>Artists show as circles on a rail, everything else as rounded squares.</summary>
     public bool IsArtist => Kind == RailItemKind.Artist;
 
     public static RailItem ForPlaylist(Playlist playlist, string? artworkPath) =>
-        new(RailItemKind.Playlist, playlist.Name, playlist.TrackIds.Count == 1 ? "1 song" : $"{playlist.TrackIds.Count} songs", artworkPath, playlist);
+        new(RailItemKind.Playlist, playlist.Name, Loc.Plural("Mobile.Count.Songs", playlist.TrackIds.Count), artworkPath, playlist);
 
     /// <summary>
     /// Every library refresh rebuilds the Album, Track and Artist objects (a rescan publishes every

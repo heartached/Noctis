@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.Services;
 
@@ -130,9 +131,9 @@ public sealed class PhoneBackground : ObservableObject
     public bool BatterySaverOn => _saver?.IsOn ?? false;
 
     /// <summary>The current choice's name, as the Settings row shows it.</summary>
-    public string Summary => Choice == Off ? "Off"
-        : Choice == Artwork ? "Now Playing"
-        : BackgroundCatalog.Find(Choice)?.Name ?? "Off";
+    public string Summary => Choice == Off ? Loc.T("Mobile.Off")
+        : Choice == Artwork ? Loc.T("Mobile.NowPlaying")
+        : BackgroundCatalog.Find(Choice)?.Name ?? Loc.T("Mobile.Off");
 
     /// <summary>Raised after a change that Settings shows (choice, motion, strength).</summary>
     public event EventHandler? ChoiceChanged;

@@ -1,5 +1,6 @@
 <controls:GlassPanel xmlns="https://github.com/avaloniaui"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
                      xmlns:vm="using:Noctis.Mobile.ViewModels"
                      xmlns:controls="using:Noctis.Controls"
                      x:Class="Noctis.Mobile.Views.PlaylistTools"
@@ -9,11 +10,11 @@
          the list and sort it. Each lights up while it changes what is shown. -->
     <StackPanel Orientation="Horizontal" Margin="4,0">
         <Button Name="PlaylistSearchButton" Classes="glass-round" Classes.on="{Binding IsSearchOpen}"
-                Command="{Binding ToggleSearchCommand}" AutomationProperties.Name="Search playlists">
+                Command="{Binding ToggleSearchCommand}" AutomationProperties.Name="{loc:T Mobile.Playlists.SearchName}">
             <PathIcon Data="{DynamicResource PhSearch}" />
         </Button>
         <Button Name="PlaylistSortButton" Classes="glass-round" Classes.on="{Binding IsSorted}" Command="{Binding ShowSortMenuCommand}"
-                AutomationProperties.Name="Sort playlists">
+                AutomationProperties.Name="{loc:T Mobile.Playlists.SortName}">
             <PathIcon Data="{DynamicResource PhSort}" />
         </Button>
     </StackPanel>

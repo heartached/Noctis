@@ -249,7 +249,9 @@
     <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" Name="LibraryHeader" ColumnDefinitions="*,Auto" Classes="tab-header"
               Classes.editing="{Binding LibraryRows.IsEditing}">
-            <TextBlock Classes="title" Text="{loc:T Tab.Library}" VerticalAlignment="Center" />
+            <views:FitWidth Name="LibraryTitleFit" VerticalAlignment="Center">
+                <TextBlock Name="LibraryTitle" Classes="title" Text="{loc:T Tab.Library}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </views:FitWidth>
             <!-- Liquid Glass, as on Apple's Library: a pill with Edit and the … menu, then the
                  profile (Settings). -->
             <StackPanel Grid.Column="1" Name="HeaderActions" Orientation="Horizontal" Spacing="10">
@@ -261,7 +263,7 @@
                         </Button>
                         <!-- Add Folder…, Rescan Library and Settings on the glass pop menu (PopMenu). -->
                         <Button Name="LibraryMoreButton" Classes="glass-round" Command="{Binding OpenLibraryMenuCommand}"
-                                AutomationProperties.Name="More">
+                                AutomationProperties.Name="{loc:T Mobile.More}">
                             <PathIcon Data="{DynamicResource LibMoreIcon}" />
                         </Button>
                     </StackPanel>
@@ -317,7 +319,7 @@
                             <Button Name="RecentlyAddedHeader" Classes="row section-header" Command="{Binding OpenRecentlyAddedCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <PathIcon Data="{DynamicResource LibRecentlyAddedIcon}" />
-                                    <TextBlock Classes="section" Text="Recently Added" />
+                                    <TextBlock Classes="section" Text="{loc:T Mobile.RecentlyAdded}" />
                                     <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
                                 </StackPanel>
                             </Button>

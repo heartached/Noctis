@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
@@ -117,7 +118,7 @@
             <Grid Name="Layout" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="24,0,24,8">
                 <!-- Apple's grabber: tap to close (Back closes too). -->
                 <Button Grid.Row="0" Name="GrabberButton" Classes="row" HorizontalAlignment="Center" Width="96" Height="32"
-                        Command="{Binding CloseNowPlayingCommand}" AutomationProperties.Name="Close">
+                        Command="{Binding CloseNowPlayingCommand}" AutomationProperties.Name="{loc:T Common.Close}">
                     <Border Width="40" Height="5" CornerRadius="2.5" Background="#59FFFFFF"
                             HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
@@ -154,7 +155,7 @@
                     </StackPanel>
                     <!-- Favourite and the rest live in the ⋯ menu (Apple's). -->
                     <Button Grid.Column="1" Name="NowPlayingMore" Classes="icon" Margin="8,0,-10,0" VerticalAlignment="Center"
-                            Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="More">
+                            Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                         <PathIcon Data="{DynamicResource PhMore}" Width="26" Height="26" />
                     </Button>
                 </Grid>
@@ -163,7 +164,7 @@
                     <!-- Seeks on release only (the code-behind); the times follow the drag. -->
                     <views:CapsuleSlider Name="SeekBar" Height="30" Minimum="0" Maximum="{Binding Player.Duration.TotalSeconds}"
                                          Value="{Binding Player.Position.TotalSeconds, Mode=OneWay}"
-                                         AutomationProperties.Name="Playback position" />
+                                         AutomationProperties.Name="{loc:T Mobile.PlaybackPosition}" />
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*" Margin="0,-4,0,0">
                         <TextBlock Name="ElapsedText" Classes="np-time" Text="{Binding Player.ElapsedText}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <!-- The quality badge (owner 10-14): the playing file's class between the
@@ -174,7 +175,7 @@
                              white so it sits back from the times. A tap opens the quality card
                              (ShowQualityCard), which grows out of it. -->
                         <Button Grid.Column="1" Name="QualityBadge" Classes="row np-badge" Command="{Binding ShowQualityCardCommand}"
-                                IsVisible="{Binding Player.HasQuality}" AutomationProperties.Name="Audio quality">
+                                IsVisible="{Binding Player.HasQuality}" AutomationProperties.Name="{loc:T Mobile.AudioQuality}">
                             <Border Name="QualityPill" Classes="np-badge-pill">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <Viewbox Name="QualityGlyph" Width="16" Height="11" Margin="0,1,0,0" VerticalAlignment="Center">
@@ -195,15 +196,15 @@
                      Shuffle and Repeat are on the Queue page (Apple's). -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
                     <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
-                            Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="Previous">
+                            Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
                         <controls:TransportGlyph Kind="Previous" Width="44" Height="44" />
                     </Button>
                     <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport tx"
-                            Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
+                            Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
                         <controls:TransportGlyph Kind="PlayPause" Width="48" Height="48" IsPlaying="{Binding Player.IsPlaying}" />
                     </Button>
                     <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
-                            Command="{Binding Player.NextCommand}" AutomationProperties.Name="Next">
+                            Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
                         <controls:TransportGlyph Kind="Next" Width="44" Height="44" />
                     </Button>
                 </Grid>
@@ -211,7 +212,7 @@
                 <Grid Grid.Row="5" Name="VolumeRow" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Player.HasVolumeControl}">
                     <PathIcon Data="{DynamicResource PhVolumeLow}" Width="18" Height="18" Opacity="0.6" />
                     <views:CapsuleSlider Grid.Column="1" Name="VolumeSlider" Height="30" Minimum="0" Maximum="1" Margin="10,0"
-                                         Value="{Binding Player.VolumeLevel, Mode=TwoWay}" AutomationProperties.Name="Volume" />
+                                         Value="{Binding Player.VolumeLevel, Mode=TwoWay}" AutomationProperties.Name="{loc:T Mobile.Volume}" />
                     <PathIcon Grid.Column="2" Data="{DynamicResource PhVolumeHigh}" Width="18" Height="18" Opacity="0.6" />
                 </Grid>
 
@@ -220,15 +221,15 @@
                                IsVisible="{Binding Player.ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <Grid ColumnDefinitions="*,*,*" Margin="0,12,0,0">
                         <Button Grid.Column="0" Name="LyricsButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="Lyrics">
+                                Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="{loc:T Tab.Lyrics}">
                             <PathIcon Data="{DynamicResource PhLyrics}" />
                         </Button>
                         <Button Grid.Column="1" Name="OutputButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ShowOutputCommand}" AutomationProperties.Name="Output">
+                                Command="{Binding ShowOutputCommand}" AutomationProperties.Name="{loc:T Mobile.Output}">
                             <PathIcon Classes="speaker" Data="{DynamicResource PhVolumeHigh}" />
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
+                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="{loc:T Tab.Queue}">
                             <PathIcon Data="{DynamicResource PhQueue}" />
                         </Button>
                     </Grid>

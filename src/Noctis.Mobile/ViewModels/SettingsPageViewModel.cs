@@ -14,6 +14,9 @@ namespace Noctis.Mobile.ViewModels;
 /// <summary>One accent swatch; the names and colours are the desktop's (App.AccentPresets).</summary>
 public sealed record AccentSwatch(string Name, string Hex)
 {
+    /// <summary>The preset's name in the current language; <see cref="Name"/> is the one saved.</summary>
+    public string DisplayName => Loc.T("Mobile.Accent." + Name);
+
     // Immutable: not an AvaloniaObject, so the static Accents list can be built off the UI thread.
     public IBrush Brush { get; } = new ImmutableSolidColorBrush(Color.Parse(Hex));
 }
@@ -47,7 +50,27 @@ public sealed record SettingsFolder(string Root, string Name, bool AccessLost)
 public sealed record LicenseEntry(string Name, string License, string Detail);
 
 /// <summary>Settings is one sheet: its top level, or one of the pages pushed inside it.</summary>
-public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses }
+public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language }
+
+/// <summary>One line of Settings › Language: "System language" (follow the phone) or a shipped
+/// translation, its own name first ("Русский") and the English one under it.</summary>
+public sealed partial class LanguageChoice : ObservableObject
+{
+    public LanguageChoice(string code, string label, string detail)
+    {
+        Code = code;
+        Label = label;
+        Detail = detail;
+    }
+
+    /// <summary>"" (<see cref="Loc.SystemLanguage"/>) or a culture name ("ru", "zh-Hant").</summary>
+    public string Code { get; }
+    public string Label { get; }
+    public string Detail { get; }
+    public bool HasDetail => Detail.Length > 0;
+
+    [ObservableProperty] private bool _isSelected;
+}
 
 /// <summary>
 /// Phone Settings. Changes apply at once (theme through the host, text size on the lyrics
@@ -70,7 +93,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         new("Rose", "#E754B5"),
     };
 
-    private const string SignInTitle = "Sign in to your computer";
+    private static string SignInTitle => Loc.T("Mobile.Account.SignInTitle");
 
     private bool _loading;
     // Set once the saved values were read (or the read failed): a change before it is kept
@@ -126,7 +149,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
         nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
-        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane))]
+        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
@@ -141,20 +164,22 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowsDownloadsPane => ShownSubPane == SettingsPane.Downloads;
     public bool ShowsWhatsNewPane => ShownSubPane == SettingsPane.WhatsNew;
     public bool ShowsLicensesPane => ShownSubPane == SettingsPane.Licenses;
+    public bool ShowsLanguagePane => ShownSubPane == SettingsPane.Language;
 
     /// <summary>The header's title: "Settings", or the pushed page's name.</summary>
     public string HeaderTitle => Pane switch
     {
-        SettingsPane.Folders => "Music Folders",
-        SettingsPane.Lyrics => "Lyrics",
-        SettingsPane.Background => "Background",
-        SettingsPane.Scrobbling => "Scrobbling",
-        SettingsPane.History => "Listening History",
-        SettingsPane.Accent => "Accent",
-        SettingsPane.PlayerBar => "Player Bar",
-        SettingsPane.Downloads => "Downloads",
-        SettingsPane.WhatsNew => "What's New",
-        SettingsPane.Licenses => "Open-Source Licenses",
+        SettingsPane.Folders => Loc.T("Mobile.Settings.MusicFolders"),
+        SettingsPane.Lyrics => Loc.T("Tab.Lyrics"),
+        SettingsPane.Background => Loc.T("Mobile.Settings.Background"),
+        SettingsPane.Scrobbling => Loc.T("Mobile.Settings.Scrobbling"),
+        SettingsPane.History => Loc.T("Mobile.Settings.ListeningHistory"),
+        SettingsPane.Accent => Loc.T("Mobile.Settings.Accent"),
+        SettingsPane.PlayerBar => Loc.T("Mobile.Settings.PlayerBar"),
+        SettingsPane.Downloads => Loc.T("Mobile.Settings.Downloads"),
+        SettingsPane.WhatsNew => Loc.T("Mobile.Settings.WhatsNew"),
+        SettingsPane.Licenses => Loc.T("Mobile.Settings.Licenses"),
+        SettingsPane.Language => Loc.T("Settings.Language.Title"),
         _ => Title,
     };
 
@@ -208,7 +233,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool IsConfirmingRemoveFolder => FolderToRemove != null;
 
     public string RemoveFolderQuestion => FolderToRemove is { } folder
-        ? $"Remove “{folder.Title}”? Its songs leave your library on this phone. The files stay where they are."
+        ? Loc.T("Mobile.Folders.RemoveQuestionLong", folder.Title)
         : string.Empty;
 
     // The question up now (the shell's glass prompt).
@@ -220,9 +245,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         DropQuestion();
         FolderToRemove = folder;
-        var question = new PromptViewModel(Shell, $"Remove “{folder.Title}”?",
-            "Its songs leave your library on this phone. The files stay where they are.",
-            new[] { new PromptAction("Remove Folder", _ => ConfirmRemoveFolderCommand.ExecuteAsync(null), isDestructive: true) },
+        var question = new PromptViewModel(Shell, Loc.T("Mobile.Folders.RemoveQuestion", folder.Title),
+            Loc.T("Mobile.Folders.RemoveDetail"),
+            new[] { new PromptAction(Loc.T("Mobile.Folders.Remove"), _ => ConfirmRemoveFolderCommand.ExecuteAsync(null), isDestructive: true) },
             cancelled: () => { if (ReferenceEquals(FolderToRemove, folder)) FolderToRemove = null; });
         _question = question;
         Shell.ShowPrompt(question);
@@ -261,10 +286,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// folders are for the app.</summary>
     public string FoldersFootnote => !string.IsNullOrEmpty(Shell.Library.StatusText)
         ? Shell.Library.StatusText
-        : "Noctis can read only the folders you choose here.";
+        : Loc.T("Mobile.Folders.ReadOnlyChosen");
 
     /// <summary>The Music Folders row's value: how many there are.</summary>
-    public string FoldersValue => Shell.Library.Folders.Count == 0 ? "None" : Shell.Library.Folders.Count.ToString();
+    public string FoldersValue => Shell.Library.Folders.Count == 0 ? Loc.T("Mobile.Folders.NoneValue") : Shell.Library.Folders.Count.ToString(Loc.Instance.Culture);
 
     /// <summary>A folder lost its access, or the last scan could not reach it: the Music Folders
     /// row carries a warning dot.</summary>
@@ -272,45 +297,59 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>The Music Folders row as the screen reader says it: the count, then the warning a dot shows.</summary>
     public string FoldersRowName => HasLostFolder
-        ? $"Music Folders, {FoldersValue}, a folder lost its access or can't be reached"
-        : $"Music Folders, {FoldersValue}";
+        ? Loc.T("Mobile.Folders.RowNameWarning", Loc.T("Mobile.Settings.MusicFolders"), FoldersValue)
+        : Named(Loc.T("Mobile.Settings.MusicFolders"), FoldersValue);
 
     /// <summary>Rescan only with a folder to scan and no scan running.</summary>
     public bool CanRescan => Shell.Library.HasFolders && !Shell.Library.IsScanning;
 
     /// <summary>The grey line in the Rescan Library row: when the last scan finished, else what it does.</summary>
     public string RescanSubtitle => Shell.Library.LastScanLocal is { } scanned
-        ? $"Last scan {ScanTime(scanned, UtcNow().ToLocalTime())}"
-        : "Looks for new songs in your folders";
+        ? Loc.T("Mobile.Settings.LastScan", ScanTime(scanned, UtcNow().ToLocalTime()))
+        : Loc.T("Mobile.Settings.RescanHint");
 
-    public string RescanRowName => $"Rescan Library, {RescanSubtitle}";
+    public string RescanRowName => Named(Loc.T("Mobile.RescanLibrary"), RescanSubtitle);
 
     /// <summary>"today, 10:42", "yesterday, 22:10", "4 Oct, 09:05".</summary>
     internal static string ScanTime(DateTime scanned, DateTime now)
     {
-        var time = scanned.ToString("t");
-        if (scanned.Date == now.Date) return $"today, {time}";
-        if (scanned.Date == now.Date.AddDays(-1)) return $"yesterday, {time}";
-        return $"{scanned:d MMM}, {time}";
+        var culture = Loc.Instance.Culture;
+        var time = scanned.ToString("t", culture);
+        if (scanned.Date == now.Date) return Loc.T("Mobile.Settings.ScanToday", time);
+        if (scanned.Date == now.Date.AddDays(-1)) return Loc.T("Mobile.Settings.ScanYesterday", time);
+        return Loc.T("Mobile.Settings.ScanOnDay", scanned.ToString(MonthDay(culture), culture), time);
     }
 
     /// <summary>Under Rescan Library: the scan's status ("Scanning…", a failure), else why it is off.</summary>
     public string RescanFootnote =>
         !string.IsNullOrEmpty(Shell.Library.StatusText) ? Shell.Library.StatusText
-        : Shell.Library.IsLoaded && !Shell.Library.HasFolders ? "Add a music folder to scan it."
+        : Shell.Library.IsLoaded && !Shell.Library.HasFolders ? Loc.T("Mobile.Settings.AddFolderToScan")
         : string.Empty;
 
     // ── Appearance ──
 
     /// <summary>The Theme row's value: System, Light or Dark.</summary>
-    public string ThemeValue => Appearance;
+    public string ThemeValue => ThemeLabel(Appearance);
+
+    /// <summary>An appearance ("System", "Light", "Dark") or dark style ("Ink", "Smoke", "Midnight") as shown;
+    /// the English name is the saved value.</summary>
+    internal static string ThemeLabel(string name) => Loc.T("Mobile.Theme." + name);
+
+    /// <summary>A short day and month in the language's own order: English keeps the phone's
+    /// "4 Oct"; "4 окт.", "10月4日" elsewhere.</summary>
+    internal static string MonthDay(System.Globalization.CultureInfo culture)
+    {
+        if (culture.TwoLetterISOLanguageName == "en") return "d MMM";
+        var pattern = culture.DateTimeFormat.MonthDayPattern;
+        return pattern.Contains("MMMM", StringComparison.Ordinal) ? pattern.Replace("MMMM", "MMM") : pattern;
+    }
 
     /// <summary>A row as the screen reader says it: its label, then its value.</summary>
     private static string Named(string label, string? value) => string.IsNullOrEmpty(value) ? label : $"{label}, {value}";
 
-    public string BackgroundRowName => Named("Background", Background.Summary);
-    public string ThemeRowName => Named("Theme", ThemeValue);
-    public string AccentRowName => Named("Accent", AccentName);
+    public string BackgroundRowName => Named(Loc.T("Mobile.Settings.Background"), Background.Summary);
+    public string ThemeRowName => Named(Loc.T("Mobile.Settings.Theme"), ThemeValue);
+    public string AccentRowName => Named(Loc.T("Mobile.Settings.Accent"), AccentName);
 
     /// <summary>The accent's dot on the Accent row.</summary>
     public IBrush AccentBrush => Color.TryParse(_accentHex, out var colour) ? new ImmutableSolidColorBrush(colour) : Accents[0].Brush;
@@ -318,19 +357,28 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The accent's preset name ("Crimson"); a saved accent outside the nine keeps the
     /// name it was saved with ("Scarlet"), else "Custom" (a colour picked on the desktop).</summary>
     public string AccentName =>
+        AccentPresetName is var name && Accents.Any(a => a.Name == name) ? Loc.T("Mobile.Accent." + name)
+        : name == CustomAccent ? Loc.T("Mobile.Accent.Custom")
+        : name;
+
+    private const string CustomAccent = "Custom";
+
+    /// <summary>The English preset name settings.json keeps (the desktop reads it): the preset's,
+    /// the one it was saved with, or "Custom".</summary>
+    private string AccentPresetName =>
         Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase))?.Name
-        ?? (string.IsNullOrWhiteSpace(_savedAccentName) || Accents.Any(a => a.Name == _savedAccentName) ? "Custom" : _savedAccentName);
+        ?? (string.IsNullOrWhiteSpace(_savedAccentName) || Accents.Any(a => a.Name == _savedAccentName) ? CustomAccent : _savedAccentName);
 
     /// <summary>The Player Bar row's value: which progress the mini player shows.</summary>
     public string PlayerBarValue => (Shell.ShowMiniProgressFill, Shell.ShowMiniProgressLine) switch
     {
-        (true, true) => "Colour and Line",
-        (true, false) => "Progress Colour",
-        (false, true) => "Progress Line",
-        _ => "Plain",
+        (true, true) => Loc.T("Mobile.Settings.ColourAndLine"),
+        (true, false) => Loc.T("Mobile.Settings.ProgressColour"),
+        (false, true) => Loc.T("Mobile.Settings.ProgressLine"),
+        _ => Loc.T("Mobile.Settings.Plain"),
     };
 
-    public string PlayerBarRowName => Named("Player Bar", PlayerBarValue);
+    public string PlayerBarRowName => Named(Loc.T("Mobile.Settings.PlayerBar"), PlayerBarValue);
 
     /// <summary>The Theme row: System / Light / Dark on the glass pop menu (the one ticked is
     /// exposed as selected), then the dark style, which a tap steps to the next.</summary>
@@ -339,8 +387,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         var items = new List<OptionsMenuItem>();
         foreach (var look in new[] { "System", "Light", "Dark" })
-            items.Add(new OptionsMenuItem(Shell, look, Appearance == look, () => Appearance = look));
-        items.Add(new OptionsMenuItem(Shell, $"Dark style: {DarkTheme}", false, NextDarkTheme) { StartsGroup = true });
+            items.Add(new OptionsMenuItem(Shell, ThemeLabel(look), Appearance == look, () => Appearance = look));
+        items.Add(new OptionsMenuItem(Shell, Loc.T("Mobile.Theme.DarkStyle", ThemeLabel(DarkTheme)), false, NextDarkTheme) { StartsGroup = true });
         Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
     }
 
@@ -351,25 +399,27 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The Lyrics row's value: which extra lines show.</summary>
     public string LyricsValue => (Shell.Lyrics.ShowTranslation, Shell.Lyrics.ShowRomanization) switch
     {
-        (true, true) => "Both on",
-        (true, false) => "Translations on",
-        (false, true) => "Romanization on",
-        _ => "Off",
+        (true, true) => Loc.T("Mobile.Lyrics.BothOn"),
+        (true, false) => Loc.T("Mobile.Lyrics.TranslationsOn"),
+        (false, true) => Loc.T("Mobile.Lyrics.RomanizationOn"),
+        _ => Loc.T("Mobile.Off"),
     };
 
-    public string LyricsRowName => Named("Lyrics", LyricsValue);
+    public string LyricsRowName => Named(Loc.T("Tab.Lyrics"), LyricsValue);
 
     // ── Listening ──
 
-    public string ScrobblingRowName => Named("Scrobbling", Scrobbling.Summary);
-    public string HistoryRowName => Named("Listening History", History.Summary);
+    public string ScrobblingRowName => Named(Loc.T("Mobile.Settings.Scrobbling"), Scrobbling.Summary);
+    public string HistoryRowName => Named(Loc.T("Mobile.Settings.ListeningHistory"), History.Summary);
 
     /// <summary>Pick Up on Computer and its footnote: only while signed in (the queue goes to the
     /// account's computer; signed out there is none, though the account service is there).</summary>
     public bool ShowPickUp => IsSignedIn;
 
     /// <summary>Under Pick Up on Computer: what the switch does, naming the computer.</summary>
-    public string PickUpFootnote => $"When you open Noctis on {(IsSignedIn ? AccountPageViewModel.ServerLabel(Shell.Account!.Account!) : "your computer")}, it offers to carry on from the song you were playing here.";
+    public string PickUpFootnote => IsSignedIn
+        ? Loc.T("Mobile.Settings.PickUpFootnote", AccountPageViewModel.ServerLabel(Shell.Account!.Account!))
+        : Loc.T("Mobile.Settings.PickUpFootnoteGeneric");
 
     // ── Downloads ──
 
@@ -380,8 +430,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(DownloadsValue), nameof(DownloadsRowName))]
     private bool _downloadWifiOnly = true;
 
-    public string DownloadsValue => DownloadWifiOnly ? "Wi-Fi Only" : "Any Network";
-    public string DownloadsRowName => Named("Downloads", DownloadsValue);
+    public string DownloadsValue => DownloadWifiOnly ? Loc.T("Mobile.Settings.WifiOnlyValue") : Loc.T("Mobile.Settings.AnyNetwork");
+    public string DownloadsRowName => Named(Loc.T("Mobile.Settings.Downloads"), DownloadsValue);
 
     /// <summary>The settings.json write of the Wi-Fi switch; tests await it.</summary>
     internal Task PendingWifiSave { get; private set; } = Task.CompletedTask;
@@ -438,9 +488,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         if (!CanRemoveDownloads) return;
         DropQuestion();
-        var question = new PromptViewModel(Shell, "Remove all downloads?",
-            $"{StorageUsedText} leave this phone. They stay on your computer and still stream.",
-            new[] { new PromptAction("Remove Downloads", _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) });
+        var question = new PromptViewModel(Shell, Loc.T("Mobile.Downloads.RemoveQuestion"),
+            Loc.T("Mobile.Downloads.RemoveDetail", StorageUsedText),
+            new[] { new PromptAction(Loc.T("Mobile.Downloads.RemoveAction"), _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) });
         _question = question;
         Shell.ShowPrompt(question);
     }
@@ -510,9 +560,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     private void ShowDownloadStats(int count, long bytes)
     {
-        DownloadedStat = count.ToString("N0");
+        DownloadedStat = count.ToString("N0", Loc.Instance.Culture);
         OnPhoneStat = AccountPageViewModel.FormatBytes(bytes);
-        StorageUsedText = $"{count:N0} {(count == 1 ? "song" : "songs")} · {OnPhoneStat}";
+        StorageUsedText = $"{Loc.Plural("Mobile.Count.SongsN0", count)} · {OnPhoneStat}";
         CanRemoveDownloads = Shell.Account != null && count > 0;
     }
 
@@ -531,40 +581,40 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>"Noctis 1.2.3" → "1.2.3" for the Version row.</summary>
     public string VersionValue => VersionText.StartsWith("Noctis ", StringComparison.Ordinal) ? VersionText["Noctis ".Length..] : VersionText;
-    public string VersionRowName => Named("Version", VersionValue);
+    public string VersionRowName => Named(Loc.T("Mobile.Settings.Version"), VersionValue);
 
     /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings
     /// holds; the Downloads line only where there is an account (and so a Downloads page).</summary>
     public IReadOnlyList<string> WhatsNewItems => new[]
     {
-        "Settings is redesigned: your profile and library numbers on top, then Appearance, Library, Listening, Help and About.",
-        Shell.HasAccount ? "Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads." : null,
-        "Open-Source Licenses lists what Noctis is built with.",
+        Loc.T("Mobile.WhatsNew.Settings"),
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Downloads") : null,
+        Loc.T("Mobile.WhatsNew.Licenses"),
+        Loc.T("Mobile.WhatsNew.Language"),
     }.OfType<string>().ToArray();
 
     /// <summary>Open-Source Licenses: the bundled decoder and the main libraries the phone app is built on.</summary>
-    public IReadOnlyList<LicenseEntry> Licenses { get; } = new LicenseEntry[]
+    /// <remarks>Names and licences stay as published; the descriptions are translated.</remarks>
+    public IReadOnlyList<LicenseEntry> Licenses => new LicenseEntry[]
     {
-        new("FFmpeg (libavcodec, libavutil, libswresample)", "LGPL-2.1-or-later",
-            "The bundled ALAC decoder, built from the unmodified FFmpeg 6.0 source without GPL or non-free parts: git.ffmpeg.org/ffmpeg.git"),
-        new("AndroidX Media3 (ExoPlayer, Session, FFmpeg decoder extension)", "Apache-2.0", "Playback, media session and the decoder's JNI wrapper."),
-        new("Avalonia", "MIT", "The user interface framework."),
-        new("Inter", "SIL Open Font License 1.1", "The typeface, through Avalonia.Fonts.Inter."),
-        new("CommunityToolkit.Mvvm", "MIT", "The view models' plumbing."),
-        new("TagLib#", "LGPL-2.1", "Reads song tags and covers."),
-        new("Microsoft.Data.Sqlite and SQLitePCLRaw", "MIT and Apache-2.0", "The library's database; SQLite itself is public domain."),
-        new("SkiaSharp", "MIT", "Drawing."),
-        new("Xamarin.AndroidX bindings", "Apache-2.0", "Android's support libraries for .NET."),
-        new("Google code scanner (ML Kit, Google Play services)", "Android Software Development Kit License; .NET binding MIT",
-            "Scan QR Code on the Account page. Google Play services runs the camera and returns only the code's text."),
+        new("FFmpeg (libavcodec, libavutil, libswresample)", "LGPL-2.1-or-later", Loc.T("Mobile.License.FFmpeg")),
+        new("AndroidX Media3 (ExoPlayer, Session, FFmpeg decoder extension)", "Apache-2.0", Loc.T("Mobile.License.Media3")),
+        new("Avalonia", "MIT", Loc.T("Mobile.License.Avalonia")),
+        new("Inter", "SIL Open Font License 1.1", Loc.T("Mobile.License.Inter")),
+        new("CommunityToolkit.Mvvm", "MIT", Loc.T("Mobile.License.Mvvm")),
+        new("TagLib#", "LGPL-2.1", Loc.T("Mobile.License.TagLib")),
+        new("Microsoft.Data.Sqlite and SQLitePCLRaw", "MIT and Apache-2.0", Loc.T("Mobile.License.Sqlite")),
+        new("SkiaSharp", "MIT", Loc.T("Mobile.License.Skia")),
+        new("Xamarin.AndroidX bindings", "Apache-2.0", Loc.T("Mobile.License.AndroidX")),
+        new("Google code scanner (ML Kit, Google Play services)", "Android Software Development Kit License; .NET binding MIT", Loc.T("Mobile.License.CodeScanner")),
     };
 
     // ── Logs, version ──
 
     /// <summary>The Export Logs row's grey line: the last export's outcome, else what it does.</summary>
-    public string ExportSubtitle => ExportStatus.Length > 0 ? ExportStatus : "Keys and passwords removed";
+    public string ExportSubtitle => ExportStatus.Length > 0 ? ExportStatus : Loc.T("Mobile.Settings.ExportHint");
 
-    public string ExportRowName => Named("Export Logs", ExportSubtitle);
+    public string ExportRowName => Named(Loc.T("Mobile.Settings.ExportLogs"), ExportSubtitle);
 
     public string VersionText => Shell.VersionText;
 
@@ -572,7 +622,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>Settings → Account's row: who this phone is signed in as, or the invitation to sign in.</summary>
     public string AccountRowText => Shell.Account?.Account is { } account && Shell.Account.IsSignedIn
-        ? $"Signed in as {AccountPageViewModel.ShownName(account)} · {AccountPageViewModel.ServerLabel(account)}"
+        ? Loc.T("Mobile.Settings.SignedInAs", AccountPageViewModel.ShownName(account), AccountPageViewModel.ServerLabel(account))
         : SignInTitle;
 
     private bool IsSignedIn => Shell.Account is { IsSignedIn: true, Account: not null };
@@ -584,9 +634,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// signing in brings; before the first sync, the computer and that it has not synced yet.</summary>
     public string AccountSubtitle => IsSignedIn
         ? Shell.Account!.Account!.LastSyncUtc is null
-            ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · Not synced yet"
-            : $"Synced with {AccountPageViewModel.ServerLabel(Shell.Account!.Account!)}"
-        : "Sync your library with Noctis on your PC";
+            ? $"{AccountPageViewModel.ServerLabel(Shell.Account!.Account!)} · {Loc.T("Mobile.Account.NotSynced")}"
+            : Loc.T("Mobile.Settings.SyncedWith", AccountPageViewModel.ServerLabel(Shell.Account!.Account!))
+        : Loc.T("Mobile.Settings.SyncPitch");
 
     /// <summary>The green dot before the grey line: signed in and synced at least once.</summary>
     public bool ShowSyncedDot => IsSignedIn && Shell.Account!.Account!.LastSyncUtc != null;
@@ -672,6 +722,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 }
                 if (!kept.HasFlag(SavedFields.TextScale))
                     LyricsTextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
+                // The host applied it at start (AndroidApp.StartAsync); the page only shows it.
+                if (!kept.HasFlag(SavedFields.Language))
+                    Language = settings.Language?.Trim() ?? Loc.SystemLanguage;
             }
             finally
             {
@@ -681,11 +734,82 @@ public sealed partial class SettingsPageViewModel : MobilePage
         _loaded = true;
         if (_setBeforeLoad == SavedFields.None) return;
         // The early change re-themed over the defaults: once more with the loaded rest.
-        if ((_setBeforeLoad & ~SavedFields.TextScale) != SavedFields.None) Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
+        if ((_setBeforeLoad & ~(SavedFields.TextScale | SavedFields.Language)) != SavedFields.None) Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex);
         QueueSave(_setBeforeLoad);
     }
 
     partial void OnAppearanceChanged(string value) => ThemeChanged(SavedFields.Appearance);
+
+    // ── Language ──
+
+    /// <summary>Settings › Language: "" follows the phone's language, else a shipped translation
+    /// ("ru"). Saved as settings.Language, the desktop's field; the host applies it at start.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LanguageValue), nameof(LanguageRowName))]
+    private string _language = Loc.SystemLanguage;
+
+    /// <summary>System language first, then every translation the app ships (Loc.Supported).</summary>
+    public IReadOnlyList<LanguageChoice> LanguageChoices => _languageChoices ??= BuildLanguageChoices();
+    private IReadOnlyList<LanguageChoice>? _languageChoices;
+
+    private IReadOnlyList<LanguageChoice> BuildLanguageChoices()
+    {
+        var list = new List<LanguageChoice> { new(Loc.SystemLanguage, Loc.T("Settings.Language.System"), NativeName(Loc.Resolve(Loc.SystemLanguage))) };
+        foreach (var code in Loc.Supported)
+        {
+            var english = System.Globalization.CultureInfo.GetCultureInfo(code).EnglishName;
+            var native = NativeName(code);
+            list.Add(new LanguageChoice(code, native, string.Equals(native, english, StringComparison.OrdinalIgnoreCase) ? string.Empty : english));
+        }
+        foreach (var choice in list) choice.IsSelected = choice.Code == Language;
+        return list;
+    }
+
+    /// <summary>A language in its own words, capitalised: "Русский", "Español", "中文（简体）".</summary>
+    internal static string NativeName(string code)
+    {
+        try
+        {
+            var culture = System.Globalization.CultureInfo.GetCultureInfo(code);
+            var name = culture.NativeName;
+            return name.Length == 0 ? code : char.ToUpper(name[0], culture) + name[1..];
+        }
+        catch (System.Globalization.CultureNotFoundException) { return code; }
+    }
+
+    /// <summary>The Language row's value: "System", or the chosen language's own name.</summary>
+    public string LanguageValue => string.IsNullOrEmpty(Language) ? Loc.T("Mobile.Language.System") : NativeName(Language);
+    public string LanguageRowName => Named(Loc.T("Settings.Language.Title"), LanguageValue);
+
+    [RelayCommand]
+    private void ChooseLanguage(LanguageChoice? choice)
+    {
+        if (choice != null) Language = choice.Code;
+    }
+
+    /// <summary>A pick applies at once: the {loc:T} labels re-read on their own, and the shell
+    /// re-reads the strings the view models build (<see cref="ShellViewModel.Relabel"/>).</summary>
+    partial void OnLanguageChanged(string value)
+    {
+        if (_languageChoices != null)
+            foreach (var choice in _languageChoices) choice.IsSelected = choice.Code == value;
+        if (_loading) return;
+        var before = Loc.Instance.Culture.Name;
+        Loc.Instance.SetCulture(value);
+        if (Loc.Instance.Culture.Name != before) Shell.Relabel();
+        if (!_loaded) _setBeforeLoad |= SavedFields.Language;
+        else QueueSave(SavedFields.Language);
+    }
+
+    /// <summary>The language changed: this page, its sub-pages' view models and the language list re-read.</summary>
+    public override void Relabel()
+    {
+        _languageChoices = null;
+        base.Relabel();
+        Background.Relabel();
+        Scrobbling.Relabel();
+        History.Relabel();
+    }
     partial void OnDarkThemeChanged(string value) => ThemeChanged(SavedFields.DarkTheme);
 
     partial void OnSelectedAccentChanged(AccentSwatch? value)
@@ -734,7 +858,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>The settings.json fields a save writes: only those the user changed.</summary>
     [Flags]
-    private enum SavedFields { None = 0, Appearance = 1, DarkTheme = 2, Accent = 4, TextScale = 8 }
+    private enum SavedFields { None = 0, Appearance = 1, DarkTheme = 2, Accent = 4, TextScale = 8, Language = 16 }
 
     /// <summary>Saves one after another. Its own chain, not <see cref="PendingSave"/>: a slider's
     /// delayed save is PendingSave while it waits, and must not queue behind itself.</summary>
@@ -760,9 +884,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 if (fields.HasFlag(SavedFields.Accent))
                 {
                     settings.AccentColorHex = _accentHex;
-                    settings.AccentPresetName = AccentName;
+                    settings.AccentPresetName = AccentPresetName;
                 }
                 if (fields.HasFlag(SavedFields.TextScale)) settings.MobileLyricsTextScale = LyricsTextScale;
+                if (fields.HasFlag(SavedFields.Language)) settings.Language = Language;
             });
             Interlocked.Increment(ref SaveCount);
         }
@@ -777,20 +902,20 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         if (Shell.Logs == null)
         {
-            ExportStatus = "Export isn't available here";
+            ExportStatus = Loc.T("Mobile.Settings.ExportUnavailable");
             return;
         }
         // Redacted: the file leaves the app, and account errors can carry key or password text.
         try
         {
             var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", LogRedactor.Redact(DebugLog.Snapshot()));
-            ExportStatus = saved ? "Log saved" : "Export cancelled";
+            ExportStatus = saved ? Loc.T("Mobile.Settings.LogSaved") : Loc.T("Mobile.Settings.ExportCancelled");
         }
         catch (Exception ex)
         {
             // A failed write said "Export cancelled", as if the user had backed out.
             DebugLog.Write("Settings", $"Log export failed: {ex.Message}");
-            ExportStatus = "Couldn't save the log";
+            ExportStatus = Loc.T("Mobile.Settings.LogFailed");
         }
     }
 

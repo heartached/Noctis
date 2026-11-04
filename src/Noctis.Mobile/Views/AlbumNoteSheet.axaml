@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
              xmlns:views="using:Noctis.Mobile.Views"
@@ -69,7 +70,7 @@
                                                    MaxLines="1" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <Button Grid.Column="2" Name="NoteClose" VerticalAlignment="Top" Command="{Binding CloseCommand}"
-                                            AutomationProperties.Name="Close">
+                                            AutomationProperties.Name="{loc:T Common.Close}">
                                         <PathIcon Data="{DynamicResource PhClose}" Width="18" Height="18" />
                                     </Button>
                                 </Grid>

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -35,7 +36,7 @@ public sealed partial class AlbumTrackRow : ObservableObject
 /// desktop album page's DiscGroup header).</summary>
 public sealed record AlbumDiscHeader(int Disc)
 {
-    public string Label => $"Disc {Disc}";
+    public string Label => Loc.T("Mobile.Album.Disc", Disc);
 }
 
 /// <summary>
@@ -191,16 +192,17 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     /// the songs alone when no length is known.</summary>
     public static string BuildSongsLine(Album album)
     {
-        static string Count(int n, string unit) => n == 1 ? $"1 {unit}" : $"{n} {unit}s";
-        var songs = Count(album.TrackCount, "song");
+        var songs = Loc.Plural("Mobile.Count.Songs", album.TrackCount);
         var total = album.TotalDuration;
         var hours = (int)total.TotalHours;
         var length = hours > 0
-            ? total.Minutes > 0 ? $"{Count(hours, "hour")}, {Count(total.Minutes, "minute")}" : Count(hours, "hour")
-            : total.TotalMinutes >= 1 ? Count((int)total.TotalMinutes, "minute")
-            : (int)total.TotalSeconds > 0 ? Count((int)total.TotalSeconds, "second")
+            ? total.Minutes > 0
+                ? Loc.T("Mobile.Album.ListJoin", Loc.Plural("Mobile.Count.Hours", hours), Loc.Plural("Mobile.Count.Minutes", total.Minutes))
+                : Loc.Plural("Mobile.Count.Hours", hours)
+            : total.TotalMinutes >= 1 ? Loc.Plural("Mobile.Count.Minutes", (int)total.TotalMinutes)
+            : (int)total.TotalSeconds > 0 ? Loc.Plural("Mobile.Count.Seconds", (int)total.TotalSeconds)
             : null;
-        return length == null ? songs : $"{songs}, {length}";
+        return length == null ? songs : Loc.T("Mobile.Album.ListJoin", songs, length);
     }
 
     private async Task LoadDescriptionAsync(string artist, string album, CancellationToken ct)

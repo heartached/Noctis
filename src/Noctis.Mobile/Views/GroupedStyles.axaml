@@ -157,6 +157,9 @@
         <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="12,0,0,0" />
+        <!-- A long translated value trims rather than squeezing the row's label to a sliver. -->
+        <Setter Property="MaxWidth" Value="170" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
     <!-- GridIcon: PhChevronRight drawn on its 24-grid (a PathIcon shrank it to a speck). -->
     <Style Selector="views|GridIcon.row-chevron">

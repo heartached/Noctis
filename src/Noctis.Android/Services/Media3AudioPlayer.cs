@@ -19,6 +19,7 @@ using JInteger = Java.Lang.Integer;
 // mean (same pattern as AUri/JFile above) rather than fully-qualifying every use.
 using AudioAttributes = AndroidX.Media3.Common.AudioAttributes;
 using MediaMetadata = AndroidX.Media3.Common.MediaMetadata;
+using Noctis.Localization;
 
 namespace Noctis.Android.Services;
 
@@ -338,7 +339,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         State = PlaybackState.Stopped;
         if (CurrentMediaPath is { } path && !SafGrants.CanRead(_context, path))
         {
-            PlaybackError?.Invoke(this, "Noctis lost access to this song's folder. Add the folder again in Settings → Library.");
+            PlaybackError?.Invoke(this, Loc.T("Mobile.Player.LostFolderAccess"));
             return;
         }
         // Redacted: the text reaches the log and the Now Playing error line.
@@ -355,11 +356,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private void OnTracksChanged(Tracks tracks)
     {
         if (!tracks.ContainsType(C.TrackTypeAudio) || tracks.IsTypeSupported(C.TrackTypeAudio, true)) return;
-        var mime = FirstAudioMime(tracks) ?? "an unknown format";
-        DebugLog.Write("Audio", $"No decoder on this phone for {mime}; skipping the song");
+        var mime = FirstAudioMime(tracks);
+        DebugLog.Write("Audio", $"No decoder on this phone for {mime ?? "an unknown format"}; skipping the song");
         StopPositionPump();
         State = PlaybackState.Stopped;
-        PlaybackError?.Invoke(this, $"This phone can't decode {DescribeMime(mime)}, so the song was skipped.");
+        PlaybackError?.Invoke(this, Loc.T("Mobile.Player.CantDecode", mime == null ? Loc.T("Mobile.Player.UnknownFormat") : DescribeMime(mime)));
     }
 
     private static string? FirstAudioMime(Tracks tracks)
@@ -653,7 +654,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     /// </summary>
     private static string FallbackTitle(string path)
     {
-        const string unknown = "Unknown track";
+        var unknown = Loc.T("Mobile.Player.UnknownTrack");
         if (path.StartsWith("content://", StringComparison.Ordinal))
         {
             var last = AUri.Parse(path)?.LastPathSegment;

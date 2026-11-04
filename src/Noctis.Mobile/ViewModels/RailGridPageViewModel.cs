@@ -23,7 +23,7 @@ public sealed partial class RailGridPageViewModel : MobilePage
 
     public ShellViewModel Shell { get; }
 
-    public override string Title => _title;
+    public override string Title => Localized(_title);
 
     public BulkObservableCollection<RailItem> Items { get; } = new();
 

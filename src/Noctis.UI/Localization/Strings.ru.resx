@@ -3179,4 +3179,479 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>Не удалось перенести данные: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Перенос отменён. Данные остаются на месте.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>Подготовка…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
+  <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <data name="Mobile.BackToSettings" xml:space="preserve"><value>Назад к настройкам</value></data>
+  <data name="Mobile.Account.SignInTitle" xml:space="preserve"><value>Вход на компьютер</value></data>
+  <data name="Mobile.Account.SignInSubtitle" xml:space="preserve"><value>Слушайте и скачивайте музыку с компьютера прямо здесь.</value></data>
+  <data name="Mobile.Account.ScanQrHeader" xml:space="preserve"><value>Сканировать QR-код</value></data>
+  <data name="Mobile.Account.QrStep1" xml:space="preserve"><value>На компьютере откройте Noctis › Настройки › Аккаунт и устройства</value></data>
+  <data name="Mobile.Account.QrStep2" xml:space="preserve"><value>Включите «Noctis на телефоне» и нажмите «Подключить телефон»</value></data>
+  <data name="Mobile.Account.QrStep3" xml:space="preserve"><value>Нажмите «Сканировать QR-код» и наведите камеру на код</value></data>
+  <data name="Mobile.Account.ScanQrButton" xml:space="preserve"><value>Сканировать QR-код</value></data>
+  <data name="Mobile.Account.ManualHeader" xml:space="preserve"><value>Ввести вручную</value></data>
+  <data name="Mobile.Account.ManualStep1" xml:space="preserve"><value>На компьютере нажмите «Подключить телефон», затем «Ввести вручную»</value></data>
+  <data name="Mobile.Account.ManualStep2" xml:space="preserve"><value>Введите показанный адрес, свой email и пароль</value></data>
+  <data name="Mobile.Account.ManualStep3" xml:space="preserve"><value>Убедитесь, что код безопасности совпадает</value></data>
+  <data name="Mobile.Account.ServerAddress" xml:space="preserve"><value>Адрес сервера</value></data>
+  <data name="Mobile.Account.EmailOrUsername" xml:space="preserve"><value>Email или имя пользователя</value></data>
+  <data name="Mobile.Account.Password" xml:space="preserve"><value>Пароль</value></data>
+  <data name="Mobile.Account.Required" xml:space="preserve"><value>Обязательно</value></data>
+  <data name="Mobile.Account.ShowPassword" xml:space="preserve"><value>Показать пароль</value></data>
+  <data name="Mobile.Account.SignIn" xml:space="preserve"><value>Войти</value></data>
+  <data name="Mobile.Account.CheckCodeTitle" xml:space="preserve"><value>Проверьте код безопасности</value></data>
+  <data name="Mobile.Account.CheckCodeText" xml:space="preserve"><value>Компьютер показывает код безопасности в разделе «Подключить телефон». Входите, только если он совпадает с этим.</value></data>
+  <data name="Mobile.Account.TrustAndSignIn" xml:space="preserve"><value>Доверять и войти</value></data>
+  <data name="Mobile.Cancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Синхронизировать</value></data>
+  <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Скачать всё</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Все песни с компьютера будут храниться на этом телефоне и играть без подключения.</value></data>
+  <data name="Mobile.Downloaded" xml:space="preserve"><value>Скачанные</value></data>
+  <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
+  <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>Удалить загрузки</value></data>
+  <data name="Mobile.Account.SignOut" xml:space="preserve"><value>Выйти</value></data>
+  <data name="Mobile.NoAlbums" xml:space="preserve"><value>Нет альбомов</value></data>
+  <data name="Mobile.Play" xml:space="preserve"><value>Слушать</value></data>
+  <data name="Mobile.Album.More" xml:space="preserve"><value>ЕЩЁ</value></data>
+  <data name="Mobile.Album.RecordLabel" xml:space="preserve"><value>ЛЕЙБЛ</value></data>
+  <data name="Mobile.Artists.Find" xml:space="preserve"><value>Поиск в исполнителях</value></data>
+  <data name="Mobile.Artists.NoMatch" xml:space="preserve"><value>Исполнители не найдены</value></data>
+  <data name="Mobile.Artists.None" xml:space="preserve"><value>Нет исполнителей</value></data>
+  <data name="Mobile.Shuffle" xml:space="preserve"><value>Перемешать</value></data>
+  <data name="Mobile.Favorite" xml:space="preserve"><value>В избранное</value></data>
+  <data name="Mobile.Artist.TopSongs" xml:space="preserve"><value>Лучшие песни</value></data>
+  <data name="Mobile.Artist.SinglesEps" xml:space="preserve"><value>Синглы и EP</value></data>
+  <data name="Mobile.Artist.AppearsOn" xml:space="preserve"><value>Участие в альбомах</value></data>
+  <data name="Mobile.AddToPlaylist" xml:space="preserve"><value>Добавить в плейлист</value></data>
+  <data name="Mobile.NewPlaylist" xml:space="preserve"><value>Новый плейлист</value></data>
+  <data name="Mobile.Pinned" xml:space="preserve"><value>Закреплённые</value></data>
+  <data name="Mobile.Home.PinnedHint" xml:space="preserve"><value>Нажмите и удерживайте альбом, исполнителя, плейлист или песню и выберите «Закрепить», чтобы они были здесь.</value></data>
+  <data name="Mobile.RecentlyPlayed" xml:space="preserve"><value>Недавно прослушанные</value></data>
+  <data name="Mobile.OnRepeat" xml:space="preserve"><value>На повторе</value></data>
+  <data name="Mobile.Notice.AddMusicTitle" xml:space="preserve"><value>Добавьте свою музыку</value></data>
+  <data name="Mobile.Notice.AddMusicText" xml:space="preserve"><value>Выберите папку с музыкой. Noctis читает её на месте и ничего не загружает в сеть.</value></data>
+  <data name="Mobile.Notice.ChooseFolder" xml:space="preserve"><value>Выбрать папку</value></data>
+  <data name="Mobile.Notice.ReconnectFolder" xml:space="preserve"><value>Подключить папку снова</value></data>
+  <data name="Mobile.More" xml:space="preserve"><value>Ещё</value></data>
+  <data name="Mobile.RecentlyAdded" xml:space="preserve"><value>Недавно добавленные</value></data>
+  <data name="Mobile.Lyrics.Close" xml:space="preserve"><value>Закрыть текст</value></data>
+  <data name="Mobile.Lyrics.Translation" xml:space="preserve"><value>Перевод</value></data>
+  <data name="Mobile.Lyrics.Romaji" xml:space="preserve"><value>Ромадзи</value></data>
+  <data name="Mobile.PlaybackPosition" xml:space="preserve"><value>Позиция воспроизведения</value></data>
+  <data name="Mobile.Previous" xml:space="preserve"><value>Назад</value></data>
+  <data name="Mobile.PlayPause" xml:space="preserve"><value>Воспроизвести или приостановить</value></data>
+  <data name="Mobile.Next" xml:space="preserve"><value>Далее</value></data>
+  <data name="Mobile.Output" xml:space="preserve"><value>Вывод звука</value></data>
+  <data name="Mobile.AudioQuality" xml:space="preserve"><value>Качество звука</value></data>
+  <data name="Mobile.Volume" xml:space="preserve"><value>Громкость</value></data>
+  <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Поиск в плейлистах</value></data>
+  <data name="Mobile.Playlists.None" xml:space="preserve"><value>Плейлистов пока нет. Нажмите и удерживайте песню, чтобы создать первый.</value></data>
+  <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Плейлисты не найдены</value></data>
+  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Поиск плейлистов</value></data>
+  <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Сортировка плейлистов</value></data>
+  <data name="Mobile.PlayNext" xml:space="preserve"><value>Воспроизвести далее</value></data>
+  <data name="Mobile.AddToQueue" xml:space="preserve"><value>Добавить в очередь</value></data>
+  <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Перейти к альбому</value></data>
+  <data name="Mobile.GoToArtist" xml:space="preserve"><value>Перейти к исполнителю</value></data>
+  <data name="Mobile.Rename" xml:space="preserve"><value>Переименовать</value></data>
+  <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Удалить из плейлиста</value></data>
+  <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Удалить плейлист</value></data>
+  <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Добавить папку…</value></data>
+  <data name="Mobile.RescanLibrary" xml:space="preserve"><value>Пересканировать медиатеку</value></data>
+  <data name="Mobile.OK" xml:space="preserve"><value>ОК</value></data>
+  <data name="Mobile.ProfileButton" xml:space="preserve"><value>Профиль и настройки</value></data>
+  <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Далее</value></data>
+  <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Очистить</value></data>
+  <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Дальше ничего нет</value></data>
+  <data name="Mobile.Repeat" xml:space="preserve"><value>Повтор</value></data>
+  <data name="Mobile.NothingHere" xml:space="preserve"><value>Здесь пока пусто</value></data>
+  <data name="Mobile.Search" xml:space="preserve"><value>Поиск</value></data>
+  <data name="Mobile.Search.Placeholder" xml:space="preserve"><value>Исполнители, песни, альбомы, плейлисты</value></data>
+  <data name="Mobile.Search.All" xml:space="preserve"><value>Все</value></data>
+  <data name="Mobile.Search.Hint" xml:space="preserve"><value>Поиск в медиатеке</value></data>
+  <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Ничего не найдено</value></data>
+  <data name="Mobile.Artist" xml:space="preserve"><value>Исполнитель</value></data>
+  <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Плавное движение</value></data>
+  <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Цвета медленно переливаются</value></data>
+  <data name="Mobile.Background.Strength" xml:space="preserve"><value>Интенсивность</value></data>
+  <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>Из обложки</value></data>
+  <data name="Mobile.NowPlaying" xml:space="preserve"><value>Сейчас играет</value></data>
+  <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Меняется вместе с обложкой каждой песни</value></data>
+  <data name="Mobile.Off" xml:space="preserve"><value>Выкл.</value></data>
+  <data name="Mobile.Background.OffHint" xml:space="preserve"><value>Обычный цвет темы</value></data>
+  <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Нейтральные</value></data>
+  <data name="Mobile.Background.Colour" xml:space="preserve"><value>Цветные</value></data>
+  <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>На этой неделе</value></data>
+  <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Ещё ничего не прослушано</value></data>
+  <data name="Mobile.ShowAll" xml:space="preserve"><value>Показать все</value></data>
+  <data name="Mobile.History.Header" xml:space="preserve"><value>История</value></data>
+  <data name="Mobile.History.Keep" xml:space="preserve"><value>Хранить историю</value></data>
+  <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Засчитывать прослушивание</value></data>
+  <data name="Mobile.History.Share" xml:space="preserve"><value>Общая с компьютером</value></data>
+  <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Счётчики и «Недавно прослушанные» совпадают на обоих</value></data>
+  <data name="Mobile.History.ClearName" xml:space="preserve"><value>Очистить историю прослушиваний</value></data>
+  <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Очистить историю прослушиваний…</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Удаляет прослушивания на этом телефоне. Уже отправленные в Last.fm останутся там.</value></data>
+  <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>Этот телефон</value></data>
+  <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Компьютер</value></data>
+  <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Сервисы</value></data>
+  <data name="Mobile.Scrobbling.ThroughComputer" xml:space="preserve"><value>Через компьютер</value></data>
+  <data name="Mobile.Scrobbling.FromPhone" xml:space="preserve"><value>С этого телефона</value></data>
+  <data name="Mobile.Scrobbling.WhileListening" xml:space="preserve"><value>Во время прослушивания</value></data>
+  <data name="Mobile.Scrobbling.SendPlays" xml:space="preserve"><value>Отправлять прослушивания</value></data>
+  <data name="Mobile.Scrobbling.ShowNowPlaying" xml:space="preserve"><value>Показывать «Сейчас играет»</value></data>
+  <data name="Mobile.Scrobbling.Waiting" xml:space="preserve"><value>Ожидают отправки</value></data>
+  <data name="Mobile.Settings.OnPhone" xml:space="preserve"><value>На телефоне</value></data>
+  <data name="Mobile.Settings.Appearance" xml:space="preserve"><value>Оформление</value></data>
+  <data name="Mobile.Settings.Background" xml:space="preserve"><value>Фон</value></data>
+  <data name="Mobile.Settings.Theme" xml:space="preserve"><value>Тема</value></data>
+  <data name="Mobile.Settings.Accent" xml:space="preserve"><value>Акцентный цвет</value></data>
+  <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>Панель плеера</value></data>
+  <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Папки с музыкой</value></data>
+  <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Загрузки</value></data>
+  <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Прослушивание</value></data>
+  <data name="Mobile.Settings.Scrobbling" xml:space="preserve"><value>Скробблинг</value></data>
+  <data name="Mobile.Settings.ListeningHistory" xml:space="preserve"><value>История прослушиваний</value></data>
+  <data name="Mobile.Settings.PickUpName" xml:space="preserve"><value>Продолжить на компьютере, очередь и место в песне переходят с вами</value></data>
+  <data name="Mobile.Settings.PickUp" xml:space="preserve"><value>Продолжить на компьютере</value></data>
+  <data name="Mobile.Settings.PickUpHint" xml:space="preserve"><value>Очередь и место в песне переходят с вами</value></data>
+  <data name="Mobile.Settings.Help" xml:space="preserve"><value>Помощь</value></data>
+  <data name="Mobile.Settings.ReportName" xml:space="preserve"><value>Сообщить о проблеме, откроется в браузере</value></data>
+  <data name="Mobile.Settings.Report" xml:space="preserve"><value>Сообщить о проблеме</value></data>
+  <data name="Mobile.Settings.ExportLogs" xml:space="preserve"><value>Экспорт журналов</value></data>
+  <data name="Mobile.Settings.WebsiteName" xml:space="preserve"><value>Сайт Noctis, откроется в браузере</value></data>
+  <data name="Mobile.Settings.Website" xml:space="preserve"><value>Сайт Noctis</value></data>
+  <data name="Mobile.Settings.PrivacyName" xml:space="preserve"><value>Политика конфиденциальности, откроется в браузере</value></data>
+  <data name="Mobile.Settings.Privacy" xml:space="preserve"><value>Политика конфиденциальности</value></data>
+  <data name="Mobile.Settings.About" xml:space="preserve"><value>О приложении</value></data>
+  <data name="Mobile.Settings.Version" xml:space="preserve"><value>Версия</value></data>
+  <data name="Mobile.Settings.WhatsNew" xml:space="preserve"><value>Что нового</value></data>
+  <data name="Mobile.Settings.Licenses" xml:space="preserve"><value>Лицензии открытого ПО</value></data>
+  <data name="Mobile.Settings.Tagline" xml:space="preserve"><value>Noctis · ваша музыка на ваших устройствах.</value></data>
+  <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Доступ потерян. Добавьте эту папку снова, чтобы слушать её песни.</value></data>
+  <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>Недоступна. Подключите хранилище и пересканируйте.</value></data>
+  <data name="Mobile.Folders.None" xml:space="preserve"><value>Папок с музыкой пока нет</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Ваша медиатека на этом телефоне — это музыка в этих папках.</value></data>
+  <data name="Mobile.Folders.Add" xml:space="preserve"><value>Добавить папку</value></data>
+  <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Сканировать при запуске</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Ищет новые песни в этих папках при каждом запуске Noctis.</value></data>
+  <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Цвета альбомов</value></data>
+  <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Цвет страниц из обложки</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Страницы альбомов и исполнителей окрашиваются в глубокий оттенок цвета обложки с белым текстом. Если выключено, используется обычная светлая или тёмная тема.</value></data>
+  <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>Цвет прогресса</value></data>
+  <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>Линия прогресса</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>«Цвет прогресса» заполняет панель плеера цветом обложки по ходу песни. «Линия прогресса» рисует тонкую линию вдоль её нижнего края. Если оба выключены, панель — просто стекло.</value></data>
+  <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Скачивать только по Wi‑Fi</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Песни с компьютера скачиваются только по Wi‑Fi, никогда через мобильный интернет. На потоковое воспроизведение это не влияет.</value></data>
+  <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
+  <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Удалённые загрузки остаются на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Сам Noctis распространяется по лицензии MIT.</value></data>
+  <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Показывать переводы</value></data>
+  <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Показывать транслитерацию</value></data>
+  <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Показывать бэк-вокал</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Показывается под строкой мелким шрифтом, если он есть в тексте песни.</value></data>
+  <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Размер текста</value></data>
+  <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Размер текста песни</value></data>
+  <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>Мин. непрозрачность строк</value></data>
+  <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>Минимальная непрозрачность строк</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Каждая строка остаётся слегка видимой, и к любой можно перейти нажатием. При 0% строки вдали от текущей скрываются.</value></data>
+  <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Объединять разбитые слова</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Сохраняет слова целыми, когда текст TTML разбивает их на слоги.</value></data>
+  <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Искать тексты в интернете</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Если у песни нет файла с текстом или текста в тегах, Noctis ищет его в LRCLIB по названию, исполнителю и длительности, как и приложение для компьютера. Найденные тексты сохраняются на телефоне.</value></data>
+  <data name="Mobile.ShowTabs" xml:space="preserve"><value>Показать вкладки</value></data>
+  <data name="Mobile.SongList.Find" xml:space="preserve"><value>Поиск в этом списке</value></data>
+  <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} песня|{0} песни|{0} песен</value></data>
+  <data name="Mobile.Count.Albums" xml:space="preserve"><value>{0} альбом|{0} альбома|{0} альбомов</value></data>
+  <data name="Mobile.Count.Hours" xml:space="preserve"><value>{0} час|{0} часа|{0} часов</value></data>
+  <data name="Mobile.Count.Minutes" xml:space="preserve"><value>{0} минута|{0} минуты|{0} минут</value></data>
+  <data name="Mobile.Count.Seconds" xml:space="preserve"><value>{0} секунда|{0} секунды|{0} секунд</value></data>
+  <data name="Mobile.RemoveFromFavorites" xml:space="preserve"><value>Удалить из избранного</value></data>
+  <data name="Mobile.Favorited" xml:space="preserve"><value>В избранном</value></data>
+  <data name="Mobile.Unpin" xml:space="preserve"><value>Открепить</value></data>
+  <data name="Mobile.PinToHome" xml:space="preserve"><value>Закрепить на главной</value></data>
+  <data name="Mobile.PinnedTile" xml:space="preserve"><value>Закреплено</value></data>
+  <data name="Mobile.Pin" xml:space="preserve"><value>Закрепить</value></data>
+  <data name="Mobile.DownloadAlbum" xml:space="preserve"><value>Скачать альбом</value></data>
+  <data name="Mobile.DownloadPlaylist" xml:space="preserve"><value>Скачать плейлист</value></data>
+  <data name="Mobile.Download" xml:space="preserve"><value>Скачать</value></data>
+  <data name="Mobile.RemoveDownload" xml:space="preserve"><value>Удалить загрузку</value></data>
+  <data name="Mobile.AlreadyIn" xml:space="preserve"><value>Уже в «{0}»</value></data>
+  <data name="Mobile.AddedTo" xml:space="preserve"><value>Добавлено в «{0}»</value></data>
+  <data name="Mobile.Sort.Ascending" xml:space="preserve"><value>По возрастанию</value></data>
+  <data name="Mobile.Sort.Descending" xml:space="preserve"><value>По убыванию</value></data>
+  <data name="Mobile.SelectedName" xml:space="preserve"><value>{0}, выбрано</value></data>
+  <data name="Mobile.Sort.Title" xml:space="preserve"><value>Название</value></data>
+  <data name="Mobile.Sort.RecentlyUpdated" xml:space="preserve"><value>Недавно изменённые</value></data>
+  <data name="Mobile.Sort.MostRelevant" xml:space="preserve"><value>По релевантности</value></data>
+  <data name="Mobile.Sort.ReleaseYear" xml:space="preserve"><value>Год выпуска</value></data>
+  <data name="Mobile.Sort.MostPlayed" xml:space="preserve"><value>Часто слушаемые</value></data>
+  <data name="Mobile.Sort.PlaylistOrder" xml:space="preserve"><value>Порядок плейлиста</value></data>
+  <data name="Mobile.Sort.DefaultOrder" xml:space="preserve"><value>По умолчанию</value></data>
+  <data name="Mobile.Sort.Artist" xml:space="preserve"><value>Исполнитель</value></data>
+  <data name="Mobile.Sort.Album" xml:space="preserve"><value>Альбом</value></data>
+  <data name="Mobile.Sort.DateAdded" xml:space="preserve"><value>Дата добавления</value></data>
+  <data name="Mobile.Sort.Time" xml:space="preserve"><value>Длительность</value></data>
+  <data name="Mobile.Search.PlaylistSubtitle" xml:space="preserve"><value>Плейлист · {0}</value></data>
+  <data name="Mobile.SongList.NoSongs" xml:space="preserve"><value>Нет песен</value></data>
+  <data name="Mobile.SongList.NoMatch" xml:space="preserve"><value>Песни не найдены</value></data>
+  <data name="Mobile.SongList.CountOf" xml:space="preserve"><value>{0} из {1}</value></data>
+  <data name="Mobile.Album.Disc" xml:space="preserve"><value>Диск {0}</value></data>
+  <data name="Mobile.Album.ListJoin" xml:space="preserve"><value>{0}, {1}</value></data>
+  <data name="Mobile.Artist.FeaturedSingle" xml:space="preserve"><value>ГЛАВНЫЙ СИНГЛ</value></data>
+  <data name="Mobile.Artist.FeaturedEp" xml:space="preserve"><value>ГЛАВНЫЙ EP</value></data>
+  <data name="Mobile.Artist.FeaturedAlbum" xml:space="preserve"><value>ГЛАВНЫЙ АЛЬБОМ</value></data>
+  <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>ЧАЩЕ ВСЕГО</value></data>
+  <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>НОВЫЙ EP</value></data>
+  <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>НОВЫЙ СИНГЛ</value></data>
+  <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Нет связи с компьютером. Играют скачанные песни.</value></data>
+  <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Нет связи с компьютером. Откройте на нём Noctis или слушайте скачанные песни.</value></data>
+  <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Несколько песен подряд не удалось воспроизвести, поэтому воспроизведение остановлено.</value></data>
+  <data name="Mobile.Player.PlayingFrom" xml:space="preserve"><value>Играет из «{0}»</value></data>
+  <data name="Mobile.Player.TrackOf" xml:space="preserve"><value>Трек {0} из {1}</value></data>
+  <data name="Mobile.Quality.HiResMeaning" xml:space="preserve"><value>Выше 24 бит/48 кГц: больше разрешения, чем на CD или в обычном Lossless.</value></data>
+  <data name="Mobile.RenamePlaylist" xml:space="preserve"><value>Переименовать плейлист</value></data>
+  <data name="Mobile.Save" xml:space="preserve"><value>Сохранить</value></data>
+  <data name="Mobile.PlaylistName" xml:space="preserve"><value>Название плейлиста</value></data>
+  <data name="Mobile.DeletePlaylistQuestion" xml:space="preserve"><value>Удалить «{0}»?</value></data>
+  <data name="Mobile.DeletePlaylistSynced" xml:space="preserve"><value>Он будет удалён и с компьютера. Это действие нельзя отменить.</value></data>
+  <data name="Mobile.DeletePlaylistLocal" xml:space="preserve"><value>Это действие нельзя отменить. Песни останутся в медиатеке.</value></data>
+  <data name="Mobile.Library.FolderUnavailable" xml:space="preserve"><value>Папка «{0}» недоступна. Подключите её и пересканируйте.</value></data>
+  <data name="Mobile.Library.FoldersUnavailable" xml:space="preserve"><value>{0} папка недоступна. Подключите её и пересканируйте.|{0} папки недоступны. Подключите их и пересканируйте.|{0} папок недоступны. Подключите их и пересканируйте.</value></data>
+  <data name="Mobile.Library.AlreadyCovered" xml:space="preserve"><value>Уже входит в «{0}».</value></data>
+  <data name="Mobile.Library.InsideFolder" xml:space="preserve"><value>Папка «{0}» находится внутри этой папки. Сначала удалите её.</value></data>
+  <data name="Mobile.Library.Scanning" xml:space="preserve"><value>Сканирование…</value></data>
+  <data name="Mobile.Library.ScanFailed" xml:space="preserve"><value>Сбой сканирования. Подробности в журнале.</value></data>
+  <data name="Mobile.Lyrics.Searching" xml:space="preserve"><value>Поиск текста…</value></data>
+  <data name="Mobile.Lyrics.Loading" xml:space="preserve"><value>Загрузка текста…</value></data>
+  <data name="Mobile.Lyrics.Instrumental" xml:space="preserve"><value>Инструментал</value></data>
+  <data name="Mobile.Lyrics.None" xml:space="preserve"><value>Нет текста</value></data>
+  <data name="Mobile.Lyrics.NotSynced" xml:space="preserve"><value>Текст не синхронизирован</value></data>
+  <data name="Mobile.Lyrics.InstrumentalDetail" xml:space="preserve"><value>В этой песне нет слов, чтобы подпевать.</value></data>
+  <data name="Mobile.Lyrics.OnlineFailedDetail" xml:space="preserve"><value>У этой песни нет файла с текстом или текста в тегах, а онлайн-сервис текстов недоступен. Запрос повторится при следующем воспроизведении песни.</value></data>
+  <data name="Mobile.Lyrics.NoneOnlineDetail" xml:space="preserve"><value>У этой песни нет файла с текстом или текста в тегах, и в интернете его тоже не нашлось.</value></data>
+  <data name="Mobile.Lyrics.NoneDetail" xml:space="preserve"><value>У этой песни нет файла с текстом или текста в тегах.</value></data>
+  <data name="Mobile.Lyrics.FromLrclib" xml:space="preserve"><value>Текст из LRCLIB</value></data>
+  <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Предпросмотр · {0}</value></data>
+  <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Название песни</value></data>
+  <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Включён режим энергосбережения, поэтому цвета неподвижны.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Движение расходует немного больше заряда. Оно приостанавливается в режиме энергосбережения.</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.Forever" xml:space="preserve"><value>Всегда</value></data>
+  <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 год</value></data>
+  <data name="Mobile.History.Days" xml:space="preserve"><value>{0} день|{0} дня|{0} дней</value></data>
+  <data name="Mobile.History.Immediately" xml:space="preserve"><value>Сразу</value></data>
+  <data name="Mobile.Time.Seconds" xml:space="preserve"><value>{0} с</value></data>
+  <data name="Mobile.Time.Minutes" xml:space="preserve"><value>{0} мин</value></data>
+  <data name="Mobile.Time.Hours" xml:space="preserve"><value>{0} ч</value></data>
+  <data name="Mobile.Time.HoursMinutes" xml:space="preserve"><value>{0} ч {1} мин</value></data>
+  <data name="Mobile.Time.Days" xml:space="preserve"><value>{0} д</value></data>
+  <data name="Mobile.Time.Months" xml:space="preserve"><value>{0} мес</value></data>
+  <data name="Mobile.Time.Now" xml:space="preserve"><value>Сейчас</value></data>
+  <data name="Mobile.History.WeekHours" xml:space="preserve"><value>{0} ч за неделю</value></data>
+  <data name="Mobile.History.WeekMinutes" xml:space="preserve"><value>{0} мин за неделю</value></data>
+  <data name="Mobile.Count.Plays" xml:space="preserve"><value>{0} прослушивание|{0} прослушивания|{0} прослушиваний</value></data>
+  <data name="Mobile.Count.Scrobbles" xml:space="preserve"><value>{0} скроббл|{0} скроббла|{0} скробблов</value></data>
+  <data name="Mobile.History.KeepDetail" xml:space="preserve"><value>Более старые прослушивания удаляются с этого телефона.</value></data>
+  <data name="Mobile.History.CountAfterDetail" xml:space="preserve"><value>Сколько песни нужно прослушать, чтобы она засчиталась. У скробблинга Last.fm своё правило.</value></data>
+  <data name="Mobile.History.ClearQuestion" xml:space="preserve"><value>Очистить историю прослушиваний?</value></data>
+  <data name="Mobile.History.ClearDetail" xml:space="preserve"><value>Все прослушивания будут удалены с этого телефона. Уже отправленные в Last.fm останутся там.</value></data>
+  <data name="Mobile.Scrobbling.RouteFromPhone" xml:space="preserve"><value>Телефон сам учитывает прослушивания и отправляет их в Last.fm и ListenBrainz. Ничего не отправляется дважды.</value></data>
+  <data name="Mobile.Scrobbling.RouteSignIn" xml:space="preserve"><value>Войдите на компьютер в разделе «Аккаунт», и прослушивания будут передаваться на него при синхронизации.</value></data>
+  <data name="Mobile.Scrobbling.RouteNotShared" xml:space="preserve"><value>В истории прослушиваний выключено «Общая с компьютером», поэтому прослушивания остаются на телефоне.</value></data>
+  <data name="Mobile.Scrobbling.RouteUnknown" xml:space="preserve"><value>Прослушивания передаются на компьютер при синхронизации. Актуальная версия Noctis на нём отправит их в Last.fm и ListenBrainz.</value></data>
+  <data name="Mobile.Scrobbling.RouteNoServices" xml:space="preserve"><value>Прослушивания передаются на компьютер при синхронизации. Подключите на нём Last.fm или ListenBrainz, чтобы отправлять их дальше.</value></data>
+  <data name="Mobile.Scrobbling.RouteComputer" xml:space="preserve"><value>Прослушивания передаются на компьютер при синхронизации, и он отправляет засчитанные дальше. Песни, которые есть только на телефоне, остаются здесь. Ничего не отправляется дважды.</value></data>
+  <data name="Mobile.Scrobbling.Connected" xml:space="preserve"><value>Подключено</value></data>
+  <data name="Mobile.Scrobbling.NotConnected" xml:space="preserve"><value>Не подключено</value></data>
+  <data name="Mobile.Scrobbling.OnComputer" xml:space="preserve"><value>На компьютере</value></data>
+  <data name="Mobile.Scrobbling.LastFmPitch" xml:space="preserve"><value>Делитесь тем, что слушаете</value></data>
+  <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Открытая бесплатная статистика прослушиваний</value></data>
+  <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>На вашем компьютере</value></data>
+  <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Настройте на компьютере</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Прослушивание засчитывается после половины песни или 4 минут. Прослушивания без сети ждут здесь до следующей синхронизации.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Прослушивание засчитывается после половины песни или 4 минут. Прослушивания без сети ждут здесь, пока телефон снова не подключится к интернету.</value></data>
+  <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Не удалось связаться с Last.fm. Повторите попытку.</value></data>
+  <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Разрешите Noctis в Last.fm</value></data>
+  <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Войдите в Last.fm, нажмите «Allow», затем вернитесь сюда и нажмите «Готово».</value></data>
+  <data name="Mobile.Scrobbling.LastFmNotApproved" xml:space="preserve"><value>Last.fm пока не получил подтверждения. Разрешите Noctis в браузере и повторите попытку.</value></data>
+  <data name="Mobile.Scrobbling.ConnectListenBrainz" xml:space="preserve"><value>Подключить ListenBrainz</value></data>
+  <data name="Mobile.Scrobbling.TokenDetail" xml:space="preserve"><value>Вставьте токен пользователя со страницы listenbrainz.org/profile.</value></data>
+  <data name="Mobile.Scrobbling.Connect" xml:space="preserve"><value>Подключить</value></data>
+  <data name="Mobile.Scrobbling.ListenBrainzUnreachable" xml:space="preserve"><value>Не удалось связаться с ListenBrainz. Повторите попытку.</value></data>
+  <data name="Mobile.Scrobbling.TokenRejected" xml:space="preserve"><value>ListenBrainz не принял этот токен.</value></data>
+  <data name="Mobile.Scrobbling.UserToken" xml:space="preserve"><value>Токен пользователя</value></data>
+  <data name="Mobile.Scrobbling.SetUpDetail" xml:space="preserve"><value>Подключите Last.fm и ListenBrainz в Noctis на компьютере. Или выберите «С этого телефона», чтобы войти здесь.</value></data>
+  <data name="Mobile.Scrobbling.DisconnectQuestion" xml:space="preserve"><value>Отключить {0}?</value></data>
+  <data name="Mobile.Scrobbling.DisconnectDetail" xml:space="preserve"><value>Ожидающие отправки прослушивания будут удалены. Ваши скробблы на сайте останутся.</value></data>
+  <data name="Mobile.Scrobbling.Disconnect" xml:space="preserve"><value>Отключить</value></data>
+  <data name="Mobile.BackgroundName.Graphite" xml:space="preserve"><value>Графит</value></data>
+  <data name="Mobile.BackgroundName.Ash" xml:space="preserve"><value>Пепел</value></data>
+  <data name="Mobile.BackgroundName.PlumInk" xml:space="preserve"><value>Слива</value></data>
+  <data name="Mobile.BackgroundName.Olive" xml:space="preserve"><value>Олива</value></data>
+  <data name="Mobile.BackgroundName.Slate" xml:space="preserve"><value>Сланец</value></data>
+  <data name="Mobile.BackgroundName.Pine" xml:space="preserve"><value>Сосна</value></data>
+  <data name="Mobile.BackgroundName.Sand" xml:space="preserve"><value>Песок</value></data>
+  <data name="Mobile.BackgroundName.Mist" xml:space="preserve"><value>Туман</value></data>
+  <data name="Mobile.BackgroundName.Ember" xml:space="preserve"><value>Жар</value></data>
+  <data name="Mobile.BackgroundName.Harbour" xml:space="preserve"><value>Гавань</value></data>
+  <data name="Mobile.BackgroundName.Amber" xml:space="preserve"><value>Янтарь</value></data>
+  <data name="Mobile.BackgroundName.Dusk" xml:space="preserve"><value>Сумерки</value></data>
+  <data name="Mobile.BackgroundName.Rose" xml:space="preserve"><value>Роза</value></data>
+  <data name="Mobile.BackgroundName.Lagoon" xml:space="preserve"><value>Лагуна</value></data>
+  <data name="Mobile.BackgroundName.Orchid" xml:space="preserve"><value>Орхидея</value></data>
+  <data name="Mobile.BackgroundName.Forest" xml:space="preserve"><value>Лес</value></data>
+  <data name="Mobile.BackgroundName.Coral" xml:space="preserve"><value>Коралл</value></data>
+  <data name="Mobile.BackgroundName.Iris" xml:space="preserve"><value>Ирис</value></data>
+  <data name="Mobile.BackgroundName.Cobalt" xml:space="preserve"><value>Кобальт</value></data>
+  <data name="Mobile.BackgroundName.Mint" xml:space="preserve"><value>Мята</value></data>
+  <data name="Mobile.Accent.Crimson" xml:space="preserve"><value>Багровый</value></data>
+  <data name="Mobile.Accent.Tangerine" xml:space="preserve"><value>Мандариновый</value></data>
+  <data name="Mobile.Accent.Gold" xml:space="preserve"><value>Золотой</value></data>
+  <data name="Mobile.Accent.Emerald" xml:space="preserve"><value>Изумрудный</value></data>
+  <data name="Mobile.Accent.Teal" xml:space="preserve"><value>Бирюзовый</value></data>
+  <data name="Mobile.Accent.Cerulean" xml:space="preserve"><value>Лазурный</value></data>
+  <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Индиго</value></data>
+  <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Орхидея</value></data>
+  <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Розовый</value></data>
+  <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Свой</value></data>
+  <data name="Mobile.Theme.System" xml:space="preserve"><value>Как в системе</value></data>
+  <data name="Mobile.Theme.Light" xml:space="preserve"><value>Светлая</value></data>
+  <data name="Mobile.Theme.Dark" xml:space="preserve"><value>Тёмная</value></data>
+  <data name="Mobile.Theme.Ink" xml:space="preserve"><value>Чернила</value></data>
+  <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>Дым</value></data>
+  <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Полночь</value></data>
+  <data name="Mobile.Theme.DarkStyle" xml:space="preserve"><value>Тёмный стиль: {0}</value></data>
+  <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>Удалить «{0}»? Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
+  <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>Удалить «{0}»?</value></data>
+  <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
+  <data name="Mobile.Folders.Remove" xml:space="preserve"><value>Удалить папку</value></data>
+  <data name="Mobile.Folders.ReadOnlyChosen" xml:space="preserve"><value>Noctis может читать только выбранные здесь папки.</value></data>
+  <data name="Mobile.Folders.NoneValue" xml:space="preserve"><value>Нет</value></data>
+  <data name="Mobile.Folders.RowNameWarning" xml:space="preserve"><value>{0}, {1}, папка потеряла доступ или недоступна</value></data>
+  <data name="Mobile.Settings.LastScan" xml:space="preserve"><value>Последнее сканирование: {0}</value></data>
+  <data name="Mobile.Settings.RescanHint" xml:space="preserve"><value>Ищет новые песни в ваших папках</value></data>
+  <data name="Mobile.Settings.ScanToday" xml:space="preserve"><value>сегодня, {0}</value></data>
+  <data name="Mobile.Settings.ScanYesterday" xml:space="preserve"><value>вчера, {0}</value></data>
+  <data name="Mobile.Settings.ScanOnDay" xml:space="preserve"><value>{0}, {1}</value></data>
+  <data name="Mobile.Settings.AddFolderToScan" xml:space="preserve"><value>Добавьте папку с музыкой, чтобы её отсканировать.</value></data>
+  <data name="Mobile.Settings.ColourAndLine" xml:space="preserve"><value>Цвет и линия</value></data>
+  <data name="Mobile.Settings.Plain" xml:space="preserve"><value>Простая</value></data>
+  <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>Оба вкл.</value></data>
+  <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Переводы вкл.</value></data>
+  <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Транслитерация вкл.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Когда вы откроете Noctis на {0}, он предложит продолжить с песни, которая играла здесь.</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Когда вы откроете Noctis на компьютере, он предложит продолжить с песни, которая играла здесь.</value></data>
+  <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Только Wi‑Fi</value></data>
+  <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Любая сеть</value></data>
+  <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>Удалить все загрузки?</value></data>
+  <data name="Mobile.Downloads.RemoveDetail" xml:space="preserve"><value>С телефона будут удалены: {0}. Они останутся на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>
+  <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Удалить загрузки</value></data>
+  <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value></data>
+  <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} плейлист|{0} плейлиста|{0} плейлистов</value></data>
+  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Настройки обновлены: сверху профиль и статистика медиатеки, затем «Оформление», «Медиатека», «Прослушивание», «Помощь» и «О приложении».</value></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>У загрузок теперь своя страница с параметром «Скачивать только по Wi‑Fi» (включён по умолчанию) и кнопкой «Удалить все загрузки».</value></data>
+  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>В разделе «Лицензии открытого ПО» перечислено, на чём построен Noctis.</value></data>
+  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis говорит на вашем языке: выберите его в «Настройки › Язык» или используйте язык телефона.</value></data>
+  <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Встроенный декодер ALAC, собранный из неизменённых исходников FFmpeg 6.0 без GPL и несвободных частей: git.ffmpeg.org/ffmpeg.git</value></data>
+  <data name="Mobile.License.Media3" xml:space="preserve"><value>Воспроизведение, медиасеанс и JNI-обёртка декодера.</value></data>
+  <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Фреймворк пользовательского интерфейса.</value></data>
+  <data name="Mobile.License.Inter" xml:space="preserve"><value>Шрифт, через Avalonia.Fonts.Inter.</value></data>
+  <data name="Mobile.License.Mvvm" xml:space="preserve"><value>Основа моделей представления.</value></data>
+  <data name="Mobile.License.TagLib" xml:space="preserve"><value>Читает теги и обложки песен.</value></data>
+  <data name="Mobile.License.Sqlite" xml:space="preserve"><value>База данных медиатеки; сам SQLite является общественным достоянием.</value></data>
+  <data name="Mobile.License.Skia" xml:space="preserve"><value>Отрисовка.</value></data>
+  <data name="Mobile.License.AndroidX" xml:space="preserve"><value>Библиотеки поддержки Android для .NET.</value></data>
+  <data name="Mobile.License.CodeScanner" xml:space="preserve"><value>«Сканировать QR-код» на странице аккаунта. Камерой управляют сервисы Google Play, они возвращают только текст кода.</value></data>
+  <data name="Mobile.Settings.ExportHint" xml:space="preserve"><value>Ключи и пароли удалены</value></data>
+  <data name="Mobile.Settings.SignedInAs" xml:space="preserve"><value>Вход выполнен как {0} · {1}</value></data>
+  <data name="Mobile.Settings.SyncedWith" xml:space="preserve"><value>Синхронизировано с {0}</value></data>
+  <data name="Mobile.Settings.SyncPitch" xml:space="preserve"><value>Синхронизируйте медиатеку с Noctis на компьютере</value></data>
+  <data name="Mobile.Settings.ExportUnavailable" xml:space="preserve"><value>Экспорт здесь недоступен</value></data>
+  <data name="Mobile.Settings.LogSaved" xml:space="preserve"><value>Журнал сохранён</value></data>
+  <data name="Mobile.Settings.ExportCancelled" xml:space="preserve"><value>Экспорт отменён</value></data>
+  <data name="Mobile.Settings.LogFailed" xml:space="preserve"><value>Не удалось сохранить журнал</value></data>
+  <data name="Mobile.Account.Title" xml:space="preserve"><value>Аккаунт</value></data>
+  <data name="Mobile.Account.SignOutQuestion" xml:space="preserve"><value>Выйти из {0}?</value></data>
+  <data name="Mobile.Account.StopSending" xml:space="preserve"><value>Остановить отправку</value></data>
+  <data name="Mobile.Account.SendSongs" xml:space="preserve"><value>Отправить песни с телефона на компьютер</value></data>
+  <data name="Mobile.Account.SendTile" xml:space="preserve"><value>На компьютер</value></data>
+  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>Введите email или имя пользователя и пароль.</value></data>
+  <data name="Mobile.Account.Connecting" xml:space="preserve"><value>Подключение к компьютеру…</value></data>
+  <data name="Mobile.Account.SigningIn" xml:space="preserve"><value>Вход…</value></data>
+  <data name="Mobile.Account.ScannerUnavailable" xml:space="preserve"><value>Сканер на этом телефоне ещё не готов. Повторите через минуту или войдите по адресу компьютера ниже.</value></data>
+  <data name="Mobile.Account.NotAPairingCode" xml:space="preserve"><value>Это не код входа Noctis. Отсканируйте код в разделе «Подключить телефон» на компьютере.</value></data>
+  <data name="Mobile.Account.Syncing" xml:space="preserve"><value>Синхронизация…</value></data>
+  <data name="Mobile.Account.SyncedCounts" xml:space="preserve"><value>Синхронизировано: {0} и {1}</value></data>
+  <data name="Mobile.Account.SongsUpdatedSyncOff" xml:space="preserve"><value>Песни обновлены. Синхронизация на компьютере выключена.</value></data>
+  <data name="Mobile.Account.StartingDownloads" xml:space="preserve"><value>Начинается скачивание…</value></data>
+  <data name="Mobile.Account.DownloadsFinished" xml:space="preserve"><value>Скачивание завершено{0}</value></data>
+  <data name="Mobile.Account.Checking" xml:space="preserve"><value>Проверка, что уже есть на компьютере…</value></data>
+  <data name="Mobile.Account.SendStopped" xml:space="preserve"><value>Остановлено. Нажмите ещё раз, чтобы отправить остальное.</value></data>
+  <data name="Mobile.Account.RemovingDownloads" xml:space="preserve"><value>Удаление загрузок…</value></data>
+  <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>Выйти</value></data>
+  <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>Выйти и удалить загрузки</value></data>
+  <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>Его песни исчезнут из медиатеки телефона. Войти снова можно в любой момент.</value></data>
+  <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>Выход…</value></data>
+  <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>Что-то пошло не так. Повторите попытку.</value></data>
+  <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>Синхронизация завершена</value></data>
+  <data name="Mobile.Account.LastSyncFailed" xml:space="preserve"><value>Последняя синхронизация не завершилась. Нажмите «Синхронизировать», чтобы повторить.</value></data>
+  <data name="Mobile.Account.NameOnServer" xml:space="preserve"><value>{0} на {1}</value></data>
+  <data name="Mobile.Account.OnServer" xml:space="preserve"><value>на {0}</value></data>
+  <data name="Mobile.Account.DownloadedStorage" xml:space="preserve"><value>Скачано: {0}</value></data>
+  <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} нет на компьютере</value></data>
+  <data name="Mobile.Account.Failed" xml:space="preserve"><value>Ошибок: {0}</value></data>
+  <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Скачивание {0} из {1}{2}</value></data>
+  <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Нет связи с компьютером. Проверьте, что на нём открыт Noctis, включён параметр «Noctis на телефоне» и оба устройства в одной сети Wi‑Fi.</value></data>
+  <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Код безопасности компьютера изменился. Выйдите и войдите снова, чтобы доверять новому.</value></data>
+  <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Код безопасности компьютера изменился во время входа. Повторите попытку и проверьте код.</value></data>
+  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>Неверный email, имя пользователя или пароль.</value></data>
+  <data name="Mobile.Account.Error.LockedOut" xml:space="preserve"><value>Слишком много неудачных попыток входа. Подождите несколько минут и повторите.</value></data>
+  <data name="Mobile.Account.Error.SyncDisabled" xml:space="preserve"><value>Синхронизация на компьютере выключена. Включите «Синхронизация с телефоном» в разделе «Настройки», «Аккаунт и устройства».</value></data>
+  <data name="Mobile.Account.Error.SignedOut" xml:space="preserve"><value>Компьютер отключил этот телефон. Войдите снова.</value></data>
+  <data name="Mobile.Account.Error.InvalidAddress" xml:space="preserve"><value>Введите адрес компьютера, показанный в разделе «Подключить телефон», например 192.168.1.20 или https://192.168.1.20:4747.</value></data>
+  <data name="Mobile.Account.Error.StorageFull" xml:space="preserve"><value>Память телефона почти заполнена, поэтому скачивание остановлено (1,5 ГБ всегда остаётся свободным). Удалите часть загрузок или освободите место.</value></data>
+  <data name="Mobile.Account.Error.FileMissing" xml:space="preserve"><value>Файл этой песни отсутствует на компьютере.</value></data>
+  <data name="Mobile.Account.Error.NotNoctis" xml:space="preserve"><value>По этому адресу что-то ответило, но это не Noctis. Проверьте адрес и порт в разделе «Подключить телефон».</value></data>
+  <data name="Mobile.Account.Error.UnknownHost" xml:space="preserve"><value>Компьютер с таким именем не отвечает. Введите адрес, показанный в разделе «Подключить телефон», например 192.168.1.20.</value></data>
+  <data name="Mobile.Account.Error.Outdated" xml:space="preserve"><value>Версия Noctis на компьютере слишком старая для подключения телефона. Обновите её и повторите попытку.</value></data>
+  <data name="Mobile.Account.Error.WifiRequired" xml:space="preserve"><value>Загрузки разрешены только по Wi‑Fi. Подключитесь к Wi‑Fi или измените это в разделе «Настройки», «Загрузки».</value></data>
+  <data name="Mobile.Account.Error.Other" xml:space="preserve"><value>Компьютеру не удалось завершить операцию. Повторите попытку чуть позже.</value></data>
+  <data name="Mobile.Account.Error.PairingExpired" xml:space="preserve"><value>Срок действия кода истёк или он уже использован. Отсканируйте новый код, который сейчас показывает компьютер.</value></data>
+  <data name="Mobile.Account.Error.QrWrongComputer" xml:space="preserve"><value>Компьютер по этому адресу — не тот, что показывает код, поэтому ничего не отправлено. Проверьте, что телефон в той же сети Wi‑Fi, и отсканируйте снова.</value></data>
+  <data name="Mobile.Account.Error.QrUnreachable" xml:space="preserve"><value>Нет связи с компьютером. Проверьте, что телефон в той же сети Wi‑Fi, что и компьютер, и отсканируйте снова.</value></data>
+  <data name="Mobile.Account.CountOf" xml:space="preserve"><value>{0} из {1}</value></data>
+  <data name="Mobile.Account.GettingLibrary" xml:space="preserve"><value>Получение медиатеки…</value></data>
+  <data name="Mobile.Account.GettingCovers" xml:space="preserve"><value>Получение обложек…</value></data>
+  <data name="Mobile.Account.SyncingFavorites" xml:space="preserve"><value>Синхронизация избранного и оценок…</value></data>
+  <data name="Mobile.Account.SyncingPlaylists" xml:space="preserve"><value>Синхронизация плейлистов…</value></data>
+  <data name="Mobile.Account.SendingPlays" xml:space="preserve"><value>Отправка прослушиваний…</value></data>
+  <data name="Mobile.Account.SentOf" xml:space="preserve"><value>Отправлено {0} из {1}</value></data>
+  <data name="Mobile.Account.SendingOf" xml:space="preserve"><value>Отправка {0} из {1}</value></data>
+  <data name="Mobile.Account.AllOnComputer" xml:space="preserve"><value>Всё уже есть на компьютере</value></data>
+  <data name="Mobile.Account.NothingToSend" xml:space="preserve"><value>На телефоне нет песен для отправки</value></data>
+  <data name="Mobile.Account.Sent" xml:space="preserve"><value>Отправлено: {0}</value></data>
+  <data name="Mobile.Account.AlreadyOnComputer" xml:space="preserve"><value>{0} уже на компьютере</value></data>
+  <data name="Mobile.Size.GB" xml:space="preserve"><value>{0} ГБ</value></data>
+  <data name="Mobile.Size.MB" xml:space="preserve"><value>{0} МБ</value></data>
+  <data name="Mobile.Account.NotSynced" xml:space="preserve"><value>Ещё не синхронизировано</value></data>
+  <data name="Mobile.Account.SyncedNow" xml:space="preserve"><value>Синхронизировано только что</value></data>
+  <data name="Mobile.Account.SyncedMinutes" xml:space="preserve"><value>Синхронизировано {0} мин назад</value></data>
+  <data name="Mobile.Account.SyncedHours" xml:space="preserve"><value>Синхронизировано {0} ч назад</value></data>
+  <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>Синхронизировано вчера</value></data>
+  <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>Синхронизировано {0} день назад|Синхронизировано {0} дня назад|Синхронизировано {0} дней назад</value></data>
+  <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>Синхронизировано {0}</value></data>
+  <data name="Mobile.Language.System" xml:space="preserve"><value>Как в системе</value></data>
+  <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis потерял доступ к папке этой песни. Добавьте папку снова в «Настройки» → «Медиатека».</value></data>
+  <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Этот телефон не может декодировать {0}, поэтому песня пропущена.</value></data>
+  <data name="Mobile.Player.UnknownFormat" xml:space="preserve"><value>неизвестный формат</value></data>
+  <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Неизвестный трек</value></data>
+  <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD-карта</value></data>
+  <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Плейлисты</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Noctis использует язык телефона, если вы не выберете другой здесь. Переводы делает сообщество.</value></data>
+  <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Сканирование… {0} файл|Сканирование… {0} файла|Сканирование… {0} файлов</value></data>
+  <data name="Mobile.MoreFor" xml:space="preserve"><value>Ещё для «{0}»</value></data>
+  <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Акцентный цвет окрашивает кнопки, переключатели и выделение.</value></data>
+  <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Занято, {0}</value></data>
 </root>

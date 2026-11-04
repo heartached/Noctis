@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:models="using:Noctis.Models"
@@ -10,10 +11,12 @@
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
                 <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
-            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+            <views:FitWidth Grid.Column="1" Name="TitleFit" VerticalAlignment="Center">
+                <TextBlock Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </views:FitWidth>
         </Grid>
 
-        <TextBlock Grid.Row="1" Classes="subtle" Text="No albums" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="1" Classes="subtle" Text="{loc:T Mobile.NoAlbums}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding !HasAlbums}" />
 
         <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
