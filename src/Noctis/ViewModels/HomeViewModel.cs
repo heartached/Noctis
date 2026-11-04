@@ -381,6 +381,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 }
                 else if (e.PropertyName == nameof(SettingsViewModel.HomeNewAlbumsFirst))
                     OnPropertyChanged(nameof(NewAlbumsFirst));
+                // Settings reset puts the folds back to open: follow it on the live page too
+                // (adopted only at construction, they stayed shut until a restart).
+                else if (e.PropertyName is nameof(SettingsViewModel.HomeTopSongsExpanded)
+                         or nameof(SettingsViewModel.HomeTopArtistsExpanded)
+                         or nameof(SettingsViewModel.HomeRecentlyPlayedExpanded)
+                         or nameof(SettingsViewModel.HomeTimeRotationExpanded)
+                         or nameof(SettingsViewModel.HomeHeavyRotationExpanded)
+                         or nameof(SettingsViewModel.HomeRediscoveredExpanded)
+                         or nameof(SettingsViewModel.HomeLastPlayedExpanded)
+                         or nameof(SettingsViewModel.HomeNewAlbumsExpanded))
+                    AdoptPersistedSectionState();
             };
         }
 

@@ -157,6 +157,24 @@ public class HomeNewInLibraryTests
         Assert.False(persistence.Saved.HomeNewAlbumsExpanded);
     }
 
+    [AvaloniaFact]
+    public void ResetEverything_UnfoldsTheHomeSectionsOnTheLiveHomePage()
+    {
+        // Settings reset put HomeNewAlbumsExpanded (and the other folds) back to open, but the
+        // Home page adopted them only when it was built, so its folded sections stayed shut
+        // until a restart while Settings already said open.
+        var (home, settings, _, _, _) = Build();
+        home.ToggleSectionCommand.Execute("NewInLibrary");
+        home.ToggleSectionCommand.Execute("TopSongs");
+        Assert.False(home.IsNewInLibraryExpanded);
+        Assert.False(home.IsTopSongsExpanded);
+
+        settings.ResetSettingsToDefaults(new AppSettings());
+
+        Assert.True(home.IsNewInLibraryExpanded);
+        Assert.True(home.IsTopSongsExpanded);
+    }
+
     // ── Home view model ──
 
     [AvaloniaFact]
