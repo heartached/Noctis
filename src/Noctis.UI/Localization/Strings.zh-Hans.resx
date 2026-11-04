@@ -6871,4 +6871,27 @@
     <value>已用：</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>数据文件夹</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Noctis 存放资料库、插图、动态封面、歌词和缓存的位置。选择其他驱动器上的文件夹以释放空间，或选择已包含来自另一台电脑的 Noctis 数据的文件夹。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>更改文件夹</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>使用默认位置</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>选择 Noctis 存放数据的位置</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>此文件夹已包含 Noctis 数据</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>改用 {0} 中的资料库和设置吗？不会复制任何内容，{1} 中的当前数据保持不变。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>使用此文件夹</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>正在复制数据：{0} / {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>数据已复制到 {0}。重新启动 Noctis 以完成移动，之后将删除旧副本。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>重新启动 Noctis 以开始使用 {0}。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>立即重新启动</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis 无法自行重新启动。请退出 Noctis 并再次启动以完成。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>数据已从 {0} 移动到此处。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>无法移动数据，未做任何更改：{0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>无法访问 {0}，因此 Noctis 暂时使用默认文件夹。请连接驱动器并重新启动 Noctis。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis 已在该文件夹中存放数据。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>请选择 Noctis 数据文件夹以外的文件夹。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>该文件夹中已有其他文件。请选择空文件夹，或包含 Noctis 数据的文件夹。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis 无法写入该文件夹。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>空间不足：数据需要 {0}，但只有 {1} 可用。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>无法移动数据：{0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>已取消移动。数据保持不变。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

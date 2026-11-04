@@ -3155,4 +3155,27 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Размер кэша</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Когда кэш заполнен, первыми удаляются обложки альбомов, которые вы открывали давнее всего.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheInUse" xml:space="preserve"><value>Занято:</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>Папка данных</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Где Noctis хранит медиатеку, обложки, анимированные обложки, тексты песен и кэш. Выберите папку на другом диске, чтобы освободить место, или папку, где уже есть данные Noctis с другого компьютера.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>Изменить папку</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>По умолчанию</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Выберите, где Noctis будет хранить данные</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>В этой папке уже есть данные Noctis</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>Использовать медиатеку и настройки из {0}? Ничего не копируется, а текущие данные в {1} остаются на месте.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>Использовать эту папку</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>Копирование данных: {0} из {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>Данные скопированы в {0}. Перезапустите Noctis, чтобы завершить перенос; после этого старая копия будет удалена.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>Перезапустите Noctis, чтобы начать использовать {0}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>Перезапустить</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis не удалось перезапуститься. Закройте Noctis и запустите снова, чтобы завершить.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>Данные перенесены сюда из {0}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>Не удалось перенести данные, ничего не изменилось: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>{0} недоступна, поэтому Noctis пока использует папку по умолчанию. Подключите диск и перезапустите Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis уже хранит данные в этой папке.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>Выберите папку вне папки данных Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>В этой папке уже есть другие файлы. Выберите пустую папку или папку с данными Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis не может записывать в эту папку.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>Недостаточно места: данным нужно {0}, а свободно только {1}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>Не удалось перенести данные: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Перенос отменён. Данные остаются на месте.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

@@ -6871,4 +6871,27 @@
     <value>En uso:</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>Carpeta de datos</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Dónde guarda Noctis tu biblioteca, carátulas, portadas animadas, letras y cachés. Elige una carpeta en otra unidad para liberar espacio, o una que ya tenga datos de Noctis de otro ordenador.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>Cambiar carpeta</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>Usar la predeterminada</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Elige dónde guarda Noctis sus datos</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>Esta carpeta ya contiene datos de Noctis</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>¿Usar la biblioteca y los ajustes de {0}? No se copia nada y tus datos actuales en {1} se quedan donde están.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>Usar esta carpeta</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>Copiando tus datos: {0} de {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>Tus datos se han copiado a {0}. Reinicia Noctis para terminar el traslado; después se elimina la copia antigua.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>Reinicia Noctis para empezar a usar {0}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>Reiniciar ahora</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis no pudo reiniciarse. Cierra Noctis y vuelve a abrirlo para terminar.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>Tus datos se trasladaron aquí desde {0}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>No se pudieron trasladar tus datos, así que no ha cambiado nada: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>No se puede acceder a {0}, así que Noctis usa la carpeta predeterminada por ahora. Conecta la unidad y reinicia Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis ya guarda sus datos en esa carpeta.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>Elige una carpeta fuera de la carpeta de datos de Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>Esa carpeta ya contiene otros archivos. Elige una carpeta vacía o una con datos de Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis no puede escribir en esa carpeta.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>No hay espacio suficiente: tus datos necesitan {0} y solo hay {1} libres.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>No se pudieron trasladar tus datos: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Traslado cancelado. Tus datos se quedan donde están.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

@@ -6871,4 +6871,27 @@
     <value>使用中:</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>データフォルダー</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Noctis がライブラリ、アートワーク、アニメーションカバー、歌詞、キャッシュを保存する場所です。空き容量を増やすには別のドライブのフォルダーを、別のコンピューターの Noctis データを使うにはそのフォルダーを選択します。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>フォルダーを変更</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>デフォルトに戻す</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Noctis のデータを保存する場所を選択</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>このフォルダーには既に Noctis のデータがあります</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>{0} のライブラリと設定を使用しますか？何もコピーされず、{1} にある現在のデータはそのまま残ります。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>このフォルダーを使用</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>データをコピー中: {0} / {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>データを {0} にコピーしました。移動を完了するには Noctis を再起動してください。その後、古いコピーは削除されます。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>{0} の使用を開始するには Noctis を再起動してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>今すぐ再起動</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis を再起動できませんでした。完了するには Noctis を終了してもう一度起動してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>データは {0} からここに移動されました。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>データを移動できなかったため、何も変更されていません: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>{0} にアクセスできないため、Noctis は一時的にデフォルトのフォルダーを使用しています。ドライブを接続して Noctis を再起動してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis は既にそのフォルダーにデータを保存しています。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>Noctis のデータフォルダーの外にあるフォルダーを選択してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>そのフォルダーには他のファイルがあります。空のフォルダーか、Noctis のデータがあるフォルダーを選択してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis はそのフォルダーに書き込めません。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>空き容量が足りません: データに {0} 必要ですが、空きは {1} です。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>データを移動できませんでした: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>移動をキャンセルしました。データはそのままです。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

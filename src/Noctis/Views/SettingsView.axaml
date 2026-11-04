@@ -6089,6 +6089,107 @@
 
                 </StackPanel>
             </Border>
+            <!-- Data Folder (GitHub #165): where the library, artwork and caches live. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.DataFolder}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.DataFolderHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center"
+                                    IsEnabled="{Binding !IsDataFolderCopying}">
+                            <Button AutomationProperties.Name="{loc:T Settings.DataFolderUseDefault}"
+                                    Command="{Binding UseDefaultDataFolderCommand}"
+                                    IsVisible="{Binding IsDataFolderCustom}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.DataFolderUseDefault}" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                            <Button AutomationProperties.Name="{loc:T Settings.DataFolderChange}"
+                                    Command="{Binding ChangeDataFolderCommand}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.DataFolderChange}" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                    <SelectableTextBlock Text="{Binding DataFolderPath}"
+                                         FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+
+                    <!-- Copying -->
+                    <StackPanel Spacing="6" IsVisible="{Binding IsDataFolderCopying}">
+                        <TextBlock Text="{Binding DataFolderCopyText}" FontSize="12" Opacity="0.7"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <ProgressBar Grid.Column="0" Minimum="0" Maximum="100"
+                                         Value="{Binding DataFolderCopyPercent}"
+                                         Height="4" CornerRadius="2"
+                                         VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="pill-action" Margin="12,0,0,0"
+                                    AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                    Command="{Binding CancelDataFolderCopyCommand}">
+                                <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- The picked folder already holds Noctis data -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderUseExistingVisible}" Lift="6">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{loc:T Settings.DataFolderExistingTitle}"
+                                       FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding DataFolderUseExistingDetail}"
+                                       FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="pill-action"
+                                        AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                        Command="{Binding CancelUseExistingDataFolderCommand}"
+                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                    <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
+                                </Button>
+                                <Button Classes="pill-action"
+                                        AutomationProperties.Name="{loc:T Settings.DataFolderUseThis}"
+                                        Command="{Binding ConfirmUseExistingDataFolderCommand}"
+                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                    <TextBlock Text="{loc:T Settings.DataFolderUseThis}" FontSize="13" FontWeight="SemiBold"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:CollapsibleContent>
+
+                    <TextBlock Text="{Binding DataFolderStatus}"
+                               IsVisible="{Binding IsDataFolderInfoVisible}"
+                               FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding DataFolderStatus}"
+                               IsVisible="{Binding IsDataFolderErrorVisible}"
+                               FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+
+                    <!-- A change waits for a restart -->
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding IsDataFolderRestartNeeded}">
+                        <Button Classes="pill-action"
+                                AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                Command="{Binding CancelDataFolderChangeCommand}"
+                                Padding="14,8" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
+                        </Button>
+                        <Button Classes="pill-action"
+                                AutomationProperties.Name="{loc:T Settings.DataFolderRestartNow}"
+                                Command="{Binding RestartForDataFolderCommand}"
+                                Padding="14,8" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Settings.DataFolderRestartNow}" FontSize="13" FontWeight="SemiBold"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="14">
 
