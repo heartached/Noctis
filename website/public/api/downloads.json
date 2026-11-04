@@ -1,26 +1,26 @@
 {
-  "total": 19874,
+  "total": 20004,
   "byRelease": {
-    "v1.6.7": 0,
-    "v1.6.6": 132,
+    "v1.6.7": 113,
+    "v1.6.6": 139,
     "v1.6.5": 1491,
-    "v1.6.4": 424,
-    "v1.6.3": 770,
+    "v1.6.4": 428,
+    "v1.6.3": 772,
     "v1.6.2": 449,
     "v1.6.1": 168,
     "v1.6.0": 244,
     "v1.5.9": 898,
     "v1.5.8": 530,
     "v1.5.7": 421,
-    "lullaby-v1": 290,
+    "lullaby-v1": 292,
     "v1.5.6": 333,
     "v1.5.5": 389,
     "v1.5.4": 420,
     "v1.5.3": 120,
     "v1.5.2": 348,
-    "v1.5.1": 245,
+    "v1.5.1": 246,
     "v1.5.0": 251,
-    "v1.4.7": 1461,
+    "v1.4.7": 1462,
     "v1.4.6": 272,
     "v1.4.5": 215,
     "v1.4.4": 277,
@@ -74,56 +74,56 @@
   "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.6.7",
   "publishedAt": "2026-11-04T04:38:55Z",
   "releaseCount": 67,
-  "stars": 313,
-  "openIssues": 10,
+  "stars": 317,
+  "openIssues": 12,
   "assets": {
     "windowsInstaller": {
       "name": "Noctis-v1.6.7-Setup.exe",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-v1.6.7-Setup.exe",
       "size": 157509516,
-      "downloads": 0
+      "downloads": 67
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-windows-x64.zip",
       "size": 307903260,
-      "downloads": 0
+      "downloads": 22
     },
     "macosArm": {
       "name": "Noctis-osx-arm64.dmg",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-osx-arm64.dmg",
       "size": 206065916,
-      "downloads": 0
+      "downloads": 1
     },
     "macosIntel": {
       "name": "Noctis-osx-x64.dmg",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-osx-x64.dmg",
       "size": 217209674,
-      "downloads": 0
+      "downloads": 2
     },
     "linuxAppImage": {
       "name": "Noctis-x86_64.AppImage",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-x86_64.AppImage",
       "size": 222439928,
-      "downloads": 0
+      "downloads": 11
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-linux-arm64.tar.gz",
       "size": 145264429,
-      "downloads": 0
+      "downloads": 1
     },
     "linuxTar": {
       "name": "Noctis-linux-x64.tar.gz",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/Noctis-linux-x64.tar.gz",
       "size": 164816997,
-      "downloads": 0
+      "downloads": 2
     },
     "checksums": {
       "name": "SHA256SUMS",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.6.7/SHA256SUMS",
       "size": 990,
-      "downloads": 0
+      "downloads": 3
     }
   },
   "sizes": {
@@ -136,6 +136,6 @@
     "linuxTar": "157 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-11-04T04:39:34.462Z",
+  "updatedAt": "2026-11-04T15:25:24.232Z",
   "degraded": false
 }

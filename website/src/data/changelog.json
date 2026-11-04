@@ -93,8 +93,36 @@
       "publishedAt": "2026-11-04T04:24:24Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.2",
       "prerelease": true,
-      "sections": [],
-      "summary": "Your albums come to life in a little town."
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added room resizing to any shape with edge and corner handles",
+            "Added building size setting, from 4 to 18 wide and 2 to 9 high",
+            "Added Clear building",
+            "Added ladders and stairs between rooms, so small rooms are no longer dead ends",
+            "Added menu bar along the top or down the side, and it folds away",
+            "Added full screen (F11, Esc to leave)",
+            "Added a hello when an album you call walks into town",
+            "Added rock paper scissors, scuffles, high fives and teasing between residents",
+            "Added residents quoting lines from their songs' lyrics (needs Noctis 1.6.7 or newer)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playing from the town adding snoozed songs to the queue",
+            "Fixed the New crowd keeping recent and most played residents",
+            "Fixed two pets in a narrow room pushing each other back forever",
+            "Fixed songs from albums with many artists showing every guest artist",
+            "Fixed long room names running out of the room",
+            "Fixed pets being pulled into a chat halfway through a doorway or up a ladder",
+            "Fixed Esc in an empty search box not going back inside Settings",
+            "Fixed the title, tabs and tools overlapping on narrower windows"
+          ]
+        }
+      ],
+      "summary": null
     },
     {
       "tag": "v1.6.6",
@@ -4039,6 +4067,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-04T04:39:35.432Z",
+  "updatedAt": "2026-11-04T15:25:25.267Z",
   "degraded": false
 }
