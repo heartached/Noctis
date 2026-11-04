@@ -951,6 +951,42 @@ public partial class SettingsView : UserControl
         }
     }
 
+    private void OnLyricsMaxSplitLettersSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsMaxSplitLetters = Models.AppSettings.LyricsMaxSplitLettersDefault;
+            e.Handled = true;
+        }
+    }
+
+    private void OnLyricsAnimationScaleSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsAnimationScalePercent = Models.AppSettings.LyricsAnimationScalePercentDefault;
+            e.Handled = true;
+        }
+    }
+
+    private void OnLyricsGlowExposureSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsGlowExposurePercent = Models.AppSettings.LyricsGlowExposurePercentDefault;
+            e.Handled = true;
+        }
+    }
+
+    private void OnLyricsTextScaleSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsTextScalePercent = Models.AppSettings.LyricsTextScalePercentDefault;
+            e.Handled = true;
+        }
+    }
+
     // Double-tapping the album page tint-strength slider restores the full cover colour.
     private void OnAlbumPageTintStrengthSliderDoubleTapped(object? sender, TappedEventArgs e)
     {

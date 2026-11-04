@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Animation;
@@ -323,7 +323,7 @@ public partial class LyricsView : UserControl
             // Header text needs the window's width, not the cover's: clamping
             // the stack to the cover clipped the genre · year · badge line.
             stackWidth = Math.Clamp(width - 160, 280, 520);
-            LyricsItemsControl.MaxWidth = Math.Max(240, width - 80);
+            LyricsItemsControl.MaxWidth = Math.Max(240, width - 160);
             RightPanel.RenderTransform = null;
         }
         else
@@ -338,7 +338,7 @@ public partial class LyricsView : UserControl
             AlbumArtBorder.Width = cover;
             AlbumArtBorder.Height = cover;
             stackWidth = Math.Max(cover, 300);
-            LyricsItemsControl.MaxWidth = Math.Clamp(width / 2 - 120, 280, 620);
+            LyricsItemsControl.MaxWidth = Math.Clamp((width / 2.0) / 1.1 - 150, 240, 560);
             RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
         }
 
@@ -357,7 +357,10 @@ public partial class LyricsView : UserControl
         // window so lines don't wrap into a wall of text on small displays.
         // Inherited by the line/karaoke TextBlocks in the item template.
         var fontScale = Math.Clamp(Math.Min(height / 1000.0, width / 1700.0), 0.55, 1.0);
-        LyricsItemsControl.FontSize = Math.Round(46 * fontScale);
+        var textScaleMultiplier = Math.Clamp(((DataContext as LyricsViewModel)?.Player.LyricsTextScalePercent ?? 100) / 100.0, 0.20, 2.0);
+        LyricsItemsControl.FontSize = Math.Round(46 * fontScale * textScaleMultiplier);
+        LyricsItemsControl.InvalidateMeasure();
+        LyricsScrollContent?.InvalidateMeasure();
     }
 
     /// <summary>Aligns the header text block (title/artist/album/metadata) for the
@@ -679,6 +682,13 @@ public partial class LyricsView : UserControl
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PlayerViewModel.LyricsTextScalePercent))
+        {
+            UpdateResponsiveLayout(Bounds.Size);
+            LyricsItemsControl?.InvalidateMeasure();
+            LyricsScrollContent?.InvalidateMeasure();
+            ScheduleActiveLineRecenter();
+        }
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
                 or nameof(PlayerViewModel.LyricsFlowingStyle)
                 or nameof(PlayerViewModel.LyricsDriftMovement)

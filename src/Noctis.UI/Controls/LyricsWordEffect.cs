@@ -26,7 +26,14 @@ public enum WordSurface
 /// <summary>One word as the effect sees it this frame (plugin API 1.5's LyricsWord).</summary>
 public readonly record struct WordPoseInput(
     double Progress, double DurationMs, double Lift, bool IsHeld, bool IsLastInLine,
-    bool IsRightToLeft, int LetterCount, double FontSize, WordSurface Surface);
+    bool IsRightToLeft, int LetterCount, double FontSize, WordSurface Surface)
+{
+    /// <summary>Time since the held word started; NaN when no held-note animation is active.</summary>
+    public double EmphasisMs { get; init; }
+
+    /// <summary>True for scripts that must remain a single shaped text run.</summary>
+    public bool IsJoinedScript { get; init; }
+}
 
 /// <summary>One letter's pose: scale about its centre, offsets in em, glow strength (1 = Noctis's own).</summary>
 public readonly record struct LetterPose(double Scale, double OffsetXEm, double OffsetYEm, double Glow)

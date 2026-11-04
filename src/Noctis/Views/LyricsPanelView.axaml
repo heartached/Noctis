@@ -50,7 +50,7 @@
                      headroom without growing the word cell (see the
                      lyrics page template for the full rationale). -->
                 <Canvas ClipToBounds="False">
-                    <controls:KaraokeWordText Text="{Binding Text}"
+                    <controls:KaraokeWordText Text="{Binding DisplayText}"
                                               Classes="word-glow"
                                               IsVisible="{Binding IsEmphasis}"
                                               Canvas.Left="-40"
@@ -81,7 +81,7 @@
                         </controls:KaraokeWordText.Opacity>
                     </controls:KaraokeWordText>
                 </Canvas>
-                <controls:KaraokeWordText Text="{Binding Text}"
+                <controls:KaraokeWordText Text="{Binding DisplayText}"
                                           Classes="word-sweep"
                                           Padding="{Binding Converter={StaticResource WordOverflowPad}}"
                                           FontWeight="Bold"

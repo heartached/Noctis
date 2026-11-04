@@ -110,7 +110,18 @@ public partial class LyricLine : ObservableObject
     public bool IsSynced => Timestamp.HasValue;
 
     /// <summary>Line end timestamp (Lyricsfile). Null when unknown; used to bound the last word's highlight.</summary>
-    public TimeSpan? EndTimestamp { get; set; }
+    public TimeSpan? EndTimestamp
+    {
+        get => _endTimestamp;
+        set
+        {
+            _endTimestamp = value;
+            ComputeWordEmphasis(_words, _endTimestamp);
+            ComputeWordEmphasis(_backgroundWords, BackgroundEndTimestamp);
+            ComputeWordEmphasis(_transliterationWords, TransliterationEndTimestamp);
+        }
+    }
+    private TimeSpan? _endTimestamp;
 
     /// <summary>Optional per-word timing for karaoke-style highlighting. Null when only line-level sync is available.</summary>
     public IReadOnlyList<WordTiming>? Words
@@ -135,6 +146,11 @@ public partial class LyricLine : ObservableObject
         set
         {
             _backgroundWords = value;
+            if (_backgroundWords != null)
+            {
+                foreach (var w in _backgroundWords)
+                    w.IsBackground = true;
+            }
             ComputeWordEmphasis(_backgroundWords, BackgroundEndTimestamp);
         }
     }
@@ -216,12 +232,15 @@ public partial class LyricLine : ObservableObject
             // in Latin lines (recall 0.80) and over half with CJK (0.47).
             var text = w.Text.Trim();
             var abutsNext = next != null && (w.End == null || w.End.Value >= next.Start);
-            var floor = abutsNext && EndsInPunctuation(text) ? EmphasisRestAfterPunctuationMs : EmphasisFloorMs;
-            var emphasis = text.Length > 0 && SizeOk(text.Length, IsCjkish(text)) && duration >= floor;
+            var floor = EmphasisFloorMs;
+            var cleanText = text.TrimEnd(',', '.', '!', '?', ';', ':', '—', '-', '"', '\'', '’', '”');
+            var isCjk = IsCjkish(cleanText);
+            var len = cleanText.Length;
+            var emphasis = len > 0 && SizeOk(len, isCjk) && duration >= floor;
 
             // AMLL also emphasizes a merged Latin word when one of its syllables is a
             // held note by itself ("No-o-o-o" carries the hold in one syllable).
-            if (!emphasis && w.Syllables is { Count: > 1 } syllables && !IsCjkish(text))
+            if (!emphasis && w.Syllables is { Count: > 1 } syllables && !isCjk)
             {
                 for (int s = 0; s < syllables.Count && !emphasis; s++)
                 {

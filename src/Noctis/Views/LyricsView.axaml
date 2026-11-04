@@ -7,6 +7,7 @@
              xmlns:controls="using:Noctis.Controls"
              xmlns:views="using:Noctis.Views"
              xmlns:helpers="using:Noctis.Helpers"
+             xmlns:spicy="using:Noctis.Controls.SpicyLyrics"
              x:Class="Noctis.Views.LyricsView"
              x:DataType="vm:LyricsViewModel"
              x:Name="LyricsRoot"
@@ -58,7 +59,7 @@
                      glow's Padding gives the blur room and the matching negative offset
                      re-aligns its glyphs onto the base layer. -->
                 <Canvas ClipToBounds="False">
-                    <controls:KaraokeWordText Text="{Binding Text}"
+                    <controls:KaraokeWordText Text="{Binding DisplayText}"
                                               Classes="word-glow"
                                               IsVisible="{Binding IsEmphasis}"
                                               Canvas.Left="-60"
@@ -95,7 +96,7 @@
                      by the soft edge at Progress; held-note words swell and lift letter by
                      letter (KaraokeWordText). Padding keeps the cell geometry the old base
                      TextBlock had (WordOverflowPaddingConverter). -->
-                <controls:KaraokeWordText Text="{Binding Text}"
+                <controls:KaraokeWordText Text="{Binding DisplayText}"
                                           Classes="word-sweep"
                                           Padding="{Binding Converter={StaticResource WordOverflowPad}}"
                                           FontWeight="Bold"
@@ -1155,6 +1156,7 @@
                                         MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                         RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                         HorizontalContentAlignment="Left"
+                                        VerticalAlignment="Top"
                                         Cursor="Hand"
                                         IsHitTestVisible="{Binding IsClickable}"
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
@@ -1166,8 +1168,11 @@
                                                 <Binding Path="IsRightToLeft"/>
                                             </MultiBinding>
                                         </Button.HorizontalAlignment>
-                                    <StackPanel HorizontalAlignment="Left"
-                                                MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                    <Panel VerticalAlignment="Top">
+                                        <!-- Default Noctis Renderer -->
+                                        <StackPanel HorizontalAlignment="Left"
+                                                    MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                    IsVisible="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).IsDefaultLyricsRenderer}">
                                     <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
                                         <!-- Main text layer (only for lines without word timings; intro uses dots) -->
                                         <TextBlock Text="{Binding Text}"
@@ -1382,7 +1387,19 @@
                                             </Transitions>
                                         </TextBlock.Transitions>
                                     </TextBlock>
-                                    </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Native SpicyLyrics Renderer -->
+                                        <spicy:SpicyLyricsRenderControl
+                                            IsVisible="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).IsSpicyLyricsRenderer}"
+                                            Line="{Binding}"
+                                            LyricsFontSize="{Binding $parent[ItemsControl].FontSize}"
+                                            LyricsFontFamily="{Binding $parent[ItemsControl].FontFamily}"
+                                            SungBrush="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                            PresetMode="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).Player.LyricsRendererMode}"
+                                            HorizontalAlignment="Stretch"
+                                            MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"/>
+                                    </Panel>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

@@ -23,17 +23,43 @@ public readonly record struct WordSyllable(TimeSpan Start, TimeSpan? End, int Le
 /// </summary>
 public partial class WordTiming : ObservableObject
 {
+    /// <summary>Global toggle whether background vocal words strip enclosing parentheses.</summary>
+    public static bool IgnoreBackgroundParentheses { get; set; }
+
+    /// <summary>True when this word belongs to a background vocal layer.</summary>
+    public bool IsBackground { get; set; }
+
     /// <summary>Word text. Per the Lyricsfile spec, trailing spaces are preserved except on the final word of a line.</summary>
     public string Text { get; init; } = string.Empty;
 
+    /// <summary>Display text for this word, taking into account user settings (e.g. ignoring parentheses on background vocals).</summary>
+    public string DisplayText =>
+        (IsBackground && IgnoreBackgroundParentheses)
+            ? StripParentheses(Text)
+            : Text;
+
     /// <summary>
-    /// Text the sweep overlay renders: <see cref="Text"/> minus trailing whitespace.
-    /// The sweep mask is relative to the overlay's bounds, so if the trailing space is
-    /// included the edge spends the tail of every word's duration crossing invisible
-    /// whitespace — a visible stall at the end of each word. Leading whitespace must
-    /// stay so the overlay's glyphs keep lining up with the base layer.
+    /// Text the sweep overlay renders: <see cref="DisplayText"/> minus trailing whitespace.
     /// </summary>
-    public string SweepText => Text.TrimEnd();
+    public string SweepText => DisplayText.TrimEnd();
+
+    /// <summary>Strips opening and closing parentheses from text while preserving word spacing.</summary>
+    public static string StripParentheses(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        var hasTrailingSpace = text.EndsWith(' ');
+        var trimmed = text.TrimEnd();
+        var stripped = trimmed.Replace("(", "").Replace(")", "").Replace("（", "").Replace("）", "");
+        return hasTrailingSpace ? stripped + " " : stripped;
+    }
+
+    public void RefreshDisplayText()
+    {
+        _emphasisCharCount = null;
+        OnPropertyChanged(nameof(DisplayText));
+        OnPropertyChanged(nameof(SweepText));
+        OnPropertyChanged(nameof(EmphasisCharCount));
+    }
 
     /// <summary>Word start time.</summary>
     public TimeSpan Start { get; init; }
@@ -106,7 +132,7 @@ public partial class WordTiming : ObservableObject
     /// <summary>Letters the held-note animation staggers across (text elements of the
     /// visible word) — shared by the timeline's window and the renderer.</summary>
     public int EmphasisCharCount =>
-        _emphasisCharCount ??= new System.Globalization.StringInfo(Text.Trim()).LengthInTextElements;
+        _emphasisCharCount ??= new System.Globalization.StringInfo(DisplayText.Trim()).LengthInTextElements;
     private int? _emphasisCharCount;
 
     /// <summary>Held-note animation strength for this word (AMLL params).</summary>

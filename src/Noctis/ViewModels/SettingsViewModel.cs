@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
@@ -1324,9 +1324,24 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _lyricsMinLineOpacity;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
     [ObservableProperty] private bool _lyricsGlowAndLift = true;
+    [ObservableProperty] private string _lyricsRendererMode = Noctis.Controls.LyricsRenderer.SpicyLyricsSimple;
+    [ObservableProperty] private int _lyricsMaxSplitLetters = Models.AppSettings.LyricsMaxSplitLettersDefault;
+    [ObservableProperty] private int _lyricsEmphasisMinMs = Models.AppSettings.LyricsEmphasisMinMsDefault;
+    [ObservableProperty] private string _selectedLyricsEmphasisMinMs = $"{Models.AppSettings.LyricsEmphasisMinMsDefault} ms";
+    public IReadOnlyList<string> LyricsEmphasisMinMsOptions { get; } = new[] { "500 ms", "700 ms", "800 ms", "900 ms", "1000 ms" };
+    [ObservableProperty] private int _lyricsAnimationScalePercent = Models.AppSettings.LyricsAnimationScalePercentDefault;
+    [ObservableProperty] private int _lyricsGlowExposurePercent = Models.AppSettings.LyricsGlowExposurePercentDefault;
+    [ObservableProperty] private int _lyricsTextScalePercent = Models.AppSettings.LyricsTextScalePercentDefault;
+    public IReadOnlyList<string> LyricsRendererOptions { get; } =
+        new[]
+        {
+            Noctis.Controls.LyricsRenderer.NoctisDefault,
+            Noctis.Controls.LyricsRenderer.SpicyLyrics
+        };
     [ObservableProperty] private bool _lyricsShowTranslations = true;
     [ObservableProperty] private bool _lyricsShowRomanization = true;
     [ObservableProperty] private bool _lyricsShowBackgroundVocals = true;
+    [ObservableProperty] private bool _lyricsIgnoreBackgroundVocalsParentheses;
 
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
@@ -3360,12 +3375,20 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
+            LyricsRendererMode = _settings.LyricsRendererMode;
+            LyricsMaxSplitLetters = Math.Clamp(_settings.LyricsMaxSplitLetters, 2, 20);
+            LyricsEmphasisMinMs = _settings.LyricsEmphasisMinMs;
+            SelectedLyricsEmphasisMinMs = $"{_settings.LyricsEmphasisMinMs} ms";
+            LyricsAnimationScalePercent = Math.Clamp(_settings.LyricsAnimationScalePercent, 0, 200);
+            LyricsGlowExposurePercent = Math.Clamp(_settings.LyricsGlowExposurePercent, 0, 200);
+            LyricsTextScalePercent = Math.Clamp(_settings.LyricsTextScalePercent, 0, 200);
             LyricsSaveTarget = LyricsSaveOptions.ParseTarget(_settings.LyricsSaveTarget).ToString();
             LyricsAutoDownload = _settings.LyricsAutoDownload;
             LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(_settings.LyricsPreferredType).ToString();
             LyricsShowTranslations = _settings.LyricsShowTranslations;
             LyricsShowRomanization = _settings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = _settings.LyricsShowBackgroundVocals;
+            LyricsIgnoreBackgroundVocalsParentheses = _settings.LyricsIgnoreBackgroundVocalsParentheses;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             // Reflect the real OS autostart state (not an AppSettings copy) so the
@@ -3879,12 +3902,19 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
+        _settings.LyricsRendererMode = LyricsRendererMode;
+        _settings.LyricsMaxSplitLetters = LyricsMaxSplitLetters;
+        _settings.LyricsEmphasisMinMs = LyricsEmphasisMinMs;
+        _settings.LyricsAnimationScalePercent = LyricsAnimationScalePercent;
+        _settings.LyricsGlowExposurePercent = LyricsGlowExposurePercent;
+        _settings.LyricsTextScalePercent = LyricsTextScalePercent;
         _settings.LyricsSaveTarget = LyricsSaveOptions.ParseTarget(LyricsSaveTarget).ToString();
         _settings.LyricsAutoDownload = LyricsAutoDownload;
         _settings.LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(LyricsPreferredType).ToString();
         _settings.LyricsShowTranslations = LyricsShowTranslations;
         _settings.LyricsShowRomanization = LyricsShowRomanization;
         _settings.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
+        _settings.LyricsIgnoreBackgroundVocalsParentheses = LyricsIgnoreBackgroundVocalsParentheses;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.StartMinimizedToTray = StartMinimizedToTray;
@@ -4236,12 +4266,20 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _player.LyricsGlowAndLift = LyricsGlowAndLift;
+        _player.LyricsRendererMode = LyricsRendererMode;
+        _player.LyricsMaxSplitLetters = LyricsMaxSplitLetters;
+        _player.LyricsEmphasisMinMs = LyricsEmphasisMinMs;
+        _player.LyricsAnimationScalePercent = LyricsAnimationScalePercent;
+        _player.LyricsGlowExposurePercent = LyricsGlowExposurePercent;
+        _player.LyricsTextScalePercent = LyricsTextScalePercent;
+        Noctis.Controls.LyricsRenderer.UpdateConfig(LyricsMaxSplitLetters, LyricsEmphasisMinMs, LyricsAnimationScalePercent, LyricsGlowExposurePercent, LyricsIgnoreBackgroundVocalsParentheses);
         _player.LyricsSaveTarget = LyricsSaveTarget;
         _player.LyricsAutoDownload = LyricsAutoDownload;
         _player.LyricsPreferredType = LyricsPreferredType;
         _player.LyricsShowTranslations = LyricsShowTranslations;
         _player.LyricsShowRomanization = LyricsShowRomanization;
         _player.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
+        _player.LyricsIgnoreBackgroundVocalsParentheses = LyricsIgnoreBackgroundVocalsParentheses;
         ApplyMarqueeSwitches();
     }
 
@@ -5832,6 +5870,47 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnLyricsRendererModeChanged(string value)
+    {
+        ApplyPlayerSettings();
+        Noctis.Controls.LyricsRenderer.SetMode(value);
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsMaxSplitLettersChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSelectedLyricsEmphasisMinMsChanged(string value)
+    {
+        if (int.TryParse(value.Replace("ms", "").Trim(), out var ms))
+        {
+            LyricsEmphasisMinMs = ms;
+            ApplyPlayerSettings();
+            if (_settingsLoaded) _ = SaveAsync();
+        }
+    }
+
+    partial void OnLyricsAnimationScalePercentChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsGlowExposurePercentChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsTextScalePercentChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLyricsShowTranslationsChanged(bool value)
     {
         ApplyPlayerSettings();
@@ -5845,6 +5924,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsShowBackgroundVocalsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsIgnoreBackgroundVocalsParenthesesChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -7791,12 +7876,20 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;
+            LyricsRendererMode = defaultSettings.LyricsRendererMode;
+            LyricsMaxSplitLetters = defaultSettings.LyricsMaxSplitLetters;
+            LyricsEmphasisMinMs = defaultSettings.LyricsEmphasisMinMs;
+            SelectedLyricsEmphasisMinMs = $"{defaultSettings.LyricsEmphasisMinMs} ms";
+            LyricsAnimationScalePercent = defaultSettings.LyricsAnimationScalePercent;
+            LyricsGlowExposurePercent = defaultSettings.LyricsGlowExposurePercent;
+            LyricsTextScalePercent = defaultSettings.LyricsTextScalePercent;
             LyricsSaveTarget = defaultSettings.LyricsSaveTarget;
             LyricsAutoDownload = defaultSettings.LyricsAutoDownload;
             LyricsPreferredType = defaultSettings.LyricsPreferredType;
             LyricsShowTranslations = defaultSettings.LyricsShowTranslations;
             LyricsShowRomanization = defaultSettings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = defaultSettings.LyricsShowBackgroundVocals;
+            LyricsIgnoreBackgroundVocalsParentheses = defaultSettings.LyricsIgnoreBackgroundVocalsParentheses;
             FfmpegPath = defaultSettings.FfmpegPath;
             ExternalOpenAppPath = defaultSettings.ExternalOpenAppPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
