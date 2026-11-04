@@ -1947,4 +1947,27 @@
     <value>Yakut</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>Veri Klasörü</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Noctis'in kitaplığınızı, kapak görsellerini, hareketli kapakları, şarkı sözlerini ve önbellekleri sakladığı yer. Yer açmak için başka bir sürücüde bir klasör seçin ya da başka bir bilgisayardan Noctis verisi içeren bir klasör seçin.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>Klasörü Değiştir</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>Varsayılanı Kullan</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Noctis'in verilerini nerede saklayacağını seçin</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>Bu klasörde zaten Noctis verisi var</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>Bunun yerine {0} içindeki kitaplık ve ayarlar kullanılsın mı? Hiçbir şey kopyalanmaz ve {1} içindeki mevcut verileriniz olduğu yerde kalır.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>Bu Klasörü Kullan</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>Verileriniz kopyalanıyor: {0} / {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>Verileriniz {0} konumuna kopyalandı. Taşımayı bitirmek için Noctis'i yeniden başlatın; eski kopya ardından silinir.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>{0} klasörünü kullanmaya başlamak için Noctis'i yeniden başlatın.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>Şimdi Yeniden Başlat</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis kendini yeniden başlatamadı. Bitirmek için Noctis'ten çıkıp yeniden açın.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>Verileriniz buraya {0} konumundan taşındı.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>Verileriniz taşınamadı, hiçbir şey değişmedi: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>{0} konumuna erişilemiyor, bu yüzden Noctis şimdilik varsayılan klasörü kullanıyor. Sürücüyü bağlayıp Noctis'i yeniden başlatın.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis verilerini zaten bu klasörde saklıyor.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>Noctis'in veri klasörünün dışında bir klasör seçin.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>Bu klasörde başka dosyalar var. Boş bir klasör ya da Noctis verisi içeren bir klasör seçin.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis bu klasöre yazamıyor.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>Yeterli alan yok: verileriniz için {0} gerekiyor, yalnızca {1} boş.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>Verileriniz taşınamadı: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>Taşıma iptal edildi. Verileriniz olduğu yerde kalıyor.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

@@ -6839,4 +6839,27 @@
     <value>ياقوتي</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>مجلد البيانات</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>المكان الذي يحفظ فيه Noctis مكتبتك والصور الفنية والأغلفة المتحركة والكلمات وذاكرة التخزين المؤقت. اختر مجلدًا على محرك أقراص آخر لتوفير المساحة، أو مجلدًا يحتوي بالفعل على بيانات Noctis من جهاز كمبيوتر آخر.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>تغيير المجلد</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>استخدام الافتراضي</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>اختر مكان حفظ بيانات Noctis</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>يحتوي هذا المجلد بالفعل على بيانات Noctis</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>هل تريد استخدام المكتبة والإعدادات الموجودة في {0} بدلاً من ذلك؟ لن يتم نسخ أي شيء، وتبقى بياناتك الحالية في {1} في مكانها.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>استخدام هذا المجلد</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>جارٍ نسخ بياناتك: {0} من {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>تم نسخ بياناتك إلى {0}. أعد تشغيل Noctis لإكمال النقل، وبعدها تُحذف النسخة القديمة.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>أعد تشغيل Noctis لبدء استخدام {0}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>إعادة التشغيل الآن</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>تعذّر على Noctis إعادة التشغيل. أغلق Noctis وشغّله مجددًا للإكمال.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>تم نقل بياناتك إلى هنا من {0}.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>تعذّر نقل بياناتك، لذا لم يتغير شيء: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>لا يمكن الوصول إلى {0}، لذا يستخدم Noctis المجلد الافتراضي حاليًا. وصّل محرك الأقراص وأعد تشغيل Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>يحفظ Noctis بياناته في هذا المجلد بالفعل.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>اختر مجلدًا خارج مجلد بيانات Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>يحتوي هذا المجلد على ملفات أخرى. اختر مجلدًا فارغًا أو مجلدًا يحتوي على بيانات Noctis.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>لا يستطيع Noctis الكتابة في هذا المجلد.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>لا توجد مساحة كافية: تحتاج بياناتك إلى {0}، والمساحة المتاحة {1} فقط.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>تعذّر نقل بياناتك: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>تم إلغاء النقل. تبقى بياناتك في مكانها.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

@@ -6839,4 +6839,27 @@
     <value>루비</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>데이터 폴더</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>Noctis가 보관함, 아트워크, 움직이는 커버, 가사, 캐시를 저장하는 위치입니다. 공간을 확보하려면 다른 드라이브의 폴더를, 다른 컴퓨터의 Noctis 데이터를 쓰려면 해당 폴더를 선택하세요.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>폴더 변경</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>기본값 사용</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Noctis 데이터를 저장할 위치 선택</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>이 폴더에 이미 Noctis 데이터가 있습니다</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>{0}의 보관함과 설정을 대신 사용할까요? 아무것도 복사되지 않으며 {1}에 있는 현재 데이터는 그대로 남습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>이 폴더 사용</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>데이터 복사 중: {0} / {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>데이터가 {0}(으)로 복사되었습니다. 이동을 마치려면 Noctis를 다시 시작하세요. 그 후 이전 사본이 삭제됩니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>{0} 사용을 시작하려면 Noctis를 다시 시작하세요.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>지금 다시 시작</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis가 스스로 다시 시작하지 못했습니다. 완료하려면 Noctis를 종료한 후 다시 실행하세요.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>데이터가 {0}에서 이곳으로 이동되었습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>데이터를 이동하지 못해 아무것도 변경되지 않았습니다: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>{0}에 접근할 수 없어 Noctis가 당분간 기본 폴더를 사용합니다. 드라이브를 연결하고 Noctis를 다시 시작하세요.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis는 이미 해당 폴더에 데이터를 저장하고 있습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>Noctis 데이터 폴더 밖에 있는 폴더를 선택하세요.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>해당 폴더에 다른 파일이 있습니다. 빈 폴더나 Noctis 데이터가 있는 폴더를 선택하세요.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis가 해당 폴더에 쓸 수 없습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>공간이 부족합니다: 데이터에 {0}이(가) 필요하지만 여유 공간은 {1}입니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>데이터를 이동하지 못했습니다: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>이동이 취소되었습니다. 데이터는 그대로 있습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
 </root>

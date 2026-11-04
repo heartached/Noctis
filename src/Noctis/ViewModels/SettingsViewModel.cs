@@ -521,6 +521,7 @@ public partial class SettingsViewModel : ViewModelBase
         else if (tab == TabAdvanced)
         {
             _ = RefreshStorageInfoAsync();
+            RefreshDataFolderState();
         }
     }
 

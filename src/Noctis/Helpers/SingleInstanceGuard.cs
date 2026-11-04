@@ -19,9 +19,11 @@ public static class SingleInstanceGuard
     // Keyed by NOCTIS_DATA_DIR alone, a Debug exe started without it (Explorer, a script) still
     // ran on Noctis-dev but shared the installed app's names, and quit the same way (10-28).
     // The default root keeps the original names, so an older running install still catches
-    // a second launch of the new one.
+    // a second launch of the new one. Keyed by the HOME root, not the data root: a profile
+    // whose data the user moved to another drive (GitHub #165) is still the same app, and the
+    // guard runs before a pending move is finished (the data root may change under it).
     private static readonly string InstanceKey =
-        Environment.UserName + SuffixFor(AppPaths.DataRoot,
+        Environment.UserName + SuffixFor(AppPaths.HomeRoot,
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Noctis"));
     private static readonly string MutexName = $"Noctis-SingleInstance-{InstanceKey}";
     private static readonly string PipeName = $"Noctis-Activate-{InstanceKey}";
@@ -106,8 +108,9 @@ public static class SingleInstanceGuard
     {
         try
         {
-            Directory.CreateDirectory(AppPaths.DataRoot);
-            var path = Path.Combine(AppPaths.DataRoot, ".instance.lock");
+            // The home root (see InstanceKey): it stays put when the data moves.
+            Directory.CreateDirectory(AppPaths.HomeRoot);
+            var path = Path.Combine(AppPaths.HomeRoot, ".instance.lock");
             _unixLock = new FileStream(
                 path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
