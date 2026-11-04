@@ -25,6 +25,12 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
+        <!-- Fluent's placeholder grey (and its half opacity) read 2.1–2.6:1 on the field in every
+             theme; the theme's secondary text is tuned to stay readable, as on TextBox.search-field. -->
+        <Style Selector="TextBox.find /template/ TextBlock#PART_Placeholder, TextBox.find /template/ TextBlock#PART_FloatingPlaceholder, TextBox.find:focus /template/ TextBlock#PART_Placeholder, TextBox.find:pointerover /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
         <Style Selector="TextBox.find /template/ Border#PART_BorderElement, TextBox.find:pointerover /template/ Border#PART_BorderElement, TextBox.find:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
