@@ -4003,7 +4003,11 @@ public class LibraryService : ILibraryService
                         Genre = Album.ResolveGenre(albumTracks),
                         TrackCount = entry.TrackCount,
                         TotalDuration = TimeSpan.FromTicks(entry.TotalDurationTicks),
-                        ArtworkPath = entry.ArtworkPath,
+                        // Re-derived, not the cached full path: indexes.json written before a
+                        // data folder move (GitHub #165), or on another computer, names the old
+                        // folder, and every cover went blank until a rebuild. The cache only
+                        // says whether the album has art; where it lives is the current folder.
+                        ArtworkPath = entry.ArtworkPath is null ? null : _persistence.GetArtworkPath(entry.Id),
                         Tracks = albumTracks
                     };
 
