@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "tag": "plugin-albumtown-v1.0.2",
+      "version": "plugin-albumtown-v1.0.2",
+      "name": "Album Town 1.0.2",
+      "label": "Album Town",
+      "publishedAt": "2026-11-04T04:24:24Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.2",
+      "prerelease": true,
+      "sections": [],
+      "summary": "Your albums come to life in a little town."
+    },
+    {
       "tag": "v1.6.6",
       "version": "1.6.6",
       "name": "v1.6.6",
@@ -3943,6 +3954,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-03T03:53:44.524Z",
+  "updatedAt": "2026-11-04T04:24:41.343Z",
   "degraded": false
 }
