@@ -98,6 +98,8 @@ public partial class SettingsViewModel
         }
         Task StepSync(string what, Action clear) => Step(what, () => { clear(); return Task.CompletedTask; });
 
+        // A play count import would otherwise apply old counts and journal them after the reset.
+        CancelPlayCountImport();
         // The whole-library lyrics / animated artwork tools save a ledger as they go.
         await Step("bulk runs", MetadataHelper.StopLibraryRunsAsync);
         // The Artists tab's portrait sweep walks the old artist list for minutes.
