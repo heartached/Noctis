@@ -1364,6 +1364,187 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     // ── Desktop fakes ────────────────────────────────────────────────────
 
     /// <summary>The desktop's playlists.json: the ledger reads it on every pull, the applier writes it.</summary>
+    // ── Desktop songs the phone already has as files ─────────────────────
+
+    /// <summary>The phone's scanned "Phone song" (Tester, ~1 s) is also on the desktop as Gamma.</summary>
+    private async Task<Track> PhoneHasDesktopGammaAsync()
+    {
+        _t3.Title = "Phone song";
+        _t3.Artist = "Tester";
+        _t3.Duration = TimeSpan.FromSeconds(1);
+        Directory.CreateDirectory(PhoneMusic);
+        NoctisAccountLibraryTests.WriteMp3(Path.Combine(PhoneMusic, "local.mp3"), "Phone song");
+        await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
+        await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, TestContext.Current.CancellationToken);
+        return _phoneLibrary.Tracks.Single(t => t.SourceType == SourceType.Local);
+    }
+
+    [Fact]
+    public async Task SongAlreadyOnThePhone_ShowsOnce_PlaysTheFile_AndTakesTheDesktopState()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+
+        var result = await svc.SyncNowAsync(ct);
+
+        Assert.Equal(3, result.Songs);                                   // the desktop count
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);                     // the file + Alpha + Beta, not 4
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+        Assert.Equal(SourceType.Local, local.SourceType);
+        Assert.False(svc.IsRemote(local));
+        Assert.False(svc.IsDownloaded(local));
+        Assert.Equal(_t3.Id, svc.DesktopIdOf(local));
+        Assert.True(local.IsFavorite);                                   // Gamma is a favorite on the desktop
+        Assert.Equal(5, local.PlayCount);
+
+        // The desktop playlist lists Gamma; on the phone it points at the file.
+        var mix = Assert.Single(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.Equal(new[] { _t1.Id, local.Id }, mix.TrackIds);
+
+        // Another sync changes nothing.
+        var again = await svc.SyncNowAsync(ct);
+        Assert.Equal(3, again.Songs);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);
+        Assert.Same(local, _phoneLibrary.GetTrackById(local.Id));
+    }
+
+    [Fact]
+    public async Task EditsAndPlaysOfAPairedFile_GoToTheDesktopUnderTheDesktopId()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+
+        local.IsFavorite = false;
+        local.Rating = 3;
+        await _phoneLibrary.SaveTrackUserStateAsync(new[] { local });
+        await Until(() => svc.PendingTrackCount == 1);
+        svc.RecordPlay(local, DateTime.UtcNow);
+        Assert.Equal(1, svc.PendingPlayCount);
+
+        var result = await svc.SyncNowAsync(ct);
+
+        Assert.Equal(1, result.PlaysSent);
+        var applied = Assert.Single(_desk.AppliedTracks, a => a.Id == _t3.Id);
+        Assert.False(applied.State.Favorite);
+        Assert.Equal(3, applied.State.Rating);
+        Assert.Equal(0, svc.PendingTrackCount);
+        Assert.Equal(0, svc.PendingPlayCount);
+    }
+
+    [Fact]
+    public async Task AFavoriteOnThePhoneOwnFile_SurvivesThePairing_AndReachesTheDesktop()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _t3.IsFavorite = false;
+        _t3.PlayCount = 0;
+        var local = await PhoneHasDesktopGammaAsync();
+        local.IsFavorite = true;
+        await _phoneLibrary.SaveTrackUserStateAsync(new[] { local });
+        var svc = await SignedInAsync();
+
+        var result = await svc.SyncNowAsync(ct);
+
+        Assert.True(local.IsFavorite);
+        Assert.Equal(1, result.StateChangesPushed);
+        Assert.True(Assert.Single(_desk.AppliedTracks, a => a.Id == _t3.Id).State.Favorite);
+    }
+
+    [Fact]
+    public async Task APairedSongDownload_IsDropped_TheFilePlaysInstead()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t3) }, ct);
+        Assert.Equal(1, svc.DownloadedCount);
+
+        await PhoneHasDesktopGammaAsync();
+        await svc.SyncNowAsync(ct);
+
+        Assert.Equal(0, svc.DownloadedCount);
+        Assert.Empty(Directory.GetFiles(OfflineDir));
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);
+    }
+
+    [Fact]
+    public async Task SignOut_KeepsThePairedFileAndItsState_OnlyTheDesktopRowsGo()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        Assert.True(local.IsFavorite);
+
+        await svc.SignOutAsync(removeDownloads: true, ct);
+
+        var kept = Assert.Single(_phoneLibrary.Tracks);
+        Assert.Same(local, kept);
+        Assert.True(kept.IsFavorite);
+        Assert.Equal(5, kept.PlayCount);
+        Assert.Null(svc.DesktopIdOf(kept));
+        Assert.DoesNotContain(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+    }
+
+    [Fact]
+    public async Task DeletingThePairedFile_BringsTheDesktopSongBack_AndRepointsItsPlaylists()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+
+        await _phoneLibrary.RemoveTrackAsync(local.Id);
+        await svc.SyncNowAsync(ct);
+
+        var desktopRow = _phoneLibrary.GetTrackById(_t3.Id);
+        Assert.NotNull(desktopRow);
+        Assert.Equal(SourceType.NoctisServer, desktopRow!.SourceType);
+        Assert.True(svc.IsRemote(desktopRow));
+        Assert.NotNull(svc.ResolvePlaybackUri(desktopRow.FilePath));      // streams from the computer
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);
+        var mix = Assert.Single(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.Equal(new[] { _t1.Id, _t3.Id }, mix.TrackIds);
+    }
+
+    [Fact]
+    public async Task AFileScannedAfterSignIn_IsPairedOnTheNextSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(SourceType.NoctisServer, _phoneLibrary.GetTrackById(_t3.Id)!.SourceType);
+
+        var local = await PhoneHasDesktopGammaAsync();
+        await svc.SyncNowAsync(ct);
+
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+        Assert.Equal(_t3.Id, svc.DesktopIdOf(local));
+        var mix = Assert.Single(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.Equal(new[] { _t1.Id, local.Id }, mix.TrackIds);
+    }
+
+    [Fact]
+    public async Task APlaylistEditedOnThePhone_IsPushedWithTheDesktopIds()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+
+        var playlists = await _phonePersistence.LoadPlaylistsAsync();
+        var mix = playlists.Single(p => p.Id == _deskMixId);
+        mix.TrackIds.Reverse();
+        mix.ModifiedAt = DateTime.UtcNow.AddMinutes(1);
+        await _phonePersistence.SavePlaylistsAsync(playlists);
+        await svc.SyncNowAsync(ct);
+
+        Assert.Equal(new[] { _t3.Id, _t1.Id }, _deskPersistence.Playlists.Single(p => p.Id == _deskMixId).TrackIds);
+        Assert.Equal(new[] { local.Id, _t1.Id }, (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId).TrackIds);
+    }
+
     private sealed class DesktopPersistence : TestPersistenceService
     {
         public List<Playlist> Playlists { get; } = new();

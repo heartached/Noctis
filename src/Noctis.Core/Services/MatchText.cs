@@ -157,6 +157,31 @@ public static partial class MatchText
         return false;
     }
 
+    /// <summary>Edit distance between two strings.</summary>
+    public static int Levenshtein(string a, string b)
+    {
+        var n = a.Length;
+        var m = b.Length;
+        if (n == 0) return m;
+        if (m == 0) return n;
+
+        var prev = new int[m + 1];
+        var curr = new int[m + 1];
+        for (var j = 0; j <= m; j++) prev[j] = j;
+
+        for (var i = 1; i <= n; i++)
+        {
+            curr[0] = i;
+            for (var j = 1; j <= m; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                curr[j] = Math.Min(Math.Min(prev[j] + 1, curr[j - 1] + 1), prev[j - 1] + cost);
+            }
+            (prev, curr) = (curr, prev);
+        }
+        return prev[m];
+    }
+
     /// <summary>Similarity in [0,1] from Levenshtein distance over already-folded strings.</summary>
     public static double Ratio(string a, string b)
     {
@@ -164,7 +189,7 @@ public static partial class MatchText
         if (a.Length == 0 || b.Length == 0) return 0.0;
         if (a == b) return 1.0;
         var maxLen = Math.Max(a.Length, b.Length);
-        return 1.0 - (double)FuzzyTrackMatcher.Levenshtein(a, b) / maxLen;
+        return 1.0 - (double)Levenshtein(a, b) / maxLen;
     }
 
     /// <summary>Base-title similarity (feat./remaster/edition decoration ignored).</summary>
