@@ -37,7 +37,9 @@ public class AudioFileInfo
     }
 
     public string BitrateFormatted => Bitrate > 0 ? $"{Bitrate} kbps" : "N/A";
-    public string SampleRateFormatted => SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A";
+    public string SampleRateFormatted =>
+        (Track.IsDsdFile(FilePath, Codec) ? Track.FormatDsdRate(SampleRate) : null)
+        ?? (SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A");
     public string BitsPerSampleFormatted => BitsPerSample > 0 ? $"{BitsPerSample} bit" : "N/A";
 
     public string DurationFormatted =>
