@@ -408,10 +408,6 @@
     <value>가사 배경 영상</value>
     <comment>Album page menu</comment>
   </data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>이 앨범의 영상 선택…</value>
-    <comment>Album page menu</comment>
-  </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
     <value>기본 영상 사용</value>
     <comment>Album page menu</comment>
@@ -5302,6 +5298,8 @@
   <data name="Plugins.None" xml:space="preserve">
     <value>아직 설치된 플러그인이 없습니다.</value>
   </data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve">
     <value>Noctis 서버</value>
@@ -5440,90 +5438,7 @@
     <value>닫기</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>YouTube에서 추가</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>검색하거나 링크를 붙여넣으세요 — 라이브러리로 다운로드됩니다</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>YouTube에서 추가</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>검색하거나 링크를 붙여넣으세요. 커버 아트와 함께 라이브러리에 저장됩니다.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>YouTube 검색 또는 링크 붙여넣기…</value>
-    <comment>Search box watermark</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>검색</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>최초 설정</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Noctis는 YouTube와 통신하기 위해 yt-dlp(무료, 오픈 소스)를 사용합니다. Noctis 전용 폴더에 한 번 다운로드되며 여기서 업데이트됩니다.</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>yt-dlp 설치</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>다운로드</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>저장 위치</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>결과가 여기에 표시됩니다. 다운로드는 태그와 커버 아트가 붙은 채 라이브러리 폴더에 저장됩니다.</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>닫기</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>YOUTUBE 다운로드</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>YouTube에서 곡 추가</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>검색하거나 링크를 붙여넣어 다운로드합니다.</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>다운로더 열기</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>다운로드 폴더</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>비워 두면 첫 번째 음악 폴더 안의 "YouTube" 폴더를 사용합니다.</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>설치 / 업데이트</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>yt-dlp 사용자 지정 경로 (선택 사항)</value>
-    <comment>Path watermark</comment>
-  </data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="Upmix.Title" xml:space="preserve">
     <value>다채널 업믹스</value>
     <comment>Audio card title</comment>
