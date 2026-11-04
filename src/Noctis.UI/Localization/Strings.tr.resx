@@ -412,10 +412,6 @@
     <value>Söz Arka Plan Videosu</value>
     <comment>Album page menu</comment>
   </data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>Bu albüm için video seç…</value>
-    <comment>Album page menu</comment>
-  </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
     <value>Varsayılan videoyu kullan</value>
     <comment>Album page menu</comment>
@@ -5302,6 +5298,8 @@
   <data name="Plugins.None" xml:space="preserve">
     <value>Henüz eklenti kurulmadı.</value>
   </data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve">
     <value>Noctis Sunucusu</value>
@@ -5452,94 +5450,7 @@
     <value>Kapat</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>YouTube'dan Ekle</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>Ara veya bağlantı yapıştır — kitaplığına indirilir</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>YouTube'dan Ekle</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>Ara veya bağlantı yapıştır. Kapak resmiyle kitaplığına kaydedilir.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>YouTube'da ara veya bağlantı yapıştır…</value>
-    <comment>Search box watermark</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>Ara</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>Tek seferlik kurulum</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Noctis, YouTube ile konuşmak için yt-dlp (ücretsiz, açık kaynak) kullanır. Bir kez Noctis'in kendi klasörüne indirilir ve buradan güncellenir.</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>yt-dlp'yi kur</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>İndir</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>Kayıt yeri</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>Sonuçlar burada görünür. İndirmeler etiketlenmiş ve kapak resmiyle kitaplık klasörüne iner.</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>Kapat</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>YOUTUBE İNDİRMELERİ</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>YouTube'dan şarkı ekle</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>İndirmek için ara veya bağlantı yapıştır.</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>İndiriciyi aç</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>İndirme klasörü</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>Boşsa ilk müzik klasöründeki "YouTube" klasörü kullanılır.</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve">
-    <value>yt-dlp</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>Kur / güncelle</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>yt-dlp için özel yol (isteğe bağlı)</value>
-    <comment>Path watermark</comment>
-  </data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="Upmix.Title" xml:space="preserve">
     <value>Çok kanallı upmix</value>
     <comment>Audio card title</comment>
