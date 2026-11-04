@@ -5,6 +5,12 @@ public interface IThemeHost
 {
     void ApplyTheme(string appearance, string darkTheme, string accentHex);
 
+    /// <summary>The same, with Settings › Accent › Match Theme: while on, a colour theme's own
+    /// accent is worn instead of <paramref name="accentHex"/> (<see cref="PhoneThemes.EffectiveAccent"/>;
+    /// the host resolves System to Light or the dark theme first). By default the plain one.</summary>
+    void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme) =>
+        ApplyTheme(appearance, darkTheme, accentHex);
+
     /// <summary>
     /// Status bar icons for what a page draws under the bar: dark (true) on a light backdrop,
     /// light (false) on a dark one, null to follow the app theme again. The album page's cover
