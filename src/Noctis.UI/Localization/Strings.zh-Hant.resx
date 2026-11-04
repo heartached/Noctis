@@ -7370,4 +7370,5 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。強調色會套用到按鈕、開關和醒目提示。</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>已使用的儲存空間，{0}</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>無法寫入「{0}」的標籤：DSDIFF (.dff) 檔案的標籤為唯讀。請將其轉換為 DSD (.dsf) 後再編輯標籤。</value></data>
 </root>

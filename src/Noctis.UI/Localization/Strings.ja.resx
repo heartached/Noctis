@@ -7370,4 +7370,5 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0}を削除</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。アクセントカラーはボタン、スイッチ、ハイライトに使われます。</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>使用済みストレージ、{0}</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>「{0}」にタグを書き込めませんでした：DSDIFF（.dff）ファイルのタグは読み取り専用です。タグを編集するには DSD（.dsf）に変換してください。</value></data>
 </root>

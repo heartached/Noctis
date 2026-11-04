@@ -7370,4 +7370,5 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Quitar {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. El color de énfasis tiñe botones, interruptores y resaltados.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Almacenamiento usado, {0}</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>No se pudieron escribir las etiquetas en «{0}»: las etiquetas de los archivos DSDIFF (.dff) son de solo lectura. Conviértelo a DSD (.dsf) para editarlas.</value></data>
 </root>

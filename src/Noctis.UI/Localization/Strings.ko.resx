@@ -7370,4 +7370,5 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} 제거</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. 강조 색상은 버튼, 스위치, 하이라이트에 적용됩니다.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>사용 중인 저장 공간, {0}</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>"{0}"에 태그를 쓸 수 없습니다. DSDIFF(.dff) 파일의 태그는 읽기 전용입니다. 태그를 편집하려면 DSD(.dsf)로 변환하세요.</value></data>
 </root>

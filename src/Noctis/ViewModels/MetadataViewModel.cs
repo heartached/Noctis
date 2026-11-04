@@ -2760,7 +2760,11 @@ public partial class MetadataViewModel : ViewModelBase
         // open, or a file that cannot be written at all.
         if (failedWrites.Count > 0)
         {
-            SaveErrorMessage = failedWrites.Count == 1
+            // TagLib has no DSDIFF writer: say so instead of blaming another app or a
+            // read-only flag that isn't there.
+            SaveErrorMessage = failedWrites.All(f => Path.GetExtension(f).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+                ? Localization.Loc.T("Metadata.DffTagsReadOnly", failedWrites[0])
+                : failedWrites.Count == 1
                 ? $"Couldn't write tags to \"{failedWrites[0]}\". Another app may have the file open, " +
                   "or it may be read-only — close it there or check the file, then try again."
                 : $"Couldn't write tags to {failedWrites.Count} files (e.g. \"{failedWrites[0]}\"). " +

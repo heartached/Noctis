@@ -3654,4 +3654,5 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Акцентный цвет окрашивает кнопки, переключатели и выделение.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Занято, {0}</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Не удалось записать теги в «{0}»: теги файлов DSDIFF (.dff) доступны только для чтения. Конвертируйте файл в DSD (.dsf), чтобы изменить теги.</value></data>
 </root>

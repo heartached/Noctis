@@ -7370,4 +7370,5 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>إزالة {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. يلوّن لون التمييز الأزرار ومفاتيح التبديل والعناصر المميزة.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>مساحة التخزين المستخدمة، {0}</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>تعذّر كتابة الوسوم في "{0}": وسوم ملفات DSDIFF (.dff) للقراءة فقط. حوّل الملف إلى DSD (.dsf) لتعديل وسومه.</value></data>
 </root>
