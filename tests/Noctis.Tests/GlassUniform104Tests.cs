@@ -119,10 +119,11 @@ public class GlassUniform104Tests
     [AvaloniaFact]
     public void Menu_OpensInTheOverlayWithTheGlassClassOnlyWhileGlassIsOn()
     {
+        AddToPlaylistDialogTests.EnsureAppStyles();
         var button = new Button { Content = "…" };
         var window = new Window { Content = button, Width = 400, Height = 300 };
+        GlassMenus.SetHost(window, true);
         var flyout = new MenuFlyout { Items = { new MenuItem { Header = "A" } } };
-        GlassMenuFlyout.SetEnable(flyout, true);
         window.Show();
         try
         {
@@ -131,7 +132,7 @@ public class GlassUniform104Tests
             Dispatcher.UIThread.RunJobs();
             var presenter = Assert.IsType<MenuFlyoutPresenter>(flyout.Popup.Child);
             Assert.True(flyout.Popup.ShouldUseOverlayLayer);
-            Assert.Contains(GlassMenuFlyout.GlassClass, presenter.Classes);
+            Assert.Contains(GlassMenus.GlassClass, presenter.Classes);
             flyout.Hide();
             Dispatcher.UIThread.RunJobs();
 
@@ -139,7 +140,7 @@ public class GlassUniform104Tests
             flyout.ShowAt(button);
             Dispatcher.UIThread.RunJobs();
             Assert.False(flyout.Popup.ShouldUseOverlayLayer);
-            Assert.DoesNotContain(GlassMenuFlyout.GlassClass, presenter.Classes);
+            Assert.DoesNotContain(GlassMenus.GlassClass, presenter.Classes);
             flyout.Hide();
         }
         finally
@@ -150,8 +151,9 @@ public class GlassUniform104Tests
     }
 
     [AvaloniaFact]
-    public void Menu_WithoutEnable_IsNeverTouched()
+    public void Menu_InAWindowThatIsNoGlassHost_IsNeverTouched()
     {
+        AddToPlaylistDialogTests.EnsureAppStyles();
         var button = new Button { Content = "…" };
         var window = new Window { Content = button, Width = 400, Height = 300 };
         var flyout = new MenuFlyout { Items = { new MenuItem { Header = "A" } } };
@@ -162,7 +164,7 @@ public class GlassUniform104Tests
             flyout.ShowAt(button);
             Dispatcher.UIThread.RunJobs();
             Assert.False(flyout.Popup.ShouldUseOverlayLayer);
-            Assert.DoesNotContain(GlassMenuFlyout.GlassClass, ((Control)flyout.Popup.Child!).Classes);
+            Assert.DoesNotContain(GlassMenus.GlassClass, ((Control)flyout.Popup.Child!).Classes);
             flyout.Hide();
         }
         finally

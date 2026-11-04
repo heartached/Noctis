@@ -367,6 +367,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
+        // Menus, submenus and tooltips frost here while Liquid Glass is on (GitHub #169).
+        GlassMenus.SetHost(this, true);
         // Pick Up on Computer: the window coming to the front is when a newer phone queue is offered.
         Activated += (_, _) => (DataContext as MainWindowViewModel)?.HandoffPrompt.Check();
 
@@ -511,6 +513,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: true);
     }
 
+    /// <summary>Glass menus and tooltips (GlassMenus) tint their frost at the island's Glass
+    /// Opacity, as the island menus did since #104; they read it as a window resource.</summary>
+    private void ApplyGlassMenuTint(double opacity) =>
+        Resources["GlassMenuTintOpacity"] = Math.Clamp(opacity, 0, 1);
+
     /// <summary>Card fade/scale plus the glass underlay's own Fade/scale, always together so the
     /// frost and the content it carries are never out of step (see SettingsOverlay in the XAML).</summary>
     private void SetSettingsSheet(bool shown)
@@ -622,8 +629,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 {
                     if (e.PropertyName == nameof(PlayerViewModel.CurrentArtPath))
                         ApplyArtworkAccent();
+                    else if (e.PropertyName == nameof(PlayerViewModel.IslandBackgroundOpacity))
+                        ApplyGlassMenuTint(vm.Player.IslandBackgroundOpacity);
                 };
                 vm.Player.PropertyChanged += _artworkAccentPlayerHandler;
+                ApplyGlassMenuTint(vm.Player.IslandBackgroundOpacity);
                 _artworkAccentSettingsHandler = (_, e) =>
                 {
                     if (e.PropertyName == nameof(SettingsViewModel.AccentFollowsArtwork))

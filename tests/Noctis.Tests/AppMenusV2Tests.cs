@@ -267,6 +267,7 @@ public class AppMenusV2Tests
             new TestPersistenceService(), new FakeAnimatedCoverService());
         var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = false };
         var win = new Window { Width = 1280, Height = 900, Content = bar };
+        GlassMenus.SetHost(win, true);
         win.Show();
         Dispatcher.UIThread.RunJobs();
         var button = bar.FindControl<Button>("PlaybackSpeedButton")!;
@@ -277,7 +278,7 @@ public class AppMenusV2Tests
             flyout.ShowAt(button);
             Dispatcher.UIThread.RunJobs();
             var presenter = Assert.IsType<MenuFlyoutPresenter>(flyout.Popup.Child);
-            Assert.Contains(GlassMenuFlyout.GlassClass, presenter.Classes);
+            Assert.Contains(GlassMenus.GlassClass, presenter.Classes);
             var glass = presenter.GetVisualDescendants().OfType<GlassPanel>().Single();
             Assert.Equal(new Thickness(6), glass.Padding);
             Assert.Equal(new Thickness(0), Rows(presenter).Margin);
@@ -292,7 +293,7 @@ public class AppMenusV2Tests
             AppGlass.Clear();
             flyout.ShowAt(button);
             Dispatcher.UIThread.RunJobs();
-            Assert.DoesNotContain(GlassMenuFlyout.GlassClass, presenter.Classes);
+            Assert.DoesNotContain(GlassMenus.GlassClass, presenter.Classes);
             Assert.Equal(new Thickness(6), Part<Border>(presenter, "LayoutRoot").Padding);
             Assert.Equal(new Thickness(0), Rows(presenter).Margin);
             // Speed rows: line checkmarks, no Fluent filled CheckmarkIcon.
