@@ -98,7 +98,12 @@ public partial class MetadataViewModel
                     typed ? $"search: typed \"{albumTerm}\"" : $"search: tags \"{albumTerm}\" by \"{artist}\"");
 
                 var ranked = await _itunes.FindAnimatedArtworkCandidatesAsync(
-                    new ITunesArtworkService.AnimatedArtworkQuery(albumTerm, artist, trackArtist, typed),
+                    new ITunesArtworkService.AnimatedArtworkQuery(albumTerm, artist, trackArtist, typed)
+                    {
+                        // Tie-breaks between editions only; a typed query is about something else.
+                        Year = !typed && int.TryParse(Year, out var year) ? year : 0,
+                        TrackCount = !typed && _albumScoped ? SongCount : 0,
+                    },
                     AnimatedCandidatesToOpen, ct);
                 if (!Current()) return;
 

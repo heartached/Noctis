@@ -6847,4 +6847,28 @@
     <value>红宝石</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>移除动态插图</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>自动查找动态插图</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>打开专辑时，在 Apple Music 上查找其动态封面（仅限明确匹配），并保存在不会超过下方大小的缓存中。你亲自选择的封面会单独保存，永不删除。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>缓存大小</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>缓存满时，最久之前打开的专辑封面会先被删除。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
+    <value>已用：</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
 </root>

@@ -139,6 +139,7 @@ public partial class SettingsViewModel
         AlbumCarouselEnabled = _settings.AlbumCarouselEnabled;
         VisualizerEnabled = _settings.VisualizerEnabled;
         PlaylistShowSideRail = _settings.PlaylistShowSideRail;
+        LoadAnimatedArtworkCacheSettings();
     }
 
     private void SaveBuiltInFeatureSettings()
@@ -147,6 +148,7 @@ public partial class SettingsViewModel
         _settings.AlbumCarouselEnabled = AlbumCarouselEnabled;
         _settings.VisualizerEnabled = VisualizerEnabled;
         _settings.PlaylistShowSideRail = PlaylistShowSideRail;
+        SaveAnimatedArtworkCacheSettings();
     }
 }
 

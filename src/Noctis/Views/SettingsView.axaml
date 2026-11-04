@@ -3145,6 +3145,60 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #167: fetch on opening an album into a size-capped cache (oldest loops go
+                 first). Only while animated artwork is on; its cache options fold under it. -->
+            <Border Classes="setting-row" IsVisible="{Binding EnableAnimatedCovers}">
+                <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.AnimArtAutoFetch}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AnimArtAutoFetchDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AnimArtAutoFetch}"
+                                          IsChecked="{Binding AnimatedArtworkAutoFetch}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+                <controls:CollapsibleContent IsOpen="{Binding AnimatedArtworkAutoFetch}" Lift="10" Motion="Glide">
+                <StackPanel Classes="sub-setting" Spacing="10" Margin="2,10,0,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AnimArtCacheSize}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AnimArtCacheSizeDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.AnimArtCacheSize}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding AnimatedArtworkCacheSizeOptions}"
+                                  SelectedItem="{Binding SelectedAnimatedArtworkCacheSizeOption}"
+                                  MinWidth="96"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextWrapping="Wrap">
+                            <Run Text="{loc:T Settings.AnimArtCacheInUse}"/>
+                            <Run Text="{Binding AnimatedArtworkCacheUsage}"/>
+                        </TextBlock>
+                        <Button Grid.Column="1"
+                                AutomationProperties.Name="{loc:T Settings.ClearCache}"
+                                Command="{Binding ClearAnimatedArtworkCacheCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.ClearCache}" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+                </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-row">
                 <!-- Toggle + its Tint strength slider share a spacing-free panel so the gap folds
                      with the body (see the Crossfade block). -->

@@ -1268,6 +1268,49 @@ public class MetadataViewModelTests
         return list;
     }
 
+    // ── Animated cover follows a re-keyed song without leaving its album (GitHub #167 area) ──
+
+    [Fact]
+    public async Task TrackScope_MovingOneSongToAnotherAlbum_LeavesTheOldAlbumsLoop()
+    {
+        // Editing one song's album re-keys only that song. The still cover was copied to the new
+        // key, but the album's animated cover was MOVED: the songs left behind lost their loop.
+        var tracks = Album("Wings of Love", "Erasure", 2);
+        using var p = new TestPersistenceService();
+        p.EnsureAnimatedCoverDir();
+        var oldAlbumId = tracks[0].AlbumId;
+        var oldLoop = p.GetAnimatedCoverPath(oldAlbumId, null, ".mp4");
+        File.WriteAllText(oldLoop, "loop");
+        var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(), new FakeLibraryService { TrackList = tracks.ToList() },
+            p, new FakeAnimatedCoverService(), albumScoped: false);
+        await vm.InitializeAsync();
+
+        vm.Album = "Ship of Fools";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotEqual(oldAlbumId, tracks[0].AlbumId);
+        Assert.True(File.Exists(oldLoop), "the album's other song lost its animated cover");
+        Assert.True(File.Exists(p.GetAnimatedCoverPath(tracks[0].AlbumId, null, ".mp4")));
+    }
+
+    [Fact]
+    public async Task AlbumScope_RenamingTheAlbum_MovesItsLoop()
+    {
+        var tracks = Album("Wings of Love", "Erasure", 2);
+        using var p = new TestPersistenceService();
+        p.EnsureAnimatedCoverDir();
+        var oldLoop = p.GetAnimatedCoverPath(tracks[0].AlbumId, null, ".mp4");
+        File.WriteAllText(oldLoop, "loop");
+        var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
+
+        vm.Album = "Wings of Love (Remastered)";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(File.Exists(oldLoop));
+        Assert.True(File.Exists(p.GetAnimatedCoverPath(tracks[0].AlbumId, null, ".mp4")));
+    }
+
     private static MetadataViewModel NewAlbumVm(
         List<Track> tracks, IPersistenceService persistence,
         out FakeMetadataService meta, out FakeLibraryService library)

@@ -6847,4 +6847,28 @@
     <value>Rubis</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>Supprimer la pochette animée</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>Rechercher les pochettes animées automatiquement</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>À l’ouverture d’un album, recherche sa pochette animée sur Apple Music (correspondances sûres uniquement) et la garde dans un cache qui ne dépasse jamais la taille ci-dessous. Les pochettes que vous choisissez vous-même sont conservées à part et jamais supprimées.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>Taille du cache</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>Une fois plein, les pochettes des albums ouverts il y a le plus longtemps sont supprimées en premier.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
+    <value>Utilisé :</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
 </root>

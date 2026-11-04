@@ -358,6 +358,21 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
+    /// <summary>GitHub #167: look up an album's animated cover (clear matches only) when its
+    /// page opens, and keep it in a size-capped cache. Off by default: it asks Apple about
+    /// every album opened.</summary>
+    public bool AnimatedArtworkAutoFetch { get; set; }
+
+    /// <summary>The cap of that cache in MB; one of <see cref="AnimatedArtworkCacheSizeChoices"/>.</summary>
+    public int AnimatedArtworkCacheMb { get; set; } = 1024;
+
+    /// <summary>The cache sizes Settings offers, in MB.</summary>
+    public static IReadOnlyList<int> AnimatedArtworkCacheSizeChoices { get; } = new[] { 250, 500, 1024, 2048, 5120, 10240 };
+
+    /// <summary>The nearest of <see cref="AnimatedArtworkCacheSizeChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapAnimatedArtworkCacheMb(int mb) =>
+        AnimatedArtworkCacheSizeChoices.MinBy(c => Math.Abs((long)c - mb));
+
     /// <summary>Album pages take their background colour from the cover's edge colour,
     /// Apple-Music style, with the page text flipping dark on light covers. Ships on
     /// (2026-10-18; a settings.json saved before the toggle existed keeps it off, see

@@ -6847,4 +6847,28 @@
     <value>ياقوتي</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>إزالة الغلاف المتحرك</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>البحث عن الغلاف المتحرك تلقائيًا</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>عند فتح ألبوم، يبحث عن غلافه المتحرك في Apple Music (المطابقات الواضحة فقط) ويحفظه في ذاكرة مؤقتة لا تتجاوز الحجم أدناه. الأغلفة التي تختارها بنفسك تُحفظ بشكل منفصل ولا تُحذف أبدًا.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>حجم الذاكرة المؤقتة</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>عند امتلائها، تُحذف أولًا أغلفة الألبومات التي فتحتها منذ أطول مدة.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
+    <value>المستخدم:</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
 </root>

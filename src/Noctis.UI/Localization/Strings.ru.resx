@@ -3149,4 +3149,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Показывать справа панель с исполнителями плейлиста и предложенными песнями.</value></data>
   <data name="Playlist.HideSideRail" xml:space="preserve"><value>Скрыть исполнителей и рекомендации</value></data>
   <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Показать исполнителей и рекомендации</value></data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve"><value>Удалить анимированную обложку</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Искать анимированные обложки автоматически</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>При открытии альбома ищет его анимированную обложку в Apple Music (только точные совпадения) и хранит её в кэше, который не превышает размер ниже. Обложки, выбранные вами, хранятся отдельно и не удаляются.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Размер кэша</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Когда кэш заполнен, первыми удаляются обложки альбомов, которые вы открывали давнее всего.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve"><value>Занято:</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

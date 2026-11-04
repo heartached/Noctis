@@ -1758,6 +1758,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // Settings left: its Connect a phone panel folds, so no sign-in QR stays live off screen.
         if (ReferenceEquals(oldValue, Settings) && !ReferenceEquals(newValue, Settings)) Settings.OnSettingsLeft();
         if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;
+        // GitHub #167: an album page fetches its animated cover only while it is on screen.
+        if (oldValue is AlbumDetailViewModel leftAlbumPage && !ReferenceEquals(oldValue, newValue)) leftAlbumPage.StopAutoFetch();
+        if (newValue is AlbumDetailViewModel albumPage) albumPage.StartAutoFetch();
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;

@@ -1825,19 +1825,32 @@ public class LibraryService : ILibraryService
     /// File.Exists) and was never invalidated either — so a wrong cover, once
     /// stamped, survived remove + re-import forever. With the orphan gone, the next
     /// import of that album re-extracts art from its actual files.
+    /// The album's animated covers go too (GitHub #167: they stayed in animated_covers for
+    /// good): the saved and the fetched loop of an album with no songs left, and a removed
+    /// song's own loop. A cover.mp4 beside the music is the user's file and is never touched.
     /// </summary>
     private void DeleteOrphanedArtwork(IReadOnlyList<Track> removedTracks)
     {
+        static void TryDelete(string path)
+        {
+            try { if (File.Exists(path)) File.Delete(path); }
+            catch { /* cache only — worst case the stale file lingers as before */ }
+        }
+
         foreach (var albumId in SelectOrphanedAlbumIds(removedTracks, _tracks))
         {
-            try
-            {
-                var artPath = _persistence.GetArtworkPath(albumId);
-                if (File.Exists(artPath)) File.Delete(artPath);
-            }
-            catch { /* cache only — worst case the stale cover lingers as before */ }
+            TryDelete(_persistence.GetArtworkPath(albumId));
+            foreach (var ext in AnimatedCoverExtensions)
+                TryDelete(_persistence.GetAnimatedCoverPath(albumId, null, ext));
+            TryDelete(_persistence.GetCachedAnimatedCoverPath(albumId));
         }
+
+        foreach (var track in removedTracks)
+            foreach (var ext in AnimatedCoverExtensions)
+                TryDelete(_persistence.GetAnimatedCoverPath(track.AlbumId, track.Id, ext));
     }
+
+    private static readonly string[] AnimatedCoverExtensions = { ".mp4", ".webm" };
 
     /// <summary>Album ids present in <paramref name="removedTracks"/> that no
     /// remaining track references.</summary>

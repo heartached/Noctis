@@ -3149,4 +3149,10 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Show the panel with the playlist's artists and suggested songs on the right.</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
   <data name="Playlist.HideSideRail" xml:space="preserve"><value>Hide Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: hides the right-hand panel</comment></data>
   <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Show Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: shows the right-hand panel again</comment></data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve"><value>Remove Animated Artwork</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Find Animated Artwork Automatically</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>When you open an album, looks up its animated cover on Apple Music (clear matches only) and keeps it in a cache that never grows past the size below. Covers you pick yourself are kept separately and never removed.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Cache Size</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>When it is full, the covers of the albums you opened longest ago are deleted first.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve"><value>In use:</value><comment>Text in SettingsView.axaml</comment></data>
 </root>
