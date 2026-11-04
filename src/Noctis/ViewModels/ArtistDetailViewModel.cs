@@ -1278,8 +1278,21 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         string? mbid = null;
         try { mbid = await _info.FindMusicBrainzIdForDeezerAsync(pick.Id, _cts.Token); }
         catch (OperationCanceledException) { return; }
-        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.UI, "Artist.Pick", ex.Message); }
-        if (mbid == null) return;
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.UI, "Artist.Pick", ex.Message);
+            return; // offline: keep whatever About shows rather than guess
+        }
+        if (mbid == null)
+        {
+            // No MusicBrainz link for this account: an earlier pick's facts must not stay
+            // pinned under the new account, so About goes back to the name lookup.
+            if (_info.GetPinnedMusicBrainzId(Artist.Id) == null) return;
+            _info.SetPinnedMusicBrainzId(Artist.Id, null);
+            About = null;
+            _ = LoadAboutAsync();
+            return;
+        }
         _info.SetPinnedMusicBrainzId(Artist.Id, mbid);
         About = null;
         _ = LoadAboutAsync();

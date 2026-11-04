@@ -113,6 +113,27 @@ public class ArtistSimilarPickTests
         Assert.Equal(new[] { "Pop Star A", "Pop Star B" }, vm.SimilarArtists.Select(r => r.Name));
     }
 
+    /// <summary>Picking account A (linked to MusicBrainz) then account B (no link anywhere) kept
+    /// A's MusicBrainz pin, so About went on showing A's facts under B's photo.</summary>
+    [AvaloniaFact]
+    public void Pick_WithNoMusicBrainzLink_DropsAnEarlierPicksFacts()
+    {
+        using var persistence = new TestPersistenceService();
+        var http = new HttpClient(new DeezerFake()); // MusicBrainz + Wikidata: 404 = no link
+        var images = new ArtistImageService(http, persistence);
+        var info = new ArtistInfoService(http, persistence);
+        var lib = new FakeLibraryService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var vm = new ArtistDetailViewModel("Nova", lib, player, images: images, info: info);
+        info.SetPinnedMusicBrainzId(vm.Artist.Id, "056e4f3e-d505-4dad-8ec1-d04f521cbb56"); // the earlier pick
+
+        var apply = vm.ApplyArtistPickAsync(new DeezerArtistPhotos.SearchHit(2, "Nova", null, null, 4000, 3));
+        PumpUntil(() => apply.IsCompleted, seconds: 20);
+
+        Assert.True(apply.IsCompletedSuccessfully);
+        Assert.Null(info.GetPinnedMusicBrainzId(vm.Artist.Id));
+    }
+
     private static void PumpUntil(Func<bool> done, double seconds = 10)
     {
         var sw = Stopwatch.StartNew();
