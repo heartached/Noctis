@@ -1844,6 +1844,16 @@
         </controls:GlassPanel>
     </Border>
 
+    <!-- GitHub #171: while the sidebar is hidden (fullscreen lyrics) this strip at the left
+         edge slides it back in on hover (SidebarEdgePeek). As wide as the rail's margin. -->
+    <Border x:Name="SidebarRevealEdge"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Width="8"
+            Background="Transparent"
+            IsVisible="False"
+            ZIndex="10" />
+
     <!-- Sidebar: overlaid so hover-expand doesn't reflow content -->
     <Border x:Name="SidebarWrapper"
             HorizontalAlignment="Left"
