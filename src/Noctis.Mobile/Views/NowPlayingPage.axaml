@@ -79,6 +79,28 @@
         <Style Selector="Border#ArtworkFrame.paused">
             <Setter Property="RenderTransform" Value="scale(0.8)" />
         </Style>
+        <!-- Vinyl or CD: the square cover stays in the tree, unseen (it decodes the artwork the
+             disc prints and the wash blurs), and the disc takes its place. The disc sits back a
+             little while paused too, less than the cover: its stopping says the rest. -->
+        <Style Selector="Border#ArtworkFrame.disc">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+        <Style Selector="Panel#DiscStage">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
+                        <TransformOperationsTransition.Easing>
+                            <views:GlideEase />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel#DiscStage.paused">
+            <Setter Property="RenderTransform" Value="scale(0.92)" />
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -125,8 +147,10 @@
 
                 <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen. -->
                 <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8">
+                  <Panel Width="320" Height="320">
                     <Border Name="ArtworkFrame" Width="320" Height="320" CornerRadius="10"
-                            BoxShadow="0 10 28 0 #66000000" Classes.paused="{Binding !Player.IsPlaying}">
+                            BoxShadow="0 10 28 0 #66000000" Classes.paused="{Binding !Player.IsPlaying}"
+                            Classes.disc="{Binding ShowsDiscArtwork}">
                         <Border Classes="art" CornerRadius="10">
                             <Panel>
                                 <PathIcon Data="{DynamicResource SongsIcon}" Width="72" Height="72" Opacity="0.4" />
@@ -135,6 +159,17 @@
                             </Panel>
                         </Border>
                     </Border>
+                    <!-- Settings › Appearance › Now Playing Artwork: the cover on a record or a CD
+                         (DiscArtwork: painted once per cover, turned on the compositor). The
+                         shadow is a round border's, so the CD's hole stays see-through; the disc sits
+                         12 in from the cover's edges so all of its shadow fits inside the box (the
+                         row clips at it, and a cut shadow shows as a seam). -->
+                    <Panel Name="DiscStage" Margin="12" IsVisible="{Binding ShowsDiscArtwork}" Classes.paused="{Binding !Player.IsPlaying}">
+                        <Border Name="DiscShadow" CornerRadius="148" BoxShadow="0 4 11 0 #8C000000" IsHitTestVisible="False" />
+                        <views:DiscArtwork Name="Disc" Kind="{Binding NowPlayingArtwork}" Source="{Binding #Artwork.Source}"
+                                           IsSpinning="{Binding Player.IsPlaying}" IsVisible="{Binding ShowsDiscArtwork}" />
+                    </Panel>
+                  </Panel>
                 </Viewbox>
 
                 <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
