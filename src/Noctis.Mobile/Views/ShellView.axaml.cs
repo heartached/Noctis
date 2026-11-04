@@ -440,7 +440,7 @@ public partial class ShellView : UserControl
         if (open) NowPlaying.IsVisible = true;
         void Land()
         {
-            NowPlaying.IsVisible = _playerShown;
+            NowPlaying.IsVisible = _playerShown && !_lyricsCovers;
             NowPlaying.IsHitTestVisible = true;
             PlayerLayer.RenderTransform = null;
         }
@@ -456,26 +456,42 @@ public partial class ShellView : UserControl
         ApplyBackdrop(animate);
     }
 
-    /// <summary>Lyrics fades in over the player and out again.</summary>
+    /// <summary>Lyrics fades in over the player and out again. Once it has faded in it covers
+    /// Now Playing completely (an opaque page), so Now Playing leaves the tree until the fade
+    /// back out starts: left visible under the lyrics, its elapsed and remaining labels laid
+    /// out the page once a second and its seek bar repainted on every position tick, in the
+    /// middle of the word sweep (a periodic hitch on a mid-range phone).</summary>
     private void ShowLyrics(bool animate)
     {
         var open = _vm?.IsLyricsOpen == true;
         LyricsSheet.IsHitTestVisible = open;
         if (open) LyricsSheet.IsVisible = true;
+        if (!open)
+        {
+            _lyricsCovers = false;
+            if (_playerShown) NowPlaying.IsVisible = true;   // back before the fade starts
+        }
         if (!animate)
         {
             Motion.Stop(LyricsSheet);
             LyricsSheet.Opacity = 1;
             LyricsSheet.IsVisible = open;
+            _lyricsCovers = open;
+            NowPlaying.IsVisible = _playerShown && !_lyricsCovers;
             return;
         }
         Motion.To(LyricsSheet, Motion.Fade, opacity: open ? 1 : 0,
             fromOpacity: open && !Motion.IsRunning(LyricsSheet) ? 0 : null, done: () =>
             {
-                LyricsSheet.IsVisible = _vm?.IsLyricsOpen == true;
+                var stillOpen = _vm?.IsLyricsOpen == true;
+                LyricsSheet.IsVisible = stillOpen;
                 LyricsSheet.Opacity = 1;
+                _lyricsCovers = stillOpen;
+                NowPlaying.IsVisible = _playerShown && !_lyricsCovers;
             });
     }
+
+    private bool _lyricsCovers;
 
     /// <summary>A tab switch: the new tab fades in, quickly, with no slide.</summary>
     private void FadeInTab() =>
