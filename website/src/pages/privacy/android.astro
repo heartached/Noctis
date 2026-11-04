@@ -192,6 +192,17 @@ const updated = '2 November 2026';
           connection must present that same certificate.
         </li>
         <li>
+          <strong>Signing in with a QR code.</strong> Instead of typing, you can tap Scan QR
+          Code and scan the code your computer shows. The code holds your computer’s address,
+          its certificate fingerprint and a one-time sign-in code that expires after two
+          minutes and works only once; it never contains your password. Noctis checks the
+          certificate against the fingerprint before sending the one-time code. The scanner
+          is Google’s code scanner, part of Google Play services: it runs on your phone and
+          gives Noctis only the text of the code, so Noctis never gets camera access. Google
+          may collect usage and diagnostic information about the scanner under the
+          <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.
+        </li>
+        <li>
           <strong>What goes to your computer.</strong> The device key, a random id and your
           phone’s model name (so your computer can list and remove this device), requests
           for your songs, covers and library, and the changes you make on the phone:
@@ -205,8 +216,11 @@ const updated = '2 November 2026';
       </ul>
       <p>
         All of the account traffic travels only between your phone and your computer,
-        encrypted. None of it goes to the developer or to any third party. Nothing is sent
-        without an address you entered and a certificate you confirmed, and signing out
+        encrypted. None of it goes to the developer or to any third party (apart from the
+        QR scanner’s own usage information to Google described above, which contains none of
+        your account traffic). Nothing is sent
+        without an address you entered and a certificate you confirmed (or a code you
+        scanned from your own computer), and signing out
         stops it.
       </p>
 
