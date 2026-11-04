@@ -1332,7 +1332,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 LyricLines.Clear();
                 UnsyncedLines.Clear();
                 SearchFailedMessage = "Lyrics providers are turned off in Settings.";
-                ShowSearchButton = false;
+                // The page shows this message only inside the Search Lyrics state; hiding that
+                // state left the page blank, with no hint and no way back to the search dialog
+                // (where any one source can still be picked).
+                ShowSearchButton = true;
                 return;
             }
 

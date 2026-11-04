@@ -278,6 +278,25 @@ public class LyricsNoLyricsCenterTests : IDisposable
         rig.Player.CurrentTrack = null;
         Assert.False(rig.Vm.IsNoLyricsCentered);
     }
+
+    /// <summary>Bug: with every lyrics provider off, the search set "Lyrics providers are turned
+    /// off in Settings." but hid the Search Lyrics state that is the only place the page shows
+    /// that message (LyricsView.axaml: the message sits inside the panel bound to
+    /// ShowSearchButton), so the page went blank with no hint and no way to open the search.</summary>
+    [AvaloniaFact]
+    public async Task ProvidersOff_ShowsTheMessageAndSearchState()
+    {
+        var rig = Mount();
+        rig.Persistence.Settings.LrcLibEnabled = false;
+        await OpenAsync(rig, NewTrack());
+
+        rig.Vm.SearchLyricsCommand.Execute(null);
+        await SettleAsync(rig.Vm);
+
+        Assert.Equal("Lyrics providers are turned off in Settings.", rig.Vm.SearchFailedMessage);
+        Assert.True(rig.Vm.ShowSearchButton);
+        Assert.True(rig.Vm.IsNoLyricsCentered);
+    }
 }
 
 /// <summary>The lyrics page applying <see cref="LyricsViewModel.IsNoLyricsCentered"/>: the left
