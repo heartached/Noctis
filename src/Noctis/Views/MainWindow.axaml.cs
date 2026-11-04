@@ -165,6 +165,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private System.ComponentModel.PropertyChangedEventHandler? _currentTrackPropertyChangedHandler;
     private Track? _trackedFavoriteTrack;
     private Border? _sidebarWrapper;
+    private SidebarEdgePeek? _sidebarPeek;
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
@@ -857,6 +858,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     {
                         // Un-hiding restores the pinned layout when "Keep sidebar expanded" is on.
                         var pinned = !mainVm2.IsSidebarHidden && mainVm2.Settings.SidebarAlwaysExpanded;
+                        _sidebarPeek?.SyncHidden();
+                        if (!mainVm2.IsSidebarHidden)
+                            mainVm2.Sidebar.IsExpanded = pinned; // a peek may have left it expanded
                         if (_sidebarWrapper != null)
                         {
                             _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
@@ -915,6 +919,17 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         vm.Sidebar.IsExpanded = expanded;
                     };
                     vm.Settings.SidebarAlwaysExpandedChanged += _sidebarAlwaysExpandedHandler;
+
+                    // GitHub #171: a hidden sidebar (fullscreen lyrics) peeks in from the left edge.
+                    if (this.FindControl<Border>("SidebarRevealEdge") is { } revealEdge)
+                    {
+                        _sidebarPeek = new SidebarEdgePeek(revealEdge, _sidebarWrapper,
+                            () => vm.IsSidebarHidden,
+                            () => vm.Settings.SidebarHoverExpand,
+                            () => vm.Settings.SidebarAlwaysExpanded,
+                            expanded => vm.Sidebar.IsExpanded = expanded);
+                        _sidebarPeek.SyncHidden();
+                    }
                     // The settings load may have finished before this subscription existed,
                     // so apply the current value once now (idempotent).
                     _sidebarAlwaysExpandedHandler(vm.Settings, vm.Settings.SidebarAlwaysExpanded);
