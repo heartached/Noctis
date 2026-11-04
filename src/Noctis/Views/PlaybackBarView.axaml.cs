@@ -1730,7 +1730,7 @@ public partial class PlaybackBarView : UserControl
     /// Per open: puts the Play / Shuffle / Play Next / Add to Queue tiles on top (once), points
     /// them at the current track, fills View Artist with the credited names and settles the
     /// separators, as <see cref="TrackContextMenuBuilder"/> does for the other track menus.
-    /// The menu stays a MenuFlyout so Liquid Glass can frost it (GlassMenuFlyout).
+    /// The menu stays a MenuFlyout so Liquid Glass can frost it (GlassMenus).
     /// </summary>
     private void OnOptionsMenuOpening(object? sender, EventArgs e)
     {

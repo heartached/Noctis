@@ -158,8 +158,6 @@ public static class MenuOpenAnimation
     private static readonly AttachedProperty<bool> CloseAfterAnimationProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, bool>("CloseAfterAnimation", typeof(MenuOpenAnimation));
 
-    private static WeakReference<MenuFlyoutPresenter>? _lastMenuFlyoutPresenter;
-
     static MenuOpenAnimation()
     {
         InputElement.PointerPressedEvent.AddClassHandler<TopLevel>((top, e) =>
@@ -242,9 +240,6 @@ public static class MenuOpenAnimation
 
     private static void TryRun(Control control)
     {
-        if (control is MenuFlyoutPresenter presenter)
-            _lastMenuFlyoutPresenter = new WeakReference<MenuFlyoutPresenter>(presenter);
-
         var now = Environment.TickCount64;
         if (now - control.GetValue(LastRunProperty) < ReopenGuardMs)
             return; // collapse the popup's double-attach into a single animation
@@ -576,7 +571,7 @@ public static class MenuOpenAnimation
             return;
         }
 
-        if (!TryGetLastMenuFlyoutPresenter(out var presenter))
+        if (!TryGetPresenter(flyout, out var presenter))
             return;
 
         e.Cancel = true;
@@ -601,7 +596,7 @@ public static class MenuOpenAnimation
             return;
 
         ResetCloseState(flyout);
-        if (TryGetLastMenuFlyoutPresenter(out var presenter))
+        if (TryGetPresenter(flyout, out var presenter))
             ResetMenuTransform(presenter);
     }
 
@@ -630,22 +625,16 @@ public static class MenuOpenAnimation
     }
 
     /// <summary>
-    /// KNOWN LIMITATION: this returns the most-recently-attached presenter, not
-    /// necessarily the one belonging to the flyout being closed. With two flyouts open in
-    /// sequence, closing the earlier one can animate (and reset the transform of) the
-    /// wrong presenter, leaving a flyout at Opacity 0 or translated.
-    ///
-    /// Resolving it properly needs the flyout's own presenter, and Avalonia 11.3 exposes
-    /// no public route to it — PopupFlyoutBase.Popup is protected and MenuFlyout does not
-    /// surface the presenter as a logical child. Left as-is rather than reaching into
-    /// internals; the failure mode is cosmetic and needs two flyouts in one gesture.
+    /// The flyout's own card. This used to be the most recently attached presenter of any
+    /// flyout: with two flyouts open, closing the first ran its close motion on the second
+    /// (still open) card and never on its own. Avalonia 12 exposes PopupFlyoutBase.Popup, so
+    /// the card is read from the flyout itself.
     /// </summary>
-    private static bool TryGetLastMenuFlyoutPresenter(out MenuFlyoutPresenter presenter)
+    private static bool TryGetPresenter(MenuFlyout flyout, out MenuFlyoutPresenter presenter)
     {
-        if (_lastMenuFlyoutPresenter?.TryGetTarget(out var target) == true &&
-            TopLevel.GetTopLevel(target) is not null)
+        if (flyout.Popup.Child is MenuFlyoutPresenter own && TopLevel.GetTopLevel(own) is not null)
         {
-            presenter = target;
+            presenter = own;
             return true;
         }
 
