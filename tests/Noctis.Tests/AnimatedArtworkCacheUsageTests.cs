@@ -1,3 +1,5 @@
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -30,7 +32,7 @@ public class AnimatedArtworkCacheUsageTests : IDisposable
         try { Directory.Delete(_dir, recursive: true); } catch { }
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task OpeningTheAppearanceTab_RereadsTheCacheFilledSinceLaunch()
     {
         var persistence = new PersistenceService(_dir);
@@ -51,7 +53,7 @@ public class AnimatedArtworkCacheUsageTests : IDisposable
         vm.SelectedSettingsTab = SettingsViewModel.TabAppearance;
 
         var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (!vm.HasAnimatedArtworkCache && DateTime.UtcNow < deadline) await Task.Delay(20);
+        while (!vm.HasAnimatedArtworkCache && DateTime.UtcNow < deadline) { Dispatcher.UIThread.RunJobs(); await Task.Delay(20); }
 
         Assert.True(vm.HasAnimatedArtworkCache);
         Assert.InRange(vm.AnimatedArtworkCacheUsedPercent, 0.0001, 1);
