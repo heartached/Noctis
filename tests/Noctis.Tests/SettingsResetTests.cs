@@ -112,7 +112,7 @@ public class SettingsResetTests : IDisposable
 
         // ConfirmResetLibrary's settings half, without its OS and data-folder side effects.
         var defaults = new AppSettings { CommunityPluginsEnabled = false };
-        await persistence.SaveSettingsAsync(defaults);
+        await vm.WriteDefaultSettingsAsync(defaults);
         vm.ResetSettingsToDefaults(defaults);
 
         Assert.True(vm.ShortcutService.IsDefault(ShortcutAction.PlayPause));
@@ -166,7 +166,7 @@ public class SettingsResetTests : IDisposable
         vm.SetAudioPlayer(new FakeAudioPlayer());
         await vm.LoadAsync();
         var defaults = new AppSettings { CommunityPluginsEnabled = false };
-        await persistence.SaveSettingsAsync(defaults);
+        await vm.WriteDefaultSettingsAsync(defaults);
         vm.ResetSettingsToDefaults(defaults);
         await vm.SaveAsync();
         var afterReset = await persistence.LoadSettingsAsync();

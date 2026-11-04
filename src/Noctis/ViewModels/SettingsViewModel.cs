@@ -7627,14 +7627,7 @@ public partial class SettingsViewModel : ViewModelBase
         // community-plugins switch is decided (restricted) rather than left null, which the
         // plugin host treats as a pre-switch install and approves every plugin it finds.
         var defaultSettings = new AppSettings { CommunityPluginsEnabled = false };
-        try
-        {
-            await _persistence.SaveSettingsAsync(defaultSettings);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
-        }
+        await WriteDefaultSettingsAsync(defaultSettings);
 
         // Launch-at-login is an OS-level registration, not a settings field — a reset
         // that leaves it enabled means the app keeps starting itself after the user
@@ -7654,6 +7647,29 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshStorageInfo();
 
         SettingsReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Writes the reset's defaults under the save lock. A save already running (a toggle's
+    /// fire-and-forget SaveAsync) merged the old file and would otherwise land after the
+    /// defaults, so every field this view-model does not own (phone appearance, lyrics
+    /// background, ...) came back from before the reset.
+    /// </summary>
+    internal async Task WriteDefaultSettingsAsync(AppSettings defaultSettings)
+    {
+        await _saveLock.WaitAsync();
+        try
+        {
+            await _persistence.SaveSettingsAsync(defaultSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
+        }
+        finally
+        {
+            _saveLock.Release();
+        }
     }
 
     /// <summary>
