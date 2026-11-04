@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
              xmlns:views="using:Noctis.Mobile.Views"
@@ -344,7 +345,7 @@
             <Panel Grid.Row="0">
                 <Grid Classes="sheet-header account-header" ColumnDefinitions="*,Auto">
                     <TextBlock Name="AccountTitle" Classes="sheet-title" Text="{Binding Title}" />
-                    <Button Grid.Column="1" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="Back to Settings"
+                    <Button Grid.Column="1" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="{loc:T Mobile.BackToSettings}"
                             Command="{Binding Shell.NavigateBackCommand}">
                         <views:GridIcon Data="{DynamicResource PhClose}" />
                     </Button>
@@ -365,60 +366,60 @@
                             <Border Classes="hero-disc">
                                 <views:GridIcon Data="{StaticResource AccountPhoneIcon}" />
                             </Border>
-                            <TextBlock Classes="hero-title" Text="Sign in to your computer" />
-                            <TextBlock Classes="hero-text" Text="Stream and download the music on your computer, right here." />
+                            <TextBlock Classes="hero-title" Text="{loc:T Mobile.Account.SignInTitle}" />
+                            <TextBlock Classes="hero-text" Text="{loc:T Mobile.Account.SignInSubtitle}" />
                         </StackPanel>
 
                         <StackPanel Name="ScanQrSection" IsVisible="{Binding CanScanQr}">
-                            <TextBlock Classes="group-caption" Text="Scan QR code" />
+                            <TextBlock Classes="group-caption" Text="{loc:T Mobile.Account.ScanQrHeader}" />
                             <Border Classes="group-card">
                                 <StackPanel>
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="1" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="On your computer, open Noctis › Settings › Account &amp; Devices" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Account.QrStep1}" />
                                     </Grid>
                                     <Border Classes="row-separator step" />
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="2" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Turn on Noctis on your phone and click Connect a phone" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Account.QrStep2}" />
                                     </Grid>
                                     <Border Classes="row-separator step" />
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="3" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Tap Scan QR Code and point the camera at the code" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Account.QrStep3}" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
                             <Button Name="ScanQrButton" Classes="primary-action" Classes.busy="{Binding IsSigningInByQr}" Margin="0,22,0,0"
-                                    Command="{Binding ScanQrCodeCommand}" IsEnabled="{Binding IsIdle}" AutomationProperties.Name="Scan QR Code">
+                                    Command="{Binding ScanQrCodeCommand}" IsEnabled="{Binding IsIdle}" AutomationProperties.Name="{loc:T Mobile.Account.ScanQrButton}">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Classes="spinner" IsVisible="{Binding IsSigningInByQr}">
                                         <Ellipse.RenderTransform><RotateTransform /></Ellipse.RenderTransform>
                                     </Ellipse>
                                     <views:GridIcon Data="{StaticResource AccountQrIcon}" IsVisible="{Binding !IsSigningInByQr}" />
-                                    <TextBlock Text="Scan QR Code" IsVisible="{Binding !IsSigningInByQr}" />
+                                    <TextBlock Text="{loc:T Mobile.Account.ScanQrButton}" IsVisible="{Binding !IsSigningInByQr}" />
                                     <TextBlock Text="{Binding StatusText}" IsVisible="{Binding IsSigningInByQr}" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
 
                         <StackPanel Name="HowToConnect">
-                            <TextBlock Classes="group-caption" Text="Enter manually" />
+                            <TextBlock Classes="group-caption" Text="{loc:T Mobile.Account.ManualHeader}" />
                             <Border Classes="group-card">
                                 <StackPanel>
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="1" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="On your computer, click Connect a phone, then Enter manually" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Account.ManualStep1}" />
                                     </Grid>
                                     <Border Classes="row-separator step" />
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="2" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Type the address it shows, your email and your password" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Account.ManualStep2}" />
                                     </Grid>
                                     <Border Classes="row-separator step" />
                                     <Grid Classes="step-row" ColumnDefinitions="Auto,*">
                                         <Border Classes="step-number"><TextBlock Text="3" /></Border>
-                                        <TextBlock Grid.Column="1" Classes="row-label" Text="Check that the security code matches" />
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Account.ManualStep3}" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -428,9 +429,9 @@
                             <Border Classes="group-card">
                                 <StackPanel>
                                     <StackPanel Classes="field-row">
-                                        <TextBlock Classes="field-label" Text="Server address" />
+                                        <TextBlock Classes="field-label" Text="{loc:T Mobile.Account.ServerAddress}" />
                                         <TextBox Name="ServerAddressBox" Classes="inline-field" Text="{Binding ServerAddress}"
-                                                 PlaceholderText="192.168.1.20" AutomationProperties.Name="Server address"
+                                                 PlaceholderText="192.168.1.20" AutomationProperties.Name="{loc:T Mobile.Account.ServerAddress}"
                                                  TextInputOptions.ContentType="Url" TextInputOptions.AutoCapitalization="False"
                                                  TextInputOptions.ShowSuggestions="False" TextInputOptions.ReturnKeyType="Next" />
                                         <TextBlock Name="AddressErrorLabel" Classes="field-error" Text="{Binding ErrorText}"
@@ -438,23 +439,23 @@
                                     </StackPanel>
                                     <Border Classes="field-separator" />
                                     <StackPanel Classes="field-row">
-                                        <TextBlock Classes="field-label" Text="Email or username" />
+                                        <TextBlock Classes="field-label" Text="{loc:T Mobile.Account.EmailOrUsername}" />
                                         <TextBox Name="UserNameBox" Classes="inline-field" Text="{Binding UserName}"
-                                                 PlaceholderText="you@example.com" AutomationProperties.Name="Email or username"
+                                                 PlaceholderText="you@example.com" AutomationProperties.Name="{loc:T Mobile.Account.EmailOrUsername}"
                                                  TextInputOptions.ContentType="Email" TextInputOptions.ReturnKeyType="Next"
                                                  TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False" />
                                     </StackPanel>
                                     <Border Classes="field-separator" />
                                     <StackPanel Classes="field-row" Margin="16,9,4,7">
-                                        <TextBlock Classes="field-label" Text="Password" />
+                                        <TextBlock Classes="field-label" Text="{loc:T Mobile.Account.Password}" />
                                         <!-- Sensitive: keyboards neither learn it nor show it in suggestions. -->
                                         <TextBox Name="PasswordBox" Classes="inline-field" Text="{Binding Password}" PasswordChar="•"
-                                                 AutomationProperties.Name="Password" PlaceholderText="Required"
+                                                 AutomationProperties.Name="{loc:T Mobile.Account.Password}" PlaceholderText="{loc:T Mobile.Account.Required}"
                                                  RevealPassword="{Binding #RevealPasswordToggle.IsChecked}"
                                                  TextInputOptions.ContentType="Password" TextInputOptions.IsSensitive="True"
                                                  TextInputOptions.ReturnKeyType="Go">
                                             <TextBox.InnerRightContent>
-                                                <ToggleButton Name="RevealPasswordToggle" Classes="reveal" AutomationProperties.Name="Show password">
+                                                <ToggleButton Name="RevealPasswordToggle" Classes="reveal" AutomationProperties.Name="{loc:T Mobile.Account.ShowPassword}">
                                                     <Panel>
                                                         <views:GridIcon Data="{StaticResource AccountEyeIcon}" IsVisible="{Binding !#RevealPasswordToggle.IsChecked}" />
                                                         <views:GridIcon Data="{StaticResource AccountEyeOffIcon}" IsVisible="{Binding #RevealPasswordToggle.IsChecked}" />
@@ -469,12 +470,12 @@
                             </Border>
 
                             <Button Name="SignInButton" Classes="primary-action" Classes.busy="{Binding IsFormBusy}" Margin="0,22,0,0"
-                                    Command="{Binding SignInCommand}" IsEnabled="{Binding CanSignIn}" AutomationProperties.Name="Sign In">
+                                    Command="{Binding SignInCommand}" IsEnabled="{Binding CanSignIn}" AutomationProperties.Name="{loc:T Mobile.Account.SignIn}">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Classes="spinner" IsVisible="{Binding IsFormBusy}">
                                         <Ellipse.RenderTransform><RotateTransform /></Ellipse.RenderTransform>
                                     </Ellipse>
-                                    <TextBlock Name="SignInLabel" Text="Sign In" IsVisible="{Binding !IsFormBusy}" />
+                                    <TextBlock Name="SignInLabel" Text="{loc:T Mobile.Account.SignIn}" IsVisible="{Binding !IsFormBusy}" />
                                     <TextBlock Name="SignInStatus" Text="{Binding StatusText}" IsVisible="{Binding IsFormBusy}" />
                                 </StackPanel>
                             </Button>
@@ -488,27 +489,27 @@
                             <Border Classes="hero-disc">
                                 <views:GridIcon Data="{StaticResource AccountPhoneIcon}" />
                             </Border>
-                            <TextBlock Classes="hero-title" Text="Check the security code" />
+                            <TextBlock Classes="hero-title" Text="{loc:T Mobile.Account.CheckCodeTitle}" />
                             <TextBlock Classes="hero-text"
-                                       Text="Your computer shows a security code under Connect a phone. Only sign in if it matches this one." />
+                                       Text="{loc:T Mobile.Account.CheckCodeText}" />
                         </StackPanel>
                         <Border Classes="group-card" Margin="0,24,0,0">
                             <SelectableTextBlock Name="FingerprintText" Classes="fingerprint" Text="{Binding FingerprintDisplay}" />
                         </Border>
                         <Button Name="TrustButton" Classes="primary-action" Classes.busy="{Binding IsBusy}" Margin="0,22,0,0"
                                 Command="{Binding TrustAndSignInCommand}" IsEnabled="{Binding IsIdle}"
-                                AutomationProperties.Name="Trust and Sign In">
+                                AutomationProperties.Name="{loc:T Mobile.Account.TrustAndSignIn}">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Classes="spinner" IsVisible="{Binding IsBusy}">
                                     <Ellipse.RenderTransform><RotateTransform /></Ellipse.RenderTransform>
                                 </Ellipse>
-                                <TextBlock Text="Trust and Sign In" IsVisible="{Binding IsIdle}" />
+                                <TextBlock Text="{loc:T Mobile.Account.TrustAndSignIn}" IsVisible="{Binding IsIdle}" />
                                 <TextBlock Text="{Binding StatusText}" IsVisible="{Binding IsBusy}" />
                             </StackPanel>
                         </Button>
                         <Button Name="CancelFingerprintButton" Classes="text-action" Margin="0,6,0,0"
                                 Command="{Binding CancelFingerprintCommand}" IsEnabled="{Binding IsIdle}">
-                            <TextBlock Text="Cancel" />
+                            <TextBlock Text="{loc:T Mobile.Cancel}" />
                         </Button>
                     </StackPanel>
 
@@ -542,7 +543,7 @@
                                 </Grid>
                                 <Border Classes="row-separator" Margin="86,0,16,0" />
                                 <Button Name="SyncNowButton" Classes="row" Classes.working="{Binding IsSyncing}" Command="{Binding SyncNowCommand}"
-                                        IsEnabled="{Binding CanSync}" AutomationProperties.Name="Sync now">
+                                        IsEnabled="{Binding CanSync}" AutomationProperties.Name="{loc:T Mobile.Account.SyncNow}">
                                     <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="64" Margin="16,0">
                                         <!-- The desktop's Account & Sync glyph: this row is the sync with it. -->
                                         <Border Classes="computer-badge">
@@ -567,7 +568,7 @@
                                                 </ProgressBar.IsIndeterminate>
                                             </ProgressBar>
                                         </StackPanel>
-                                        <TextBlock Grid.Column="2" Classes="row-action" Text="Sync now" IsVisible="{Binding ShowSyncAction}" />
+                                        <TextBlock Grid.Column="2" Classes="row-action" Text="{loc:T Mobile.Account.SyncNow}" IsVisible="{Binding ShowSyncAction}" />
                                     </Grid>
                                 </Button>
                             </StackPanel>
@@ -578,8 +579,8 @@
                             <Border Classes="group-card">
                                 <StackPanel>
                                     <Button Name="DownloadAllButton" Classes="row accent-card" Classes.working="{Binding IsDownloading}" Command="{Binding DownloadAllCommand}"
-                                            IsEnabled="{Binding CanDownload}" AutomationProperties.Name="Download everything">
-                                        <TextBlock Text="Download everything" />
+                                            IsEnabled="{Binding CanDownload}" AutomationProperties.Name="{loc:T Mobile.Account.DownloadEverything}">
+                                        <TextBlock Text="{loc:T Mobile.Account.DownloadEverything}" />
                                     </Button>
                                     <ProgressBar Name="DownloadProgress" Classes="thin" Margin="16,0,16,14" Value="{Binding DownloadFraction}"
                                                  IsVisible="{Binding IsDownloading}">
@@ -594,7 +595,7 @@
                             </Border>
                             <TextBlock Name="DownloadLabel" Classes="group-footnote" Text="{Binding DownloadText}"
                                        IsVisible="{Binding DownloadText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Classes="group-footnote" Text="Keeps every song from your computer on this phone, to play without a connection."
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Account.DownloadEverythingHint}"
                                        IsVisible="{Binding DownloadText, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                         </StackPanel>
 
@@ -603,7 +604,7 @@
                             <Grid Name="StorageRow" Classes="setting-row" ColumnDefinitions="Auto,*,Auto"
                                   AutomationProperties.Name="{Binding StorageText}">
                                 <views:GridIcon Classes="row-icon" Data="{DynamicResource PhDownload}" />
-                                <TextBlock Grid.Column="1" Classes="row-label" Text="Downloaded" />
+                                <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Downloaded}" />
                                 <TextBlock Grid.Column="2" Name="StorageLabel" Classes="row-value" Text="{Binding StorageValue}" />
                             </Grid>
                         </Border>
@@ -621,17 +622,17 @@
                                 </Button>
                                 <Button Grid.Column="2" Name="RemoveDownloadsButton" Classes="action-tile danger"
                                         Command="{Binding AskRemoveDownloadsCommand}"
-                                        IsEnabled="{Binding CanRemoveDownloads}" AutomationProperties.Name="Remove all downloads">
+                                        IsEnabled="{Binding CanRemoveDownloads}" AutomationProperties.Name="{loc:T Mobile.Account.RemoveAllDownloads}">
                                     <StackPanel>
                                         <views:GridIcon Data="{DynamicResource PhTrash}" />
-                                        <TextBlock Text="Remove downloads" />
+                                        <TextBlock Text="{loc:T Mobile.Account.RemoveDownloads}" />
                                     </StackPanel>
                                 </Button>
                                 <Button Grid.Column="4" Name="SignOutButton" Classes="action-tile danger" Command="{Binding AskSignOutCommand}"
-                                        IsEnabled="{Binding IsIdle}" AutomationProperties.Name="Sign out">
+                                        IsEnabled="{Binding IsIdle}" AutomationProperties.Name="{loc:T Mobile.Account.SignOut}">
                                     <StackPanel>
                                         <views:GridIcon Data="{StaticResource AccountSignOutIcon}" />
-                                        <TextBlock Text="Sign out" />
+                                        <TextBlock Text="{loc:T Mobile.Account.SignOut}" />
                                     </StackPanel>
                                 </Button>
                             </Grid>

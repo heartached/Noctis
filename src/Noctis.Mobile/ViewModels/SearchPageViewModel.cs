@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -37,12 +38,12 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         Photos = new ArtistPhotoRequests(() => shell.ArtistPhotos);
         SortChoices = new[]
         {
-            new SortChoice("Most Relevant", SearchSort.Relevance) { IsSelected = true },
-            new SortChoice("Recently Added", SearchSort.RecentlyAdded),
-            new SortChoice("Release Year", SearchSort.ReleaseYear),
-            new SortChoice("Recently Played", SearchSort.RecentlyPlayed),
-            new SortChoice("Most Played", SearchSort.MostPlayed),
-            new SortChoice("Title", SearchSort.Title),
+            new SortChoice("Mobile.Sort.MostRelevant", SearchSort.Relevance) { IsSelected = true },
+            new SortChoice("Mobile.RecentlyAdded", SearchSort.RecentlyAdded),
+            new SortChoice("Mobile.Sort.ReleaseYear", SearchSort.ReleaseYear),
+            new SortChoice("Mobile.RecentlyPlayed", SearchSort.RecentlyPlayed),
+            new SortChoice("Mobile.Sort.MostPlayed", SearchSort.MostPlayed),
+            new SortChoice("Mobile.Sort.Title", SearchSort.Title),
         };
         shell.Library.Refreshed += (_, _) => Run();
     }
@@ -195,7 +196,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         if (track == null) return;
         var list = Songs.ToList();
         var index = list.IndexOf(track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index, "Search");
+        if (index >= 0) Shell.Player.PlayTracks(list, index, Loc.T("Mobile.Search"));
     }
 
     /// <summary>A song under the featured artist plays that artist's top songs from it.</summary>
@@ -236,5 +237,5 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
 public sealed record PlaylistResult(Playlist Playlist, string? ArtworkPath)
 {
     public string Name => Playlist.Name;
-    public string Subtitle => Playlist.TrackIds.Count == 1 ? "Playlist · 1 song" : $"Playlist · {Playlist.TrackIds.Count} songs";
+    public string Subtitle => Loc.T("Mobile.Search.PlaylistSubtitle", Loc.Plural("Mobile.Count.Songs", Playlist.TrackIds.Count));
 }

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
              xmlns:views="using:Noctis.Mobile.Views"
@@ -148,7 +149,7 @@
                 BorderThickness="0.5" BorderBrush="{DynamicResource PhoneChromeOutlineBrush}">
             <Panel>
                 <StackPanel Margin="20,18,20,0" Spacing="10" VerticalAlignment="Top">
-                    <TextBlock Text="Home" FontSize="30" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <TextBlock Text="{loc:T Nav.Home}" FontSize="30" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <StackPanel Spacing="6">
                             <Border Width="78" Height="78" CornerRadius="12" Background="#F0C43C" />
@@ -189,48 +190,48 @@
         <!-- Slow Motion and Strength. -->
         <Border Classes="group-card" Margin="0,14,0,0">
             <StackPanel>
-                <ToggleButton Name="MotionSwitch" Classes="switch-row" AutomationProperties.Name="Slow Motion" IsChecked="{Binding Motion}">
+                <ToggleButton Name="MotionSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Background.SlowMotion}" IsChecked="{Binding Motion}">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <Path Classes="pane-glyph" Data="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7" />
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Classes="row-label" Text="Slow Motion" />
-                            <TextBlock Classes="row-sub" Text="The colours drift gently" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Background.SlowMotion}" />
+                            <TextBlock Classes="row-sub" Text="{loc:T Mobile.Background.SlowMotionHint}" />
                         </StackPanel>
                     </StackPanel>
                 </ToggleButton>
                 <Border Classes="row-separator" Margin="54,0,0,0" />
                 <Grid Classes="setting-row" ColumnDefinitions="Auto,*,150" Margin="16,0,9,0">
                     <Path Classes="pane-glyph" Data="M12 3c3 4 6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 3-6 6-10z" />
-                    <TextBlock Grid.Column="1" Classes="row-label" Text="Strength" Margin="14,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Background.Strength}" Margin="14,0,0,0" VerticalAlignment="Center" />
                     <controls:SmoothSlider Grid.Column="2" Name="StrengthSlider" Classes="accent-slider"
                                            Minimum="0.2" Maximum="1" Step="0.05" SteppedValue="{Binding Strength}"
-                                           AutomationProperties.Name="Strength" />
+                                           AutomationProperties.Name="{loc:T Mobile.Background.Strength}" />
                 </Grid>
             </StackPanel>
         </Border>
         <TextBlock Name="MotionFootnote" Classes="group-footnote" Text="{Binding Footnote}" />
 
         <!-- From Artwork, and Off. -->
-        <TextBlock Classes="group-title" Text="From Artwork" Margin="16,26,0,7" />
+        <TextBlock Classes="group-title" Text="{loc:T Mobile.Background.FromArtwork}" Margin="16,26,0,7" />
         <Border Classes="group-card">
             <StackPanel>
-                <Button Name="ArtworkChoice" Classes="choice-row" Command="{Binding PickArtworkCommand}" AutomationProperties.Name="Now Playing">
+                <Button Name="ArtworkChoice" Classes="choice-row" Command="{Binding PickArtworkCommand}" AutomationProperties.Name="{loc:T Mobile.NowPlaying}">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border Classes="choice-tile" Background="{Binding ArtworkBrush}" />
                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Classes="row-label" Text="Now Playing" />
-                            <TextBlock Classes="row-sub" Text="Changes with each song's cover" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.NowPlaying}" />
+                            <TextBlock Classes="row-sub" Text="{loc:T Mobile.Background.NowPlayingHint}" />
                         </StackPanel>
                         <Path Grid.Column="2" Classes="pane-glyph" Data="M5 12.5l4.2 4.2L19 7" IsVisible="{Binding IsArtwork}" />
                     </Grid>
                 </Button>
                 <Border Classes="row-separator" Margin="86,0,0,0" />
-                <Button Name="OffChoice" Classes="choice-row" Command="{Binding PickOffCommand}" AutomationProperties.Name="Off">
+                <Button Name="OffChoice" Classes="choice-row" Command="{Binding PickOffCommand}" AutomationProperties.Name="{loc:T Mobile.Off}">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border Classes="choice-tile" Background="{DynamicResource PhoneGroupedBackgroundBrush}" />
                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Classes="row-label" Text="Off" />
-                            <TextBlock Classes="row-sub" Text="The plain theme colour" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Off}" />
+                            <TextBlock Classes="row-sub" Text="{loc:T Mobile.Background.OffHint}" />
                         </StackPanel>
                         <Path Grid.Column="2" Classes="pane-glyph" Data="M5 12.5l4.2 4.2L19 7" IsVisible="{Binding IsOff}" />
                     </Grid>
@@ -240,7 +241,7 @@
 
         <!-- Neutral and Colour: rounded squares, four across. -->
         <Grid ColumnDefinitions="*,Auto" Margin="16,26,16,8">
-            <TextBlock Classes="group-title" Margin="0" Text="Neutral" />
+            <TextBlock Classes="group-title" Margin="0" Text="{loc:T Mobile.Background.Neutral}" />
             <TextBlock Grid.Column="1" Classes="row-value" Text="{Binding NeutralCount}" />
         </Grid>
         <ItemsControl Name="NeutralGrid" ItemsSource="{Binding Neutrals}">
@@ -249,7 +250,7 @@
             </ItemsControl.ItemsPanel>
         </ItemsControl>
         <Grid ColumnDefinitions="*,Auto" Margin="16,20,16,8">
-            <TextBlock Classes="group-title" Margin="0" Text="Colour" />
+            <TextBlock Classes="group-title" Margin="0" Text="{loc:T Mobile.Background.Colour}" />
             <TextBlock Grid.Column="1" Classes="row-value" Text="{Binding ColourCount}" />
         </Grid>
         <ItemsControl Name="ColourGrid" ItemsSource="{Binding Colours}">

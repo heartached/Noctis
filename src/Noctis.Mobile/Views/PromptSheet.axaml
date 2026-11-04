@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.PromptSheet"
@@ -111,8 +112,8 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Button Name="PromptCancel" Classes="pill prompt-button cancel" Command="{Binding CancelCommand}"
-                                    AutomationProperties.Name="Cancel">
-                                <TextBlock Text="Cancel" />
+                                    AutomationProperties.Name="{loc:T Mobile.Cancel}">
+                                <TextBlock Text="{loc:T Mobile.Cancel}" />
                             </Button>
                         </StackPanel>
                     </views:MenuGlass>

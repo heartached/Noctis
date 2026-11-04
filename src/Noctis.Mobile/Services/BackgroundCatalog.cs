@@ -1,11 +1,16 @@
 using Avalonia.Media;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.Services;
 
 /// <summary>One mesh background: its name and three colours, the highlight (top left), the mid
 /// tone (lower right) and the floor everything sits on, as the dark theme shows them.</summary>
-public sealed record BackgroundChoice(string Id, string Name, string Group, Color Top, Color Mid, Color Floor);
+public sealed record BackgroundChoice(string Id, string EnglishName, string Group, Color Top, Color Mid, Color Floor)
+{
+    /// <summary>The name Settings shows, in the current language ("Plum Ink" → Mobile.BackgroundName.PlumInk).</summary>
+    public string Name => Loc.T("Mobile.BackgroundName." + EnglishName.Replace(" ", string.Empty));
+}
 
 /// <summary>
 /// The backgrounds Settings › Background offers (the approved mockup's Neutral and Colour sets)

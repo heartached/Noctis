@@ -1,4 +1,5 @@
 using Noctis.Mobile.Services;
+using Noctis.Localization;
 
 namespace Noctis.Android.Services;
 
@@ -35,6 +36,6 @@ public sealed class AndroidFolderPicker : IFolderPicker
         {
             // No volume list: the generic name below.
         }
-        return "SD card";
+        return Loc.T("Mobile.Folders.SdCard");
     }
 }

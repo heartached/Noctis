@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.PopMenu"
@@ -118,13 +119,13 @@
                                                 <Button Name="MenuAddToPlaylist" Classes="row np-tile" Command="{Binding ShowPlaylistsCommand}">
                                                     <StackPanel>
                                                         <PathIcon Data="{DynamicResource PhAddToPlaylist}" />
-                                                        <TextBlock Text="Add to Playlist" />
+                                                        <TextBlock Text="{loc:T Mobile.AddToPlaylist}" />
                                                     </StackPanel>
                                                 </Button>
                                                 <Button Name="MenuPlayNext" Classes="row np-tile" Command="{Binding PlayNextCommand}">
                                                     <StackPanel>
                                                         <PathIcon Data="{DynamicResource PhPlayNext}" />
-                                                        <TextBlock Text="Play Next" />
+                                                        <TextBlock Text="{loc:T Mobile.PlayNext}" />
                                                     </StackPanel>
                                                 </Button>
                                             </UniformGrid>
@@ -133,7 +134,7 @@
                                             <Button Name="MenuAddToQueue" Classes="row np-row" Command="{Binding AddToQueueCommand}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhAddToQueue}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Add to Queue" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddToQueue}" VerticalAlignment="Center" />
                                                 </Grid>
                                             </Button>
                                             <Button Name="MenuDownload" Classes="row np-row" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}">
@@ -161,7 +162,7 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhAlbum}" />
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="Go to Album" />
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToAlbum}" />
                                                         <TextBlock Classes="np-detail" Text="{Binding Track.Album}" />
                                                     </StackPanel>
                                                     <Border Grid.Column="1" Classes="np-line" />
@@ -171,7 +172,7 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhArtist}" />
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="Go to Artist" />
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToArtist}" />
                                                         <TextBlock Classes="np-detail" Text="{Binding ArtistLine}" />
                                                     </StackPanel>
                                                     <Border Grid.Column="1" Classes="np-line" />
@@ -180,7 +181,7 @@
                                             <Button Name="MenuLyrics" Classes="row np-row" Command="{Binding ShowLyricsCommand}" IsVisible="{Binding CanShowLyrics}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhLyrics}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Lyrics" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Tab.Lyrics}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
@@ -190,7 +191,7 @@
                                             <Button Name="MenuRename" Classes="row np-row" Command="{Binding RenamePlaylistCommand}" IsVisible="{Binding CanEditPlaylist}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhEdit}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Rename" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.Rename}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
@@ -198,7 +199,7 @@
                                                     IsVisible="{Binding CanRemoveFromPlaylist}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhPlaylistRemove}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Remove from Playlist" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RemoveFromPlaylist}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
@@ -206,7 +207,7 @@
                                                     IsVisible="{Binding CanEditPlaylist}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhTrash}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Delete Playlist" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.DeletePlaylist}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
@@ -219,20 +220,20 @@
                                             <Button Name="MenuAddFolder" Classes="row np-row" Command="{Binding AddFolderCommand}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhFolder}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Add Folder…" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddFolderMenu}" VerticalAlignment="Center" />
                                                 </Grid>
                                             </Button>
                                             <Button Name="MenuRescan" Classes="row np-row" Command="{Binding RescanCommand}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhRescan}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Rescan Library" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RescanLibrary}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
                                             <Button Name="MenuSettings" Classes="row np-row" Command="{Binding OpenSettingsCommand}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhSettings}" />
-                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="Settings" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Nav.Settings}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
@@ -246,7 +247,7 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhAlbum}" />
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="Go to Album" />
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToAlbum}" />
                                                         <TextBlock Classes="np-detail" Text="{Binding AlbumLine}" />
                                                     </StackPanel>
                                                 </Grid>
@@ -255,7 +256,7 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhArtist}" />
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="Go to Artist" />
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToArtist}" />
                                                         <TextBlock Classes="np-detail" Text="{Binding ArtistLine}" />
                                                     </StackPanel>
                                                 </Grid>
@@ -282,10 +283,10 @@
                                                 <TextBlock Name="QualityMeaning" Classes="np-note" Text="{Binding Meaning}" TextAlignment="Center"
                                                            FontSize="13" Margin="0,6,0,0" />
                                             </StackPanel>
-                                            <Button Name="QualityDone" Classes="row np-row" MinHeight="44" Command="{Binding DoneCommand}" AutomationProperties.Name="OK">
+                                            <Button Name="QualityDone" Classes="row np-row" MinHeight="44" Command="{Binding DoneCommand}" AutomationProperties.Name="{loc:T Mobile.OK}">
                                                 <Panel>
                                                     <Border Classes="np-line" Margin="16,0,16,0" />
-                                                    <TextBlock Text="OK" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                                    <TextBlock Text="{loc:T Mobile.OK}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
                                                                VerticalAlignment="Center" Foreground="{DynamicResource MenuGlassText}" />
                                                 </Panel>
                                             </Button>

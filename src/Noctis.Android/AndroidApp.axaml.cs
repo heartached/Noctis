@@ -289,7 +289,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         try
         {
             var settings = await persistence.LoadSettingsAsync();
+            // The shell is already on screen in the phone's language: a saved choice relabels it.
+            var cultureBefore = Loc.Instance.Culture.Name;
             Loc.Instance.SetCulture(settings.Language);
+            if (Loc.Instance.Culture.Name != cultureBefore) _shell!.Relabel();
             ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
             // Settings › Background, before the first page paints rather than after the library loads.
             _shell!.Background.ApplySettings(settings);

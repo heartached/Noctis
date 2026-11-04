@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -30,15 +31,15 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         _playlist = playlist;
         SortChoices = new[]
         {
-            new SortChoice(playlist != null ? "Playlist Order" : "Default Order", SongSort.Default) { IsSelected = true },
-            new SortChoice("Title", SongSort.Title),
-            new SortChoice("Artist", SongSort.Artist),
-            new SortChoice("Album", SongSort.Album),
-            new SortChoice("Date Added", SongSort.DateAdded),
-            new SortChoice("Release Year", SongSort.Year),
-            new SortChoice("Time", SongSort.Duration),
-            new SortChoice("Most Played", SongSort.MostPlayed),
-            new SortChoice("Recently Played", SongSort.RecentlyPlayed),
+            new SortChoice(playlist != null ? "Mobile.Sort.PlaylistOrder" : "Mobile.Sort.DefaultOrder", SongSort.Default) { IsSelected = true },
+            new SortChoice("Mobile.Sort.Title", SongSort.Title),
+            new SortChoice("Mobile.Sort.Artist", SongSort.Artist),
+            new SortChoice("Mobile.Sort.Album", SongSort.Album),
+            new SortChoice("Mobile.Sort.DateAdded", SongSort.DateAdded),
+            new SortChoice("Mobile.Sort.ReleaseYear", SongSort.Year),
+            new SortChoice("Mobile.Sort.Time", SongSort.Duration),
+            new SortChoice("Mobile.Sort.MostPlayed", SongSort.MostPlayed),
+            new SortChoice("Mobile.RecentlyPlayed", SongSort.RecentlyPlayed),
         };
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
@@ -47,7 +48,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     public ShellViewModel Shell { get; }
 
     /// <summary>A playlist's page reads the name the library holds now (a rename shows at once).</summary>
-    public override string Title => Playlist?.Name ?? _title;
+    public override string Title => Playlist?.Name ?? Localized(_title);
 
     /// <summary>The playlist this page shows, as the library holds it now; null for other lists.</summary>
     public Playlist? Playlist => _playlist == null ? null : Shell.CurrentPlaylist(_playlist);
@@ -86,11 +87,11 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     public bool ShowEmpty => SongCount == 0;
 
-    public string EmptyText => TotalCount == 0 ? "No songs" : "No matching songs";
+    public string EmptyText => TotalCount == 0 ? Loc.T("Mobile.SongList.NoSongs") : Loc.T("Mobile.SongList.NoMatch");
 
     public string CountText => SongCount == TotalCount
-        ? (SongCount == 1 ? "1 song" : $"{SongCount} songs")
-        : $"{SongCount} of {TotalCount}";
+        ? Loc.Plural("Mobile.Count.Songs", SongCount)
+        : Loc.T("Mobile.SongList.CountOf", SongCount, TotalCount);
 
     // ── Search in the list ──
 

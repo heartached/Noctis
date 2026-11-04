@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.LibraryNotices"
              x:DataType="vm:ShellViewModel">
 
@@ -11,17 +13,17 @@
     <StackPanel Name="NoticeCards" Margin="20,0" Spacing="14">
         <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
             <StackPanel Spacing="10">
-                <TextBlock Classes="section" Text="Add your music" />
+                <TextBlock Classes="section" Text="{loc:T Mobile.Notice.AddMusicTitle}" />
                 <TextBlock Classes="subtle" TextWrapping="Wrap"
-                           Text="Pick the folder your music lives in. Noctis reads it in place and never uploads anything." />
-                <Button Classes="pill-accent" Content="Choose folder" Command="{Binding Library.AddFolderCommand}" />
+                           Text="{loc:T Mobile.Notice.AddMusicText}" />
+                <Button Classes="pill-accent" Content="{loc:T Mobile.Notice.ChooseFolder}" Command="{Binding Library.AddFolderCommand}" />
             </StackPanel>
         </Border>
 
         <Border Name="ReconnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.NeedsReconnect}">
             <StackPanel Spacing="10">
                 <TextBlock Text="{Binding Library.StatusText}" TextWrapping="Wrap" />
-                <Button Classes="pill" Content="Reconnect folder" Command="{Binding Library.AddFolderCommand}" />
+                <Button Classes="pill" Content="{loc:T Mobile.Notice.ReconnectFolder}" Command="{Binding Library.AddFolderCommand}" />
             </StackPanel>
         </Border>
 
@@ -30,7 +32,7 @@
              rendering a frame every 16 ms on an idle screen (one bar each on Home and Library). -->
         <StackPanel Spacing="4" IsVisible="{Binding Library.IsScanning}">
             <ProgressBar IsIndeterminate="{Binding Library.IsScanning}" />
-            <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, StringFormat='Scanning… {0} files'}" />
+            <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, Converter={x:Static views:LocFormat.Count}, ConverterParameter=Mobile.Notice.ScanningFiles}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

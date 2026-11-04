@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:controls="using:Noctis.Controls"
@@ -10,20 +11,22 @@
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
                 <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
-            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+            <views:FitWidth Grid.Column="1" Name="TitleFit" VerticalAlignment="Center">
+                <TextBlock Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </views:FitWidth>
             <!-- Embedded (the Playlists tab), the tab's own header carries the same pill. -->
             <views:PlaylistTools Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" />
         </Grid>
 
-        <TextBox Grid.Row="1" Name="PlaylistSearchBox" Classes="search-field" Margin="16,0,16,8" PlaceholderText="Search in playlists"
+        <TextBox Grid.Row="1" Name="PlaylistSearchBox" Classes="search-field" Margin="16,0,16,8" PlaceholderText="{loc:T Mobile.Playlists.Find}"
                  Text="{Binding FilterText}" IsVisible="{Binding IsSearchOpen}" />
 
         <ScrollViewer Classes="page-scroll" Grid.Row="2" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="0,0,0,16">
             <TextBlock Name="EmptyText" Classes="subtle" TextWrapping="Wrap" TextAlignment="Center"
-                       Text="No playlists yet. Long-press a song to start one." HorizontalAlignment="Center"
+                       Text="{loc:T Mobile.Playlists.None}" HorizontalAlignment="Center"
                        Margin="20,24,20,0" IsVisible="{Binding !HasPlaylists}" />
-            <TextBlock Name="NoMatchesText" Classes="subtle" Text="No playlists match" HorizontalAlignment="Center"
+            <TextBlock Name="NoMatchesText" Classes="subtle" Text="{loc:T Mobile.Playlists.NoMatch}" HorizontalAlignment="Center"
                        Margin="20,24,20,0" IsVisible="{Binding ShowNoMatches}" />
             <!-- Apple's playlist list: a cover, the name and the song count, a hairline from the
                  text to the edge. -->
@@ -50,7 +53,7 @@
                                      and Delete Playlist; a long press opens the same. -->
                                 <Button Grid.Column="2" Name="PlaylistMoreButton" Classes="icon" Width="36" Height="36"
                                         Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenPlaylistSheetCommand}"
-                                        CommandParameter="{Binding Playlist}" AutomationProperties.Name="{Binding Name, StringFormat='More for {0}'}">
+                                        CommandParameter="{Binding Playlist}" AutomationProperties.Name="{Binding Name, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.MoreFor}">
                                     <PathIcon Data="{DynamicResource PhMore}" />
                                 </Button>
                                 <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="hairline" Margin="14,0,-16,0" />

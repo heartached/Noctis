@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:controls="using:Noctis.Controls"
@@ -194,7 +195,7 @@
                     <Button Name="PlayButton" Classes="album-play" Command="{Binding PlayCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
-                            <TextBlock Text="Play" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T Mobile.Play}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Button Name="FavouriteButton" Classes="round album-round" Command="{Binding ToggleFavouriteCommand}">
@@ -229,7 +230,7 @@
                         </Border>
                         <Border Name="DescriptionMore" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="36,0,0,0"
                                 IsHitTestVisible="False">
-                            <TextBlock Classes="album-more" Text="MORE" />
+                            <TextBlock Classes="album-more" Text="{loc:T Mobile.Album.More}" />
                         </Border>
                     </Panel>
                 </Button>
@@ -304,7 +305,7 @@
                     <TextBlock Name="FooterCopyright" Classes="album-subtle" FontSize="14" LineHeight="19" TextWrapping="Wrap"
                                Text="{Binding CopyrightText}" IsVisible="{Binding HasCopyright}" />
                     <StackPanel Name="FooterLabel" Margin="0,16,0,0" Spacing="1" IsVisible="{Binding HasRecordLabel}">
-                        <TextBlock Classes="album-subtle" Text="RECORD LABEL" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock Classes="album-subtle" Text="{loc:T Mobile.Album.RecordLabel}" FontSize="12" FontWeight="SemiBold" />
                         <TextBlock Name="FooterLabelName" FontSize="15" TextWrapping="Wrap" Text="{Binding RecordLabel}" />
                     </StackPanel>
                 </StackPanel>

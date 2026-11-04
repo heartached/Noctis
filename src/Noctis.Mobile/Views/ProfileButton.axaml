@@ -1,5 +1,6 @@
 <controls:GlassPanel xmlns="https://github.com/avaloniaui"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
                      xmlns:controls="using:Noctis.Controls"
                      x:Class="Noctis.Mobile.Views.ProfileButton"
                      Classes="header-glass">
@@ -20,7 +21,7 @@
     </controls:GlassPanel.Styles>
 
     <!-- "glass-round" (MobileStyles): the circle's full 44 dp touch target, Apple-style press dim. -->
-    <Button Name="ProfileButtonRoot" Classes="glass-round" AutomationProperties.Name="Profile and settings">
+    <Button Name="ProfileButtonRoot" Classes="glass-round" AutomationProperties.Name="{loc:T Mobile.ProfileButton}">
         <Panel>
             <PathIcon Name="AvatarGlyph" Data="{DynamicResource PhPerson}" />
             <Border Name="AvatarClip" Classes="avatar" IsVisible="False">

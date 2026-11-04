@@ -15,9 +15,9 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
         Shell = shell;
         SortChoices = new[]
         {
-            new SortChoice("Title", PlaylistSort.Title) { IsSelected = true },
-            new SortChoice("Recently Updated", PlaylistSort.RecentlyUpdated),
-            new SortChoice("Recently Added", PlaylistSort.RecentlyAdded),
+            new SortChoice("Mobile.Sort.Title", PlaylistSort.Title) { IsSelected = true },
+            new SortChoice("Mobile.Sort.RecentlyUpdated", PlaylistSort.RecentlyUpdated),
+            new SortChoice("Mobile.RecentlyAdded", PlaylistSort.RecentlyAdded),
         };
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
@@ -113,5 +113,5 @@ public enum PlaylistSort { Title, RecentlyUpdated, RecentlyAdded }
 public sealed record PlaylistRow(Playlist Playlist, string? ArtworkPath)
 {
     public string Name => Playlist.Name;
-    public string Subtitle => Playlist.TrackIds.Count == 1 ? "1 song" : $"{Playlist.TrackIds.Count} songs";
+    public string Subtitle => Loc.Plural("Mobile.Count.Songs", Playlist.TrackIds.Count);
 }

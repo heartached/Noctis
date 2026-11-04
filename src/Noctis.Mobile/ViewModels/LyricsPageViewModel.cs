@@ -6,6 +6,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -150,22 +151,22 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     public bool WantsFrames => IsSynced && _nowPlaying.IsPlaying;
 
     public string StatusText =>
-        IsSearchingOnline ? "Searching for Lyrics…"
-        : IsLoading ? "Loading lyrics…"
-        : IsInstrumental ? "Instrumental"
-        : !HasLyrics ? "No Lyrics"
-        : IsRawFallback ? "No synced lyrics"
+        IsSearchingOnline ? Loc.T("Mobile.Lyrics.Searching")
+        : IsLoading ? Loc.T("Mobile.Lyrics.Loading")
+        : IsInstrumental ? Loc.T("Mobile.Lyrics.Instrumental")
+        : !HasLyrics ? Loc.T("Mobile.Lyrics.None")
+        : IsRawFallback ? Loc.T("Mobile.Lyrics.NotSynced")
         : string.Empty;
 
     /// <summary>The line under the empty state's title.</summary>
     public string StatusDetail =>
         IsSearchingOnline ? string.Empty
-        : IsInstrumental ? "This song has no words to sing along to."
+        : IsInstrumental ? Loc.T("Mobile.Lyrics.InstrumentalDetail")
         // LRCLIB busy (503) or no network read as "none were found online" (emulator 10-20).
-        : OnlineLookupFailed ? "This song has no lyrics file or lyrics in its tags, and the online lyrics service couldn't be reached. It's asked again the next time this song plays."
+        : OnlineLookupFailed ? Loc.T("Mobile.Lyrics.OnlineFailedDetail")
         : FindLyricsOnline && Online != null
-            ? "This song has no lyrics file or lyrics in its tags, and none were found online."
-            : "This song has no lyrics file or lyrics in its tags.";
+            ? Loc.T("Mobile.Lyrics.NoneOnlineDetail")
+            : Loc.T("Mobile.Lyrics.NoneDetail");
 
     /// <summary>The empty state shows once the local load is done: no lyrics, searching
     /// online, or instrumental. (The local load takes milliseconds; flashing a "Loading" title
@@ -173,7 +174,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     public bool ShowsEmptyState => !HasLyrics && (!IsLoading || IsSearchingOnline);
 
     /// <summary>Credit under the last line for lyrics fetched online.</summary>
-    public string SourceCredit => Source == LyricsSource.Online ? "Lyrics from LRCLIB" : string.Empty;
+    public string SourceCredit => Source == LyricsSource.Online ? Loc.T("Mobile.Lyrics.FromLrclib") : string.Empty;
 
     public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
