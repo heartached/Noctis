@@ -3306,6 +3306,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.Theme" xml:space="preserve"><value>Тема</value></data>
   <data name="Mobile.Settings.Accent" xml:space="preserve"><value>Акцентный цвет</value></data>
   <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>Панель плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingArtwork" xml:space="preserve"><value>Обложка в плеере</value></data>
+  <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Обложка</value></data>
+  <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Винил</value></data>
+  <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Папки с музыкой</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Загрузки</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Прослушивание</value></data>

@@ -7022,6 +7022,10 @@
   <data name="Mobile.Settings.Theme" xml:space="preserve"><value>主題</value></data>
   <data name="Mobile.Settings.Accent" xml:space="preserve"><value>強調色</value></data>
   <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>播放列</value></data>
+  <data name="Mobile.Settings.NowPlayingArtwork" xml:space="preserve"><value>播放中插圖</value></data>
+  <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>封面</value></data>
+  <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>黑膠</value></data>
+  <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音樂資料夾</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>下載</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>聆聽</value></data>

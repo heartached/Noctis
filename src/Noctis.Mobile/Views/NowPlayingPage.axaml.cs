@@ -71,6 +71,35 @@ public partial class NowPlayingPage : UserControl
         SeekBar.ValueChanged += OnSeekValueChanged;
     }
 
+    private ShellViewModel? _shell;
+
+    // The disc turns only while someone can see it: the page open (not closed, not under the
+    // lyrics) and the app in front (ShellViewModel.IsSuspended: home, task switch, screen off).
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_shell != null) _shell.PropertyChanged -= OnShellChanged;
+        _shell = DataContext as ShellViewModel;
+        if (_shell != null) _shell.PropertyChanged += OnShellChanged;
+        UpdateDiscActive();
+    }
+
+    private void OnShellChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ShellViewModel.IsSuspended)) UpdateDiscActive();
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == IsVisibleProperty) UpdateDiscActive();
+    }
+
+    private void UpdateDiscActive()
+    {
+        if (Disc is { } disc) disc.IsActive = IsVisible && _shell is not { IsSuspended: true };
+    }
+
     private bool? _landscape;
 
     /// <summary>

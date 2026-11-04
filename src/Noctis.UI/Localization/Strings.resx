@@ -3306,6 +3306,10 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.Theme" xml:space="preserve"><value>Theme</value><comment>Settings row</comment></data>
   <data name="Mobile.Settings.Accent" xml:space="preserve"><value>Accent</value><comment>Settings row and page: accent colour</comment></data>
   <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>Player Bar</value><comment>Settings row and page: the mini player</comment></data>
+  <data name="Mobile.Settings.NowPlayingArtwork" xml:space="preserve"><value>Now Playing Artwork</value><comment>Settings row: how Now Playing shows the cover</comment></data>
+  <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Cover</value><comment>Now Playing Artwork choice: the plain square cover</comment></data>
+  <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Now Playing Artwork choice: the cover as a spinning record's label</comment></data>
+  <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value><comment>Now Playing Artwork choice: the cover printed on a spinning compact disc</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Music Folders</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Downloads</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Listening</value><comment>Settings group</comment></data>

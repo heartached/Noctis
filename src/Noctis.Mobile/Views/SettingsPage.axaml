@@ -536,6 +536,17 @@
                                         </Grid>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Now Playing Artwork: Cover / Vinyl / CD on the glass menu, as Theme. -->
+                                    <Button Name="NowPlayingArtworkRow" Classes="row" Command="{Binding ShowNowPlayingArtworkMenuCommand}"
+                                            AutomationProperties.Name="{Binding NowPlayingArtworkRowName}">
+                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconDisc}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingArtwork}" />
+                                            <TextBlock Grid.Column="2" Name="NowPlayingArtworkValueLabel" Classes="row-value" Text="{Binding NowPlayingArtworkValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                        </Grid>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Language: System (the phone's) or one of the shipped translations, on a page of its own. -->
                                     <Button Name="LanguageRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Language}" AutomationProperties.Name="{Binding LanguageRowName}">

@@ -172,6 +172,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Phone, Settings › Library › Show in Song Rows: the small mark at the end of a song
     /// row's artist line, "Off", "Ratings" (stars on rated songs; the default) or "Favorites" (a heart).</summary>
     public string MobileSongRowMark { get; set; } = "Ratings";
+    /// <summary>Phone, Settings › Appearance › Now Playing Artwork: the cover as it is (Cover, the
+    /// default), or printed on a spinning record (Vinyl) or disc (CD). Saved by name; anything
+    /// unknown reads as Cover.</summary>
+    public string MobileNowPlayingArtwork { get; set; } = "Cover";
 
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
