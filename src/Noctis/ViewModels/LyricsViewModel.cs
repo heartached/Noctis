@@ -586,7 +586,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isMarkedNoLyrics;
 
-    partial void OnIsMarkedNoLyricsChanged(bool value) => UpdateNoLyricsCentered();
+    partial void OnIsMarkedNoLyricsChanged(bool value)
+    {
+        // A song marked as having none has nothing to share (ShareLyrics returns on zero lines).
+        OnPropertyChanged(nameof(ShareAvailable));
+        UpdateNoLyricsCentered();
+    }
 
     /// <summary>
     /// The lyrics page centres the player (cover, track info, controls) instead of the
@@ -3745,7 +3750,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     internal static List<LyricLine> ParseLrcContent(string content) => LrcParser.Parse(content);
 
     /// <summary>Whether the lyric share-card entry point should be visible.</summary>
-    public bool ShareAvailable => _player.CurrentTrack != null && !IsSearching && !ShowSearchButton;
+    public bool ShareAvailable => _player.CurrentTrack != null && !IsSearching && !ShowSearchButton && !IsMarkedNoLyrics;
 
     partial void OnShowSearchButtonChanged(bool value)
     {

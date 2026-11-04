@@ -191,6 +191,28 @@ public class LyricsNoLyricsCenterTests : IDisposable
         Assert.True(rig.Vm.IsNoLyricsCentered);
     }
 
+    /// <summary>Bug: ShareAvailable only looked at the search states, so a song marked as having
+    /// no lyrics kept the player bar's ⋯ ▸ Share Lyrics enabled — a row that did nothing
+    /// (ShareLyrics returns on zero lines).</summary>
+    [AvaloniaFact]
+    public async Task MarkedNoLyrics_IsNotShareable()
+    {
+        var rig = Mount();
+        await OpenAsync(rig, NewTrack(Lrc));
+        Assert.True(rig.Vm.ShareAvailable);
+
+        var changed = false;
+        rig.Vm.PropertyChanged += (_, e) => changed |= e.PropertyName == nameof(LyricsViewModel.ShareAvailable);
+        await rig.Vm.MarkNoLyricsCommand.ExecuteAsync(null);
+        await SettleAsync(rig.Vm);
+
+        Assert.True(rig.Vm.IsMarkedNoLyrics);
+        Assert.Empty(rig.Vm.LyricLines);
+        Assert.False(rig.Vm.ShareAvailable);
+        Assert.True(changed);
+        Assert.True(rig.Vm.IsNoLyricsCentered);
+    }
+
     [AvaloniaFact]
     public async Task WhileLoading_DoesNotCenter()
     {
