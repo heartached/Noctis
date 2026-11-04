@@ -183,68 +183,89 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     }
 
     /// <summary>The source's pixels, area-averaged down to <see cref="WorkingSize"/> on the long side.</summary>
-    private static byte[] ReadDownscaled(Bitmap source, out int w, out int h)
+    internal static byte[] ReadDownscaled(Bitmap source, out int w, out int h)
     {
         // Read the source pixels at native size: CreateScaledBitmap only accepts
         // some bitmap implementations ("Invalid source bitmap type" for e.g.
         // WriteableBitmap), so the downscale is done here instead.
         var sw = source.PixelSize.Width;
         var sh = source.PixelSize.Height;
-        var srcStride = sw * 4;
-        var srcPixels = new byte[srcStride * sh];
-        var handle = GCHandle.Alloc(srcPixels, GCHandleType.Pinned);
-        try
-        {
-            source.CopyPixels(new PixelRect(0, 0, sw, sh), handle.AddrOfPinnedObject(), srcPixels.Length, srcStride);
-        }
-        finally
-        {
-            handle.Free();
-        }
-
         var scale = Math.Min(1.0, WorkingSize / (double)Math.Max(sw, sh));
         w = Math.Max(1, (int)Math.Round(sw * scale));
         h = Math.Max(1, (int)Math.Round(sh * scale));
-        return Downscale(srcPixels, sw, sh, w, h);
+        return Downscale(source, sw, sh, w, h);
     }
 
     // Area-average downscale: each destination pixel averages its whole source
     // cell, so no source detail is skipped (point sampling would alias and the
     // gaussian below is sized for the small image, not for hiding aliasing).
-    private static byte[] Downscale(byte[] src, int sw, int sh, int dw, int dh)
+    //
+    // The source is read one band of rows at a time (the rows of one destination row) into a
+    // pooled buffer. Reading the whole cover first was a 4.6 MB array for a phone's 1080 px
+    // Now Playing cover: a large-object allocation per cover per page at every skip, on the
+    // UI thread, which is what brings on a phone's long full collections.
+    private static byte[] Downscale(Bitmap source, int sw, int sh, int dw, int dh)
     {
         var dst = new byte[dw * dh * 4];
-        for (var dy = 0; dy < dh; dy++)
+        var stride = sw * 4;
+        // Destination rows per band: as many as fit in BandBytes (at least one), so a cover is
+        // read in a handful of copies, each into the same pooled buffer.
+        var rowsPerDst = (sh + dh - 1) / dh + 1;
+        var dstPerBand = Math.Max(1, BandBytes / (stride * rowsPerDst));
+        var band = System.Buffers.ArrayPool<byte>.Shared.Rent(stride * rowsPerDst * dstPerBand);
+        var handle = GCHandle.Alloc(band, GCHandleType.Pinned);
+        try
         {
-            var y0 = dy * sh / dh;
-            var y1 = Math.Max(y0 + 1, (dy + 1) * sh / dh);
-            for (var dx = 0; dx < dw; dx++)
+            var address = handle.AddrOfPinnedObject();
+            for (var first = 0; first < dh; first += dstPerBand)
             {
-                var x0 = dx * sw / dw;
-                var x1 = Math.Max(x0 + 1, (dx + 1) * sw / dw);
-                long b = 0, g = 0, r = 0, a = 0;
-                for (var y = y0; y < y1; y++)
+                var last = Math.Min(dh, first + dstPerBand) - 1;
+                var bandY = first * sh / dh;
+                var bandEnd = BandEnd(last, sh, dh);
+                source.CopyPixels(new PixelRect(0, bandY, sw, bandEnd - bandY), address, stride * (bandEnd - bandY), stride);
+                for (var dy = first; dy <= last; dy++)
                 {
-                    var row = y * sw * 4;
-                    for (var x = x0; x < x1; x++)
+                    var y0 = dy * sh / dh;
+                    var y1 = BandEnd(dy, sh, dh);
+                    for (var dx = 0; dx < dw; dx++)
                     {
-                        var i = row + x * 4;
-                        b += src[i];
-                        g += src[i + 1];
-                        r += src[i + 2];
-                        a += src[i + 3];
+                        var x0 = dx * sw / dw;
+                        var x1 = Math.Max(x0 + 1, (dx + 1) * sw / dw);
+                        long b = 0, g = 0, r = 0, a = 0;
+                        for (var y = y0; y < y1; y++)
+                        {
+                            var row = (y - bandY) * stride;
+                            for (var x = x0; x < x1; x++)
+                            {
+                                var i = row + x * 4;
+                                b += band[i];
+                                g += band[i + 1];
+                                r += band[i + 2];
+                                a += band[i + 3];
+                            }
+                        }
+                        var n = (y1 - y0) * (x1 - x0);
+                        var di = (dy * dw + dx) * 4;
+                        dst[di] = (byte)(b / n);
+                        dst[di + 1] = (byte)(g / n);
+                        dst[di + 2] = (byte)(r / n);
+                        dst[di + 3] = (byte)(a / n);
                     }
                 }
-                var n = (y1 - y0) * (x1 - x0);
-                var di = (dy * dw + dx) * 4;
-                dst[di] = (byte)(b / n);
-                dst[di + 1] = (byte)(g / n);
-                dst[di + 2] = (byte)(r / n);
-                dst[di + 3] = (byte)(a / n);
             }
         }
+        finally
+        {
+            handle.Free();
+            System.Buffers.ArrayPool<byte>.Shared.Return(band);
+        }
         return dst;
+
+        static int BandEnd(int dy, int sh, int dh) => Math.Max(dy * sh / dh + 1, (dy + 1) * sh / dh);
     }
+
+    /// <summary>Most source bytes read per copy in <see cref="Downscale"/> (a pooled buffer).</summary>
+    private const int BandBytes = 512 * 1024;
 
     private static double[] BuildKernel(double sigma)
     {

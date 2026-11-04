@@ -79,6 +79,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // Android may clear; a missing one is simply decoded from the source once more.
         LibraryService.ArtworkFileReplaced += ArtworkCache.Invalidate;
         ArtworkThumbnailCache.Enable(Path.Combine((context.CacheDir ?? context.FilesDir!).AbsolutePath, "artwork_thumbs"));
+        // Two cover decodes at a time: mid-range phones have two fast cores, and a grid fling
+        // otherwise ran a full-size decode per tile at once (see CachedImage.MaxConcurrentDecodes).
+        Noctis.Controls.CachedImage.MaxConcurrentDecodes = 2;
 
         // DebugLog is an in-memory ring with no output of its own, so every handled error the
         // app logs — startup, library scan, playback, SAF listing — would be invisible on a
@@ -156,6 +159,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 : null,
         };
         _shell = shell;
+        // A fast word is one search, not one per letter (SearchPageViewModel.TypingDebounce).
+        shell.Search.TypingDebounce = TimeSpan.FromMilliseconds(150);
 
         if (account != null)
         {

@@ -390,6 +390,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// Idempotent, so a PointerCaptureLost after a normal release is harmless.</summary>
     public void EndSeek() => _seeking = false;
 
+    /// <summary>A held scrub is steering <see cref="Position"/> (the lyrics follow it verbatim).</summary>
+    public bool IsSeeking => _seeking;
+
     /// <summary>
     /// Mid-drag: shows <paramref name="position"/> in the elapsed and remaining times without
     /// seeking (the release does that). Held position ticks no longer move the times, so

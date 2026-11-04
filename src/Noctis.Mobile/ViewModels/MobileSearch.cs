@@ -46,7 +46,8 @@ internal static class MobileSearch
     }
 
     internal static Results Find(ILibraryService library, string? query, int songCap, int albumCap, int artistCap,
-        SearchSort sort = SearchSort.Relevance, IEnumerable<Playlist>? playlists = null, int playlistCap = 0)
+        SearchSort sort = SearchSort.Relevance, IEnumerable<Playlist>? playlists = null, int playlistCap = 0,
+        Func<IReadOnlyDictionary<string, string?>>? artistArtwork = null)
     {
         if (string.IsNullOrWhiteSpace(query)) return Results.Empty;
         var match = new Matcher(query);
@@ -57,26 +58,34 @@ internal static class MobileSearch
         var albumHits = library.Albums.Where(a => match.Hit(a.Name, a.SearchNameKey) || match.Hit(a.Artist, a.SearchArtistKey));
         var albums = SortAlbums(albumHits, match, sort).Take(albumCap).ToList();
 
-        var artistHits = library.Artists
-            .Select(a => (Artist: a, Key: SearchText.Normalize(a.Name)))
-            .Where(x => match.Hit(x.Artist.Name, x.Key))
-            .OrderByDescending(x => match.Starts(x.Key))
-            .ThenBy(x => x.Artist.Name, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
-        var artwork = artistHits.Count > 0 ? MobileLibrary.ArtistArtwork(library) : new Dictionary<string, string?>();
+        // Every keystroke used to normalise every artist's name, sort every hit by culture and
+        // build the artist → cover map over the whole library; only a dozen are shown.
+        var artistHits = new List<(Artist Artist, string Key)>();
+        foreach (var a in library.Artists)
+        {
+            var key = NameKey(a.Name);
+            if (match.Hit(a.Name, key)) artistHits.Add((a, key));
+        }
 
         // The featured artist: one whose name is the query, or — once three letters narrow it
         // down — the first artist the query begins. They head the results with their songs and
-        // leave the Artists row, so they are not listed twice.
-        ArtistListItem? featured = null;
-        var top = artistHits.FirstOrDefault(x => x.Key == match.Key && match.Key.Length > 0);
-        if (top.Artist == null && match.Key.Length >= 3) top = artistHits.FirstOrDefault(x => match.Starts(x.Key));
-        if (top.Artist != null)
-        {
-            featured = new ArtistListItem(top.Artist, artwork.GetValueOrDefault(top.Artist.Name));
-            artistHits.Remove(top);
-        }
-        var artists = artistHits.Take(artistCap).Select(x => new ArtistListItem(x.Artist, artwork.GetValueOrDefault(x.Artist.Name))).ToList();
+        // leave the Artists row, so they are not listed twice. (First in the list's own order:
+        // query-prefix hits, then by name.)
+        (Artist Artist, string Key) top = default;
+        if (match.Key.Length > 0) top = FirstByName(artistHits.Where(x => x.Key == match.Key));
+        if (top.Artist == null && match.Key.Length >= 3) top = FirstByName(artistHits.Where(x => match.Starts(x.Key)));
+        if (top.Artist != null) artistHits.Remove(top);
+        var shownArtists = artistHits
+            .OrderByDescending(x => match.Starts(x.Key))
+            .ThenBy(x => x.Artist.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Take(artistCap)
+            .ToList();
+        IReadOnlyDictionary<string, string?>? artwork = null;
+        if (top.Artist != null || shownArtists.Count > 0)
+            artwork = artistArtwork?.Invoke() ?? MobileLibrary.ArtistArtwork(library);
+
+        ArtistListItem? featured = top.Artist != null ? new ArtistListItem(top.Artist, artwork!.GetValueOrDefault(top.Artist.Name)) : null;
+        var artists = shownArtists.Select(x => new ArtistListItem(x.Artist, artwork!.GetValueOrDefault(x.Artist.Name))).ToList();
 
         var playlistHits = (playlists ?? Array.Empty<Playlist>())
             .Select(p => (Playlist: p, Key: SearchText.Normalize(p.Name)))
@@ -88,6 +97,25 @@ internal static class MobileSearch
             .ToList();
 
         return new Results(songs, albums, artists, playlistHits) { Featured = featured };
+    }
+
+    private static (Artist Artist, string Key) FirstByName(IEnumerable<(Artist Artist, string Key)> hits)
+    {
+        (Artist Artist, string Key) best = default;
+        foreach (var hit in hits)
+            if (best.Artist == null || StringComparer.CurrentCultureIgnoreCase.Compare(hit.Artist.Name, best.Artist.Name) < 0)
+                best = hit;
+        return best;
+    }
+
+    // Artist names' search keys, as Track and Album cache theirs (Artist has no field for it).
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> NameKeys = new(StringComparer.Ordinal);
+
+    private static string NameKey(string name)
+    {
+        if (NameKeys.TryGetValue(name, out var key)) return key;
+        if (NameKeys.Count > 50_000) NameKeys.Clear();
+        return NameKeys[name] = SearchText.Normalize(name);
     }
 
     /// <summary>Relevance: title-prefix hits, then the most played; every other order keeps that as its tiebreak.</summary>
