@@ -6,14 +6,10 @@
                      x:DataType="vm:SongListPageViewModel"
                      Classes="header-glass" Width="NaN" IsVisible="{Binding HasSongs}">
     <!-- A song list's tools, in one glass pill beside its title (the Library header's pill):
-         search in the list, sort, filter. Each lights up while it changes what is shown.
+         sort and filter (the search is the page's own field, FindField, as on Artists). Each lights up while it changes what is shown.
          The pill is the control itself rather than glass inside a UserControl: wrapped, its
          shadow was cut off square at the UserControl's edges on the device. -->
     <StackPanel Orientation="Horizontal" Margin="4,0">
-        <Button Name="ListSearchButton" Classes="glass-round" Classes.on="{Binding IsSearchOpen}"
-                Command="{Binding ToggleSearchCommand}">
-            <PathIcon Data="{DynamicResource PhSearch}" />
-        </Button>
         <Button Name="ListSortButton" Classes="glass-round" Classes.on="{Binding IsSorted}" Command="{Binding ShowSortMenuCommand}">
             <PathIcon Data="{DynamicResource PhSort}" />
         </Button>

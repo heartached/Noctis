@@ -8,7 +8,7 @@
              x:Class="Noctis.Mobile.Views.SongListPage"
              x:DataType="vm:SongListPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,4,16,0" IsVisible="{Binding !IsEmbedded}">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,4,16,8" IsVisible="{Binding !IsEmbedded}">
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
                 <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
@@ -28,10 +28,12 @@
             </controls:GlassPanel>
         </Grid>
 
-        <!-- Play and Shuffle play what the list shows (the title row's pill searches, sorts and
-             filters it); the count says how much of the list that is. -->
+        <!-- The list's search (the Artists page's field, FindField), then Play and Shuffle, which
+             play what the list shows (the title row's pill sorts and filters it); the count says
+             how much of the list that is. -->
         <StackPanel Grid.Row="1" IsVisible="{Binding HasSongs}">
-            <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,8,20,8">
+            <views:FindField Name="ListFindField" Text="{Binding FilterText}" Placeholder="{loc:T Mobile.SongList.Find}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0,20,8">
                 <Button Classes="pill-accent" Command="{Binding PlayAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" />
@@ -45,8 +47,6 @@
                     </StackPanel>
                 </Button>
             </StackPanel>
-            <TextBox Name="ListSearchBox" Classes="search-field" Margin="16,0,16,8" PlaceholderText="{loc:T Mobile.SongList.Find}"
-                     Text="{Binding FilterText}" IsVisible="{Binding IsSearchOpen}" />
             <!-- Its own line: the toolbar has no room left for it on a phone. -->
             <TextBlock Name="CountLabel" Classes="subtle" FontSize="13" Margin="22,0,20,4" Text="{Binding CountText}" />
         </StackPanel>

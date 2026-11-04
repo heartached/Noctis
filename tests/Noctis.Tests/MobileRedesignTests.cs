@@ -244,7 +244,6 @@ public class MobileRedesignTests
         Assert.False(page.CanFilterDownloaded);                // no account: no Downloaded filter
 
         page.OnlyFavourites = false;
-        page.ToggleSearchCommand.Execute(null);
         page.FilterText = "xia";                               // matches the artist
         Assert.Equal(new[] { "Bravo" }, page.Songs.Select(t => t.Title));
         page.PlayAllCommand.Execute(null);
@@ -255,7 +254,7 @@ public class MobileRedesignTests
         Assert.Equal("No matching songs", page.EmptyText);
         Assert.True(page.HasSongs);                            // the toolbar stays to undo it
 
-        page.ToggleSearchCommand.Execute(null);                // closing the search clears it
+        page.FilterText = string.Empty;                        // the field's clear button
         Assert.Equal(3, page.SongCount);
     }
 

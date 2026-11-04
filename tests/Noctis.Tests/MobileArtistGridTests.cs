@@ -110,11 +110,11 @@ public class MobileArtistGridTests
         var strip = MobileFixtures.Named<Border>(view, "IndexStrip");
         Assert.True(strip.IsEffectivelyVisible);
 
-        MobileFixtures.Named<TextBox>(view, "FindBox").Text = "beyonce";   // typed: the binding carries it
+        MobileFixtures.Named<TextBox>(MobileFixtures.Find<ArtistListPage>(view), "FindBox").Text = "beyonce";   // typed: the binding carries it
         window.UpdateLayout();
         Assert.Equal(new[] { "Beyoncé" }, page.Artists.Select(a => a.Name));
         Assert.False(strip.IsEffectivelyVisible);
-        Assert.True(MobileFixtures.Named<Button>(view, "ClearFindButton").IsEffectivelyVisible);
+        Assert.True(MobileFixtures.Named<Button>(MobileFixtures.Find<ArtistListPage>(view), "ClearFindButton").IsEffectivelyVisible);
 
         page.Query = "sonic";
         window.UpdateLayout();
