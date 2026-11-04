@@ -5298,6 +5298,8 @@
   <data name="Plugins.None" xml:space="preserve">
     <value>プラグインはまだインストールされていません。</value>
   </data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve">
     <value>Noctis サーバー</value>
@@ -5444,90 +5446,7 @@
     <value>閉じる</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>YouTubeから追加</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>リンクを検索または貼り付け — ライブラリにダウンロードする</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>YouTubeから追加</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>リンクを検索または貼り付けます。カバーアートでライブラリに保存されます。</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>検索</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>ワンタイムセットアップ</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Noctisはyt-dlp(無料、オープンソース)を使用してYouTubeと通信します。Noctis独自のフォルダに一度ダウンロードされ、ここから更新されます。</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>yt-dlpをインストール</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>ダウンロード</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>保存先</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>検索結果はここに表示されます。ダウンロードはライブラリフォルダに表示され、タグ付けされたカバーアートが付いています。</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>閉じる</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>自動ダウンロード</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>YouTubeから曲を追加</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>ダウンロードするリンクを検索または貼り付けます。</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>ダウンローダーを開く</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>ダウンロードフォルダ</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>空の場合、最初の音楽フォルダ内の &quot;YouTube&quot; フォルダが使用されます。</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve">
-    <value>yt-dlp</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>インストール/更新</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>yt-dlp のカスタムパス (任意)</value>
-    <comment>Path watermark</comment>
-  </data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="Upmix.Title" xml:space="preserve">
     <value>マルチチャンネルのアップミックス</value>
     <comment>Audio card title</comment>
