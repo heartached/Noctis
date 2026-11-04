@@ -272,6 +272,42 @@ public static partial class LrcParser
         // (Apple Music-style background vocals).
         EnhancedLrcParser.FoldBackgroundLines(lines);
 
+        // Backfill line EndTimestamp and last word End for synced lines so word emphasis and held notes
+        // compute accurate durations instead of stalling at 0ms.
+        for (int idx = 0; idx < lines.Count; idx++)
+        {
+            var l = lines[idx];
+            if (!l.IsSynced) continue;
+            if (l.EndTimestamp == null)
+            {
+                TimeSpan? nextStart = null;
+                for (int nextIdx = idx + 1; nextIdx < lines.Count; nextIdx++)
+                {
+                    if (lines[nextIdx].Timestamp.HasValue && lines[nextIdx].Timestamp > l.Timestamp)
+                    {
+                        nextStart = lines[nextIdx].Timestamp;
+                        break;
+                    }
+                }
+                var maxHold = (l.Words is { Count: > 0 } lw ? lw[^1].Start : l.Timestamp.Value) + TimeSpan.FromSeconds(3);
+                l.EndTimestamp = nextStart.HasValue && nextStart.Value < maxHold ? nextStart.Value : maxHold;
+            }
+
+            if (l.Words is { Count: > 0 } words && words[^1].End == null)
+            {
+                var copy = new List<WordTiming>(words);
+                var last = copy[^1];
+                copy[^1] = new WordTiming
+                {
+                    Text = last.Text,
+                    Start = last.Start,
+                    End = l.EndTimestamp ?? (last.Start + TimeSpan.FromSeconds(2)),
+                    Syllables = last.Syllables,
+                };
+                l.Words = copy;
+            }
+        }
+
         return lines;
     }
 

@@ -596,11 +596,20 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether sung words float up and held notes swell and glow (Apple Music word
     /// motion). Driven by Settings; display-only, applied to the running lyrics at once.</summary>
     [ObservableProperty] private bool _lyricsGlowAndLift = true;
+
+    /// <summary>Selected lyrics renderer. Noctis Default preserves the original template.</summary>
+    [ObservableProperty] private string _lyricsRendererMode = "SpicyLyrics";
+    [ObservableProperty] private int _lyricsMaxSplitLetters = Models.AppSettings.LyricsMaxSplitLettersDefault;
+    [ObservableProperty] private int _lyricsEmphasisMinMs = Models.AppSettings.LyricsEmphasisMinMsDefault;
+    [ObservableProperty] private int _lyricsAnimationScalePercent = Models.AppSettings.LyricsAnimationScalePercentDefault;
+    [ObservableProperty] private int _lyricsGlowExposurePercent = Models.AppSettings.LyricsGlowExposurePercentDefault;
+    [ObservableProperty] private int _lyricsTextScalePercent = Models.AppSettings.LyricsTextScalePercentDefault;
     /// <summary>Whether the lyrics show TTML translations / romanization / background vocals
     /// under each line (issue #78). Driven by Settings; display-only, no re-parse.</summary>
     [ObservableProperty] private bool _lyricsShowTranslations = true;
     [ObservableProperty] private bool _lyricsShowRomanization = true;
     [ObservableProperty] private bool _lyricsShowBackgroundVocals = true;
+    [ObservableProperty] private bool _lyricsIgnoreBackgroundVocalsParentheses;
     /// <summary>Where the lyrics page saves lyrics ("Sidecar" / "Embedded" / "Both", GitHub #135). Driven by Settings.</summary>
     [ObservableProperty] private string _lyricsSaveTarget = nameof(Models.LyricsSaveTarget.Sidecar);
     /// <summary>Search online when a lyrics view opens on a song with none (GitHub #135). Driven by Settings.</summary>

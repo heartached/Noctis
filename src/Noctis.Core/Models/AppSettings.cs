@@ -1116,6 +1116,29 @@ public class AppSettings : IJsonOnDeserializing
     /// sweep alone marks the vocal).</summary>
     public bool LyricsGlowAndLift { get; set; } = true;
 
+    /// <summary>Selected word renderer: "Noctis Default" or "SpicyLyrics".</summary>
+    public string LyricsRendererMode { get; set; } = "SpicyLyrics";
+
+    public const int LyricsMaxSplitLettersDefault = 7;
+    /// <summary>Word length (2..20 letters) for letter-by-letter blossom splitting during holds. Words longer than this do not split.</summary>
+    public int LyricsMaxSplitLetters { get; set; } = LyricsMaxSplitLettersDefault;
+
+    public const int LyricsEmphasisMinMsDefault = 1000;
+    /// <summary>Minimum hold duration in milliseconds (500, 700, 800, 900, 1000 ms) before letter splitting activates.</summary>
+    public int LyricsEmphasisMinMs { get; set; } = LyricsEmphasisMinMsDefault;
+
+    public const int LyricsAnimationScalePercentDefault = 100;
+    /// <summary>Animation effect size (0% to 200%): scales how big words and letters blossom, swell, lift and spread.</summary>
+    public int LyricsAnimationScalePercent { get; set; } = LyricsAnimationScalePercentDefault;
+
+    public const int LyricsGlowExposurePercentDefault = 100;
+    /// <summary>Glow exposure / intensity (0% to 200%) for held words and blossomed letters.</summary>
+    public int LyricsGlowExposurePercent { get; set; } = LyricsGlowExposurePercentDefault;
+
+    public const int LyricsTextScalePercentDefault = 100;
+    /// <summary>Lyrics text size scale (0% to 200%, default 100%) for lyrics lines on the lyrics page.</summary>
+    public int LyricsTextScalePercent { get; set; } = LyricsTextScalePercentDefault;
+
     /// <summary>Show a TTML file's translation under each lyric line (issue #78).</summary>
     public bool LyricsShowTranslations { get; set; } = true;
 
@@ -1124,6 +1147,9 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>Show the background-vocal (adlib) row under lyric lines.</summary>
     public bool LyricsShowBackgroundVocals { get; set; } = true;
+
+    /// <summary>Ignore/strip '(' and ')' parentheses on background vocals.</summary>
+    public bool LyricsIgnoreBackgroundVocalsParentheses { get; set; }
 
     /// <summary>Where saved lyrics go: "Sidecar" (.lrc / .elrc files beside the song, the default),
     /// "Embedded" (the audio file's tags) or "Both". See <see cref="LyricsSaveOptions.ParseTarget"/> (GitHub #135).</summary>
@@ -1273,6 +1299,14 @@ public class AppSettings : IJsonOnDeserializing
         if (PlaybackBarWidth == 626) PlaybackBarWidth = 536;
         PlaybackBarSkipSeconds = PlaybackBarSkipSeconds is 10 or 15 or 30 ? PlaybackBarSkipSeconds : 15;
         QueuePanelWidth = QueuePanelMetrics.Clamp(QueuePanelWidth);
+        LyricsRendererMode = string.Equals(LyricsRendererMode, "Noctis Default", StringComparison.Ordinal)
+            ? "Noctis Default"
+            : "SpicyLyrics";
+        LyricsMaxSplitLetters = Math.Clamp(LyricsMaxSplitLetters, 2, 20);
+        LyricsEmphasisMinMs = LyricsEmphasisMinMs is 500 or 600 or 700 or 800 or 900 or 1000 ? LyricsEmphasisMinMs : 1000;
+        LyricsAnimationScalePercent = Math.Clamp(LyricsAnimationScalePercent, 0, 200);
+        LyricsGlowExposurePercent = Math.Clamp(LyricsGlowExposurePercent, 0, 200);
+        LyricsTextScalePercent = Math.Clamp(LyricsTextScalePercent, 0, 200);
     }
 
     /// <summary>
@@ -1290,6 +1324,7 @@ public class AppSettings : IJsonOnDeserializing
         IgnoreLeadingWordsInArtistSort = false;
         // Sleep timer Fade Out (2026-10-29): the timer used to pause outright.
         SleepTimerFadeSeconds = 0;
+        LyricsRendererMode = "SpicyLyrics";
     }
 }
 

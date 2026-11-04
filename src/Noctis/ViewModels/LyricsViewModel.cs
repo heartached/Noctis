@@ -654,6 +654,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Plugin API 1.5: a lyrics effect says which lines read right to left.
         LyricLines.CollectionChanged += (_, _) => ApplyLineDirections();
         Controls.LyricsWordEffect.Changed += OnLyricsWordEffectChanged;
+        Controls.LyricsRenderer.Changed += OnLyricsRendererChanged;
         _player = player;
         _timeline.WordMotion = player.LyricsGlowAndLift;
         _lrcLib = lrcLib;
@@ -2982,6 +2983,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PlayerViewModel.LyricsRendererMode))
+        {
+            OnPropertyChanged(nameof(IsSpicyLyricsRenderer));
+            OnPropertyChanged(nameof(IsDefaultLyricsRenderer));
+        }
+
         if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
             RefreshHeaderCredits();
 
@@ -3079,6 +3086,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsShowBackgroundVocals))
         {
             OnPropertyChanged(nameof(ShowBackgroundVocals));
+        }
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsIgnoreBackgroundVocalsParentheses))
+        {
+            if (LyricLines != null)
+            {
+                foreach (var line in LyricLines)
+                {
+                    if (line.BackgroundWords != null)
+                    {
+                        foreach (var w in line.BackgroundWords)
+                            w.RefreshDisplayText();
+                    }
+                }
+            }
         }
         // The engine just reported a music video's audio whose length is off the song's,
         // after these lyrics opened on Synced: move to Plain once (see OpensOnSyncedTab).
@@ -4205,6 +4226,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             UpdateLineOpacities(-1);
     }
 
+    public bool IsSpicyLyricsRenderer =>
+        !string.Equals(Player.LyricsRendererMode, Controls.LyricsRenderer.NoctisDefault, StringComparison.Ordinal);
+
+    public bool IsDefaultLyricsRenderer => !IsSpicyLyricsRenderer;
+
+    private void OnLyricsRendererChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(IsSpicyLyricsRenderer));
+        OnPropertyChanged(nameof(IsDefaultLyricsRenderer));
+    }
+
     private void OnLyricsWordEffectChanged(object? sender, EventArgs e) => ApplyLineDirections();
 
     /// <summary>
@@ -4237,6 +4269,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         Controls.LyricsWordEffect.Changed -= OnLyricsWordEffectChanged;
+        Controls.LyricsRenderer.Changed -= OnLyricsRendererChanged;
         // Stop and dispose timer to prevent memory leak. This also ends the word-sweep
         // RequestAnimationFrame loop: WantsWordClock goes false, so the next frame
         // callback exits without re-registering.

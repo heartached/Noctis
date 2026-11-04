@@ -4200,6 +4200,96 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Lyrics renderer" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Choose the original Noctis renderer or SpicyLyrics word and letter animations."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              AutomationProperties.Name="Lyrics renderer"
+                              ItemsSource="{Binding LyricsRendererOptions}"
+                              SelectedItem="{Binding LyricsRendererMode, Mode=TwoWay}"
+                              MinWidth="170"
+                              VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,180,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Split word length limit" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Word length: 2 to 20 letters. Words longer than this (like &quot;spectacular?&quot;) stay unified and do not split."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:SmoothSlider x:Name="LyricsMaxSplitLettersSlider" Grid.Column="1" Classes="accent-slider" Step="1" Minimum="2" Maximum="20"
+                            AutomationProperties.Name="Split word length limit"
+                            SteppedValue="{Binding LyricsMaxSplitLetters, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0"
+                            DoubleTapped="OnLyricsMaxSplitLettersSliderDoubleTapped"/>
+                    <TextBlock Grid.Column="2" Text="{Binding LyricsMaxSplitLetters, StringFormat='{}{0} letters'}" FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="60" TextAlignment="Right"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Hold duration threshold" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Words shorter than this duration do not blossom into letters."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              AutomationProperties.Name="Hold duration threshold"
+                              ItemsSource="{Binding LyricsEmphasisMinMsOptions}"
+                              SelectedItem="{Binding SelectedLyricsEmphasisMinMs, Mode=TwoWay}"
+                              MinWidth="170"
+                              VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,180,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Word animation size" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Scale and lift intensity of the held-word blossom animation (0% = flat, 100% = standard, 200% = double)."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:SmoothSlider x:Name="LyricsAnimationScaleSlider" Grid.Column="1" Classes="accent-slider" Step="5" Minimum="0" Maximum="200"
+                            AutomationProperties.Name="Word animation size"
+                            SteppedValue="{Binding LyricsAnimationScalePercent, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0"
+                            DoubleTapped="OnLyricsAnimationScaleSliderDoubleTapped"/>
+                    <TextBlock Grid.Column="2" Text="{Binding LyricsAnimationScalePercent, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="42" TextAlignment="Right"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,180,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Hold word glow exposure" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Luminous bloom intensity on held words and blossomed letters (0% = off, 100% = standard, 200% = intense)."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:SmoothSlider x:Name="LyricsGlowExposureSlider" Grid.Column="1" Classes="accent-slider" Step="5" Minimum="0" Maximum="200"
+                            AutomationProperties.Name="Hold word glow exposure"
+                            SteppedValue="{Binding LyricsGlowExposurePercent, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0"
+                            DoubleTapped="OnLyricsGlowExposureSliderDoubleTapped"/>
+                    <TextBlock Grid.Column="2" Text="{Binding LyricsGlowExposurePercent, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="42" TextAlignment="Right"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,180,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Lyrics text size" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Overall display font size of lyrics lines on the lyrics page (100% = standard)."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:SmoothSlider x:Name="LyricsTextScaleSlider" Grid.Column="1" Classes="accent-slider" Step="5" Minimum="0" Maximum="200"
+                            AutomationProperties.Name="Lyrics text size"
+                            SteppedValue="{Binding LyricsTextScalePercent, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0"
+                            DoubleTapped="OnLyricsTextScaleSliderDoubleTapped"/>
+                    <TextBlock Grid.Column="2" Text="{Binding LyricsTextScalePercent, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="42" TextAlignment="Right"/>
+                </Grid>
+            </Border>
             <!-- Apple Music word motion (sung words float up, held notes glow). -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
@@ -4251,6 +4341,19 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.ShowBackgroundVocals}"
                                           IsChecked="{Binding LyricsShowBackgroundVocals}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Ignore parentheses on background vocals" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Hide opening '(' and closing ')' parentheses from background vocal lines."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="Ignore parentheses on background vocals"
+                                          IsChecked="{Binding LyricsIgnoreBackgroundVocalsParentheses}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
