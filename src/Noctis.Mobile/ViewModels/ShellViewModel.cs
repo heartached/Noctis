@@ -552,6 +552,20 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool ShowsMiniProgress => ShowMiniProgressFill || ShowMiniProgressLine;
 
+    /// <summary>Settings › Appearance › Now Playing Artwork: the plain cover (the default), or the
+    /// cover on a spinning record or CD (DiscArtwork). Saved with the player bar's settings
+    /// (MobileNowPlayingArtwork) and applied live.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsDiscArtwork))]
+    private NowPlayingArtworkStyle _nowPlayingArtwork;
+
+    /// <summary>Now Playing draws a disc in place of the square cover.</summary>
+    public bool ShowsDiscArtwork => NowPlayingArtwork != NowPlayingArtworkStyle.Cover;
+
+    /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
+    /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
+    [ObservableProperty] private bool _isSuspended;
+
     private bool _playerBarLoaded;
     // Switches flipped before the saved values were read (Settings opens while a cold start still
     // loads the library): the load keeps the user's value and saves it.
@@ -565,6 +579,7 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressFill));
     partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressLine));
     partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
+    partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
@@ -579,6 +594,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressFill))) ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressLine))) ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ArtworkPageColors))) ArtworkPageColors = settings.MobileArtworkPageColors;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
             }
             finally
             {
@@ -602,6 +618,7 @@ public sealed partial class ShellViewModel : ObservableObject
             return;
         }
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
+        var artwork = NowPlayingArtwork.ToString();
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -612,6 +629,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobilePlayerBarProgressFill = fill;
                     settings.MobilePlayerBarProgressLine = line;
                     settings.MobileArtworkPageColors = pages;
+                    settings.MobileNowPlayingArtwork = artwork;
                 });
             }
             catch (Exception ex)

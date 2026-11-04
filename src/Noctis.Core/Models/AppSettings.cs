@@ -159,6 +159,11 @@ public class AppSettings : IJsonOnDeserializing
     /// deep shade of the cover's colour. Off, they keep the theme's plain pages. On by default.</summary>
     public bool MobileArtworkPageColors { get; set; } = true;
 
+    /// <summary>Phone, Settings › Appearance › Now Playing Artwork: the cover as it is (Cover, the
+    /// default), or printed on a spinning record (Vinyl) or disc (CD). Saved by name; anything
+    /// unknown reads as Cover.</summary>
+    public string MobileNowPlayingArtwork { get; set; } = "Cover";
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;

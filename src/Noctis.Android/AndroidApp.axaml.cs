@@ -323,7 +323,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// </summary>
     public void OnBackgrounded()
     {
-        if (_shell != null) _shell.Background.Suspended = true;   // Slow Motion stands still
+        if (_shell != null)
+        {
+            _shell.Background.Suspended = true;   // Slow Motion stands still
+            _shell.IsSuspended = true;            // and so does Now Playing's record
+        }
         var save = _shell?.SaveStateAsync();
         // Matches NowPlayingViewModel.SaveStateNow: a background save that throws would
         // otherwise be an unobserved exception nobody ever sees.
@@ -332,10 +336,12 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             TaskContinuationOptions.OnlyOnFaulted);
     }
 
-    /// <summary>MainActivity, on resume: Slow Motion drifts again.</summary>
+    /// <summary>MainActivity, on resume: Slow Motion drifts again, the record turns again.</summary>
     public void OnForegrounded()
     {
-        if (_shell != null) _shell.Background.Suspended = false;
+        if (_shell == null) return;
+        _shell.Background.Suspended = false;
+        _shell.IsSuspended = false;
     }
 
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes

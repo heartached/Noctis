@@ -380,6 +380,24 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public string PlayerBarRowName => Named(Loc.T("Mobile.Settings.PlayerBar"), PlayerBarValue);
 
+    /// <summary>The Now Playing Artwork row's value: Cover, Vinyl or CD.</summary>
+    public string NowPlayingArtworkValue => ArtworkStyleLabel(Shell.NowPlayingArtwork);
+
+    internal static string ArtworkStyleLabel(NowPlayingArtworkStyle style) => Loc.T("Mobile.NowPlayingArtwork." + style);
+
+    public string NowPlayingArtworkRowName => Named(Loc.T("Mobile.Settings.NowPlayingArtwork"), NowPlayingArtworkValue);
+
+    /// <summary>The Now Playing Artwork row: Cover / Vinyl / CD on the glass pop menu, the one in
+    /// use ticked; a pick applies at once (the player behind the sheet changes live).</summary>
+    [RelayCommand]
+    private void ShowNowPlayingArtworkMenu()
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var style in NowPlayingArtworkStyles.All)
+            items.Add(new OptionsMenuItem(Shell, ArtworkStyleLabel(style), Shell.NowPlayingArtwork == style, () => Shell.NowPlayingArtwork = style));
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
     /// <summary>The Theme row: System / Light / Dark on the glass pop menu (the one ticked is
     /// exposed as selected), then the dark style, which a tap steps to the next.</summary>
     [RelayCommand]
@@ -982,6 +1000,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
         {
             OnPropertyChanged(nameof(PlayerBarValue));
             OnPropertyChanged(nameof(PlayerBarRowName));
+        }
+        else if (e.PropertyName == nameof(ShellViewModel.NowPlayingArtwork))
+        {
+            OnPropertyChanged(nameof(NowPlayingArtworkValue));
+            OnPropertyChanged(nameof(NowPlayingArtworkRowName));
         }
     }
 
