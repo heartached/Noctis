@@ -212,6 +212,28 @@ public sealed class LastFmAlbumDescriptions
         }
     }
 
+    /// <summary>
+    /// Forgets every description and user override and deletes the cache file (Settings ›
+    /// Reset Everything). Loaded once, the dictionary was otherwise written back whole by the
+    /// next lookup, overrides included.
+    /// </summary>
+    public async Task ClearAsync()
+    {
+        await _lock.WaitAsync();
+        try
+        {
+            _cache.Clear();
+            _cooldownUntil.Clear();
+            _cacheLoaded = true;
+            try { File.Delete(_cachePath); }
+            catch (Exception ex) { Debug.WriteLine($"[LastFm] Failed to delete album description cache: {ex.Message}"); }
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
     private async Task SaveCacheUnsafeAsync(CancellationToken ct)
     {
         try

@@ -1,8 +1,10 @@
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
 using Noctis.Services;
+using Noctis.Services.Server;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -13,7 +15,9 @@ namespace Noctis.Mobile.ViewModels;
 /// downloads and Sign out.
 /// Sign-in is two steps: the address is probed for the server certificate's fingerprint,
 /// which the user compares with the one on the computer, and only a confirmed fingerprint
-/// is signed in with (and pinned by the service). Every call goes through
+/// is signed in with (and pinned by the service). Or, with no typing at all, Scan QR Code reads
+/// the code the computer shows under Connect a phone: its addresses, its certificate pin and a
+/// one-time secret, which the service sends only to that pinned certificate. Every call goes through
 /// <see cref="INoctisAccountService"/>; its events arrive on any thread and are marshalled.
 /// </summary>
 public sealed partial class AccountPageViewModel : MobilePage
@@ -82,8 +86,17 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle), nameof(CanSync), nameof(CanDownload), nameof(CanUpload), nameof(CanSignIn),
-        nameof(CanRemoveDownloads), nameof(ShowStatusLine))]
+        nameof(CanRemoveDownloads), nameof(ShowStatusLine), nameof(IsFormBusy))]
     private bool _isBusy;
+
+    /// <summary>A QR sign-in is running: the Scan button shows the spinner, not Sign In; its
+    /// errors are about the code, not the typed fields.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFormBusy))]
+    private bool _isSigningInByQr;
+
+    /// <summary>The typed sign-in's own busy state (Sign In's spinner).</summary>
+    public bool IsFormBusy => IsBusy && !IsSigningInByQr;
 
     public bool IsIdle => !IsBusy;
 
@@ -258,6 +271,64 @@ public sealed partial class AccountPageViewModel : MobilePage
             PendingFingerprint = fingerprint;
         });
     }
+
+    /// <summary>Scan QR Code is offered: the phone has a scanner (Android: Google's code scanner).</summary>
+    public bool CanScanQr => Shell.QrScanner != null;
+
+    /// <summary>
+    /// Scan QR Code: no address, email, password or code to compare. The scanned text is
+    /// untrusted: only an exact Noctis pairing code is used (<see cref="PairingPayload.TryParse"/>),
+    /// and it is never logged. The service then sends its one-time secret only to the
+    /// certificate the code pins, then the phone syncs as after a typed sign-in.
+    /// </summary>
+    [RelayCommand]
+    private async Task ScanQrCodeAsync()
+    {
+        if (IsBusy || Shell.QrScanner is not { } scanner) return;
+        SetError(string.Empty);
+        QrScanResult scan;
+        try
+        {
+            scan = await scanner.ScanAsync();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"QR scan failed: {ex.GetType().Name}");
+            scan = new QrScanResult(QrScanOutcome.Unavailable);
+        }
+        if (scan.Outcome == QrScanOutcome.Cancelled) return;
+        if (scan.Outcome == QrScanOutcome.Unavailable)
+        {
+            SetError(ScannerUnavailableText);
+            return;
+        }
+        if (!PairingPayload.TryParse(scan.Text, out var pairing) || pairing is null)
+        {
+            SetError(NotAPairingCodeText);
+            return;
+        }
+
+        IsSigningInByQr = true;
+        bool signedIn;
+        try
+        {
+            signedIn = await RunAsync("Signing in…", () => _account.SignInWithPairingAsync(pairing));
+        }
+        finally { IsSigningInByQr = false; }
+        if (!signedIn) return;
+        // Whatever was typed into the form is not needed any more.
+        PendingFingerprint = null;
+        _probedUrl = null;
+        Password = string.Empty;
+        Refresh();
+        await SyncCoreAsync();
+    }
+
+    internal const string ScannerUnavailableText =
+        "The scanner isn't ready on this phone. Try again in a minute, or sign in with your computer's address below.";
+
+    internal const string NotAPairingCodeText =
+        "That isn't a Noctis sign-in code. Scan the code under Connect a phone on your computer.";
 
     /// <summary>Step two: the user says the fingerprints match. Sign in with that fingerprint,
     /// then sync straight away so the desktop's library appears.</summary>
@@ -531,9 +602,10 @@ public sealed partial class AccountPageViewModel : MobilePage
         DebugLog.Write("Account", $"{kind?.ToString() ?? ex.GetType().Name}: {ex.Message}");
         var signedIn = _account.IsSignedIn;
         if (kind == NoctisErrorKind.CertificateChanged && signedIn) IsCertificateChanged = true;
-        // Signing in, an error about the address or the password goes under that field.
-        SetError(kind is { } k ? Describe(k, signedIn) : "Something went wrong. Try again.",
-            kind is { } f && !signedIn ? FieldFor(f) : AccountField.None);
+        // Signing in, an error about the address or the password goes under that field; a QR
+        // sign-in typed neither, so its errors are the page's.
+        SetError(kind is { } k ? (IsSigningInByQr ? DescribeQr(k) : Describe(k, signedIn)) : "Something went wrong. Try again.",
+            kind is { } f && !signedIn && !IsSigningInByQr ? FieldFor(f) : AccountField.None);
         Refresh();
     }
 
@@ -678,6 +750,18 @@ public sealed partial class AccountPageViewModel : MobilePage
         _ => "Your computer couldn't finish that. Try again in a moment.",
     };
 
+    /// <summary>A failed QR sign-in: the code's own failures, else the usual wording.</summary>
+    internal static string DescribeQr(NoctisErrorKind kind) => kind switch
+    {
+        NoctisErrorKind.PairingExpired =>
+            "This code has expired or was already used. Scan the new code your computer shows now.",
+        NoctisErrorKind.CertificateChanged =>
+            "The computer at that address isn't the one showing the code, so nothing was sent. Check that your phone is on the same Wi-Fi, then scan again.",
+        NoctisErrorKind.Unreachable or NoctisErrorKind.NotNoctis or NoctisErrorKind.UnknownHost =>
+            "Can't reach your computer. Check that your phone is on the same Wi-Fi as your computer, then scan again.",
+        _ => Describe(kind, signedIn: false),
+    };
+
     /// <summary>Which sign-in field an error is about: the address (it is wrong, or nothing
     /// Noctis answers there) or the email and password; anything else is the page's.</summary>
     internal static AccountField FieldFor(NoctisErrorKind kind) => kind switch
@@ -726,13 +810,8 @@ public sealed partial class AccountPageViewModel : MobilePage
         return $"https://{uri.Host}:{port}";
     }
 
-    /// <summary>"AB:CD:…" as lines of eight bytes; anything else as it came.</summary>
-    internal static string FormatFingerprint(string? fingerprint)
-    {
-        if (string.IsNullOrEmpty(fingerprint)) return string.Empty;
-        var bytes = fingerprint.Split(':');
-        return bytes.Length < 2 ? fingerprint : string.Join("\n", bytes.Chunk(8).Select(line => string.Join(":", line)));
-    }
+    /// <summary>The computer's security code, grouped exactly as the computer shows it (SecurityCode).</summary>
+    internal static string FormatFingerprint(string? fingerprint) => SecurityCode.Format(fingerprint);
 
     /// <summary>"Sending 3 of 40" (the song going out now); "Checking what your computer has…" before.</summary>
     internal static string DescribeUploadProgress(NoctisUploadProgress progress) =>

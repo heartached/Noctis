@@ -91,7 +91,8 @@ public class HomeViewMountTests
         var row = view.FindControl<ItemsControl>("AlbumsRow")!;
         Assert.True(row.Bounds.Width > 0);
         Assert.Equal(Noctis.Helpers.AlbumGridMetrics.ComputeTileSize(row.Bounds.Width - 2, 5), vm.AlbumTileSize, precision: 0);
-        var tiles = view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
+        // The Albums row's own tiles (New in Library, GitHub #159, lists the same album below).
+        var tiles = row.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
         Assert.Single(tiles);
         Assert.Single(tiles[0].GetVisualDescendants().OfType<Button>(), b => b.Classes.Contains("tile-play"));
         Assert.Single(tiles[0].GetVisualDescendants().OfType<Button>(), b => b.Classes.Contains("tile-more"));

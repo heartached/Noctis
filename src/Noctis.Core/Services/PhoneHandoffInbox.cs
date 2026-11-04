@@ -84,6 +84,19 @@ public sealed class PhoneHandoffInbox
         }
     }
 
+    /// <summary>Forgets the held handoff and its times and deletes the file (Settings › Reset Everything).</summary>
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            _latest = null;
+            _handledUtc = default;
+            _desktopPlaybackUtc = default;
+            try { File.Delete(_path); }
+            catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "PhoneHandoff.Clear", ex.Message); }
+        }
+    }
+
     /// <summary>The same queue at the same song and place (a second apart counts as the same, as the phone's PlayQueueShare.SameSpot).</summary>
     private static bool SameSpot(PhoneHandoff a, PhoneHandoff b)
         => a.CurrentId == b.CurrentId && Math.Abs(a.PositionMs - b.PositionMs) < 1000 && a.TrackIds.SequenceEqual(b.TrackIds);

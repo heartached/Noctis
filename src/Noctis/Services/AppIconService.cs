@@ -108,6 +108,30 @@ public static class AppIconService
         foreach (var w in windows)
             ApplyTo(w);
         if (changed) Changed?.Invoke(null, EventArgs.Empty);
+        if (s_attached) SyncPinnedShortcut(next);
+    }
+
+    /// <summary>A pinned taskbar button ignores the window icon; repoint its shortcut too.</summary>
+    private static void SyncPinnedShortcut(string id)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        byte[]? bytes = null;
+        if (id != DefaultId)
+        {
+            try
+            {
+                using var stream = AssetLoader.Open(new Uri(IconUri(id)));
+                using var ms = new System.IO.MemoryStream();
+                stream.CopyTo(ms);
+                bytes = ms.ToArray();
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.UI, "AppIcon.Pinned", $"{id}: {ex.Message}");
+                return;
+            }
+        }
+        PinnedShortcutIcon.Sync(id, bytes);
     }
 
     internal static void ApplyTo(Window w)

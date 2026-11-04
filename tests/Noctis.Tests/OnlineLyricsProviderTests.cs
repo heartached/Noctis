@@ -61,11 +61,11 @@ public class OnlineLyricsProviderTests
         "{\"status\":200,\"info\":\"OK\",\"error_code\":0,\"fmt\":\"krc\",\"contenttype\":0,\"content\":\"" +
         Convert.ToBase64String(KrcLyricsTests.Encrypt(krc)) + "\",\"id\":\"263915382\"}";
 
-    private static Router KugouRouter(string songs = KugouSongs, string? download = null) => new((req, _) =>
+    private static Router KugouRouter(string songs = KugouSongs, string? download = null, string candidates = KugouCandidates) => new((req, _) =>
     {
         var url = req.RequestUri!.ToString();
         if (url.Contains("/api/v3/search/song")) return Ok(songs);
-        if (url.Contains("krcs.kugou.com/search")) return Ok(KugouCandidates);
+        if (url.Contains("krcs.kugou.com/search")) return Ok(candidates);
         if (url.Contains("lyrics.kugou.com/download")) return Ok(download ?? KugouDownload(KugouKrc));
         return Status(HttpStatusCode.NotFound);
     });
@@ -110,6 +110,44 @@ public class OnlineLyricsProviderTests
         var corrupt = "{\"status\":200,\"content\":\"" + Convert.ToBase64String("not krc at all"u8.ToArray()) + "\"}";
         var svc = new KugouLyricsService(new HttpClient(KugouRouter(download: corrupt)));
         await Assert.ThrowsAsync<LyricsProviderException>(() => svc.SearchLyricsAsync("Adele", "Hello", 296));
+    }
+
+    // GitHub #162, captured 2026-11-03: Kugou's song search has Kid Wise "pablo" (4:10), but the
+    // lyrics search for its hash lists only another recording's lyrics — arkady sevidov's 5:20
+    // "June - Barcarole" — and those lyrics are the instrumental notice "纯音乐，请欣赏".
+    private const string KugouPabloSongs =
+        "{\"status\":1,\"errcode\":0,\"data\":{\"info\":[" +
+        "{\"hash\":\"119df223eade59178bf1c98f9e67deeb\",\"duration\":250,\"songname\":\"pablo\",\"singername\":\"Kid Wise\",\"album_name\":\"\"}]}}";
+
+    private const string KugouPabloCandidates =
+        "{\"status\":200,\"info\":\"OK\",\"errcode\":200,\"candidates\":[" +
+        "{\"id\":\"19525574\",\"accesskey\":\"81718BC2313CCB08CEA1F9B89DE69E5C\",\"singer\":\"arkady sevidov\"," +
+        "\"song\":\"The Seasons Op. 37b: June - Barcarole\",\"duration\":320317,\"score\":60,\"krctype\":1}]}";
+
+    private const string KugouInstrumentalKrc =
+        "[id:$00000000]\n[ar:arkady sevidov]\n[ti:June]\n[by:]\n[1580,3000]<0,3000,0>纯音乐，请欣赏\n";
+
+    [Fact]
+    public async Task Kugou_LyricsTimedForAnotherRecording_AreAMiss()
+    {
+        var router = KugouRouter(KugouPabloSongs, KugouDownload(KugouInstrumentalKrc), KugouPabloCandidates);
+        var svc = new KugouLyricsService(new HttpClient(router));
+
+        Assert.Null(await svc.SearchLyricsAsync("Kid Wise", "pablo", 250));
+        Assert.DoesNotContain(router.Requests, u => u.Contains("lyrics.kugou.com/download"));
+    }
+
+    [Fact]
+    public async Task Kugou_InstrumentalNotice_IsAnInstrumentalAnswer_NotLyrics()
+    {
+        var candidates = KugouPabloCandidates.Replace("\"duration\":320317", "\"duration\":250100");
+        var svc = new KugouLyricsService(new HttpClient(KugouRouter(KugouPabloSongs, KugouDownload(KugouInstrumentalKrc), candidates)));
+
+        var result = await svc.SearchLyricsAsync("Kid Wise", "pablo", 250);
+
+        Assert.NotNull(result);
+        Assert.True(result!.Instrumental);
+        Assert.False(result.HasLyrics);
     }
 
     // ── Musixmatch ──

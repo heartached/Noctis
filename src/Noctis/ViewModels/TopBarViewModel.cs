@@ -298,6 +298,8 @@ public partial class TopBarViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ArtistSortVisible))]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    [NotifyPropertyChangedFor(nameof(CoverFlowToggleVisible))]
+    [NotifyPropertyChangedFor(nameof(AlbumsViewToggleVisible))]
     private bool _isCoverFlowMode;
     [ObservableProperty] private ICommand? _setLibraryModeCommand;
     [ObservableProperty] private ICommand? _setCoverFlowModeCommand;
@@ -342,7 +344,9 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSongsFilterActive))]
     private bool _pageShowOnlyFavorites;
-    [ObservableProperty] private bool _pageSortAscending = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSongsSortActive))]
+    private bool _pageSortAscending = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSongsSortActive))]
     private string _pageSortColumn = string.Empty;
@@ -496,6 +500,8 @@ public partial class TopBarViewModel : ViewModelBase
     // LibraryAlbumsViewModel; the top bar just mirrors them for placement.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    [NotifyPropertyChangedFor(nameof(CoverFlowToggleVisible))]
+    [NotifyPropertyChangedFor(nameof(AlbumsViewToggleVisible))]
     private bool _hasReleaseTypeChips;
     [ObservableProperty] private ObservableCollection<ReleaseTypeChip>? _releaseTypeChips;
     [ObservableProperty] private ICommand? _releaseTypeChipCommand;
@@ -532,7 +538,28 @@ public partial class TopBarViewModel : ViewModelBase
     // mirrored from LibraryAlbumsViewModel like the sort.
     [ObservableProperty] private ICommand? _albumViewCommand;
     [ObservableProperty] private ICommand? _albumCarouselStyleCommand;
+    /// <summary>Flips the Albums page between grid and carousel (GitHub #164 top-right icon).</summary>
+    [ObservableProperty] private ICommand? _albumViewToggleCommand;
     [ObservableProperty] private bool _isAlbumCarouselView;
+
+    // GitHub #164: on the Albums page the top-right view-mode icon switches the page between
+    // its grid and the album carousel (every album, like the artist page's toggle) instead of
+    // opening the queue-driven Cover Flow, which showed the playing album's tracks and nothing
+    // at all with nothing playing. Cover Flow stays one click away on every other page and in
+    // the Albums View menu. HasReleaseTypeChips is set exactly while the Albums grid is current.
+
+    /// <summary>The "Switch to Cover Flow" icon: every toggle page but Albums (Albums too while
+    /// the Album Carousel feature is off: its View menu, the other way to Cover Flow, is hidden then).</summary>
+    public bool CoverFlowToggleVisible => !IsCoverFlowMode && !(HasReleaseTypeChips && AlbumCarouselAvailable);
+
+    /// <summary>The Albums page's grid / carousel icon in the Cover Flow icon's place.</summary>
+    public bool AlbumsViewToggleVisible => !IsCoverFlowMode && HasReleaseTypeChips && AlbumCarouselAvailable;
+
+    /// <summary>Settings › Plugins › Built-in Features › Album Carousel (mirrored by the main window).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CoverFlowToggleVisible))]
+    [NotifyPropertyChangedFor(nameof(AlbumsViewToggleVisible))]
+    private bool _albumCarouselAvailable = true;
     /// <summary>Case style name ("Cover" / "JewelCase" / "Vinyl" / "Cassette") for the checkmarks.</summary>
     [ObservableProperty] private string _albumCarouselStyle = "Cover";
 
@@ -568,8 +595,17 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>The quality part only counts where the quality items are offered (Songs page);
     /// the filter string is not reset when another page hides them.</summary>
     public bool IsSongsFilterActive => PageShowOnlyFavorites || (HasSongsFilters && SongsQualityFilter != "All");
-    /// <summary>Songs default order is "Date Added" (LibrarySongsViewModel); empty = not reported yet.</summary>
-    public bool IsSongsSortActive => PageSortColumn is not ("" or "Date Added");
+    /// <summary>
+    /// Songs default order is "Date Added", newest first (LibrarySongsViewModel); empty = not
+    /// reported yet. Oldest first counts as changed too, so the dot always means "Reset to
+    /// Date Added" in the Sort menu has something to do (GitHub #156).
+    /// </summary>
+    public bool IsSongsSortActive => PageSortColumn switch
+    {
+        "" => false,
+        "Date Added" => PageSortAscending,
+        _ => true,
+    };
     public bool IsArtistSortActive => ArtistSortMode != "name";
     public bool IsPlaylistSortActive => PlaylistSortMode != "default";
     public bool IsFoldersSortActive => FoldersSortMode != "default";

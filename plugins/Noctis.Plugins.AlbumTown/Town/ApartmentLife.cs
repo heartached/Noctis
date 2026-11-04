@@ -33,8 +33,12 @@ public sealed class Pet
     public double Y;
     public double TargetX;
     public double TargetY;
-    /// <summary>The door or ladder it is walking to, or null.</summary>
+    /// <summary>The door, ladder or stairs it is walking to (or along), or null.</summary>
     public Portal? Goal { get; internal set; }
+    /// <summary>Which point of <see cref="Goal"/>'s path it walks to now.</summary>
+    public int Leg { get; internal set; }
+    /// <summary>On a ladder (moving up or down a wall or through a floor).</summary>
+    public bool Climbing => Goal is { } g && Leg > 0 && Leg < g.Path.Count && Math.Abs(g.Path[Leg].X - g.Path[Leg - 1].X) < 1e-6;
     /// <summary>While visiting a neighbour: the door home.</summary>
     public Portal? Return { get; internal set; }
     public float VisitTimer;
@@ -75,6 +79,8 @@ public sealed class ApartmentLife
     public IReadOnlyList<Pet> Pets => _pets;
     public bool Chatty { get; set; } = true;
     public DateTimeOffset Now { get; set; } = DateTimeOffset.Now;
+    /// <summary>A lyric line of the album's (or song's) songs to quote, or null.</summary>
+    public Func<TownAlbum, string?>? Lyric { get; set; }
     /// <summary>The pet under the pointer: it holds still so it is easy to click.</summary>
     public Pet? Held { get; set; }
     /// <summary>How often a resting pet sets off for a door or a ladder (0..1 per rest).</summary>
@@ -206,7 +212,7 @@ public sealed class ApartmentLife
         var c = p.Creature;
         c.State = CreatureState.Wave;
         c.StateTimer = 1.8f;
-        c.Bubble = TalkLines.Greeting(c.Album, Now);
+        c.Bubble = TalkLines.Hello(c.Album, Now, _random, Lyric);
         c.Gaze = new Vector2(0, 1);
     }
 
@@ -299,6 +305,7 @@ public sealed class ApartmentLife
     private static void Head(Pet p, Portal portal)
     {
         p.Goal = portal;
+        p.Leg = 0;
         p.TargetX = portal.FromPoint.X;
         p.TargetY = portal.FromPoint.Y - 0.05;
         p.Creature.State = CreatureState.Wander;
@@ -312,11 +319,12 @@ public sealed class ApartmentLife
         var dist = Math.Sqrt(dx * dx + dy * dy);
         if (dist < 0.01)
         {
-            if (p.Goal is { } goal) Cross(p, goal);
+            if (p.Goal is { } goal) NextLeg(p, goal);
             else ToIdle(p);
             return;
         }
-        var step = Math.Min(dist, c.Speed * dt);
+        // Up and down ladders a little slower than walking.
+        var step = Math.Min(dist, c.Speed * dt * (p.Climbing ? 0.7f : 1f));
         p.X += dx / dist * step;
         p.Y += dy / dist * step;
         if (Math.Abs(dx) / dist > 0.15) c.Facing = Math.Sign(dx);
@@ -325,15 +333,27 @@ public sealed class ApartmentLife
         c.WalkPhase += dt * 9.5f;
     }
 
-    /// <summary>Through the door (or down the ladder): out on the other side, a few steps in.</summary>
-    private void Cross(Pet p, Portal portal)
+    /// <summary>Reached a point of the way through a door, ladder or stairs: on to the next one,
+    /// into the other area at <see cref="Portal.CrossAt"/>, a few steps in at the end.</summary>
+    private void NextLeg(Pet p, Portal portal)
+    {
+        var path = portal.Path;
+        p.Leg++;
+        if (p.Leg == portal.CrossAt) Enter(p, portal);
+        if (p.Leg < path.Count)
+        {
+            p.TargetX = path[p.Leg].X;
+            p.TargetY = path[p.Leg].Y - 0.05;
+            return;
+        }
+        Arrive(p, portal);
+    }
+
+    /// <summary>Through the door (or the floor, or onto the other floor): now in the other area.</summary>
+    private void Enter(Pet p, Portal portal)
     {
         var from = p.Area;
-        p.Goal = null;
         p.Area = portal.To;
-        p.X = portal.ToPoint.X;
-        p.Y = portal.ToPoint.Y - 0.05;
-        // (Down a ladder it simply steps out at the bottom: a fade would cost an opacity layer per frame.)
         if (portal.BetweenRooms)
         {
             if (ReferenceEquals(portal.To.Room, p.Home))
@@ -349,9 +369,15 @@ public sealed class ApartmentLife
                     if (ReferenceEquals(exits[i].To, from)) { p.Return = exits[i]; break; }
             }
         }
-        // A few steps into the room, then look for someone to greet.
+    }
+
+    /// <summary>Out on the other side: a few steps into the room, then look for someone to greet.</summary>
+    private void Arrive(Pet p, Portal portal)
+    {
+        p.Goal = null;
+        p.Leg = 0;
         var (minX, maxX, minY, maxY) = Room(p, p.Area);
-        var inward = portal.Kind == PortalKind.Door ? Math.Sign(p.Area.Rect.X + p.Area.Rect.W / 2 - p.X) * (0.25 + _random.NextDouble() * 0.3) : 0;
+        var inward = portal.Kind is PortalKind.Door or PortalKind.Stairs ? Math.Sign(p.Area.Rect.X + p.Area.Rect.W / 2 - p.X) * (0.25 + _random.NextDouble() * 0.3) : 0;
         p.TargetX = Math.Clamp(p.X + inward, minX, maxX);
         p.TargetY = minY + _random.NextDouble() * (maxY - minY);
         p.Creature.State = CreatureState.Wander;
@@ -397,13 +423,14 @@ public sealed class ApartmentLife
         foreach (var o in _pets)
         {
             var oc = o.Creature;
-            if (ReferenceEquals(o, p) || !ReferenceEquals(o.Area, p.Area) || ReferenceEquals(o, Held)) continue;
+            // Not one on its way through a door or up a ladder: stopping it there left it hanging between floors.
+            if (ReferenceEquals(o, p) || !ReferenceEquals(o.Area, p.Area) || ReferenceEquals(o, Held) || o.Goal is not null) continue;
             if (oc.State is not (CreatureState.Idle or CreatureState.Wander) || (!ignoreCooldown && oc.TalkCooldown > 0)) continue;
             var d = Math.Abs(o.X - p.X);
             if (d < bestDist) { best = o; bestDist = d; }
         }
         if (best is null) return false;
-        var chat = TalkLines.Between(p.Album, best.Album, Now, _random);
+        var chat = TalkLines.Meet(p.Album, best.Album, Now, _random, Lyric);
         var seconds = 2 * LineSeconds + 0.6f;
         BeginTalk(p, best, opened: true, chat, seconds);
         BeginTalk(best, p, opened: false, chat, seconds);
@@ -480,8 +507,10 @@ public sealed class ApartmentLife
         }
     }
 
-    // Pets on their way through a door pass the others (pushing them back could keep them from it).
-    private bool Free(Pet p) => p.Creature.State != CreatureState.Talk && !ReferenceEquals(p, Held) && p.Goal is null;
+    // Walkers pass through the others: two pets walking toward each other in a narrow room pushed
+    // each other back forever and stood stuck (Discord, Jafezy 11-02). Only pets standing about
+    // step aside; talkers and the held one stay put.
+    private bool Free(Pet p) => p.Creature.State is not (CreatureState.Talk or CreatureState.Wander) && !ReferenceEquals(p, Held) && p.Goal is null;
 
     private static float Approach(float value, float target, float delta)
         => value < target ? Math.Min(target, value + delta) : Math.Max(target, value - delta);

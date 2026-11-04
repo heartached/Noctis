@@ -204,6 +204,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Latest" xml:space="preserve"><value>Последняя</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Installed" xml:space="preserve"><value>Установлена</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ComingSoon" xml:space="preserve"><value>Скоро</value><comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment></data>
+  <data name="Settings.BetaBadge" xml:space="preserve"><value>Бета</value><comment>Badge on the Account and Phone app cards in SettingsView.axaml</comment></data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve"><value>Журнал сеанса для отчётов об ошибках.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CopyLogs" xml:space="preserve"><value>Копировать журнал</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Clear" xml:space="preserve"><value>Очистить</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1022,6 +1023,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Home.Plays" xml:space="preserve"><value>прослуш.</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.TopArtists" xml:space="preserve"><value>Топ исполнителей</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.Albums" xml:space="preserve"><value>Альбомы</value><comment>Home right-hand rail header (last played album)</comment></data>
+  <data name="Home.NewInLibrary" xml:space="preserve"><value>Новое в медиатеке</value><comment>Home section header: newest albums by date added (GitHub #159)</comment></data>
+  <data name="Home.ShowCount" xml:space="preserve"><value>Показать</value><comment>Home album row size pill, followed by the number ("Show 10")</comment></data>
+  <data name="Home.AlbumCountTip" xml:space="preserve"><value>Сколько альбомов показывает этот ряд</value><comment>Home album row size pill tooltip / accessible name</comment></data>
   <data name="Home.PlayTip" xml:space="preserve"><value>Слушать</value><comment>ToolTip.Tip in HomeView.axaml</comment></data>
   <data name="Home.HeavyRotation" xml:space="preserve"><value>В активной ротации</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.RepeatThesePastTwo" xml:space="preserve"><value>На повторе последние две недели</value><comment>Text in HomeView.axaml</comment></data>
@@ -1213,6 +1217,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsColor.ArtworkHint" xml:space="preserve"><value>Меняется вместе с обложкой песни. Движение фона настраивается в настройках, в разделе «Тексты песен».</value><comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.VideoNote" xml:space="preserve"><value>Включено фоновое видео, и оно показывается поверх этого фона.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Найти текст</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.MarkedNoLyrics" xml:space="preserve"><value>Отмечено: без текста</value><comment>LyricsView.axaml / LyricsPanelView.axaml: the song is marked as having no lyrics (GitHub #162)</comment></data>
+  <data name="Lyrics.UndoNoLyrics" xml:space="preserve"><value>Отменить</value><comment>LyricsView.axaml: button taking the no-lyrics mark off</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Поиск текста</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="LyricsSearch.Title" xml:space="preserve"><value>Поиск текста</value><comment>LyricsSearchDialog.axaml title</comment></data>
   <data name="LyricsSearch.Hint" xml:space="preserve"><value>«Авто» ищет в источниках, включённых в настройках, и предпочитает синхронизацию по словам, затем по строкам, затем обычный текст.</value><comment>Tooltip on the info icon and the source picker in LyricsSearchDialog.axaml</comment></data>
@@ -1222,6 +1228,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsSearch.TitleWatermark" xml:space="preserve"><value>Название</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Search" xml:space="preserve"><value>Найти</value><comment>Button in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Use" xml:space="preserve"><value>Использовать текст</value><comment>Primary button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.MarkNoLyrics" xml:space="preserve"><value>Без текста</value><comment>LyricsSearchDialog.axaml footer: mark the song as having no lyrics</comment></data>
+  <data name="LyricsSearch.UnmarkNoLyrics" xml:space="preserve"><value>Есть текст</value><comment>LyricsSearchDialog.axaml footer: take the no-lyrics mark off</comment></data>
   <data name="LyricsSearch.Best" xml:space="preserve"><value>Лучший</value><comment>Badge on the Auto pick in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.SelectToPreview" xml:space="preserve"><value>Выберите источник, чтобы посмотреть его текст.</value><comment>Empty preview in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Searching" xml:space="preserve"><value>Поиск…</value><comment>Status in LyricsSearchViewModel</comment></data>
@@ -1301,6 +1309,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.Ascending" xml:space="preserve"><value>По возрастанию</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Сначала новые альбомы</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>По убыванию</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.ResetSortToDateAdded" xml:space="preserve"><value>Сбросить: по дате добавления</value><comment>Songs Sort menu: back to the default order, newest additions first; shown while the sort button has its dot (GitHub #156)</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Перемешать</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Параметры</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.AllSongs" xml:space="preserve"><value>Все песни</value><comment>Header in MainWindow.axaml</comment></data>
@@ -1551,8 +1560,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Metadata.NoArtwork" xml:space="preserve"><value>Нет обложки</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AnimatedArtwork" xml:space="preserve"><value>Анимированная обложка</value><comment>Header in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchAnimatedArtwork" xml:space="preserve"><value>Найти анимированную обложку</value><comment>Text in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve"><value>Название альбома или URL Apple Music</value><comment>Watermark in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve"><value>введите название альбома и нажмите Enter или вставьте ссылку Apple Music</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve"><value>Выбрать анимированную обложку</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.NoAnimatedArtwork" xml:space="preserve"><value>Нет анимированной обложки</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AnimSearchUnavailable" xml:space="preserve"><value>Служба поиска недоступна.</value><comment>Animated artwork chooser (MetadataWindow.axaml / MetadataViewModel)</comment></data>
@@ -1818,6 +1825,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.SearchLyrics" xml:space="preserve"><value>Найти текст</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.LyricsPanel" xml:space="preserve"><value>Панель текста</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.RemoveLyrics" xml:space="preserve"><value>Удалить текст</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.MarkNoLyrics" xml:space="preserve"><value>Отметить: без текста</value><comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment></data>
+  <data name="PlaybackBar.UnmarkNoLyrics" xml:space="preserve"><value>Снять отметку «без текста»</value><comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment></data>
   <data name="PlaybackBar.ShowFolder" xml:space="preserve"><value>Показать папку</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SleepTimer" xml:space="preserve"><value>Таймер сна</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Chapters" xml:space="preserve"><value>Главы</value><comment>Submenu in the player bar's more menu (PlaybackBarView.axaml) listing the chapters of the playing audiobook (.m4b); a chapter jumps there</comment></data>
@@ -1967,6 +1976,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="ReplayGainScanner.Stop" xml:space="preserve"><value>Остановить</value><comment>Cancel button while a scan runs, ReplayGainScannerDialog</comment></data>
   <data name="ReplayGainScanner.NoFfmpeg" xml:space="preserve"><value>ffmpeg не найден — укажите путь в «Настройки → Дополнительно → Вспомогательные программы».</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.TickOne" xml:space="preserve"><value>Отметьте хотя бы один трек для сканирования.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.AllTagged" xml:space="preserve"><value>У всех треков здесь уже есть ReplayGain. Отметьте трек, чтобы просканировать его заново.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Scanning" xml:space="preserve"><value>Сканирование…</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Finished" xml:space="preserve"><value>Готово · просканировано: {0}</value><comment>Status in ReplayGainScannerViewModel; {0} tracks tagged</comment></data>
   <data name="ReplayGainScanner.FinishedFailed" xml:space="preserve"><value>с ошибкой: {0}</value><comment>Status suffix in ReplayGainScannerViewModel; {0} tracks failed</comment></data>
@@ -2014,6 +2024,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
 Фразы в кавычках: album:"ok computer" · Годы: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>✕</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>ПЛЕЙЛИСТЫ</value><comment>Text in SidebarView.axaml</comment></data>
+  <data name="Sidebar.PLUGINS" xml:space="preserve"><value>ПЛАГИНЫ</value><comment>Sidebar section header above the screens plugins add</comment></data>
+  <data name="Sidebar.HidePlugin" xml:space="preserve"><value>Скрыть из боковой панели</value><comment>Right-click menu of a plugin's sidebar entry</comment></data>
+  <data name="Sidebar.PluginSettings" xml:space="preserve"><value>Настройки плагина</value><comment>Right-click menu of a plugin's sidebar entry: opens its page in Settings</comment></data>
   <data name="Sidebar.RightClickNewPlaylistTip" xml:space="preserve"><value>Правый щелчок — новый плейлист</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylist" xml:space="preserve"><value>Новый плейлист…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewSmartPlaylist" xml:space="preserve"><value>Новый умный плейлист…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -2299,7 +2312,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Плагины сообщества делают другие люди, а не Noctis. Плагин может делать на компьютере всё то же, что и Noctis, поэтому ставьте только плагины от тех, кому доверяете.</value></data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve"><value>Включить</value></data>
   <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Удалить {0}?</value></data>
-  <data name="Plugins.RemoveBody" xml:space="preserve"><value>Папка плагина будет удалена. Его данные и настройки сохранятся, если не включить переключатель ниже. При переустановке плагин продолжит с того же места.</value></data>
+  <data name="Plugins.RemoveBody" xml:space="preserve"><value>Файлы плагина будут удалены. Его данные и настройки сохранятся, если не включить переключатель ниже. При повторной установке плагин продолжит с того же места.</value></data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve"><value>Также удалить его данные и настройки</value></data>
   <data name="Plugins.Removed" xml:space="preserve"><value>Плагин {0} удалён.</value></data>
   <data name="Plugins.RemoveFailed" xml:space="preserve"><value>Не удалось удалить некоторые файлы. Закройте Noctis и удалите {0} вручную.</value></data>
@@ -2369,6 +2382,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.View.Back" xml:space="preserve"><value>Назад к {0}</value></data>
   <data name="Plugins.View.PopOut" xml:space="preserve"><value>Открыть в отдельном окне</value></data>
   <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Удалить плагин</value></data>
+  <data name="Plugins.Detail.ShowInSidebar" xml:space="preserve"><value>Показывать в боковой панели</value><comment>Plugin page row: the plugin's screen gets a sidebar entry</comment></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Может {0}</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
   <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>управлять воспроизведением</value></data>
@@ -2539,6 +2553,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="AccountSync.Name" xml:space="preserve"><value>Имя</value><comment>Create form watermark</comment></data>
   <data name="AccountSync.Password" xml:space="preserve"><value>Пароль (не менее 8 символов)</value><comment>Create form watermark</comment></data>
   <data name="AccountSync.Create" xml:space="preserve"><value>Создать</value><comment>Create form button</comment></data>
+  <data name="AccountSync.Since" xml:space="preserve"><value>Создан: {0}</value><comment>Under the profile name: when the account was made; {0} = month and year</comment></data>
   <data name="AccountSync.PairDevice" xml:space="preserve"><value>Подключить телефон</value><comment>Account card button</comment></data>
   <data name="AccountSync.NewApiKey" xml:space="preserve"><value>Новый API-ключ</value><comment>Account card button</comment></data>
   <data name="AccountSync.ChangePassword" xml:space="preserve"><value>Сменить пароль</value><comment>Account card button</comment></data>
@@ -2553,11 +2568,27 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Семья и гости</value><comment>Other accounts card title</comment></data>
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Дополнительные аккаунты, которые могут входить со своих устройств.</value><comment>Other accounts card help</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>В приложении Noctis на телефоне откройте «Настройки», затем «Аккаунт». Введите этот адрес и войдите, указав email или имя пользователя и пароль.</value><comment>Pairing block help above the address and fingerprint</comment></data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>Новый код через {0}</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Любой, кто отсканирует этот код, сможет войти в ваш аккаунт, поэтому показывайте его только своему телефону. Код работает один раз и меняется каждые две минуты.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
+  <data name="AccountSync.PairQrName" xml:space="preserve"><value>QR-код для входа</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
+  <data name="Pair.Subtitle" xml:space="preserve"><value>Войдите в Noctis на телефоне за пару секунд.</value><comment>Phone app card, Connect a phone row subtitle</comment></data>
+  <data name="Pair.ModeQr" xml:space="preserve"><value>Сканировать QR-код</value><comment>Connect a phone: switch segment for the QR code way</comment></data>
+  <data name="Pair.ModeManual" xml:space="preserve"><value>Ввести вручную</value><comment>Connect a phone: switch segment for typing the address and password</comment></data>
+  <data name="Pair.QrStep1" xml:space="preserve"><value>Откройте Noctis на телефоне.</value><comment>Connect a phone, QR way, step 1</comment></data>
+  <data name="Pair.QrStep2" xml:space="preserve"><value>Откройте «Настройки» › «Аккаунт» и нажмите «Сканировать QR-код».</value><comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment></data>
+  <data name="Pair.QrStep3" xml:space="preserve"><value>Наведите камеру на этот код.</value><comment>Connect a phone, QR way, step 3</comment></data>
+  <data name="Pair.ManualStep1" xml:space="preserve"><value>На телефоне откройте Noctis и перейдите в «Настройки» › «Аккаунт».</value><comment>Connect a phone, manual way, step 1</comment></data>
+  <data name="Pair.ManualStep2" xml:space="preserve"><value>В разделе «Ввести вручную» введите этот адрес:</value><comment>Connect a phone, manual way, step 2; the address follows below it</comment></data>
+  <data name="Pair.ManualStep3" xml:space="preserve"><value>Войдите с адресом эл. почты и паролем вашего аккаунта.</value><comment>Connect a phone, manual way, step 3</comment></data>
+  <data name="Pair.ManualStep4" xml:space="preserve"><value>Убедитесь, что телефон показывает этот код безопасности:</value><comment>Connect a phone, manual way, step 4; the security code follows below it</comment></data>
+  <data name="Pair.NewCode" xml:space="preserve"><value>Новый код</value><comment>Small link under the QR code: replace it with a new one now</comment></data>
+  <data name="Pair.QrUnavailable" xml:space="preserve"><value>Сейчас QR-код показать нельзя. Создайте аккаунт выше или выберите «Ввести вручную».</value><comment>Connect a phone, QR way, when no code can be shown</comment></data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve"><value>Имя этого компьютера и доступ для других музыкальных приложений.</value><comment>Phone app card, Advanced row subtitle (folded by default)</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>ВАШИ ТЕЛЕФОНЫ</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>Телефоны пока не подключены.</value><comment>Account card list empty state</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Синхронизация с телефоном</value><comment>Sync card title</comment></data>
-  <data name="Sync.Description" xml:space="preserve"><value>Избранное, оценки, счётчики прослушиваний и плейлисты одинаковы на телефоне и на этом ПК.</value><comment>Sync card description</comment></data>
+  <data name="Sync.Description" xml:space="preserve"><value>Избранное, оценки, счётчики прослушиваний и плейлисты этого ПК одинаковы на телефоне и на этом ПК. Плейлисты, созданные на телефоне, остаются на телефоне.</value><comment>Sync card description</comment></data>
   <data name="Sync.DeviceName" xml:space="preserve"><value>Имя этого ПК</value><comment>Sync card row label</comment></data>
   <data name="Sync.WhatSyncs" xml:space="preserve"><value>Музыкальные файлы остаются на месте. Нужен включённый сервер Noctis.</value><comment>Sync card footnote</comment></data>
 
@@ -2780,6 +2811,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Section.Artwork" xml:space="preserve"><value>Обложки</value><comment>Settings section label</comment></data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve"><value>В активной ротации</value><comment>Appearance › Home toggle</comment></data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve"><value>Показывать на главной ряд «На повторе последние две недели».</value><comment>Appearance › Home toggle description</comment></data>
+  <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>Недавно прослушанные альбомы</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeRecentAlbumsCountDesc" xml:space="preserve"><value>Сколько последних прослушанных альбомов показывает ряд «Альбомы».</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsCount" xml:space="preserve"><value>Новое в медиатеке</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeNewAlbumsCountDesc" xml:space="preserve"><value>Сколько самых новых альбомов по дате добавления показывать на главной, прослушанных или нет.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsFirst" xml:space="preserve"><value>Сначала «Новое в медиатеке»</value><comment>Appearance › Home toggle</comment></data>
+  <data name="Settings.HomeNewAlbumsFirstDesc" xml:space="preserve"><value>Показывать «Новое в медиатеке» над недавно прослушанными альбомами.</value><comment>Appearance › Home toggle description</comment></data>
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Панель задач</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Островок плеера</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Мини-плеер</value><comment>Settings section label</comment></data>
@@ -3054,6 +3091,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.AlbumView" xml:space="preserve"><value>Вид</value><comment>Albums page top-right view menu tooltip</comment></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Сетка</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Карусель</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Cover Flow: сейчас играет</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>Список</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Обложка</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>Коробка CD</value><comment>Albums view menu: carousel case style</comment></data>
@@ -3066,4 +3104,47 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Columns.Reset" xml:space="preserve"><value>Сбросить столбцы</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Изменить ширину столбца «{0}»</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
   <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
+  <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Импорт числа прослушиваний</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
+  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Перенести число прослушиваний в Noctis. Ничего не отправляется обратно.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
+  <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Импорт</value><comment>Settings › Integrations: starts the play count import</comment></data>
+  <data name="Settings.PlayCountImport.Cancel" xml:space="preserve"><value>Отмена</value><comment>Settings › Integrations: stops a running play count import</comment></data>
+  <data name="Settings.PlayCountImport.ModeName" xml:space="preserve"><value>Если счётчики различаются</value><comment>Screen-reader name of the play count import mode list</comment></data>
+  <data name="Settings.PlayCountImport.Mode.KeepHigher" xml:space="preserve"><value>Оставить большее число</value><comment>Play count import mode (default): the higher of Noctis's and the imported count</comment></data>
+  <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>Взять импортированное число</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
+  <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>Запуск…</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Чтение истории прослушиваний… {0}</value><comment>Play count import progress; {0} = plays read so far</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Чтение истории прослушиваний… {0} из {1}</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>Сопоставление с песнями в медиатеке…</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>Готово. Обновлено песен: {0} · найдено: {1} · нет в медиатеке: {2}</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
+  <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>Импорт отменён. Ничего не изменено.</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.NotConnected" xml:space="preserve"><value>Сначала подключите {0}.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.UserNotFound" xml:space="preserve"><value>{0} не знает этот аккаунт.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>История прослушиваний {0} скрыта.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Не удалось связаться с {0}. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} прислал непонятный ответ. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Features.Section" xml:space="preserve"><value>Встроенные функции</value></data>
+  <data name="Features.SectionLine" xml:space="preserve"><value>Часть Noctis, включены с самого начала — как плагины, которые можно отключить. После повторного включения всё возвращается как было.</value></data>
+  <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Мини-плеер</value></data>
+  <data name="Features.MiniPlayer.Line" xml:space="preserve"><value>Маленький плеер поверх окон: его кнопка, щелчок по обложке и сочетание клавиш.</value></data>
+  <data name="Features.AnimatedArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value></data>
+  <data name="Features.AnimatedArtwork.Line" xml:space="preserve"><value>Движущиеся обложки на экранах «Сейчас играет», текста и альбома.</value></data>
+  <data name="Features.AlbumCarousel.Title" xml:space="preserve"><value>Карусель альбомов</value></data>
+  <data name="Features.AlbumCarousel.Line" xml:space="preserve"><value>Листайте альбомы по одному: обложки, коробки CD, винил или кассеты.</value></data>
+  <data name="Features.Visualizer.Title" xml:space="preserve"><value>Визуализатор</value></data>
+  <data name="Features.Visualizer.Line" xml:space="preserve"><value>Страница визуализатора и спектр за текстом песни.</value></data>
+  <data name="Features.NewBadge.Title" xml:space="preserve"><value>Значок NEW</value></data>
+  <data name="Features.NewBadge.Line" xml:space="preserve"><value>Отмечает песни, добавленные в плейлист за последние 7 дней.</value></data>
+  <data name="Features.Inbox.Title" xml:space="preserve"><value>Входящие для новой музыки</value></data>
+  <data name="Features.Inbox.Line" xml:space="preserve"><value>Новые песни ждут во «Входящих», пока вы не добавите их в медиатеку.</value></data>
+  <data name="Features.Discord.Title" xml:space="preserve"><value>Статус в Discord</value></data>
+  <data name="Features.Discord.Line" xml:space="preserve"><value>Показывать в профиле Discord, что вы слушаете.</value></data>
+  <data name="Features.Scrobbling.Title" xml:space="preserve"><value>Скробблинг</value></data>
+  <data name="Features.Scrobbling.Line" xml:space="preserve"><value>Отправлять прослушивания в Last.fm и ListenBrainz.</value></data>
+  <data name="Features.Scrobbling.NeedsAccount" xml:space="preserve"><value>Сначала подключите Last.fm или ListenBrainz в разделе «Интеграции».</value></data>
+  <data name="Features.PlaylistSideRail.Title" xml:space="preserve"><value>Исполнители и рекомендации</value></data>
+  <data name="Features.PlaylistSideRail.Line" xml:space="preserve"><value>Панель справа в плейлисте с его исполнителями и предложенными песнями.</value></data>
+  <data name="Settings.PlaylistSideRail" xml:space="preserve"><value>Исполнители и рекомендации</value></data>
+  <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Показывать справа панель с исполнителями плейлиста и предложенными песнями.</value></data>
+  <data name="Playlist.HideSideRail" xml:space="preserve"><value>Скрыть исполнителей и рекомендации</value></data>
+  <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Показать исполнителей и рекомендации</value></data>
 </root>

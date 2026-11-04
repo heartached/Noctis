@@ -20,12 +20,15 @@ namespace Noctis.Controls;
 /// A list's column header (GitHub #151): the header cells laid out by the shared
 /// <see cref="ColumnLayout"/> like every row, plus
 /// <list type="bullet">
-/// <item>a divider at each cell's right edge: drag to resize, double-click for the automatic width;</item>
-/// <item>drag a header cell sideways to move its column (an accent bar shows where it lands);</item>
+/// <item>a divider at each cell's right edge, always drawn (GitHub #156): drag to resize,
+/// double-click for the automatic width;</item>
+/// <item>drag anywhere in a header cell sideways to move its column: a lifted copy of the
+/// header follows the pointer and an accent bar shows where it lands (GitHub #156);</item>
 /// <item>a small arrow by the label of the column the list is sorted by, pointing up for ascending;</item>
 /// <item>right-click for a menu of the columns, with ticks, and Reset Columns.</item>
 /// </list>
-/// Clicking a cell still runs its own command (sorting), as before.
+/// A click anywhere in a cell's slot, not just on its label, runs the cell's command (sorting);
+/// the slot under the pointer is highlighted so that is visible (GitHub #156).
 /// </summary>
 public sealed class ColumnHeaderPanel : ColumnsPanel
 {
@@ -47,14 +50,31 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
     private readonly Dictionary<string, Border> _grips = new(StringComparer.Ordinal);
     private readonly Border _dropMarker;
     private readonly Path _sortArrow;
+    private readonly Border _hoverBox;
+    private readonly Border _ghost;
+    private readonly TextBlock _ghostLabel;
+    private string? _hoverKey;
 
     private string? _resizeKey;
     private double _resizeStartX, _resizeStartWidth;
 
     private Control? _pressCell;
     private Point _pressPoint;
+    private bool _pressOnLabel;
+    private double _pressCellOpacity = 1;
     private bool _moving;
     private int _dropIndex = -1;
+    private double _ghostX;
+
+    /// <summary>The highlight, the lifted header and the drop bar reach this far past the
+    /// header's own (text-tall) bounds, so they read as a cell rather than a strip.</summary>
+    private const double Bleed = 4;
+
+    /// <summary>Divider strengths: at rest (always drawn, GitHub #156), while the pointer is
+    /// over the header, and over / dragging that divider.</summary>
+    internal const double DividerRest = 0.3, DividerHeader = 0.5, DividerActive = 1;
+
+    private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
 
     static ColumnHeaderPanel()
     {
@@ -64,14 +84,49 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
     public ColumnHeaderPanel()
     {
         Background = Brushes.Transparent;
-        _dropMarker = new Border { Width = 2, IsVisible = false, IsHitTestVisible = false, CornerRadius = new CornerRadius(1) };
-        _dropMarker.Bind(Border.BackgroundProperty, _dropMarker.GetResourceObservable("AccentColorBrush"));
+        var foreground = this.GetObservable(TextElement.ForegroundProperty);
+        // Resources are looked up from the panel itself: these are visual-only children with
+        // no logical parent, so a lookup from the bar found nothing and it drew with no brush
+        // (GitHub #156: "no visual indication" while moving a column).
+        _dropMarker = new Border { Width = 3, IsVisible = false, IsHitTestVisible = false, CornerRadius = new CornerRadius(1.5), ZIndex = 3 };
+        _dropMarker.Bind(Border.BackgroundProperty, this.GetResourceObservable("AccentColorBrush"));
         VisualChildren.Add(_dropMarker);
-        _sortArrow = new Path { Width = 7, Height = 4, Stretch = Stretch.None, IsHitTestVisible = false, Opacity = 0.7, IsVisible = false };
+        _sortArrow = new Path { Width = 7, Height = 4, Stretch = Stretch.None, IsHitTestVisible = false, Opacity = 0.7, IsVisible = false, ZIndex = 1 };
         // Same colour as the header labels (inherited text foreground); the Fluent brush key it used
         // resolved to nothing here, so the arrow drew with no fill.
-        _sortArrow.Bind(Shape.FillProperty, this.GetObservable(TextElement.ForegroundProperty));
+        _sortArrow.Bind(Shape.FillProperty, foreground);
         VisualChildren.Add(_sortArrow);
+
+        // The hovered slot: a faint wash of the label colour (reads on light and dark themes),
+        // under the cells, so the whole cell shows as the click target.
+        _hoverBox = new Border { IsVisible = false, IsHitTestVisible = false, CornerRadius = new CornerRadius(5), Opacity = 0.07, ZIndex = -1 };
+        _hoverBox.Bind(Border.BackgroundProperty, foreground);
+        VisualChildren.Add(_hoverBox);
+
+        // The column being moved, lifted off the header: page colour (opaque, so it reads over
+        // the labels it passes), a label-coloured wash, an accent outline and a shadow.
+        _ghostLabel = new TextBlock
+        {
+            FontSize = 12,
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        var wash = new Border { CornerRadius = new CornerRadius(5), Opacity = 0.1 };
+        wash.Bind(Border.BackgroundProperty, foreground);
+        _ghost = new Border
+        {
+            IsVisible = false,
+            IsHitTestVisible = false,
+            ZIndex = 2,
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 14, Color = Color.FromArgb(0x70, 0, 0, 0) }),
+            Child = new Panel { Children = { wash, new Border { Padding = new Thickness(8, 0), Child = _ghostLabel } } },
+        };
+        _ghost.Bind(Border.BackgroundProperty, this.GetResourceObservable("AppMainBackground"));
+        _ghost.Bind(Border.BorderBrushProperty, this.GetResourceObservable("AccentColorBrush"));
+        VisualChildren.Add(_ghost);
 
         AddHandler(PointerPressedEvent, OnCellPointerPressed, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, OnCellPointerMoved, RoutingStrategies.Tunnel);
@@ -80,20 +135,47 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
         ContextRequested += OnContextRequested;
     }
 
-    private static readonly IBrush DividerBrush = new SolidColorBrush(Color.FromArgb(0x70, 0x90, 0x90, 0x90));
-
     protected override void OnPointerEntered(PointerEventArgs e)
     {
         base.OnPointerEntered(e);
-        foreach (var grip in _grips.Values) grip.Child!.Opacity = grip.IsPointerOver ? 1 : 0.5;
+        UpdateDividers();
     }
 
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
-        if (_resizeKey != null) return;
-        foreach (var grip in _grips.Values) grip.Child!.Opacity = 0;
+        SetHover(null);
+        Cursor = null;
+        UpdateDividers();
     }
+
+    private void UpdateDividers()
+    {
+        foreach (var grip in _grips.Values)
+            grip.Child!.Opacity = grip.IsPointerOver || Equals(grip.Tag, _resizeKey) ? DividerActive
+                : IsPointerOver ? DividerHeader : DividerRest;
+    }
+
+    /// <summary>Highlights the slot of <paramref name="key"/> (null: none).</summary>
+    private void SetHover(string? key)
+    {
+        if (_hoverKey == key) return;
+        _hoverKey = key;
+        _hoverBox.IsVisible = key != null;
+        InvalidateArrange();
+    }
+
+    /// <summary>The highlighted slot's column, for tests.</summary>
+    internal string? HoverKey => _hoverKey;
+
+    /// <summary>The highlight drawn over the hovered slot, for tests.</summary>
+    internal Border HoverBox => _hoverBox;
+
+    /// <summary>The lifted header shown while a column moves, for tests.</summary>
+    internal Border Ghost => _ghost;
+
+    /// <summary>The bar marking where a moving column lands, for tests.</summary>
+    internal Border DropMarker => _dropMarker;
 
     /// <summary>The divider for <paramref name="key"/>, for tests and accessibility tools.</summary>
     internal Border? GripFor(string key) => _grips.GetValueOrDefault(key);
@@ -123,27 +205,31 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
                 Background = Brushes.Transparent,
                 Cursor = new Cursor(StandardCursorType.SizeWestEast),
                 Tag = key,
+                // Above the cells: they join the visual list after the grips, so without this
+                // the next column's label covered the right half of the divider's hit area.
+                ZIndex = 1,
             };
-            // A hairline in the middle so the divider is findable: shown while the pointer
-            // is over the header, brighter over the divider itself.
-            grip.Child = new Border
+            // A hairline in the label colour, always drawn so users see where to drag (GitHub
+            // #156: the old grey line only showed on hover and was barely visible on dark);
+            // stronger while the pointer is over the header, full over the divider itself.
+            var line = new Border
             {
                 Width = 1,
-                Margin = new Thickness(0, 3),
-                Background = DividerBrush,
+                Margin = new Thickness(0, 2),
                 IsHitTestVisible = false,
-                Opacity = IsPointerOver ? 0.5 : 0,
+                Opacity = IsPointerOver ? DividerHeader : DividerRest,
             };
+            line.Bind(Border.BackgroundProperty, this.GetObservable(TextElement.ForegroundProperty));
+            grip.Child = line;
             var label = layout!.Find(key)?.Label;
             AutomationProperties.SetName(grip, string.Format(Loc.T("Columns.ResizeName"), label));
-            grip.PointerEntered += (_, _) => grip.Child!.Opacity = 1;
-            grip.PointerExited += (_, _) => grip.Child!.Opacity = IsPointerOver ? 0.5 : 0;
+            grip.PointerEntered += (_, _) => { SetHover(null); UpdateDividers(); };
+            grip.PointerExited += (_, _) => UpdateDividers();
             grip.PointerPressed += OnGripPressed;
             grip.PointerMoved += OnGripMoved;
             grip.PointerReleased += OnGripReleased;
-            grip.PointerCaptureLost += (_, _) => _resizeKey = null;
+            grip.PointerCaptureLost += (_, _) => { _resizeKey = null; UpdateDividers(); };
             _grips[key] = grip;
-            // Before the drop marker, after every cell.
             VisualChildren.Insert(VisualChildren.IndexOf(_dropMarker), grip);
         }
     }
@@ -152,8 +238,10 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
     {
         var size = base.MeasureOverride(availableSize);
         foreach (var grip in _grips.Values) grip.Measure(new Size(GripHalf * 2, size.Height));
-        _dropMarker.Measure(new Size(2, size.Height));
+        _dropMarker.Measure(new Size(3, size.Height + Bleed * 2));
         _sortArrow.Measure(new Size(7, 4));
+        _hoverBox.Measure(Size.Infinity);
+        _ghost.Measure(Size.Infinity);
         return size;
     }
 
@@ -168,11 +256,35 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
             for (var i = 0; i < cols.Count; i++)
                 if (_grips.TryGetValue(cols[i].Key, out var grip))
                     grip.Arrange(new Rect(offsets[i] + widths[i] - GripHalf, 0, GripHalf * 2, finalSize.Height));
+            var tall = finalSize.Height + Bleed * 2;
             if (_moving && _dropIndex >= 0)
-                _dropMarker.Arrange(new Rect(DropX(layout, finalSize.Width, _dropIndex) - 1, 0, 2, finalSize.Height));
+                _dropMarker.Arrange(new Rect(DropX(layout, finalSize.Width, _dropIndex) - 1.5, -Bleed, 3, tall));
+            if (_hoverKey != null && SlotOf(layout, _hoverKey, finalSize.Width) is { } hover)
+                _hoverBox.Arrange(new Rect(hover.X, -Bleed, hover.Width, tall));
+            if (_moving && _pressCell != null && SlotOf(layout, GetColumn(_pressCell), finalSize.Width) is { } moving)
+                _ghost.Arrange(new Rect(_ghostX, -Bleed, moving.Width, tall));
         }
         ArrangeSortArrow();
         return finalSize;
+    }
+
+    /// <summary>The slot (full column width, padding included) of <paramref name="key"/>; null when not shown.</summary>
+    private static Rect? SlotOf(ColumnLayout layout, string? key, double width)
+    {
+        var i = IndexOf(layout, key);
+        if (i < 0) return null;
+        var (widths, offsets) = layout.Compute(width);
+        return new Rect(offsets[i], 0, widths[i], 0);
+    }
+
+    /// <summary>The movable column whose slot holds <paramref name="x"/>; null over the pinned slot or outside.</summary>
+    private string? KeyAt(ColumnLayout layout, double x)
+    {
+        var (widths, offsets) = layout.Compute(Bounds.Width);
+        var cols = layout.Visible;
+        for (var i = 0; i < cols.Count; i++)
+            if (!cols[i].Pinned && x >= offsets[i] && x < offsets[i] + widths[i]) return cols[i].Key;
+        return null;
     }
 
     // ── Sort arrow ──
@@ -210,7 +322,8 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
         var (widths, offsets) = layout.Compute(Bounds.Width);
         var slotLeft = i >= 0 ? offsets[i] : cell.Bounds.Left;
         var slotRight = i >= 0 ? offsets[i] + widths[i] : cell.Bounds.Right;
-        x = Math.Max(slotLeft, Math.Min(x, slotRight - 8));
+        // 2px clear of the (now always drawn) divider at the slot's right edge.
+        x = Math.Max(slotLeft, Math.Min(x, slotRight - 9));
         var y = cell.Bounds.Top + (cell.Bounds.Height - 4) / 2;
         _sortArrow.Arrange(new Rect(x, y, 7, 4));
     }
@@ -257,35 +370,73 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
         _resizeKey = null;
         e.Pointer.Capture(null);
         e.Handled = true;
+        UpdateDividers();
         Layout?.Commit();
     }
 
     // ── Move ──
 
+    private bool IsGrip(object? source)
+        => source is Visual v && v.FindAncestorOfType<Border>(includeSelf: true) is { Tag: string } b && _grips.ContainsValue(b);
+
+    /// <summary>
+    /// A press anywhere in a movable column's slot (GitHub #156: not just on the label) arms
+    /// a move, and a click there sorts. The slot is found by x, so the empty part of the cell
+    /// and the padding between columns count too.
+    /// </summary>
     private void OnCellPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         _pressCell = null;
-        if (e.Source is Visual v && v.FindAncestorOfType<Border>(includeSelf: true) is { Tag: string } b && _grips.ContainsValue(b))
-            return;
+        if (IsGrip(e.Source)) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || Layout is not { } layout) return;
-        var cell = DirectChild(e.Source as Visual);
+        var pos = e.GetPosition(this);
+        var onCell = DirectChild(e.Source as Visual);
+        var cell = onCell ?? (KeyAt(layout, pos.X) is { } key ? CellFor(key) : null);
         if (cell == null || layout.Find(GetColumn(cell) ?? string.Empty) is not { Pinned: false }) return;
         _pressCell = cell;
-        _pressPoint = e.GetPosition(this);
+        _pressPoint = pos;
+        // A press on the cell's own button: the button clicks itself. Anywhere else in the slot
+        // the release below runs its command.
+        _pressOnLabel = onCell is Button;
     }
 
     private void OnCellPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_pressCell == null || Layout is not { } layout) return;
+        if (Layout is not { } layout) return;
         var pos = e.GetPosition(this);
+        if (_pressCell == null)
+        {
+            // Hover: highlight the slot under the pointer and show the hand where a click sorts.
+            var key = _resizeKey == null && !IsGrip(e.Source) ? KeyAt(layout, pos.X) : null;
+            SetHover(key);
+            Cursor = key != null && CellFor(key) is Button ? HandCursor : null;
+            return;
+        }
         if (!_moving)
         {
             if (Math.Abs(pos.X - _pressPoint.X) < DragThreshold) return;
             _moving = true;
+            SetHover(null);
             // Taking the pointer from the header button cancels its click (no sort on a move).
             e.Pointer.Capture(this);
-            _pressCell.Opacity = 0.45;
+            // Dimmed while it moves, then back to its own opacity: the labels are 0.7, and
+            // setting 1 left a moved column's label brighter than the rest.
+            _pressCellOpacity = _pressCell.Opacity;
+            _pressCell.Opacity = _pressCellOpacity * 0.4;
+            var spec = layout.Find(GetColumn(_pressCell) ?? string.Empty);
+            _ghostLabel.Text = spec?.Label;
+            _ghostLabel.HorizontalAlignment = _pressCell.HorizontalAlignment == Avalonia.Layout.HorizontalAlignment.Center
+                ? Avalonia.Layout.HorizontalAlignment.Center
+                : Avalonia.Layout.HorizontalAlignment.Left;
+            _ghost.IsVisible = true;
             _dropMarker.IsVisible = true;
+        }
+        if (SlotOf(layout, GetColumn(_pressCell), Bounds.Width) is { } slot)
+        {
+            // The lifted header keeps the spot where it was grabbed under the pointer, within
+            // half its width of the header's ends.
+            var x = slot.X + pos.X - _pressPoint.X;
+            _ghostX = Math.Clamp(x, -slot.Width / 2, Math.Max(-slot.Width / 2, Bounds.Width - slot.Width / 2));
         }
         _dropIndex = DropIndexAt(layout, pos.X);
         InvalidateArrange();
@@ -294,7 +445,21 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
 
     private void OnCellPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (!_moving) { _pressCell = null; return; }
+        if (!_moving)
+        {
+            var cell = _pressCell;
+            var onLabel = _pressOnLabel;
+            _pressCell = null;
+            if (cell is Button { Command: { } command } button && !onLabel && Layout is { } layout
+                && e.InitialPressMouseButton == MouseButton.Left
+                && KeyAt(layout, e.GetPosition(this).X) == GetColumn(cell)
+                && command.CanExecute(button.CommandParameter))
+            {
+                command.Execute(button.CommandParameter);
+                e.Handled = true;
+            }
+            return;
+        }
         e.Handled = true;
         EndMove(commit: true);
         e.Pointer.Capture(null);
@@ -309,7 +474,8 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
         _pressCell = null;
         _dropIndex = -1;
         _dropMarker.IsVisible = false;
-        if (cell != null) cell.Opacity = 1;
+        _ghost.IsVisible = false;
+        if (cell != null) cell.Opacity = _pressCellOpacity;
         if (commit && cell != null && Layout is { } layout && GetColumn(cell) is { } key && index >= 0)
         {
             layout.Move(key, index);

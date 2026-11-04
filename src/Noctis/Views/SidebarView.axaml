@@ -36,8 +36,8 @@
         <!-- Row content colours are class-driven (not local values) so the selected accent pill
              (Styles.axaml, GitHub #87) can flip them to the accent-contrast colour, like the
              Settings rail's rail-bitmap. Accent-filled marks invert on the pill so they stay visible. -->
-        <Style Selector="ListBox.sidebar Border.nav-bitmap">
-            <Setter Property="Background" Value="{DynamicResource IslandForeground}" />
+        <Style Selector="ListBox.sidebar ctrl|MaskIcon.nav-bitmap">
+            <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
         </Style>
         <Style Selector="ListBox.sidebar PathIcon.nav-icon">
             <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
@@ -51,8 +51,8 @@
         <Style Selector="ListBox.sidebar Path.fav-heart-glyph">
             <Setter Property="Fill" Value="{DynamicResource AccentForegroundBrush}" />
         </Style>
-        <Style Selector="ListBox.sidebar ListBoxItem:selected Border.nav-bitmap">
-            <Setter Property="Background" Value="{DynamicResource AccentForegroundBrush}" />
+        <Style Selector="ListBox.sidebar ListBoxItem:selected ctrl|MaskIcon.nav-bitmap">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         </Style>
         <Style Selector="ListBox.sidebar ListBoxItem:selected PathIcon.nav-icon">
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
@@ -211,6 +211,29 @@
                               CommandParameter="{Binding}">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineTrash}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </Setter>
+        </Style>
+
+        <!-- Right-click menu for a plugin screen's row: its plugin page, or off the sidebar.
+             Opened from code-behind on right-press, like the playlist rows' menu. -->
+        <Style Selector="ListBox#PluginList ListBoxItem">
+            <Setter Property="ContextMenu">
+                <ContextMenu x:DataType="vm:PluginNavItem" Classes="v2">
+                    <MenuItem Header="{loc:T Sidebar.PluginSettings}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).OpenPluginItemSettingsCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineTools}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{loc:T Sidebar.HidePlugin}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).HidePluginItemCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEyeOff}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                         </MenuItem.Icon>
                     </MenuItem>
                 </ContextMenu>
@@ -517,18 +540,15 @@
                                     <Grid Width="28"
                                           Height="28"
                                           VerticalAlignment="Center">
-                                        <Border Width="20"
-                                                Height="20"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                Classes="nav-bitmap"
-                                                IsVisible="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}">
-                                            <Border.OpacityMask>
-                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
-                                                            Stretch="Uniform" />
-                                            </Border.OpacityMask>
-                                        </Border>
+                                        <!-- PNG mask drawn at its exact pixel size on whole pixels (MaskIcon):
+                                             crisp at every Interface Size, not only 100%. -->
+                                        <ctrl:MaskIcon Width="20"
+                                                       Height="20"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Classes="nav-bitmap"
+                                                       Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                       IsVisible="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}" />
                                         <!-- Geometry icons (Visualizer, Lyrics Studio): same 20px box as the PNG masks. -->
                                         <PathIcon Width="20" Height="20"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -623,6 +643,55 @@
                             Background="{DynamicResource IslandForeground}"
                             Opacity="0.1"
                             Margin="8,2,8,8" />
+
+                    <!-- Plugins: one row per screen a running plugin added (Album Town, A-B Loop),
+                         above the playlists so it is one click away (Discord feedback 11-03). A row
+                         opens the screen in Settings in place of its plugin's page and never takes
+                         the selection (SidebarViewModel.OpensSheet). Right-click: Plugin Settings,
+                         Hide from Sidebar. The whole block goes when no plugin adds a screen. -->
+                    <StackPanel x:Name="PluginSection" IsVisible="{Binding HasPluginItems}">
+                        <TextBlock Margin="18,4,12,4"
+                                   IsVisible="{Binding IsExpanded}"
+                                   Text="{loc:T Sidebar.PLUGINS}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.5"
+                                   VerticalAlignment="Center" />
+                        <ListBox Classes="sidebar"
+                                 x:Name="PluginList"
+                                 ItemsSource="{Binding PluginItems}"
+                                 SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                                 SelectionChanged="OnNavListSelectionChanged"
+                                 Margin="6,0,6,4">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PluginNavItem">
+                                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                                ToolTip.Tip="{Binding Label}"
+                                                HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                        <!-- The plugin's icon (as on its Settings card), else its letter tile. -->
+                                        <Panel Width="28" Height="28" VerticalAlignment="Center">
+                                            <Border CornerRadius="8" Background="{Binding MonogramBrush}" IsVisible="{Binding ShowMonogram}">
+                                                <TextBlock Text="{Binding Monogram}" FontSize="11" FontWeight="Bold" Foreground="White"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <Image Source="{Binding Icon}" IsVisible="{Binding HasIcon}" Width="28" Height="28"
+                                                   RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                        </Panel>
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="130"
+                                                   IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border Height="1"
+                                Background="{DynamicResource IslandForeground}"
+                                Opacity="0.1"
+                                Margin="8,2,8,8" />
+                    </StackPanel>
 
                     <!-- Playlists header (only visible when expanded) -->
                     <TextBlock Margin="18,4,12,4"

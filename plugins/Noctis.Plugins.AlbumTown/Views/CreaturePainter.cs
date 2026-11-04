@@ -112,7 +112,9 @@ public sealed class CreaturePainter : IDisposable
     {
         var t = _theme;
         var s = Size;
-        var x = (double)c.Position.X;
+        var act = c.State == CreatureState.Talk && c.Chat is { } chat ? chat.Act : ChatAct.Talk;
+        // A scuffle: both shake on the spot.
+        var x = (double)c.Position.X + (act == ChatAct.Scuffle ? Math.Sin(c.Age * 45) * s * 0.035 : 0);
         var ground = (double)c.Position.Y;
         var phase = c.WalkPhase;
         var stride = c.Stride;
@@ -182,6 +184,26 @@ public sealed class CreaturePainter : IDisposable
         {
             ly = top + h * 0.15 - Math.Abs(sin) * s * 0.22;
             ry = top + h * 0.15 - Math.Abs(Math.Cos(phase)) * s * 0.22;
+        }
+        else if (act == ChatAct.RockPaperScissors)
+        {
+            // Rock, paper, scissors: the hand toward the other pumps on each word.
+            var pump = Math.Abs(Math.Sin(c.Age * 8)) * s * 0.18;
+            if (c.Facing >= 0) ry -= pump; else ly -= pump;
+        }
+        else if (act == ChatAct.Scuffle)
+        {
+            // Little punches toward the other, one hand then the other.
+            var jab = Math.Max(0, Math.Sin(c.Age * 14)) * s * 0.16;
+            var jab2 = Math.Max(0, -Math.Sin(c.Age * 14)) * s * 0.16;
+            if (c.Facing >= 0) { rx += jab; lx += jab2 * 0.6; ly -= s * 0.06; }
+            else { lx -= jab; rx -= jab2 * 0.6; ry -= s * 0.06; }
+        }
+        else if (act == ChatAct.HighFive)
+        {
+            // The hand toward the other goes up high.
+            if (c.Facing >= 0) { rx += s * 0.06; ry = top - s * 0.12; }
+            else { lx -= s * 0.06; ly = top - s * 0.12; }
         }
         else if (c.State == CreatureState.Talk && c.Bubble is not null)
         {

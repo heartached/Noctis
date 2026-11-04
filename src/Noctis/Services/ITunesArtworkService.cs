@@ -335,8 +335,13 @@ public sealed class ITunesArtworkService
         var relevant = scored.Where(s => s.relevance >= 0.3).ToList();
         if (relevant.Count == 0)
         {
+            // A typed query may be just an artist ("selena gomez"): no title resembles it, so
+            // that artist's albums are the answer; the edited track's artist comes next.
             var artist = query.Typed ? query.PreferArtist : query.Artist;
-            relevant = scored.Where(s => AnimatedArtworkMatcher.ArtistSimilarity(s.c.ArtistName, artist) >= 0.85).ToList();
+            relevant = scored.Where(s =>
+                    (query.Typed && AnimatedArtworkMatcher.ArtistSimilarity(s.c.ArtistName, query.Album) >= 0.85) ||
+                    AnimatedArtworkMatcher.ArtistSimilarity(s.c.ArtistName, artist) >= 0.85)
+                .ToList();
         }
 
         return relevant

@@ -155,6 +155,99 @@
                                 </Border>
                             </Button>
                         </DataTemplate>
+
+        <!-- Album tile for both album rows (recently played Albums and New in Library,
+             GitHub #159): bare cover + two text lines; the VM's AlbumTileSize sizes it. -->
+        <DataTemplate x:Key="HomeAlbumTileTemplate" x:DataType="m:Album">
+            <Button Classes="album-tile home-album-tile"
+                    AutomationProperties.Name="{Binding Name}"
+                    Margin="2"
+                    Padding="2"
+                    VerticalAlignment="Top"
+                    helpers:DragFileBehavior.EnableFileDrag="True"
+                    ContextRequested="OnRecentAlbumContextRequested"
+                    Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
+                    CommandParameter="{Binding}">
+                <!-- Width pinned to the cover: the WrapPanel measures tiles unbounded, so
+                     without it a long title never wraps and the tile grows past the cover. -->
+                <StackPanel Spacing="0"
+                            Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}">
+                    <Border Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
+                            Height="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
+                            CornerRadius="6"
+                            ClipToBounds="True"
+                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <Panel>
+                            <TextBlock Text="{loc:T Home.Text}"
+                                       FontSize="32"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.2"
+                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                            <controls:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                  DecodeWidth="384"
+                                                  Stretch="UniformToFill"
+                                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                  IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <!-- Hover overlay (09-13): dim + Play/Pause + dots; styles in Styles.axaml -->
+                            <Border Classes="tile-dim" />
+                            <Button Classes="tile-play"
+                                    Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).TogglePlayAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <Panel>
+                                    <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsNowPlaying}"><Path Data="{StaticResource PlayIcon}" Fill="White" /></Viewbox>
+                                    <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNowPlaying}"><Path Data="{StaticResource PauseIcon}" Fill="White" /></Viewbox>
+                                </Panel>
+                            </Button>
+                            <Button Classes="tile-more" Click="OnTileMoreClick">
+                                <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"><Path Data="{StaticResource MoreDotsIcon}" Fill="White" /></Viewbox>
+                            </Button>
+                        </Panel>
+                    </Border>
+                <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
+                    <!-- Title + explicit badge; the heart sits at the line's right end (09-13) -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
+                        <TextBlock Grid.Column="0"
+                                   helpers:TitleWrap.Watch="True"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxLines="2">
+                            <Run Text="{Binding Name}" />
+                            <InlineUIContainer BaselineAlignment="Center">
+                                <Border Classes="explicit-badge compact"
+                                        Margin="4,0,0,0"
+                                        IsVisible="{Binding IsExplicit}"
+                                        ToolTip.Tip="{loc:T Home.ExplicitTip}">
+                                    <TextBlock Text="E"
+                                               Classes="explicit-badge-text compact"
+                                               FontSize="8"
+                                               Opacity="0.9" />
+                                </Border>
+                            </InlineUIContainer>
+                        </TextBlock>
+                        <Panel Grid.Column="1" Classes="heart-title" VerticalAlignment="Top" Margin="6,2,0,0">
+                            <controls:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
+                        </Panel>
+                    </Grid>
+                    <!-- Subtitle; the heart lands here instead when the title wraps -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding TileSubtitle}"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   Opacity="0.55"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxLines="1" />
+                        <Panel Grid.Column="1" Classes="heart-sub" VerticalAlignment="Center" Margin="6,0,0,0">
+                            <controls:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
+                        </Panel>
+                    </Grid>
+                </StackPanel>
+                </StackPanel>
+            </Button>
+        </DataTemplate>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -282,6 +375,25 @@
         <!-- Section headers fold, they don't zoom: no app-wide hover / press scale (10-05). -->
         <Style Selector="Button.section-toggle:pointerover, Button.section-toggle:pressed">
             <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+
+        <!-- Row size pill (GitHub #159), the artist page's grey Sort pill: chip fill, no stroke,
+             no press zoom (the click opens its menu). -->
+        <Style Selector="Button.home-count-pill">
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.home-count-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}" />
+        </Style>
+        <Style Selector="Button.home-count-pill:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
 
         <!-- Disclosure chevron: the thin ComboBox glyph, pointing right when folded and
@@ -777,25 +889,52 @@
                      the single-album rail). Covers are the Albums-page tile size (the VM
                      runs the same AlbumGridMetrics off this view's width). Click opens the
                      album, hover shows Play, right-click is the shared album menu. ── -->
-                <StackPanel IsVisible="{Binding RecentlyPlayedAlbums.Count}">
-                    <Button Classes="section-toggle" Classes.expanded="{Binding IsRecentlyPlayedExpanded}"
-                            Command="{Binding ToggleSectionCommand}" CommandParameter="RecentlyPlayed"
-                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="{loc:T Home.Albums}"
-                                       FontSize="22"
-                                       FontWeight="Bold" />
-                            <Border Classes="section-chevron-box">
-                                <Path Classes="section-chevron"
-                                      Width="28" Height="28"
-                                      Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                      StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
-                            </Border>
-                        </StackPanel>
-                    </Button>
+                <!-- The two album rows trade places with Settings › Home › New in Library First
+                     (code-behind ApplyAlbumSectionOrder); keep them adjacent. -->
+                <StackPanel x:Name="RecentAlbumsSection" IsVisible="{Binding RecentlyPlayedAlbums.Count}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Button Classes="section-toggle" Classes.expanded="{Binding IsRecentlyPlayedExpanded}"
+                                Command="{Binding ToggleSectionCommand}" CommandParameter="RecentlyPlayed"
+                                ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{loc:T Home.Albums}"
+                                           FontSize="22"
+                                           FontWeight="Bold" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
+                            </StackPanel>
+                        </Button>
+                        <!-- GitHub #159: how many albums the row shows (saved in Settings). -->
+                        <Button x:Name="RecentAlbumsCountPill" Grid.Column="1" Classes="home-count-pill"
+                                AutomationProperties.Name="{loc:T Home.AlbumCountTip}"
+                                ToolTip.Tip="{loc:T Home.AlbumCountTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                    <Run Text="{loc:T Home.ShowCount}" /><Run Text=" " /><Run Text="{Binding RecentAlbumsCount}" />
+                                </TextBlock>
+                                <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                          Width="9" Height="9" Opacity="0.6" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="6" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="6" />
+                                    <MenuItem Header="10" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="10" />
+                                    <MenuItem Header="20" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="20" />
+                                    <MenuItem Header="50" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="50" />
+                                    <MenuItem Header="100" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="100" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
                     <controls:CollapsibleContent IsOpen="{Binding IsRecentlyPlayedExpanded}" Lift="10" Motion="Glide">
                         <ItemsControl x:Name="AlbumsRow"
                                       ItemsSource="{Binding RecentlyPlayedAlbums}"
+                                      ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
                                       Margin="0,14,0,0"
                                       SizeChanged="OnAlbumsRowSizeChanged">
                             <ItemsControl.ItemsPanel>
@@ -803,98 +942,62 @@
                                     <WrapPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="m:Album">
-                                    <Button Classes="album-tile home-album-tile"
-                                            AutomationProperties.Name="{Binding Name}"
-                                            Margin="2"
-                                            Padding="2"
-                                            VerticalAlignment="Top"
-                                            helpers:DragFileBehavior.EnableFileDrag="True"
-                                            ContextRequested="OnRecentAlbumContextRequested"
-                                            Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
-                                            CommandParameter="{Binding}">
-                                        <!-- Width pinned to the cover: the WrapPanel measures tiles unbounded, so
-                                             without it a long title never wraps and the tile grows past the cover. -->
-                                        <StackPanel Spacing="0"
-                                                    Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}">
-                                            <Border Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
-                                                    Height="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
-                                                    CornerRadius="6"
-                                                    ClipToBounds="True"
-                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                <Panel>
-                                                    <TextBlock Text="{loc:T Home.Text}"
-                                                               FontSize="32"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center"
-                                                               Opacity="0.2"
-                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                    <controls:CachedImage SourcePath="{Binding ArtworkPath}"
-                                                                          DecodeWidth="384"
-                                                                          Stretch="UniformToFill"
-                                                                          RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                                          IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                    <!-- Hover overlay (09-13): dim + Play/Pause + dots; styles in Styles.axaml -->
-                                                    <Border Classes="tile-dim" />
-                                                    <Button Classes="tile-play"
-                                                            Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).TogglePlayAlbumCommand}"
-                                                            CommandParameter="{Binding}">
-                                                        <Panel>
-                                                            <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsNowPlaying}"><Path Data="{StaticResource PlayIcon}" Fill="White" /></Viewbox>
-                                                            <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNowPlaying}"><Path Data="{StaticResource PauseIcon}" Fill="White" /></Viewbox>
-                                                        </Panel>
-                                                    </Button>
-                                                    <Button Classes="tile-more" Click="OnTileMoreClick">
-                                                        <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"><Path Data="{StaticResource MoreDotsIcon}" Fill="White" /></Viewbox>
-                                                    </Button>
-                                                </Panel>
-                                            </Border>
-                                        <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
-                                            <!-- Title + explicit badge; the heart sits at the line's right end (09-13) -->
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
-                                                <TextBlock Grid.Column="0"
-                                                           helpers:TitleWrap.Watch="True"
-                                                           FontSize="13"
-                                                           FontWeight="SemiBold"
-                                                           TextWrapping="Wrap"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxLines="2">
-                                                    <Run Text="{Binding Name}" />
-                                                    <InlineUIContainer BaselineAlignment="Center">
-                                                        <Border Classes="explicit-badge compact"
-                                                                Margin="4,0,0,0"
-                                                                IsVisible="{Binding IsExplicit}"
-                                                                ToolTip.Tip="{loc:T Home.ExplicitTip}">
-                                                            <TextBlock Text="E"
-                                                                       Classes="explicit-badge-text compact"
-                                                                       FontSize="8"
-                                                                       Opacity="0.9" />
-                                                        </Border>
-                                                    </InlineUIContainer>
-                                                </TextBlock>
-                                                <Panel Grid.Column="1" Classes="heart-title" VerticalAlignment="Top" Margin="6,2,0,0">
-                                                    <controls:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
-                                                </Panel>
-                                            </Grid>
-                                            <!-- Subtitle; the heart lands here instead when the title wraps -->
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
-                                                <TextBlock Grid.Column="0"
-                                                           Text="{Binding TileSubtitle}"
-                                                           FontSize="12"
-                                                           FontWeight="Bold"
-                                                           Opacity="0.55"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxLines="1" />
-                                                <Panel Grid.Column="1" Classes="heart-sub" VerticalAlignment="Center" Margin="6,0,0,0">
-                                                    <controls:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
-                                                </Panel>
-                                            </Grid>
-                                        </StackPanel>
-                                        </StackPanel>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+
+                <!-- ── New in Library (GitHub #159): the newest albums by date added, played or
+                     not, in the same tiles. ── -->
+                <StackPanel x:Name="NewInLibrarySection" IsVisible="{Binding IsNewInLibraryVisible}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Button Classes="section-toggle" Classes.expanded="{Binding IsNewInLibraryExpanded}"
+                                Command="{Binding ToggleSectionCommand}" CommandParameter="NewInLibrary"
+                                ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{loc:T Home.NewInLibrary}"
+                                           FontSize="22"
+                                           FontWeight="Bold" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="NewAlbumsCountPill" Grid.Column="1" Classes="home-count-pill"
+                                AutomationProperties.Name="{loc:T Home.AlbumCountTip}"
+                                ToolTip.Tip="{loc:T Home.AlbumCountTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                    <Run Text="{loc:T Home.ShowCount}" /><Run Text=" " /><Run Text="{Binding NewAlbumsCount}" />
+                                </TextBlock>
+                                <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                          Width="9" Height="9" Opacity="0.6" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="6" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="6" />
+                                    <MenuItem Header="10" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="10" />
+                                    <MenuItem Header="20" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="20" />
+                                    <MenuItem Header="50" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="50" />
+                                    <MenuItem Header="100" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="100" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding IsNewInLibraryExpanded}" Lift="10" Motion="Glide">
+                        <ItemsControl x:Name="NewInLibraryRow"
+                                      ItemsSource="{Binding NewInLibraryAlbums}"
+                                      ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
+                                      Margin="0,14,0,0"
+                                      SizeChanged="OnAlbumsRowSizeChanged">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </controls:CollapsibleContent>
                 </StackPanel>

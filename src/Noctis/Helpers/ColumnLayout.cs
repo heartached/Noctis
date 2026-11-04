@@ -98,6 +98,25 @@ public sealed class ColumnLayout
 
     public bool HasUserWidths => _widths.Count > 0;
 
+    /// <summary>
+    /// Space kept clear inside each side of a column (GitHub #157), so a text that fills its
+    /// column never runs into the next column's: neighbours end up twice this apart. Header
+    /// and rows inset alike (<see cref="CellInsets"/>), so labels stay over their cells.
+    /// </summary>
+    public double CellPadding { get; init; } = 6;
+
+    /// <summary>
+    /// Left and right inset of the cell of shown column <paramref name="visibleIndex"/>: none
+    /// on the list's outer left edge (the first column keeps its place) and none for pinned
+    /// columns (the 3-dots button keeps its own spacing).
+    /// </summary>
+    public (double Left, double Right) CellInsets(int visibleIndex)
+    {
+        var cols = Visible;
+        if (visibleIndex < 0 || visibleIndex >= cols.Count || cols[visibleIndex].Pinned) return (0, 0);
+        return (visibleIndex == 0 ? 0 : CellPadding, CellPadding);
+    }
+
     public void SetVisible(string key, bool visible)
     {
         if (!_byKey.TryGetValue(key, out var spec) || spec.Pinned) return;

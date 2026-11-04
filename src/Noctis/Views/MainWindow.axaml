@@ -370,9 +370,11 @@
                         </Panel>
 
                         <!-- View (GitHub #149): grid or album carousel, and the carousel's case
-                             style. The shared View glyph, like every page's view control. -->
+                             style. The shared View glyph, like every page's view control. Gone with the Album
+                             Carousel built-in feature: the grid is then the only layout. -->
                         <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
-                                ToolTip.Tip="{loc:T Main.AlbumView}">
+                                ToolTip.Tip="{loc:T Main.AlbumView}"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.AlbumCarouselEnabled, FallbackValue=True}">
                             <PathIcon Data="{StaticResource ViewIcon}"/>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
@@ -396,6 +398,10 @@
                                     <MenuItem Header="{loc:T Main.CarouselCassette}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cassette">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cassette}"/></MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- GitHub #164: the top-right icon is the album carousel here, so the
+                                         queue's Cover Flow is reached from this menu on Albums. -->
+                                    <Separator/>
+                                    <MenuItem Header="{loc:T Main.NowPlayingCoverFlow}" Command="{Binding SetCoverFlowModeCommand}"/>
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
@@ -500,6 +506,13 @@
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding PageSortCommand}" CommandParameter="Descending">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortDescending}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <!-- GitHub #156: shown exactly while the corner dot is, so the dot
+                                             always has a visible way back to the default order. -->
+                                        <Separator IsVisible="{Binding IsSongsSortActive}" />
+                                        <MenuItem Header="{loc:T Main.ResetSortToDateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Reset"
+                                                  IsVisible="{Binding IsSongsSortActive}">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineHistory}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -778,9 +791,33 @@
                                 Command="{Binding SetLibraryModeCommand}" ToolTip.Tip="{loc:T Main.SwitchToLibrary}">
                             <PathIcon Data="{StaticResource GridViewIcon}"/>
                         </Button>
-                        <Button Classes="corner-icon" IsVisible="{Binding !IsCoverFlowMode}"
+                        <Button Classes="corner-icon" IsVisible="{Binding CoverFlowToggleVisible}"
                                 Command="{Binding SetCoverFlowModeCommand}" ToolTip.Tip="{loc:T Main.SwitchToCoverFlow}">
                             <PathIcon Data="{StaticResource CoverFlowIcon}"/>
+                        </Button>
+                        <!-- Albums (GitHub #164): grid / album carousel, like the artist page's
+                             toggle; the icon shows the layout a click switches to. -->
+                        <Button Classes="corner-icon" Command="{Binding AlbumViewToggleCommand}"
+                                ToolTip.Tip="{loc:T ArtistDetail.ShowCarousel}"
+                                AutomationProperties.Name="{loc:T ArtistDetail.ShowCarousel}">
+                            <Button.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="AlbumsViewToggleVisible"/>
+                                    <Binding Path="!IsAlbumCarouselView"/>
+                                </MultiBinding>
+                            </Button.IsVisible>
+                            <PathIcon Data="{StaticResource AlbumCarouselIcon}"/>
+                        </Button>
+                        <Button Classes="corner-icon" Command="{Binding AlbumViewToggleCommand}"
+                                ToolTip.Tip="{loc:T ArtistDetail.ShowGrid}"
+                                AutomationProperties.Name="{loc:T ArtistDetail.ShowGrid}">
+                            <Button.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="AlbumsViewToggleVisible"/>
+                                    <Binding Path="IsAlbumCarouselView"/>
+                                </MultiBinding>
+                            </Button.IsVisible>
+                            <PathIcon Data="{StaticResource GridViewIcon}"/>
                         </Button>
                     </StackPanel>
 

@@ -308,6 +308,14 @@
                        Opacity="0.55"
                        HorizontalAlignment="Center"/>
         </StackPanel>
+        <!-- GitHub #162: marked as having no lyrics. -->
+        <TextBlock Text="{loc:T Lyrics.MarkedNoLyrics}"
+                   FontSize="14"
+                   Foreground="{Binding LyricsPrimaryFg}"
+                   Opacity="0.55"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding IsMarkedNoLyrics}"/>
 
         <!-- Lyrics flow. ClipToBounds=False so the active line's swell isn't
              hard-clipped; the OpacityMask fades the top/bottom edges. -->

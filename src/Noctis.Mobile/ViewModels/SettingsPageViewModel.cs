@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
+using Noctis.Models;
 using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
@@ -248,7 +249,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
         if (FolderToRemove is not { } folder) return;
         FolderToRemove = null;
         DropQuestion();
-        await Shell.Library.RemoveFolderAsync(folder.Root);
+        // Its songs leave the queue with it: the access goes now, and each would otherwise fail in
+        // turn as "lost access, add the folder again" (a SAF song's path starts with its folder's).
+        var root = folder.Root;
+        Shell.Player.DropTracks(t => t.SourceType != SourceType.NoctisServer
+            && (t.FilePath == root || t.FilePath.StartsWith(root + "/", StringComparison.Ordinal)));
+        await Shell.Library.RemoveFolderAsync(root);
     }
 
     /// <summary>Under Add Folder: why a pick was refused, or the scan's status, else what the
@@ -345,7 +351,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The Lyrics row's value: which extra lines show.</summary>
     public string LyricsValue => (Shell.Lyrics.ShowTranslation, Shell.Lyrics.ShowRomanization) switch
     {
-        (true, true) => "Translations, Romanization",
+        (true, true) => "Both on",
         (true, false) => "Translations on",
         (false, true) => "Romanization on",
         _ => "Off",
@@ -458,9 +464,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     // ── The profile card's stats ──
 
-    /// <summary>Songs, Downloaded and On Phone under the profile. "—" until read: the song count is
-    /// the library's; the downloads' count and bytes are summed off the UI thread.</summary>
+    /// <summary>Songs, Downloaded and On Phone under the profile (Songs, Albums and Artists with no
+    /// account, so no downloads). "—" until read: the counts are the library's; the downloads'
+    /// count and bytes are summed off the UI thread.</summary>
     [ObservableProperty] private string _songsStat = "—";
+    [ObservableProperty] private string _albumsStat = "—";
+    [ObservableProperty] private string _artistsStat = "—";
     [ObservableProperty] private string _downloadedStat = "—";
     [ObservableProperty] private string _onPhoneStat = "—";
 
@@ -473,6 +482,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private void RefreshStats()
     {
         SongsStat = Shell.Library.IsLoaded ? Shell.Library.SongCount.ToString("N0") : "—";
+        AlbumsStat = Shell.Library.IsLoaded ? Shell.Library.AlbumCount.ToString("N0") : "—";
+        ArtistsStat = Shell.Library.IsLoaded ? Shell.Library.ArtistCount.ToString("N0") : "—";
         if (Shell.Account is not { } account)
         {
             ShowDownloadStats(0, 0);
@@ -509,9 +520,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     internal const string ReportProblemUrl = "https://github.com/heartached/Noctis/issues/new";
     internal const string WebsiteUrl = "https://noctisapp.cc/";
+    /// <summary>The published copy of store/android/privacy-policy.md (the Play listing's link too).</summary>
+    internal const string PrivacyPolicyUrl = "https://noctisapp.cc/privacy/android";
 
     [RelayCommand] private void ReportProblem() => Shell.Links?.Open(ReportProblemUrl);
     [RelayCommand] private void OpenWebsite() => Shell.Links?.Open(WebsiteUrl);
+    [RelayCommand] private void OpenPrivacyPolicy() => Shell.Links?.Open(PrivacyPolicyUrl);
 
     // ── About ──
 
@@ -519,13 +533,14 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string VersionValue => VersionText.StartsWith("Noctis ", StringComparison.Ordinal) ? VersionText["Noctis ".Length..] : VersionText;
     public string VersionRowName => Named("Version", VersionValue);
 
-    /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings holds.</summary>
-    public IReadOnlyList<string> WhatsNewItems { get; } = new[]
+    /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings
+    /// holds; the Downloads line only where there is an account (and so a Downloads page).</summary>
+    public IReadOnlyList<string> WhatsNewItems => new[]
     {
         "Settings is redesigned: your profile and library numbers on top, then Appearance, Library, Listening, Help and About.",
-        "Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads.",
+        Shell.HasAccount ? "Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads." : null,
         "Open-Source Licenses lists what Noctis is built with.",
-    };
+    }.OfType<string>().ToArray();
 
     /// <summary>Open-Source Licenses: the bundled decoder and the main libraries the phone app is built on.</summary>
     public IReadOnlyList<LicenseEntry> Licenses { get; } = new LicenseEntry[]
@@ -540,6 +555,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
         new("Microsoft.Data.Sqlite and SQLitePCLRaw", "MIT and Apache-2.0", "The library's database; SQLite itself is public domain."),
         new("SkiaSharp", "MIT", "Drawing."),
         new("Xamarin.AndroidX bindings", "Apache-2.0", "Android's support libraries for .NET."),
+        new("Google code scanner (ML Kit, Google Play services)", "Android Software Development Kit License; .NET binding MIT",
+            "Scan QR Code on the Account page. Google Play services runs the camera and returns only the code's text."),
     };
 
     // ── Logs, version ──

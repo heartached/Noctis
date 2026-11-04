@@ -184,6 +184,7 @@ public sealed partial class LoadedPlugin : ObservableObject
     {
         Views.Add(view);
         OnPropertyChanged(nameof(HasViews));
+        ViewsChanged?.Invoke(this);
     }
 
     internal void RemoveView(PluginViewEntry view)
@@ -191,6 +192,7 @@ public sealed partial class LoadedPlugin : ObservableObject
         if (!Views.Remove(view)) return;
         OnPropertyChanged(nameof(HasViews));
         view.Withdraw();
+        ViewsChanged?.Invoke(this);
     }
 
     /// <summary>Drops every view (the plugin stopped); open windows of them close.</summary>
@@ -201,7 +203,20 @@ public sealed partial class LoadedPlugin : ObservableObject
         Views.Clear();
         OnPropertyChanged(nameof(HasViews));
         foreach (var v in views) v.Withdraw();
+        ViewsChanged?.Invoke(this);
     }
+
+    /// <summary>Set by the host: the plugin's views came or went (the sidebar's entries follow).</summary>
+    internal Action<LoadedPlugin>? ViewsChanged;
+
+    /// <summary>Its screens get sidebar entries (Settings → the plugin's page → Show in sidebar).
+    /// Kept in <see cref="AppSettings.SidebarHiddenPlugins"/> by the host.</summary>
+    [ObservableProperty] private bool _showInSidebar = true;
+
+    /// <summary>Set by the host: a flip of <see cref="ShowInSidebar"/> is saved.</summary>
+    internal Action<LoadedPlugin, bool>? SidebarChangedByUser;
+
+    partial void OnShowInSidebarChanged(bool value) => SidebarChangedByUser?.Invoke(this, value);
 
     partial void OnErrorChanged(string value) => OnPropertyChanged(nameof(HasError));
     partial void OnStatusChanged(string value)
@@ -680,6 +695,10 @@ public sealed class PluginHost
     /// <summary>Raised when the community-plugins switch changes.</summary>
     public event EventHandler? CommunityPluginsChanged;
 
+    /// <summary>A plugin registered or withdrew a view, or one's Show in sidebar changed. Loads
+    /// and unloads raise <see cref="VisualLayersChanged"/> instead (listen to both).</summary>
+    public event EventHandler? ViewsChanged;
+
     /// <summary>A plugin asked to show a message ("notifications").</summary>
     public event EventHandler<PluginNotice>? NotificationRequested;
 
@@ -778,6 +797,7 @@ public sealed class PluginHost
         foreach (var dir in Directory.EnumerateDirectories(PluginsDirectory).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
             if (Path.GetFileName(dir).StartsWith('.')) continue; // .staging-* from an interrupted install
+            if (PluginInstaller.FinishUninstall(dir)) continue; // uninstalled while a file was held
             var plugin = Discover(dir);
             if (plugin is not null) found.Add(plugin);
         }
@@ -1035,6 +1055,10 @@ public sealed class PluginHost
         var wanted = !IsDisabled(plugin) && (plugin.IsContentPack || IsApproved(plugin));
         plugin.IsEnabled = wanted && duplicate is null;
         plugin.EnabledChangedByUser = OnEnabledToggled;
+        plugin.SidebarChangedByUser = null;
+        plugin.ShowInSidebar = !(_settings().SidebarHiddenPlugins ?? new()).Any(h => SameId(h, plugin.Id));
+        plugin.SidebarChangedByUser = OnSidebarToggled;
+        plugin.ViewsChanged = _ => ViewsChanged?.Invoke(this, EventArgs.Empty);
         if (plugin.Content is { } content) plugin.Extensions = content.Summary;
 
         string? blocker = null;
@@ -1112,6 +1136,16 @@ public sealed class PluginHost
 
         if (approved && Plugins.Contains(plugin)) SetEnabled(plugin, true);
         else SetIsEnabledQuietly(plugin, false);
+    }
+
+    private void OnSidebarToggled(LoadedPlugin plugin, bool show)
+    {
+        var settings = _settings();
+        settings.SidebarHiddenPlugins ??= new();
+        settings.SidebarHiddenPlugins.RemoveAll(h => SameId(h, plugin.Id));
+        if (!show) settings.SidebarHiddenPlugins.Add(plugin.Id);
+        _saveSettings();
+        ViewsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static void SetIsEnabledQuietly(LoadedPlugin plugin, bool value)
@@ -1465,7 +1499,7 @@ public sealed class PluginHost
                 return new PluginInstallResult(PluginInstallOutcome.AlreadyInstalled, $"{existing.Name} {existing.Version} is already installed.", existing);
             target = existing.Directory;
         }
-        else if (Directory.Exists(target))
+        else if (Directory.Exists(target) && !PluginInstaller.FinishUninstall(target, deleteOnly: true))
             return new PluginInstallResult(PluginInstallOutcome.Failed, $"A folder named \"{Path.GetFileName(target)}\" already exists in the plugins folder.");
 
         Directory.CreateDirectory(PluginsDirectory);
@@ -1569,10 +1603,14 @@ public sealed class PluginHost
         {
             foreach (var key in (settings.PluginSettingValues ?? new()).Keys.Where(k => SameId(k, plugin.Id)).ToList())
                 settings.PluginSettingValues!.Remove(key);
+            settings.SidebarHiddenPlugins?.RemoveAll(h => SameId(h, plugin.Id));
             PluginInstaller.TryDeleteDirectory(plugin.DataDirectory);
         }
         _saveSettings();
         var removed = PluginInstaller.TryDeleteDirectory(plugin.Directory);
+        // Something still holds a file (a process the plugin started, antivirus): mark what is
+        // left so the next start finishes the job instead of loading the plugin again.
+        if (!removed) PluginInstaller.MarkUninstalled(plugin.Directory);
         RebuildContent();
         VisualLayersChanged?.Invoke(this, EventArgs.Empty);
         DebugLogger.Info(DebugLogger.Category.State, "Plugins", $"removed {plugin.Id} (data {(deleteData ? "deleted" : "kept")}, folder {(removed ? "deleted" : "left behind")})");
@@ -2061,6 +2099,30 @@ public sealed class PluginHost
             try { snapshot = _library.Tracks.ToArray(); }
             catch (InvalidOperationException) { snapshot = _library.Tracks.ToArray(); } // mutated mid-copy by a scan: once more
             return snapshot.Select(ToTrackInfo).ToArray();
+        }
+
+        public IReadOnlyList<string> GetLyricLines(string trackId)
+        {
+            if (_disposed || _library is null || !Guid.TryParse(trackId, out var id) || _library.GetTrackById(id) is not { } track)
+                return Array.Empty<string>();
+            // Marked as having no lyrics (GitHub #162): the lyrics page shows none of what lies
+            // around for it, so neither does a plugin.
+            if (track.NoLyrics) return Array.Empty<string>();
+            try
+            {
+                // What Lyrics Studio and the lyrics page read: .ttml/.elrc/.lrc beside the song, then the
+                // stored synced lyrics; else the plain lyrics. Nothing online.
+                IEnumerable<string> lines = Services.LyricsStudio.ExistingLyricsLoader.Load(track) is { } timed
+                    ? timed.Lines.Select(l => l.Text)
+                    : string.IsNullOrWhiteSpace(track.Lyrics) ? Array.Empty<string>() : LrcParser.SplitPlain(track.Lyrics);
+                var result = lines.Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
+                // "纯音乐，请欣赏" ("instrumental, please enjoy") is a source's notice, not lyrics (GitHub #162).
+                return LyricsSearchSelector.IsInstrumentalPlaceholder(string.Join('\n', result)) ? Array.Empty<string>() : result;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return Array.Empty<string>();
+            }
         }
 
         public IReadOnlyList<PlaylistInfo> GetPlaylists()

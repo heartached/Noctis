@@ -41,8 +41,15 @@ public class MobilePrivacyTextTests
         Assert.Contains("**Deezer, for artist photos.**", policy);
         Assert.Contains("https://www.deezer.com/legal/personal-datas", policy);
         Assert.Contains("https://www.last.fm/legal/privacy", policy);
-        Assert.Contains("It connects to three\nplaces.", policy);
-        Assert.Contains("artist photos, favourites", policy);                 // the backup list
+        foreach (var host in new[] { "lrclib.net", "api.listenbrainz.org", "ws.audioscrobbler.com" })
+            Assert.Contains(host, policy);
+        foreach (var url in new[] { ArtistLogoService.MusicBrainzUrl, ArtistLogoService.FanartUrl, ArtistLogoService.TheAudioDbUrl })
+            Assert.Contains(new Uri(url).Host, policy);
+        Assert.Contains("**LRCLIB, for lyrics.**", policy);
+        Assert.Contains("**Last.fm and ListenBrainz, only if you connect them.**", policy);
+        Assert.Contains("up to four titles", policy);                          // ArtistLogoService.VerifyTitleLimit
+        Assert.Equal(4, ArtistLogoService.VerifyTitleLimit);
+        Assert.Contains("artist photos, artist logos, lyrics found online, favourites", policy);                 // the backup list
     }
 
     /// <summary>The site's page (website/src/pages/privacy/android.astro in the Noctis-website

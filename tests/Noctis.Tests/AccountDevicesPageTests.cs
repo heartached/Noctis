@@ -175,7 +175,141 @@ public class AccountDevicesPageTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void SecurityCode_ShowsEightBytesALine_LikeThePhone()
+    public async Task ConnectAPhone_ShowsAOneTimeQr_ThatDiesWithThePanelTheTabAndTheServer()
+    {
+        Assert.SkipUnless(AccountFeatures.Enabled, "account features are parked (AccountFeatures off)");
+        Assert.SkipWhen(LanAddresses.ForPairing(WebRemoteServer.GetLocalAddress()).Count == 0, "no private LAN address on this machine");
+        var persistence = new PersistenceService(_root);
+        new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db")).Create("me@example.com", "correct horse", isAdmin: true);
+        await persistence.SaveSettingsAsync(new AppSettings { NoctisServerEnabled = true, NoctisServerPort = FreePort() });
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        try
+        {
+            await vm.LoadAsync();
+            await ServerSettled(vm);
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            Assert.False(vm.HasPairingQr);
+
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            Assert.Matches(@"^New code in [12]:\d\d$", vm.PairingQrCountdown);
+
+            // Enter manually: no code is live while it is off screen; back to the QR, a new one.
+            var shown = vm.PairingQr;
+            vm.ShowManualPairingCommand.Execute(null);
+            Assert.False(vm.HasPairingQr);
+            Assert.False(vm.ShowsQrUnavailable);
+            vm.ShowQrPairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            Assert.NotSame(shown, vm.PairingQr);
+
+            // Closing the panel takes the code away; reopening shows a new one.
+            vm.TogglePairingCommand.Execute(null);
+            Assert.False(vm.HasPairingQr);
+            Assert.Equal("", vm.PairingQrCountdown);
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+
+            // Leaving the tab folds the panel and kills the code.
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            Assert.False(vm.IsPairingVisible);
+            Assert.False(vm.HasPairingQr);
+
+            // Leaving Settings does too.
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            vm.OnSettingsLeft();
+            Assert.False(vm.HasPairingQr);
+
+            // So does the server going off.
+            vm.TogglePairingCommand.Execute(null);
+            Assert.True(vm.HasPairingQr);
+            vm.NoctisServerEnabled = false;
+            Assert.False(vm.HasPairingQr);
+        }
+        finally { await vm.StopNoctisServerAsync(); }
+    }
+
+    /// <summary>Owner 11-03: "Last synced" glided nowhere, it popped with the Sync switch; it now
+    /// sits in a CollapsibleContent like the page's other reveals, its icon a crisp 14px stroke.</summary>
+    [AvaloniaFact]
+    public void LastSynced_GlidesWithTheSyncSwitch_AndAdvancedStartsFolded()
+    {
+        var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
+        var view = new SettingsView { DataContext = vm };
+        var window = new Avalonia.Controls.Window { Width = 1000, Height = 900, Content = view };
+        window.Show();
+        try
+        {
+            var reveal = Avalonia.Controls.ControlExtensions.FindControl<Noctis.Controls.CollapsibleContent>(view, "LastSyncedReveal");
+            Assert.NotNull(reveal);
+            Assert.Equal("Glide", reveal!.Motion.ToString());
+            Assert.False(vm.IsPhoneAdvancedOpen);
+            vm.TogglePhoneAdvancedCommand.Execute(null);
+            Assert.True(vm.IsPhoneAdvancedOpen);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectAPhone_TheQrRenewsItselfBeforeItExpires()
+    {
+        Assert.SkipUnless(AccountFeatures.Enabled, "account features are parked (AccountFeatures off)");
+        Assert.SkipWhen(LanAddresses.ForPairing(WebRemoteServer.GetLocalAddress()).Count == 0, "no private LAN address on this machine");
+        var persistence = new PersistenceService(_root);
+        new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db")).Create("me@example.com", "correct horse", isAdmin: true);
+        await persistence.SaveSettingsAsync(new AppSettings { NoctisServerEnabled = true, NoctisServerPort = FreePort() });
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        try
+        {
+            await vm.LoadAsync();
+            await ServerSettled(vm);
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            vm.TogglePairingCommand.Execute(null);
+            var first = vm.PairingQr;
+            Assert.NotNull(first);
+
+            // Two minutes on: the countdown's tick replaces the code (and its bitmap).
+            vm.PairingClock = () => DateTime.UtcNow + PairingCodes.Lifetime;
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (ReferenceEquals(vm.PairingQr, first) && DateTime.UtcNow < deadline)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                await Task.Delay(50);
+            }
+            Assert.NotNull(vm.PairingQr);
+            Assert.NotSame(first, vm.PairingQr);
+        }
+        finally { await vm.StopNoctisServerAsync(); }
+    }
+
+    // 11-03 audit. HEAD: "Since November 2026" in every language (hard-coded English, OS month
+    // names), and with no account the line's name was bound through a null PrimaryAccount.
+    [AvaloniaFact]
+    public async Task IdentityLine_IsInTheAppLanguage_AndEmptyWithoutAnAccount()
+    {
+        var persistence = new PersistenceService(_root);
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+        Assert.Equal(("", ""), (vm.PrimaryAccountName, vm.PrimaryAccountSince));
+
+        new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db")).Create("me@example.com", "correct horse", isAdmin: true);
+        try
+        {
+            Noctis.Localization.Loc.Instance.SetCulture("ru");
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            Assert.Equal("me@example.com", vm.PrimaryAccountName);
+            var ru = System.Globalization.CultureInfo.GetCultureInfo("ru");
+            Assert.Equal("Создан: " + DateTime.UtcNow.ToLocalTime().ToString("MMMM yyyy", ru), vm.PrimaryAccountSince);
+        }
+        finally { Noctis.Localization.Loc.Instance.SetCulture("en"); }
+    }
+
+    [AvaloniaFact]
+    public void SecurityCode_ShowsFourDigitGroups_LikeThePhone()
     {
         var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
         var bytes = Enumerable.Range(0, 32).Select(i => i.ToString("X2")).ToArray();
@@ -183,8 +317,9 @@ public class AccountDevicesPageTests : IDisposable
 
         var lines = vm.NoctisServerFingerprintDisplay.Split('\n');
         Assert.Equal(4, lines.Length);
-        Assert.Equal("00:01:02:03:04:05:06:07", lines[0]);
-        Assert.Equal("18:19:1A:1B:1C:1D:1E:1F", lines[3]);
+        Assert.Equal("0001 0203 0405 0607", lines[0]);
+        Assert.Equal("1819 1A1B 1C1D 1E1F", lines[3]);
+        Assert.Equal(Noctis.Mobile.ViewModels.AccountPageViewModel.FormatFingerprint(vm.NoctisServerFingerprint), vm.NoctisServerFingerprintDisplay);
     }
 
     [AvaloniaFact]

@@ -204,6 +204,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Latest" xml:space="preserve"><value>Latest</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Installed" xml:space="preserve"><value>Installed</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ComingSoon" xml:space="preserve"><value>Coming soon</value><comment>Badge on parked Account &amp; Sync cards in SettingsView.axaml</comment></data>
+  <data name="Settings.BetaBadge" xml:space="preserve"><value>Beta</value><comment>Badge on the Account and Phone app cards in SettingsView.axaml</comment></data>
   <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve"><value>Session log for bug reports.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CopyLogs" xml:space="preserve"><value>Copy Logs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Clear" xml:space="preserve"><value>Clear</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1022,6 +1023,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Home.Plays" xml:space="preserve"><value>plays</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.TopArtists" xml:space="preserve"><value>Top Artists</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.Albums" xml:space="preserve"><value>Albums</value><comment>Home right-hand rail header (last played album)</comment></data>
+  <data name="Home.NewInLibrary" xml:space="preserve"><value>New in Library</value><comment>Home section header: newest albums by date added (GitHub #159)</comment></data>
+  <data name="Home.ShowCount" xml:space="preserve"><value>Show</value><comment>Home album row size pill, followed by the number ("Show 10")</comment></data>
+  <data name="Home.AlbumCountTip" xml:space="preserve"><value>How many albums this row shows</value><comment>Home album row size pill tooltip / accessible name</comment></data>
   <data name="Home.PlayTip" xml:space="preserve"><value>Play</value><comment>ToolTip.Tip in HomeView.axaml</comment></data>
   <data name="Home.HeavyRotation" xml:space="preserve"><value>Heavy rotation</value><comment>Text in HomeView.axaml</comment></data>
   <data name="Home.RepeatThesePastTwo" xml:space="preserve"><value>On repeat these past two weeks</value><comment>Text in HomeView.axaml</comment></data>
@@ -1213,6 +1217,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="LyricsColor.ArtworkHint" xml:space="preserve"><value>Follows each song's cover. Its motion is set in Settings, under Lyrics.</value><comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.VideoNote" xml:space="preserve"><value>A background video is on and shows over this background.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Search Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.MarkedNoLyrics" xml:space="preserve"><value>Marked as no lyrics</value><comment>LyricsView.axaml / LyricsPanelView.axaml: the song is marked as having no lyrics (GitHub #162)</comment></data>
+  <data name="Lyrics.UndoNoLyrics" xml:space="preserve"><value>Undo</value><comment>LyricsView.axaml: button taking the no-lyrics mark off</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Searching for Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="LyricsSearch.Title" xml:space="preserve"><value>Search Lyrics</value><comment>LyricsSearchDialog.axaml title</comment></data>
   <data name="LyricsSearch.Hint" xml:space="preserve"><value>Auto searches the sources on in Settings and prefers word-synced, then synced, then plain.</value><comment>Tooltip on the info icon and the source picker in LyricsSearchDialog.axaml</comment></data>
@@ -1222,6 +1228,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="LyricsSearch.TitleWatermark" xml:space="preserve"><value>Title</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Search" xml:space="preserve"><value>Search</value><comment>Button in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Use" xml:space="preserve"><value>Use Lyrics</value><comment>Primary button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.MarkNoLyrics" xml:space="preserve"><value>No Lyrics</value><comment>LyricsSearchDialog.axaml footer: mark the song as having no lyrics</comment></data>
+  <data name="LyricsSearch.UnmarkNoLyrics" xml:space="preserve"><value>Has Lyrics</value><comment>LyricsSearchDialog.axaml footer: take the no-lyrics mark off</comment></data>
   <data name="LyricsSearch.Best" xml:space="preserve"><value>Best</value><comment>Badge on the Auto pick in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.SelectToPreview" xml:space="preserve"><value>Pick a source to preview its lyrics.</value><comment>Empty preview in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Searching" xml:space="preserve"><value>Searching…</value><comment>Status in LyricsSearchViewModel</comment></data>
@@ -1301,6 +1309,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Main.Ascending" xml:space="preserve"><value>Ascending</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Newest Albums First</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>Descending</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.ResetSortToDateAdded" xml:space="preserve"><value>Reset to Date Added</value><comment>Songs Sort menu: back to the default order, newest additions first; shown while the sort button has its dot (GitHub #156)</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Options</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.AllSongs" xml:space="preserve"><value>All Songs</value><comment>Header in MainWindow.axaml</comment></data>
@@ -1551,8 +1560,6 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.NoArtwork" xml:space="preserve"><value>No Artwork</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AnimatedArtwork" xml:space="preserve"><value>Animated Artwork</value><comment>Header in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchAnimatedArtwork" xml:space="preserve"><value>Search Animated Artwork</value><comment>Text in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve"><value>Album name, or Apple Music URL</value><comment>Watermark in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve"><value>type an album name and press Enter, or paste an Apple Music link</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve"><value>Choose Animated Artwork</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.NoAnimatedArtwork" xml:space="preserve"><value>No Animated Artwork</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AnimSearchUnavailable" xml:space="preserve"><value>Search service unavailable.</value><comment>Animated artwork chooser (MetadataWindow.axaml / MetadataViewModel)</comment></data>
@@ -1818,6 +1825,8 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.SearchLyrics" xml:space="preserve"><value>Search Lyrics</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.LyricsPanel" xml:space="preserve"><value>Lyrics Panel</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.RemoveLyrics" xml:space="preserve"><value>Remove Lyrics</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.MarkNoLyrics" xml:space="preserve"><value>Mark as No Lyrics</value><comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment></data>
+  <data name="PlaybackBar.UnmarkNoLyrics" xml:space="preserve"><value>Unmark No Lyrics</value><comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment></data>
   <data name="PlaybackBar.ShowFolder" xml:space="preserve"><value>Show Folder</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SleepTimer" xml:space="preserve"><value>Sleep Timer</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Chapters" xml:space="preserve"><value>Chapters</value><comment>Submenu in the player bar's more menu (PlaybackBarView.axaml) listing the chapters of the playing audiobook (.m4b); a chapter jumps there</comment></data>
@@ -1967,6 +1976,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="ReplayGainScanner.Stop" xml:space="preserve"><value>Stop</value><comment>Cancel button while a scan runs, ReplayGainScannerDialog</comment></data>
   <data name="ReplayGainScanner.NoFfmpeg" xml:space="preserve"><value>ffmpeg not found — set the path in Settings → Advanced → Helper programs.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.TickOne" xml:space="preserve"><value>Tick at least one track to scan.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.AllTagged" xml:space="preserve"><value>Every song here already has ReplayGain. Tick one to scan it again.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Scanning" xml:space="preserve"><value>Scanning…</value><comment>Status in ReplayGainScannerViewModel</comment></data>
   <data name="ReplayGainScanner.Finished" xml:space="preserve"><value>Finished · {0} scanned</value><comment>Status in ReplayGainScannerViewModel; {0} tracks tagged</comment></data>
   <data name="ReplayGainScanner.FinishedFailed" xml:space="preserve"><value>{0} failed</value><comment>Status suffix in ReplayGainScannerViewModel; {0} tracks failed</comment></data>
@@ -2014,6 +2024,9 @@ Tags: title: artist: albumartist: album: genre: composer: year:
 Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
+  <data name="Sidebar.PLUGINS" xml:space="preserve"><value>PLUGINS</value><comment>Sidebar section header above the screens plugins add</comment></data>
+  <data name="Sidebar.HidePlugin" xml:space="preserve"><value>Hide from Sidebar</value><comment>Right-click menu of a plugin's sidebar entry</comment></data>
+  <data name="Sidebar.PluginSettings" xml:space="preserve"><value>Plugin Settings</value><comment>Right-click menu of a plugin's sidebar entry: opens its page in Settings</comment></data>
   <data name="Sidebar.RightClickNewPlaylistTip" xml:space="preserve"><value>Right-click for New Playlist</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylist" xml:space="preserve"><value>New Playlist…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewSmartPlaylist" xml:space="preserve"><value>New Smart Playlist…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -2243,7 +2256,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
   <data name="Plugins.OpenView" xml:space="preserve"><value>Open {0}</value></data>
-  <data name="Plugins.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Plugins.Remove" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Plugins.Permissions" xml:space="preserve"><value>Permissions</value></data>
   <data name="Plugins.NoPermissionsShort" xml:space="preserve"><value>None beyond seeing what is playing</value></data>
   <data name="Plugins.NoPermissions" xml:space="preserve"><value>Nothing beyond seeing what is playing</value></data>
@@ -2298,10 +2311,10 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.TurnOnTitle" xml:space="preserve"><value>Turn on community plugins?</value></data>
   <data name="Plugins.TurnOnBody" xml:space="preserve"><value>Community plugins are made by other people, not by Noctis. A plugin can do anything Noctis can on your computer, so only use ones from people you trust.</value></data>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve"><value>Turn on</value></data>
-  <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Remove {0}?</value></data>
-  <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's folder is deleted. Its data and settings are kept unless you turn on the switch below, so a reinstall picks up where it left off.</value></data>
+  <data name="Plugins.RemoveTitle" xml:space="preserve"><value>Uninstall {0}?</value></data>
+  <data name="Plugins.RemoveBody" xml:space="preserve"><value>The plugin's files are deleted. Its data and settings are kept unless you turn on the switch below, so installing it again picks up where it left off.</value></data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve"><value>Also delete its data and settings</value></data>
-  <data name="Plugins.Removed" xml:space="preserve"><value>Removed {0}.</value></data>
+  <data name="Plugins.Removed" xml:space="preserve"><value>Uninstalled {0}.</value></data>
   <data name="Plugins.RemoveFailed" xml:space="preserve"><value>Some files could not be deleted. Close Noctis and delete {0} by hand.</value></data>
   <data name="Plugins.UpdateTitle" xml:space="preserve"><value>Update {0} from {1} to {2}?</value></data>
   <data name="Plugins.UpdateBody" xml:space="preserve"><value>The plugin folder is replaced with the new version. Its data and settings are kept.</value></data>
@@ -2368,7 +2381,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Detail.More" xml:space="preserve"><value>More</value></data>
   <data name="Plugins.View.Back" xml:space="preserve"><value>Back to {0}</value></data>
   <data name="Plugins.View.PopOut" xml:space="preserve"><value>Open in its own window</value></data>
-  <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Remove plugin</value></data>
+  <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Uninstall plugin</value></data>
+  <data name="Plugins.Detail.ShowInSidebar" xml:space="preserve"><value>Show in sidebar</value><comment>Plugin page row: the plugin's screen gets a sidebar entry</comment></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Can {0}</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
   <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>control playback</value></data>
@@ -2539,6 +2553,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="AccountSync.Name" xml:space="preserve"><value>Name</value><comment>Create form watermark</comment></data>
   <data name="AccountSync.Password" xml:space="preserve"><value>Password (8+ characters)</value><comment>Create form watermark</comment></data>
   <data name="AccountSync.Create" xml:space="preserve"><value>Create</value><comment>Create form button</comment></data>
+  <data name="AccountSync.Since" xml:space="preserve"><value>Since {0}</value><comment>Under the profile name: when the account was made; {0} = month and year</comment></data>
   <data name="AccountSync.PairDevice" xml:space="preserve"><value>Connect a phone</value><comment>Account card button</comment></data>
   <data name="AccountSync.NewApiKey" xml:space="preserve"><value>New API key</value><comment>Account card button</comment></data>
   <data name="AccountSync.ChangePassword" xml:space="preserve"><value>Change password</value><comment>Account card button</comment></data>
@@ -2553,11 +2568,27 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Family and guests</value><comment>Other accounts card title</comment></data>
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Extra accounts that can sign in from their own devices.</value><comment>Other accounts card help</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>In the Noctis app on your phone, go to Settings, then Account. Enter this address and sign in with your email or username and password.</value><comment>Pairing block help above the address and fingerprint</comment></data>
+  <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>New code in {0}</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Anyone who scans this code can sign in to your account, so only show it to your own phone. It works once and changes every two minutes.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
+  <data name="AccountSync.PairQrName" xml:space="preserve"><value>Sign-in QR code</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
+  <data name="Pair.Subtitle" xml:space="preserve"><value>Sign in to Noctis on your phone in a few seconds.</value><comment>Phone app card, Connect a phone row subtitle</comment></data>
+  <data name="Pair.ModeQr" xml:space="preserve"><value>Scan QR code</value><comment>Connect a phone: switch segment for the QR code way</comment></data>
+  <data name="Pair.ModeManual" xml:space="preserve"><value>Enter manually</value><comment>Connect a phone: switch segment for typing the address and password</comment></data>
+  <data name="Pair.QrStep1" xml:space="preserve"><value>Open Noctis on your phone.</value><comment>Connect a phone, QR way, step 1</comment></data>
+  <data name="Pair.QrStep2" xml:space="preserve"><value>Go to Settings › Account and tap Scan QR Code.</value><comment>Connect a phone, QR way, step 2 (names the phone app screens and button)</comment></data>
+  <data name="Pair.QrStep3" xml:space="preserve"><value>Point the camera at this code.</value><comment>Connect a phone, QR way, step 3</comment></data>
+  <data name="Pair.ManualStep1" xml:space="preserve"><value>On your phone, open Noctis and go to Settings › Account.</value><comment>Connect a phone, manual way, step 1</comment></data>
+  <data name="Pair.ManualStep2" xml:space="preserve"><value>Under Enter manually, type this address:</value><comment>Connect a phone, manual way, step 2; the address follows below it</comment></data>
+  <data name="Pair.ManualStep3" xml:space="preserve"><value>Sign in with your account's email and password.</value><comment>Connect a phone, manual way, step 3</comment></data>
+  <data name="Pair.ManualStep4" xml:space="preserve"><value>Check that your phone shows this security code:</value><comment>Connect a phone, manual way, step 4; the security code follows below it</comment></data>
+  <data name="Pair.NewCode" xml:space="preserve"><value>New code</value><comment>Small link under the QR code: replace it with a new one now</comment></data>
+  <data name="Pair.QrUnavailable" xml:space="preserve"><value>The QR code can't be shown right now. Create your account above, or use Enter manually.</value><comment>Connect a phone, QR way, when no code can be shown</comment></data>
+  <data name="Phone.AdvancedDesc" xml:space="preserve"><value>This PC's name and access for other music apps.</value><comment>Phone app card, Advanced row subtitle (folded by default)</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>YOUR PHONES</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>No phone connected yet.</value><comment>Account card list empty state</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Sync with your phone</value><comment>Sync card title</comment></data>
-  <data name="Sync.Description" xml:space="preserve"><value>Favourites, ratings, play counts and playlists match on your phone and this PC.</value><comment>Sync card description</comment></data>
+  <data name="Sync.Description" xml:space="preserve"><value>Favourites, ratings, play counts and this PC's playlists match on your phone and this PC. Playlists you make on the phone stay on the phone.</value><comment>Sync card description</comment></data>
   <data name="Sync.DeviceName" xml:space="preserve"><value>Name of this PC</value><comment>Sync card row label</comment></data>
   <data name="Sync.WhatSyncs" xml:space="preserve"><value>Music files stay where they are. Needs Noctis Server to be on.</value><comment>Sync card footnote</comment></data>
 
@@ -2780,6 +2811,12 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.Section.Artwork" xml:space="preserve"><value>Artwork</value><comment>Settings section label</comment></data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve"><value>Heavy Rotation</value><comment>Appearance › Home toggle</comment></data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve"><value>Show the "On repeat these past two weeks" row on the Home page.</value><comment>Appearance › Home toggle description</comment></data>
+  <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>Recently Played Albums</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeRecentAlbumsCountDesc" xml:space="preserve"><value>How many of your most recently played albums the Albums row shows.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsCount" xml:space="preserve"><value>New in Library</value><comment>Appearance › Home picker</comment></data>
+  <data name="Settings.HomeNewAlbumsCountDesc" xml:space="preserve"><value>How many of your newest albums by date added Home shows, played or not.</value><comment>Appearance › Home picker description</comment></data>
+  <data name="Settings.HomeNewAlbumsFirst" xml:space="preserve"><value>New in Library First</value><comment>Appearance › Home toggle</comment></data>
+  <data name="Settings.HomeNewAlbumsFirstDesc" xml:space="preserve"><value>Show New in Library above the recently played albums.</value><comment>Appearance › Home toggle description</comment></data>
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Taskbar</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Player island</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Mini player</value><comment>Settings section label</comment></data>
@@ -3054,6 +3091,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Main.AlbumView" xml:space="preserve"><value>View</value><comment>Albums page top-right view menu tooltip</comment></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Grid</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Carousel</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Now Playing Cover Flow</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>List</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Cover</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>CD Jewel Case</value><comment>Albums view menu: carousel case style</comment></data>
@@ -3066,4 +3104,47 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Columns.Reset" xml:space="preserve"><value>Reset Columns</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Resize {0} column</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
   <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
+  <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Import Play Counts</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
+  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Copy your play counts into Noctis. Nothing is sent back.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
+  <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Import</value><comment>Settings › Integrations: starts the play count import</comment></data>
+  <data name="Settings.PlayCountImport.Cancel" xml:space="preserve"><value>Cancel</value><comment>Settings › Integrations: stops a running play count import</comment></data>
+  <data name="Settings.PlayCountImport.ModeName" xml:space="preserve"><value>When the counts differ</value><comment>Screen-reader name of the play count import mode list</comment></data>
+  <data name="Settings.PlayCountImport.Mode.KeepHigher" xml:space="preserve"><value>Keep the higher count</value><comment>Play count import mode (default): the higher of Noctis's and the imported count</comment></data>
+  <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>Use the imported count</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
+  <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>Starting…</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Reading listening history… {0} plays</value><comment>Play count import progress; {0} = plays read so far</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Reading listening history… {0} of {1} plays</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>Matching songs in your library…</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>Done. {0} songs updated · {1} matched · {2} not in your library</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
+  <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>Import cancelled. Nothing was changed.</value><comment>Play count import status</comment></data>
+  <data name="Settings.PlayCountImport.NotConnected" xml:space="preserve"><value>Connect {0} first.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.UserNotFound" xml:space="preserve"><value>{0} doesn't know this account.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>This {0} listening history is private.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Couldn't reach {0}. Try again later.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} sent an unexpected reply. Try again later.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Features.Section" xml:space="preserve"><value>Built-in Features</value><comment>Plugins page: section title above the switches for features that ship with Noctis</comment></data>
+  <data name="Features.SectionLine" xml:space="preserve"><value>Part of Noctis and on from the start, like plugins you can switch off. Turned back on, each comes back as you left it.</value><comment>Plugins page: line under the Built-in Features title</comment></data>
+  <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Mini Player</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.MiniPlayer.Line" xml:space="preserve"><value>The small always-on-top player: its button, the artwork click and the shortcut.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AnimatedArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AnimatedArtwork.Line" xml:space="preserve"><value>Moving album covers on the Now Playing, lyrics and album pages.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AlbumCarousel.Title" xml:space="preserve"><value>Album Carousel</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.AlbumCarousel.Line" xml:space="preserve"><value>Browse albums one at a time, as covers, jewel cases, vinyl or cassettes.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Visualizer.Title" xml:space="preserve"><value>Audio Visualizer</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Visualizer.Line" xml:space="preserve"><value>The Visualizer page and the spectrum behind the lyrics.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.NewBadge.Title" xml:space="preserve"><value>NEW Badge</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.NewBadge.Line" xml:space="preserve"><value>Marks songs added to a playlist in the last 7 days.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Inbox.Title" xml:space="preserve"><value>Inbox for New Music</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Inbox.Line" xml:space="preserve"><value>New songs wait in the Inbox until you add them to your library.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Discord.Title" xml:space="preserve"><value>Discord Rich Presence</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Discord.Line" xml:space="preserve"><value>Show what you are listening to on your Discord profile.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Scrobbling.Title" xml:space="preserve"><value>Scrobbling</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Scrobbling.Line" xml:space="preserve"><value>Send your plays to Last.fm and ListenBrainz.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.Scrobbling.NeedsAccount" xml:space="preserve"><value>Connect Last.fm or ListenBrainz in Integrations first.</value><comment>Settings › Plugins › Built-in Features: line while no scrobbling account is connected (the switch is disabled)</comment></data>
+  <data name="Features.PlaylistSideRail.Title" xml:space="preserve"><value>Featured Artists &amp; Suggestions</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Features.PlaylistSideRail.Line" xml:space="preserve"><value>The panel on the right of a playlist with its artists and suggested songs.</value><comment>Settings › Plugins › Built-in Features</comment></data>
+  <data name="Settings.PlaylistSideRail" xml:space="preserve"><value>Featured Artists &amp; Suggestions</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
+  <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Show the panel with the playlist's artists and suggested songs on the right.</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
+  <data name="Playlist.HideSideRail" xml:space="preserve"><value>Hide Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: hides the right-hand panel</comment></data>
+  <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Show Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: shows the right-hand panel again</comment></data>
 </root>

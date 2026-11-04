@@ -15,6 +15,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
+using Noctis.Models;
 using Noctis.Services;
 using Xunit;
 
@@ -522,6 +523,12 @@ public class MobileSettingsTests
             Assert.False(MobileFixtures.Named<Button>(page, "BackButton").IsVisible);
             Assert.False(MobileFixtures.Named<Button>(page, "AccountRow").IsVisible);     // no account service in this rig
             Assert.True(MobileFixtures.Named<Border>(page, "StatsStrip").IsEffectivelyVisible);
+            // No account, no downloads: Albums and Artists stand in for Downloaded and On Phone.
+            Assert.True(MobileFixtures.Named<TextBlock>(page, "AlbumsStatLabel").IsEffectivelyVisible);
+            Assert.True(MobileFixtures.Named<TextBlock>(page, "ArtistsStatLabel").IsEffectivelyVisible);
+            Assert.False(MobileFixtures.Named<TextBlock>(page, "DownloadedStatLabel").IsEffectivelyVisible);
+            Assert.False(MobileFixtures.Named<TextBlock>(page, "OnPhoneStatLabel").IsEffectivelyVisible);
+            Assert.Equal(rig.Shell.Library.AlbumCount.ToString("N0"), vm.AlbumsStat);
             Assert.Equal(new[] { "Appearance", "Library", "Listening", "Help", "About" },
                 visible.OfType<TextBlock>().Where(t => t.Classes.Contains("group-caption")).Select(t => t.Text));
 
@@ -530,7 +537,7 @@ public class MobileSettingsTests
                          ("BackgroundRow", "Background"), ("ThemeRow", "Theme"), ("AccentRow", "Accent"), ("PlayerBarRow", "Player Bar"),
                          ("FoldersRow", "Music Folders"), ("RescanButton", "Rescan Library"),
                          ("LyricsRow", "Lyrics"), ("ScrobblingRow", "Scrobbling"), ("HistoryRow", "Listening History"),
-                         ("ReportRow", "Report a Problem"), ("ExportLogsButton", "Export Logs"), ("WebsiteRow", "Noctis Website"),
+                         ("ReportRow", "Report a Problem"), ("ExportLogsButton", "Export Logs"), ("WebsiteRow", "Noctis Website"), ("PrivacyRow", "Privacy Policy"),
                      })
             {
                 var row = MobileFixtures.Named<Button>(page, name);
@@ -576,14 +583,14 @@ public class MobileSettingsTests
             Assert.Equal("Plain", MobileFixtures.Named<TextBlock>(page, "PlayerBarValueLabel").Text);
             Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "BackgroundValueLabel").Text);
             Assert.Equal("Off", MobileFixtures.Named<TextBlock>(page, "ScrobblingValueLabel").Text);
-            Assert.Equal("Translations, Romanization", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
+            Assert.Equal("Both on", MobileFixtures.Named<TextBlock>(page, "LyricsValueLabel").Text);
             Assert.Equal("Theme, System", NameOf("ThemeRow"));
             Assert.Equal("Accent, Crimson", NameOf("AccentRow"));
             Assert.Equal("Player Bar, Plain", NameOf("PlayerBarRow"));
             Assert.Equal("Background, Off", NameOf("BackgroundRow"));
             Assert.Equal("Scrobbling, Off", NameOf("ScrobblingRow"));
             Assert.Equal("Listening History", NameOf("HistoryRow"));               // no summary, no comma
-            Assert.Equal("Lyrics, Translations, Romanization", NameOf("LyricsRow"));
+            Assert.Equal("Lyrics, Both on", NameOf("LyricsRow"));
             Assert.Equal("Export Logs, Keys and passwords removed", NameOf("ExportLogsButton"));
             Assert.StartsWith("Rescan Library, ", NameOf("RescanButton"));
 
@@ -719,11 +726,11 @@ public class MobileSettingsTests
                 Settle(window);
                 lines.AddRange(page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("row-separator") && b.IsEffectivelyVisible));
             }
-            // 10 on the top level (3 Appearance, 1 Library with Downloads away, 2 Listening, 2 Help,
+            // 11 on the top level (3 Appearance, 1 Library with Downloads away, 2 Listening, 3 Help,
             // 2 About), 1 between two folders, none on Accent, 1 between the Player Bar's two
             // switches, 3 in Lyrics (two between its three switches, one between its two
             // sliders): none above a list's first row.
-            Assert.Equal(15, lines.Count);
+            Assert.Equal(16, lines.Count);
             Assert.All(lines, line =>
             {
                 var card = line.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("group-card"));
@@ -855,6 +862,41 @@ public class MobileSettingsTests
             window.Close();
             app.Resources.MergedDictionaries.Remove(icons);
         }
+    }
+
+    /// <summary>
+    /// Bug: removing a folder gives up the phone's access to it, but its songs stayed in the queue.
+    /// Each one then failed in turn with "Noctis lost access to this song's folder. Add the folder
+    /// again", until five in a row stopped playback. They leave the queue with the folder now.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Settings_RemovingAFolder_TakesItsSongsOutOfTheQueue()
+    {
+        Track In(string root, string name) => new()
+        {
+            Id = Guid.NewGuid(), Title = name, Duration = TimeSpan.FromSeconds(90),
+            FilePath = root + "/document/" + Uri.EscapeDataString("primary:Music/" + name),
+        };
+        var keep = new[] { In(Beats, "b1"), In(Beats, "b2") };
+        var gone = new[] { In(Tones, "t1"), In(Tones, "t2") };
+        using var rig = MobileFixtures.MakeRig(new[] { keep[0], gone[0], keep[1], gone[1] }, seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MusicFolders.AddRange(new[] { Tones, Beats });
+            await p.SaveSettingsAsync(s);
+        });
+        var player = rig.Shell.Player;
+        player.PlayTracks(new[] { keep[0], gone[0], keep[1], gone[1] }, 0);
+
+        rig.Shell.OpenSettingsCommand.Execute(null);
+        var vm = (SettingsPageViewModel)rig.Shell.CurrentPage!;
+        await vm.Loaded;
+        vm.AskRemoveFolderCommand.Execute(vm.FolderRows.Single(r => r.Root == Tones));
+        await rig.Shell.Prompt!.Actions[0].RunCommand.ExecuteAsync(null);
+
+        Assert.Same(keep[0], player.CurrentTrack);
+        Assert.True(player.IsPlaying);
+        Assert.Equal(new[] { keep[1] }, player.UpNext);
     }
 
     /// <summary>Rescan Library is one accent row on the top level. With no folder it is greyed,
@@ -1085,7 +1127,8 @@ public class MobileSettingsTests
         var page = await OpenSettings(ShellWithAccount(rig, null, links));
         page.ReportProblemCommand.Execute(null);
         page.OpenWebsiteCommand.Execute(null);
-        Assert.Equal(new[] { "https://github.com/heartached/Noctis/issues/new", "https://noctisapp.cc/" }, links.Opened);
+        page.OpenPrivacyPolicyCommand.Execute(null);
+        Assert.Equal(new[] { "https://github.com/heartached/Noctis/issues/new", "https://noctisapp.cc/", "https://noctisapp.cc/privacy/android" }, links.Opened);
     }
 
     /// <summary>About: What's New and Open-Source Licenses have content; the licences name the

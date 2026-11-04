@@ -376,23 +376,15 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Owner 10-29: on release builds the plugins listed in Noctis (official and community) can
-    /// only be switched on and off; only a plugin the user added from a file or the folder can be
-    /// removed there. Debug (dev) builds remove anything. Tests set it.
+    /// Uninstall, for every installed plugin, official and community alike (Discord "Plugins
+    /// feedback" 11-03: release builds could only switch the listed ones off). Its views close
+    /// (Stop withdraws them), its folder goes; data stays unless the switch says otherwise, and
+    /// a listed plugin can be installed again from its page.
     /// </summary>
-    public bool PluginRemovalAllowed { get; internal set; } =
-#if DEBUG
-        true;
-#else
-        false;
-#endif
-
     [RelayCommand]
     private async Task RemovePluginAsync(LoadedPlugin? plugin)
     {
-        if (Plugins is null || plugin is null) return;
-        // A listed plugin (any listing's installed copy) stays unless this is a dev build.
-        if (!PluginRemovalAllowed && OfficialPlugins.Any(o => ReferenceEquals(o.Installed, plugin))) return;
+        if (Plugins is null || plugin is null || !Plugins.Plugins.Contains(plugin)) return;
         var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Plugins.RemoveBody"),
             Title: Loc.T("Plugins.RemoveTitle", plugin.Name),
@@ -474,6 +466,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedTabTitle));
         OnPropertyChanged(nameof(SelectedTabDescription));
         OnFeatureTabOpened(value);
+        // The pairing QR lives only on its own tab: leaving folds the panel and kills the code.
+        if (value != TabAccountDevices) IsPairingVisible = false;
         if (value == TabPlugins) OnPluginsPageOpened();
 
         // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
@@ -1252,6 +1246,11 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedQueueLine2Option));
         OnPropertyChanged(nameof(SelectedQueueLine2ExtraOption));
         OnPropertyChanged(nameof(SelectedQueueRightOption));
+        // Slider readouts and notes built with Loc.T: raised only when their source moved,
+        // so "Off" / "Center" stayed in the old language until the slider was touched.
+        OnPropertyChanged(nameof(BackgroundBlurLabel));
+        OnPropertyChanged(nameof(AudioBalanceLabel));
+        RefreshChannelMixAvailability();
         // Endpoint list is live, but its labels (default marker, disconnected row)
         // are localized — rebuild it with the same selection.
         RebuildOutputDeviceOptions(_selectedOutputDeviceId);
@@ -1555,6 +1554,19 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnHomeShowHeavyRotationChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeRediscoveredExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
+    // GitHub #159: Home's album row sizes and order (Appearance › Home, and each row's own pill).
+    [ObservableProperty] private int _homeRecentAlbumsCount = 6;
+    [ObservableProperty] private int _homeNewAlbumsCount = 10;
+    [ObservableProperty] private bool _homeNewAlbumsExpanded = true;
+    [ObservableProperty] private bool _homeNewAlbumsFirst;
+
+    public IReadOnlyList<int> HomeAlbumCountChoices => AppSettings.HomeAlbumCountChoices;
+
+    partial void OnHomeRecentAlbumsCountChanged(int value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeNewAlbumsCountChanged(int value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeNewAlbumsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeNewAlbumsFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
     // ── Noctis server (OpenSubsonic API for phones / other clients) ──
 
     private NoctisServer? _noctisServer;
@@ -1568,10 +1580,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsPhoneCardOpen))] private string _noctisServerUrl = string.Empty;
     /// <summary>SHA-256 fingerprint of the server certificate — what a phone pins when it accepts the self-signed cert.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(NoctisServerFingerprintDisplay))] private string _noctisServerFingerprint = string.Empty;
-    /// <summary>Eight bytes to a line, the way the phone shows it, so the two read line by line
-    /// (wrapped to the card's width it broke inside a byte: "57:1" / "6:CC").</summary>
-    public string NoctisServerFingerprintDisplay =>
-        string.Join("\n", NoctisServerFingerprint.Split(':').Chunk(8).Select(line => string.Join(":", line)));
+    /// <summary>Four lines of four-digit groups, exactly as the phone shows it (SecurityCode), so
+    /// the two read line by line without a wall of colons.</summary>
+    public string NoctisServerFingerprintDisplay => SecurityCode.Format(NoctisServerFingerprint);
     [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _noctisServerQr;
     [ObservableProperty] private bool _noctisServerStartFailed;
     [ObservableProperty] private string _noctisServerError = string.Empty;
@@ -1616,6 +1627,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         // Cleared straight (the account removed, the tab left): the panel closes with it.
         IsIssuedApiKeyOpen = value.Length > 0;
+        // The key shows in the phone card's Advanced row: open it, or the key would be folded away.
+        if (value.Length > 0) IsPhoneAdvancedOpen = true;
         IsIssuedApiKeyRevealed = false;
         IssuedApiKeyCopied = false;
         OnPropertyChanged(nameof(HasIssuedApiKey));
@@ -1670,6 +1683,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (!NoctisServerEnabled)
             {
+                StopPairingQr();
                 if (_noctisServer is not null) await _noctisServer.StopAsync();
                 NoctisServerUrl = string.Empty;
                 NoctisServerStartFailed = false;
@@ -1721,6 +1735,7 @@ public partial class SettingsViewModel : ViewModelBase
                 };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
                 _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevices);
+                _noctisServer.PairingCodeUsed += (_, _) => Dispatcher.UIThread.Post(OnPairingCodeUsed);
             }
             if (!_noctisServer.IsRunning)
             {
@@ -1734,9 +1749,12 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerStartFailed = false;
             NoctisServerError = string.Empty;
             SetNoctisServerQr(QrCodeBitmap.TryRender(NoctisServerUrl));
+            // A restart (new port) killed the old code; the panel open shows one for this run.
+            RefreshPairingQr();
         }
         catch (Exception ex)
         {
+            StopPairingQr();
             NoctisServerStartFailed = true;
             NoctisServerError = ex.Message;
             NoctisServerUrl = string.Empty;
@@ -2649,7 +2667,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmStatusText = "Not connected";
 
     // ── ListenBrainz ──
-    [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
+    [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
     [ObservableProperty] private string _listenBrainzToken = "";
     [ObservableProperty] private string _listenBrainzUsername = "";
     [ObservableProperty]
@@ -3117,7 +3135,19 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetLoonClient(LoonClient loon) => _loon = loon;
 
     /// <summary>Sets the Last.fm service reference.</summary>
-    public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
+    public void SetLastFm(ILastFmService lastFm)
+    {
+        _lastFm = lastFm;
+        // A session restored from settings.json with no saved name (seen 11-03: key kept, name
+        // empty) read "connected" with no ACCOUNT line; take the name the session check finds.
+        lastFm.UsernameResolved += (_, name) => Dispatcher.UIThread.Post(() =>
+        {
+            if (!IsLastFmConnected || LastFmUsername == name) return;
+            LastFmUsername = name;
+            LastFmStatusText = $"Connected as {name}";
+            _ = SaveAsync();
+        });
+    }
     public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
 
     // ── TIDAL (playlist import sign-in) ───────────────────────
@@ -3395,6 +3425,10 @@ public partial class SettingsViewModel : ViewModelBase
             HomeRediscoveredExpanded = _settings.HomeRediscoveredExpanded;
             HomeLastPlayedExpanded = _settings.HomeLastPlayedExpanded;
             HomeShowHeavyRotation = _settings.HomeShowHeavyRotation;
+            HomeRecentAlbumsCount = AppSettings.SnapHomeAlbumCount(_settings.HomeRecentAlbumsCount);
+            HomeNewAlbumsCount = AppSettings.SnapHomeAlbumCount(_settings.HomeNewAlbumsCount);
+            HomeNewAlbumsExpanded = _settings.HomeNewAlbumsExpanded;
+            HomeNewAlbumsFirst = _settings.HomeNewAlbumsFirst;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             BackgroundBlurAmount = Math.Clamp(_settings.BackgroundBlurAmount, 0, 1);
             Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(BackgroundBlurAmount);
@@ -3459,6 +3493,7 @@ public partial class SettingsViewModel : ViewModelBase
             UnisonEnabled = _settings.UnisonEnabled;
             YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
+            LoadBuiltInFeatureSettings();
 
             // Equalizer
             _suppressEqNotify = true;
@@ -3684,6 +3719,7 @@ public partial class SettingsViewModel : ViewModelBase
         // plugin settings, the community-plugins switch). Pulling them back from disk
         // before the save undid every plugin toggle.
         nameof(AppSettings.DisabledPlugins),
+        nameof(AppSettings.SidebarHiddenPlugins),
         nameof(AppSettings.CommunityPluginsEnabled),
         nameof(AppSettings.PluginPermissionGrants),
         nameof(AppSettings.PluginSettingValues),
@@ -3905,6 +3941,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeRediscoveredExpanded = HomeRediscoveredExpanded;
         _settings.HomeLastPlayedExpanded = HomeLastPlayedExpanded;
         _settings.HomeShowHeavyRotation = HomeShowHeavyRotation;
+        _settings.HomeRecentAlbumsCount = AppSettings.SnapHomeAlbumCount(HomeRecentAlbumsCount);
+        _settings.HomeNewAlbumsCount = AppSettings.SnapHomeAlbumCount(HomeNewAlbumsCount);
+        _settings.HomeNewAlbumsExpanded = HomeNewAlbumsExpanded;
+        _settings.HomeNewAlbumsFirst = HomeNewAlbumsFirst;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.BackgroundBlurAmount = Math.Clamp(BackgroundBlurAmount, 0, 1);
         _settings.UiScalePercent = AppSettings.SnapUiScale(UiScalePercent);
@@ -3946,6 +3986,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.QueuePanelWidth = QueuePanelMetrics.Clamp(QueuePanelWidth);
         _settings.AllowExplicitContent = AllowExplicitContent;
         SaveFeatureSettings();
+        SaveBuiltInFeatureSettings();
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.AutoReplayGainScanEnabled = AutoReplayGainScanEnabled;
@@ -4166,7 +4207,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowEqualizer = PlaybackBarShowEqualizer;
         _player.IslandShowRepeat = PlaybackBarShowRepeat;
         _player.IslandShowFavorite = PlaybackBarShowFavorite;
-        _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer;
+        _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -4181,7 +4222,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsDriftMovement = LyricsDriftMovement;
         _player.LyricsDriftSaturation = LyricsDriftSaturation;
         _player.LyricsDriftBlur = LyricsDriftBlur;
-        _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
+        _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled && VisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
         _player.SetLyricsBackgroundSources(LyricsBackgroundMediaPath ?? string.Empty,
@@ -7003,7 +7044,6 @@ public partial class SettingsViewModel : ViewModelBase
         int losslessCount = 0;
         int hiResCount = 0;
         int likedCount = 0;
-        var tracksById = new Dictionary<Guid, Track>(tracks.Count);
         foreach (var t in tracks)
         {
             totalBytes += t.FileSize;
@@ -7011,12 +7051,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
             if (t.IsFavorite) likedCount++;
-            tracksById[t.Id] = t;
         }
-
-        // Listening time / average reflect what was actually played (skips excluded),
-        // computed from the play log — see ListeningStatsCalculator.
-        var listening = ListeningStatsCalculator.Compute(events, tracksById);
 
         // Plays, time listened and the top lists come from the same all-time report as the
         // Statistics page and the Wrap (the play log, each play placed on its library track,
@@ -7035,11 +7070,10 @@ public partial class SettingsViewModel : ViewModelBase
             TotalListeningTime: FormatDuration(TimeSpan.FromTicks(totalDurationTicks)),
             TotalPlays: FormatCount(report.Plays),
             TimeListened: FormatDuration(TimeSpan.FromTicks(report.ListenedTicks)),
-            AvgTrackLength: listening.AvgListenedTrackLengthTicks > 0
-                ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
-                : tracks.Count > 0
-                    ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
-                    : "0:00",
+            // The library's average, like the Statistics page's tile of the same name. It was
+            // the average logged play, where a play of a song no longer in the library counts
+            // as 3.5 min (ListeningStatsCalculator), so the two tiles disagreed.
+            AvgTrackLength: tracks.Count > 0 ? FormatClock(TimeSpan.FromTicks(totalDurationTicks / tracks.Count)) : "0:00",
             LikedTracks: likedCount,
             LosslessCount: losslessCount,
             LossyCount: tracks.Count - losslessCount,
@@ -7098,6 +7132,10 @@ public partial class SettingsViewModel : ViewModelBase
         for (var i = 0; i < items.Count; i++)
             items[i].Rank = i + 1;
     }
+
+    /// <summary>"4:00", or "1:15:00" from an hour up (m\:ss alone dropped the hours).</summary>
+    private static string FormatClock(TimeSpan span) =>
+        span.TotalHours >= 1 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
 
     private static string FormatCount(long count)
     {
@@ -7564,9 +7602,9 @@ public partial class SettingsViewModel : ViewModelBase
         await RefreshPlaylistCountAsync();
         ResetConfirmDetail = TotalPlaylists switch
         {
-            0 => "This clears your library, queue, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
-            1 => "This permanently deletes 1 playlist, and clears your library, queue, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
-            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, playlist covers, cached lyrics and artwork. Every setting returns to its default."
+            0 => "This clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
+            1 => "This permanently deletes 1 playlist, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
+            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default."
         };
         IsResetConfirmVisible = true;
     }
@@ -7582,167 +7620,14 @@ public partial class SettingsViewModel : ViewModelBase
     {
         IsResetConfirmVisible = false;
 
-        // Clear library, playlists, queue
-        try
-        {
-            await _library.ClearAsync();
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear library: {ex.Message}");
-        }
-
-        try
-        {
-            await _persistence.SavePlaylistsAsync(new List<Playlist>());
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear playlists: {ex.Message}");
-        }
-
-        try
-        {
-            await _persistence.SaveQueueStateAsync(new QueueState());
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear queue state: {ex.Message}");
-        }
-
-        // Clear artwork cache (albums + artists). Task.Run for every recursive
-        // delete below: they run back-to-back on the UI context and blocked the
-        // dispatcher for their whole duration on large libraries or slow disks.
-        try
-        {
-            var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(artworkDir))
-                {
-                    Directory.Delete(artworkDir, true);
-                    Directory.CreateDirectory(artworkDir);
-                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-                }
-            });
-            _dirSizeCache.TryRemove(artworkDir, out _);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear artwork cache: {ex.Message}");
-        }
-
-        // Clear lyrics cache
-        try
-        {
-            var lyricsDir = Path.Combine(Helpers.AppPaths.DataRoot, "lyrics_cache");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(lyricsDir))
-                {
-                    Directory.Delete(lyricsDir, true);
-                    Directory.CreateDirectory(lyricsDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear lyrics cache: {ex.Message}");
-        }
-
-        // Clear playlist covers
-        try
-        {
-            var coversDir = Path.Combine(_persistence.DataDirectory, "playlist_covers");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(coversDir))
-                {
-                    Directory.Delete(coversDir, true);
-                    Directory.CreateDirectory(coversDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear playlist covers: {ex.Message}");
-        }
-
-        // Clear offline / streaming cache
-        try
-        {
-            var cacheDir = Path.Combine(_persistence.DataDirectory, "cache");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(cacheDir))
-                {
-                    Directory.Delete(cacheDir, true);
-                    Directory.CreateDirectory(cacheDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear offline cache: {ex.Message}");
-        }
-
-        // Clear audit trail
-        try
-        {
-            var auditDir = Path.Combine(_persistence.DataDirectory, "audit");
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(auditDir))
-                {
-                    Directory.Delete(auditDir, true);
-                    Directory.CreateDirectory(auditDir);
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear audit trail: {ex.Message}");
-        }
-
-        // Clear crash log
-        try
-        {
-            var crashPath = Path.Combine(_persistence.DataDirectory, "crash.log");
-            if (File.Exists(crashPath))
-                File.Delete(crashPath);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear crash log: {ex.Message}");
-        }
-
-        // Preserved crash-session logs go with it.
-        CrashJournal.ClearPreserved();
-
-        // Clear index cache
-        try
-        {
-            var indexPath = Path.Combine(_persistence.DataDirectory, "indexes.json");
-            if (File.Exists(indexPath))
-                File.Delete(indexPath);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to clear index cache: {ex.Message}");
-        }
+        // Library, playlists, queue, listening history, caches and ledgers: see SettingsViewModel.Reset.cs.
+        await ClearSavedDataAsync();
 
         // Reset settings to defaults and save. The plugins folder survives the reset, so the
         // community-plugins switch is decided (restricted) rather than left null, which the
         // plugin host treats as a pre-switch install and approves every plugin it finds.
         var defaultSettings = new AppSettings { CommunityPluginsEnabled = false };
-        try
-        {
-            await _persistence.SaveSettingsAsync(defaultSettings);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
-        }
+        await WriteDefaultSettingsAsync(defaultSettings);
 
         // Launch-at-login is an OS-level registration, not a settings field — a reset
         // that leaves it enabled means the app keeps starting itself after the user
@@ -7754,6 +7639,7 @@ public partial class SettingsViewModel : ViewModelBase
         finally { _suppressLaunchAtStartupHandler = false; }
 
         ResetSettingsToDefaults(defaultSettings);
+        await ClearSavedDataAfterSettingsResetAsync();
 
         SetScanStatus("All settings and data have been reset.", autoClear: true);
         RefreshLibraryStats();
@@ -7761,6 +7647,29 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshStorageInfo();
 
         SettingsReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Writes the reset's defaults under the save lock. A save already running (a toggle's
+    /// fire-and-forget SaveAsync) merged the old file and would otherwise land after the
+    /// defaults, so every field this view-model does not own (phone appearance, lyrics
+    /// background, ...) came back from before the reset.
+    /// </summary>
+    internal async Task WriteDefaultSettingsAsync(AppSettings defaultSettings)
+    {
+        await _saveLock.WaitAsync();
+        try
+        {
+            await _persistence.SaveSettingsAsync(defaultSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
+        }
+        finally
+        {
+            _saveLock.Release();
+        }
     }
 
     /// <summary>
@@ -7841,6 +7750,9 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumPageTintWholePage = defaultSettings.AlbumPageTintWholePage;
             AlbumPageTintWholeWindow = defaultSettings.AlbumPageTintWholeWindow;
             HomeShowHeavyRotation = defaultSettings.HomeShowHeavyRotation;
+            HomeRecentAlbumsCount = defaultSettings.HomeRecentAlbumsCount;
+            HomeNewAlbumsCount = defaultSettings.HomeNewAlbumsCount;
+            HomeNewAlbumsFirst = defaultSettings.HomeNewAlbumsFirst;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;
             MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
@@ -7930,6 +7842,35 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistListColumnOrder = defaultSettings.ArtistListColumnOrder;
             ArtistListColumnWidths = defaultSettings.ArtistListColumnWidths;
             ArtistListHiddenColumns = defaultSettings.ArtistListHiddenColumns;
+            // Page view state (sorts, layouts, folded sections): SyncToSettings writes these
+            // back too, so a reset left them as they were. ViewStateLoaded below hands the
+            // defaults to the pages, as at launch.
+            SongsSortColumn = defaultSettings.SongsSortColumn;
+            SongsSortAscending = defaultSettings.SongsSortAscending;
+            SongsShowOnlyFavorites = defaultSettings.SongsShowOnlyFavorites;
+            AlbumSortMode = defaultSettings.AlbumSortMode;
+            AlbumViewMode = defaultSettings.AlbumViewMode;
+            ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
+            AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
+            AlbumSortAscending = defaultSettings.AlbumSortAscending;
+            AlbumSortNewestFirst = defaultSettings.AlbumSortNewestFirst;
+            AlbumReleaseTypeFilter = defaultSettings.AlbumReleaseTypeFilter;
+            ArtistSortMode = defaultSettings.ArtistSortMode;
+            ArtistSortAscending = defaultSettings.ArtistSortAscending;
+            ArtistViewMode = defaultSettings.ArtistViewMode;
+            FoldersSortMode = defaultSettings.FoldersSortMode;
+            ArtistReleaseSortMode = defaultSettings.ArtistReleaseSortMode;
+            ArtistSimilarExpanded = defaultSettings.ArtistSimilarExpanded;
+            AlbumOtherVersionsExpanded = defaultSettings.AlbumOtherVersionsExpanded;
+            AlbumMoreByExpanded = defaultSettings.AlbumMoreByExpanded;
+            HomeTopSongsExpanded = defaultSettings.HomeTopSongsExpanded;
+            HomeTopArtistsExpanded = defaultSettings.HomeTopArtistsExpanded;
+            HomeRecentlyPlayedExpanded = defaultSettings.HomeRecentlyPlayedExpanded;
+            HomeTimeRotationExpanded = defaultSettings.HomeTimeRotationExpanded;
+            HomeHeavyRotationExpanded = defaultSettings.HomeHeavyRotationExpanded;
+            HomeRediscoveredExpanded = defaultSettings.HomeRediscoveredExpanded;
+            HomeLastPlayedExpanded = defaultSettings.HomeLastPlayedExpanded;
+            HomeNewAlbumsExpanded = defaultSettings.HomeNewAlbumsExpanded;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
@@ -7977,6 +7918,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Upmix, sync and Lyrics Studio: re-read from the defaulted
             // _settings the same way LoadAsync does (ApplyAudioSettings below pushes upmix).
             LoadFeatureSettings();
+            LoadBuiltInFeatureSettings();
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -8060,6 +8002,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Apply accent
             AccentChanged?.Invoke(this, ActiveAccentHex);
+
+            // The pages adopt the defaulted sorts and layouts the way they do after LoadAsync.
+            ViewStateLoaded?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
@@ -8088,6 +8033,8 @@ public partial class SettingsViewModel : ViewModelBase
                     // silently stopped caching until the app was restarted. ConfirmResetLibrary
                     // already got this right.
                     Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+                    // SimilarArtistsService likewise (artwork/similar): its pictures stopped saving.
+                    Directory.CreateDirectory(Path.Combine(artworkDir, "similar"));
                 }
             });
             _dirSizeCache.TryRemove(artworkDir, out _);

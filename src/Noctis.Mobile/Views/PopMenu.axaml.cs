@@ -44,7 +44,7 @@ public partial class PopMenu : UserControl
     private static readonly Avalonia.Animation.Easings.Easing PopCloseEase = new CubicBezierEase(0.4, 0, 1, 1);
 
     /// <summary>The card's width for an item's menu, and for the Library's three rows.</summary>
-    internal const double ItemWidth = 290, LibraryWidth = 250;
+    internal const double ItemWidth = 250, LibraryWidth = 250;
     /// <summary>The card keeps this far from the screen's sides and the bottom chrome, and
     /// <see cref="TopGap"/> below the status bar (a header ⋯ sits just under it, and the card
     /// covers its button).</summary>

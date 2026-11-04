@@ -205,7 +205,7 @@
                 Padding="28,14"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                             Margin="0,0,16,0">
                     <!-- MinWidth 0: Fluent's horizontal ProgressBar has MinWidth 200, which beat
@@ -215,14 +215,23 @@
                     <TextBlock Classes="ls-status" Text="{Binding StatusText}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-                <!-- Cancel also stops a running search (the view model's Close). -->
+                <!-- GitHub #162: mark the song as having no lyrics (an instrumental), so no
+                     automatic lookup fetches any; reads "Has Lyrics" to take the mark off. -->
                 <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{Binding NoLyricsLabel}"
+                        Command="{Binding ToggleNoLyricsCommand}"
+                        IsVisible="{Binding CanMarkNoLyrics}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <!-- Cancel also stops a running search (the view model's Close). -->
+                <Button Grid.Column="2"
                         Classes="pill-secondary"
                         Content="{loc:T Metadata.Cancel}"
                         Command="{Binding CloseCommand}"
                         MinWidth="108"
                         Margin="0,0,10,0" />
-                <Button Grid.Column="2"
+                <Button Grid.Column="3"
                         Classes="pill-primary"
                         Content="{loc:T LyricsSearch.Use}"
                         Command="{Binding ApplyCommand}"

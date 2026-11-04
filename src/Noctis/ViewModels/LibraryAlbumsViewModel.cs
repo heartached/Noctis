@@ -298,7 +298,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [NotifyPropertyChangedFor(nameof(IsGridView))]
     private string _albumViewMode = "grid";
 
-    public bool IsCarouselView => AlbumViewMode == "carousel";
+    /// <summary>The carousel shows: picked, and the Album Carousel built-in feature is on (off
+    /// shows the grid and keeps the pick for when it returns).</summary>
+    public bool IsCarouselView => AlbumViewMode == "carousel" && _settings.AlbumCarouselEnabled;
     public bool IsGridView => !IsCarouselView;
 
     /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
@@ -326,6 +328,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Top-bar view menu: "grid" or "carousel".</summary>
     [RelayCommand]
     private void SetAlbumView(string? mode) => AlbumViewMode = mode == "carousel" ? "carousel" : "grid";
+
+    /// <summary>Top-right view icon (GitHub #164): grid to carousel and back, like the artist page.</summary>
+    [RelayCommand]
+    private void ToggleAlbumView() => AlbumViewMode = IsCarouselView ? "grid" : "carousel";
 
     /// <summary>Top-bar view menu: carousel case style by name ("Cover" / "JewelCase" / "Vinyl" / "Cassette").</summary>
     [RelayCommand]
@@ -456,6 +462,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             else if (e.PropertyName == nameof(SettingsViewModel.AlbumViewMode))
             {
                 AlbumViewMode = _settings.AlbumViewMode;
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumCarouselEnabled))
+            {
+                OnPropertyChanged(nameof(IsCarouselView));
+                OnPropertyChanged(nameof(IsGridView));
             }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))

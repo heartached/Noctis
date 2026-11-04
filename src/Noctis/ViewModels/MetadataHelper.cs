@@ -144,6 +144,29 @@ public static class MetadataHelper
     private static BulkAnimatedArtworkViewModel? _libraryArtworkRun;
 
     /// <summary>
+    /// Settings › Reset Everything: stops both whole-library runs and waits for them to end, so
+    /// neither saves its ledger (or a cover / lyric file) after the data folder is emptied, and
+    /// drops them so the tools start over on the new library.
+    /// </summary>
+    internal static async Task StopLibraryRunsAsync()
+    {
+        var lyrics = _libraryLyricsRun;
+        var artwork = _libraryArtworkRun;
+        _libraryLyricsRun = null;
+        _libraryArtworkRun = null;
+        if (lyrics is { IsRunning: true })
+        {
+            lyrics.StopCommand.Execute(null);
+            try { await (lyrics.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+        }
+        if (artwork is { IsRunning: true })
+        {
+            artwork.StopCommand.Execute(null);
+            try { await (artwork.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+        }
+    }
+
+    /// <summary>
     /// Settings ▸ Tools ▸ Find Lyrics (Discord, Cosmo 11-02): every local song through the bulk
     /// fetch, which skips songs that already have the preferred format and resumes a stopped run.
     /// </summary>

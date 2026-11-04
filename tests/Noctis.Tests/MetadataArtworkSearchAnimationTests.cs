@@ -352,26 +352,57 @@ public class MetadataArtworkSearchAnimationTests
     }
 
     [AvaloniaFact]
-    public void AnimatedArtworkSearch_TypingAndEnter_RunsTheSearchWithTheTypedText()
+    public void AnimatedArtworkTab_HasNoInlineSearchBox_TheChooserOwnsSearching()
     {
-        // The hint says "type an album name and press Enter": the typed text has to reach the
-        // VM before Enter, and Enter has to run the search. This editor has no iTunes service,
-        // so the search's first line — "unavailable" — is the proof that it ran.
+        // Owner 11-02: the tab's own "Album name, or Apple Music link" box duplicated the
+        // chooser's box (both bound to the same text). Only the chooser searches now.
         var (vm, win) = Editor("Animated Artwork");
         try
         {
-            var box = win.GetVisualDescendants().OfType<TextBox>()
-                .Single(b => b.IsEffectivelyVisible && b.KeyBindings.Any(k => k.Command == vm.SearchAnimatedCoverCommand));
+            Assert.DoesNotContain(win.GetVisualDescendants().OfType<TextBox>(),
+                b => b.IsEffectivelyVisible && b.KeyBindings.Any(k => k.Command == vm.SearchAnimatedCoverCommand));
+            Assert.Contains(win.GetVisualDescendants().OfType<Button>(),
+                b => b.Name == "SearchAnimatedArtworkButton" && b.IsEffectivelyVisible);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
+    public void AnimatedArtworkChooser_TypingASpace_KeepsWhatWasTyped()
+    {
+        // The chooser's box is now the only search box (the tab's own one went 11-03): an
+        // artist name with a space must type through, not reach Space = Play/Pause.
+        var apple = new AnimatedArtworkChooserTests.Apple();
+        var http = new System.Net.Http.HttpClient(new AnimatedArtworkChooserTests.StubHandler(apple.Respond));
+        var track = new Track
+        {
+            Id = Guid.NewGuid(), Title = "Taste", Artist = "Sabrina Carpenter", AlbumArtist = "Sabrina Carpenter",
+            Album = "Short n' Sweet", AlbumId = Guid.NewGuid(), FilePath = "C:/m/does-not-exist/taste.flac",
+        };
+        var lib = new FakeLibraryService();
+        lib.TrackList.Add(track);
+        var vm = new MetadataViewModel(track, new SearchPopupsShotsTests.OkTags(), lib, new TestPersistenceService(),
+            new FakeAnimatedCoverService(), itunes: new Noctis.Services.ITunesArtworkService(http),
+            metadataSearch: new MetadataSearchPanelTests.FakeSearch());
+        var (_, win) = Editor("Animated Artwork", vm);
+        try
+        {
+            var search = vm.SearchAnimatedCoverCommand.ExecuteAsync(null);
+            Assert.True(PumpUntil(() => search.IsCompleted, 5000), "search never finished");
+            var motion = win.AnimatedSearchMotion!;
+            var content = motion.Content!;
+            Assert.True(PumpUntil(() => motion.IsOpen && Settled(content)), "chooser never settled open");
+            var box = content.GetVisualDescendants().OfType<TextBox>().Single(b => b.Name == "AnimatedChooserSearchBox");
             box.Focus();
             Assert.True(PumpUntil(() => box.IsFocused));
-
-            win.KeyTextInput("YHLQMDLG Bad Bunny");
+            win.KeyTextInput("selena");
+            win.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            win.KeyTextInput(" ");
+            win.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            win.KeyTextInput("gomez");
             PumpUntil(() => false, 50);
-            Assert.Equal("YHLQMDLG Bad Bunny", vm.AnimatedSearchInput);
-
-            win.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
-            Assert.True(PumpUntil(() => vm.AnimatedSearchStatus == "Search service unavailable."),
-                $"Enter did not run the search (status '{vm.AnimatedSearchStatus}')");
+            Assert.Equal("selena gomez", box.Text);
+            Assert.Equal("selena gomez", vm.AnimatedSearchInput);
         }
         finally { win.Close(); PumpUntil(() => !win.IsVisible); }
     }

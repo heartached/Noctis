@@ -17,33 +17,34 @@
             <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
         </Style>
         <Style Selector="Button.np-tile">
-            <Setter Property="Padding" Value="2,12,2,10" />
+            <Setter Property="Padding" Value="2,10,2,8" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Top" />
         </Style>
         <Style Selector="Button.np-tile PathIcon">
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
             <Setter Property="HorizontalAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.np-tile TextBlock">
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="MaxLines" Value="2" />
-            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="Margin" Value="0,5,0,0" />
         </Style>
+        <!-- Apple's context menu size: 44 tall rows on a 250 wide card (52/290 read oversized). -->
         <Style Selector="Button.np-row">
-            <Setter Property="MinHeight" Value="52" />
+            <Setter Property="MinHeight" Value="44" />
         </Style>
         <!-- Delete Playlist, Remove from Playlist: the glass's red (MenuGlassDestructive). -->
         <Style Selector="Button.np-row.np-danger">
             <Setter Property="Foreground" Value="{DynamicResource MenuGlassDestructive}" />
         </Style>
         <Style Selector="Button.np-row PathIcon">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
@@ -60,11 +61,11 @@
         </Style>
         <!-- The sort and filter menus' rows: Apple's shorter option rows, the tick in the lead column. -->
         <Style Selector="Button.np-option">
-            <Setter Property="MinHeight" Value="48" />
+            <Setter Property="MinHeight" Value="44" />
         </Style>
         <Style Selector="Button.np-option PathIcon">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
         </Style>
         <Style Selector="TextBlock.np-note">
             <Setter Property="FontSize" Value="14" />
@@ -94,7 +95,7 @@
         <Border Name="Catcher" Background="Transparent" PointerPressed="OnCatcherPressed" />
 
         <ThemeVariantScope Name="Scope">
-            <Panel Name="Card" Width="290" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Panel Name="Card" Width="250" HorizontalAlignment="Left" VerticalAlignment="Top">
                 <views:MenuGlass Name="Glass">
                     <Panel>
                         <ScrollViewer Name="Body" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">

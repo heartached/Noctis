@@ -1348,6 +1348,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         {
             // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
             var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true, ttml));
+            // Lyrics made by hand: the song has lyrics after all (GitHub #162).
+            if (outcome.Saved) ClearNoLyricsMark(item.Track);
             // What was written, edits included: reopening the saved song showed the result from
             // before the edits (drafts stop at Save, so nothing else carried them).
             item.Result = item.Result! with { Lines = lines };
@@ -1377,6 +1379,19 @@ public partial class LyricsStudioViewModel : ViewModelBase
         RefreshQueuePills();
         SelectNextReady(item);
         RaiseReviewChanged();
+    }
+
+    /// <summary>Takes the "no lyrics" mark (GitHub #162) off the song and the library's instance of it, and saves.</summary>
+    private void ClearNoLyricsMark(Track track)
+    {
+        var changed = track.NoLyrics;
+        track.NoLyrics = false;
+        if (_library.GetTrackById(track.Id) is { NoLyrics: true } libraryTrack)
+        {
+            libraryTrack.NoLyrics = false;
+            changed = true;
+        }
+        if (changed) _ = Task.Run(async () => { try { await _library.SaveAsync(); } catch { } });
     }
 
     [RelayCommand]

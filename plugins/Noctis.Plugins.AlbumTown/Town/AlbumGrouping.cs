@@ -90,6 +90,12 @@ public static class AlbumGrouping
         return "n:" + Norm(artist) + "|" + Norm(t.Album);
     }
 
+    /// <summary>The artist a song shows in town: its Album Artist tag when it has one, else its
+    /// own artist. A song of an album with many artists showed each guest's name in the
+    /// Apartments (Discord, Jafezy 11-02); the album artist names them all the same.</summary>
+    public static string DisplayArtist(TrackInfo t)
+        => (string.IsNullOrWhiteSpace(t.AlbumArtist) ? t.Artist : t.AlbumArtist).Trim();
+
     private static string Norm(string? s) => (s ?? "").Trim().ToLowerInvariant();
 
     private static void Add(List<TownAlbum> into, Dictionary<string, string> files, Dictionary<string, string> ids, string key, List<TrackInfo> list, bool single)
@@ -100,7 +106,9 @@ public static class AlbumGrouping
         var title = key.StartsWith("a:", StringComparison.Ordinal) || key.StartsWith("n:", StringComparison.Ordinal)
             ? (string.IsNullOrWhiteSpace(first.Album) ? first.Title : first.Album)
             : first.Title;
-        var artist = Most(ordered.Select(t => string.IsNullOrWhiteSpace(t.AlbumArtist) ? t.Artist : t.AlbumArtist)) ?? "";
+        // One name per album: the Album Artist tag when any song has one. Songs without it used to
+        // vote with their own artist, so a compilation could show a guest's name.
+        var artist = Most(ordered.Select(t => t.AlbumArtist)) ?? Most(ordered.Select(t => t.Artist)) ?? "";
         var genre = Most(ordered.Select(t => t.Genre)) ?? "";
         var year = Most(ordered.Where(t => t.Year > 0).Select(t => t.Year.ToString(System.Globalization.CultureInfo.InvariantCulture))) is { } y ? int.Parse(y, System.Globalization.CultureInfo.InvariantCulture) : 0;
         var cover = Most(ordered.Select(t => t.ArtworkPath));

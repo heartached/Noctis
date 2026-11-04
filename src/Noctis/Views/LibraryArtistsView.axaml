@@ -279,7 +279,6 @@
                                                                  FontWeight="SemiBold"
                                                                  TextWrapping="NoWrap"
                                                                  MaxLines="1"
-                                                                 Margin="0,0,14,0"
                                                                  VerticalAlignment="Center"
                                                                  TextTrimming="CharacterEllipsis" />
                                     </Grid>
@@ -298,7 +297,7 @@
                                     </Border>
                                     <Border ctrl:ColumnsPanel.Column="Genre">
                                         <TextBlock Text="{Binding Genre}" FontSize="12" Opacity="0.5"
-                                                   TextTrimming="CharacterEllipsis" Margin="0,0,10,0"
+                                                   TextTrimming="CharacterEllipsis"
                                                    HorizontalAlignment="Left" VerticalAlignment="Center" />
                                     </Border>
 

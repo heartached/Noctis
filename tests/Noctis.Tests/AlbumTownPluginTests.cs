@@ -345,7 +345,9 @@ public class AlbumTownPluginTests
         var newcomer = world.Call(new CastMember(A("b"), CastReason.Called));
         Assert.Equal(2, world.Creatures.Count);
         Assert.Equal(CreatureState.Wander, newcomer.State);
-        Assert.True(newcomer.Position.Y <= world.Margin + 24.1f || newcomer.Position.Y >= world.Height - world.Margin - 0.1f);
+        var p = newcomer.Position; // outside an edge, walking in (Discord, Jafezy 11-02)
+        Assert.True(p.X < 0 || p.X > world.Width || p.Y < 0 || p.Y > world.Height);
+        Assert.StartsWith("Hi everyone!", newcomer.Bubble);
 
         var again = world.Call(new CastMember(A("a"), CastReason.Called));
         Assert.Equal(2, world.Creatures.Count);
@@ -412,6 +414,9 @@ public class AlbumTownPluginTests
         public int LayoutSaves;
         public ApartmentLayout? LoadApartments() => ApartmentLayout.FromJson(Layout?.ToJson());
         public void SaveApartments(ApartmentLayout layout) { Layout = layout; LayoutSaves++; }
+        public string MenuBar { get; set; } = "Top (horizontal)";
+        public Dictionary<string, string[]> Lyrics { get; } = new();
+        public IReadOnlyList<string> LoadLyricLines(string trackId) => Lyrics.GetValueOrDefault(trackId) ?? Array.Empty<string>();
     }
 
     private static (AlbumTownView View, FakeTownHost Host) NewView(int albums, int crowd = 40)
@@ -1562,9 +1567,9 @@ public class AlbumTownPluginTests
         Assert.Empty(manifest.Warnings);
         // The author is Jafezy JD: Noctis is not credited as the author anywhere a user reads it.
         Assert.Equal("Jafezy JD", manifest.Author);
-        Assert.Equal("1.0.1", manifest.Version);
+        Assert.Equal("1.0.2", manifest.Version);
         var plugin = new AlbumTownPlugin();
-        Assert.Equal(("Jafezy JD", "1.0.1", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
+        Assert.Equal(("Jafezy JD", "1.0.2", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
         // No by-line in the description: the card already says "by Jafezy JD".
         Assert.Equal(AlbumTownPlugin.About, manifest.Description);
         Assert.DoesNotContain("Jafezy", manifest.Description);
@@ -1581,7 +1586,7 @@ public class AlbumTownPluginTests
         Assert.NotNull(manifest.CheckCompatibility("1.6.5")); // before API 1.3/1.4
         Assert.Equal("1.6.6", manifest.MinAppVersion); // 1.6.6 ships API 1.4
         Assert.Null(manifest.CheckCompatibility("1.6.6"));
-        Assert.Equal(new[] { "crowdSize", "showNames", "chatty", "motion" }, manifest.Settings.Select(s => s.Key));
+        Assert.Equal(new[] { "crowdSize", "showNames", "chatty", "motion", "menuBar" }, manifest.Settings.Select(s => s.Key));
         var motion = manifest.Settings.Single(s => s.Key == "motion");
         Assert.Equal(new[] { Motion.Smooth, Motion.Balanced, Motion.BatterySaver }, motion.Choices);
         Assert.Equal(Motion.Balanced, motion.Default);
@@ -1621,7 +1626,7 @@ public class AlbumTownPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.0.1.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.0.2.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumTown -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -1639,7 +1644,7 @@ public class AlbumTownPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Town", "1.0.1", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Album Town", "1.0.2", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
 
         host.SetEnabled(plugin, true);

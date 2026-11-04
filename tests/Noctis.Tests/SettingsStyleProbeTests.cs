@@ -32,6 +32,7 @@ public class SettingsStyleProbeTests
         var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
         await vm.LoadAsync();
         SettingsView.StyleProbeTabs.Clear();
+        SettingsView.StyleProbeEnabled = true;
         DebugLog.Clear();
 
         vm.SelectedSettingsTab = SettingsViewModel.TabIntegrations;
@@ -59,6 +60,7 @@ public class SettingsStyleProbeTests
         {
             win.Close();
             SettingsView.StyleProbeTabs.Clear();
+            SettingsView.StyleProbeEnabled = OperatingSystem.IsMacOS();
         }
     }
 }

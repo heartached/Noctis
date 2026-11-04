@@ -64,7 +64,8 @@ public class TileInteractionProbeTests
         win.Show(); Pump();
 
         var row = view.FindControl<ItemsControl>("AlbumsRow")!;
-        var tiles = view.GetVisualDescendants().OfType<Button>().Where(x => x.Classes.Contains("album-tile")).ToList();
+        // The Albums row's own tiles (New in Library, GitHub #159, shows the same albums below).
+        var tiles = row.GetVisualDescendants().OfType<Button>().Where(x => x.Classes.Contains("album-tile")).ToList();
         foreach (var tile in tiles)
         {
             var cover = tile.GetVisualDescendants().OfType<Border>().First(bd => bd.Width == vm.AlbumTileSize);
@@ -76,7 +77,7 @@ public class TileInteractionProbeTests
         Assert.True(coverTops.Max() - coverTops.Min() < 0.5, $"cover tops differ: {string.Join(",", coverTops)}");
 
         await vm.RefreshAsync(); Pump();
-        tiles = view.GetVisualDescendants().OfType<Button>().Where(x => x.Classes.Contains("album-tile")).ToList();
+        tiles = row.GetVisualDescendants().OfType<Button>().Where(x => x.Classes.Contains("album-tile")).ToList();
 
         // Right-click tile 2, "use" the Play option, right-click again; log the menu's open state.
         var t2 = tiles[1];
@@ -104,7 +105,7 @@ public class TileInteractionProbeTests
         log.Add($"rc2 menu.IsOpen={menu.IsOpen} tilesAlive={tiles.Count(t => t.IsAttachedToVisualTree())}");
         // The 500 ms Home refresh debounce fires now (the option's FavoritesChanged).
         await Task.Delay(700); Pump(3);
-        var newTiles = view.GetVisualDescendants().OfType<Button>().Where(x => x.Classes.Contains("album-tile")).ToList();
+        var newTiles = row.GetVisualDescendants().OfType<Button>().Where(x => x.Classes.Contains("album-tile")).ToList();
         log.Add($"after 700ms refresh: menu.IsOpen={menu.IsOpen} oldTilesAlive={tiles.Count(t => t.IsAttachedToVisualTree())} sameTiles={newTiles.SequenceEqual(tiles)}");
         RightClick("rc3");
         foreach (var l in log) _o.WriteLine(l);

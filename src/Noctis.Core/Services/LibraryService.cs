@@ -796,6 +796,13 @@ public class LibraryService : ILibraryService
     /// </summary>
     private readonly CancellationTokenSource _shutdownCts = new();
 
+    /// <summary>
+    /// Cancelled (and replaced) by <see cref="ClearAsync"/>: the startup artwork heal and the tag
+    /// backfills walk a snapshot of the old library, so after Reset Everything they kept writing
+    /// covers into the emptied artwork folder and appending to a .progress file being deleted.
+    /// </summary>
+    private CancellationTokenSource _backfillStop = new();
+
     // Serializes "Merge Featured Artists" toggle passes: a newer flip cancels the
     // in-flight pass so rapid on/off flips can't interleave writes.
     private readonly object _mergeFeatApplyLock = new();
@@ -2105,7 +2112,8 @@ public class LibraryService : ILibraryService
                     // any interruption or unreadable file left an album artless for
                     // good — rescans skip unchanged files by mtime and never retry.
                     // Cheap when every album already has art (one probe per album).
-                    await BackfillMissingArtworkAsync(_shutdownCts.Token);
+                    using (var heal = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, _backfillStop.Token))
+                        await BackfillMissingArtworkAsync(heal.Token);
 
                     // Last and on its own task: the v11 label and v12 genre passes can take many minutes on a
                     // hard disk and nothing above should wait for it.
@@ -2394,6 +2402,10 @@ public class LibraryService : ILibraryService
 
     public async Task ClearAsync()
     {
+        // Reset Everything: stop the passes over the old library first, so none writes after this.
+        Interlocked.Exchange(ref _backfillStop, new CancellationTokenSource()).Cancel();
+        try { await LabelBackfill.ConfigureAwait(false); } catch { /* it logs its own failure */ }
+
         // Copy-and-swap (see RemoveTrackAsync) — concurrent readers keep the old lists.
         _tracks = new List<Track>();
         _albums = new List<Album>();
@@ -2403,6 +2415,19 @@ public class LibraryService : ILibraryService
         lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
         await _persistence.SaveLibraryAsync(_tracks);
         await _sqliteIndex.ClearAsync();
+        // The ratings / favorites / play counts journal too: it outlives scans on purpose (a
+        // returning file gets its state back), so a rescan after the reset restored all of it.
+        await _sqliteIndex.ClearUserStateAsync();
+        // A stopped backfill's resume log (replaygain-, label-, genre-backfill.progress).
+        await Task.Run(() =>
+        {
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(_persistence.DataDirectory, "*-backfill.progress"))
+                    File.Delete(file);
+            }
+            catch (Exception ex) { DebugLog.Write("Library", $"Clear: backfill progress not deleted: {ex.Message}"); }
+        });
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
@@ -2623,6 +2648,7 @@ public class LibraryService : ILibraryService
         target.VolumeAdjust = source.VolumeAdjust;
         target.EqPreset = source.EqPreset;
         target.LyricsOffsetMs = source.LyricsOffsetMs;
+        target.NoLyrics = source.NoLyrics;
         target.SavedPositionMs = source.SavedPositionMs;
         target.DateAdded = source.DateAdded;
         target.AddedIndividually = source.AddedIndividually;
@@ -3092,10 +3118,27 @@ public class LibraryService : ILibraryService
         Func<Track, bool> Needs, Func<string, string> Read, Action<Track, string> Apply,
         bool MarkPhoneTracks, bool Reindex);
 
-    /// <summary>The v11 label pass, then the v12 genre pass, each only when pending. The genre
-    /// pass waits for the label pass to finish: it stamps a later version.</summary>
+    /// <summary>The ReplayGain pass, then the v11 label pass, then the v12 genre pass, each only
+    /// when pending. The genre pass waits for the label pass to finish: it stamps a later version.</summary>
     private async Task RunTagBackfillsAsync()
     {
+        // GitHub #151: the Songs list's ReplayGain column. Tracks indexed before the field
+        // existed are read once for their REPLAYGAIN_* tags alone; a file without any is
+        // marked checked too ("|||"), so it is never re-read. Missing or offline files stay
+        // unchecked and are tried again next launch.
+        // GitHub #158: first, not last. Behind the label and genre passes (each a read of most
+        // of the library) the column stayed blank for most songs until both were done.
+        if (_tracks.Any(NeedsReplayGainRead))
+        {
+            var replayGain = new TagBackfill("replaygain", null, "replaygain-backfill.progress",
+                NeedsReplayGainRead,
+                path => _metadata.ReadReplayGain(path) is { } rg ? EncodeReplayGain(rg) : string.Empty,
+                (t, v) => t.ApplyReplayGain(DecodeReplayGain(v)),
+                MarkPhoneTracks: false, Reindex: false);
+            // Cancelled at shutdown: the passes below would stop at once anyway.
+            if (!await RunTagBackfillAsync(replayGain)) return;
+        }
+
         if (_labelBackfillPending)
         {
             var label = new TagBackfill("label", LabelSchemaVersion, "label-backfill.progress",
@@ -3116,26 +3159,55 @@ public class LibraryService : ILibraryService
                 // Only over the stale row it was read for: a genre typed meanwhile wins.
                 (t, v) => { if (Track.SplitGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
                 MarkPhoneTracks: false, Reindex: true);
-            if (!await RunTagBackfillAsync(genre)) return;
-        }
-
-        // GitHub #151: the Songs list's ReplayGain column. Tracks indexed before the field
-        // existed are read once for their REPLAYGAIN_* tags alone; a file without any is
-        // marked checked too ("|||"), so it is never re-read. Missing or offline files stay
-        // unchecked and are tried again next launch.
-        if (_tracks.Any(NeedsReplayGainRead))
-        {
-            var replayGain = new TagBackfill("replaygain", null, "replaygain-backfill.progress",
-                NeedsReplayGainRead,
-                path => _metadata.ReadReplayGain(path) is { } rg ? EncodeReplayGain(rg) : string.Empty,
-                (t, v) => t.ApplyReplayGain(DecodeReplayGain(v)),
-                MarkPhoneTracks: false, Reindex: false);
-            await RunTagBackfillAsync(replayGain);
+            await RunTagBackfillAsync(genre);
         }
     }
 
     /// <summary>A local file whose ReplayGain tags were never read (indexed before #151's column).</summary>
     private static bool NeedsReplayGainRead(Track t) => !t.ReplayGainChecked && Track.IsFilesystemPath(t.FilePath);
+
+    // GitHub #158: songs on screen in the Songs list whose ReplayGain was never read, read now
+    // instead of whenever the background pass reaches their path. One reader at a time.
+    private readonly ConcurrentQueue<Track> _replayGainSoon = new();
+    private int _replayGainSoonRunning;
+
+    /// <inheritdoc />
+    public void ReadReplayGainSoon(IEnumerable<Track> tracks)
+    {
+        var queued = false;
+        foreach (var t in tracks)
+        {
+            if (!NeedsReplayGainRead(t)) continue;
+            _replayGainSoon.Enqueue(t);
+            queued = true;
+        }
+        if (queued && Interlocked.CompareExchange(ref _replayGainSoonRunning, 1, 0) == 0)
+            ReplayGainSoonTask = Task.Run(DrainReplayGainSoon);
+    }
+
+    /// <summary>The latest <see cref="ReadReplayGainSoon"/> reader. Internal for tests.</summary>
+    internal Task ReplayGainSoonTask { get; private set; } = Task.CompletedTask;
+
+    private void DrainReplayGainSoon()
+    {
+        while (true)
+        {
+            while (_replayGainSoon.TryDequeue(out var t))
+            {
+                // A row scrolled past twice is queued twice; the second finds it read.
+                if (_shutdownCts.IsCancellationRequested || !NeedsReplayGainRead(t)) continue;
+                // Null: unreadable now (offline, locked); the background pass retries it.
+                // The value lands in library.json with the next save (the pass saves when done).
+                if (_metadata.ReadReplayGain(t.FilePath) is { } rg)
+                    t.ApplyReplayGain(rg);
+            }
+            Volatile.Write(ref _replayGainSoonRunning, 0);
+            // A request queued after the last dequeue but before the flag dropped found the
+            // reader still running: pick it up here rather than leave it waiting.
+            if (_replayGainSoon.IsEmpty || Interlocked.CompareExchange(ref _replayGainSoonRunning, 1, 0) != 0)
+                return;
+        }
+    }
 
     // The ReplayGain pass's progress-log value: "track|peak|album" (invariant, round-trip;
     // empty = none). Never blank, so a file with no ReplayGain is logged as checked too.
@@ -3178,7 +3250,8 @@ public class LibraryService : ILibraryService
     /// </summary>
     private async Task<bool> RunTagBackfillAsync(TagBackfill pass)
     {
-        var token = _shutdownCts.Token;
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, _backfillStop.Token);
+        var token = stop.Token;
         var progressPath = Path.Combine(_persistence.DataDirectory, pass.ProgressFileName);
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var snapshot = _tracks;
@@ -3258,7 +3331,10 @@ public class LibraryService : ILibraryService
                 {
                     if (token.IsCancellationRequested) break;
 
-                    if (RootOnline(track.FilePath) && File.Exists(track.FilePath))
+                    // Read meanwhile (GitHub #158: a Songs list row on screen) or edited: no
+                    // second open. Still counts as checked, so the cursor moves past it.
+                    var stillNeeded = pass.Needs(track);
+                    if (stillNeeded && RootOnline(track.FilePath) && File.Exists(track.FilePath))
                     {
                         var value = pass.Read(track.FilePath);
                         if (!string.IsNullOrWhiteSpace(value))
@@ -3279,6 +3355,7 @@ public class LibraryService : ILibraryService
                             $"{pass.Name} backfill: {checkedCount:N0}/{pending.Count:N0} checked, {applied:N0} found");
                     }
 
+                    if (!stillNeeded) continue; // nothing opened: no pause owed
                     try { await Task.Delay(LabelBackfillPause, token); }
                     catch (OperationCanceledException) { break; }
                 }

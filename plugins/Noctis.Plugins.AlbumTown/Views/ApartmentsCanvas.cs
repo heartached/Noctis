@@ -51,12 +51,14 @@ public sealed class ApartmentsCanvas : Control
     private readonly Cursor _hand = new(StandardCursorType.Hand);
     private readonly Cursor _move = new(StandardCursorType.SizeAll);
     private readonly Cursor _resize = new(StandardCursorType.BottomRightCorner);
+    private readonly Cursor _resizeWide = new(StandardCursorType.SizeWestEast);
+    private readonly Cursor _resizeTall = new(StandardCursorType.SizeNorthSouth);
     private TownTheme _theme = TownTheme.Dark;
     private RenderTargetBitmap? _void;
     private RenderTargetBitmap? _layer;
     private int _layerVersion = -1;
     private int _spriteBuilds;
-    private (Size Size, double Scaling, TownTheme Theme, double Cell) _voidFor;
+    private (Size Size, double Scaling, TownTheme Theme, double Cell, int Columns, int Rows) _voidFor;
     private int _mapVersion = -1;
     private long _frame;
     private int _budget;
@@ -70,6 +72,13 @@ public sealed class ApartmentsCanvas : Control
     // Gestures.
     private enum DragKind { None, Pending, Move, Resize, Drop }
     private DragKind _drag;
+    private RoomEdge _edge;
+    // The resize handles of the room under the pointer: they fade in and out (Discord, Jafezy 11-02:
+    // "a clear indicator of how to expand the room").
+    private Room? _handleRoom;
+    private RoomEdge _handleHot;
+    private double _handleAlpha;
+    private bool _handleIn;
     private Room? _dragRoom;
     private Point _pressAt;
     private Vector _grab;
@@ -251,7 +260,17 @@ public sealed class ApartmentsCanvas : Control
            || top is Window { WindowState: WindowState.Minimized };
 
     /// <summary>Something moves: pets live here, or a drag is on.</summary>
-    public bool IsAlive => Life.Pets.Count > 0 || _drag is DragKind.Move or DragKind.Resize or DragKind.Drop;
+    public bool IsAlive => Life.Pets.Count > 0 || _drag is DragKind.Move or DragKind.Resize or DragKind.Drop || HandlesFading;
+
+    /// <summary>The resize handles are fading in or out.</summary>
+    private bool HandlesFading => Math.Abs(_handleAlpha - HandleTarget) > 0.001;
+
+    private double HandleTarget
+        => _handleRoom is not null && Grid.Find(_handleRoom.Id) is not null
+           && ((_handleIn && _drag is DragKind.None or DragKind.Pending) || (_drag == DragKind.Resize && ReferenceEquals(_dragRoom, _handleRoom))) ? 1 : 0;
+
+    /// <summary>How much the resize handles show (0 to 1, tests).</summary>
+    public double HandleOpacity => _handleAlpha;
 
     private void RequestFrame()
     {
@@ -321,6 +340,9 @@ public sealed class ApartmentsCanvas : Control
         Life.Now = DateTimeOffset.Now;
         var pulse = Beat?.Invoke() ?? 0;
         Life.Step(dt, (float)Math.Clamp(pulse, 0, 1));
+        // The handles fade in over about a sixth of a second and out a little slower.
+        var target = HandleTarget;
+        _handleAlpha = target > _handleAlpha ? Math.Min(target, _handleAlpha + dt * 6) : Math.Max(target, _handleAlpha - dt * 4);
         Frames++;
     }
 
@@ -342,6 +364,7 @@ public sealed class ApartmentsCanvas : Control
         // theme) changes. A frame blits it once instead of thirty room bitmaps.
         if (_mapVersion != Grid.Version) RebuildGeometry();
         DrawBuilding(ctx, bounds, scaling);
+        DrawScrollingNames(ctx);
 
         // Pets: feet in px, front to back.
         var pets = Life.Pets;
@@ -363,6 +386,7 @@ public sealed class ApartmentsCanvas : Control
                     painter.DrawBody(ctx, p.Creature);
             else painter.DrawBody(ctx, p.Creature);
         }
+        DrawHandles(ctx);
         foreach (var p in _order)
             if (ShowNames || ReferenceEquals(p, Hovered) || p.Creature.IsPlaying) PainterFor(p).DrawName(ctx, p.Creature, bounds);
         foreach (var p in _order) PainterFor(p).DrawBubble(ctx, p.Creature, bounds);
@@ -371,6 +395,27 @@ public sealed class ApartmentsCanvas : Control
         DrawGhost(ctx);
         if (Grid.Rooms.Count == 0) DrawHint(ctx, bounds);
         if (_frame % 240 == 0) PruneSprites();
+    }
+
+    /// <summary>Rooms whose name scrolls right now (tests).</summary>
+    public int ScrollingNames { get; private set; }
+
+    /// <summary>Names too long for their room scroll by (<see cref="RoomPainter.DrawMarquee"/>);
+    /// the rest are in the room bitmaps.</summary>
+    private void DrawScrollingNames(DrawingContext ctx)
+    {
+        ScrollingNames = 0;
+        var seconds = _clock.Elapsed.TotalSeconds;
+        foreach (var room in Grid.Rooms)
+        {
+            if (!_sprites.TryGetValue(room.Id, out var sprite) || sprite.Text is not { Scrolls: true } text) continue;
+            var rect = RoomRect(room.Cells);
+            if (sprite.Size != rect.Size) continue;
+            var origin = new Vector(Snap(rect.X, sprite.Scaling), Snap(rect.Y, sprite.Scaling));
+            if (text.TitleScrolls) RoomPainter.DrawMarquee(ctx, text.Title, text.TitleAt + origin, text.Width, seconds);
+            if (text.SubScrolls && text.Sub is { } sub) RoomPainter.DrawMarquee(ctx, sub, text.SubAt + origin, text.Width, seconds);
+            ScrollingNames++;
+        }
     }
 
     private CreaturePainter PainterFor(Pet p) => p.IsSong ? SongPainter : AlbumPainter;
@@ -383,12 +428,12 @@ public sealed class ApartmentsCanvas : Control
         var builtBefore = _spriteBuilds;
         var rooms = Grid.Rooms;
         for (var i = 0; i < rooms.Count; i++) SpriteFor(rooms[i], RoomRect(rooms[i].Cells).Size, scaling);
-        var voidChanged = _void is null || _voidFor != (bounds.Size, scaling, _theme, Cell);
+        var voidChanged = _void is null || _voidFor != (bounds.Size, scaling, _theme, Cell, Grid.Columns, Grid.Rows);
         if (voidChanged)
         {
             if (_void is not null) _retired.Enqueue((_void, _frame));
             _void = BuildVoid(bounds.Size, scaling);
-            _voidFor = (bounds.Size, scaling, _theme, Cell);
+            _voidFor = (bounds.Size, scaling, _theme, Cell, Grid.Columns, Grid.Rows);
         }
         if (_layer is null || voidChanged || _spriteBuilds != builtBefore || _layerVersion != Grid.Version)
         {
@@ -502,11 +547,23 @@ public sealed class ApartmentsCanvas : Control
                 y = Math.Min(y, rect.Height) - floorBand;
                 openings.Add(new RoomOpening(PortalKind.Door, Math.Clamp(x, 0, rect.Width), y, Math.Min(doorHeight, o.AreaHeight * Cell * 0.62)));
             }
-            else openings.Add(new RoomOpening(PortalKind.Ladder, x, y, o.Length * Cell - Math.Min(o.AreaHeight * Cell * 0.16, Cell * 0.13)));
+            else
+            {
+                var band = Math.Min(o.AreaHeight * Cell * 0.16, Cell * 0.13);
+                openings.Add(o.Kind switch
+                {
+                    // Up the wall from the floor to the doorway's sill.
+                    PortalKind.Stairs => new RoomOpening(PortalKind.Stairs, x, y - band, o.Length * Cell),
+                    // A hatch in the floor band.
+                    PortalKind.TrapDoor => new RoomOpening(PortalKind.TrapDoor, x, Math.Min(y, rect.Height) - band, band),
+                    _ => new RoomOpening(PortalKind.Ladder, x, y, o.Length * Cell - band),
+                });
+            }
         }
-        var bitmap = RoomPainter.Build(size, scaling, Cell, _theme, frame, geo.Look, _scratchCovers, areas, openings);
+        var text = RoomPainter.Text(geo.Look, size, Cell, _theme, oneCell: room.Cells is { W: 1, H: 1 });
+        var bitmap = RoomPainter.Build(size, scaling, Cell, _theme, frame, geo.Look, _scratchCovers, areas, openings, text);
         _scratchCovers.Clear();
-        return new RoomSprite(bitmap, size, scaling, _theme, geo, ready, Cell);
+        return new RoomSprite(bitmap, size, scaling, _theme, geo, ready, Cell) { Text = text };
     }
 
     /// <summary>The room's colour: its (first) cover's, else the playlist's own, else one from its name.</summary>
@@ -544,7 +601,30 @@ public sealed class ApartmentsCanvas : Control
             var openings = new List<GeoOpening>();
             foreach (var portal in map.Portals)
             {
-                if (portal.Kind == PortalKind.TrapDoor) continue; // not in v1
+                if (portal.Kind == PortalKind.TrapDoor)
+                {
+                    // Rooms stacked: a hatch in the upper room's floor, a ladder down from the lower room's ceiling.
+                    if (!ReferenceEquals(portal.From.Room, room)) continue;
+                    var below = portal.From.Rect.Y >= portal.To.Rect.Bottom - 1e-6;
+                    openings.Add(below
+                        ? new GeoOpening(PortalKind.Ladder, portal.FromPoint.X, portal.Line, portal.From.Rect.H, portal.From.Rect.H)
+                        : new GeoOpening(PortalKind.TrapDoor, portal.FromPoint.X, portal.Line, portal.From.Rect.H, 0));
+                    continue;
+                }
+                if (portal.Kind == PortalKind.Stairs)
+                {
+                    // The lower room has the ladder up its wall and the doorway at the top; the higher one the doorway.
+                    if (!ReferenceEquals(portal.From.Room, room)) continue;
+                    var high = portal.From.Floor < portal.To.Floor ? portal.From : portal.To;
+                    if (ReferenceEquals(portal.From, high))
+                        openings.Add(new GeoOpening(PortalKind.Door, portal.Line, high.Floor, high.Rect.H, 0));
+                    else
+                    {
+                        openings.Add(new GeoOpening(PortalKind.Stairs, portal.FromPoint.X, high.Floor, portal.From.Rect.H, portal.From.Floor - high.Floor));
+                        openings.Add(new GeoOpening(PortalKind.Door, portal.Line, high.Floor, high.Rect.H, 0));
+                    }
+                    continue;
+                }
                 if (portal.Kind == PortalKind.Ladder)
                 {
                     // Once per ladder: from the area above.
@@ -571,6 +651,36 @@ public sealed class ApartmentsCanvas : Control
             _retired.Enqueue((_sprites[id].Bitmap, _frame));
             _sprites.Remove(id);
         }
+    }
+
+    /// <summary>Bumps on the right and bottom edges and the corner of the room under the pointer
+    /// (or being resized): drag one to make the room wider, taller or both.</summary>
+    private void DrawHandles(DrawingContext ctx)
+    {
+        if (_handleAlpha <= 0.01 || _handleRoom is not { } room || Grid.Find(room.Id) is null) return;
+        var rect = RoomRect(_drag == DragKind.Resize && ReferenceEquals(_dragRoom, room) ? _ghost : room.Cells);
+        using (ctx.PushOpacity(_handleAlpha))
+        {
+            foreach (var edge in Edges)
+            {
+                var r = RoomPainter.Handle(rect.Size, Cell, edge).Translate(new Vector(rect.X, rect.Y));
+                var hot = edge == _handleHot || (_drag == DragKind.Resize && edge == _edge);
+                ctx.DrawRectangle(hot ? _theme.AccentBrush : _theme.HandleFill, _theme.HandlePen, new RoundedRect(r, Math.Min(r.Width, r.Height) / 2));
+            }
+        }
+    }
+
+    private static readonly RoomEdge[] Edges = { RoomEdge.Right, RoomEdge.Bottom, RoomEdge.Corner };
+
+    /// <summary>The resize handle of <paramref name="room"/> under <paramref name="p"/> (px), or <see cref="RoomEdge.None"/>.</summary>
+    public RoomEdge HandleAt(Room room, Point p)
+    {
+        var rect = RoomRect(room.Cells);
+        var local = new Point(p.X - rect.X, p.Y - rect.Y);
+        if (RoomPainter.Grip(rect.Size, Cell).Inflate(3).Contains(local)) return RoomEdge.Corner;
+        foreach (var edge in Edges)
+            if (RoomPainter.Handle(rect.Size, Cell, edge).Inflate(6).Contains(local)) return edge;
+        return RoomEdge.None;
     }
 
     private void DrawGhost(DrawingContext ctx)
@@ -713,8 +823,9 @@ public sealed class ApartmentsCanvas : Control
                 RoomMenuRequested?.Invoke(this, room);
                 return true;
             }
-            if (RoomPainter.Grip(rect.Size, Cell).Inflate(3).Contains(local))
+            if (HandleAt(room, p) is var edge and not RoomEdge.None)
             {
+                _edge = edge;
                 StartGesture(room, p, rect, DragKind.Resize);
                 RequestFrame();
                 return true;
@@ -770,8 +881,10 @@ public sealed class ApartmentsCanvas : Control
         if (_drag == DragKind.Resize && _dragRoom is { } sizing)
         {
             var (cx, cy) = ToCells(p);
-            (_ghost, _ghostFits) = Grid.ResizeTarget(sizing, Math.Max(0.5, cx - sizing.Cells.X), Math.Max(0.5, cy - sizing.Cells.Y));
-            SetCursor(_resize);
+            var w = _edge == RoomEdge.Bottom ? sizing.Cells.W : Math.Max(0.5, cx - sizing.Cells.X);
+            var h = _edge == RoomEdge.Right ? sizing.Cells.H : Math.Max(0.5, cy - sizing.Cells.Y);
+            (_ghost, _ghostFits) = Grid.ResizeTarget(sizing, w, h);
+            SetCursor(CursorFor(_edge));
             InvalidateVisual();
             return;
         }
@@ -818,7 +931,11 @@ public sealed class ApartmentsCanvas : Control
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
-        if (_drag == DragKind.None) SetHovered(null);
+        if (_drag == DragKind.None)
+        {
+            SetHovered(null);
+            SetHandleRoom(null, RoomEdge.None);
+        }
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
@@ -831,18 +948,37 @@ public sealed class ApartmentsCanvas : Control
     private void UpdateHover(Point p)
     {
         var (cx, cy) = ToCells(p);
-        var pet = Life.HitTest(cx, cy, Hovered);
+        var under = RoomAt(p);
+        var edge = under is null ? RoomEdge.None : HandleAt(under, p);
+        // A handle wins over a pet standing in front of it (as in Press).
+        var pet = edge == RoomEdge.None ? Life.HitTest(cx, cy, Hovered) : null;
         SetHovered(pet);
+        SetHandleRoom(under, edge);
         if (pet is not null) { SetCursor(_hand); return; }
-        if (RoomAt(p) is { } room)
+        if (under is { } room)
         {
             var rect = RoomRect(room.Cells);
             var local = new Point(p.X - rect.X, p.Y - rect.Y);
             var (menu, radius) = RoomPainter.MenuButton(rect.Size, Cell);
             if (Distance(local, menu) <= radius + 3) { SetCursor(_hand); return; }
-            if (RoomPainter.Grip(rect.Size, Cell).Inflate(3).Contains(local)) { SetCursor(_resize); return; }
+            if (edge != RoomEdge.None) { SetCursor(CursorFor(edge)); return; }
         }
         SetCursor(_arrow);
+    }
+
+    private Cursor CursorFor(RoomEdge edge) => edge switch { RoomEdge.Right => _resizeWide, RoomEdge.Bottom => _resizeTall, _ => _resize };
+
+    private void SetHandleRoom(Room? room, RoomEdge hot)
+    {
+        // The pointer left: the handles of the room it was over fade out. A new room's fade in from nothing.
+        if (room is not null && !ReferenceEquals(room, _handleRoom))
+        {
+            _handleRoom = room;
+            _handleAlpha = 0;
+        }
+        _handleIn = room is not null;
+        if (hot != _handleHot) { _handleHot = hot; InvalidateVisual(); }
+        if (HandlesFading) RequestFrame();
     }
 
     private void SetHovered(Pet? pet)
@@ -911,5 +1047,7 @@ public sealed class ApartmentsCanvas : Control
         public Rect Source { get; }
         public bool Stale { get; set; }
         public long UsedFrame { get; set; }
+        /// <summary>The name lines; the ones that scroll are drawn per frame.</summary>
+        public RoomText? Text { get; init; }
     }
 }

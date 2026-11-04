@@ -284,7 +284,7 @@
          It also swallows clicks/wheel on the dim area like the old overlay Border. -->
     <controls:PillDialogHost x:Name="DialogHost">
 
-    <Grid Margin="0" Width="852" Height="740" RowDefinitions="Auto,*,Auto">
+    <Grid x:Name="EditorCard" Margin="0" Width="852" Height="740" RowDefinitions="Auto,*,Auto">
 
         <!-- Header: artwork + track title, artist, album. No band of its own: the card is
              one surface, split only by soft hairlines. -->
@@ -1203,23 +1203,6 @@
                                        TextWrapping="Wrap"
                                        TextAlignment="Center" />
                         </Button>
-
-                        <!-- Type an album name to search for, or paste a link to skip search -->
-                        <StackPanel Spacing="4" IsVisible="{Binding !HasAnimatedCover}">
-                            <TextBox Classes="pill-field"
-                                     AutomationProperties.Name="{loc:T Metadata.AlbumNameAppleMusic}"
-                                     Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
-                                     Watermark="{loc:T Metadata.AlbumNameAppleMusic}"
-                                     FontSize="12">
-                                <TextBox.KeyBindings>
-                                    <KeyBinding Gesture="Enter" Command="{Binding SearchAnimatedCoverCommand}" />
-                                </TextBox.KeyBindings>
-                            </TextBox>
-                            <TextBlock Text="{loc:T Metadata.TypeAlbumNamePress}"
-                                       FontSize="10"
-                                       Opacity="0.55"
-                                       TextWrapping="Wrap" />
-                        </StackPanel>
 
                         <Button Content="{loc:T Metadata.AddFromFile}"
                                 Command="{Binding AddAnimatedCoverCommand}"

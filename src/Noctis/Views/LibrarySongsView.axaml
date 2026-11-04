@@ -348,11 +348,11 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center" />
                         </Border>
-                        <!-- Right margin on the star columns: a trimmed artist or album ran its "..."
-                             straight into the next column ("Quavo) -...Hip-Hop/Rap", 10-09). -->
+                        <!-- No right margins on the cells: the shared ColumnLayout.CellPadding keeps every
+                             column's text clear of the next one (GitHub #157; was per-cell margins
+                             after "Quavo) -...Hip-Hop/Rap", 10-09). -->
                         <Button controls:ColumnsPanel.Column="Artist"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
-                                Margin="0,0,14,0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 helpers:ArtistCreditLink.IsEnabled="True"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
@@ -367,7 +367,6 @@
                         </Button>
                         <Button controls:ColumnsPanel.Column="Album"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
-                                Margin="0,0,14,0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewAlbumCommand}"
                                 CommandParameter="{Binding}">
@@ -386,7 +385,6 @@
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
                                                          TextTrimming="CharacterEllipsis"
-                                                         Margin="0,0,8,0"
                                                          HorizontalAlignment="Left"
                                                          VerticalAlignment="Center" />
                         </Border>
@@ -457,13 +455,13 @@
                         </Border>
                         <Border controls:ColumnsPanel.Column="AlbumArtist">
                             <TextBlock Text="{Binding AlbumArtist}"
-                                       FontSize="12" Opacity="0.5" Margin="0,0,10,0"
+                                       FontSize="12" Opacity="0.5"
                                        TextTrimming="CharacterEllipsis"
                                        HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Border>
                         <Border controls:ColumnsPanel.Column="Composer">
                             <TextBlock Text="{Binding Composer}"
-                                       FontSize="12" Opacity="0.5" Margin="0,0,10,0"
+                                       FontSize="12" Opacity="0.5"
                                        TextTrimming="CharacterEllipsis"
                                        HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Border>

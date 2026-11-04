@@ -42,6 +42,12 @@ public interface ITownHost
     /// <summary>The Apartments building as last saved, or null for none yet.</summary>
     ApartmentLayout? LoadApartments() => null;
     void SaveApartments(ApartmentLayout layout) { }
+
+    /// <summary>The "Menu bar" setting: "Top (horizontal)" or "Side (vertical)".</summary>
+    string MenuBar => "Top (horizontal)";
+
+    /// <summary>Lyric lines Noctis has for a song (plugin API 1.7; called off the UI thread). Empty when none or unsupported.</summary>
+    IReadOnlyList<string> LoadLyricLines(string trackId) => Array.Empty<string>();
 }
 
 /// <summary>The town's view of the real Noctis host (plugin API 1.4).</summary>
@@ -119,6 +125,25 @@ public sealed class PluginTownHost : ITownHost, IDisposable
     public bool ShowNames => _host.Settings.GetBool("showNames");
     public bool Chatty => _host.Settings.GetBool("chatty", true);
     public string Motion => _host.Settings.GetString("motion") ?? Town.Motion.Balanced;
+    public string MenuBar => _host.Settings.GetString("menuBar") ?? "Top (horizontal)";
+
+    private volatile bool _noLyrics;
+
+    public IReadOnlyList<string> LoadLyricLines(string trackId)
+    {
+        if (_noLyrics) return Array.Empty<string>();
+        try { return _host.Library.GetLyricLines(trackId); }
+        catch (NotSupportedException)
+        {
+            // A Noctis before plugin API 1.7: the residents just do not quote.
+            _noLyrics = true;
+            return Array.Empty<string>();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            return Array.Empty<string>();
+        }
+    }
     public event EventHandler? SettingsChanged;
 
     public IReadOnlyList<string> LoadCalled()

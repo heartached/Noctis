@@ -114,27 +114,27 @@ public class NetEaseService : INetEaseService
         var songs = searchResult?.Result?.Songs;
         if (songs == null || songs.Count == 0) return null;
 
-        // Try to match by duration (within 3 seconds tolerance) and artist name
-        var durationMs = (long)(durationSeconds * 1000);
-        var bestMatch = songs.FirstOrDefault(s =>
-            Math.Abs(s.Duration - durationMs) < 3000 &&
-            ArtistMatches(s.Artists, artist));
-
-        // Fall back to artist match only
-        bestMatch ??= songs.FirstOrDefault(s => ArtistMatches(s.Artists, artist));
-
-        // Fall back to first result
-        bestMatch ??= songs[0];
-
-        return bestMatch.Id;
+        return PickSongId(songs, artist, trackName, durationSeconds);
     }
 
-    private static bool ArtistMatches(List<NetEaseArtist>? artists, string targetArtist)
+    /// <summary>
+    /// The search hit that is the local song: its title and artist must match (as every other
+    /// source checks, <see cref="LyricsSearchSelector.MatchesTrack"/>), the closest length within
+    /// 3 s first. The search's first hit used to be taken whatever it was (GitHub #162): a song
+    /// NetEase doesn't have got another song's lyrics.
+    /// </summary>
+    private static long? PickSongId(List<NetEaseSong> songs, string artist, string trackName, double durationSeconds)
     {
-        if (artists == null || artists.Count == 0) return false;
-        return artists.Any(a =>
-            !string.IsNullOrEmpty(a.Name) &&
-            a.Name.Contains(targetArtist, StringComparison.OrdinalIgnoreCase));
+        var matching = songs.Where(s => LyricsSearchSelector.MatchesTrack(new LrcLibResult
+        {
+            TrackName = s.Name,
+            ArtistName = string.Join(", ", s.Artists?.Select(a => a.Name).Where(n => !string.IsNullOrEmpty(n)) ?? []),
+        }, artist, trackName, 0)).ToList();
+
+        var durationMs = (long)(durationSeconds * 1000);
+        var bestMatch = matching.FirstOrDefault(s => Math.Abs(s.Duration - durationMs) < 3000)
+                        ?? matching.FirstOrDefault();
+        return bestMatch?.Id;
     }
 
     private async Task<LrcLibResult?> FetchLyricsAsync(long songId, string artist, string trackName, CancellationToken ct)
@@ -150,6 +150,12 @@ public class NetEaseService : INetEaseService
 
         var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
         var lyricsResponse = JsonSerializer.Deserialize<NetEaseLyricsResponse>(json);
+
+        // NetEase marks an instrumental song with "nolyric", or with lyrics that only say
+        // "纯音乐，请欣赏" ("instrumental, please enjoy"): an answer, not lyrics (GitHub #162).
+        if (lyricsResponse is { NoLyric: true }
+            || LyricsSearchSelector.IsInstrumentalPlaceholder(lyricsResponse?.Lrc?.Lyric ?? lyricsResponse?.Klyric?.Lyric))
+            return new LrcLibResult { TrackName = trackName, ArtistName = artist, Instrumental = true };
 
         var syncedLyrics = lyricsResponse?.Lrc?.Lyric;
         var plainLyrics = lyricsResponse?.Klyric?.Lyric;
@@ -225,6 +231,9 @@ public class NetEaseService : INetEaseService
 
         [JsonPropertyName("tlyric")]
         public NetEaseLyricContent? Tlyric { get; set; }
+
+        [JsonPropertyName("nolyric")]
+        public bool NoLyric { get; set; }
     }
 
     private class NetEaseLyricContent

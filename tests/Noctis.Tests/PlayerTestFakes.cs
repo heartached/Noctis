@@ -122,6 +122,13 @@ internal sealed class FakeLibraryService : ILibraryService
     public event EventHandler<int>? ScanProgress;
 
     public void RaiseLibraryUpdated() => LibraryUpdated?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>What <see cref="ReadReplayGainSoon"/> was asked for (GitHub #158).</summary>
+    public List<Track> ReplayGainSoonRequests { get; } = new();
+    public void ReadReplayGainSoon(IEnumerable<Track> tracks)
+    {
+        lock (ReplayGainSoonRequests) ReplayGainSoonRequests.AddRange(tracks);
+    }
     public void RaiseScanProgress(int count) => ScanProgress?.Invoke(this, count);
     public bool IsPublishingPartial { get; set; }
     public event EventHandler? FavoritesChanged;

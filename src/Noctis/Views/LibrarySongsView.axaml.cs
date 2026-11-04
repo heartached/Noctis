@@ -63,6 +63,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         // Attach context menu to every ListBoxItem so right-click works across the full row
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
         TrackList.ContainerClearing += OnTrackContainerClearing;
+        // GitHub #158: shown, the ReplayGain column asks for the rows on screen.
+        Columns.Changed += (_, _) => ReadReplayGainOf(TrackList.GetRealizedContainers().Select(c => c.DataContext).OfType<Track>());
 
         // Wire any containers that were realized before this subscription so
         // right-click works on row padding/edges, not just the inner Grid.
@@ -168,7 +170,19 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             // Re-apply ctrl-selected visual based on the data set so recycled
             // containers reflect the right state after a scroll.
             MultiSelectHelper.SyncContainerVisual(item, _selectedTracks);
+            if (item.DataContext is Track track) ReadReplayGainOf(new[] { track });
         }
+    }
+
+    /// <summary>
+    /// GitHub #158: a song whose ReplayGain tags were never read (a library from before the
+    /// column) showed a blank cell until the startup pass reached its file, minutes later on
+    /// a big library. While the column is shown, rows coming on screen are read right away.
+    /// </summary>
+    private void ReadReplayGainOf(IEnumerable<Track> tracks)
+    {
+        if (_vm != null && Columns.IsVisible("ReplayGain"))
+            _vm.ReadReplayGainSoon(tracks);
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)

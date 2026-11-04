@@ -199,6 +199,28 @@ internal sealed partial class NoctisServerClient : IDisposable
             new("deviceName", deviceName),
         };
         var r = await PostFormAsync("noctisSignIn", form, signingIn: true, withKey: false, ct).ConfigureAwait(false);
+        return ReadSignIn(r);
+    }
+
+    /// <summary>noctisPairSignIn (form POST): the QR code's one-time secret, alone, for this
+    /// device's own key. Only ever called on a client pinned to the code's fingerprint.</summary>
+    public async Task<SignInResult> PairSignInAsync(string secret, string deviceId, string deviceName, CancellationToken ct)
+    {
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("code", secret),
+            new("deviceId", deviceId),
+            new("deviceName", deviceName),
+        };
+        var r = await PostFormAsync(PairSignInMethod, form, signingIn: true, withKey: false, ct).ConfigureAwait(false);
+        return ReadSignIn(r);
+    }
+
+    /// <summary>The QR sign-in endpoint (the desktop's NoctisServer.PairSignInMethod).</summary>
+    internal const string PairSignInMethod = "noctisPairSignIn";
+
+    private static SignInResult ReadSignIn(JsonElement r)
+    {
         if (!r.TryGetProperty("noctisSignIn", out var s) || s.ValueKind != JsonValueKind.Object)
             throw new NoctisServerException(NoctisErrorKind.Outdated, "This desktop's Noctis is too old to sign in phones. Update it.");
         var key = Str(s, "apiKey");
@@ -787,6 +809,9 @@ internal sealed partial class NoctisServerClient : IDisposable
     /// from the computer, which the Account page counts apart from other failures.</param>
     internal static NoctisServerException MapError(int code, bool signingIn, string? what = null) => code switch
     {
+        40 or 41 when signingIn && what == PairSignInMethod => new(NoctisErrorKind.PairingExpired, "This sign-in code is not valid any more."),
+        // A desktop from before QR sign-in answers "Unknown method" (0) to it.
+        0 when what == PairSignInMethod => new(NoctisErrorKind.Outdated, "This desktop's Noctis is too old to sign in by QR code. Update it."),
         40 or 41 when signingIn => new(NoctisErrorKind.BadCredentials, "Wrong user name or password."),
         70 when what == "download" => new(NoctisErrorKind.FileMissing, "This song's file is missing on your computer."),
         40 or 41 => new(NoctisErrorKind.SignedOut, "This phone was signed out on the desktop. Sign in again."),

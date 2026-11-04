@@ -59,6 +59,19 @@ public class FavoriteArtistsService
         }
     }
 
+    /// <summary>Forgets every favorite artist and deletes the file (Settings › Reset Everything).
+    /// The set is loaded once, so deleting only the file left every heart on until a restart,
+    /// and the next heart click wrote them all back.</summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _names.Clear();
+            try { File.Delete(_filePath); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[FavoriteArtists] Clear failed: {ex.Message}"); }
+        }
+    }
+
     /// <summary>Called under <see cref="_gate"/>. Write-to-temp + move so a crash
     /// mid-write can't truncate the list.</summary>
     private void Save()

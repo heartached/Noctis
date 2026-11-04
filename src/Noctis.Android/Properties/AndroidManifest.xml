@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
-	<!-- Network: only to the owner's own Noctis desktop, and only once they sign in to it
-	     (Settings → Account): sign-in, sync, streaming and downloads over TLS pinned to the
-	     desktop's certificate (privacy policy, Network). ACCESS_NETWORK_STATE is
+	<!-- Network (privacy policy, Network): album descriptions (Last.fm), artist photos (Deezer),
+	     lyrics for songs without their own (LRCLIB), artist logos in builds that carry the keys
+	     (MusicBrainz, fanart.tv, TheAudioDB), scrobbling once the user connects Last.fm or
+	     ListenBrainz, and the owner's own Noctis desktop once they sign in to it (parked:
+	     PhoneAccountFeatures) over TLS pinned to its certificate. ACCESS_NETWORK_STATE is
 	     normal-level (no prompt), for reading whether a network is up. Every request is https: usesCleartextTraffic="false" below
 	     states the targetSdk 28+ default explicitly, so API 26-27 devices refuse cleartext too. -->
 	<uses-permission android:name="android.permission.INTERNET" />
@@ -26,6 +28,14 @@
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<!-- Adaptive + themed launcher icon (mipmap-anydpi-v26), generated from the logo by
 	     scripts/android/make-icons.py. @drawable/icon (the 2000 px logo) is still the splash icon. -->
+	<!-- allowBackup stated rather than left to the default: Android may back up the library
+	     index, settings and history (privacy policy, Backups); the account link and downloads
+	     live under NoBackupFilesDir, which no backup ever includes. -->
+	<!-- Sign in by QR code (AndroidQrScanner): Google's code scanner runs the camera inside Google
+	     Play services, so there is no CAMERA permission here. barcode_ui asks Play services to
+	     install the scanner module with the app, so the first scan does not wait for a download. -->
 	<application android:label="Noctis" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"
-	             android:usesCleartextTraffic="false" />
+	             android:allowBackup="true" android:usesCleartextTraffic="false">
+		<meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
+	</application>
 </manifest>

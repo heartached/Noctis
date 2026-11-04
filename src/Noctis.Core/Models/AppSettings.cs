@@ -41,6 +41,11 @@ public class AppSettings : IJsonOnDeserializing
     public bool PlaylistShowAddedColumn { get; set; } = true;
     public bool PlaylistShowFavoriteColumn { get; set; } = true;
 
+    /// <summary>The Featured Artists / Suggested rail on the right of a playlist page
+    /// (Discord, DendyAly 11-02). Off hides it and skips its artist pictures and the
+    /// suggestion scan; the track list takes the width.</summary>
+    public bool PlaylistShowSideRail { get; set; } = true;
+
     /// <summary>File paths explicitly removed from the library. Skipped during rescans.</summary>
     public List<string> ExcludedFilePaths { get; set; } = new();
 
@@ -65,6 +70,11 @@ public class AppSettings : IJsonOnDeserializing
     /// the user switched off in Settings → Plugins. Older builds stored folder names; the
     /// plugin host rewrites those to ids on load.</summary>
     public List<string> DisabledPlugins { get; set; } = new();
+
+    /// <summary>Plugin ids whose screens the user took off the sidebar (Settings → Plugins → the
+    /// plugin's "Show in sidebar", or the row's Hide from sidebar). Every other running plugin
+    /// that adds a screen gets a sidebar entry.</summary>
+    public List<string> SidebarHiddenPlugins { get; set; } = new();
 
     /// <summary>
     /// "Community plugins" switch (Settings → Plugins). False = restricted mode: no
@@ -569,6 +579,11 @@ public class AppSettings : IJsonOnDeserializing
     /// "Vinyl" or "Cassette" (<see cref="AlbumCarouselStyles.Parse"/>). Shared by both carousels.</summary>
     public string AlbumCarouselStyle { get; set; } = AlbumCarouselStyles.DefaultSetting;
 
+    /// <summary>Built-in feature switch (Settings › Plugins › Built-in Features): the album
+    /// carousel and its cases. Off shows the grid on the Albums page and the artist page and
+    /// hides the way to the carousel; <see cref="AlbumViewMode"/> is kept for when it returns.</summary>
+    public bool AlbumCarouselEnabled { get; set; } = true;
+
     /// <summary>Artists grid sort: "name", "songs" (track count), "albums" (album count),
     /// "time" (total length) or "genre".</summary>
     public string ArtistSortMode { get; set; } = "name";
@@ -647,6 +662,28 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Settings toggle (Appearance): show the "Heavy rotation" row on Home at all.</summary>
     public bool HomeShowHeavyRotation { get; set; } = true;
 
+    // GitHub #159: how many albums Home's Albums (recently played) and New in Library rows
+    // show, and which of the two comes first. Defaults keep the Albums row as it was (six).
+
+    /// <summary>Albums shown in Home's recently played Albums row; one of <see cref="HomeAlbumCountChoices"/>.</summary>
+    public int HomeRecentAlbumsCount { get; set; } = 6;
+
+    /// <summary>Albums shown in Home's New in Library row (newest added first); one of <see cref="HomeAlbumCountChoices"/>.</summary>
+    public int HomeNewAlbumsCount { get; set; } = 10;
+
+    /// <summary>Whether Home's "New in Library" section shows its rows.</summary>
+    public bool HomeNewAlbumsExpanded { get; set; } = true;
+
+    /// <summary>Show New in Library above the recently played Albums row (default: below it).</summary>
+    public bool HomeNewAlbumsFirst { get; set; }
+
+    /// <summary>The counts the Home album rows offer (Settings picker and the row's own pill).</summary>
+    public static IReadOnlyList<int> HomeAlbumCountChoices { get; } = new[] { 6, 10, 20, 50, 100 };
+
+    /// <summary>The nearest of <see cref="HomeAlbumCountChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapHomeAlbumCount(int count) =>
+        HomeAlbumCountChoices.MinBy(c => Math.Abs((long)c - count));
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look. Shown as "Glass Opacity" (GitHub #104): with Liquid Glass
@@ -723,6 +760,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Mini player design: "Classic" (the size-morphing card), "Pill" or "Sleeve";
     /// see <see cref="MiniPlayerStyle"/>. Stored by name like the other style pickers.</summary>
     public string MiniPlayerStyle { get; set; } = MiniPlayerStyles.DefaultSetting;
+
+    /// <summary>Built-in feature switch: the mini player. Off closes it, hides its island
+    /// button and makes the album-art click and shortcut do nothing.</summary>
+    public bool MiniPlayerEnabled { get; set; } = true;
 
     /// <summary>Layout of the Albums → Cover Flow page: "Carousel" (default, the classic row),
     /// "Cascade" (tilted diagonal path with the track text beside it) or "Collage" (mosaic) —
@@ -1013,6 +1054,11 @@ public class AppSettings : IJsonOnDeserializing
     /// (the Windows engines); elsewhere it rests flat. Ships off like the other extras.</summary>
     public bool LyricsVisualizerEnabled { get; set; }
 
+    /// <summary>Built-in feature switch: the audio visualizer. Off removes the Visualizer page
+    /// from the sidebar and stops the lyrics-page visualizer, whatever
+    /// <see cref="LyricsVisualizerEnabled"/> says (kept for when it returns).</summary>
+    public bool VisualizerEnabled { get; set; } = true;
+
     /// <summary>Visualizer look: a <see cref="VisualizerStyle"/> name ("Bars", "Mirror", "Wave").</summary>
     public string LyricsVisualizerStyle { get; set; } = VisualizerStyles.DefaultSetting;
 
@@ -1196,6 +1242,8 @@ public class AppSettings : IJsonOnDeserializing
         SleepTimerFadeSeconds = SnapSleepTimerFadeSeconds(SleepTimerFadeSeconds);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         UiScalePercent = SnapUiScale(UiScalePercent);
+        HomeRecentAlbumsCount = SnapHomeAlbumCount(HomeRecentAlbumsCount);
+        HomeNewAlbumsCount = SnapHomeAlbumCount(HomeNewAlbumsCount);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         BackgroundBlurAmount = double.IsFinite(BackgroundBlurAmount)
             ? Math.Clamp(BackgroundBlurAmount, 0, 1)

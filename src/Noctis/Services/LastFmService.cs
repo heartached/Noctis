@@ -45,6 +45,7 @@ public class LastFmService : ILastFmService
                 {
                     var name = await GetAuthenticatedUsernameAsync();
                     Username = name;
+                    if (!string.IsNullOrEmpty(name)) UsernameResolved?.Invoke(this, name);
                 }
                 catch
                 {
@@ -190,6 +191,8 @@ public class LastFmService : ILastFmService
     /// <summary>Raised when a scrobble could not be delivered. Carries a display message.</summary>
     public event EventHandler<string>? ScrobbleFailed;
 
+    public event EventHandler<string>? UsernameResolved;
+
     /// <summary>Raised when Last.fm reports the stored session key is no longer valid.</summary>
     public event EventHandler? SessionExpired;
 
@@ -245,6 +248,8 @@ public class LastFmService : ILastFmService
     {
         return _albumDescriptions.SetOverrideAsync(artistName, albumName, description, ct);
     }
+
+    public Task ClearAlbumDescriptionsAsync() => _albumDescriptions.ClearAsync();
 
     public Task ClearAlbumDescriptionOverrideAsync(string artistName, string albumName, CancellationToken ct = default)
     {

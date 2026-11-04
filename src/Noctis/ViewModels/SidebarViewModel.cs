@@ -147,6 +147,16 @@ public partial class SidebarViewModel : ViewModelBase
         => SetOptionalSectionVisible(visible, "server", Loc.T("Nav.Server"), "ServerIcon", after: null, before: "cd");
 
     /// <summary>
+    /// Shows or hides the "Visualizer" entry (Settings › Plugins › Built-in Features › Audio
+    /// Visualizer). It goes back to its place after Playlists.
+    /// </summary>
+    public void SetVisualizerSectionVisible(bool visible)
+        => SetOptionalSectionVisible(visible, "visualizer", Loc.T("Nav.Visualizer"), "SidebarVisualizerIcon", after: "playlists", before: "lyricsstudio");
+
+    /// <summary>True while the sidebar has a Visualizer entry.</summary>
+    public bool IsVisualizerSectionVisible => NavItems.Any(i => i.Key == "visualizer");
+
+    /// <summary>
     /// Shows or hides the "Audio CD" entry. It sits after Server (when present),
     /// otherwise directly above Settings, and only exists while an optical drive does.
     /// </summary>
@@ -207,7 +217,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>True for an entry that opens a sheet over the current page instead of going
     /// to a page (Settings): its row never takes the selection, so the highlight stays on the
     /// section the user is in.</summary>
-    public static bool OpensSheet(NavItem item) => item.Key == "settings";
+    public static bool OpensSheet(NavItem item) => item.Key == "settings" || item is PluginNavItem;
 
     /// <summary>
     /// Toggles a folder header the user clicked, easing its rows (see <see cref="FoldFolderRows"/>

@@ -15,4 +15,7 @@ public interface IAudioAnalysisStore
 {
     Task<TrackAnalysisRecord?> GetAsync(string filePath, CancellationToken ct);
     Task UpsertAsync(TrackAnalysisRecord record, CancellationToken ct);
+
+    /// <summary>Deletes every cached analysis (Settings › Reset Everything). The default does nothing (test doubles).</summary>
+    Task ClearAsync(CancellationToken ct = default) => Task.CompletedTask;
 }

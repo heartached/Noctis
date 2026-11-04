@@ -109,6 +109,7 @@ internal class Program
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.HeadphoneSurround));
             VlcAudioPlayer.OutputDeviceAtLaunch = PersistenceService.ReadStringSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.AudioOutputDeviceId));
+            VlcAudioPlayer.DecoderFallbackListPathAtLaunch = Path.Combine(AppPaths.DataRoot, "mp3_decoder_fallback.txt");
             // The interface size (GitHub #145) before the main window is built, so it opens at
             // its size instead of jumping there when the settings load lands.
             Noctis.Helpers.UiScale.SetFactor(Noctis.Models.AppSettings.SnapUiScale(

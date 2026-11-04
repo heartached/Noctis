@@ -997,6 +997,32 @@
                 </Button>
             </StackPanel>
 
+            <!-- GitHub #162: the song is marked as having no lyrics — a calm note in the
+                 search pill's place, with Undo to take the mark off. -->
+            <StackPanel x:Name="MarkedNoLyricsState"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="-50,0,0,0"
+                        Spacing="14"
+                        IsVisible="{Binding IsMarkedNoLyrics}"
+                        ZIndex="3">
+                <TextBlock Text="{loc:T Lyrics.MarkedNoLyrics}"
+                           FontSize="14"
+                           Foreground="{Binding LyricsSubtleFg}"
+                           HorizontalAlignment="Center"/>
+                <Button Classes="pill-btn"
+                        Padding="20,9"
+                        CornerRadius="22"
+                        Command="{Binding UnmarkNoLyricsCommand}"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="{loc:T Lyrics.UndoNoLyrics}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </Button>
+            </StackPanel>
+
             <!-- Searching indicator: three staggered pulsing dots + label -->
             <StackPanel x:Name="SearchingIndicator"
                         HorizontalAlignment="Center"

@@ -51,40 +51,25 @@ public sealed class Room
 }
 
 /// <summary>
-/// Room sizes Jafezy allowed: 1, 2, 4 and 8 cells, as sensible shapes (a single, a wide or a tall
-/// double, a square four, and a wide or tall eight). Eight is the biggest a room gets.
+/// Room sizes. Rooms started with Jafezy's six shapes (1, 2, 4 and 8 cells); since the Discord
+/// feedback (11-02, "ditch the size limit") a room can be any whole number of cells wide and high
+/// that fits in the building. <see cref="All"/> keeps the classic shapes.
 /// </summary>
 public static class RoomShapes
 {
-    public const int MaxCells = 8;
     public const int MaxSplits = 4;
 
+    /// <summary>The first shapes rooms had: still the familiar sizes, no longer the only ones.</summary>
     public static readonly IReadOnlyList<(int W, int H)> All = new (int, int)[] { (1, 1), (2, 1), (1, 2), (2, 2), (4, 2), (2, 4) };
 
-    public static bool IsValid(int w, int h)
-    {
-        foreach (var (sw, sh) in All)
-            if (sw == w && sh == h) return true;
-        return false;
-    }
+    /// <summary>Any size of at least one cell each way that the biggest building can hold.</summary>
+    public static bool IsValid(int w, int h) => w >= 1 && h >= 1 && w <= ApartmentGrid.MaxColumns && h <= ApartmentGrid.MaxRows;
 
-    /// <summary>The allowed shape nearest to a dragged size of <paramref name="w"/> x
-    /// <paramref name="h"/> cells (ties: the smaller room).</summary>
+    /// <summary>The whole-cell size nearest to a dragged size of <paramref name="w"/> x
+    /// <paramref name="h"/> cells (at least one cell each way).</summary>
     public static (int W, int H) Snap(double w, double h)
-    {
-        var best = All[0];
-        var bestDist = double.MaxValue;
-        foreach (var s in All)
-        {
-            var d = (s.W - w) * (s.W - w) + (s.H - h) * (s.H - h);
-            if (d < bestDist - 1e-9 || (Math.Abs(d - bestDist) < 1e-9 && s.W * s.H < best.W * best.H))
-            {
-                best = s;
-                bestDist = d;
-            }
-        }
-        return best;
-    }
+        => (Math.Clamp((int)Math.Round(w, MidpointRounding.AwayFromZero), 1, ApartmentGrid.MaxColumns),
+            Math.Clamp((int)Math.Round(h, MidpointRounding.AwayFromZero), 1, ApartmentGrid.MaxRows));
 
     /// <summary>
     /// The sub-rooms of a room of <paramref name="w"/> x <paramref name="h"/> cells divided into
@@ -119,17 +104,57 @@ public sealed class ApartmentGrid
 {
     public const int DefaultColumns = 14;
     public const int DefaultRows = 7;
+    /// <summary>The building's size limits (the sliders' ends; Discord, Jafezy 11-02: up to 18 x 9).</summary>
+    public const int MinColumns = 4;
+    public const int MinRows = 2;
+    public const int MaxColumns = 18;
+    public const int MaxRows = 9;
 
     private readonly List<Room> _rooms = new();
 
     public ApartmentGrid(int columns = DefaultColumns, int rows = DefaultRows)
     {
-        Columns = Math.Max(4, columns);
-        Rows = Math.Max(2, rows);
+        Columns = Math.Clamp(columns, MinColumns, MaxColumns);
+        Rows = Math.Clamp(rows, MinRows, MaxRows);
     }
 
-    public int Columns { get; }
-    public int Rows { get; }
+    public int Columns { get; private set; }
+    public int Rows { get; private set; }
+
+    /// <summary>The smallest the building can be without leaving a room outside.</summary>
+    public (int Columns, int Rows) MinSize()
+    {
+        int c = MinColumns, r = MinRows;
+        foreach (var room in _rooms)
+        {
+            c = Math.Max(c, room.Cells.Right);
+            r = Math.Max(r, room.Cells.Bottom);
+        }
+        return (c, r);
+    }
+
+    /// <summary>Resizes the building (clamped to its limits). False (and unchanged) when a room
+    /// would end up outside.</summary>
+    public bool TrySetSize(int columns, int rows)
+    {
+        columns = Math.Clamp(columns, MinColumns, MaxColumns);
+        rows = Math.Clamp(rows, MinRows, MaxRows);
+        if (columns == Columns && rows == Rows) return true;
+        var (minC, minR) = MinSize();
+        if (columns < minC || rows < minR) return false;
+        Columns = columns;
+        Rows = rows;
+        Touch();
+        return true;
+    }
+
+    /// <summary>Empties the building ("Clear building"); its size stays.</summary>
+    public void Clear()
+    {
+        if (_rooms.Count == 0) return;
+        _rooms.Clear();
+        Touch();
+    }
     public IReadOnlyList<Room> Rooms => _rooms;
 
     /// <summary>Bumped on every change (the canvas and the save timer watch it).</summary>
@@ -211,17 +236,17 @@ public sealed class ApartmentGrid
         return true;
     }
 
-    /// <summary>The shape a corner drag to <paramref name="w"/> x <paramref name="h"/> cells snaps to
-    /// (top-left stays), and whether it fits.</summary>
+    /// <summary>The size a drag of a room's edge or corner to <paramref name="w"/> x
+    /// <paramref name="h"/> cells snaps to (top-left stays, never past the building's edge), and
+    /// whether it fits.</summary>
     public (Cells Cells, bool Fits) ResizeTarget(Room room, double w, double h)
     {
         var (sw, sh) = RoomShapes.Snap(w, h);
-        var to = room.Cells with { W = sw, H = sh };
+        var to = room.Cells with { W = Math.Min(sw, Math.Max(1, Columns - room.Cells.X)), H = Math.Min(sh, Math.Max(1, Rows - room.Cells.Y)) };
         return (to, CanPlace(to, room));
     }
 
-    /// <summary>Resizes to an allowed shape (top-left stays); false (and unchanged) when the shape is
-    /// not allowed or does not fit.</summary>
+    /// <summary>Resizes (top-left stays); false (and unchanged) when it does not fit.</summary>
     public bool TryResize(Room room, int w, int h)
     {
         var to = room.Cells with { W = w, H = h };
@@ -291,7 +316,7 @@ public sealed class ApartmentGrid
     public static ApartmentGrid FromLayout(ApartmentLayout? layout, Func<RoomKind, string, bool> exists, out int dropped)
     {
         dropped = 0;
-        var grid = new ApartmentGrid();
+        var grid = layout is null ? new ApartmentGrid() : new ApartmentGrid(layout.Columns, layout.Rows);
         if (layout?.Rooms is null) return grid;
         foreach (var s in layout.Rooms)
         {
