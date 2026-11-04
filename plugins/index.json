@@ -86,8 +86,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-albumtown-v1.0.2/Noctis.Plugins.AlbumTown-1.0.2.zip",
-      "sha256": "a681424fea04c55c6194a04081f079fc12a21bc730ab51691f0bbba505d78989",
-      "size": 126024,
+      "sha256": "9a4686af5acf86b5cffe370adb23b53a54dbd0354f848e43d9116baf140d6f9f",
+      "size": 126025,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumTown",
       "icon": "Noctis.Plugins.AlbumTown/icon.png"
     },
