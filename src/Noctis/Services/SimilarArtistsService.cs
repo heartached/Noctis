@@ -39,28 +39,36 @@ public sealed class SimilarArtistsService
         try { Directory.CreateDirectory(_cacheDir); Directory.CreateDirectory(_imageDir); } catch { }
     }
 
-    /// <summary>Related artists, most similar first; empty when unknown or offline.</summary>
-    public async Task<IReadOnlyList<SimilarArtist>> GetAsync(Guid artistId, string artistName, CancellationToken ct = default)
+    /// <summary>Related artists, most similar first; empty when unknown or offline.
+    /// <paramref name="pinnedDeezerId"/> is the account the user picked with Search Artist
+    /// Info (GitHub #141/#170): its related list is asked for directly, never the name
+    /// search, and a list cached for another account (or for the name search) is re-fetched.</summary>
+    public async Task<IReadOnlyList<SimilarArtist>> GetAsync(Guid artistId, string artistName, long? pinnedDeezerId = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(artistName) || artistName == "Unknown Artist") return Array.Empty<SimilarArtist>();
 
         var path = Path.Combine(_cacheDir, $"{artistId}.similar.json");
         var cached = ReadCache(path);
-        if (cached != null && !IsStale(cached))
+        var sameAccount = cached != null && cached.PinnedDeezerId == pinnedDeezerId;
+        if (cached != null && sameAccount && !IsStale(cached))
             return cached.Artists;
 
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var artists = await FetchAsync(artistName, ct).ConfigureAwait(false);
-            var entry = new SimilarArtistsCache { Artists = artists, FetchedAtUtc = DateTime.UtcNow, Picker = PickerVersion };
+            var artists = await FetchAsync(artistName, pinnedDeezerId, ct).ConfigureAwait(false);
+            var entry = new SimilarArtistsCache
+            {
+                Artists = artists, FetchedAtUtc = DateTime.UtcNow, Picker = PickerVersion, PinnedDeezerId = pinnedDeezerId,
+            };
             WriteCache(path, entry);
             return artists;
         }
         catch (OperationCanceledException) { throw; }
         catch
         {
-            return cached?.Artists ?? (IReadOnlyList<SimilarArtist>)Array.Empty<SimilarArtist>();
+            // Offline: a stale list for the same account beats nothing; another account's never.
+            return sameAccount ? cached!.Artists : Array.Empty<SimilarArtist>();
         }
         finally
         {
@@ -97,17 +105,24 @@ public sealed class SimilarArtistsService
         catch { }
     }
 
-    private async Task<List<SimilarArtist>> FetchAsync(string artistName, CancellationToken ct)
+    private async Task<List<SimilarArtist>> FetchAsync(string artistName, long? pinnedDeezerId, CancellationToken ct)
     {
-        var searchJson = await GetTextAsync(
-            $"{DeezerSearchUrl}?q={Uri.EscapeDataString(artistName.Trim())}&limit=10", ct).ConfigureAwait(false);
-        if (searchJson == null) return new List<SimilarArtist>();
         long deezerId;
-        using (var doc = JsonDocument.Parse(searchJson))
-            deezerId = PickBestMatch(doc.RootElement, artistName);
-        if (deezerId <= 0) return new List<SimilarArtist>();
+        if (pinnedDeezerId is > 0)
+        {
+            deezerId = pinnedDeezerId.Value;
+        }
+        else
+        {
+            var searchJson = await GetTextAsync(
+                $"{DeezerSearchUrl}?q={Uri.EscapeDataString(artistName.Trim())}&limit=10", ct).ConfigureAwait(false);
+            if (searchJson == null) return new List<SimilarArtist>();
+            using (var doc = JsonDocument.Parse(searchJson))
+                deezerId = PickBestMatch(doc.RootElement, artistName);
+            if (deezerId <= 0) return new List<SimilarArtist>();
+            await Task.Delay(RequestPacingMs, ct).ConfigureAwait(false);
+        }
 
-        await Task.Delay(RequestPacingMs, ct).ConfigureAwait(false);
         var relatedJson = await GetTextAsync($"{DeezerArtistUrl}{deezerId}/related?limit={MaxRelated}", ct).ConfigureAwait(false);
         if (relatedJson == null) return new List<SimilarArtist>();
         List<SimilarArtist> related;
@@ -217,4 +232,7 @@ public sealed class SimilarArtistsCache
     public DateTime FetchedAtUtc { get; set; }
     /// <summary>Picker logic that chose the account (absent in older files = 0 = stale).</summary>
     public int Picker { get; set; }
+    /// <summary>The Deezer account the user picked when this list was fetched; null when it
+    /// came from the name search. A different pick (or a reset) makes the entry stale.</summary>
+    public long? PinnedDeezerId { get; set; }
 }
