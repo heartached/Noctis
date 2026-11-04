@@ -408,10 +408,6 @@
     <value>歌词背景视频</value>
     <comment>Album page menu</comment>
   </data>
-  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>选择此相册的视频…</value>
-    <comment>Album page menu</comment>
-  </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
     <value>使用默认视频</value>
     <comment>Album page menu</comment>
@@ -5310,6 +5306,8 @@
   <data name="Plugins.None" xml:space="preserve">
     <value>还没有安装插件。</value>
   </data>
+  <!-- Settings → Plugins → Make your own plugin -->
+  <!-- Settings → Integrations → More integrations (opens the Plugins page) -->
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve">
     <value>Noctis 服务器</value>
@@ -5460,94 +5458,7 @@
     <value>关闭</value>
     <comment>Secondary button</comment>
   </data>
-  <data name="Main.AddFromYouTube" xml:space="preserve">
-    <value>从 YouTube 添加</value>
-    <comment>New/Add menu item</comment>
-  </data>
-  <data name="Main.AddFromYouTubeHint" xml:space="preserve">
-    <value>搜索或粘贴链接 — 下载到您的库</value>
-    <comment>New/Add menu item subtitle</comment>
-  </data>
-  <data name="YouTube.Title" xml:space="preserve">
-    <value>从 YouTube 添加</value>
-    <comment>Dialog title</comment>
-  </data>
-  <data name="YouTube.Subtitle" xml:space="preserve">
-    <value>搜索或粘贴链接。保存到带有封面艺术的书库中。</value>
-    <comment>Dialog subtitle</comment>
-  </data>
-  <data name="YouTube.SearchHint" xml:space="preserve">
-    <value>搜索YouTube或粘贴一个链接…</value>
-    <comment>Search box watermark</comment>
-  </data>
-  <data name="YouTube.Search" xml:space="preserve">
-    <value>搜索</value>
-    <comment>Search button</comment>
-  </data>
-  <data name="YouTube.SetupTitle" xml:space="preserve">
-    <value>一次性设置</value>
-    <comment>First-run card title</comment>
-  </data>
-  <data name="YouTube.SetupBody" xml:space="preserve">
-    <value>Noctis 使用 yt-dlp (免费, 开放源码) 与 YouTube 谈话。它下载一次到Noctis自己的文件夹并从这里更新。</value>
-    <comment>First-run card body</comment>
-  </data>
-  <data name="YouTube.Install" xml:space="preserve">
-    <value>安装 yt-dlp</value>
-    <comment>First-run card button</comment>
-  </data>
-  <data name="YouTube.Download" xml:space="preserve">
-    <value>下载</value>
-    <comment>Per-result button</comment>
-  </data>
-  <data name="YouTube.SavesTo" xml:space="preserve">
-    <value>保存到</value>
-    <comment>Footer label before the folder</comment>
-  </data>
-  <data name="YouTube.EmptyHint" xml:space="preserve">
-    <value>结果显示在这里。在您的库文件夹中下载，标记为带有封面色彩。</value>
-    <comment>Empty state</comment>
-  </data>
-  <data name="YouTube.Close" xml:space="preserve">
-    <value>关闭</value>
-    <comment>Secondary button</comment>
-  </data>
-  <data name="YouTubeSettings.Section" xml:space="preserve">
-    <value>您正在下载</value>
-    <comment>Library tab section title</comment>
-  </data>
-  <data name="YouTubeSettings.Title" xml:space="preserve">
-    <value>从 YouTube 添加歌曲</value>
-    <comment>Card title</comment>
-  </data>
-  <data name="YouTubeSettings.Description" xml:space="preserve">
-    <value>搜索或粘贴要下载的链接。</value>
-    <comment>Card description</comment>
-  </data>
-  <data name="YouTubeSettings.Open" xml:space="preserve">
-    <value>打开下载器</value>
-    <comment>Card button</comment>
-  </data>
-  <data name="YouTubeSettings.Folder" xml:space="preserve">
-    <value>下载文件夹</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.FolderHint" xml:space="preserve">
-    <value>空使用您第一个音乐文件夹中的 &quot;YouTube&quot; 文件夹。</value>
-    <comment>Row help</comment>
-  </data>
-  <data name="YouTubeSettings.Tool" xml:space="preserve">
-    <value>英寸-dlp</value>
-    <comment>Row label</comment>
-  </data>
-  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve">
-    <value>安装/更新</value>
-    <comment>Row button</comment>
-  </data>
-  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve">
-    <value>自定义路径 yt-dlp (可选)</value>
-    <comment>Path watermark</comment>
-  </data>
+  <!-- Lyrics background video picker (its yt-dlp install / update buttons). -->
   <data name="Upmix.Title" xml:space="preserve">
     <value>多通道混和</value>
     <comment>Audio card title</comment>
