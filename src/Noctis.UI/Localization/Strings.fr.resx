@@ -7370,4 +7370,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Retirer {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. La couleur d’accent colore les boutons, les interrupteurs et les éléments mis en évidence.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Stockage utilisé, {0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Afficher dans les lignes</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Désactivé</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Notes</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoris</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Les lignes de morceaux se terminent par les étoiles du morceau ou un cœur pour un favori.</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>Noter</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>Noter {0} sur 5</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>Effacer la note</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>Rechercher dans Albums</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Aucun album trouvé</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>Effacer la recherche</value></data>
 </root>

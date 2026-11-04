@@ -43,6 +43,14 @@
         <Style Selector="Button.np-row.np-danger">
             <Setter Property="Foreground" Value="{DynamicResource MenuGlassDestructive}" />
         </Style>
+        <!-- The Rate row's stars: the glass's text colour, a little smaller than a row's glyph. -->
+        <Style Selector="Button.np-star">
+            <Setter Property="Foreground" Value="{DynamicResource MenuGlassText}" />
+        </Style>
+        <Style Selector="Button.np-star PathIcon">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+        </Style>
         <Style Selector="Button.np-row PathIcon">
             <Setter Property="Width" Value="20" />
             <Setter Property="Height" Value="20" />
@@ -137,6 +145,36 @@
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddToQueue}" VerticalAlignment="Center" />
                                                 </Grid>
                                             </Button>
+                                            <!-- A song's rating: five stars (a tap sets it) and Clear while it has one. -->
+                                            <Grid Name="MenuRate" ColumnDefinitions="56,*,Auto" MinHeight="44" IsVisible="{Binding CanRate}">
+                                                <PathIcon Data="{DynamicResource PhStar}" Width="20" Height="20" Foreground="{DynamicResource MenuGlassText}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <ItemsControl Grid.Column="1" Name="MenuRateStars" ItemsSource="{Binding Stars}" VerticalAlignment="Center"
+                                                              AutomationProperties.Name="{loc:T Mobile.Rate}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:RateStar">
+                                                            <Button Classes="row np-star" Width="30" Height="40" Padding="0"
+                                                                    Command="{Binding $parent[ItemsControl].((vm:ContextSheetViewModel)DataContext).RateCommand}"
+                                                                    CommandParameter="{Binding Value}" AutomationProperties.Name="{Binding AccessibleName}">
+                                                                <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <PathIcon Data="{DynamicResource PhStar}" IsVisible="{Binding !IsOn}" />
+                                                                    <PathIcon Data="{DynamicResource PhStarFill}" IsVisible="{Binding IsOn}" />
+                                                                </Panel>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Button Grid.Column="2" Name="MenuClearRating" Classes="row np-star" Width="36" Height="40" Padding="0" Margin="0,0,8,0"
+                                                        Command="{Binding ClearRatingCommand}" IsVisible="{Binding IsRated}" AutomationProperties.Name="{loc:T Mobile.ClearRating}">
+                                                    <PathIcon Data="{DynamicResource PhClose}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                                <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="np-line" />
+                                            </Grid>
                                             <Button Name="MenuDownload" Classes="row np-row" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhDownload}" />

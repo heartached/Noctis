@@ -2454,4 +2454,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} klasörünü kaldır</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Vurgu rengi düğmeleri, anahtarları ve vurguları renklendirir.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Kullanılan Alan, {0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Şarkı satırlarında göster</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Kapalı</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Puanlar</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoriler</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Şarkı satırları şarkının yıldızlarıyla ya da favoriler için bir kalple biter.</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>Puanla</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>5 üzerinden {0} puan ver</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>Puanı temizle</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>Albümlerde bul</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Eşleşen albüm yok</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>Aramayı temizle</value></data>
 </root>

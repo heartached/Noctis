@@ -392,6 +392,18 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
     }
 
+    /// <summary>Settings › Library › Show in Song Rows: Off, Ratings or Favorites on the glass menu.</summary>
+    [RelayCommand]
+    private void ShowSongRowsMenu()
+    {
+        var items = Enum.GetValues<SongRowMark>()
+            .Select(mark => new OptionsMenuItem(Shell, ShellViewModel.SongRowMarkName(mark), Shell.SongRowMark == mark, () => Shell.SongRowMark = mark))
+            .ToList();
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
+    public string SongRowsRowName => Named(Loc.T("Mobile.Settings.SongRows"), Shell.SongRowMarkLabel);
+
     private void NextDarkTheme() => DarkTheme = DarkThemes[(DarkThemes.ToList().IndexOf(DarkTheme) + 1) % DarkThemes.Count];
 
     // ── Lyrics ──
@@ -982,6 +994,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
         {
             OnPropertyChanged(nameof(PlayerBarValue));
             OnPropertyChanged(nameof(PlayerBarRowName));
+        }
+        else if (e.PropertyName == nameof(ShellViewModel.SongRowMark))
+        {
+            OnPropertyChanged(nameof(SongRowsRowName));
         }
     }
 

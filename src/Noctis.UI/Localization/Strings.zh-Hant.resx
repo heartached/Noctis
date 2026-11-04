@@ -7370,4 +7370,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。強調色會套用到按鈕、開關和醒目提示。</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>已使用的儲存空間，{0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>在歌曲列中顯示</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>關閉</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評分</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>最愛</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>歌曲列末端顯示歌曲的星級，或最愛歌曲的愛心。</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>評分</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>評為 {0} 星（滿分 5）</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>清除評分</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>在專輯中尋找</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>沒有相符的專輯</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>清除搜尋</value></data>
 </root>

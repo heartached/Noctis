@@ -7370,4 +7370,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>إزالة {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. يلوّن لون التمييز الأزرار ومفاتيح التبديل والعناصر المميزة.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>مساحة التخزين المستخدمة، {0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>العرض في صفوف الأغاني</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>إيقاف</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>التقييمات</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>المفضلة</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>تنتهي صفوف الأغاني بنجوم الأغنية أو بقلب للمفضلة.</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>تقييم</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>تقييم {0} من 5</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>مسح التقييم</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>البحث في الألبومات</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>لا توجد ألبومات مطابقة</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>مسح البحث</value></data>
 </root>

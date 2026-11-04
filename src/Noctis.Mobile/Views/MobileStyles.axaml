@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:Noctis.Controls">
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:views="using:Noctis.Mobile.Views">
     <!-- Phone-wide styles, included once by ShellView so every page, overlay and test mount
          gets them. Colours are DynamicResources from Noctis.UI's theme dictionaries: they
          resolve on the device (AndroidApp.axaml merges Styles.axaml and the overlays) and
@@ -55,6 +56,12 @@
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- A song row's rating stars in the artist line's grey, a favourite's heart in the accent. -->
+    <Style Selector="views|RowMark">
+        <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        <Setter Property="HeartBrush" Value="{DynamicResource AccentTextExactBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- A list row's hairline, from the text to the edge (Apple's inset separator), and its

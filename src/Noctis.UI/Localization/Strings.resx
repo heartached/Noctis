@@ -3654,4 +3654,15 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Remove {0}</value><comment>Screen reader: a folder’s remove button. {0} = folder</comment></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. The accent colours buttons, switches and highlights.</value><comment>Accent page footnote. {0} = accent name</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Storage Used, {0}</value><comment>Screen reader. {0} = "312 songs · 4.2 GB"</comment></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Show in Song Rows</value><comment>Settings › Library row: what song rows show at the end of the artist line</comment></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Off</value><comment>Show in Song Rows choice: nothing</comment></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Ratings</value><comment>Show in Song Rows choice: star ratings</comment></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favorites</value><comment>Show in Song Rows choice: a heart on favorites</comment></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Song rows end in the song's stars or a heart for a favorite.</value><comment>Library group footnote</comment></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>Rate</value><comment>Song menu row: set the star rating</comment></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>Rate {0} of 5</value><comment>Screen reader for a star in the song menu. {0} = 1-5</comment></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>Clear Rating</value><comment>Song menu: remove the rating</comment></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>Find in Albums</value><comment>Search field placeholder on the Albums page</comment></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>No albums match</value><comment>Albums page search with no results</comment></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>Clear Search</value><comment>Screen reader: the list pages' search field clear button</comment></data>
 </root>

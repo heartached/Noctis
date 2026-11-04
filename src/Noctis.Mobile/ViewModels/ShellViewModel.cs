@@ -550,6 +550,20 @@ public sealed partial class ShellViewModel : ObservableObject
     /// theme's plain pages. On by default.</summary>
     [ObservableProperty] private bool _artworkPageColors = true;
 
+    /// <summary>Settings › Library › Show in Song Rows: the small mark at the end of a song row's
+    /// artist line (Views/RowMark, inherited from ShellView). Ratings by default: the stars show
+    /// only on rated songs, so an unrated library looks as before, and the owner's rule of no
+    /// heart on the rows (10-19) holds unless Favorites is chosen. Saved to settings.json
+    /// (MobileSongRowMark) and applied live.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SongRowMarkLabel))]
+    private SongRowMark _songRowMark = SongRowMark.Ratings;
+
+    /// <summary>The Show in Song Rows row's value ("Ratings").</summary>
+    public string SongRowMarkLabel => SongRowMarkName(SongRowMark);
+
+    internal static string SongRowMarkName(SongRowMark mark) => Loc.T("Mobile.Settings.SongRows." + mark);
+
     public bool ShowsMiniProgress => ShowMiniProgressFill || ShowMiniProgressLine;
 
     private bool _playerBarLoaded;
@@ -565,6 +579,7 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressFill));
     partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressLine));
     partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
+    partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
@@ -579,6 +594,9 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressFill))) ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressLine))) ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ArtworkPageColors))) ArtworkPageColors = settings.MobileArtworkPageColors;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(SongRowMark)))
+                    SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
+                        ? mark : SongRowMark.Ratings;
             }
             finally
             {
@@ -602,6 +620,7 @@ public sealed partial class ShellViewModel : ObservableObject
             return;
         }
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
+        var mark = SongRowMark.ToString();
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -612,6 +631,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobilePlayerBarProgressFill = fill;
                     settings.MobilePlayerBarProgressLine = line;
                     settings.MobileArtworkPageColors = pages;
+                    settings.MobileSongRowMark = mark;
                 });
             }
             catch (Exception ex)
@@ -1069,6 +1089,28 @@ public sealed partial class ShellViewModel : ObservableObject
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
         Library.Service.NotifyFavoritesChanged(current);
+    }
+
+    /// <summary>
+    /// Rate <paramref name="tracks"/> 0 (none) to 5 stars, the favourite's path: the library's own
+    /// songs too, one journal write (which queues a desktop song's rating for the computer on the
+    /// next sync, NoctisAccountService.RecordTrackStates). Track.Rating notifies, so the rows'
+    /// stars follow at once.
+    /// </summary>
+    public async Task SetRatingAsync(IReadOnlyList<Track> tracks, int rating)
+    {
+        if (tracks.Count == 0) return;
+        rating = Math.Clamp(rating, 0, 5);
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).ToList();
+        foreach (var t in tracks.Concat(current)) t.Rating = rating;
+        try
+        {
+            await Library.Service.SaveTrackUserStateAsync(current);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Rating save failed: {ex.Message}");
+        }
     }
 
     [RelayCommand]
