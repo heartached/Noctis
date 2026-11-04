@@ -121,15 +121,15 @@ public partial class LyricsPage : UserControl
         ShowControls();
         HideControlsIfPlaying();
         // After layout, so the containers exist and the extent is measured.
-        Dispatcher.UIThread.Post(() => ScrollToLine(_lyrics?.ActiveLineIndex ?? -1, animate: false), DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(() => ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: false), DispatcherPriority.Loaded);
     }
 
     private void OnLyricsChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(LyricsPageViewModel.WantsFrames))
             EnsureFrameLoop();
-        else if (e.PropertyName == nameof(LyricsPageViewModel.ActiveLineIndex) && IsVisible)
-            ScrollToLine(_lyrics!.ActiveLineIndex, animate: true);
+        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible)
+            ScrollToLine(_lyrics!.ScrollLineIndex, animate: true);
         else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && IsVisible)
             ShowControls();   // (re)starts the hide timer once there is something to read
     }
@@ -277,7 +277,7 @@ public partial class LyricsPage : UserControl
         _browseTimer.Stop();
         if (_lyrics is not { IsBrowsing: true }) return;
         _lyrics.IsBrowsing = false;
-        if (scrollBack && IsVisible) ScrollToLine(_lyrics.ActiveLineIndex, animate: true);
+        if (scrollBack && IsVisible) ScrollToLine(_lyrics.ScrollLineIndex, animate: true);
     }
 
     // ── Frames ──

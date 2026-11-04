@@ -86,6 +86,12 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _hasLyrics;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _isLoading;
     [ObservableProperty] private int _activeLineIndex = -1;
+
+    /// <summary>The line the page scrolls to: the newest started line, except while an earlier
+    /// line is still being sung over it (a duet, an overlapping TTML voice) — then the earliest
+    /// of those, so the list never scrolls past a line before its end
+    /// (<see cref="LyricsTimeline.ScrollIndex"/>, as the desktop's ScrollLineIndex).</summary>
+    [ObservableProperty] private int _scrollLineIndex = -1;
     [ObservableProperty] private bool _hasTranslations;
     [ObservableProperty] private bool _hasRomanizations;
     [ObservableProperty] private bool _showTranslation = true;
@@ -330,6 +336,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         _timeline.Reset();
         _clock.Reset();
         ActiveLineIndex = -1;
+        ScrollLineIndex = -1;
         Lines.ReplaceAll(Array.Empty<LyricLine>());
         IsSynced = false;
         HasLyrics = false;
@@ -457,6 +464,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         // Also re-ramp when an overlapping (duet) line joins or leaves the lit set
         // while the active line stays.
         if (!step.ActiveSetChanged) return;
+        // The scroll target is resolved before the active index is published, so the page's
+        // handler of either change reads a settled pair.
+        var scroll = Math.Min(_timeline.ScrollIndex(TimeSpan.FromMilliseconds(Math.Max(0, audible)), TimeSpan.Zero), step.ActiveIndex);
+        ScrollLineIndex = scroll;
         ActiveLineIndex = step.ActiveIndex;
         ApplyOpacities(step.ActiveIndex);
     }
