@@ -1039,6 +1039,14 @@
     <value>Les mots chantés s'élèvent doucement et les notes tenues brillent, comme dans Apple Music. Désactivé, les paroles synchronisées mot à mot restent immobiles.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
+    <value>Centrer le lecteur quand un morceau n'a pas de paroles</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
+    <value>Quand un morceau n'a pas de paroles ou est instrumental, la page des paroles place la pochette, les infos et les commandes au centre.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>Opacité de la barre de lecture</value>
     <comment>Text in SettingsView.axaml</comment>

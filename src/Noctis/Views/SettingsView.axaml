@@ -4214,6 +4214,21 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Discord request: songs with no lyrics (or instrumentals) centre the player
+                 on the lyrics page instead of leaving the lyrics side empty. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsCenterWhenNoLyrics}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsCenterWhenNoLyricsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsCenterWhenNoLyrics}"
+                                          IsChecked="{Binding LyricsCenterWhenNoLyrics}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Lyric layers (issue #78): display-only, the lyrics are not reloaded. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

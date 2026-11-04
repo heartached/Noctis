@@ -1039,6 +1039,14 @@
     <value>已唱的词会轻轻浮起，长音会发光（类似 Apple Music）。关闭后逐字歌词保持静止。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
+    <value>歌曲没有歌词时将播放器居中</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
+    <value>歌曲没有歌词或为纯音乐时，歌词页会把封面、歌曲信息和控制按钮移到中间。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>播放栏不透明度</value>
     <comment>Text in SettingsView.axaml</comment>

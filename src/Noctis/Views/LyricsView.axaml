@@ -953,6 +953,71 @@
                                VerticalAlignment="Center"
                                IsVisible="{Binding LyricsCreditText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </StackPanel>
+
+                <!-- Centred no-lyrics layout (IsNoLyricsCentered): the lyrics column is faded
+                     out, so its Search Lyrics / marked / searching states show here, under the
+                     player. Zero-height host: fading it in never moves the stack (the content
+                     hangs below it); code-behind fades it and turns hit-testing on with it. -->
+                <Panel x:Name="CenteredNoLyricsActions"
+                       Height="0"
+                       ClipToBounds="False"
+                       Opacity="0"
+                       IsHitTestVisible="False">
+                    <StackPanel VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                Margin="0,14,0,0">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="10"
+                                    IsVisible="{Binding ShowSearchButton}">
+                            <TextBlock Text="{Binding SearchFailedMessage}"
+                                       FontSize="12"
+                                       Foreground="{Binding LyricsSubtleFg}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <Button x:Name="CenteredSearchLyricsButton"
+                                    Classes="pill-btn"
+                                    Padding="14,5"
+                                    Height="30" MinHeight="30"
+                                    CornerRadius="15"
+                                    Command="{Binding OpenLyricsSearchCommand}"
+                                    AutomationProperties.Name="{loc:T Lyrics.SearchLyrics}">
+                                <TextBlock Text="{loc:T Lyrics.SearchLyrics}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="White"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="10"
+                                    IsVisible="{Binding IsMarkedNoLyrics}">
+                            <TextBlock Text="{loc:T Lyrics.MarkedNoLyrics}"
+                                       FontSize="12"
+                                       Foreground="{Binding LyricsSubtleFg}"
+                                       VerticalAlignment="Center"/>
+                            <Button Classes="pill-btn"
+                                    Padding="14,5"
+                                    Height="30" MinHeight="30"
+                                    CornerRadius="15"
+                                    Command="{Binding UnmarkNoLyricsCommand}"
+                                    AutomationProperties.Name="{loc:T Lyrics.UndoNoLyrics}">
+                                <TextBlock Text="{loc:T Lyrics.UndoNoLyrics}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="White"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="{loc:T Lyrics.SearchingLyrics}"
+                                   FontSize="12"
+                                   Margin="0,7,0,0"
+                                   Foreground="{Binding LyricsSubtleFg}"
+                                   HorizontalAlignment="Center"
+                                   IsVisible="{Binding IsSearching}"/>
+                    </StackPanel>
+                </Panel>
             </StackPanel>
         </Border>
 
