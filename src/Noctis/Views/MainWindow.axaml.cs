@@ -368,7 +368,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
-        // Menus, submenus and tooltips frost here while Liquid Glass is on (GitHub #169).
+        // Menus, submenus and tooltips frost in this window's overlay layer while Liquid Glass
+        // is on (GitHub #169); other windows' frost in their own popups.
         GlassMenus.SetHost(this, true);
         // Pick Up on Computer: the window coming to the front is when a newer phone queue is offered.
         Activated += (_, _) => (DataContext as MainWindowViewModel)?.HandoffPrompt.Check();
@@ -515,9 +516,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     }
 
     /// <summary>Glass menus and tooltips (GlassMenus) tint their frost at the island's Glass
-    /// Opacity, as the island menus did since #104; they read it as a window resource.</summary>
-    private void ApplyGlassMenuTint(double opacity) =>
-        Resources["GlassMenuTintOpacity"] = Math.Clamp(opacity, 0, 1);
+    /// Opacity, as the island menus did since #104. An application resource: the mini player's,
+    /// the dialogs' and plugin windows' menus frost too (GitHub #169), and a window resource only
+    /// reached this window's.</summary>
+    private static void ApplyGlassMenuTint(double opacity)
+    {
+        if (Application.Current is { } app)
+            app.Resources["GlassMenuTintOpacity"] = Math.Clamp(opacity, 0, 1);
+    }
 
     /// <summary>Card fade/scale plus the glass underlay's own Fade/scale, always together so the
     /// frost and the content it carries are never out of step (see SettingsOverlay in the XAML).</summary>

@@ -2,22 +2,30 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Data;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Noctis.Controls;
 
 namespace Noctis.Helpers;
 
 /// <summary>
-/// Liquid Glass for every menu, submenu and tooltip of a glass window (GitHub #104 island
-/// menus, extended app-wide by #169).
+/// Liquid Glass for every menu, submenu, drop-down list and tooltip of every window (GitHub
+/// #104 island menus, extended to the main window by #169 and then to the whole app).
 ///
-/// A native popup window cannot be frosted: the <see cref="GlassPanel"/> blur only sees the
-/// surface it renders into. So while <see cref="AppGlass"/> is on, each open of a right-click
-/// <see cref="ContextMenu"/>, a <see cref="MenuFlyoutPresenter"/> or a <see cref="ToolTip"/>
-/// whose owner sits in a <see cref="HostProperty"/> window is hosted in that window's overlay
-/// layer and tagged with <see cref="GlassClass"/>. Styles.axaml then gives the card a
-/// GlassPanel chrome (and its submenus, through <see cref="SubmenuGlassProperty"/>). While
-/// glass is off neither happens, so every menu opens exactly as before.
+/// While <see cref="AppGlass"/> is on, each open of a right-click <see cref="ContextMenu"/>, a
+/// <see cref="MenuFlyoutPresenter"/>, a tracked <see cref="FlyoutPresenter"/> or a
+/// <see cref="ToolTip"/> is tagged with <see cref="GlassClass"/>, and Styles.axaml gives the card
+/// a GlassPanel chrome (its submenus, and the card Border of a drop-down list or a custom popup,
+/// through <see cref="SubmenuGlassProperty"/> / <see cref="ApplyCardPopup"/>). While glass is
+/// off none of it happens, so every menu opens exactly as before.
+///
+/// Where the card opens: the <see cref="GlassPanel"/> blur only sees the surface it renders
+/// into. In a <see cref="HostProperty"/> window (the main window) the card is hosted in the
+/// window's overlay layer (and tagged <see cref="OverlayClass"/>), so the glass frosts the live
+/// app. Every other window (mini player, dialogs, plugin windows) keeps the native popup, which
+/// may reach past a small window, and the card's <see cref="GlassMenuBackdrop"/> paints a
+/// snapshot of the window behind it into the popup for the glass to frost.
 ///
 /// Decided per open, before the popup opens, so a Liquid Glass switch applies to the next
 /// open: the global menu style sets <see cref="TrackProperty"/>; flyouts and tooltips detach
@@ -34,12 +42,17 @@ public static class GlassMenus
     /// <summary>Card class while the menu or tooltip is frosted.</summary>
     public const string GlassClass = "glass-menu";
 
+    /// <summary>Card class while a frosted card is hosted in its window's overlay layer (its
+    /// submenus then open there too).</summary>
+    public const string OverlayClass = "glass-overlay";
+
     /// <summary>Blur of every glass menu card (the island menus' value since #104).</summary>
     public const double BlurRadius = 14;
 
-    /// <summary>A window whose menus and tooltips frost while Liquid Glass is on (the main
-    /// window). Others (mini player, dialogs) keep native popups: an overlay-layer menu can't
-    /// leave its window, which would cramp menus in a small window.</summary>
+    /// <summary>A window whose menus and tooltips frost in its overlay layer (the main window).
+    /// Others (mini player, dialogs) keep native popups, frosted over a snapshot of the window
+    /// (<see cref="GlassMenuBackdrop"/>): an overlay-layer menu can't leave its window, which
+    /// would cramp or clip menus in a small window.</summary>
     public static readonly AttachedProperty<bool> HostProperty =
         AvaloniaProperty.RegisterAttached<Window, bool>("Host", typeof(GlassMenus));
 
@@ -72,14 +85,28 @@ public static class GlassMenus
         TrackProperty.Changed.AddClassHandler<Control>((card, e) =>
         {
             card.AttachedToLogicalTree -= OnCardAttached;
+            card.AttachedToVisualTree -= OnCardShown;
             if (!e.GetNewValue<bool>()) return;
             card.AttachedToLogicalTree += OnCardAttached;
+            card.AttachedToVisualTree += OnCardShown;
             Apply(card);
         });
 
         MenuBase.IsOpenProperty.Changed.AddClassHandler<ContextMenu>((menu, e) =>
         {
             if (e.GetNewValue<bool>() && GetTrack(menu)) Apply(menu);
+        });
+
+        // Drop-down lists: decided before the template binding opens the popup (a class
+        // handler runs before binding subscribers; ComboBoxDropDownAnimator calls it too, ahead
+        // of its open motion).
+        ComboBox.IsDropDownOpenProperty.Changed.AddClassHandler<ComboBox>((box, e) =>
+        {
+            if (e.GetNewValue<bool>() && DropDownPopup(box) is { } popup) ApplyCardPopup(popup);
+        });
+        AutoCompleteBox.IsDropDownOpenProperty.Changed.AddClassHandler<AutoCompleteBox>((box, e) =>
+        {
+            if (e.GetNewValue<bool>() && DropDownPopup(box) is { } popup) ApplyCardPopup(popup);
         });
 
         SubmenuGlassProperty.Changed.AddClassHandler<Border>((card, e) =>
@@ -94,22 +121,47 @@ public static class GlassMenus
         if (sender is Control card) Apply(card);
     }
 
-    /// <summary>The popup frosts: glass is on and its owner sits in a host window.</summary>
-    internal static bool ShouldFrost(Popup popup) =>
-        AppGlass.IsActive
-        && popup.Parent is Visual owner
-        && TopLevel.GetTopLevel(owner) is Window window
-        && GetHost(window);
+    /// <summary>The card is on screen. A card that stayed in the logical tree since it was decided
+    /// (a flyout whose owner moved to another window while it was closed) is re-checked here: the
+    /// glass follows the setting now. Only the class: the popup is already open, so its overlay
+    /// choice waits for the next open.</summary>
+    private static void OnCardShown(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is not Control card || card.Parent is not Popup popup) return;
+        var on = ShouldFrost(popup);
+        if (card.Classes.Contains(GlassClass) == on) return;
+        card.Classes.Set(GlassClass, on);
+        if (!on) card.Classes.Remove(OverlayClass);
+    }
 
-    /// <summary>Sets up one open of <paramref name="card"/> (a ContextMenu, MenuFlyoutPresenter
-    /// or ToolTip): overlay layer + <see cref="GlassClass"/> while it should frost, the stock
-    /// native popup and plain card otherwise. Cards not hosted by a Popup (the tray menu's own
-    /// window, see TrayMenuFrost) are left alone.</summary>
+    /// <summary>The window <paramref name="popup"/> opens for: its own visual tree's, else its
+    /// owner's (a ContextMenu's popup is not in the tree), through any popups it sits in.</summary>
+    internal static Window? OwnerWindow(Popup popup)
+    {
+        var top = TopLevel.GetTopLevel(popup)
+                  ?? (popup.Parent is Visual owner ? TopLevel.GetTopLevel(owner) : null)
+                  ?? (popup.PlacementTarget is { } target ? TopLevel.GetTopLevel(target) : null);
+        return GlassMenuBackdrop.OwnerWindow(top);
+    }
+
+    /// <summary>The popup frosts: glass is on and it opens for a window.</summary>
+    internal static bool ShouldFrost(Popup popup) => AppGlass.IsActive && OwnerWindow(popup) is not null;
+
+    /// <summary>The frosted popup opens in its window's overlay layer: a host window's.</summary>
+    internal static bool ShouldUseOverlay(Popup popup) =>
+        AppGlass.IsActive && OwnerWindow(popup) is { } window && GetHost(window);
+
+    /// <summary>Sets up one open of <paramref name="card"/> (a ContextMenu, MenuFlyoutPresenter,
+    /// FlyoutPresenter or ToolTip): <see cref="GlassClass"/> while it should frost, plus the
+    /// overlay layer in a host window; the stock popup and plain card otherwise. Cards not hosted
+    /// by a Popup (the tray menu's own window, see TrayMenuFrost) are left alone.</summary>
     public static void Apply(Control card)
     {
         if (card.Parent is not Popup popup) return;
         var on = ShouldFrost(popup);
+        var overlay = on && ShouldUseOverlay(popup);
         card.Classes.Set(GlassClass, on);
+        card.Classes.Set(OverlayClass, overlay);
 
         // A tooltip's popup binds its overlay flag to its owner's ToolTip.ShouldUseOverlayLayer
         // on every open (ToolTip.Open), so the owner carries it.
@@ -117,8 +169,17 @@ public static class GlassMenus
         Control? holder = isTip ? popup.Parent as Control : popup;
         if (holder is null) return;
         var property = isTip ? ToolTip.ShouldUseOverlayLayerProperty : Popup.ShouldUseOverlayLayerProperty;
+        SetForcedOverlay(holder, property, overlay);
+    }
+
+    /// <summary>Sets <paramref name="property"/> on <paramref name="holder"/> while
+    /// <paramref name="on"/>, and clears it again only where this class set it (a popup that asks
+    /// for the overlay layer itself keeps it).</summary>
+    private static void SetForcedOverlay(Control holder, StyledProperty<bool> property, bool on)
+    {
         if (on)
         {
+            if (holder.IsSet(property) && !holder.GetValue(ForcedOverlayProperty)) return;
             holder.SetValue(property, true);
             holder.SetValue(ForcedOverlayProperty, true);
         }
@@ -129,9 +190,51 @@ public static class GlassMenus
         }
     }
 
+    /// <summary>The ComboBox / AutoCompleteBox list popup (the Fluent template's PART_Popup).</summary>
+    internal static Popup? DropDownPopup(TemplatedControl box)
+    {
+        foreach (var v in box.GetVisualDescendants())
+            if (v is Popup { Name: "PART_Popup" } popup) return popup;
+        return null;
+    }
+
+    /// <summary>
+    /// Sets up one open of a popup whose child is a plain card <see cref="Border"/>: a ComboBox or
+    /// AutoCompleteBox list, or a custom menu popup (the mini player's "…" menu). Call it before
+    /// the popup opens. While glass is on the card frosts like a submenu card
+    /// (<see cref="SubmenuGlassProperty"/>; its open/close motion then fades
+    /// <see cref="MenuOpenAnimation.FadeProperty"/>, see <see cref="MenuOpenAnimation.UseFadeProperty"/>)
+    /// and, in a host window, opens in the overlay layer. Off, the card and popup are left as
+    /// the template made them.
+    /// </summary>
+    public static void ApplyCardPopup(Popup popup)
+    {
+        if (popup.Child is not Border card) return;
+        var on = ShouldFrost(popup);
+        var overlay = on && ShouldUseOverlay(popup);
+        card.Classes.Set(GlassClass, on);
+        card.Classes.Set(OverlayClass, overlay);
+        SetForcedOverlay(popup, Popup.ShouldUseOverlayLayerProperty, overlay);
+        if (on)
+        {
+            MenuOpenAnimation.SetUseFade(card, true);
+            SetSubmenuGlass(card, true);
+        }
+        else if (GetSubmenuGlass(card))
+        {
+            card.ClearValue(SubmenuGlassProperty);
+            card.ClearValue(MenuOpenAnimation.UseFadeProperty);
+        }
+    }
+
+    /// <summary>The GlassPanel a frosted card Border (<see cref="SubmenuGlassProperty"/>) hands
+    /// its rows to, or null.</summary>
+    internal static GlassPanel? FrostOf(Border card) =>
+        card.Child is GlassMenuBackdrop { Child: GlassPanel glass } ? glass : null;
+
     private static void FrostSubmenu(Border card)
     {
-        if (card.Child is GlassPanel || card.Child is not Control rows) return;
+        if (FrostOf(card) != null || card.Child is not Control rows) return;
         var glass = new GlassPanel { BlurRadius = BlurRadius, Padding = MenuChrome.GetPadding(card) ?? card.Padding };
         glass.Bind(GlassPanel.BackgroundProperty, card.GetResourceObservable("AppSidebarBackground"));
         glass.Bind(GlassPanel.GlassTintOpacityProperty, card.GetResourceObservable("GlassMenuTintOpacity", v => v as double?));
@@ -140,26 +243,43 @@ public static class GlassMenus
         // frost and the rows follow it, as on the menu cards.
         glass.Bind(GlassPanel.FadeProperty, card.GetObservable(MenuOpenAnimation.FadeProperty));
         rows.Bind(Visual.OpacityProperty, card.GetObservable(MenuOpenAnimation.FadeProperty));
-        // The glass paints the card now: the Border keeps only its size and motion.
+        // In a native popup window the backdrop paints the window behind for the glass to frost.
+        var backdrop = new GlassMenuBackdrop { Child = glass };
+        backdrop.Bind(GlassMenuBackdrop.BackgroundProperty, card.GetResourceObservable("AppSidebarBackground"));
+        backdrop.Bind(GlassMenuBackdrop.CornerRadiusProperty, card.GetObservable(Border.CornerRadiusProperty));
+        backdrop.Bind(GlassMenuBackdrop.FadeProperty, card.GetObservable(MenuOpenAnimation.FadeProperty));
+        // The glass paints the card now: the Border keeps only its size and motion. Its own
+        // fill, edge and padding are masked above every other value (not overwritten): a card
+        // whose fill is its own local value (the mini player's "…" menu) gets it back unfrosted.
         card.Child = null;
-        card.Background = null;
-        card.BorderThickness = default;
-        card.Padding = default;
+        Masks.AddOrUpdate(card, new[]
+        {
+            card.SetValue(Border.BackgroundProperty, null, BindingPriority.Animation),
+            card.SetValue(Border.BorderThicknessProperty, default, BindingPriority.Animation),
+            card.SetValue(Decorator.PaddingProperty, default, BindingPriority.Animation),
+        });
         glass.Child = rows;
-        card.Child = glass;
+        card.Child = backdrop;
     }
+
+    /// <summary>The masks <see cref="FrostSubmenu"/> laid over a card's fill, edge and padding.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Border, IDisposable?[]> Masks = new();
 
     private static void UnfrostSubmenu(Border card)
     {
-        if (card.Child is not GlassPanel { Child: Control rows } glass) return;
+        if (card.Child is not GlassMenuBackdrop { Child: GlassPanel { Child: Control rows } glass } backdrop) return;
         card.Child = null;
+        backdrop.Child = null;
         glass.Child = null;
         rows.ClearValue(Visual.OpacityProperty);
         card.Child = rows;
+        if (Masks.TryGetValue(card, out var masks))
+        {
+            Masks.Remove(card);
+            foreach (var mask in masks) mask?.Dispose();
+        }
+        // What MenuChrome skipped while the glass painted the card.
         if (MenuChrome.GetPadding(card) is { } padding) card.Padding = padding;
-        else card.ClearValue(Decorator.PaddingProperty);
-        card.ClearValue(Border.BackgroundProperty);
-        card.ClearValue(Border.BorderThicknessProperty);
-        MenuChrome.ApplySubmenuCard(card, MenuChrome.GetSubmenuCard(card));
+        if (MenuChrome.GetSubmenuCard(card)) MenuChrome.ApplySubmenuCard(card, true);
     }
 }
