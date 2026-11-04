@@ -270,6 +270,11 @@ internal sealed class FakeHistoryLog : IPlayHistoryService
     public Task PreloadAsync() => Task.CompletedTask;
     public void RecordPlay(Track track) => Seed(track, DateTime.UtcNow);
     public void RecordSkip(Track track) { }
+    public void SetListened(Track track, TimeSpan listened)
+    {
+        var e = EventList.LastOrDefault(x => x.TrackId == track.Id);
+        if (e != null) e.ListenedMs = (long)listened.TotalMilliseconds;
+    }
     public Task FlushAsync() => Task.CompletedTask;
     public int PruneOlderThan(DateTime cutoffUtc) => EventList.RemoveAll(e => e.PlayedAtUtc < cutoffUtc);
     public Task ClearAsync() { EventList.Clear(); return Task.CompletedTask; }

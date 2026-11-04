@@ -20,7 +20,7 @@ public sealed record ListeningWeek(IReadOnlyList<DateTime> Days, IReadOnlyList<l
 /// </summary>
 public static class ListeningWeekCalculator
 {
-    public static readonly TimeSpan FallbackLength = TimeSpan.FromMinutes(3);
+    public static readonly TimeSpan FallbackLength = PlayListening.FallbackLength;
 
     /// <param name="events">The log, oldest first.</param>
     /// <param name="lengthOf">A song's length by id; null or zero when unknown.</param>
@@ -43,8 +43,7 @@ public static class ListeningWeekCalculator
             if (day is < 0 or > 6) continue;
             plays++;
             if (e.Skipped) continue;
-            var length = lengthOf(e.TrackId);
-            ticks[day] += (length is { } l && l > TimeSpan.Zero ? l : FallbackLength).Ticks;
+            ticks[day] += PlayListening.Heard(e, lengthOf(e.TrackId)).Ticks;
         }
         return new ListeningWeek(Enumerable.Range(0, 7).Select(i => first.AddDays(i)).ToList(), ticks, plays);
     }

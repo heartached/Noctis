@@ -51,6 +51,18 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     // See OnPlayerPosition: a track counts as played once its audio moves past that start.
     private Track? _unrecordedPlay;
     private TimeSpan _unrecordedFrom;
+    // How long the current song has actually been heard (ticks of moving audio, a seek or a
+    // stall is not listening), and the song whose play is in the log to credit it to.
+    private TimeSpan _listened;
+    private TimeSpan _listenAnchor;
+    private Track? _listenTrack;
+    private TimeSpan _flushedListened = TimeSpan.MinValue;
+    // A bigger forward step between two ticks is a jump, not listening.
+    private const double MaxListenStepSeconds = 2;
+
+    /// <summary>Settings > Player > Count a play after: how much of a song (percent) must be heard
+    /// before it is in the play log, 0 = as soon as it plays. Read per tick; null = 0.</summary>
+    public Func<int>? PlayCountThresholdPercent { get; set; }
     private readonly IVolumeControl? _volume;
     private bool _syncingVolume;
 
@@ -516,8 +528,13 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         // Not recorded yet: a file that fails to load (broken.mp3, a revoked grant) must not
         // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
+        FlushListened();
         _unrecordedPlay = track;
         _unrecordedFrom = fromPosition ?? TimeSpan.Zero;
+        _listened = TimeSpan.Zero;
+        _listenAnchor = _unrecordedFrom;
+        _listenTrack = null;
+        _flushedListened = TimeSpan.MinValue;
         _startedFrom = _unrecordedFrom;
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
@@ -555,6 +572,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StopPlayback()
     {
+        FlushListened();
         _player.Stop();
         IsPlaying = false;
         Position = TimeSpan.Zero;
@@ -607,14 +625,46 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         }
         // Past the start, not merely Playing: the Android player reports Playing from Play()
         // on, and a file that never decodes keeps polling at its start position until the error.
-        if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom)
+        AccumulateListened(position, playing);
+        if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom
+            && ThresholdReached())
             RecordStartedPlay();
         // Position only: the queue *structure* is written by its own mutators, so rewriting it
         // here would re-serialize and fsync the whole queue every five seconds for a value
         // that did not change. See SavePositionNow.
         if ((DateTime.UtcNow - _lastSaveUtc).TotalSeconds >= SaveIntervalSeconds)
+        {
             SavePositionNow();
+            FlushListened();
+        }
     });
+
+    /// <summary>Adds what was heard since the previous tick (see <see cref="MaxListenStepSeconds"/>).</summary>
+    private void AccumulateListened(TimeSpan position, bool playing)
+    {
+        var step = position - _listenAnchor;
+        _listenAnchor = position;
+        if (playing && step > TimeSpan.Zero && step.TotalSeconds <= MaxListenStepSeconds)
+            _listened += step;
+    }
+
+    /// <summary>True once the song has been heard for the chosen share of its length. A song of
+    /// unknown length can't be measured against, so it counts at once.</summary>
+    private bool ThresholdReached()
+    {
+        var percent = Math.Clamp(PlayCountThresholdPercent?.Invoke() ?? 0, 0, 100);
+        var length = Duration > TimeSpan.Zero ? Duration : CurrentTrack?.Duration ?? TimeSpan.Zero;
+        return percent == 0 || length <= TimeSpan.Zero || _listened.TotalSeconds >= length.TotalSeconds * percent / 100.0;
+    }
+
+    /// <summary>Writes the heard time to the current song's play in the log (absolute, so a repeat
+    /// is harmless). Not for a play that is not in the log yet.</summary>
+    private void FlushListened()
+    {
+        if (_listenTrack is not { } track || _listened == _flushedListened) return;
+        _flushedListened = _listened;
+        _history?.SetListened(track, _listened);
+    }
 
     /// <summary>Raised once a started track's play is in the log (see <see cref="StartTrack"/>);
     /// the shell refreshes the Library Shelf and the Home rows from the log on it.</summary>
@@ -630,6 +680,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         var track = _unrecordedPlay!;
         _unrecordedPlay = null;
+        _listenTrack = track;
         _history?.RecordPlay(track);
         PlayRecorded?.Invoke(this, EventArgs.Empty);
     }
