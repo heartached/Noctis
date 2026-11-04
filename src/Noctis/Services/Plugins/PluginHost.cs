@@ -2105,6 +2105,9 @@ public sealed class PluginHost
         {
             if (_disposed || _library is null || !Guid.TryParse(trackId, out var id) || _library.GetTrackById(id) is not { } track)
                 return Array.Empty<string>();
+            // Marked as having no lyrics (GitHub #162): the lyrics page shows none of what lies
+            // around for it, so neither does a plugin.
+            if (track.NoLyrics) return Array.Empty<string>();
             try
             {
                 // What Lyrics Studio and the lyrics page read: .ttml/.elrc/.lrc beside the song, then the
@@ -2112,7 +2115,9 @@ public sealed class PluginHost
                 IEnumerable<string> lines = Services.LyricsStudio.ExistingLyricsLoader.Load(track) is { } timed
                     ? timed.Lines.Select(l => l.Text)
                     : string.IsNullOrWhiteSpace(track.Lyrics) ? Array.Empty<string>() : LrcParser.SplitPlain(track.Lyrics);
-                return lines.Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
+                var result = lines.Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
+                // "纯音乐，请欣赏" ("instrumental, please enjoy") is a source's notice, not lyrics (GitHub #162).
+                return LyricsSearchSelector.IsInstrumentalPlaceholder(string.Join('\n', result)) ? Array.Empty<string>() : result;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

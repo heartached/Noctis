@@ -511,4 +511,35 @@ public class PluginLyricLinesApiTests : IDisposable
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [AvaloniaFact]
+    public void GetLyricLines_SongMarkedNoLyrics_OrInstrumentalNotice_QuotesNothing()
+    {
+        const string id = "dev.test.lyriclines.none";
+        var dir = Directory.CreateTempSubdirectory("noctis-lyriclines").FullName;
+        try
+        {
+            var song = Path.Combine(dir, "song.mp3");
+            File.WriteAllBytes(song, new byte[16]);
+            File.WriteAllText(Path.Combine(dir, "song.lrc"), "[00:01.00]First line here\n");
+            var library = new FakeLibraryService();
+            // GitHub #162: marked as having no lyrics — whatever lies beside it is not shown.
+            var marked = new Noctis.Models.Track { Title = "s", Artist = "a", Album = "b", FilePath = song, Duration = TimeSpan.FromSeconds(60), NoLyrics = true };
+            // Lyrics that only say "instrumental, please enjoy" (NetEase/Kugou placeholder).
+            var notice = new Noctis.Models.Track { Title = "n", Artist = "a", Album = "b", FilePath = Path.Combine(dir, "none.mp3"), Duration = TimeSpan.FromSeconds(60), Lyrics = "纯音乐，请欣赏" };
+            library.TrackList.AddRange(new[] { marked, notice });
+            _box.Approve((id, new[] { "library.read" }));
+            var host = _box.NewHost(null, library, appVersion: "1.6.6");
+            var script = new ScriptedPlugin();
+            _box.AddInProcess(host, script, PluginSandbox.Manifest(id: id, apiVersion: "1.4", minAppVersion: "1.6.6", permissions: new[] { "library.read" }));
+
+            var reader = script.Host!.Library;
+            Assert.Empty(reader.GetLyricLines(marked.Id.ToString("D")));
+            Assert.Empty(reader.GetLyricLines(notice.Id.ToString("D")));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

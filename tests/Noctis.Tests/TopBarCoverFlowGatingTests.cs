@@ -65,6 +65,24 @@ public class TopBarCoverFlowGatingTests
         Assert.False(bar.AlbumsViewToggleVisible);
     }
 
+    /// <summary>Album Carousel built-in feature off: the Albums page's View menu (with its Cover
+    /// Flow item) is hidden, so a carousel toggle there would be a dead button and Cover Flow
+    /// unreachable. The page gets the Cover Flow icon back instead.</summary>
+    [Fact]
+    public void Albums_page_keeps_the_cover_flow_icon_while_the_album_carousel_is_off()
+    {
+        var bar = new TopBarViewModel();
+        bar.ShowViewModeToggle(Noop, Noop, isCoverFlowMode: false);
+        bar.ShowReleaseTypeChips(new(), Noop);
+        bar.AlbumCarouselAvailable = false;
+        Assert.True(bar.CoverFlowToggleVisible);
+        Assert.False(bar.AlbumsViewToggleVisible);
+
+        bar.AlbumCarouselAvailable = true;
+        Assert.False(bar.CoverFlowToggleVisible);
+        Assert.True(bar.AlbumsViewToggleVisible);
+    }
+
     [Fact]
     public void Album_quality_pill_segments_follow_the_label()
     {
