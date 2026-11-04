@@ -50,6 +50,7 @@ public partial class LyricsPage : UserControl
     private double _lastAppliedY = double.NaN;
     private readonly DispatcherTimer _browseTimer;
     private readonly DispatcherTimer _controlsTimer;
+    private readonly DispatcherTimer _controlsOffTimer;
 
     public LyricsPage()
     {
@@ -62,6 +63,8 @@ public partial class LyricsPage : UserControl
         _browseTimer.Tick += (_, _) => EndBrowse(scrollBack: true);
         _controlsTimer = new DispatcherTimer { Interval = ControlsHideDelay };
         _controlsTimer.Tick += (_, _) => HideControlsIfPlaying();
+        _controlsOffTimer = new DispatcherTimer { Interval = ControlsFadeOut };
+        _controlsOffTimer.Tick += (_, _) => RemoveHiddenControls();
 
         // Any touch brings the transport back (and keeps it up a while), even one a line or
         // the scroller handles; a tap on a line also ends browsing, as the seek it makes
@@ -108,6 +111,7 @@ public partial class LyricsPage : UserControl
         {
             EndBrowse(scrollBack: false);
             _controlsTimer.Stop();
+            _controlsOffTimer.Stop();
             _fingerDown = false;
             return;
         }
@@ -197,6 +201,8 @@ public partial class LyricsPage : UserControl
 
     internal void ShowControls()
     {
+        _controlsOffTimer.Stop();
+        ControlsLayer.IsVisible = true;
         ControlsLayer.Opacity = 1;
         ControlsLayer.IsHitTestVisible = true;
         _controlsTimer.Stop();
@@ -212,6 +218,21 @@ public partial class LyricsPage : UserControl
         if (!IsVisible || _shell?.Player.IsPlaying != true || _lyrics?.HasLyrics != true || SeekBar.IsPointerOver) return;
         ControlsLayer.Opacity = 0;
         ControlsLayer.IsHitTestVisible = false;
+        _controlsOffTimer.Stop();
+        _controlsOffTimer.Start();
+    }
+
+    /// <summary>The fade (the style's 0.35 s) plus a beat; then the transport leaves layout.</summary>
+    private static readonly TimeSpan ControlsFadeOut = TimeSpan.FromMilliseconds(450);
+
+    /// <summary>A transport at opacity 0 still measures: its elapsed and remaining labels
+    /// re-laid out the page once a second and its seek bar repainted on every position tick
+    /// while the words swept, a hitch the phone felt each second. Once faded it is not visible
+    /// at all (a touch shows it again).</summary>
+    private void RemoveHiddenControls()
+    {
+        _controlsOffTimer.Stop();
+        if (!ControlsShown) ControlsLayer.IsVisible = false;
     }
 
     // Seek on release only, as Now Playing (NowPlayingPage.OnSeekCompleted).

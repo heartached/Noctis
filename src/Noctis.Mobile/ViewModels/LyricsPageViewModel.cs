@@ -88,7 +88,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int _activeLineIndex = -1;
 
     /// <summary>The line the page scrolls to: the newest started line, except while an earlier
-    /// line is still being sung over it (a duet, an overlapping TTML voice) — then the earliest
+    /// line is still being sung over it (a duet, an overlapping TTML voice) - then the earliest
     /// of those, so the list never scrolls past a line before its end
     /// (<see cref="LyricsTimeline.ScrollIndex"/>, as the desktop's ScrollLineIndex).</summary>
     [ObservableProperty] private int _scrollLineIndex = -1;
