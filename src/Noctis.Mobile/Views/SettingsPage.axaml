@@ -383,7 +383,7 @@
                 <Border Classes="row-separator chipped" />
                 <Button Classes="row" Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).ChooseThemeCommand}"
                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                    <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                    <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
                         <Border Classes="theme-preview" Background="{Binding PageBrush}">
                             <Panel>
                                 <Border Classes="theme-preview-card" Background="{Binding CardBrush}" />
@@ -396,7 +396,7 @@
                         <PathIcon Grid.Column="2" Classes="language-check" Data="{DynamicResource PhCheck}"
                                   Width="16" Height="16" Foreground="{DynamicResource AccentTextBrush}"
                                   IsVisible="{Binding IsSelected}" />
-                    </Grid>
+                    </views:SettingRow>
                 </Button>
             </StackPanel>
         </DataTemplate>
@@ -496,66 +496,66 @@
                                 <StackPanel>
                                     <Button Name="BackgroundRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Background}" AutomationProperties.Name="{Binding BackgroundRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconBackground}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Background}" />
                                             <Ellipse Grid.Column="2" Classes="value-dot" Fill="{Binding Background.SummarySwatch}" />
                                             <TextBlock Grid.Column="3" Name="BackgroundValueLabel" Classes="row-value" Text="{Binding Background.Summary}" />
                                             <views:GridIcon Grid.Column="4" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="ThemeRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Theme}" AutomationProperties.Name="{Binding ThemeRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon Data="{DynamicResource SetIconTheme}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Theme}" />
                                             <TextBlock Grid.Column="2" Name="ThemeValueLabel" Classes="row-value" Text="{Binding ThemeValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="AccentRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Accent}" AutomationProperties.Name="{Binding AccentRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconAccent}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Accent}" />
                                             <Ellipse Grid.Column="2" Classes="value-dot" Fill="{Binding AccentBrush}" />
                                             <TextBlock Grid.Column="3" Name="AccentValueLabel" Classes="row-value" Text="{Binding AccentName}" />
                                             <views:GridIcon Grid.Column="4" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="PlayerBarRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.PlayerBar}" AutomationProperties.Name="{Binding PlayerBarRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.PlayerBar}" />
                                             <TextBlock Grid.Column="2" Name="PlayerBarValueLabel" Classes="row-value" Text="{Binding PlayerBarValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <!-- Now Playing Artwork: Cover / Vinyl / CD on the glass menu, as Theme. -->
                                     <Button Name="NowPlayingArtworkRow" Classes="row" Command="{Binding ShowNowPlayingArtworkMenuCommand}"
                                             AutomationProperties.Name="{Binding NowPlayingArtworkRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconDisc}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingArtwork}" />
                                             <TextBlock Grid.Column="2" Name="NowPlayingArtworkValueLabel" Classes="row-value" Text="{Binding NowPlayingArtworkValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <!-- Language: System (the phone's) or one of the shipped translations, on a page of its own. -->
                                     <Button Name="LanguageRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Language}" AutomationProperties.Name="{Binding LanguageRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconGlobe}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Settings.Language.Title}" />
                                             <TextBlock Grid.Column="2" Name="LanguageValueLabel" Classes="row-value" Text="{Binding LanguageValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -568,36 +568,36 @@
                                 <StackPanel>
                                     <Button Name="FoldersRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Folders}" AutomationProperties.Name="{Binding FoldersRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconFolder}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.MusicFolders}" />
                                             <Ellipse Grid.Column="2" Name="FolderWarningDot" Classes="warning-dot" IsVisible="{Binding HasLostFolder}" />
                                             <TextBlock Grid.Column="3" Name="FoldersValueLabel" Classes="row-value" Text="{Binding FoldersValue}" />
                                             <views:GridIcon Grid.Column="4" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <StackPanel Name="DownloadsGroup" IsVisible="{Binding Shell.HasAccount}">
                                         <Border Classes="row-separator chipped" />
                                         <Button Name="DownloadsRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                                 CommandParameter="{x:Static vm:SettingsPane.Downloads}" AutomationProperties.Name="{Binding DownloadsRowName}">
-                                            <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                                 <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconDownload}" /></Border>
                                                 <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Downloads}" />
                                                 <TextBlock Grid.Column="2" Name="DownloadsValueLabel" Classes="row-value" Text="{Binding DownloadsValue}" />
                                                 <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                            </Grid>
+                                            </views:SettingRow>
                                         </Button>
                                     </StackPanel>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
                                             IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconRescan}" /></Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
                                                 <TextBlock Classes="row-label" Text="{loc:T Mobile.RescanLibrary}" />
                                                 <TextBlock Name="RescanSubtitleLabel" Classes="row-sub" Text="{Binding RescanSubtitle}" />
                                             </StackPanel>
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -610,12 +610,12 @@
                         <StackPanel>
                             <Border Name="SongRowsCard" Classes="group-card">
                                 <Button Name="SongRowsRow" Classes="row" Command="{Binding ShowSongRowsMenuCommand}" AutomationProperties.Name="{Binding SongRowsRowName}">
-                                    <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                         <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconStar}" /></Border>
                                         <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.SongRows}" />
                                         <TextBlock Grid.Column="2" Name="SongRowsValueLabel" Classes="row-value" Text="{Binding Shell.SongRowMarkLabel}" />
                                         <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
-                                    </Grid>
+                                    </views:SettingRow>
                                 </Button>
                             </Border>
                             <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
@@ -628,32 +628,32 @@
                                 <StackPanel>
                                     <Button Name="LyricsRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Lyrics}" AutomationProperties.Name="{Binding LyricsRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconLyrics}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Tab.Lyrics}" />
                                             <TextBlock Grid.Column="2" Name="LyricsValueLabel" Classes="row-value" Text="{Binding LyricsValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="ScrobblingRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Scrobbling}" AutomationProperties.Name="{Binding ScrobblingRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconScrobbling}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Scrobbling}" />
                                             <TextBlock Grid.Column="2" Name="ScrobblingValueLabel" Classes="row-value" Text="{Binding Scrobbling.Summary}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="HistoryRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.History}" AutomationProperties.Name="{Binding HistoryRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconHistory}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.ListeningHistory}" />
                                             <TextBlock Grid.Column="2" Name="HistoryValueLabel" Classes="row-value" Text="{Binding History.Summary}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <StackPanel Name="PickUpGroup" IsVisible="{Binding ShowPickUp}">
                                         <Border Classes="row-separator chipped" />
@@ -680,37 +680,37 @@
                             <Border Name="HelpCard" Classes="group-card">
                                 <StackPanel>
                                     <Button Name="ReportRow" Classes="row" Command="{Binding ReportProblemCommand}" AutomationProperties.Name="{loc:T Mobile.Settings.ReportName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconWarning}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Report}" />
                                             <views:GridIcon Grid.Column="2" Classes="row-trailing" Width="14" Height="14" Margin="8,0,2,0" StrokeThickness="2.4" Data="{DynamicResource SetIconExternal}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="ExportLogsButton" Classes="row" Command="{Binding ExportLogsCommand}" AutomationProperties.Name="{Binding ExportRowName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconDoc}" /></Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
                                                 <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.ExportLogs}" />
                                                 <TextBlock Name="ExportStatusLabel" Classes="row-sub" Text="{Binding ExportSubtitle}" />
                                             </StackPanel>
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="WebsiteRow" Classes="row" Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="{loc:T Mobile.Settings.WebsiteName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconGlobe}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Website}" />
                                             <views:GridIcon Grid.Column="2" Classes="row-trailing" Width="14" Height="14" Margin="8,0,2,0" StrokeThickness="2.4" Data="{DynamicResource SetIconExternal}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="PrivacyRow" Classes="row" Command="{Binding OpenPrivacyPolicyCommand}" AutomationProperties.Name="{loc:T Mobile.Settings.PrivacyName}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconShield}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Privacy}" />
                                             <views:GridIcon Grid.Column="2" Classes="row-trailing" Width="14" Height="14" Margin="8,0,2,0" StrokeThickness="2.4" Data="{DynamicResource SetIconExternal}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -721,25 +721,25 @@
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.About}" />
                             <Border Name="AboutCard" Classes="group-card">
                                 <StackPanel>
-                                    <Grid Name="VersionRow" Classes="setting-row" ColumnDefinitions="*,Auto" AutomationProperties.Name="{Binding VersionRowName}">
+                                    <views:SettingRow Name="VersionRow" Classes="setting-row" ColumnDefinitions="*,Auto" AutomationProperties.Name="{Binding VersionRowName}">
                                         <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.Version}" />
                                         <TextBlock Grid.Column="1" Name="VersionLabel" Classes="row-value" Text="{Binding VersionValue}" />
-                                    </Grid>
+                                    </views:SettingRow>
                                     <Border Classes="row-separator plain" />
                                     <Button Name="WhatsNewRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.WhatsNew}" AutomationProperties.Name="{loc:T Mobile.Settings.WhatsNew}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.WhatsNew}" />
                                             <views:GridIcon Grid.Column="1" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator plain" />
                                     <Button Name="LicensesRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Licenses}" AutomationProperties.Name="{loc:T Mobile.Settings.Licenses}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.Licenses}" />
                                             <views:GridIcon Grid.Column="1" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -761,7 +761,7 @@
                                                 <DataTemplate x:DataType="vm:SettingsFolder">
                                                     <StackPanel>
                                                         <Border Classes="row-separator plain" />
-                                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
                                                             <StackPanel VerticalAlignment="Center" Margin="0,10">
                                                                 <TextBlock Classes="row-label" Text="{Binding Title}" />
                                                                 <TextBlock Classes="row-sub" Text="{Binding Name}" IsVisible="{Binding ShowsPath}" />
@@ -776,15 +776,15 @@
                                                                     AutomationProperties.Name="{Binding Title, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Folders.RemoveName}">
                                                                 <views:GridIcon Data="{DynamicResource PhTrash}" />
                                                             </Button>
-                                                        </Grid>
+                                                        </views:SettingRow>
                                                     </StackPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <Grid Name="NoFoldersRow" Classes="setting-row" IsVisible="{Binding !Shell.Library.HasFolders}">
+                                        <views:SettingRow Name="NoFoldersRow" Classes="setting-row" IsVisible="{Binding !Shell.Library.HasFolders}">
                                             <TextBlock Classes="row-label" Foreground="{DynamicResource PhoneSecondaryTextBrush}"
                                                        Text="{loc:T Mobile.Folders.None}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Folders.Footnote}" />
@@ -793,10 +793,10 @@
                                 <Border Classes="group-card">
                                     <Button Name="AddFolderButton" Classes="row accent-row" Command="{Binding Shell.Library.AddFolderCommand}"
                                             AutomationProperties.Name="{loc:T Mobile.Folders.Add}">
-                                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*">
                                             <views:GridIcon Classes="row-icon" Data="{DynamicResource AddIcon}" />
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Folders.Add}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                     </Button>
                                 </Border>
                                 <TextBlock Name="FoldersFootnoteLabel" Classes="group-footnote" Text="{Binding FoldersFootnote}" />
@@ -912,18 +912,18 @@
                             <StackPanel>
                                 <Border Name="DownloadStorageCard" Classes="group-card">
                                     <StackPanel>
-                                        <Grid Name="StorageUsedRow" Classes="setting-row" ColumnDefinitions="*,Auto"
+                                        <views:SettingRow Name="StorageUsedRow" Classes="setting-row" ColumnDefinitions="*,Auto"
                                               AutomationProperties.Name="{Binding StorageUsedText, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.StorageUsedName}">
                                             <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.StorageUsed}" />
                                             <TextBlock Grid.Column="1" Name="StorageUsedLabel" Classes="row-value" Text="{Binding StorageUsedText}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                         <StackPanel IsVisible="{Binding CanRemoveDownloads}">
                                             <Border Classes="row-separator plain" />
                                             <Button Name="RemoveDownloadsButton" Classes="row danger-row" Command="{Binding AskRemoveDownloadsCommand}"
                                                     AutomationProperties.Name="{loc:T Mobile.Settings.RemoveAllDownloads}">
-                                                <Grid Classes="setting-row">
+                                                <views:SettingRow Classes="setting-row">
                                                     <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.RemoveAllDownloads}" />
-                                                </Grid>
+                                                </views:SettingRow>
                                             </Button>
                                         </StackPanel>
                                     </StackPanel>
@@ -942,9 +942,9 @@
                                             <DataTemplate x:DataType="x:String">
                                                 <StackPanel>
                                                     <Border Classes="row-separator plain" />
-                                                    <Grid Classes="setting-row" ColumnDefinitions="*">
+                                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="*">
                                                         <TextBlock Classes="row-label" Margin="0,12" Text="{Binding}" />
-                                                    </Grid>
+                                                    </views:SettingRow>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -995,7 +995,7 @@
                                                     <Border Classes="row-separator plain" />
                                                     <Button Classes="row" Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).ChooseLanguageCommand}"
                                                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
-                                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
                                                             <StackPanel VerticalAlignment="Center" Margin="0,10">
                                                                 <TextBlock Classes="row-label" Text="{Binding Label}" />
                                                                 <TextBlock Classes="row-sub" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
@@ -1003,7 +1003,7 @@
                                                             <PathIcon Grid.Column="1" Classes="language-check" Data="{DynamicResource PhCheck}"
                                                                       Width="16" Height="16" Foreground="{DynamicResource AccentTextBrush}"
                                                                       IsVisible="{Binding IsSelected}" />
-                                                        </Grid>
+                                                        </views:SettingRow>
                                                     </Button>
                                                 </StackPanel>
                                             </DataTemplate>
@@ -1067,20 +1067,20 @@
                             <StackPanel>
                                 <Border Name="LyricsSizeCard" Classes="group-card">
                                     <StackPanel>
-                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="row-label" Text="{loc:T Mobile.Lyrics.TextSize}" />
                                             <TextBlock Grid.Column="1" Name="LyricsSizeLabel" Classes="row-value"
                                                        Text="{Binding LyricsTextScale, StringFormat={}{0:P0}}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                         <controls:SmoothSlider Name="LyricsSizeSlider" Classes="accent-slider" Margin="7,-12,7,6"
                                                                Minimum="0.8" Maximum="1.6" Step="0.1" SteppedValue="{Binding LyricsTextScale}"
                                                                AutomationProperties.Name="{loc:T Mobile.Lyrics.TextSizeName}" />
                                         <Border Classes="row-separator plain" />
-                                        <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="row-label" Text="{loc:T Mobile.Lyrics.MinOpacity}" />
                                             <TextBlock Grid.Column="1" Name="LyricsOpacityLabel" Classes="row-value"
                                                        Text="{Binding Shell.Lyrics.MinLineOpacity, StringFormat={}{0}%}" />
-                                        </Grid>
+                                        </views:SettingRow>
                                         <controls:SmoothSlider Name="LyricsOpacitySlider" Classes="accent-slider" Margin="7,-12,7,6"
                                                                Minimum="0" Maximum="60" Step="1" SteppedValue="{Binding Shell.Lyrics.MinLineOpacity}"
                                                                AutomationProperties.Name="{loc:T Mobile.Lyrics.MinOpacityName}" />
