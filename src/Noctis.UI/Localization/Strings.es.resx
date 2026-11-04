@@ -7376,4 +7376,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Quitar {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. El color de énfasis tiñe botones, interruptores y resaltados.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Almacenamiento usado, {0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Mostrar en filas de canciones</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Desactivado</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Valoraciones</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoritos</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Las filas de canciones terminan con las estrellas de la canción o un corazón si es favorita.</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>Valorar</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>Valorar con {0} de 5</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>Borrar valoración</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>Buscar en Álbumes</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Ningún álbum coincide</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>Borrar búsqueda</value></data>
 </root>

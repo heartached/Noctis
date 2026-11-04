@@ -511,6 +511,19 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The theme's accent is the one worn (Match Theme on, a colour theme, not Light).</summary>
     public bool UsesThemeAccent => AccentFollowsTheme && ShowsMatchTheme && Appearance != "Light";
 
+    /// <summary>Settings › Library › Show in Song Rows: Off, Ratings or Favorites on the glass menu.</summary>
+    [RelayCommand]
+    private void ShowSongRowsMenu()
+    {
+        var items = Enum.GetValues<SongRowMark>()
+            .Select(mark => new OptionsMenuItem(Shell, ShellViewModel.SongRowMarkName(mark), Shell.SongRowMark == mark, () => Shell.SongRowMark = mark))
+            .ToList();
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
+    public string SongRowsRowName => Named(Loc.T("Mobile.Settings.SongRows"), Shell.SongRowMarkLabel);
+
+
     // ── Lyrics ──
 
     /// <summary>The Lyrics row's value: which extra lines show.</summary>
@@ -1127,6 +1140,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
         {
             OnPropertyChanged(nameof(PlayerBarValue));
             OnPropertyChanged(nameof(PlayerBarRowName));
+        }
+        else if (e.PropertyName == nameof(ShellViewModel.SongRowMark))
+        {
+            OnPropertyChanged(nameof(SongRowsRowName));
         }
     }
 

@@ -174,6 +174,29 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         await _shell.SetFavouriteAsync(Tracks, !IsFavourite);
     }
 
+    // ── Rating (a song's menu): five stars and Clear, synced as the heart is ──
+
+    /// <summary>A song's menu rates it; an album's or playlist's would rate every song at once.</summary>
+    public bool CanRate => Track != null;
+
+    public int Rating => Track?.Rating ?? 0;
+
+    public bool IsRated => Rating > 0;
+
+    /// <summary>The Rate row's five stars, filled up to the song's rating.</summary>
+    public IReadOnlyList<RateStar> Stars => Enumerable.Range(1, 5).Select(n => new RateStar(n, n <= Rating)).ToList();
+
+    /// <summary>A star (1-5) sets the rating, 0 clears it; the menu closes and the song's rows
+    /// follow (Track.Rating notifies). A desktop song's rating goes to the computer on the next sync.</summary>
+    [RelayCommand]
+    private async Task RateAsync(int stars)
+    {
+        _shell.CloseSheet();
+        await _shell.SetRatingAsync(Tracks, stars);
+    }
+
+    [RelayCommand] private Task ClearRatingAsync() => RateAsync(0);
+
     /// <summary>The menu's Add to Playlist: the menu closes and the bottom sheet opens on the
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
     [RelayCommand] private void ShowPlaylists() => IsPickingPlaylist = true;
@@ -269,4 +292,10 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     }
 
     [RelayCommand] private void Close() => _shell.CloseSheet();
+}
+
+/// <summary>One star of the song menu's Rate row.</summary>
+public sealed record RateStar(int Value, bool IsOn)
+{
+    public string AccessibleName => Loc.T("Mobile.RateStars", Value);
 }

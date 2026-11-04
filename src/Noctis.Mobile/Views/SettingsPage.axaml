@@ -594,6 +594,22 @@
                                        IsVisible="{Binding RescanFootnote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
 
+                        <!-- Show in Song Rows: Off, Ratings (the default) or Favorites, on the glass menu; the
+                             shell applies it to every song row at once (RowMark) and saves it. -->
+                        <StackPanel>
+                            <Border Name="SongRowsCard" Classes="group-card">
+                                <Button Name="SongRowsRow" Classes="row" Command="{Binding ShowSongRowsMenuCommand}" AutomationProperties.Name="{Binding SongRowsRowName}">
+                                    <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconStar}" /></Border>
+                                        <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.SongRows}" />
+                                        <TextBlock Grid.Column="2" Name="SongRowsValueLabel" Classes="row-value" Text="{Binding Shell.SongRowMarkLabel}" />
+                                        <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                    </Grid>
+                                </Button>
+                            </Border>
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
+                        </StackPanel>
+
                         <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Pick Up on Computer a switch. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Listening}" />

@@ -7376,4 +7376,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0}を削除</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。アクセントカラーはボタン、スイッチ、ハイライトに使われます。</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>使用済みストレージ、{0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>曲の行に表示</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>オフ</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評価</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>お気に入り</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>曲の行の末尾に、曲の星の数またはお気に入りのハートを表示します。</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>評価</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>5段階中{0}で評価</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>評価を消去</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>アルバムを検索</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>一致するアルバムはありません</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>検索を消去</value></data>
 </root>

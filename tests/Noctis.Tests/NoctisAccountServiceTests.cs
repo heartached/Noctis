@@ -765,6 +765,48 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(Phone(_t1).IsFavorite);
     }
 
+    /// <summary>The phone's shell over this test's real phone library (no account wiring: the
+    /// library's save reaches the account service through the recorder, as on the phone).</summary>
+    private ShellViewModel PhoneShell()
+    {
+        var player = new FakeAudioPlayer();
+        var history = new FakeHistoryLog();
+        var nowPlaying = new NowPlayingViewModel(player, _phoneLibrary, _phonePersistence, history, marshal: a => a());
+        return new ShellViewModel(
+            new LibraryViewModel(_phoneLibrary, _phonePersistence, new MobileFixtures.NoPicker(), history, marshal: a => a()),
+            nowPlaying,
+            new LyricsPageViewModel(player, nowPlaying, new FakeTrackFiles(), _phonePersistence, work => Task.FromResult(work())));
+    }
+
+    [Fact]
+    public async Task RatingFromTheSongMenu_IsPushed_TheDesktopAppliesIt_AndAClearFollows()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var shell = PhoneShell();
+        var p1 = Phone(_t1);
+
+        var menu = ContextSheetViewModel.ForTrack(shell, p1);
+        Assert.True(menu.CanRate);
+        await menu.RateCommand.ExecuteAsync(4);
+        Assert.Equal(4, p1.Rating);
+        await Until(() => svc.PendingTrackCount == 1);
+
+        var result = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, result.StateChangesPushed);
+        var applied = Assert.Single(_desk.AppliedTracks, a => a.Id == _t1.Id);
+        Assert.Equal(4, applied.State.Rating);
+        Assert.False(applied.State.Favorite);
+        Assert.Equal(4, _t1.Rating);
+        Assert.Equal(0, svc.PendingTrackCount);
+
+        await ContextSheetViewModel.ForTrack(shell, Phone(_t1)).ClearRatingCommand.ExecuteAsync(null);
+        await Until(() => svc.PendingTrackCount == 1);
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(0, _desk.AppliedTracks.Last(a => a.Id == _t1.Id).State.Rating);
+        Assert.Equal(0, _t1.Rating);
+    }
+
     [Fact]
     public async Task DesktopChange_IsPulled_AndApplyingItIsNotRecordedAsAPhoneEdit()
     {

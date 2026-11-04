@@ -169,6 +169,10 @@ public class AppSettings : IJsonOnDeserializing
     /// deep shade of the cover's colour. Off, they keep the theme's plain pages. On by default.</summary>
     public bool MobileArtworkPageColors { get; set; } = true;
 
+    /// <summary>Phone, Settings › Library › Show in Song Rows: the small mark at the end of a song
+    /// row's artist line, "Off", "Ratings" (stars on rated songs; the default) or "Favorites" (a heart).</summary>
+    public string MobileSongRowMark { get; set; } = "Ratings";
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;

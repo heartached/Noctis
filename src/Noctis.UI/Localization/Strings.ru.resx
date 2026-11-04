@@ -3660,4 +3660,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Акцентный цвет окрашивает кнопки, переключатели и выделение.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Занято, {0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Показывать в строках песен</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Выкл.</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Оценки</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Избранное</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>В конце строки песни — её звёзды или сердечко для избранного.</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>Оценить</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>Оценка {0} из 5</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>Сбросить оценку</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>Поиск в альбомах</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Альбомы не найдены</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>Очистить поиск</value></data>
 </root>

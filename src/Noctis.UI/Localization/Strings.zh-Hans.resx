@@ -7376,4 +7376,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。强调色用于按钮、开关和高亮显示。</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>已用存储空间，{0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>在歌曲行中显示</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>关闭</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>评分</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>收藏</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>歌曲行末尾显示歌曲的星级，或收藏歌曲的爱心。</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>评分</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>评为 {0} 星（满分 5）</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>清除评分</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>在专辑中查找</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>没有匹配的专辑</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>清除搜索</value></data>
 </root>

@@ -7376,4 +7376,15 @@
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} 제거</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. 강조 색상은 버튼, 스위치, 하이라이트에 적용됩니다.</value></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>사용 중인 저장 공간, {0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>노래 행에 표시</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>끔</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>평점</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>즐겨찾기</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>노래 행 끝에 노래의 별점이나 즐겨찾기 하트가 표시됩니다.</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>평가</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>5점 중 {0}점으로 평가</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>평점 지우기</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>앨범에서 찾기</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>일치하는 앨범 없음</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>검색 지우기</value></data>
 </root>

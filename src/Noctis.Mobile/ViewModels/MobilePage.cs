@@ -12,6 +12,10 @@ public enum MobileTab { Home, Favorites, Playlists, Library, Search }
 /// or a jump straight to the root (a tab tap) that no page slides through.</summary>
 public enum PageMove { Push, Pop, Reset }
 
+/// <summary>Settings › Library › Show in Song Rows: what a song row's small mark shows
+/// (Views/RowMark), the saved names in settings.json (MobileSongRowMark).</summary>
+public enum SongRowMark { Off, Ratings, Favorites }
+
 /// <summary>
 /// A page pushed over a tab's root (Songs, an album, an artist, Settings…). ShellView shows
 /// the top one through its PageHost with a DataTemplate per concrete type, so a page's view

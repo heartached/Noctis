@@ -93,19 +93,11 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         ? Loc.Plural("Mobile.Count.Songs", SongCount)
         : Loc.T("Mobile.SongList.CountOf", SongCount, TotalCount);
 
-    // ── Search in the list ──
+    // ── Search in the list (the page's FindField, as the Artists page's) ──
 
-    [ObservableProperty] private bool _isSearchOpen;
     [ObservableProperty] private string _filterText = string.Empty;
 
     partial void OnFilterTextChanged(string value) => Apply();
-
-    [RelayCommand]
-    private void ToggleSearch()
-    {
-        IsSearchOpen = !IsSearchOpen;
-        if (!IsSearchOpen) FilterText = string.Empty;
-    }
 
     // ── Filters ──
 

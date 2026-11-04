@@ -6,6 +6,7 @@
              xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Mobile.Views.ShellView"
              x:DataType="vm:ShellViewModel"
+             views:RowMark.Mode="{Binding SongRowMark}"
              Background="{DynamicResource PhoneBackgroundBrush}">
 
     <UserControl.Styles>
