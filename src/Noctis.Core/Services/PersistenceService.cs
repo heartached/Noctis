@@ -516,6 +516,9 @@ public class PersistenceService : IPersistenceService
         return Path.Combine(AnimatedCoverDirectory, fileName);
     }
 
+    public string GetCachedAnimatedCoverPath(Guid albumId)
+        => Path.Combine(AnimatedCoverDirectory, "cache", $"{albumId}.mp4");
+
     public void EnsureAnimatedCoverDir()
     {
         Directory.CreateDirectory(AnimatedCoverDirectory);
