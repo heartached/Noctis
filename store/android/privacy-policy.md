@@ -110,6 +110,14 @@ Noctis connects to your own computer, running the Noctis desktop app.
   shows, and only then sends your account name and password — once, over an encrypted (TLS)
   connection — to receive a key for this device. The key, not your password, is used from
   then on, and every later connection must present that same certificate.
+- **Signing in with a QR code.** Instead of typing, you can tap Scan QR Code and scan the
+  code your computer shows. The code holds your computer's address, its certificate
+  fingerprint and a one-time sign-in code that expires after two minutes and works only once;
+  it never contains your password. Noctis checks the certificate against the fingerprint
+  before sending the one-time code. The scanner is Google's code scanner, part of Google Play
+  services: it runs on your phone and gives Noctis only the text of the code, so Noctis never
+  gets camera access. Google may collect usage and diagnostic information about the scanner
+  under the Google Privacy Policy.
 - **What goes to your computer.** The device key, a random id and your phone's model name
   (so your computer can list and remove this device), requests for your songs, covers and
   library, and the changes you make on the phone: favourites, ratings, playlists and plays.
@@ -117,8 +125,10 @@ Noctis connects to your own computer, running the Noctis desktop app.
   ratings and play counts from your computer, and the music itself, streamed or downloaded.
 
 All of the account traffic travels only between your phone and your computer, encrypted.
-None of it goes to the developer or to any third party. Nothing
-is sent without an address you entered and a certificate you confirmed, and signing out stops it.
+None of it goes to the developer or to any third party (apart from the QR scanner's own usage
+information to Google described above, which contains none of your account traffic). Nothing
+is sent without an address you entered and a certificate you confirmed (or a code you scanned
+from your own computer), and signing out stops it.
 
 ## Permissions
 
