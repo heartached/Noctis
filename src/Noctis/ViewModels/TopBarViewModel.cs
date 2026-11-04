@@ -548,11 +548,18 @@ public partial class TopBarViewModel : ViewModelBase
     // at all with nothing playing. Cover Flow stays one click away on every other page and in
     // the Albums View menu. HasReleaseTypeChips is set exactly while the Albums grid is current.
 
-    /// <summary>The "Switch to Cover Flow" icon: every toggle page but Albums.</summary>
-    public bool CoverFlowToggleVisible => !IsCoverFlowMode && !HasReleaseTypeChips;
+    /// <summary>The "Switch to Cover Flow" icon: every toggle page but Albums (Albums too while
+    /// the Album Carousel feature is off: its View menu, the other way to Cover Flow, is hidden then).</summary>
+    public bool CoverFlowToggleVisible => !IsCoverFlowMode && !(HasReleaseTypeChips && AlbumCarouselAvailable);
 
     /// <summary>The Albums page's grid / carousel icon in the Cover Flow icon's place.</summary>
-    public bool AlbumsViewToggleVisible => !IsCoverFlowMode && HasReleaseTypeChips;
+    public bool AlbumsViewToggleVisible => !IsCoverFlowMode && HasReleaseTypeChips && AlbumCarouselAvailable;
+
+    /// <summary>Settings › Plugins › Built-in Features › Album Carousel (mirrored by the main window).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CoverFlowToggleVisible))]
+    [NotifyPropertyChangedFor(nameof(AlbumsViewToggleVisible))]
+    private bool _albumCarouselAvailable = true;
     /// <summary>Case style name ("Cover" / "JewelCase" / "Vinyl" / "Cassette") for the checkmarks.</summary>
     [ObservableProperty] private string _albumCarouselStyle = "Cover";
 

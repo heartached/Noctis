@@ -616,6 +616,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // playlist page follows the Featured Artists & Suggestions one.
         void SyncVisualizerSection()
         {
+            TopBar.AlbumCarouselAvailable = Settings.AlbumCarouselEnabled;
             Sidebar.SetVisualizerSectionVisible(Settings.VisualizerEnabled);
             if (ReferenceEquals(CurrentView, _visualizerVm) && !Settings.VisualizerEnabled)
                 Navigate("home");
@@ -626,6 +627,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (e.PropertyName == nameof(SettingsViewModel.VisualizerEnabled))
                 Dispatcher.UIThread.Post(SyncVisualizerSection);
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumCarouselEnabled))
+                TopBar.AlbumCarouselAvailable = Settings.AlbumCarouselEnabled;
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
         };
