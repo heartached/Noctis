@@ -25,6 +25,7 @@ public partial class AudioConverterDialog : Window
             "wav" => "WAV",
             "aiff" => "AIFF",
             "wavpack" => "WavPack",
+            "dsf" => "DSD (.dsf)",
             null => string.Empty,
             _ => key.ToUpperInvariant(),
         });
@@ -37,6 +38,13 @@ public partial class AudioConverterDialog : Window
             null => string.Empty,
             _ => Localization.Loc.T("AudioConverter.DepthBits", depth),
         });
+
+    /// <summary>"DSD64" → "DSD64 · 2.8 MHz".</summary>
+    public static readonly IValueConverter DsdRateLabel =
+        new FuncValueConverter<string?, string>(rate =>
+            Noctis.Services.Dsd.DsdEncoder.RateFor(rate) is { } hz
+                ? $"{rate} · {(hz / 1e6).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture)} MHz"
+                : rate ?? string.Empty);
 
     // Until the pattern has had the caret, a tag chip appends instead of landing at index 0.
     private bool _patternHadFocus;

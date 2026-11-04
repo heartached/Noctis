@@ -157,6 +157,16 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
+                        <ComboBox Classes="pill-field"
+                                  IsVisible="{Binding DsdRateApplies}"
+                                  ItemsSource="{Binding DsdRateOptions}"
+                                  SelectedItem="{Binding SelectedDsdRate}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding Converter={x:Static views:AudioConverterDialog.DsdRateLabel}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </Panel>
                 </StackPanel>
             </Grid>

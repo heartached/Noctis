@@ -166,6 +166,12 @@ public class AudioConverterDialogTests
                 PumpUntil(() => false, 30);
                 Assert.Equal(2, combos.Count(c => c.IsEffectivelyVisible));
                 Assert.True(combos.Single(c => ReferenceEquals(c.ItemsSource, vm.BitDepthOptions)).IsEffectivelyVisible);
+                // DSD: the quality is the DSD rate, not a bit depth.
+                vm.SelectedFormat = "dsf";
+                PumpUntil(() => false, 30);
+                Assert.Equal(2, combos.Count(c => c.IsEffectivelyVisible));
+                Assert.True(combos.Single(c => ReferenceEquals(c.ItemsSource, vm.DsdRateOptions)).IsEffectivelyVisible);
+                Assert.Equal("Bad Bunny - Song 1.dsf", vm.ExampleName);
                 vm.SelectedFormat = "mp3";
 
                 // Footer: Convert solid accent, Cancel quiet; both bound.
