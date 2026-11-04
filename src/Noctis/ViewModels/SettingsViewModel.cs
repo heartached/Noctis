@@ -3093,6 +3093,11 @@ public partial class SettingsViewModel : ViewModelBase
             };
             app.PackThemeResolver = key => Plugins?.Content.FindTheme(key);
         }
+
+        // Read once up front: filled in on the first Advanced visit instead, the path's change
+        // notification retook the blurred snapshot under the sheet on a plain tab switch.
+        try { RefreshDataFolderState(); }
+        catch (Exception ex) { Debug.WriteLine($"[Settings] Data folder state: {ex.Message}"); }
     }
 
     /// <summary>Sets the audio player reference for applying audio settings.</summary>
