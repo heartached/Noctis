@@ -26,6 +26,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Lyrics = lyrics;
         Player.PropertyChanged += OnPlayerChanged;
         Player.PlayRecorded += OnPlayRecorded;
+        Player.PlayCountThresholdPercent = () => PlayCountThresholdPercent;
         Search = new SearchPageViewModel(this);
     }
 

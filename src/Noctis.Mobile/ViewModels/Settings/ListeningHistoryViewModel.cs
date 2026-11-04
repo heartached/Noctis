@@ -92,6 +92,9 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
 
     [ObservableProperty] private string _keepText = "Forever";
 
+    /// <summary>"Count a Play After": Immediately, or the share of a song that must be heard.</summary>
+    [ObservableProperty] private string _countText = CountLabel(0);
+
     /// <summary>Share with Computer and Pick Up need the computer's account; without one the rows hide.</summary>
     public bool HasAccount => _shell.HasAccount;
 
@@ -113,6 +116,7 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
             PickUpOnComputer = _shell.PickUpOnComputer;
             ShareWithComputer = _shell.ShareHistoryWithComputer;
             KeepText = KeepLabel(_shell.KeepHistoryDays);
+            CountText = CountLabel(_shell.PlayCountThresholdPercent);
         }
         finally
         {
@@ -126,6 +130,8 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
         365 => "1 Year",
         _ => $"{days} Days",
     };
+
+    public static string CountLabel(int percent) => percent <= 0 ? "Immediately" : $"{percent}%";
 
     /// <summary>Reads the play log again (a song started, the pane opened, plays were cleared).</summary>
     public void Refresh()
@@ -174,6 +180,17 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
             .Select(days => new PromptAction(KeepLabel(days), () => _shell.SetKeepHistoryDays(days)))
             .ToList();
         _shell.ShowPrompt(new PromptViewModel(_shell, "Keep History", "Plays older than this are removed from this phone.", actions));
+    }
+
+    /// <summary>Count a Play After: a glass action sheet with the computer's choices.</summary>
+    [RelayCommand]
+    private void ChooseCount()
+    {
+        var actions = AppSettings.PlayCountThresholdChoices
+            .Select(p => new PromptAction(CountLabel(p), () => _shell.SetPlayCountThresholdPercent(p)))
+            .ToList();
+        _shell.ShowPrompt(new PromptViewModel(_shell, "Count a Play After",
+            "How much of a song you have to hear before it counts as a play. Last.fm scrobbling has its own rule.", actions));
     }
 
     [RelayCommand]

@@ -129,6 +129,14 @@
                             <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
                         </Grid>
                     </Button>
+                    <Border Classes="row-separator plain" />
+                    <Button Name="CountRow" Classes="row" Command="{Binding ChooseCountCommand}" AutomationProperties.Name="Count a Play After">
+                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Classes="row-label" Text="Count a Play After" />
+                            <TextBlock Grid.Column="1" Name="CountValueLabel" Classes="row-value" HorizontalAlignment="Right" Text="{Binding CountText}" />
+                            <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                        </Grid>
+                    </Button>
                     <StackPanel IsVisible="{Binding HasAccount}">
                         <Border Classes="row-separator plain" />
                         <ToggleButton Name="ShareSwitch" Classes="switch-row" AutomationProperties.Name="Share with Computer"
