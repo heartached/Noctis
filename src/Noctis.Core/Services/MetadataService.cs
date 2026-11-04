@@ -421,21 +421,22 @@ public class MetadataService : IMetadataService
                 return null;
 
             var fileInfo = new FileInfo(filePath);
-            var artist = string.IsNullOrWhiteSpace(info.Artist) ? "Unknown Artist" : info.Artist!;
-            const string album = "Unknown Album";
-            var title = string.IsNullOrWhiteSpace(info.Title)
-                ? Path.GetFileNameWithoutExtension(filePath)
-                : info.Title!;
+            // The ID3 chunk taggers write wins over DIIN (the mastering title/artist).
+            var id3 = ParseDsdiffId3(info.Id3);
+            var artist = FirstNonBlank(id3?.JoinedPerformers, info.Artist) ?? "Unknown Artist";
+            var albumArtist = FirstNonBlank(id3?.JoinedAlbumArtists) ?? artist;
+            var album = FirstNonBlank(id3?.Album) ?? "Unknown Album";
+            var title = FirstNonBlank(id3?.Title, info.Title) ?? Path.GetFileNameWithoutExtension(filePath);
 
             var track = new Track
             {
                 FilePath = filePath,
                 Title = title,
                 Artist = artist,
-                AlbumArtist = artist,
+                AlbumArtist = albumArtist,
                 Album = album,
                 Duration = info.Duration,
-                AlbumId = Track.ComputeAlbumId(artist, album),
+                AlbumId = Track.ComputeAlbumId(albumArtist, album),
                 FileSize = fileInfo.Length,
                 LastModified = fileInfo.LastWriteTimeUtc,
                 DateAdded = DateTime.UtcNow,
@@ -444,6 +445,17 @@ public class MetadataService : IMetadataService
                 Bitrate = NormalizeBitrate(0, fileInfo.Length, info.Duration),
                 Codec = "DSD"
             };
+            if (id3 != null)
+            {
+                track.TrackNumber = (int)id3.Track;
+                track.TrackCount = (int)id3.TrackCount;
+                track.DiscNumber = (int)id3.Disc;
+                track.DiscCount = (int)id3.DiscCount;
+                track.Year = (int)id3.Year;
+                track.Genre = Track.JoinGenres(id3.Genres);
+                track.Composer = id3.FirstComposer ?? string.Empty;
+                embeddedArt = UseEmbeddedArtwork ? SelectBestEmbeddedPicture(id3.Pictures) : null;
+            }
             // Same folder/filename fallback as the TagLib path above.
             Helpers.FolderMetadata.TryApplyToTrack(track, MusicRootFolders);
             // DSDIFF carries no ReplayGain we read: nothing for the backfill to look up.
@@ -456,11 +468,29 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>The ID3v2 tag of a .dff's "ID3 " chunk; null when absent or unreadable.</summary>
+    private static TagLib.Id3v2.Tag? ParseDsdiffId3(byte[]? raw)
+    {
+        if (raw == null) return null;
+        try { return new TagLib.Id3v2.Tag(new TagLib.ByteVector(raw)); }
+        catch { return null; }
+    }
+
+    private static string? FirstNonBlank(params string?[] values) =>
+        values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
+
     public byte[]? ExtractEmbeddedArt(string filePath)
     {
         if (!UseEmbeddedArtwork) return null;
         try
         {
+            if (Path.GetExtension(filePath).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            {
+                using var dff = File.OpenRead(filePath);
+                var tag = ParseDsdiffId3(DsdiffReader.TryRead(dff)?.Id3);
+                return tag == null ? null : SelectBestEmbeddedPicture(tag.Pictures);
+            }
+
             using var file = TagLib.File.Create(filePath);
             return SelectBestEmbeddedPicture(file.Tag.Pictures);
         }
