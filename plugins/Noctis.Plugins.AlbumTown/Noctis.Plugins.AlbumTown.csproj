@@ -13,7 +13,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Noctis.Plugins.AlbumTown</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>

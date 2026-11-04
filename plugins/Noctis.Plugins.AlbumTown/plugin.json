@@ -1,7 +1,7 @@
 {
   "id": "dev.noctis.plugins.albumtown",
   "name": "Album Town",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Jafezy JD",
   "description": "Your albums come to life in a little town.",
   "type": "dotnet",
