@@ -193,7 +193,7 @@ public class DsdTests : IDisposable
         return (byte)r;
     }
 
-    private static byte[] BuildDff(int rate, string[] ids, byte[] data)
+    private static byte[] BuildDff(int rate, string[] ids, byte[] data, byte[]? id3 = null)
     {
         using var ms = new MemoryStream();
         void Id(string s) => ms.Write(System.Text.Encoding.ASCII.GetBytes(s));
@@ -209,9 +209,59 @@ public class DsdTests : IDisposable
         Id("CHNL"); U64(chnl); U16((ushort)ids.Length); foreach (var i in ids) Id(i);
         Id("CMPR"); U64(16); Id("DSD "); ms.WriteByte(11); Id("uncompresse"); // 4+1+11 = 16
         Id("DSD "); U64(data.Length); ms.Write(data);
+        if (id3 != null)
+        {
+            if (data.Length % 2 == 1) ms.WriteByte(0);
+            Id("ID3 "); U64(id3.Length); ms.Write(id3);
+            if (id3.Length % 2 == 1) ms.WriteByte(0);
+        }
         var bytes = ms.ToArray();
         BinaryPrimitives.WriteInt64BigEndian(bytes.AsSpan(4), bytes.Length - 12);
         return bytes;
+    }
+
+    /// <summary>
+    /// DSDIFF has no tag chunk of its own beyond DIIN, so taggers (foobar2000, JRiver, dBpoweramp)
+    /// append an ID3v2 tag as a top-level "ID3 " chunk. The scan reads it: tags and the cover,
+    /// not the filename/folder fallback (live test 11-04).
+    /// </summary>
+    [Fact]
+    public void Dff_Id3Chunk_GivesTagsAndCover()
+    {
+        var id3 = new TagLib.Id3v2.Tag { Title = "Tone", Performers = new[] { "Noctis Test" }, AlbumArtists = new[] { "Noctis Test" },
+            Album = "DSD Test", Track = 3, Year = 2026, Genres = new[] { "Test" } };
+        id3.Pictures = new TagLib.IPicture[]
+        {
+            new TagLib.Picture(new TagLib.ByteVector(new byte[] { 0x89, 0x50, 0x4E, 0x47, 9, 9, 9, 9 }))
+                { Type = TagLib.PictureType.FrontCover, MimeType = "image/png" },
+        };
+        var dff = Path.Combine(_dir, "tagged.dff");
+        File.WriteAllBytes(dff, BuildDff(2822400, new[] { "SLFT", "SRGT" }, new byte[4096 * 2], id3.Render().Data));
+
+        var track = new MetadataService().ReadTrackMetadata(dff, out var art)!;
+        Assert.Equal("Tone", track.Title);
+        Assert.Equal("Noctis Test", track.Artist);
+        Assert.Equal("Noctis Test", track.AlbumArtist);
+        Assert.Equal("DSD Test", track.Album);
+        Assert.Equal(3, track.TrackNumber);
+        Assert.Equal(2026, track.Year);
+        Assert.Equal("Test", track.Genre);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47, 9, 9, 9, 9 }, art);
+        Assert.Equal(art, new MetadataService().ExtractEmbeddedArt(dff));
+        // The sound data is still found after the extra chunk.
+        Assert.Equal(4096L, DsdStreamInfo.Probe(dff)!.BytesPerChannel);
+    }
+
+    /// <summary>The live library's DSF row (codec "DSF Audio" from TagLib) is Hi-Res Lossless,
+    /// alone and on an album it shares with a 16/44.1 FLAC.</summary>
+    [Fact]
+    public void LiveDsfRow_IsHiResLossless_OnItsOwnAndOnTheAlbum()
+    {
+        var dsf = new Noctis.Models.Track { FilePath = @"A:\m\DSD Test Tone DSD64.dsf", Codec = "DSF Audio", SampleRate = 2822400, BitsPerSample = 1, Bitrate = 5646 };
+        var flac = new Noctis.Models.Track { FilePath = @"A:\m\source.flac", Codec = "Flac Audio", SampleRate = 44100, BitsPerSample = 16 };
+        Assert.Equal("Hi-Res Lossless", dsf.AudioQualityBadge);
+        Assert.Equal("Lossless", flac.AudioQualityBadge);
+        Assert.Equal("Hi-Res Lossless", new Noctis.Models.Album { Tracks = new() { flac, dsf } }.AudioQualityBadge);
     }
 
     [Fact]
@@ -596,7 +646,11 @@ public class DsdTests : IDisposable
                     for (var c = 0; c < 2; c++)
                         inter[i * 2 + c] = ReverseBits(raw[info.DataOffset + (i / 4096) * 4096 * 2 + c * 4096 + i % 4096]);
                 var dff = Path.ChangeExtension(outPath, ".dff");
-                File.WriteAllBytes(dff, BuildDff(info.SampleRate, new[] { "SLFT", "SRGT" }, inter));
+                // Carry the DSF's tags and cover over in an "ID3 " chunk, as DSDIFF taggers do.
+                byte[] id3;
+                using (var tagged = TagLib.File.Create(outPath))
+                    id3 = ((TagLib.Id3v2.Tag)tagged.GetTag(TagLib.TagTypes.Id3v2, true)).Render().Data;
+                File.WriteAllBytes(dff, BuildDff(info.SampleRate, new[] { "SLFT", "SRGT" }, inter, id3));
                 _o.WriteLine("dff copy: " + dff);
             }
         }
