@@ -2,6 +2,17 @@ using Noctis.Models;
 
 namespace Noctis.Services;
 
+/// <summary>What one album's lookup came to.</summary>
+public enum AnimatedArtworkLookup
+{
+    /// <summary>A clear match's loop was downloaded.</summary>
+    Saved,
+    /// <summary>The store answered, but nothing was clearly this album with a square loop.</summary>
+    NoMatch,
+    /// <summary>Not looked up (no album artist) or the store returned nothing at all.</summary>
+    NoCandidates,
+}
+
 public sealed record AnimatedArtworkBulkProgress(int Done, int Total, Guid AlbumId, string Outcome);
 
 public sealed record AnimatedArtworkBulkSummary(int Found, int NotFound, int Skipped, int Failed)
@@ -144,7 +155,7 @@ public sealed class AnimatedArtworkBulkService
         var temp = Path.Combine(Path.GetTempPath(), $"noctis-bulkanim-{Guid.NewGuid():N}.mp4");
         try
         {
-            if (!await FindAndDownloadAsync(album, gate, temp, ct).ConfigureAwait(false)) return false;
+            if (await FindAndDownloadAsync(album, gate, temp, ct).ConfigureAwait(false) != AnimatedArtworkLookup.Saved) return false;
             await _covers.ImportAsync(rep, temp, AnimatedCoverScope.Album).ConfigureAwait(false);
             return true;
         }
@@ -158,14 +169,15 @@ public sealed class AnimatedArtworkBulkService
     /// The one lookup both the whole-library run and the fetch on opening an album use: the
     /// store albums that clearly are this one (<see cref="IsConfident"/>; ranked with the
     /// album's year and song count as tie-breaks), the first with a square loop downloaded to
-    /// <paramref name="destination"/>. False when none qualifies; nothing is written then.
+    /// <paramref name="destination"/>. Nothing is written unless the result is
+    /// <see cref="AnimatedArtworkLookup.Saved"/>.
     /// </summary>
-    internal async Task<bool> FindAndDownloadAsync(IReadOnlyList<Track> album, PoliteGate gate, string destination, CancellationToken ct)
+    internal async Task<AnimatedArtworkLookup> FindAndDownloadAsync(IReadOnlyList<Track> album, PoliteGate gate, string destination, CancellationToken ct)
     {
         var rep = album[0];
         var title = rep.Album.Trim();
         var artist = AlbumArtist(rep).Trim();
-        if (title.Length == 0 || artist.Length == 0) return false;
+        if (title.Length == 0 || artist.Length == 0) return AnimatedArtworkLookup.NoCandidates;
         await gate.WaitTurnAsync(ct).ConfigureAwait(false);
         var query = new ITunesArtworkService.AnimatedArtworkQuery(title, artist, artist, Typed: false)
         {
@@ -173,6 +185,7 @@ public sealed class AnimatedArtworkBulkService
             TrackCount = album.Count,
         };
         var ranked = await _find(query, ct).ConfigureAwait(false);
+        if (ranked.Count == 0) return AnimatedArtworkLookup.NoCandidates;
         foreach (var candidate in ranked.Where(r => IsConfident(r.Candidate, title, artist)).Take(CandidatesToOpen))
         {
             await gate.WaitTurnAsync(ct).ConfigureAwait(false);
@@ -189,8 +202,8 @@ public sealed class AnimatedArtworkBulkService
                 continue;
             }
             DebugLog.Write(ITunesArtworkService.LogSource, $"auto: \"{title}\" by {artist} -> \"{page.Title}\" ({variant.Label})");
-            return true;
+            return AnimatedArtworkLookup.Saved;
         }
-        return false;
+        return AnimatedArtworkLookup.NoMatch;
     }
 }

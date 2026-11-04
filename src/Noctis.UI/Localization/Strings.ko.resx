@@ -6839,4 +6839,28 @@
     <value>루비</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>움직이는 아트워크 제거</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>움직이는 아트워크 자동으로 찾기</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>앨범을 열면 Apple Music에서 움직이는 커버를 찾아(확실히 일치하는 것만) 아래 크기를 넘지 않는 캐시에 보관합니다. 직접 고른 커버는 따로 보관되며 삭제되지 않습니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>캐시 크기</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>가득 차면 가장 오래전에 연 앨범의 커버부터 삭제됩니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
+    <value>사용 중:</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
 </root>

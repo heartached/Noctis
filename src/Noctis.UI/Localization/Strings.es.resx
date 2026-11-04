@@ -6839,4 +6839,28 @@
     <value>Rubí</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>Quitar portada animada</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>Buscar portadas animadas automáticamente</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>Al abrir un álbum, busca su portada animada en Apple Music (solo coincidencias claras) y la guarda en una caché que nunca supera el tamaño indicado abajo. Las portadas que eliges tú se guardan aparte y nunca se eliminan.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>Tamaño de la caché</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>Cuando se llena, se eliminan primero las portadas de los álbumes que abriste hace más tiempo.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
+    <value>En uso:</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
 </root>

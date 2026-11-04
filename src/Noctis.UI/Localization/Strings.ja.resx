@@ -6839,4 +6839,28 @@
     <value>ルビー</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>アニメーションアートワークを削除</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>アニメーションアートワークを自動で探す</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>アルバムを開くと Apple Music でアニメーションカバーを探し（確実に一致するものだけ）、下のサイズを超えないキャッシュに保存します。自分で選んだカバーは別に保存され、削除されません。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>キャッシュサイズ</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>いっぱいになると、最も前に開いたアルバムのカバーから削除されます。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve">
+    <value>使用中:</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
 </root>

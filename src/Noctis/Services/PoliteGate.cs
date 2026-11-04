@@ -106,6 +106,9 @@ public sealed class BulkRunLedger
 
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(30);
 
+    /// <summary>How long an entry counts (<see cref="MaxAge"/> unless set).</summary>
+    public TimeSpan EntryLifetime { get; init; } = MaxAge;
+
     /// <param name="path">The JSON file; null keeps it in memory only.</param>
     public BulkRunLedger(string? path, Func<DateTime>? now = null)
     {
@@ -133,7 +136,7 @@ public sealed class BulkRunLedger
     public bool CheckedRecently(Guid id, int currentRank)
     {
         lock (_gate)
-            return _entries.TryGetValue(id, out var e) && _now() - e.CheckedUtc < MaxAge && e.Rank <= currentRank;
+            return _entries.TryGetValue(id, out var e) && _now() - e.CheckedUtc < EntryLifetime && e.Rank <= currentRank;
     }
 
     public void Record(Guid id, int rank)
@@ -152,7 +155,7 @@ public sealed class BulkRunLedger
             string json;
             lock (_gate)
             {
-                var cutoff = _now() - MaxAge;
+                var cutoff = _now() - EntryLifetime;
                 json = JsonSerializer.Serialize(_entries.Where(kv => kv.Value.CheckedUtc >= cutoff).ToDictionary(kv => kv.Key, kv => kv.Value));
             }
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);

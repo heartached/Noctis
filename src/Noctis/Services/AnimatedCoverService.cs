@@ -46,7 +46,23 @@ public class AnimatedCoverService : IAnimatedCoverService
             if (File.Exists(p)) return p;
         }
 
-        return null;
+        // Last: a loop fetched on opening the album (GitHub #167). Anything the user saved wins.
+        var cached = _persistence.GetCachedAnimatedCoverPath(track.AlbumId);
+        return File.Exists(cached) ? cached : null;
+    }
+
+    public bool HasStoredCover(IReadOnlyList<Track> albumTracks)
+    {
+        if (albumTracks.Count == 0) return false;
+        var albumId = albumTracks[0].AlbumId;
+        if (File.Exists(_persistence.GetCachedAnimatedCoverPath(albumId))) return true;
+        foreach (var ext in SupportedExtensions)
+        {
+            if (File.Exists(_persistence.GetAnimatedCoverPath(albumId, null, ext))) return true;
+            foreach (var t in albumTracks)
+                if (File.Exists(_persistence.GetAnimatedCoverPath(albumId, t.Id, ext))) return true;
+        }
+        return false;
     }
 
     public async Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope)
@@ -63,6 +79,12 @@ public class AnimatedCoverService : IAnimatedCoverService
         {
             var p = _persistence.GetAnimatedCoverPath(track.AlbumId, trackId, other);
             if (File.Exists(p)) try { File.Delete(p); } catch { }
+        }
+        // A saved album cover replaces a fetched one: the cached copy would only take up room.
+        if (trackId is null)
+        {
+            var cached = _persistence.GetCachedAnimatedCoverPath(track.AlbumId);
+            if (File.Exists(cached)) try { File.Delete(cached); } catch { }
         }
 
         var dst = _persistence.GetAnimatedCoverPath(track.AlbumId, trackId, ext);
@@ -99,6 +121,8 @@ public class AnimatedCoverService : IAnimatedCoverService
             candidates.Add(_persistence.GetAnimatedCoverPath(track.AlbumId, track.Id, ext));
             candidates.Add(_persistence.GetAnimatedCoverPath(track.AlbumId, null, ext));
         }
+        // And the fetched one: Resolve falls back to it too, so leaving it kept the cover showing.
+        candidates.Add(_persistence.GetCachedAnimatedCoverPath(track.AlbumId));
 
         // The visible cover is held open by a LibVLC session; the UI releases it just
         // before this runs, but the session teardown is asynchronous — retry briefly

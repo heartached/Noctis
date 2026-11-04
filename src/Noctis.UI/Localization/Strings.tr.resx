@@ -1947,4 +1947,10 @@
     <value>Yakut</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve"><value>Hareketli Kapağı Kaldır</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Hareketli Kapakları Otomatik Bul</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Bir albümü açtığınızda hareketli kapağını Apple Music’te arar (yalnızca net eşleşmeler) ve aşağıdaki boyutu asla aşmayan bir önbellekte saklar. Kendi seçtiğiniz kapaklar ayrı tutulur ve hiç silinmez.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Önbellek Boyutu</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Dolduğunda, en uzun süre önce açtığınız albümlerin kapakları önce silinir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheInUse" xml:space="preserve"><value>Kullanılan:</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

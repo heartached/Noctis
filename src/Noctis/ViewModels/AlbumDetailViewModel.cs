@@ -70,7 +70,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     public bool ShowAnimatedCover =>
         (_settings?.EnableAnimatedCovers ?? false) && !string.IsNullOrEmpty(AnimatedCoverPath);
 
-    partial void OnAnimatedCoverPathChanged(string? value) => OnPropertyChanged(nameof(ShowAnimatedCover));
+    partial void OnAnimatedCoverPathChanged(string? value)
+    {
+        OnPropertyChanged(nameof(ShowAnimatedCover));
+        OnPropertyChanged(nameof(CanRemoveAnimatedArtwork));
+    }
 
     public PlayerViewModel Player => _player;
     [ObservableProperty]
@@ -1252,6 +1256,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _discFillGeneration++; // halt any in-flight track streaming
+        StopAutoFetch();
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;

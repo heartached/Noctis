@@ -142,6 +142,25 @@ public static class MetadataHelper
     // run goes on; opening the tool again shows the same run instead of starting a second one.
     private static BulkLyricsViewModel? _libraryLyricsRun;
     private static BulkAnimatedArtworkViewModel? _libraryArtworkRun;
+    private static AnimatedArtworkAutoFetcher? _albumArtworkFetcher;
+
+    /// <summary>
+    /// GitHub #167: the one fetcher behind every album page's "fetch animated artwork on
+    /// open", so lookups from pages opened in quick succession queue and space out together.
+    /// Null without the app's services (tests).
+    /// </summary>
+    internal static AnimatedArtworkAutoFetcher? AlbumArtworkFetcher
+    {
+        get
+        {
+            if (_albumArtworkFetcher != null) return _albumArtworkFetcher;
+            var services = App.Services;
+            if (services?.GetService<ITunesArtworkService>() is not { } itunes ||
+                services.GetService<IPersistenceService>() is not { } persistence)
+                return null;
+            return _albumArtworkFetcher = AnimatedArtworkAutoFetcher.For(itunes, persistence);
+        }
+    }
 
     /// <summary>
     /// Settings › Reset Everything: stops both whole-library runs and waits for them to end, so
@@ -154,6 +173,8 @@ public static class MetadataHelper
         var artwork = _libraryArtworkRun;
         _libraryLyricsRun = null;
         _libraryArtworkRun = null;
+        // Its block list and "no match" memory belong to the old data; the next page reloads them.
+        _albumArtworkFetcher = null;
         if (lyrics is { IsRunning: true })
         {
             lyrics.StopCommand.Execute(null);
