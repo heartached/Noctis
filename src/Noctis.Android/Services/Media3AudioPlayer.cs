@@ -559,17 +559,17 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             var art = !string.IsNullOrEmpty(track.AlbumArtworkPath) && File.Exists(track.AlbumArtworkPath)
                 ? track.AlbumArtworkPath
                 : _persistence.GetArtworkPath(track.AlbumId);
+            // Only a cover already read goes on here. Reading (and for a big scan, decoding and
+            // re-encoding) one ran on this thread, the UI thread, at every skip and again for the
+            // song queued behind it: a 3000 px PNG cover is a full decode, hundreds of ms on a
+            // mid-range phone (beta, Realme 7 Pro: "song skipping is laggy"). A cover not read yet
+            // is read on the pool and put on the item when it is ready (ApplySessionArtwork).
             if (File.Exists(art))
             {
-                try
-                {
-                    if (SessionArtworkBytes(art) is { } bytes)
-                        meta.SetArtworkData(bytes, JInteger.ValueOf(MediaMetadata.PictureTypeFrontCover));
-                }
-                catch (Exception ex)
-                {
-                    DebugLog.Write("Audio", $"Artwork read failed for '{track.Title}': {ex.Message}");
-                }
+                if (CachedSessionArtwork(art) is { } bytes)
+                    meta.SetArtworkData(bytes, JInteger.ValueOf(MediaMetadata.PictureTypeFrontCover));
+                else
+                    LoadSessionArtworkInBackground(path, art, track.Title);
             }
         }
         else
@@ -585,20 +585,90 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     }
 
     // The last few session covers, by path, size and write time: a queue passes the same
-    // album's cover for every song, and shrinking a full-size scan is not free.
+    // album's cover for every song, and shrinking a full-size scan is not free. Filled on pool
+    // threads (LoadSessionArtworkInBackground), read on the main thread: locked.
     private readonly Dictionary<string, byte[]> _sessionArtwork = new();
+    private readonly HashSet<string> _sessionArtworkLoading = new();
     private const int SessionArtworkCacheSize = 8;
+
+    private static string SessionArtworkKey(string path)
+    {
+        var info = new FileInfo(path);
+        return $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+    }
+
+    /// <summary>The session cover for <paramref name="art"/> when it has been read already; null otherwise.</summary>
+    private byte[]? CachedSessionArtwork(string art)
+    {
+        var key = SessionArtworkKey(art);
+        lock (_sessionArtwork) return _sessionArtwork.TryGetValue(key, out var bytes) ? bytes : null;
+    }
+
+    /// <summary>Reads <paramref name="art"/> on the pool, then puts it on every queued item of
+    /// <paramref name="mediaPath"/> (the playing one, the one queued behind it).</summary>
+    private void LoadSessionArtworkInBackground(string mediaPath, string art, string? title)
+    {
+        var key = SessionArtworkKey(art);
+        lock (_sessionArtwork)
+            if (!_sessionArtworkLoading.Add(key)) return;
+        _ = Task.Run(() =>
+        {
+            byte[]? bytes = null;
+            try
+            {
+                bytes = SessionArtworkBytes(art);
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Audio", $"Artwork read failed for '{title}': {ex.Message}");
+            }
+            lock (_sessionArtwork)
+            {
+                _sessionArtworkLoading.Remove(key);
+                if (bytes != null)
+                {
+                    if (_sessionArtwork.Count >= SessionArtworkCacheSize) _sessionArtwork.Clear();
+                    _sessionArtwork[key] = bytes;
+                }
+            }
+            if (bytes != null) _positionHandler.Post(() => ApplySessionArtwork(mediaPath, bytes));
+        });
+    }
+
+    /// <summary>
+    /// Main thread: the cover onto the items of <paramref name="mediaPath"/> still in the list.
+    /// The item is rebuilt from itself (same URI, same id), so ExoPlayer updates it in place
+    /// (ProgressiveMediaSource.canUpdateMediaItem) instead of re-preparing the playing song.
+    /// </summary>
+    private void ApplySessionArtwork(string mediaPath, byte[] bytes)
+    {
+        if (_disposed) return;
+        try
+        {
+            for (var i = 0; i < _player.MediaItemCount; i++)
+            {
+                var item = _player.GetMediaItemAt(i);
+                if (item?.MediaId != mediaPath || item.MediaMetadata.ArtworkData != null) continue;
+                var meta = item.MediaMetadata.BuildUpon()
+                    .SetArtworkData(bytes, JInteger.ValueOf(MediaMetadata.PictureTypeFrontCover))
+                    .Build();
+                _player.ReplaceMediaItem(i, item.BuildUpon().SetMediaMetadata(meta).Build());
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Audio", $"Session artwork update failed: {ex.Message}");
+        }
+    }
 
     /// <summary>The cover bytes for the session: the file itself when small, else a
     /// <see cref="SessionArtwork.MaxEdge"/> px JPEG of it (Media3 copies these bytes on every
-    /// update; a 16.5 MB scan per queued song ran the heap out). Null when it can't be decoded.</summary>
-    private byte[]? SessionArtworkBytes(string path)
+    /// update; a 16.5 MB scan per queued song ran the heap out). Null when it can't be decoded.
+    /// Pool thread (LoadSessionArtworkInBackground): BitmapFactory is thread-safe.</summary>
+    private static byte[]? SessionArtworkBytes(string path)
     {
         var info = new FileInfo(path);
         if (!SessionArtwork.NeedsShrinking(info.Length)) return File.ReadAllBytes(path);
-
-        var key = $"{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
-        if (_sessionArtwork.TryGetValue(key, out var cached)) return cached;
 
         var bounds = new global::Android.Graphics.BitmapFactory.Options { InJustDecodeBounds = true };
         global::Android.Graphics.BitmapFactory.DecodeFile(path, bounds);
@@ -611,11 +681,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         using var stream = new MemoryStream();
         bitmap.Compress(global::Android.Graphics.Bitmap.CompressFormat.Jpeg!, 88, stream);
         bitmap.Recycle();
-        var bytes = stream.ToArray();
-
-        if (_sessionArtwork.Count >= SessionArtworkCacheSize) _sessionArtwork.Clear();
-        _sessionArtwork[key] = bytes;
-        return bytes;
+        return stream.ToArray();
     }
 
     /// <summary>What ExoPlayer reads for <paramref name="path"/>: a desktop song's download or
