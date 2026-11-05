@@ -203,4 +203,51 @@ public class Mp3FrameScanTests : IDisposable
         Assert.InRange(counted!.Duration.TotalSeconds, 40.0, 40.1);
         Assert.InRange(headed!.Duration.TotalSeconds, 39.9, 40.1);
     }
+
+    // Discord 11-05 (Tangent, 1.6.7 "better, still present"): the damage is found before
+    // playback reaches it, so the player can switch decoders ahead of it instead of at the wedge.
+    [Fact]
+    public void FindDamage_ReportsTheJunkBetweenFrames_InMediaTime()
+    {
+        var damage = Mp3FrameScan.FindDamage(Vbr(3000, id3: true, id3v1: true, junk: true), minMinutes: 0);
+        var run = Assert.Single(damage);
+        var frameMs = 1152 * 1000.0 / 44100;
+        // The junk follows frame 1500 (0-based): the cut is where that frame starts, the
+        // resume where the next frame starts; the junk itself carries no time.
+        Assert.InRange(run.CutMs, (long)(1500 * frameMs) - 1, (long)(1500 * frameMs) + 1);
+        Assert.InRange(run.ResumeMs, (long)(1501 * frameMs), (long)(1501 * frameMs) + 2);
+    }
+
+    [Fact]
+    public void FindDamage_IgnoresCleanFiles_TagsAndSongLengthFiles()
+    {
+        Assert.Empty(Mp3FrameScan.FindDamage(Vbr(3000, id3: true, id3v1: true), minMinutes: 0));
+        // A song-length file is not walked at all (78 s here).
+        Assert.Empty(Mp3FrameScan.FindDamage(Vbr(3000, junk: true)));
+
+        // Two files joined with the second one's ID3v2 tag in between: not damage.
+        var joined = new MemoryStream();
+        Vbr(500).CopyTo(joined);
+        joined.Write(new byte[] { (byte)'I', (byte)'D', (byte)'3', 4, 0, 0, 0, 0, 0x01, 0x00 });
+        joined.Write(new byte[128]);
+        Vbr(500).CopyTo(joined);
+        joined.Position = 0;
+        Assert.Empty(Mp3FrameScan.FindDamage(joined, minMinutes: 0));
+    }
+
+    [Fact]
+    public void FindDamage_MergesJunkScatteredBetweenFrames_IntoOneRun()
+    {
+        var ms = new MemoryStream();
+        for (var i = 0; i < 2000; i++)
+        {
+            WriteFrame(ms, i % 3 == 0 ? 11 : 9);
+            if (i is >= 1000 and < 1040 && i % 4 == 0) ms.Write(new byte[300]); // ~1 s of scattered junk
+        }
+        ms.Position = 0;
+        var run = Assert.Single(Mp3FrameScan.FindDamage(ms, minMinutes: 0));
+        var frameMs = 1152 * 1000.0 / 44100;
+        Assert.InRange(run.CutMs, (long)(1000 * frameMs) - 1, (long)(1000 * frameMs) + 1);
+        Assert.InRange(run.ResumeMs, (long)(1037 * frameMs), (long)(1037 * frameMs) + 2);
+    }
 }
