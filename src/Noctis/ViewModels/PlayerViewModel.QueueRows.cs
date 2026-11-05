@@ -36,9 +36,33 @@ public partial class PlayerViewModel
     /// <summary>Played rows at the top of <see cref="QueueRows"/>.</summary>
     public int QueuePlayedRowCount => KeepPlayedInQueue ? History.Count : 0;
 
-    /// <summary>The loaded song's row in <see cref="QueueRows"/>, or -1 (none, or Keep Played
-    /// Songs off: the panel shows it above the list).</summary>
-    public int QueueCurrentRow => KeepPlayedInQueue && CurrentTrack != null ? History.Count : -1;
+    /// <summary>
+    /// GitHub #175: Clear Queue took the loaded song out of the queue too. It plays on, but
+    /// the panel lists it nowhere (no Now Playing card, no row) until another song loads or
+    /// something is queued after it. Up Next is always empty while this is set.
+    /// </summary>
+    private bool _currentClearedFromQueue;
+
+    /// <summary>The panel shows the loaded song: one is loaded and Clear Queue did not take
+    /// it out (GitHub #175).</summary>
+    public bool ShowQueueCurrentTrack => CurrentTrack != null && !_currentClearedFromQueue;
+
+    /// <summary>Clear has something to clear: Up Next, or the loaded song (GitHub #175: with
+    /// the last song of a queue playing it was disabled, so its row could not be cleared).</summary>
+    public bool CanClearQueue => UpNext.Count > 0 || ShowQueueCurrentTrack;
+
+    private void SetCurrentClearedFromQueue(bool value)
+    {
+        if (_currentClearedFromQueue == value) return;
+        _currentClearedFromQueue = value;
+        RebuildQueueRows();
+        // Next restarts the cleared song with Repeat on (CanGoNext).
+        NextCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>The loaded song's row in <see cref="QueueRows"/>, or -1 (none, cleared from the
+    /// queue, or Keep Played Songs off: the panel shows it above the list).</summary>
+    public int QueueCurrentRow => KeepPlayedInQueue && ShowQueueCurrentTrack ? History.Count : -1;
 
     /// <summary>Rows before Up Next's first song.</summary>
     private int QueueUpNextOffset => QueuePlayedRowCount + (QueueCurrentRow >= 0 ? 1 : 0);
@@ -46,10 +70,10 @@ public partial class PlayerViewModel
     /// <summary>Nothing at all to show: no loaded song, nothing up next and no played rows.
     /// The panel's "Your queue is empty" shows only then (it showed whenever Up Next was
     /// empty, under a playing song and its played songs).</summary>
-    public bool IsQueueEmpty => CurrentTrack == null && UpNext.Count == 0 && QueuePlayedRowCount == 0;
+    public bool IsQueueEmpty => !ShowQueueCurrentTrack && UpNext.Count == 0 && QueuePlayedRowCount == 0;
 
     /// <summary>A song is loaded above an empty Up Next list (Keep Played Songs off).</summary>
-    public bool ShowQueueNothingUpNext => !KeepPlayedInQueue && CurrentTrack != null && UpNext.Count == 0;
+    public bool ShowQueueNothingUpNext => !KeepPlayedInQueue && ShowQueueCurrentTrack && UpNext.Count == 0;
 
     /// <summary>There are played rows to clear.</summary>
     public bool HasPlayedQueueRows => QueuePlayedRowCount > 0;
@@ -220,7 +244,9 @@ public partial class PlayerViewModel
                 }
             }
 
-            // Drop it at landAt: a slot at or before the loaded song's row is played.
+            // Drop it at landAt: a slot at or before the loaded song's row is played. A song
+            // Clear Queue took out has no row but still sits after the played ones, so the
+            // slot below the last played row stays played (GitHub #175).
             for (var k = 0; k < tracks.Count; k++)
             {
                 var q = landAt + k;
@@ -253,7 +279,7 @@ public partial class PlayerViewModel
         if (KeepPlayedInQueue)
         {
             for (var i = History.Count - 1; i >= 0; i--) rows.Add(History[i]);
-            if (CurrentTrack != null) rows.Add(CurrentTrack);
+            if (ShowQueueCurrentTrack) rows.Add(CurrentTrack!);
         }
         rows.AddRange(UpNext);
         QueueRows.ReplaceAll(rows);
@@ -273,6 +299,8 @@ public partial class PlayerViewModel
         OnPropertyChanged(nameof(IsQueueEmpty));
         OnPropertyChanged(nameof(ShowQueueNothingUpNext));
         OnPropertyChanged(nameof(HasPlayedQueueRows));
+        OnPropertyChanged(nameof(ShowQueueCurrentTrack));
+        OnPropertyChanged(nameof(CanClearQueue));
     }
 
     /// <summary>Above this many items one edit is cheaper as a rebuild.</summary>
@@ -280,6 +308,13 @@ public partial class PlayerViewModel
 
     private void OnUpNextChangedForRows(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        // Something queued after Clear Queue: the playing song is part of the queue again,
+        // its row back above what was added (GitHub #175). The flag change rebuilds the rows.
+        if (_currentClearedFromQueue && UpNext.Count > 0)
+        {
+            SetCurrentClearedFromQueue(false);
+            return;
+        }
         var offset = QueueUpNextOffset;
         switch (e.Action)
         {
@@ -343,6 +378,13 @@ public partial class PlayerViewModel
 
     private void OnCurrentTrackChangedForRows(Track? oldValue, Track? newValue)
     {
+        // Another song loaded: it is the queue's again (GitHub #175). The cleared song had
+        // no row, so the rows are rebuilt rather than edited.
+        if (_currentClearedFromQueue)
+        {
+            SetCurrentClearedFromQueue(false);
+            return;
+        }
         if (!KeepPlayedInQueue)
         {
             NotifyQueueRowState();
