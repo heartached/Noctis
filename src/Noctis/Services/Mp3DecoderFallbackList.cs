@@ -9,7 +9,7 @@ namespace Noctis.Services;
 /// start and never reaches the damage on mpg123 again (Discord 11-03: the recovery worked,
 /// but every play of the file still dropped out at the damaged spot). One line per file:
 /// size, last-write ticks (UTC) and path, tab-separated; an entry whose file was replaced
-/// (another size or write time) no longer counts. A null store path keeps it in memory
+/// (another size) no longer counts. A null store path keeps it in memory
 /// (tests). Thread-safe.
 /// </summary>
 internal sealed class Mp3DecoderFallbackList
@@ -20,7 +20,12 @@ internal sealed class Mp3DecoderFallbackList
 
     public Mp3DecoderFallbackList(string? storePath) => _storePath = storePath;
 
-    /// <summary>True when <paramref name="path"/> was added and the file is still the same one.</summary>
+    /// <summary>
+    /// True when <paramref name="path"/> was added and the file is still the same one: the same
+    /// size. The write time alone does not count, because the app rewrites tags in place (a
+    /// star rating or a dislike is written into the file: LibraryService.QueueRatingTagWrites),
+    /// which moved it and dropped the entry, so the next play hit the damage on mpg123 again.
+    /// </summary>
     public bool Contains(string path)
     {
         (long Bytes, long Ticks) entry;
@@ -28,7 +33,7 @@ internal sealed class Mp3DecoderFallbackList
         {
             if (!Load().TryGetValue(path, out entry)) return false;
         }
-        return Stamp(path) is { } now && now == entry;
+        return Stamp(path) is { } now && now.Bytes == entry.Bytes;
     }
 
     /// <summary>Remembers <paramref name="path"/> as it is now; false when it was already there.</summary>
