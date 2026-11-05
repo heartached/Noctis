@@ -63,7 +63,9 @@ public class PhoneCardResponsivenessTests : IDisposable
             Console.WriteLine("[PhoneSwitchTiming] " + report);
             Assert.False(vm.NoctisServerStartFailed, vm.NoctisServerError);
             Assert.False(await Task.Run(() => Listening(port)));
-            Assert.True(new[] { setOn, setOff }.Max() < 100, report); // cold: first use of the view model's paths
+            // Cold: first use of the view model's paths (JIT). 200 ms under a loaded full suite run
+            // (11-05), so this only catches the server start coming back on the UI thread.
+            Assert.True(new[] { setOn, setOff }.Max() < 500, report);
             Assert.True(new[] { setOn2, setOff2 }.Max() < 30, report);
             Assert.True(new[] { gapOn2, gapOff2 }.Max() < 60, report);
         }
