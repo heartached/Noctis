@@ -464,26 +464,25 @@ public static partial class YtDlpParsing
 
     /// <summary>
     /// Percent, speed and ETA from a <c>[download]  45.3% of 3.21MiB at 1.2MiB/s ETA 00:04</c>
-    /// line, else null. Speed comes back as Mbit/s; ETA as a span. Either is null when the
+    /// line, else null. Speed comes back as bytes/s; ETA as a span. Either is null when the
     /// line has none (early "at Unknown" lines, the "100% … in 00:05" done line).
     /// </summary>
     public static DownloadDetail? ParseDownloadDetail(string? line)
     {
         if (ParseProgressPercent(line) is not { } percent) return null;
 
-        double? mbps = null;
+        double? bytesPerSec = null;
         var speed = SpeedRegex().Match(line!);
         if (speed.Success
             && double.TryParse(speed.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
         {
-            var bytes = speed.Groups[2].Value switch
+            bytesPerSec = speed.Groups[2].Value switch
             {
                 "KiB" => value * 1024,
                 "MiB" => value * 1024 * 1024,
                 "GiB" => value * 1024 * 1024 * 1024,
                 _ => value,
             };
-            mbps = bytes * 8 / 1_000_000;
         }
 
         TimeSpan? eta = null;
@@ -497,6 +496,6 @@ public static partial class YtDlpParsing
             eta = new TimeSpan(hours, minutes, seconds);
         }
 
-        return new DownloadDetail(percent, mbps, eta);
+        return new DownloadDetail(percent, bytesPerSec, eta);
     }
 }

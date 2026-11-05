@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Globalization;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Localization;
+using Noctis.Services.LyricsStudio;
 using Noctis.Services.Plugins;
 
 namespace Noctis.ViewModels;
@@ -160,6 +160,9 @@ public partial class SettingsViewModel
         await InstallOfficialPluginAsync(item);
     }
 
+    /// <summary>A plugin download updates its row at most this often (~4 a second).</summary>
+    private static readonly TimeSpan ProgressPostInterval = TimeSpan.FromMilliseconds(250);
+
     /// <summary>
     /// Download → verify → install. Nothing reaches the plugins folder unless the zip matches the
     /// list. Official plugins don't need the Community switch; a code plugin that ends up a
@@ -171,21 +174,29 @@ public partial class SettingsViewModel
 
         using var cts = new CancellationTokenSource();
         item.BeginDownload(cts);
-        var speed = new DownloadSpeedTracker();
+        // Speed and time left as Lyrics Studio shows them (DownloadMeter: MB/s, "about 30 s left").
+        // The download reports every 64 KiB chunk; the row hears of it at most ~4 times a second.
+        var meter = new DownloadMeter();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var lastPost = -ProgressPostInterval;
         string? zip = null;
         try
         {
             zip = await Task.Run(() => client.DownloadAsync(item.Entry,
-                (done, total) => Dispatcher.UIThread.Post(() =>
+                (done, total) =>
                 {
-                    if (!item.IsBusy) return;
-                    item.Progress = total > 0 ? (double)done / total : 0;
-                    item.ProgressDetail = speed.Sample(done, total) is { } s
-                        ? s.Eta is { } left
-                            ? $"{s.MegabitsPerSec.ToString("0.0", CultureInfo.CurrentCulture)} Mbit/s · {DownloadMeter.RemainingText(left)}"
-                            : $"{s.MegabitsPerSec.ToString("0.0", CultureInfo.CurrentCulture)} Mbit/s"
-                        : string.Empty;
-                }),
+                    var at = clock.Elapsed;
+                    if (at - lastPost < ProgressPostInterval && !(total > 0 && done >= total)) return;
+                    lastPost = at;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (!item.IsBusy) return;
+                        meter.Sample(new ModelDownloadProgress(ModelDownloadPhase.Downloading, done, total), at);
+                        var d = meter.Read(at);
+                        item.Progress = d.Fraction;
+                        item.ProgressDetail = DownloadMeter.SpeedText(d);
+                    });
+                },
                 cts.Token));
             item.EndDownload();
             var installed = await InstallPluginPackageAsync(zip, item.Entry, replaceUnverified: item.HasUnverifiedCopy);
@@ -269,7 +280,7 @@ public sealed partial class OfficialPluginItem : ObservableObject
     /// <summary>0..1 while downloading.</summary>
     [ObservableProperty] private double _progress;
 
-    /// <summary>"12.4 Mbit/s · about 32 min left" while downloading, else empty.</summary>
+    /// <summary>"4.2 MB/s · about 30 s left" while downloading, else empty.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasProgressDetail))]
     private string _progressDetail = string.Empty;
 
@@ -310,6 +321,9 @@ public sealed partial class OfficialPluginItem : ObservableObject
     internal void EndDownload()
     {
         _cts = null;
+        // The speed line is shown by HasProgressDetail alone: clear it, or the last speed
+        // stays under the card after the install finishes or fails.
+        ProgressDetail = string.Empty;
         IsBusy = false;
     }
 

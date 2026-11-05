@@ -193,6 +193,7 @@ public sealed class YtDlpTool
                 using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 var buffer = new byte[1 << 16];
                 var tracker = new DownloadSpeedTracker();
+                var throttle = new ReportThrottle();
                 long done = 0;
                 while (true)
                 {
@@ -201,9 +202,10 @@ public sealed class YtDlpTool
                     if (n == 0) break;
                     await target.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
                     done += n;
+                    if (!throttle.Due()) continue;
                     if (total > 0) progress?.Report(Math.Min(0.99, done / (double)total));
                     if (report is not null && tracker.Sample(done, total) is { } s)
-                        report.Report(new DownloadReport(done, total, s.MegabitsPerSec, s.Eta));
+                        report.Report(new DownloadReport(done, total, s.BytesPerSec, s.Eta));
                 }
                 if (total > 0 && done != total) throw new IOException($"Download ended at {done} of {total} bytes.");
                 return;
@@ -445,9 +447,11 @@ public sealed class YtDlpTool
         try
         {
             var template = Path.Combine(scratch, "%(id)s.%(ext)s");
+            var throttle = new ReportThrottle();
             var (code, _, stderr) = await RunLoggedAsync(operation, exe, buildArgs(template), line =>
             {
                 if (YtDlpParsing.ParseDownloadDetail(line) is not { } d) return;
+                if (d.Percent < 100 && !throttle.Due()) return;
                 progress?.Report(d.Percent / 100.0);
                 detail?.Report(d);
             }, ct).ConfigureAwait(false);

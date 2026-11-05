@@ -5,21 +5,21 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// Download speed + ETA on the "Add from YouTube" page: yt-dlp line parsing, the live
-/// install tracker, and the "12.4 Mbit/s · 32 s left" status text.
+/// install tracker, and the "4.2 MB/s · about 30 s left" status text (the app's units and wording).
 /// </summary>
 public class YouTubeDownloadSpeedTests
 {
     [Theory]
-    // percent, Mbit/s, ETA
-    [InlineData("[download]  45.3% of 3.21MiB at 1.20MiB/s ETA 00:01", 45.3, 10.066, "00:00:01")]
-    [InlineData("[download]  12.4% of ~10.55MiB at  850.00KiB/s ETA 00:11", 12.4, 6.963, "00:00:11")]
-    [InlineData("[download]   3.1% of ~1.20GiB at  2.50GiB/s ETA 01:02:03", 3.1, 21474.836, "01:02:03")]
-    [InlineData("[download]   7.0% of ~5.00MiB at 512B/s ETA 01:30", 7.0, 0.004, "00:01:30")]
-    public void ParseDownloadDetail_ReadsPercentSpeedAndEta(string line, double percent, double mbps, string eta)
+    // percent, bytes/s, ETA
+    [InlineData("[download]  45.3% of 3.21MiB at 1.20MiB/s ETA 00:01", 45.3, 1258291.2, "00:00:01")]
+    [InlineData("[download]  12.4% of ~10.55MiB at  850.00KiB/s ETA 00:11", 12.4, 870400.0, "00:00:11")]
+    [InlineData("[download]   3.1% of ~1.20GiB at  2.50GiB/s ETA 01:02:03", 3.1, 2684354560.0, "01:02:03")]
+    [InlineData("[download]   7.0% of ~5.00MiB at 512B/s ETA 01:30", 7.0, 512.0, "00:01:30")]
+    public void ParseDownloadDetail_ReadsPercentSpeedAndEta(string line, double percent, double bytesPerSec, string eta)
     {
         var d = Assert.IsType<DownloadDetail>(YtDlpParsing.ParseDownloadDetail(line));
         Assert.Equal(percent, d.Percent);
-        Assert.Equal(mbps, d.MegabitsPerSec!.Value, precision: 3);
+        Assert.Equal(bytesPerSec, d.BytesPerSec!.Value, precision: 1);
         Assert.Equal(TimeSpan.Parse(eta), d.Eta);
     }
 
@@ -28,26 +28,41 @@ public class YouTubeDownloadSpeedTests
     [InlineData("[download]   0.0% of ~5.00MiB at Unknown", 0.0, null, null)]
     [InlineData("[ExtractAudio] Destination: x.m4a", null, null, null)]
     [InlineData("", null, null, null)]
-    public void ParseDownloadDetail_ToleratesMissingParts(string line, double? percent, double? mbps, string? eta)
+    public void ParseDownloadDetail_ToleratesMissingParts(string line, double? percent, double? speed, string? eta)
     {
         var d = YtDlpParsing.ParseDownloadDetail(line);
         Assert.Equal(percent is not null, d is not null);
         if (d is null) return;
         Assert.Equal(percent, d.Percent);
-        Assert.Equal(mbps is not null, d.MegabitsPerSec is not null);
+        Assert.Equal(speed is not null, d.BytesPerSec is not null);
         Assert.Equal(eta is not null, d.Eta is not null);
     }
 
     [Theory]
-    [InlineData(12.44, 32, "12.4 Mbit/s · 32 s left")]
-    [InlineData(0.75, 1, "0.8 Mbit/s · 1 s left")]
-    [InlineData(132.6, 1932, "133 Mbit/s · 32 min 12 s left")]
-    [InlineData(8.0, 3723, "8.0 Mbit/s · 1 h 2 min left")]
-    [InlineData(5.5, null, "5.5 Mbit/s")]
-    public void Format_ComposesSpeedAndEta(double mbps, int? etaSeconds, string expected)
+    // Same wording and rounding as the app's DownloadMeter (Lyrics Studio, Settings → Plugins).
+    [InlineData(4.24 * 1048576, 32, "4.2 MB/s · about 35 s left")]
+    [InlineData(300 * 1024.0, 1, "300 KB/s · about 5 s left")]
+    [InlineData(12.6 * 1048576, 1932, "13 MB/s · about 32 min left")]
+    [InlineData(1048576.0, 3900, "1.0 MB/s · about 1 h 5 min left")]
+    [InlineData(5.5 * 1048576, null, "5.5 MB/s")]
+    public void Format_ComposesSpeedAndEta(double bytesPerSec, int? etaSeconds, string expected)
     {
         TimeSpan? eta = etaSeconds is { } s ? TimeSpan.FromSeconds(s) : null;
-        Assert.Equal(expected, DownloadFormat.Format(mbps, eta));
+        Assert.Equal(expected, DownloadFormat.Format(bytesPerSec, eta));
+    }
+
+    [Fact]
+    public void Throttle_LetsAboutFourReportsASecondThrough()
+    {
+        var now = DateTime.UtcNow;
+        var throttle = new ReportThrottle(() => now);
+        var passed = 0;
+        for (var i = 0; i < 1000; i++) // a 64 KiB chunk every millisecond: ~64 MB/s
+        {
+            if (throttle.Due()) passed++;
+            now += TimeSpan.FromMilliseconds(1);
+        }
+        Assert.Equal(4, passed);
     }
 
     [Fact]
@@ -62,7 +77,7 @@ public class YouTubeDownloadSpeedTests
         now += TimeSpan.FromMilliseconds(400); // 0.6 s, 500 kB in
         var s = tracker.Sample(500_000, 10_000_000);
         Assert.NotNull(s);
-        Assert.Equal(500_000 * 8 / 0.6 / 1_000_000, s.Value.MegabitsPerSec, precision: 3);
+        Assert.Equal(500_000 / 0.6, s.Value.BytesPerSec, precision: 3);
         Assert.Equal((10_000_000 - 500_000) / (500_000 / 0.6), s.Value.Eta!.Value.TotalSeconds, precision: 1);
     }
 

@@ -1,49 +1,50 @@
-using Noctis.Helpers;
+using Noctis.Services.LyricsStudio;
+using Noctis.Services.Plugins;
+using Noctis.ViewModels;
 using Xunit;
 
 namespace Noctis.Tests;
 
 /// <summary>
-/// Speed + ETA on official plugin downloads (Settings → Plugins → Get):
-/// "12.4 Mbit/s · about 32 min left" next to the row's progress bar.
+/// Speed + time left on official plugin downloads (Settings → Plugins → Get): "4.2 MB/s ·
+/// about 30 s left" next to the row's progress bar, measured and worded like Lyrics Studio's
+/// model download (<see cref="DownloadMeter"/>).
 /// </summary>
 public class PluginDownloadSpeedTests
 {
-    [Fact]
-    public void Tracker_WarmsUp_ThenReportsRateAndEta()
-    {
-        var now = DateTime.UtcNow;
-        var tracker = new DownloadSpeedTracker(() => now);
+    private static ModelDownloadProgress At(long bytes, long total) => new(ModelDownloadPhase.Downloading, bytes, total);
 
-        Assert.Null(tracker.Sample(0, 10_000_000)); // first sample: warming up
-        now += TimeSpan.FromMilliseconds(200);
-        Assert.Null(tracker.Sample(100_000, 10_000_000)); // too soon to trust
-        now += TimeSpan.FromMilliseconds(400); // 0.6 s, 500 kB in
-        var s = tracker.Sample(500_000, 10_000_000);
-        Assert.NotNull(s);
-        Assert.Equal(500_000 * 8 / 0.6 / 1_000_000, s.Value.MegabitsPerSec, precision: 3);
-        Assert.Equal((10_000_000 - 500_000) / (500_000 / 0.6), s.Value.Eta!.Value.TotalSeconds, precision: 1);
+    [Fact]
+    public void SpeedText_EmptyUntilSettled_ThenRateAndTimeLeft()
+    {
+        var meter = new DownloadMeter();
+        const long total = 100L << 20;
+        meter.Sample(At(0, total), TimeSpan.Zero);
+        meter.Sample(At(1L << 20, total), TimeSpan.FromSeconds(1));
+        Assert.Equal(string.Empty, DownloadMeter.SpeedText(meter.Read(TimeSpan.FromSeconds(1))));
+
+        for (var s = 2; s <= 10; s++) meter.Sample(At(s * (1L << 20), total), TimeSpan.FromSeconds(s));
+        Assert.Equal("1.0 MB/s · about 2 min left", DownloadMeter.SpeedText(meter.Read(TimeSpan.FromSeconds(10))));
     }
 
     [Fact]
-    public void Tracker_StalledOrDone_YieldsNothing()
+    public void SpeedText_UnknownTotal_OmitsTimeLeft()
     {
-        var now = DateTime.UtcNow;
-        var tracker = new DownloadSpeedTracker(() => now);
-        tracker.Sample(0, 1_000_000);
-        now += TimeSpan.FromSeconds(1);
-        Assert.Null(tracker.Sample(0, 1_000_000)); // nothing moving
+        var meter = new DownloadMeter();
+        for (var s = 0; s <= 4; s++) meter.Sample(At(s * 300L * 1024, 0), TimeSpan.FromSeconds(s));
+        Assert.Equal("300 KB/s", DownloadMeter.SpeedText(meter.Read(TimeSpan.FromSeconds(4))));
     }
 
     [Fact]
-    public void Tracker_UnknownTotal_OmitsEta()
+    public void EndDownload_ClearsTheSpeedLine()
     {
-        var now = DateTime.UtcNow;
-        var tracker = new DownloadSpeedTracker(() => now);
-        tracker.Sample(0, 0);
-        now += TimeSpan.FromSeconds(1);
-        var s = tracker.Sample(500_000, 0);
-        Assert.NotNull(s);
-        Assert.Null(s.Value.Eta);
+        var entry = Assert.Single(PluginCatalog.Parse(PluginCatalogTests.Index(PluginCatalogTests.Entry(id: "dev.test.speed"))).Plugins);
+        var item = new OfficialPluginItem(entry);
+        item.BeginDownload(new CancellationTokenSource());
+        item.ProgressDetail = "4.2 MB/s · about 30 s left";
+        Assert.True(item.HasProgressDetail);
+
+        item.EndDownload();
+        Assert.False(item.HasProgressDetail);
     }
 }
