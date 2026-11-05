@@ -7062,6 +7062,9 @@
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>진행 색상은 노래가 재생되는 동안 플레이어 막대를 커버 색상으로 채웁니다. 진행 선은 막대 아래쪽 가장자리를 따라 얇은 선을 그립니다. 둘 다 끄면 막대는 기본 유리 스타일로 표시됩니다.</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Wi-Fi에서만 다운로드</value></data>
   <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>컴퓨터의 노래는 Wi-Fi에서만 다운로드되며 모바일 데이터로는 다운로드되지 않습니다. 스트리밍에는 영향을 주지 않습니다.</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>부드러운 모션</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>최대 120Hz</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>지원되는 휴대폰에서 화면을 초당 최대 120번 새로 고쳐 스크롤과 애니메이션을 더 부드럽게 합니다. 끄면 화면이 60Hz로 유지되어 배터리를 아낄 수 있습니다.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>사용 중인 저장 공간</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>모든 다운로드 제거</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>제거한 다운로드는 컴퓨터에 남아 있으며 계속 스트리밍할 수 있습니다.</value></data>
