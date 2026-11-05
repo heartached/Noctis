@@ -2105,6 +2105,17 @@
         <Style Selector="Button.pair-disclosure:pointerover /template/ ContentPresenter, Button.pair-disclosure:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+        <!-- No press dip on a full-width row: Button:pressed's scale(0.97) pulled the right edge
+             in ~10 px, so a click on the chevron was released outside the button and did nothing
+             (owner 11-04). The chevron's turn is the feedback. -->
+        <Style Selector="Button.pair-disclosure:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.pair-disclosure:focus-visible /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1.5"/>
+        </Style>
         <Style Selector="Path.pair-chevron">
             <Setter Property="RenderTransform" Value="rotate(0deg)"/>
             <Setter Property="Transitions">
