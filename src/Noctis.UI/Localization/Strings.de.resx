@@ -3094,6 +3094,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>CD-Hülle</value><comment>Albums view menu: carousel case style</comment></data>
   <data name="Main.CarouselVinyl" xml:space="preserve"><value>Vinyl</value><comment>Albums view menu: carousel case style</comment></data>
   <data name="Main.CarouselCassette" xml:space="preserve"><value>Kassette</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselStyleCarouselOnly" xml:space="preserve"><value>Karussell-Stil (nur in der Karussell-Ansicht)</value><comment>Albums view menu: tooltip on the greyed carousel case styles while the grid is shown (GitHub #176)</comment></data>
   <data name="ArtistDetail.ShowCarousel" xml:space="preserve"><value>Als Karussell zeigen</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
   <data name="ArtistDetail.ShowGrid" xml:space="preserve"><value>Als Raster zeigen</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
   <data name="LibrarySongs.Composer" xml:space="preserve"><value>Komponist</value><comment>Songs list column header (GitHub #151)</comment></data>
