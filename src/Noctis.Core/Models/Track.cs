@@ -139,6 +139,17 @@ public partial class Track : ObservableObject
     /// </summary>
     public Guid AlbumId { get; set; }
 
+    /// <summary>
+    /// GitHub #178: whether <see cref="AlbumArtist"/> came from the file's own album-artist
+    /// tag (true) or was filled in by Noctis (false: the first performer, "Various Artists"
+    /// for a compilation, or the folder name). Only the scan and the editor know; null for
+    /// tracks read before this existed and for server streams. Untagged tracks of one album
+    /// in one folder are re-keyed to a shared album artist by <see cref="Services.AlbumGrouping"/>;
+    /// a real tag is never overridden.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? AlbumArtistFromTag { get; set; }
+
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
 

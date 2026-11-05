@@ -1285,7 +1285,11 @@ public partial class MetadataViewModel : ViewModelBase
         foreach (var t in _albumTracks)
         {
             if (artistChg) t.Artist = Artist;
-            if (albumArtistChg) t.AlbumArtist = AlbumArtist;
+            if (albumArtistChg)
+            {
+                t.AlbumArtist = AlbumArtist;
+                t.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist); // the user's tag (GitHub #178)
+            }
             if (albumChg) t.Album = Album;
             if (composerChg) t.Composer = Composer;
             if (groupingChg) t.Grouping = Grouping;
@@ -2293,6 +2297,10 @@ public partial class MetadataViewModel : ViewModelBase
             // Apply Details changes to the track model
             _track.Title = Title;
             _track.Artist = Artist;
+            // An album artist typed here is the user's tag (GitHub #178): the album-grouping
+            // pass must not re-key it, even when the file write below fails.
+            if (!string.Equals(_track.AlbumArtist, AlbumArtist, StringComparison.Ordinal))
+                _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist);
             _track.AlbumArtist = AlbumArtist;
             _track.Album = Album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)

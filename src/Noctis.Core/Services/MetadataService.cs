@@ -325,6 +325,7 @@ public class MetadataService : IMetadataService
         if (string.IsNullOrWhiteSpace(explicitAlbumArtist))
             explicitAlbumArtist = tag.FirstAlbumArtist ?? string.Empty;
         var albumArtist = Track.ResolveAlbumArtist(explicitAlbumArtist, tag.FirstPerformer, isCompilation);
+        var albumArtistFromTag = !string.IsNullOrWhiteSpace(explicitAlbumArtist);
         var riff = ReadRiffInfoFallback(file);
         var album = FirstNonEmpty(tag.Album, riff.Album, "Unknown Album");
         var title = string.IsNullOrWhiteSpace(tag.Title)
@@ -341,6 +342,7 @@ public class MetadataService : IMetadataService
             Title = title,
             Artist = artist,
             AlbumArtist = albumArtist,
+            AlbumArtistFromTag = albumArtistFromTag,
             Album = album,
             Genre = Track.JoinGenres(tag.Genres), // every genre, not just the first (GitHub #123 follow-up)
             TrackNumber = (int)tag.Track,
@@ -434,6 +436,7 @@ public class MetadataService : IMetadataService
                 Title = title,
                 Artist = artist,
                 AlbumArtist = albumArtist,
+                AlbumArtistFromTag = FirstNonBlank(id3?.JoinedAlbumArtists) != null,
                 Album = album,
                 Duration = info.Duration,
                 AlbumId = Track.ComputeAlbumId(albumArtist, album),
@@ -660,7 +663,7 @@ public class MetadataService : IMetadataService
 
     private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
-        return SaveTagsAtomically(targetFilePath, file =>
+        var ok = SaveTagsAtomically(targetFilePath, file =>
         {
             var tag = file.Tag;
 
@@ -723,6 +726,13 @@ public class MetadataService : IMetadataService
             ExtendedTagIO.WriteRating(file, track.Rating);
             ExtendedTagIO.WriteIsDisliked(file, track.IsDisliked);
         });
+        // The album artist is now in the file's own tag (written above), so the album-grouping
+        // pass must treat it as a real tag from here on, as the next scan of the file will
+        // (GitHub #178). Only for the track's own file: a converter writes to a new one.
+        if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
+            && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.AlbumArtistFromTag = true;
+        return ok;
     }
 
     /// <summary>The row's plain lyrics say what the file's lyrics text says: equal, or equal once

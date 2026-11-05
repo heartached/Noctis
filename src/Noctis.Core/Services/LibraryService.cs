@@ -2120,6 +2120,11 @@ public class LibraryService : ILibraryService
                     // recorded join matches the active one.
                     await ApplyArtistCreditJoinAsync();
 
+                    // GitHub #178: songs indexed before the album-artist source was recorded,
+                    // in albums that are split today, are re-read once so the grouping pass
+                    // knows which album artists are real tags.
+                    await ResolveAlbumArtistSourcesAsync();
+
                     // Heal albums whose cover was never cached. Scans only extract
                     // art for new/changed files plus a one-shot post-scan pass, so
                     // any interruption or unreadable file left an album artless for
@@ -2497,11 +2502,20 @@ public class LibraryService : ILibraryService
     {
         // Albums, artists and the id lookup are built from the visible tracks only, so a
         // hidden folder's songs vanish from every view that reads them.
-        var tracks = VisibleTracks(_tracks);
+        var allTracks = _tracks;
+        var tracks = VisibleTracks(allTracks);
         var persistence = _persistence;
+        List<AlbumGrouping.Move>? albumMoves = null;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
         {
+            // GitHub #178: untagged songs of one album in one folder become one album before
+            // anything groups by AlbumId. Over every track, hidden ones too, so a song's key
+            // does not depend on what is shown. A no-op once the library is grouped.
+            albumMoves = AlbumGrouping.Apply(allTracks);
+            if (albumMoves.Count > 0)
+                CarryAlbumKeyedFiles(persistence, albumMoves);
+
             // Build track lookup dictionary
             var ti = new Dictionary<Guid, Track>(tracks.Count);
             foreach (var t in tracks)
@@ -2630,6 +2644,213 @@ public class LibraryService : ILibraryService
         // accepted it.
         if (persistCache)
             _ = SaveIndexCacheAsync(tracks, albums, artists, artistGroupingSignature);
+
+        if (albumMoves is { Count: > 0 })
+        {
+            DebugLog.Write("Library", $"Album grouping (#178): {albumMoves.Count} song(s) re-keyed into " +
+                $"{albumMoves.Select(m => m.To).Distinct().Count()} album(s)");
+            await RepointPinnedAlbumsAsync(albumMoves, allTracks).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> GroupIntoAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default)
+    {
+        album = album?.Trim() ?? string.Empty;
+        albumArtist = albumArtist?.Trim() ?? string.Empty;
+        var targets = (tracks ?? Array.Empty<Track>()).Where(t => t != null).DistinctBy(t => t.Id).ToList();
+        if (targets.Count == 0 || !Track.IsRealAlbumName(album) || string.IsNullOrWhiteSpace(albumArtist))
+            return new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+
+        // Album order, so the first song's old cover is the one the new album keeps.
+        targets.Sort(AlbumGrouping.AlbumOrder);
+        var albumId = Track.ComputeAlbumId(albumArtist, album);
+        var moves = new List<AlbumGrouping.Move>();
+        var unwritten = new List<string>();
+        var grouped = 0;
+
+        await Task.Run(() =>
+        {
+            foreach (var t in targets)
+            {
+                var changed = !string.Equals(t.Album, album, StringComparison.Ordinal)
+                              || !string.Equals(t.AlbumArtist, albumArtist, StringComparison.Ordinal)
+                              || t.AlbumId != albumId;
+                if (!changed) continue;
+                grouped++;
+                t.Album = album;
+                t.AlbumArtist = albumArtist;
+                // Through the metadata editor's writer, so every other tag is kept as the
+                // editor would. Streams and phone documents have no file to write here.
+                var written = false;
+                if (t.HasFilesystemPath && !t.IsRemoteStream)
+                {
+                    try { written = _metadata.WriteTrackMetadata(t); }
+                    catch (Exception ex) { DebugLog.Write("Library", $"Group into album: write failed for '{t.FilePath}': {ex.Message}"); }
+                }
+                if (!written)
+                    unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                // The user's album artist: the grouping pass must not re-key it, written or not.
+                t.AlbumArtistFromTag = true;
+                if (t.AlbumId != albumId)
+                    moves.Add(new AlbumGrouping.Move(t.Id, t.AlbumId, albumId));
+                t.AlbumId = albumId;
+            }
+        }, CancellationToken.None);
+
+        if (grouped == 0)
+            return new AlbumGroupResult(albumId, 0, Array.Empty<string>());
+
+        await Task.Run(() => CarryAlbumKeyedFiles(_persistence, moves), CancellationToken.None);
+        foreach (var t in targets) t.NotifyMetadataUpdated();
+        await RebuildIndexesAsync();
+        await SaveAsync();
+        try { await _sqliteIndex.UpsertTracksAsync(targets, CancellationToken.None); }
+        catch (Exception ex) { DebugLog.Write("Library", $"Group into album: index update failed: {ex.Message}"); }
+        if (moves.Count > 0)
+            await RepointPinnedAlbumsAsync(moves, _tracks);
+        DebugLog.Write("Library", $"Group into album (#178): {grouped} song(s) → '{album}' by '{albumArtist}'" +
+            (unwritten.Count > 0 ? $", {unwritten.Count} file(s) not written" : ""));
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return new AlbumGroupResult(albumId, grouped, unwritten);
+    }
+
+    /// <summary>
+    /// GitHub #178, existing libraries: <see cref="Track.AlbumArtistFromTag"/> is unknown for
+    /// songs indexed before it existed, so <see cref="AlbumGrouping"/> leaves them alone. The
+    /// songs of today's split albums (<see cref="AlbumGrouping.UnresolvedInSplitAlbums"/>, a
+    /// handful in most libraries) are re-read for that one fact; everything else about the
+    /// song stays as stored. Phone files (content://) cannot be opened outside a scan, so their
+    /// stored modification stamp is cleared instead and the next scan re-reads them, keeping
+    /// their user state like any re-tagged file. Returns how many songs were resolved or marked.
+    /// </summary>
+    public async Task<int> ResolveAlbumArtistSourcesAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        var snapshot = _tracks;
+        var pending = await Task.Run(() => AlbumGrouping.UnresolvedInSplitAlbums(snapshot), CancellationToken.None);
+        if (pending.Count == 0) return 0;
+
+        var resolved = new List<Track>();
+        var phone = new List<Track>();
+        await Task.Run(() =>
+        {
+            foreach (var track in pending)
+            {
+                if (token.IsCancellationRequested) break;
+                if (!track.HasFilesystemPath)
+                {
+                    if (track.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)
+                        && track.SourceType == SourceType.Local && track.LastModified != default)
+                        phone.Add(track);
+                    continue;
+                }
+                if (track.SourceType is not (SourceType.Local or SourceType.Smb)) continue;
+                try
+                {
+                    if (!File.Exists(track.FilePath)) continue;
+                    if (_metadata.ReadTrackMetadata(track.FilePath)?.AlbumArtistFromTag is bool fromTag)
+                    {
+                        track.AlbumArtistFromTag = fromTag;
+                        resolved.Add(track);
+                    }
+                }
+                catch
+                {
+                    // Unreadable now: stays unknown (never grouped) and is tried next launch.
+                }
+            }
+        }, CancellationToken.None);
+
+        foreach (var t in phone) t.LastModified = default;
+        if (resolved.Count == 0 && phone.Count == 0) return 0;
+
+        DebugLog.Write("Library", $"Album grouping (#178): album-artist source read for {resolved.Count} song(s)" +
+            (phone.Count > 0 ? $", {phone.Count} phone song(s) marked for the next scan" : ""));
+        if (resolved.Count > 0)
+            await RebuildIndexesAsync();
+        await SaveAsync();
+        try { await _sqliteIndex.UpsertTracksAsync(resolved.Concat(phone).ToList(), CancellationToken.None); }
+        catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: index update failed: {ex.Message}"); }
+        if (resolved.Count > 0)
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return resolved.Count + phone.Count;
+    }
+
+    /// <summary>
+    /// GitHub #178: songs re-keyed by <see cref="AlbumGrouping"/> take their album's cached
+    /// cover and animated covers to the new key. Copied, not moved, and only when the new key
+    /// has none yet: the first song in album order (the cover's usual source) wins, and a song
+    /// of the old key left elsewhere keeps its cover.
+    /// </summary>
+    internal static void CarryAlbumKeyedFiles(IPersistenceService persistence, IReadOnlyList<AlbumGrouping.Move> moves)
+    {
+        static void CopyIfMissing(string from, string to)
+        {
+            try
+            {
+                if (File.Exists(from) && !File.Exists(to))
+                    File.Copy(from, to);
+            }
+            catch
+            {
+                // Non-fatal: the missing-artwork heal re-extracts the cover.
+            }
+        }
+
+        var pairs = new HashSet<(Guid, Guid)>();
+        foreach (var move in moves)
+        {
+            if (move.To == Track.UnknownAlbumBucketId) continue;
+            if (pairs.Add((move.From, move.To)))
+            {
+                CopyIfMissing(persistence.GetArtworkPath(move.From), persistence.GetArtworkPath(move.To));
+                CopyIfMissing(persistence.GetCachedAnimatedCoverPath(move.From), persistence.GetCachedAnimatedCoverPath(move.To));
+                foreach (var ext in AnimatedCoverExtensions)
+                    CopyIfMissing(persistence.GetAnimatedCoverPath(move.From, null, ext), persistence.GetAnimatedCoverPath(move.To, null, ext));
+            }
+            foreach (var ext in AnimatedCoverExtensions)
+                CopyIfMissing(persistence.GetAnimatedCoverPath(move.From, move.TrackId, ext), persistence.GetAnimatedCoverPath(move.To, move.TrackId, ext));
+        }
+    }
+
+    /// <summary>A pinned album (the phone's Pinned rail) whose songs all moved to a new key
+    /// follows them, so the pin does not point at an album that no longer exists.</summary>
+    private async Task RepointPinnedAlbumsAsync(IReadOnlyList<AlbumGrouping.Move> moves, IReadOnlyList<Track> tracks)
+    {
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync().ConfigureAwait(false);
+            if (settings.PinnedAlbumIds.Count == 0) return;
+            var remap = RemapPinnedAlbumIds(settings.PinnedAlbumIds, moves, tracks);
+            if (remap == null) return;
+            await _persistence.UpdateSettingsAsync(s => s.PinnedAlbumIds = remap).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Album grouping: pinned albums not updated: {ex.Message}");
+        }
+    }
+
+    /// <summary>The pinned list with every emptied old key replaced by its new key (order kept,
+    /// duplicates dropped), or null when nothing changes.</summary>
+    internal static List<Guid>? RemapPinnedAlbumIds(IReadOnlyList<Guid> pinned, IReadOnlyList<AlbumGrouping.Move> moves,
+        IReadOnlyList<Track> tracks)
+    {
+        var live = new HashSet<Guid>(tracks.Select(t => t.AlbumId));
+        var target = new Dictionary<Guid, Guid>();
+        foreach (var m in moves)
+            if (!live.Contains(m.From)) target.TryAdd(m.From, m.To);
+        if (!pinned.Any(target.ContainsKey)) return null;
+        var result = new List<Guid>(pinned.Count);
+        foreach (var id in pinned)
+        {
+            var mapped = target.TryGetValue(id, out var to) ? to : id;
+            if (!result.Contains(mapped)) result.Add(mapped);
+        }
+        return result;
     }
 
     /// <summary>
@@ -3718,6 +3939,7 @@ public class LibraryService : ILibraryService
                                     {
                                         var oldAlbumId = track.AlbumId;
                                         track.AlbumArtist = refreshed.AlbumArtist;
+                                        track.AlbumArtistFromTag = refreshed.AlbumArtistFromTag;
                                         track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);
                                         if (track.AlbumId != oldAlbumId)
                                             movedTracks.Add((track.Id, oldAlbumId, track.AlbumId));
@@ -4004,6 +4226,14 @@ public class LibraryService : ILibraryService
                     // If tracks are missing, cache is stale
                     if (albumTracks.Count != entry.TrackCount)
                         return false;
+
+                    // So is a cache whose album keys the tracks no longer carry: library.json
+                    // saved before (or without) a later re-key, such as the album grouping
+                    // pass (GitHub #178). Restoring it filed songs under an album id they do
+                    // not have, so lookups by track.AlbumId missed the album.
+                    foreach (var t in albumTracks)
+                        if (t.AlbumId != entry.Id)
+                            return false;
 
                     var album = new Album
                     {
