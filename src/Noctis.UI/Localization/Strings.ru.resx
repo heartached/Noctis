@@ -5210,14 +5210,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Найти анимированную обложку</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>Название альбома или URL Apple Music</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>введите название альбома и нажмите Enter или вставьте ссылку Apple Music</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>Выбрать анимированную обложку</value>
     <comment>Text in MetadataWindow.axaml</comment>
@@ -7708,9 +7700,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve">
     <value>Открыть папку</value>
   </data>
-  <data name="Plugins.Remove" xml:space="preserve">
-    <value>Удалить</value>
-  </data>
   <data name="Plugins.Permissions" xml:space="preserve">
     <value>Разрешения</value>
   </data>
@@ -7855,14 +7844,8 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Plugins.TurnOnConfirm" xml:space="preserve">
     <value>Включить</value>
   </data>
-  <data name="Plugins.RemoveTitle" xml:space="preserve">
-    <value>Удалить {0}?</value>
-  </data>
   <data name="Plugins.RemoveDeleteData" xml:space="preserve">
     <value>Также удалить его данные и настройки</value>
-  </data>
-  <data name="Plugins.Removed" xml:space="preserve">
-    <value>Плагин {0} удалён.</value>
   </data>
   <data name="Plugins.RemoveFailed" xml:space="preserve">
     <value>Не удалось удалить некоторые файлы. Закройте Noctis и удалите {0} вручную.</value>
