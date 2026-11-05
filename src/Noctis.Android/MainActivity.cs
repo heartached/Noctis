@@ -5,6 +5,7 @@ using Android.Content.Res;
 using Android.OS;
 using Android.Views;
 using Avalonia.Android;
+using Noctis.Android.Services;
 using Noctis.Services;
 
 namespace Noctis.Android;
@@ -118,6 +119,9 @@ public class MainActivity : AvaloniaMainActivity
         // Another app, or the notification shade, may have moved the volume while we were away.
         AndroidApp.Current?.OnVolumeKey();
         AndroidApp.Current?.OnForegrounded();
+        // Smooth Motion: the window's display mode and the surface's rate, asked again on every
+        // return (another app may have left the display in a different mode).
+        AndroidFrameRate.Instance.Attach(this);
     }
 
     public override void OnWindowFocusChanged(bool hasFocus)
@@ -126,11 +130,14 @@ public class MainActivity : AvaloniaMainActivity
         // Avalonia puts its theme's status bar icons back when its view becomes visible again;
         // a page that asked for its own (the album cover) gets them back on top.
         if (hasFocus) AndroidApp.Current?.ReassertStatusBarIcons();
+        // Avalonia's SurfaceView is in the window by now even on the first launch.
+        if (hasFocus) AndroidFrameRate.Instance.Reapply();
     }
 
     protected override void OnPause()
     {
         base.OnPause();
+        AndroidFrameRate.Instance.Detach(this);
         // Screen off / home / task switch: checkpoint the queue and position now, since
         // Android may kill the process without any further callback.
         AndroidApp.Current?.OnBackgrounded();
@@ -153,6 +160,7 @@ public class MainActivity : AvaloniaMainActivity
         _createDocument?.TrySetResult(null);
         _createDocument = null;
         BackRequested -= OnBackRequested;
+        AndroidFrameRate.Instance.Detach(this);
         if (ReferenceEquals(Current, this)) Current = null;
         base.OnDestroy();
     }
