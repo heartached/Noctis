@@ -7415,4 +7415,14 @@
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}”不是 M3U 播放列表</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>无法读取“{0}”</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>打开播放列表</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>自动查找所有音乐</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>无需选择文件夹，添加此手机及其 SD 卡上的所有歌曲。歌曲旁边的歌词文件（.lrc、.ttml）仅从下方添加的文件夹中读取。</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>所有音乐</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis 未获准读取此手机上的音乐。要开启此功能，请在 Noctis 的设置中允许“音乐和音频”。</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis 无法再读取此手机上的音乐。歌曲仍会列出，但在 Noctis 的设置中允许“音乐和音频”之前无法播放。</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>打开设置</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>为手机未列出的音乐（部分 SD 卡和 USB 驱动器）添加文件夹，或用于读取歌曲旁边的歌词文件。</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>查找所有音乐</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>查找此手机上的所有歌曲，或选择存放音乐的文件夹。Noctis 就地读取，绝不上传任何内容。</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis 无法再读取此手机上的音乐。请在 Noctis 的设置中允许“音乐和音频”。</value></data>
 </root>

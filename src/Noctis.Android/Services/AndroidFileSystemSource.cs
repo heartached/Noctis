@@ -1,8 +1,10 @@
 using Android.Content;
 using Android.Database;
+using Android.OS;
 using Android.Provider;
 using AndroidX.DocumentFile.Provider;
 using Microsoft.Win32.SafeHandles;
+using Noctis.Mobile.Services;
 using Noctis.Services;
 using AUri = Android.Net.Uri;
 
@@ -37,6 +39,9 @@ public sealed class AndroidFileSystemSource : IFileSystemSource
 
     public bool RootExists(string root)
     {
+        // The phone's music index: reachable while the permission is held. Taken away, the root
+        // reads as out of reach and its songs are kept as they were (LibraryService).
+        if (DeviceMusicScan.IsDeviceMusicPath(root)) return AndroidDeviceMusic.HasPermissionIn(_context);
         try
         {
             var tree = DocumentFile.FromTreeUri(_context, AUri.Parse(root)!);
@@ -55,6 +60,100 @@ public sealed class AndroidFileSystemSource : IFileSystemSource
         IReadOnlyCollection<string> excludedRoots,
         IReadOnlySet<string> ignoredFolderNames,
         Action<string> reportFailedDirectory)
+    {
+        if (DeviceMusicScan.IsDeviceMusicPath(root))
+            return EnumerateDeviceMusic(reportFailedDirectory);
+        return EnumerateTree(root, ignoredFolderNames, reportFailedDirectory);
+    }
+
+    /// <summary>
+    /// Find All Music Automatically: every song in MediaStore.Audio, by content URI. Rows are
+    /// read whole first (one query), then <see cref="DeviceMusicScan.Select"/> decides which are
+    /// songs and leaves those inside a picked folder to that folder. A rescan sees changes the
+    /// way it does for folders: a new id is a new song, a vanished id a deleted one, and a
+    /// changed size or date_modified a re-read. A failed query reports the whole root failed,
+    /// which keeps its known songs rather than dropping them.
+    /// </summary>
+    private IEnumerable<ScanEntry> EnumerateDeviceMusic(Action<string> reportFailedDirectory)
+    {
+        var q = Build.VERSION.SdkInt >= BuildVersionCodes.Q;
+        var columns = new List<string>
+        {
+            "_id", "_display_name", "_size", "date_modified", "duration",
+            "is_music", "is_ringtone", "is_notification", "is_alarm", "is_podcast", "_data",
+        };
+        if (q) columns.AddRange(new[] { "volume_name", "relative_path" });
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.S) columns.Add("is_recording");
+
+        var rows = new List<DeviceMusicRow>();
+        ICursor? cursor = null;
+        try
+        {
+            cursor = _resolver.Query(MediaStore.Audio.Media.ExternalContentUri!, columns.ToArray(), "is_music != 0", null, null);
+            if (cursor == null)
+            {
+                reportFailedDirectory(DeviceMusicScan.Root);
+                return Array.Empty<ScanEntry>();
+            }
+            int Col(string name) => cursor.GetColumnIndex(name);
+            var id = cursor.GetColumnIndexOrThrow("_id");
+            var name = Col("_display_name");
+            var size = Col("_size");
+            var modified = Col("date_modified");
+            var duration = Col("duration");
+            var music = Col("is_music");
+            var ringtone = Col("is_ringtone");
+            var notification = Col("is_notification");
+            var alarm = Col("is_alarm");
+            var podcast = Col("is_podcast");
+            var recording = Col("is_recording");
+            var volume = Col("volume_name");
+            var relative = Col("relative_path");
+            var data = Col("_data");
+            string? Text(int i) => i >= 0 && !cursor.IsNull(i) ? cursor.GetString(i) : null;
+            long Number(int i) => i >= 0 && !cursor.IsNull(i) ? cursor.GetLong(i) : 0;
+            bool Flag(int i) => Number(i) != 0;
+            while (cursor.MoveToNext())
+            {
+                var file = Text(data);
+                var displayName = Text(name) ?? (file != null ? Path.GetFileName(file) : string.Empty);
+                rows.Add(new DeviceMusicRow(
+                    cursor.GetLong(id), displayName, Number(size), Number(modified), Number(duration),
+                    music < 0 || Flag(music), Flag(ringtone), Flag(notification), Flag(alarm), Flag(podcast), Flag(recording),
+                    Text(volume), Text(relative), file));
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Music index query failed: {ex.GetType().Name}: {ex.Message}");
+            reportFailedDirectory(DeviceMusicScan.Root);
+            return Array.Empty<ScanEntry>();
+        }
+        finally
+        {
+            // Close() as well as Dispose(): see EnumerateTree.
+            try
+            {
+                cursor?.Close();
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Library", $"Music index cursor close failed: {ex.Message}");
+            }
+            cursor?.Dispose();
+        }
+
+        var folders = AndroidDeviceMusic.Current?.Folders ?? Array.Empty<string>();
+        var items = DeviceMusicScan.Select(rows, folders.ToList()).ToList();
+        DebugLog.Write("Library", $"Music index: {rows.Count} row(s), {items.Count} song(s) taken ({folders.Count} folder(s) to leave out)");
+        return items.Select(item =>
+        {
+            var uri = AUri.Parse(item.Path)!;
+            return new ScanEntry(item.Path, item.Name, item.Size, item.ModifiedUtc, LocalPath: null, OpenRead: () => OpenSeekable(_resolver, uri));
+        });
+    }
+
+    private IEnumerable<ScanEntry> EnumerateTree(string root, IReadOnlySet<string> ignoredFolderNames, Action<string> reportFailedDirectory)
     {
         var treeUri = AUri.Parse(root)!;
         var stack = new Stack<string>();

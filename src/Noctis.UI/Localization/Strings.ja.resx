@@ -7415,4 +7415,14 @@
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>「{0}」はM3Uプレイリストではありません</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>「{0}」を読み込めませんでした</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>プレイリストを開く</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>すべての音楽を自動で検索</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>フォルダを選ばずに、このスマートフォンとSDカード内のすべての曲を追加します。曲の横にある歌詞ファイル（.lrc、.ttml）は、下で追加したフォルダからのみ読み込まれます。</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>すべての音楽</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctisにこのスマートフォンの音楽を読み取る許可がありません。オンにするには、Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。曲はリストに残りますが、Noctisの設定で「音楽とオーディオ」を許可するまで再生できません。</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>設定を開く</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>スマートフォンが一覧に表示しない音楽（一部のSDカードやUSBドライブ）や、曲の横にある歌詞ファイルを読み込むには、フォルダを追加してください。</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>すべての音楽を検索</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>このスマートフォンのすべての曲を検索するか、音楽が保存されているフォルダを選んでください。Noctisはその場所のまま読み込み、何もアップロードしません。</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
 </root>

@@ -317,14 +317,17 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// folders are for the app.</summary>
     public string FoldersFootnote => !string.IsNullOrEmpty(Shell.Library.StatusText)
         ? Shell.Library.StatusText
-        : Loc.T("Mobile.Folders.ReadOnlyChosen");
+        : Shell.Library.AllMusic ? Loc.T("Mobile.Folders.WithAllMusic") : Loc.T("Mobile.Folders.ReadOnlyChosen");
 
-    /// <summary>The Music Folders row's value: how many there are.</summary>
-    public string FoldersValue => Shell.Library.Folders.Count == 0 ? Loc.T("Mobile.Folders.NoneValue") : Shell.Library.Folders.Count.ToString(Loc.Instance.Culture);
+    /// <summary>The Music Folders row's value: how many there are, or that all the phone's music
+    /// is found when there are none besides.</summary>
+    public string FoldersValue => Shell.Library.Folders.Count > 0
+        ? Shell.Library.Folders.Count.ToString(Loc.Instance.Culture)
+        : Shell.Library.AllMusic ? Loc.T("Mobile.Folders.AllMusicValue") : Loc.T("Mobile.Folders.NoneValue");
 
     /// <summary>A folder lost its access, or the last scan could not reach it: the Music Folders
     /// row carries a warning dot.</summary>
-    public bool HasLostFolder => FolderRows.Any(f => f.AccessLost || f.Unavailable);
+    public bool HasLostFolder => Shell.Library.ShowAllMusicLost || FolderRows.Any(f => f.AccessLost || f.Unavailable);
 
     /// <summary>The Music Folders row as the screen reader says it: the count, then the warning a dot shows.</summary>
     public string FoldersRowName => HasLostFolder
@@ -332,7 +335,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         : Named(Loc.T("Mobile.Settings.MusicFolders"), FoldersValue);
 
     /// <summary>Rescan only with a folder to scan and no scan running.</summary>
-    public bool CanRescan => Shell.Library.HasFolders && !Shell.Library.IsScanning;
+    public bool CanRescan => (Shell.Library.HasFolders || Shell.Library.AllMusic) && !Shell.Library.IsScanning;
 
     /// <summary>The grey line in the Rescan Library row: when the last scan finished, else what it does.</summary>
     public string RescanSubtitle => Shell.Library.LastScanLocal is { } scanned
@@ -354,7 +357,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>Under Rescan Library: the scan's status ("Scanning…", a failure), else why it is off.</summary>
     public string RescanFootnote =>
         !string.IsNullOrEmpty(Shell.Library.StatusText) ? Shell.Library.StatusText
-        : Shell.Library.IsLoaded && !Shell.Library.HasFolders ? Loc.T("Mobile.Settings.AddFolderToScan")
+        : Shell.Library.IsLoaded && !Shell.Library.HasFolders && !Shell.Library.AllMusic ? Loc.T("Mobile.Settings.AddFolderToScan")
         : string.Empty;
 
     // ── Appearance ──
@@ -1175,7 +1178,14 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 break;
             // A scan stopped on a dead grant: ask each folder again whether it is readable.
             case nameof(LibraryViewModel.NeedsReconnect):
+            case nameof(LibraryViewModel.ShowAllMusicLost):
                 FoldersChanged();
+                break;
+            case nameof(LibraryViewModel.AllMusic):
+                FoldersChanged();
+                OnPropertyChanged(nameof(CanRescan));
+                OnPropertyChanged(nameof(RescanFootnote));
+                OnPropertyChanged(nameof(FoldersFootnote));
                 break;
         }
     }

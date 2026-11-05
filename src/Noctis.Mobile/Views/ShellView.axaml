@@ -4,6 +4,7 @@
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:controls="using:Noctis.Controls"
              xmlns:loc="using:Noctis.Localization"
+             xmlns:models="using:Noctis.Models"
              x:Class="Noctis.Mobile.Views.ShellView"
              x:DataType="vm:ShellViewModel"
              views:RowMark.Mode="{Binding SongRowMark}"
@@ -271,7 +272,11 @@
                             <Grid ColumnDefinitions="*,Auto,Auto" Margin="10,0,6,0">
                                 <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
                                      to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
-                                <Button Grid.Column="0" Classes="row" VerticalAlignment="Stretch"
+                                <!-- Swipe sideways for the next (left) or previous (right) song: the row
+                                     follows the finger and the neighbour's row slides in beside it
+                                     (TrackSwipeGesture). Clipped so neither runs under Play. -->
+                                <Panel Grid.Column="0" Name="MiniSwipe" ClipToBounds="True">
+                                <Button Name="MiniRow" Classes="row" VerticalAlignment="Stretch"
                                         Command="{Binding OpenNowPlayingCommand}">
                                     <Grid ColumnDefinitions="Auto,*">
                                         <!-- Round, so it sits in the capsule's round end like the end itself. -->
@@ -305,6 +310,25 @@
                                         </StackPanel>
                                     </Grid>
                                 </Button>
+                                <!-- The song a swipe brings in, as the row shows it; off to the side
+                                     and unseen until the finger moves. Its data is that Track. -->
+                                <Grid Name="MiniGhost" x:DataType="models:Track" ColumnDefinitions="Auto,*"
+                                      IsVisible="False" IsHitTestVisible="False" Margin="12,0,0,0">
+                                    <Border Classes="art" Width="38" Height="38" CornerRadius="19">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
+                                            <controls:CachedImage Name="MiniGhostArtwork" SourcePath="{Binding AlbumArtworkPath}"
+                                                                  DecodeWidth="128" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="11,0,4,0" VerticalAlignment="Center">
+                                        <TextBlock Name="MiniGhostTitle" Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Name="MiniGhostArtist" Text="{Binding Artist}" FontSize="12"
+                                                   Foreground="{DynamicResource PhoneSecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                                </Panel>
                                 <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini tx" Command="{Binding Player.TogglePlayPauseCommand}">
                                     <controls:TransportGlyph Name="MiniPlayGlyph" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
                                 </Button>

@@ -5,6 +5,7 @@
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
              xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:models="using:Noctis.Models"
              x:Class="Noctis.Mobile.Views.NowPlayingPage"
              x:DataType="vm:ShellViewModel"
              Background="#FF121214"
@@ -98,6 +99,16 @@
                 </Transitions>
             </Setter>
         </Style>
+        <Style Selector="Border#ArtworkGhostFrame">
+            <Setter Property="Width" Value="320" />
+            <Setter Property="Height" Value="320" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="Border#ArtworkGhostFrame.disc">
+            <Setter Property="Width" Value="296" />
+            <Setter Property="Height" Value="296" />
+            <Setter Property="CornerRadius" Value="148" />
+        </Style>
         <Style Selector="Panel#DiscStage.paused">
             <Setter Property="RenderTransform" Value="scale(0.92)" />
         </Style>
@@ -169,6 +180,23 @@
                         <views:DiscArtwork Name="Disc" Kind="{Binding NowPlayingArtwork}" Source="{Binding #Artwork.Source}"
                                            IsSpinning="{Binding Player.IsPlaying}" IsVisible="{Binding ShowsDiscArtwork}" />
                     </Panel>
+                  </Panel>
+                </Viewbox>
+
+                <!-- The cover a sideways swipe brings in (TrackSwipeGesture): the next song's from
+                     the right, the previous one's from the left, round on the record and CD
+                     styles. Unseen until the finger moves; its image's data is that Track. -->
+                <Viewbox Grid.Row="1" Name="ArtworkGhostBox" Stretch="Uniform" Margin="0,8"
+                         IsVisible="False" IsHitTestVisible="False">
+                  <Panel Width="320" Height="320">
+                    <Border Name="ArtworkGhostFrame" Classes="art"
+                            Classes.disc="{Binding ShowsDiscArtwork}">
+                        <Panel>
+                            <PathIcon Data="{DynamicResource SongsIcon}" Width="72" Height="72" Opacity="0.4" />
+                            <controls:CachedImage Name="GhostArtwork" x:DataType="models:Track" SourcePath="{Binding AlbumArtworkPath}"
+                                                  DecodeWidth="768" Stretch="UniformToFill" />
+                        </Panel>
+                    </Border>
                   </Panel>
                 </Viewbox>
 

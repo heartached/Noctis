@@ -3699,4 +3699,14 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}” isn’t an M3U playlist</value><comment>Import result: a picked file that is not .m3u/.m3u8. {0} = file name</comment></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Couldn’t read “{0}”</value><comment>Import result: a picked file that could not be read. {0} = file name</comment></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Open Playlist</value><comment>Import result button: open the new playlist</comment></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Find All Music Automatically</value><comment>Setting switch (Music Folders)</comment></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Adds every song on this phone and its SD card, without choosing folders. Lyrics files (.lrc, .ttml) beside a song are read only from folders you add below.</value><comment>Footnote under the switch</comment></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>All Music</value><comment>Music Folders row value: all the phone's music, no folders</comment></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis wasn't allowed to read the music on this phone. To turn this on, allow Music and audio in Noctis's settings.</value><comment>Shown after the permission was refused</comment></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis can no longer read the music on this phone. Its songs stay listed but won't play until you allow Music and audio in Noctis's settings.</value><comment>Shown when the permission was taken away later</comment></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>Open Settings</value><comment>Button: opens Noctis's page in Android's settings</comment></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>Add a folder for music the phone doesn't list (some SD cards and USB drives), or to read the lyrics files beside its songs.</value><comment>Footnote under Add Folder when all music is found</comment></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>Find All Music</value><comment>First-run card button</comment></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>Find every song on this phone, or pick the folder your music lives in. Noctis reads it in place and never uploads anything.</value><comment>First-run card text when Find All Music is offered</comment></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis can no longer read the music on this phone. Allow Music and audio in Noctis's settings.</value><comment>Playback error</comment></data>
 </root>

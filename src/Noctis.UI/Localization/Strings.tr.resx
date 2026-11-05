@@ -2499,4 +2499,14 @@
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}” bir M3U çalma listesi değil</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>“{0}” okunamadı</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Çalma Listesini Aç</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Tüm müziği otomatik bul</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Klasör seçmeden bu telefondaki ve SD kartındaki tüm şarkıları ekler. Bir şarkının yanındaki şarkı sözü dosyaları (.lrc, .ttml) yalnızca aşağıda eklediğiniz klasörlerden okunur.</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Tüm müzik</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis'in bu telefondaki müziği okumasına izin verilmedi. Açmak için Noctis ayarlarında Müzik ve ses iznini verin.</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis artık bu telefondaki müziği okuyamıyor. Şarkıları listede kalır ancak Noctis ayarlarında Müzik ve ses iznini verene kadar çalınmaz.</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>Ayarları aç</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>Telefonun listelemediği müzikler (bazı SD kartlar ve USB sürücüler) için ya da şarkıların yanındaki şarkı sözü dosyalarını okumak için bir klasör ekleyin.</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>Tüm müziği bul</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>Bu telefondaki tüm şarkıları bulun ya da müziğinizin bulunduğu klasörü seçin. Noctis onu yerinde okur ve hiçbir şey yüklemez.</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis artık bu telefondaki müziği okuyamıyor. Noctis ayarlarında Müzik ve ses iznini verin.</value></data>
 </root>

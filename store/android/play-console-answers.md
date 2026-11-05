@@ -167,5 +167,14 @@ features. **Health:** My app does not have any health features.
 - Video link: upload `artifacts/android/fgs-demo.mp4` to YouTube as **Unlisted** (or Google
   Drive, "anyone with the link") and paste the link.
 
+**Music and audio permission (`READ_MEDIA_AUDIO`, and `READ_EXTERNAL_STORAGE` with
+maxSdkVersion 32 for Android 8-12):** requested at runtime only when the user turns on
+Settings → Music Folders → Find All Music Automatically (or Find All Music on the first-run
+card), to list the device's songs through MediaStore.Audio for a music player's library: the
+app's core function. Play's Photo and Video Permissions policy (declaration form) covers
+READ_MEDIA_IMAGES / READ_MEDIA_VIDEO only; there is no audio declaration form (re-check the
+Console's App content page after uploading the build). Data safety stays **No data
+collected**: the songs are read on the device and nothing from them leaves it.
+
 **Photo and video permissions / Full-screen intent / Exact alarms:** not used; the Console
 only shows these forms when the manifest declares them.

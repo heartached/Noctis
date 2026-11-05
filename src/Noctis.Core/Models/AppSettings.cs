@@ -28,6 +28,10 @@ public class AppSettings : IJsonOnDeserializing
     /// follow the listed ones in their default order and state.</summary>
     public List<string> PhoneLibraryRows { get; set; } = new();
 
+    /// <summary>Phone: Settings › Music Folders › Find All Music Automatically. The library also
+    /// takes every song Android's media index knows (MediaStore), besides the folders.</summary>
+    public bool PhoneAllMusic { get; set; }
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.</summary>

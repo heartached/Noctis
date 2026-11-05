@@ -367,6 +367,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// The song a swipe left would bring in (the mini player's and the cover's, TrackSwipeGesture):
+    /// exactly what <see cref="NextCommand"/> would start, worked out on a copy of the queue, so
+    /// Up Next, a Repeat All wrap and songs passed over while the computer is out of reach all
+    /// count. Null where Next would stop: the swipe then rubber-bands and does nothing.
+    /// </summary>
+    public Track? PeekNext()
+    {
+        var saved = _queue;
+        _queue = saved.Clone();
+        try
+        {
+            return AdvancePlayable(QueueAdvance.UserSkip, out _);
+        }
+        finally
+        {
+            _queue = saved;
+        }
+    }
+
+    /// <summary>The song a swipe right would bring back: the one played before this. Unlike the
+    /// Previous button a swipe never restarts the song it slid away from, so with nothing before
+    /// it (or a queue that ran out, whose last song is only kept for the bar) it is null.</summary>
+    public Track? PeekPrevious() =>
+        _queue.Current != null && _queue.History.Count > 0 ? _queue.History[0] : null;
+
+    /// <summary>A swipe right let go past its threshold: the song before, from its start.</summary>
+    public void SkipToPrevious()
+    {
+        if (PeekPrevious() == null) return;
+        var previous = _queue.Back();
+        if (previous != null) StartTrack(previous, null);
+    }
+
+    /// <summary>
     /// The user grabbed the seek thumb. Suspends the position push until <see cref="EndSeek"/>:
     /// the player ticks four times a second, and each tick republishes <see cref="Position"/>
     /// into the Slider's Value, overwriting the value the drag put there (Slider writes its own
