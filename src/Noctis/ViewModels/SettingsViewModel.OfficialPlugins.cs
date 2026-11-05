@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -170,11 +171,21 @@ public partial class SettingsViewModel
 
         using var cts = new CancellationTokenSource();
         item.BeginDownload(cts);
+        var speed = new DownloadSpeedTracker();
         string? zip = null;
         try
         {
             zip = await Task.Run(() => client.DownloadAsync(item.Entry,
-                (done, total) => Dispatcher.UIThread.Post(() => { if (item.IsBusy) item.Progress = total > 0 ? (double)done / total : 0; }),
+                (done, total) => Dispatcher.UIThread.Post(() =>
+                {
+                    if (!item.IsBusy) return;
+                    item.Progress = total > 0 ? (double)done / total : 0;
+                    item.ProgressDetail = speed.Sample(done, total) is { } s
+                        ? s.Eta is { } left
+                            ? $"{s.MegabitsPerSec.ToString("0.0", CultureInfo.CurrentCulture)} Mbit/s · {DownloadMeter.RemainingText(left)}"
+                            : $"{s.MegabitsPerSec.ToString("0.0", CultureInfo.CurrentCulture)} Mbit/s"
+                        : string.Empty;
+                }),
                 cts.Token));
             item.EndDownload();
             var installed = await InstallPluginPackageAsync(zip, item.Entry, replaceUnverified: item.HasUnverifiedCopy);
@@ -258,6 +269,12 @@ public sealed partial class OfficialPluginItem : ObservableObject
     /// <summary>0..1 while downloading.</summary>
     [ObservableProperty] private double _progress;
 
+    /// <summary>"12.4 Mbit/s · about 32 min left" while downloading, else empty.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasProgressDetail))]
+    private string _progressDetail = string.Empty;
+
+    public bool HasProgressDetail => ProgressDetail.Length > 0;
+
     /// <summary>Why the last try failed; the button then reads Try again.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasError), nameof(ButtonText))]
     private string _error = string.Empty;
@@ -286,6 +303,7 @@ public sealed partial class OfficialPluginItem : ObservableObject
         _cts = cts;
         Error = string.Empty;
         Progress = 0;
+        ProgressDetail = string.Empty;
         IsBusy = true;
     }
 
