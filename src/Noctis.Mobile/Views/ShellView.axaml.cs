@@ -42,7 +42,13 @@ public partial class ShellView : UserControl
         AddHandler(PointerReleasedEvent, OnSheetDragReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerCaptureLostEvent, OnSheetDragCaptureLost, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         DataContextChanged += OnDataContextChanged;
+        // Swipe the mini player sideways for the next or previous song.
+        MiniSwipeGesture = new TrackSwipeGesture(MiniSwipe, MiniRow, MiniGhost, MiniGhost, MiniBar, gap: 12,
+            () => _vm?.Player, () => _vm is { IsNowPlayingOpen: false });
     }
+
+    /// <summary>The mini player's sideways swipe (internal for tests).</summary>
+    internal TrackSwipeGesture MiniSwipeGesture { get; }
 
     /// <summary>Raised while the Queue page shows, its slide down included; the long-press sheet
     /// stays above it (ZIndex 2 in the XAML). Under the Queue the bar stands at full size though
