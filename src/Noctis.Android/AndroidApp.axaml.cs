@@ -140,6 +140,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Links = new AndroidUrlLauncher(context),
             // Account → Scan QR Code: Google's code scanner (no camera permission, see the class).
             QrScanner = new AndroidQrScanner(),
+            // Playlists ⋯ › Import Playlist: .m3u / .m3u8 files from the system document picker.
+            PlaylistFiles = new AndroidPlaylistFilePicker(context),
             VersionText = DescribeVersion(context),
             Account = account,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
