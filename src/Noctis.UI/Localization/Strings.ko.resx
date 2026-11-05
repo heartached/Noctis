@@ -7431,4 +7431,101 @@
   <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>모든 음악 찾기</value></data>
   <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>이 휴대폰의 모든 곡을 찾거나 음악이 있는 폴더를 선택하세요. Noctis는 그 자리에서 읽으며 아무것도 업로드하지 않습니다.</value></data>
   <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis가 더 이상 이 휴대폰의 음악을 읽을 수 없습니다. Noctis 설정에서 음악 및 오디오를 허용하세요.</value></data>
+  <data name="Main.DropPreparingImport" xml:space="preserve"><value>가져오기 준비 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropScanningFolders" xml:space="preserve"><value>놓은 폴더 검색 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropImportingFiles" xml:space="preserve"><value>파일 가져오는 중 {0}/{1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>보관함 새로 고치는 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedOne" xml:space="preserve"><value>파일 1개를 {0}(으)로 이동했습니다</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedMany" xml:space="preserve"><value>파일 {0}개를 {1}(으)로 이동했습니다</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>"{0}"에 서로 다른 앨범 {2}개의 트랙 {1}개가 있습니다.
+
+이 트랙으로 "{0}" 플레이리스트를 만들까요?</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>가사 제공자가 설정에서 꺼져 있습니다.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.Instrumental" xml:space="preserve"><value>이 트랙은 연주곡입니다.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.SearchFailedOffline" xml:space="preserve"><value>검색 실패 — 인터넷 연결을 확인하세요.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.NoLyricsFound" xml:space="preserve"><value>가사를 찾지 못했습니다.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>파일을 읽을 수 없습니다: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} 파일이 비어 있습니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} 가져옴</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0}을(를) 일반 가사로 가져왔습니다(타임스탬프 없음).</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>검색 서비스를 사용할 수 없습니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>제목과 아티스트가 필요합니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFound" xml:space="preserve"><value>가사를 찾았습니다</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsNotFound" xml:space="preserve"><value>가사를 찾지 못했습니다</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsLrclibNoAnswer" xml:space="preserve"><value>검색 실패 — LRCLIB가 응답하지 않습니다(사용량 많음 또는 오프라인). 잠시 후 다시 시도하세요.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Sidebar.FolderHintExisting" xml:space="preserve"><value>기존 폴더: {0}. 새 이름을 입력하면 폴더가 만들어집니다.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.FolderHint" xml:space="preserve"><value>이름을 입력하면 폴더가 만들어집니다.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.MoveToFolderTitle" xml:space="preserve"><value>폴더로 이동</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RenameFolderTitle" xml:space="preserve"><value>폴더 이름 변경</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RemoveFolderConfirm" xml:space="preserve"><value>"{0}" 폴더를 제거할까요? 안에 있는 플레이리스트는 유지됩니다.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Playlist.DeleteConfirm" xml:space="preserve"><value>"{0}"을(를) 삭제할까요? 되돌릴 수 없습니다.</value><comment>Delete playlist confirmation</comment></data>
+  <data name="Main.StartupFailed" xml:space="preserve"><value>Noctis가 시작을 완료하지 못해 앱의 일부 기능이 작동하지 않을 수 있습니다. 자세한 내용은 디버그 로그에 기록되었습니다.</value><comment>Startup failure notice</comment></data>
+  <data name="Picker.ChooseLyricsBackground" xml:space="preserve"><value>가사 배경 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SaveVideo" xml:space="preserve"><value>동영상 저장</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectCoverArt" xml:space="preserve"><value>커버 아트 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtwork" xml:space="preserve"><value>아트워크 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>움직이는 아트워크 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>움직이는 아트워크 다운로드</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ImportLyrics" xml:space="preserve"><value>가사 가져오기</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadCoverArt" xml:space="preserve"><value>커버 아트 다운로드</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.LocateFfmpeg" xml:space="preserve"><value>ffmpeg 찾기</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProgram" xml:space="preserve"><value>프로그램 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectMusicFolder" xml:space="preserve"><value>음악 폴더 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtistPicture" xml:space="preserve"><value>아티스트 사진 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProfilePicture" xml:space="preserve"><value>프로필 사진 선택</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.AllFiles" xml:space="preserve"><value>모든 파일</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Audio" xml:space="preserve"><value>오디오</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Images" xml:space="preserve"><value>이미지</value><comment>File picker file type name</comment></data>
+  <data name="Picker.JpegImage" xml:space="preserve"><value>JPEG 이미지</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PngImage" xml:space="preserve"><value>PNG 이미지</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Lyrics" xml:space="preserve"><value>가사</value><comment>File picker file type name</comment></data>
+  <data name="Picker.M3uPlaylist" xml:space="preserve"><value>M3U 플레이리스트</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Mp4Video" xml:space="preserve"><value>MP4 동영상</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PluginZip" xml:space="preserve"><value>Noctis 플러그인(.zip)</value><comment>File picker file type name</comment></data>
+  <data name="Picker.VideoOrGif" xml:space="preserve"><value>동영상 또는 GIF</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Video" xml:space="preserve"><value>동영상</value><comment>File picker file type name</comment></data>
+  <data name="AudioCd.Tracks" xml:space="preserve"><value>{0}개 트랙</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NotSupported" xml:space="preserve"><value>이 플랫폼에서는 오디오 CD를 지원하지 않습니다.</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDrive" xml:space="preserve"><value>광학 드라이브를 찾을 수 없습니다.</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.Reading" xml:space="preserve"><value>디스크 읽는 중…</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDisc" xml:space="preserve"><value>드라이브에 오디오 CD가 없습니다.</value><comment>Audio CD page</comment></data>
+  <data name="Playlist.SortManual" xml:space="preserve"><value>수동</value><comment>Playlist page sort pill</comment></data>
+  <data name="Home.GoodMorning" xml:space="preserve"><value>좋은 아침이에요</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodAfternoon" xml:space="preserve"><value>좋은 오후예요</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodEvening" xml:space="preserve"><value>좋은 저녁이에요</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodNight" xml:space="preserve"><value>좋은 밤 되세요</value><comment>Home page greeting</comment></data>
+  <data name="BulkLyrics.Remove" xml:space="preserve"><value>제거</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetch" xml:space="preserve"><value>가져오기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleRemove" xml:space="preserve"><value>{0}에서 가사 제거</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>보관함의 가사 찾기({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0}의 가사 가져오기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis가 이 노래에 저장한 가사(.lrc 파일과 캐시된 가사)를 삭제합니다. 직접 만든 가사 파일은 그대로 둡니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>온라인에서 가사를 찾아(단어 싱크 우선) 노래 옆에 저장합니다. 직접 만든 가사 파일은 절대 바꾸지 않습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>아직 제거된 항목이 없습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Ready" xml:space="preserve"><value>준비됨.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Hide" xml:space="preserve"><value>숨기기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Removing" xml:space="preserve"><value>제거 중</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetching" xml:space="preserve"><value>가져오는 중</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovingProgress" xml:space="preserve"><value>제거 중 {0:N0}/{1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.LookingUpProgress" xml:space="preserve"><value>찾는 중 {0:N0}/{1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingToRemove" xml:space="preserve"><value>제거할 가사가 없습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovedFrom" xml:space="preserve"><value>노래 {0}곡에서 가사를 제거했습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StoppedSummary" xml:space="preserve"><value>중지됨 · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.DoneSummary" xml:space="preserve"><value>완료 · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Stopped" xml:space="preserve"><value>중지되었습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Failed" xml:space="preserve"><value>실패 — {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumWordSynced" xml:space="preserve"><value>단어 싱크 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumLineSynced" xml:space="preserve"><value>줄 싱크 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumPlainOnly" xml:space="preserve"><value>일반 가사만 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumUpgraded" xml:space="preserve"><value>업그레이드 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNotFound" xml:space="preserve"><value>찾지 못함 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKept" xml:space="preserve"><value>그대로 유지 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumCheckedBefore" xml:space="preserve"><value>이전에 찾아봄 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>실패 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>내 가사 파일 유지 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} 사용량 많음, 나중에 다시 시도하세요</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>할 일이 없습니다</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>노래 1곡에 일반 가사만 있습니다. Lyrics Studio가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>노래 {0:N0}곡에 일반 가사만 있습니다. Lyrics Studio가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>처음 {0}곡이 한 번에 열립니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
 </root>

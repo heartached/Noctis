@@ -14,12 +14,12 @@ public static class MediaExportHelper
     {
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save video",
+            Title = Noctis.Localization.Loc.T("Picker.SaveVideo"),
             SuggestedFileName = suggestedFileName,
             DefaultExtension = "mp4",
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("MP4 video")
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Mp4Video"))
                 {
                     Patterns = new[] { "*.mp4" },
                     MimeTypes = new[] { "video/mp4" },

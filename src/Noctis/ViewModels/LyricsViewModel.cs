@@ -1355,7 +1355,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             {
                 LyricLines.Clear();
                 UnsyncedLines.Clear();
-                SearchFailedMessage = "Lyrics providers are turned off in Settings.";
+                SearchFailedMessage = Localization.Loc.T("Lyrics.ProvidersOff");
                 // The page shows this message only inside the Search Lyrics state; hiding that
                 // state left the page blank, with no hint and no way back to the search dialog
                 // (where any one source can still be picked).
@@ -1515,7 +1515,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 {
                     // A definitive "instrumental" answer outranks any provider error.
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:Instrumental");
-                    SearchFailedMessage = "This track is instrumental.";
+                    SearchFailedMessage = Localization.Loc.T("Lyrics.Instrumental");
                 }
                 else if ((!lrcLibEnabled || lrcLibErrored) && (!netEaseEnabled || netEaseErrored) && pluginErrored.All(e => e)
                          && extrasAllErrored)
@@ -1527,12 +1527,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     // the truth; one provider's outage must not dress every miss up
                     // as a connectivity failure.
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:ProviderError");
-                    SearchFailedMessage = "Search failed — check your internet connection.";
+                    SearchFailedMessage = Localization.Loc.T("Lyrics.SearchFailedOffline");
                 }
                 else
                 {
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:NotFound");
-                    SearchFailedMessage = "No Lyrics found.";
+                    SearchFailedMessage = Localization.Loc.T("Lyrics.NoLyricsFound");
                 }
                 ShowSearchButton = true;
             }
@@ -1546,7 +1546,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             {
                 LyricLines.Clear();
                 UnsyncedLines.Clear();
-                SearchFailedMessage = "Search failed — check your internet connection.";
+                SearchFailedMessage = Localization.Loc.T("Lyrics.SearchFailedOffline");
                 ShowSearchButton = true;
             }
         }

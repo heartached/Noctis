@@ -417,7 +417,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             Title = Loc.T("Plugins.InstallPickerTitle"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType("Noctis plugin (.zip)") { Patterns = new[] { "*.zip" } } },
+            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType(Noctis.Localization.Loc.T("Picker.PluginZip")) { Patterns = new[] { "*.zip" } } },
         });
         return picks.Count > 0 ? picks[0].Path.LocalPath : null;
     }
@@ -6108,7 +6108,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Locate ffmpeg",
+            Title = Noctis.Localization.Loc.T("Picker.LocateFfmpeg"),
             AllowMultiple = false,
         });
         if (picks.Count > 0)
@@ -6140,7 +6140,7 @@ public partial class SettingsViewModel : ViewModelBase
             // return (picking TextEdit.app left the path empty). The folder picker can.
             var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
-                Title = "Choose a program",
+                Title = Noctis.Localization.Loc.T("Picker.ChooseProgram"),
                 AllowMultiple = false,
                 SuggestedStartLocation = await top.StorageProvider.TryGetFolderFromPathAsync(new Uri("file:///Applications/")),
             });
@@ -6152,7 +6152,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Choose a program",
+            Title = Noctis.Localization.Loc.T("Picker.ChooseProgram"),
             AllowMultiple = false,
         });
         if (picks.Count > 0)
@@ -7308,7 +7308,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (top is null) return null;
         var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
         {
-            Title = "Select Music Folder",
+            Title = Noctis.Localization.Loc.T("Picker.SelectMusicFolder"),
             AllowMultiple = false
         });
         return folders.Count > 0 ? folders[0].Path.LocalPath : null;

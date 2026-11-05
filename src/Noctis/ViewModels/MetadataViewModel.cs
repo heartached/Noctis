@@ -1533,11 +1533,11 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Artwork",
+            Title = Noctis.Localization.Loc.T("Picker.SelectArtwork"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Images") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images")) { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
             }
         });
 
@@ -1570,12 +1570,12 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Animated Artwork",
+            Title = Noctis.Localization.Loc.T("Picker.SelectAnimatedArtwork"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Video") { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov" } },
-                new FilePickerFileType("All files") { Patterns = new[] { "*" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Video")) { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov" } },
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } }
             }
         });
         if (files.Count == 0) return;
@@ -1612,11 +1612,11 @@ public partial class MetadataViewModel : ViewModelBase
 
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Download Animated Artwork",
+            Title = Noctis.Localization.Loc.T("Picker.DownloadAnimatedArtwork"),
             SuggestedFileName = "animated-cover" + ext,
             DefaultExtension = ext.TrimStart('.'),
             ShowOverwritePrompt = true,
-            FileTypeChoices = new[] { new FilePickerFileType("Video") { Patterns = new[] { "*" + ext } } }
+            FileTypeChoices = new[] { new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Video")) { Patterns = new[] { "*" + ext } } }
         });
         if (file == null) return;
 
@@ -1965,12 +1965,12 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import Lyrics",
+            Title = Noctis.Localization.Loc.T("Picker.ImportLyrics"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Lyrics") { Patterns = new[] { "*.lrc", "*.elrc", "*.ttml", "*.txt" } },
-                new FilePickerFileType("All files") { Patterns = new[] { "*" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Lyrics")) { Patterns = new[] { "*.lrc", "*.elrc", "*.ttml", "*.txt" } },
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } }
             }
         });
         if (files.Count == 0) return;
@@ -1986,7 +1986,7 @@ public partial class MetadataViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SyncedLyricsSearchStatus = $"Couldn't read file: {ex.Message}";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsReadFailed", ex.Message);
             return;
         }
 
@@ -2013,7 +2013,7 @@ public partial class MetadataViewModel : ViewModelBase
         var normalized = text.Replace("\r\n", "\n").Trim();
         if (normalized.Length == 0)
         {
-            SyncedLyricsSearchStatus = $"{fileName} is empty.";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsFileEmpty", fileName);
             return;
         }
 
@@ -2022,30 +2022,30 @@ public partial class MetadataViewModel : ViewModelBase
             SyncedLyrics = normalized;
             _importedTtml = ttml is null ? null : (ttml, normalized);
             HasCustomSyncedLyrics = true;
-            SyncedLyricsSearchStatus = $"Imported {fileName}";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsImported", fileName);
             RebuildSyncedLinesFromText();
         }
         else
         {
             Lyrics = normalized;
             HasCustomLyrics = true;
-            SyncedLyricsSearchStatus = $"Imported {fileName} as plain lyrics (no timestamps found).";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsImportedPlain", fileName);
         }
     }
 
     [RelayCommand]
     private async Task SearchSyncedLyrics()
     {
-        if (_lrcLib == null) { SyncedLyricsSearchStatus = "Search service unavailable."; return; }
+        if (_lrcLib == null) { SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsSearchUnavailable"); return; }
         if (IsSearchingSyncedLyrics) return;
         if (string.IsNullOrWhiteSpace(Title) || string.IsNullOrWhiteSpace(Artist))
         {
-            SyncedLyricsSearchStatus = "Title and artist required.";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsTitleArtistRequired");
             return;
         }
 
         IsSearchingSyncedLyrics = true;
-        SyncedLyricsSearchStatus = "Searching…";
+        SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.AnimSearching");
         try
         {
             // An error on /get (LRCLIB answers 503 "busy" there while /search works — live
@@ -2071,12 +2071,12 @@ public partial class MetadataViewModel : ViewModelBase
             {
                 SyncedLyrics = synced;
                 HasCustomSyncedLyrics = true;
-                SyncedLyricsSearchStatus = "Lyrics found";
+                SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsFound");
                 RebuildSyncedLinesFromText();
             }
             else
             {
-                SyncedLyricsSearchStatus = "No Lyrics found";
+                SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsNotFound");
             }
         }
         catch (LyricsProviderException)
@@ -2084,11 +2084,11 @@ public partial class MetadataViewModel : ViewModelBase
             // Network failure / timeout / provider outage — not "no lyrics", and the
             // raw exception text ("The request was canceled…") helps nobody. Not "check your
             // internet connection" either: a busy LRCLIB (503) on an online machine said that.
-            SyncedLyricsSearchStatus = "Search failed — LRCLIB didn't answer (busy or offline). Try again in a moment.";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsLrclibNoAnswer");
         }
         catch (Exception ex)
         {
-            SyncedLyricsSearchStatus = $"Search failed: {ex.Message}";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.AnimSearchFailed", ex.Message);
         }
         finally
         {
@@ -2182,7 +2182,7 @@ public partial class MetadataViewModel : ViewModelBase
 
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Download Cover Art",
+            Title = Noctis.Localization.Loc.T("Picker.DownloadCoverArt"),
             SuggestedFileName = suggestedFileName,
             DefaultExtension = extension.TrimStart('.'),
             ShowOverwritePrompt = true,
@@ -2254,10 +2254,10 @@ public partial class MetadataViewModel : ViewModelBase
             data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
             data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A)
         {
-            return (".png", new FilePickerFileType("PNG Image") { Patterns = new[] { "*.png" } });
+            return (".png", new FilePickerFileType(Noctis.Localization.Loc.T("Picker.PngImage")) { Patterns = new[] { "*.png" } });
         }
 
-        return (".jpg", new FilePickerFileType("JPEG Image") { Patterns = new[] { "*.jpg", "*.jpeg" } });
+        return (".jpg", new FilePickerFileType(Noctis.Localization.Loc.T("Picker.JpegImage")) { Patterns = new[] { "*.jpg", "*.jpeg" } });
     }
 
     private bool CanSave() => !IsLoading;

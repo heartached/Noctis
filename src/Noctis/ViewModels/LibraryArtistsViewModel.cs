@@ -76,11 +76,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
     public string SortLabel => SortMode switch
     {
-        "songs" => "Song count",
-        "albums" => "Album count",
-        "time" => "Time",
-        "genre" => "Genre",
-        _ => "Name",
+        "songs" => Noctis.Localization.Loc.T("Main.SongCount"),
+        "albums" => Noctis.Localization.Loc.T("Main.AlbumCount"),
+        "time" => Noctis.Localization.Loc.T("Main.Time"),
+        "genre" => Noctis.Localization.Loc.T("Main.Genre"),
+        _ => Noctis.Localization.Loc.T("Main.Name"),
     };
 
     /// <summary>Top-bar sort menu: a mode ("name" / "songs" / "albums" / "time" / "genre")

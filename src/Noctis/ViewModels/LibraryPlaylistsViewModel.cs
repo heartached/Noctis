@@ -80,11 +80,11 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
     public string SortLabel => SortMode switch
     {
-        "name" => "Name",
-        "created" => "Recently created",
-        "modified" => "Recently modified",
-        "tracks" => "Track count",
-        _ => "Default",
+        "name" => Noctis.Localization.Loc.T("Main.Name"),
+        "created" => Noctis.Localization.Loc.T("Main.RecentlyCreated"),
+        "modified" => Noctis.Localization.Loc.T("Main.RecentlyModified"),
+        "tracks" => Noctis.Localization.Loc.T("Main.TrackCount"),
+        _ => Noctis.Localization.Loc.T("Main.Default"),
     };
 
     partial void OnSortModeChanged(string value)
@@ -248,7 +248,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     private async Task DeletePlaylist(PlaylistNavItem item)
     {
         if (item.PlaylistId == null) return;
-        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{item.Label}\"? This cannot be undone.");
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(Localization.Loc.T("Playlist.DeleteConfirm", item.Label));
         if (!confirmed) return;
         await _sidebar.DeletePlaylistAsync(item.PlaylistId.Value);
         OnPropertyChanged(nameof(Playlists));
@@ -269,11 +269,11 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Cover Art",
+            Title = Noctis.Localization.Loc.T("Picker.SelectCoverArt"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Images") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images")) { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
             }
         });
 

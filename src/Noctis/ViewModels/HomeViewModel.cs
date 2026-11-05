@@ -836,10 +836,10 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var hour = DateTime.Now.Hour;
         return hour switch
         {
-            >= 5 and < 12 => "Good morning",
-            >= 12 and < 17 => "Good afternoon",
-            >= 17 and < 21 => "Good evening",
-            _ => "Good night"
+            >= 5 and < 12 => Noctis.Localization.Loc.T("Home.GoodMorning"),
+            >= 12 and < 17 => Noctis.Localization.Loc.T("Home.GoodAfternoon"),
+            >= 17 and < 21 => Noctis.Localization.Loc.T("Home.GoodEvening"),
+            _ => Noctis.Localization.Loc.T("Home.GoodNight")
         };
     }
 

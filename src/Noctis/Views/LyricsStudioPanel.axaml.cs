@@ -116,11 +116,11 @@ public partial class LyricsStudioPanel : UserControl
         if (TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return null;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import lyrics",
+            Title = Noctis.Localization.Loc.T("Picker.ImportLyrics"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Lyrics") { Patterns = new[] { "*.txt", "*.lrc", "*.elrc", "*.ttml" } },
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Lyrics")) { Patterns = new[] { "*.txt", "*.lrc", "*.elrc", "*.ttml" } },
                 FilePickerFileTypes.All,
             },
         });

@@ -410,8 +410,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         try
         {
             await ConfirmationDialog.ShowAsync(
-                "Noctis couldn't finish starting, so some parts of the app may not work. " +
-                "Details were written to the debug log.\n\n" + ex.Message);
+                Noctis.Localization.Loc.T("Main.StartupFailed") + "\n\n" + ex.Message);
         }
         catch { /* the dialog itself is best effort */ }
     }

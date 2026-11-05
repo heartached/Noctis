@@ -91,9 +91,9 @@ public partial class TextPromptDialog : Window
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e) => e.Handled = true;
 
     /// <summary>Shows the prompt over the main window. Null = cancelled.</summary>
-    public static async Task<string?> ShowAsync(string title, string? initialText = null, string? hint = null, string confirmLabel = "OK")
+    public static async Task<string?> ShowAsync(string title, string? initialText = null, string? hint = null, string? confirmLabel = null)
     {
-        var dialog = new TextPromptDialog(title, initialText, hint, confirmLabel);
+        var dialog = new TextPromptDialog(title, initialText, hint, confirmLabel ?? Noctis.Localization.Loc.T("Mobile.OK"));
 
         if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
