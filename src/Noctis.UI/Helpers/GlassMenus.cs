@@ -136,20 +136,25 @@ public static class GlassMenus
 
     /// <summary>The window <paramref name="popup"/> opens for: its own visual tree's, else its
     /// owner's (a ContextMenu's popup is not in the tree), through any popups it sits in.</summary>
-    internal static Window? OwnerWindow(Popup popup)
-    {
-        var top = TopLevel.GetTopLevel(popup)
-                  ?? (popup.Parent is Visual owner ? TopLevel.GetTopLevel(owner) : null)
-                  ?? (popup.PlacementTarget is { } target ? TopLevel.GetTopLevel(target) : null);
-        return GlassMenuBackdrop.OwnerWindow(top);
-    }
+    internal static Window? OwnerWindow(Popup popup) => GlassMenuBackdrop.OwnerWindow(OpenerTopLevel(popup));
 
     /// <summary>The popup frosts: glass is on and it opens for a window.</summary>
     internal static bool ShouldFrost(Popup popup) => AppGlass.IsActive && OwnerWindow(popup) is not null;
 
-    /// <summary>The frosted popup opens in its window's overlay layer: a host window's.</summary>
+    /// <summary>The surface <paramref name="popup"/> opens from: the top level its opener sits in
+    /// (a native popup's PopupRoot when the opener is inside a flyout, menu or tooltip).</summary>
+    internal static TopLevel? OpenerTopLevel(Popup popup) =>
+        TopLevel.GetTopLevel(popup)
+        ?? (popup.Parent is Visual owner ? TopLevel.GetTopLevel(owner) : null)
+        ?? (popup.PlacementTarget is { } target ? TopLevel.GetTopLevel(target) : null);
+
+    /// <summary>The frosted popup opens in its window's overlay layer: a host window's, and only
+    /// when it opens from the window itself. Opened from inside a native popup (a tooltip or list
+    /// in a plain Flyout) it keeps its own popup: the window's overlay layer lies under that popup
+    /// window, and a PopupRoot has no overlay layer at all (Avalonia 12.1.3
+    /// OverlayPopupHost.CreatePopupHost then throws "no overlay layer is found").</summary>
     internal static bool ShouldUseOverlay(Popup popup) =>
-        AppGlass.IsActive && OwnerWindow(popup) is { } window && GetHost(window);
+        AppGlass.IsActive && OpenerTopLevel(popup) is Window window && GetHost(window);
 
     /// <summary>Sets up one open of <paramref name="card"/> (a ContextMenu, MenuFlyoutPresenter,
     /// FlyoutPresenter or ToolTip): <see cref="GlassClass"/> while it should frost, plus the
