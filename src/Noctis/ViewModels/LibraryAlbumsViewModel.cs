@@ -1366,6 +1366,50 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
+    /// <summary>Asks for the grouped album's name and album artist (test seam; the two-field prompt).</summary>
+    internal Func<string, string, string?, string, string?, string?, string?, Task<(string First, string Second)?>> PromptGroupTarget { get; set; }
+        = Views.TextPromptDialog.ShowTwoAsync;
+
+    /// <summary>Shows a Group into One Album notice (test seam).</summary>
+    internal Func<Views.ConfirmationRequest, Task<Views.ConfirmationResult>> ShowGroupNotice { get; set; }
+        = Views.ConfirmationDialog.ShowAsync;
+
+    /// <summary>
+    /// GitHub #178 "Group into One Album": the Ctrl-selected albums (or, with only the clicked
+    /// album, every album of the same name) become one album under the name and album artist
+    /// the user confirms; written to the files' Album / Album Artist tags.
+    /// </summary>
+    [RelayCommand]
+    private async Task GroupIntoOneAlbum(Album album)
+    {
+        var albums = SelectionOr(album).Where(a => a?.Tracks is { Count: > 0 }).Distinct().ToList();
+        CtrlSelectedAlbums.Clear();
+        if (albums.Count == 1)
+            albums = AlbumGrouping.SameNameAlbums(_library.Albums, albums[0])
+                .Where(a => a.Tracks is { Count: > 0 }).ToList();
+        if (albums.Count < 2)
+        {
+            await ShowGroupNotice(new Views.ConfirmationRequest(Loc.T("GroupAlbums.SelectHint"), Loc.T("GroupAlbums.Title")));
+            return;
+        }
+
+        var tracks = albums.SelectMany(a => a.Tracks).ToList();
+        var (name, artist) = AlbumGrouping.SuggestGroupTarget(tracks);
+        var answer = await PromptGroupTarget(Loc.T("GroupAlbums.Title"),
+            Loc.T("GroupAlbums.AlbumName"), name,
+            Loc.T("GroupAlbums.AlbumArtist"), artist,
+            Loc.T("GroupAlbums.Hint", albums.Count, tracks.Count),
+            Loc.T("GroupAlbums.Confirm"));
+        if (answer is not { } target || !Track.IsRealAlbumName(target.First) || string.IsNullOrWhiteSpace(target.Second))
+            return;
+
+        var result = await _library.GroupIntoAlbumAsync(tracks, target.First, target.Second);
+        if (result.UnwrittenFiles.Count > 0)
+            await ShowGroupNotice(new Views.ConfirmationRequest(
+                Loc.T("GroupAlbums.NotWritten", result.UnwrittenFiles.Count), Loc.T("GroupAlbums.Title"),
+                Details: result.UnwrittenFiles.Take(8).ToList()));
+    }
+
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
 

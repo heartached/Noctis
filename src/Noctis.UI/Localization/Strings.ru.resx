@@ -3962,4 +3962,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Открыть {0} на Last.fm</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Миксы и рекомендации</value></data>
   <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>На главной — миксы из ваших песен и исполнители для открытия по вашим чартам Last.fm. Используется только имя аккаунта; ничего не отправляется.</value></data>
+  <data name="GroupAlbums.Menu" xml:space="preserve"><value>Объединить в один альбом</value><comment>Album menu row (GitHub #178)</comment></data>
+  <data name="GroupAlbums.Title" xml:space="preserve"><value>Объединить в один альбом</value><comment>Dialog title</comment></data>
+  <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Альбом</value><comment>Field label</comment></data>
+  <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>Исполнитель альбома</value><comment>Field label</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>Альбомов: {0}, песен: {1}. Сохраняется в теги «Альбом» и «Исполнитель альбома» файлов.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Объединить</value><comment>Confirm button</comment></data>
+  <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Других альбомов с таким названием нет. В сетке альбомов выделите нужные альбомы щелчком с Ctrl, затем щёлкните правой кнопкой по одному из них.</value><comment>Shown when only one album is chosen</comment></data>
+  <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Объединено в Noctis, но не удалось сохранить файлов: {0} (только для чтения или открыты в другом приложении). Если такой файл изменится, при следующем сканировании он вернётся в прежний альбом.</value><comment>{0} file count; list of file names follows</comment></data>
 </root>

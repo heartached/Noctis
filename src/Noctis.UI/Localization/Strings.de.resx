@@ -3953,4 +3953,12 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0} auf Last.fm öffnen</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mixe und Empfehlungen</value></data>
   <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Home zeigt Mixe deiner Titel und Künstler zum Entdecken, aus deinen Last.fm-Charts. Nur dein Kontoname wird verwendet; nichts wird zurückgesendet.</value></data>
+  <data name="GroupAlbums.Menu" xml:space="preserve"><value>Zu einem Album zusammenfassen</value><comment>Album menu row (GitHub #178)</comment></data>
+  <data name="GroupAlbums.Title" xml:space="preserve"><value>Zu einem Album zusammenfassen</value><comment>Dialog title</comment></data>
+  <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Album</value><comment>Field label</comment></data>
+  <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>Albuminterpret</value><comment>Field label</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} Alben, {1} Titel. Wird in die Tags Album und Albuminterpret der Dateien geschrieben.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Zusammenfassen</value><comment>Confirm button</comment></data>
+  <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Kein anderes Album hat diesen Namen. Klicke in der Albenansicht mit Strg auf die zusammengehörenden Alben und dann mit der rechten Maustaste auf eines davon.</value><comment>Shown when only one album is chosen</comment></data>
+  <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>In Noctis zusammengefasst, aber {0} Datei(en) konnten nicht gespeichert werden (schreibgeschützt oder in einer anderen App geöffnet). Ändert sich eine solche Datei, kehrt sie beim nächsten Scan zu ihrem alten Album zurück.</value><comment>{0} file count; list of file names follows</comment></data>
 </root>

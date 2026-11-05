@@ -15,6 +15,9 @@ public partial class TextPromptDialog : Window
 {
     public string? Result { get; private set; }
 
+    /// <summary>The second field's trimmed text (two-field form), or null when cancelled.</summary>
+    public string? SecondResult { get; private set; }
+
     private bool _closing;
 
     public TextPromptDialog()
@@ -56,10 +59,24 @@ public partial class TextPromptDialog : Window
         Close();
     }
 
+    /// <summary>Two labelled fields (GitHub #178: album name and album artist).</summary>
+    public TextPromptDialog(string title, string firstLabel, string? firstText, string secondLabel, string? secondText,
+        string? hint, string confirmLabel) : this(title, firstText, hint, confirmLabel)
+    {
+        InputLabel.Text = firstLabel;
+        InputLabel.IsVisible = true;
+        Avalonia.Automation.AutomationProperties.SetName(InputBox, firstLabel);
+        SecondLabel.Text = secondLabel;
+        SecondLabel.IsVisible = true;
+        SecondBox.Text = secondText ?? string.Empty;
+        SecondBox.IsVisible = true;
+    }
+
     private void Confirm()
     {
         var text = InputBox.Text?.Trim() ?? string.Empty;
         Result = text;
+        SecondResult = SecondBox.IsVisible ? SecondBox.Text?.Trim() ?? string.Empty : null;
         _ = CloseAnimatedAsync();
     }
 
@@ -68,6 +85,7 @@ public partial class TextPromptDialog : Window
     private void OnCancelClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         Result = null;
+        SecondResult = null;
         _ = CloseAnimatedAsync();
     }
 
@@ -82,6 +100,7 @@ public partial class TextPromptDialog : Window
         {
             e.Handled = true;
             Result = null;
+            SecondResult = null;
             _ = CloseAnimatedAsync();
         }
     }
@@ -107,5 +126,20 @@ public partial class TextPromptDialog : Window
         }
 
         return dialog.Result;
+    }
+
+    /// <summary>Shows the two-field prompt over the main window. Null = cancelled.</summary>
+    public static async Task<(string First, string Second)?> ShowTwoAsync(string title, string firstLabel, string? firstText,
+        string secondLabel, string? secondText, string? hint = null, string? confirmLabel = null)
+    {
+        if (Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is not Window owner)
+            return null;
+
+        var dialog = new TextPromptDialog(title, firstLabel, firstText, secondLabel, secondText, hint,
+            confirmLabel ?? Noctis.Localization.Loc.T("Mobile.OK"));
+        DialogHelper.SizeToOwner(dialog, owner);
+        await dialog.ShowDialog(owner);
+        return dialog.Result is { } first && dialog.SecondResult is { } second ? (first, second) : null;
     }
 }

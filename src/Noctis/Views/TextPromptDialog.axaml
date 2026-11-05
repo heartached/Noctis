@@ -79,10 +79,25 @@
                                Text="{loc:T TextPrompt.Name}"
                                FontSize="16"
                                FontWeight="SemiBold" />
+                    <!-- Field labels: shown only by the two-field form (ShowTwoAsync). -->
+                    <TextBlock x:Name="InputLabel"
+                               FontSize="12"
+                               Opacity="0.7"
+                               IsVisible="False" />
                     <TextBox x:Name="InputBox"
                              AutomationProperties.Name="{Binding #TitleText.Text}"
                              CornerRadius="999"
                              Padding="14,8"
+                             KeyDown="OnInputKeyDown" />
+                    <TextBlock x:Name="SecondLabel"
+                               FontSize="12"
+                               Opacity="0.7"
+                               IsVisible="False" />
+                    <TextBox x:Name="SecondBox"
+                             AutomationProperties.Name="{Binding #SecondLabel.Text}"
+                             CornerRadius="999"
+                             Padding="14,8"
+                             IsVisible="False"
                              KeyDown="OnInputKeyDown" />
                     <TextBlock x:Name="HintText"
                                FontSize="12"
