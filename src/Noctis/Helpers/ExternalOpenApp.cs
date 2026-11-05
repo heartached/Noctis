@@ -33,9 +33,9 @@ public static class ExternalOpenApp
             {
                 var name = Path.GetFileNameWithoutExtension(path);
                 if (!string.IsNullOrWhiteSpace(name))
-                    return $"Open in {name}";
+                    return Noctis.Localization.Loc.T("Menu.OpenIn", name);
             }
-            return "Open File With";
+            return Noctis.Localization.Loc.T("Menu.OpenFileWith");
         }
     }
 

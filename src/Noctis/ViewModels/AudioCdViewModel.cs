@@ -22,7 +22,7 @@ public partial class AudioCdViewModel : ViewModelBase
     [ObservableProperty] private bool _hasDrive;
     [ObservableProperty] private bool _hasDisc;
     [ObservableProperty] private bool _isReading;
-    [ObservableProperty] private string _discTitle = "Audio CD";
+    [ObservableProperty] private string _discTitle = Noctis.Localization.Loc.T("Nav.AudioCd");
     [ObservableProperty] private string _discMeta = "";
     [ObservableProperty] private string _statusText = "";
 
@@ -63,19 +63,19 @@ public partial class AudioCdViewModel : ViewModelBase
             foreach (var t in tracks) Tracks.Add(t);
             DiscTitle = tracks[0].Album;
             var total = TimeSpan.FromTicks(tracks.Sum(t => t.Duration.Ticks));
-            DiscMeta = $"{tracks[0].AlbumArtist} · {tracks.Count} track{(tracks.Count == 1 ? "" : "s")} · {FormatTotal(total)}";
+            DiscMeta = $"{tracks[0].AlbumArtist} · {Noctis.Localization.Loc.Plural("AudioCd.Tracks", tracks.Count)} · {FormatTotal(total)}";
         }
         else
         {
             Tracks.Clear();
-            DiscTitle = "Audio CD";
+            DiscTitle = Noctis.Localization.Loc.T("Nav.AudioCd");
             DiscMeta = "";
         }
 
-        StatusText = !_cd.IsSupported ? "Audio CDs are not supported on this platform."
-            : !HasDrive ? "No optical drive found."
-            : IsReading ? "Reading disc…"
-            : !HasDisc ? "No audio CD in the drive."
+        StatusText = !_cd.IsSupported ? Noctis.Localization.Loc.T("AudioCd.NotSupported")
+            : !HasDrive ? Noctis.Localization.Loc.T("AudioCd.NoDrive")
+            : IsReading ? Noctis.Localization.Loc.T("AudioCd.Reading")
+            : !HasDisc ? Noctis.Localization.Loc.T("AudioCd.NoDisc")
             : "";
 
         OnPropertyChanged(nameof(ShowTracks));

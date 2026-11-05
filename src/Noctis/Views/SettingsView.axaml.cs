@@ -837,11 +837,11 @@ public partial class SettingsView : UserControl
 
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Choose Profile Picture",
+                Title = Noctis.Localization.Loc.T("Picker.ChooseProfilePicture"),
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Images")
+                    new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images"))
                     {
                         Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif" }
                     }

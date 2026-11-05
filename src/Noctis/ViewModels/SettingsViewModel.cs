@@ -417,7 +417,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             Title = Loc.T("Plugins.InstallPickerTitle"),
             AllowMultiple = false,
-            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType("Noctis plugin (.zip)") { Patterns = new[] { "*.zip" } } },
+            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType(Noctis.Localization.Loc.T("Picker.PluginZip")) { Patterns = new[] { "*.zip" } } },
         });
         return picks.Count > 0 ? picks[0].Path.LocalPath : null;
     }
@@ -2336,7 +2336,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (!OperatingSystem.IsWindows() || CurrentExePath is not { } exe)
         {
-            FileTypesStatus = "Only available on Windows.";
+            FileTypesStatus = Loc.T("Settings.WindowsOnly");
             return;
         }
         try
@@ -2344,18 +2344,18 @@ public partial class SettingsViewModel : ViewModelBase
             if (IsRegisteredForAudioFiles)
             {
                 WindowsFileAssociations.Unregister();
-                TransientStatus.Show(nameof(FileTypesStatus), v => FileTypesStatus = v, "Noctis removed from the Open-with list.");
+                TransientStatus.Show(nameof(FileTypesStatus), v => FileTypesStatus = v, Loc.T("Settings.FileTypesRemoved"));
             }
             else
             {
                 WindowsFileAssociations.Register(exe);
-                TransientStatus.Show(nameof(FileTypesStatus), v => FileTypesStatus = v, "Registered. Pick Noctis under Settings → Apps → Default apps, or right-click a song → Open with.");
+                TransientStatus.Show(nameof(FileTypesStatus), v => FileTypesStatus = v, Loc.T("Settings.FileTypesRegistered"));
                 try { Process.Start(new ProcessStartInfo("ms-settings:defaultapps") { UseShellExecute = true }); } catch { }
             }
         }
         catch (Exception ex)
         {
-            TransientStatus.Show(nameof(FileTypesStatus), v => FileTypesStatus = v, $"Couldn't update file types: {ex.Message}");
+            TransientStatus.Show(nameof(FileTypesStatus), v => FileTypesStatus = v, Loc.T("Settings.FileTypesFailed", ex.Message));
         }
         RefreshFileAssociationState();
     }
@@ -2682,7 +2682,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lastFmScrobblingEnabled;
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
-    [ObservableProperty] private string _lastFmStatusText = "Not connected";
+    [ObservableProperty] private string _lastFmStatusText = Loc.T("Settings.NotConnected");
 
     // ── ListenBrainz ──
     [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
@@ -2691,7 +2691,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
     private bool _isListenBrainzConnected;
-    [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
+    [ObservableProperty] private string _listenBrainzStatusText = Loc.T("Settings.NotConnected");
     [ObservableProperty] private string _listenBrainzError = "";
     /// <summary>Typed API URL for a self-hosted ListenBrainz-compatible server; blank = official.</summary>
     [ObservableProperty]
@@ -2725,7 +2725,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _mediaServerPassword = "";
     [ObservableProperty] private bool _isMediaServerConnected;
     [ObservableProperty] private bool _isMediaServerBusy;
-    [ObservableProperty] private string _mediaServerStatusText = "Not connected";
+    [ObservableProperty] private string _mediaServerStatusText = Loc.T("Settings.NotConnected");
     /// <summary>True while the status line shows a failure — drives the red status styling.</summary>
     [ObservableProperty] private bool _hasMediaServerError;
 
@@ -2737,7 +2737,7 @@ public partial class SettingsViewModel : ViewModelBase
         MediaServerUrl = string.Empty;
         MediaServerUsername = string.Empty;
         MediaServerPassword = string.Empty;
-        MediaServerStatusText = "Not connected";
+        MediaServerStatusText = Loc.T("Settings.NotConnected");
         HasMediaServerError = false;
     }
 
@@ -2841,7 +2841,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Formatted display of the current media folder path.</summary>
     public string MediaFolderDisplay => MusicFolders.Count > 0
         ? string.Join(", ", MusicFolders.Select(FormatFolderDisplay))
-        : "No folder selected";
+        : Loc.T("Settings.NoFolderSelected");
 
     private static string FormatFolderDisplay(string folderPath)
     {
@@ -2914,7 +2914,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsDownloadStarting => IsDownloadingUpdate && DownloadProgress <= 0;
     /// <summary>All bytes in: the SHA-256 check still runs before Install &amp; Restart.</summary>
     public bool IsDownloadVerifying => DownloadProgress >= 100;
-    public string DownloadPillText => DownloadProgress <= 0 ? "Starting..." : IsDownloadVerifying ? "Verifying..." : "Downloading";
+    public string DownloadPillText => DownloadProgress <= 0 ? Loc.T("Settings.DownloadStarting") : IsDownloadVerifying ? Loc.T("Settings.DownloadVerifying") : Loc.T("Settings.DownloadingPill");
     public string DownloadPercentText => DownloadProgress <= 0 || IsDownloadVerifying ? "" : $"{Math.Floor(DownloadProgress):0}%"; // 99.7 is not "100%" yet
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
@@ -2961,15 +2961,15 @@ public partial class SettingsViewModel : ViewModelBase
     /// otherwise (not checked yet / check failed) a neutral "Check for updates" —
     /// "Update" is reserved for the pill that appears when a newer release exists.</summary>
     public string CheckForUpdatesButtonText =>
-        IsCheckingForUpdate ? "Checking..."
-        : IsUpToDate ? "Up to date"
-        : "Check for updates";
+        IsCheckingForUpdate ? Loc.T("Settings.Checking")
+        : IsUpToDate ? Loc.T("Settings.UpToDate")
+        : Loc.T("Settings.CheckForUpdates");
 
     /// <summary>Label for the update-available buttons, naming the target version
     /// when known (e.g. "Update to 1.2.8").</summary>
     public string UpdateButtonText => string.IsNullOrEmpty(LatestVersionTag)
-        ? "Update available"
-        : $"Update to {LatestVersionTag.TrimStart('v', 'V')}";
+        ? Loc.T("Settings.UpdateAvailable")
+        : Loc.T("Settings.UpdateTo", LatestVersionTag.TrimStart('v', 'V'));
 
     /// <summary>True when this copy can update itself via the bundled installer
     /// (Inno install on Windows, or any non-Windows build). False for Scoop /
@@ -3036,7 +3036,7 @@ public partial class SettingsViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() =>
             {
                 ScanProgress = count;
-                ScanStatusText = $"Scanning Library {count:N0}";
+                ScanStatusText = Loc.T("Settings.ScanningLibraryCount", count);
                 // A scan Settings didn't start (Scan on Startup, the folder watcher) never
                 // reaches RunScanCoreAsync's closing status, so its count stayed up for the
                 // rest of the session.
@@ -3167,7 +3167,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             if (!IsLastFmConnected || LastFmUsername == name) return;
             LastFmUsername = name;
-            LastFmStatusText = $"Connected as {name}";
+            LastFmStatusText = Loc.T("Settings.ConnectedAs", name);
             _ = SaveAsync();
         });
     }
@@ -3575,7 +3575,7 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _lastFm.Configure(_settings.LastFmSessionKey);
                 IsLastFmConnected = true;
-                LastFmStatusText = $"Connected as {_settings.LastFmUsername}";
+                LastFmStatusText = Loc.T("Settings.ConnectedAs", _settings.LastFmUsername);
             }
 
             // ListenBrainz
@@ -3590,7 +3590,7 @@ public partial class SettingsViewModel : ViewModelBase
                 IsListenBrainzConnected = !string.IsNullOrEmpty(_settings.ListenBrainzUsername);
                 LastFmStatusText = LastFmStatusText; // no-op, kept for symmetry
                 if (IsListenBrainzConnected)
-                    ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
+                    ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", _settings.ListenBrainzUsername);
             }
 
             // Media server (v1: a single Subsonic/Jellyfin connection)
@@ -3612,7 +3612,7 @@ public partial class SettingsViewModel : ViewModelBase
                 // The credential (Subsonic password / Jellyfin token) stays in the
                 // connection object only — never surfaced back into the password box.
                 IsMediaServerConnected = true;
-                MediaServerStatusText = $"Connected to {serverConnection.BaseUriOrPath}";
+                MediaServerStatusText = Loc.T("Settings.ConnectedTo", serverConnection.BaseUriOrPath);
                 _mediaServer?.SetActiveConnection(serverConnection);
                 MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -5311,7 +5311,7 @@ public partial class SettingsViewModel : ViewModelBase
         // NotifyMetadataChanged rebuilds off-thread and raises LibraryUpdated itself,
         // which every grid already listens to; the status line just acknowledges.
         _library.NotifyMetadataChanged();
-        SetScanStatus("Regrouping artists…", autoClear: true);
+        SetScanStatus(Loc.T("Settings.RegroupingArtists"), autoClear: true);
         // GitHub #117: multi-value artist tags were stored joined with the old join text,
         // which may no longer split; re-read those tracks in the background.
         if (!string.Equals(joinBefore, ArtistCredit.JoinText, StringComparison.Ordinal))
@@ -5326,7 +5326,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (changed > 0)
                 SetScanStatus(changed == 1
                     ? "Artist credits updated on 1 track."
-                    : $"Artist credits updated on {changed:N0} tracks.", autoClear: true);
+                    : Loc.T("Settings.ArtistCreditsUpdated", changed), autoClear: true);
         }
         catch (Exception)
         {
@@ -5347,7 +5347,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var generation = ++_mergeFeatApplyGeneration;
         if (!value)
-            SetScanStatus("Restoring original artist credits…");
+            SetScanStatus(Loc.T("Settings.RestoringArtistCredits"));
 
         int changed;
         try
@@ -5357,16 +5357,16 @@ public partial class SettingsViewModel : ViewModelBase
         catch (Exception)
         {
             if (generation == _mergeFeatApplyGeneration)
-                SetScanStatus("Couldn't update artist credits.", autoClear: true);
+                SetScanStatus(Loc.T("Settings.ArtistCreditsFailed"), autoClear: true);
             return;
         }
 
         if (generation != _mergeFeatApplyGeneration) return;
         SetScanStatus(changed switch
         {
-            0 => "Artist credits already up to date.",
+            0 => Loc.T("Settings.ArtistCreditsUpToDate"),
             1 => "Artist credits updated on 1 track.",
-            _ => $"Artist credits updated on {changed:N0} tracks."
+            _ => Loc.T("Settings.ArtistCreditsUpdated", changed)
         }, autoClear: true);
     }
 
@@ -6093,11 +6093,11 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (path == null)
         {
-            FfmpegStatus = "Not found — set a path below, or install ffmpeg on your PATH.";
+            FfmpegStatus = Loc.T("Settings.FfmpegNotFound");
             return;
         }
 
-        FfmpegStatus = $"Checking {path}…";
+        FfmpegStatus = Loc.T("Settings.FfmpegChecking", path);
 
         _ = Task.Run(async () =>
         {
@@ -6124,7 +6124,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Locate ffmpeg",
+            Title = Noctis.Localization.Loc.T("Picker.LocateFfmpeg"),
             AllowMultiple = false,
         });
         if (picks.Count > 0)
@@ -6156,7 +6156,7 @@ public partial class SettingsViewModel : ViewModelBase
             // return (picking TextEdit.app left the path empty). The folder picker can.
             var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
-                Title = "Choose a program",
+                Title = Noctis.Localization.Loc.T("Picker.ChooseProgram"),
                 AllowMultiple = false,
                 SuggestedStartLocation = await top.StorageProvider.TryGetFolderFromPathAsync(new Uri("file:///Applications/")),
             });
@@ -6168,7 +6168,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
-            Title = "Choose a program",
+            Title = Noctis.Localization.Loc.T("Picker.ChooseProgram"),
             AllowMultiple = false,
         });
         if (picks.Count > 0)
@@ -6320,11 +6320,11 @@ public partial class SettingsViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _lastFmAuthCts = cts;
 
-        LastFmStatusText = "Opening browser...";
+        LastFmStatusText = Loc.T("Settings.OpeningBrowser");
         var authUrl = await _lastFm.GetAuthUrlAsync();
         if (string.IsNullOrEmpty(authUrl))
         {
-            LastFmStatusText = "Failed to get auth URL. Check API key.";
+            LastFmStatusText = Loc.T("Settings.LastFmAuthUrlFailed");
             return;
         }
 
@@ -6334,11 +6334,11 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch
         {
-            LastFmStatusText = "Failed to open browser.";
+            LastFmStatusText = Loc.T("Settings.OpenBrowserFailed");
             return;
         }
 
-        LastFmStatusText = "Waiting for authorization in browser...";
+        LastFmStatusText = Loc.T("Settings.WaitingForAuth");
         _ = PollLastFmAuthAsync(cts);
     }
 
@@ -6358,7 +6358,7 @@ public partial class SettingsViewModel : ViewModelBase
                     IsLastFmConnected = true;
                     LastFmScrobblingEnabled = true;
                     LastFmUsername = _lastFm.Username ?? "";
-                    LastFmStatusText = $"Connected as {LastFmUsername}";
+                    LastFmStatusText = Loc.T("Settings.ConnectedAs", LastFmUsername);
                     _settings.LastFmSessionKey = _lastFm.GetSessionKey() ?? "";
                     await SaveAsync();
                     return;
@@ -6369,7 +6369,7 @@ public partial class SettingsViewModel : ViewModelBase
                 // Root cause fix: status was left in "Waiting..." with no early reset path.
                 // Reset to baseline quickly if authorization isn't completed.
                 if (!IsLastFmConnected && failedAttempts >= 2)
-                    LastFmStatusText = "Not connected";
+                    LastFmStatusText = Loc.T("Settings.NotConnected");
 
                 try
                 {
@@ -6382,7 +6382,7 @@ public partial class SettingsViewModel : ViewModelBase
             }
 
             if (!IsLastFmConnected && !token.IsCancellationRequested)
-                LastFmStatusText = "Not connected";
+                LastFmStatusText = Loc.T("Settings.NotConnected");
         }
         finally
         {
@@ -6399,7 +6399,7 @@ public partial class SettingsViewModel : ViewModelBase
         _lastFm?.Logout();
         IsLastFmConnected = false;
         LastFmUsername = "";
-        LastFmStatusText = "Not connected";
+        LastFmStatusText = Loc.T("Settings.NotConnected");
         _ = SaveAsync();
     }
 
@@ -6431,8 +6431,8 @@ public partial class SettingsViewModel : ViewModelBase
         if (_listenBrainz == null) return;
         if (string.IsNullOrWhiteSpace(ListenBrainzToken))
         {
-            ListenBrainzError = "Token required";
-            ListenBrainzStatusText = "Not connected";
+            ListenBrainzError = Loc.T("Settings.TokenRequired");
+            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             return;
         }
 
@@ -6441,14 +6441,14 @@ public partial class SettingsViewModel : ViewModelBase
         if (apiUrl == null)
         {
             ListenBrainzError = Loc.T("Settings.ListenBrainzUrlInvalid");
-            ListenBrainzStatusText = "Not connected";
+            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             return;
         }
         // Show the URL that is actually used; the official one goes back to blank.
         ListenBrainzApiUrl = apiUrl == ListenBrainzService.DefaultApiUrl ? "" : apiUrl;
 
         ListenBrainzError = "";
-        ListenBrainzStatusText = "Validating...";
+        ListenBrainzStatusText = Loc.T("Settings.Validating");
         _listenBrainz.Configure(ListenBrainzToken);
         _listenBrainz.SetApiUrl(apiUrl);
         var username = await _listenBrainz.ValidateTokenAsync();
@@ -6460,7 +6460,7 @@ public partial class SettingsViewModel : ViewModelBase
             // scrobble. Without this, the now-default-off toggle would leave a freshly
             // connected account silently not scrobbling.
             ListenBrainzScrobblingEnabled = true;
-            ListenBrainzStatusText = $"Connected as {username}";
+            ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", username);
             await SaveAsync();
         }
         else
@@ -6474,7 +6474,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
                 _ => "Token invalid or network error.",
             };
-            ListenBrainzStatusText = "Not connected";
+            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         }
     }
 
@@ -6488,7 +6488,7 @@ public partial class SettingsViewModel : ViewModelBase
         ListenBrainzScrobblingEnabled = false;
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
-        ListenBrainzStatusText = "Not connected";
+        ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         ListenBrainzError = "";
         _ = SaveAsync();
     }
@@ -6527,7 +6527,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (!HasMediaServerError) return;
         HasMediaServerError = false;
         if (!IsMediaServerConnected && !IsMediaServerBusy)
-            MediaServerStatusText = "Not connected";
+            MediaServerStatusText = Loc.T("Settings.NotConnected");
     }
 
     /// <summary>
@@ -6549,18 +6549,18 @@ public partial class SettingsViewModel : ViewModelBase
         var type = MediaServerOptionToSourceType(MediaServerType);
         if (string.IsNullOrWhiteSpace(MediaServerUrl))
         {
-            ShowTransientServerError("Enter the server address.");
+            ShowTransientServerError(Loc.T("Settings.EnterServerAddress"));
             return;
         }
         if (string.IsNullOrWhiteSpace(MediaServerUsername) || string.IsNullOrWhiteSpace(MediaServerPassword))
         {
-            ShowTransientServerError("Enter the username and password.");
+            ShowTransientServerError(Loc.T("Settings.EnterUsernamePassword"));
             return;
         }
 
         IsMediaServerBusy = true;
         HasMediaServerError = false;
-        MediaServerStatusText = "Connecting…";
+        MediaServerStatusText = Loc.T("Settings.Connecting");
         try
         {
             var (result, connection) = await _mediaServer.ConnectAsync(
@@ -6595,7 +6595,7 @@ public partial class SettingsViewModel : ViewModelBase
         _mediaServerConnection = null;
         IsMediaServerConnected = false;
         MediaServerPassword = string.Empty;
-        MediaServerStatusText = "Not connected";
+        MediaServerStatusText = Loc.T("Settings.NotConnected");
         HasMediaServerError = false;
         _mediaServer?.SetActiveConnection(null);
         MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
@@ -7324,7 +7324,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (top is null) return null;
         var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
         {
-            Title = "Select Music Folder",
+            Title = Noctis.Localization.Loc.T("Picker.SelectMusicFolder"),
             AllowMultiple = false
         });
         return folders.Count > 0 ? folders[0].Path.LocalPath : null;
@@ -7368,7 +7368,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (!Directory.Exists(path))
         {
-            SetScanStatus("That folder doesn't exist.", autoClear: true);
+            SetScanStatus(Loc.T("Settings.FolderMissing"), autoClear: true);
             return;
         }
 
@@ -7380,13 +7380,13 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (IsUnder(path, norm))
             {
-                SetScanStatus($"Already covered by \"{existing}\".", autoClear: true);
+                SetScanStatus(Loc.T("Settings.FolderAlreadyCovered", existing), autoClear: true);
                 return;
             }
 
             if (IsUnder(norm, path))
             {
-                SetScanStatus($"\"{existing}\" is inside that folder — remove it first.", autoClear: true);
+                SetScanStatus(Loc.T("Settings.FolderContainsExisting", existing), autoClear: true);
                 return;
             }
         }
@@ -7465,7 +7465,7 @@ public partial class SettingsViewModel : ViewModelBase
             do await Task.Delay(1000);
             while (_library.IsScanning && !IsScanning);
 
-            if (!IsScanning && ScanStatusText.StartsWith("Scanning Library", StringComparison.Ordinal))
+            if (!IsScanning && ScanStatusText.StartsWith(Loc.T("Settings.ScanningLibrary"), StringComparison.Ordinal))
                 ScanStatusText = "";
         }
         finally
@@ -7549,7 +7549,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (cts.IsCancellationRequested) return; // superseded again before we started
 
         IsScanning = true;
-        ScanStatusText = "Scanning Library";
+        ScanStatusText = Loc.T("Settings.ScanningLibrary");
         ScanProgress = 0;
 
         try
@@ -7567,7 +7567,7 @@ public partial class SettingsViewModel : ViewModelBase
             }
 
             SetScanStatus(_library.Tracks.Count == 0
-                ? "No tracks found."
+                ? Loc.T("Settings.NoTracksFound")
                 : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
             // Fire-and-forget async variant: the forced artwork-cache walk scales
@@ -7580,7 +7580,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SetScanStatus($"Scan error: {ex.Message}", autoClear: true);
+            SetScanStatus(Loc.T("Settings.ScanError", ex.Message), autoClear: true);
         }
         finally
         {
@@ -7600,21 +7600,21 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (IsScanning) return;
         IsScanning = true;
-        ScanStatusText = "Rebuilding library index";
+        ScanStatusText = Loc.T("Settings.RebuildingIndex");
         ScanProgress = 0;
 
         try
         {
             await _library.RebuildIndexAsync();
             SetScanStatus(_library.Tracks.Count == 0
-                ? "No tracks found."
-                : "Indexed Library.", autoClear: true);
+                ? Loc.T("Settings.NoTracksFound")
+                : Loc.T("Settings.IndexedLibrary"), autoClear: true);
             RefreshLibraryStats();
             _ = RefreshStorageInfoAsync(forceRefresh: true);
         }
         catch (Exception ex)
         {
-            SetScanStatus($"Index rebuild error: {ex.Message}", autoClear: true);
+            SetScanStatus(Loc.T("Settings.IndexRebuildError", ex.Message), autoClear: true);
         }
         finally
         {
@@ -7673,7 +7673,7 @@ public partial class SettingsViewModel : ViewModelBase
         ResetSettingsToDefaults(defaultSettings);
         await ClearSavedDataAfterSettingsResetAsync();
 
-        SetScanStatus("All settings and data have been reset.", autoClear: true);
+        SetScanStatus(Loc.T("Settings.ResetDone"), autoClear: true);
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
@@ -7989,7 +7989,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             IsLastFmConnected = false;
-            LastFmStatusText = "Not connected";
+            LastFmStatusText = Loc.T("Settings.NotConnected");
             // Without this the session key survived in the service and SyncToSettings
             // re-persisted it (`_settings.LastFmSessionKey = lfm.GetSessionKey()`), so the
             // account stayed connected while the UI read "Not connected".
@@ -7999,7 +7999,7 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzToken = "";
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;
-            ListenBrainzStatusText = "Not connected";
+            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             ListenBrainzApiUrl = "";
             _listenBrainz?.Logout();
             _listenBrainz?.SetApiUrl(null);
@@ -8012,7 +8012,7 @@ public partial class SettingsViewModel : ViewModelBase
             MediaServerUsername = "";
             MediaServerPassword = "";
             IsMediaServerConnected = false;
-            MediaServerStatusText = "Not connected";
+            MediaServerStatusText = Loc.T("Settings.NotConnected");
             HasMediaServerError = false;
             _mediaServer?.SetActiveConnection(null);
             MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
@@ -8072,11 +8072,11 @@ public partial class SettingsViewModel : ViewModelBase
             });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
-            SetScanStatus("Artwork cache cleared.", autoClear: true);
+            SetScanStatus(Loc.T("Settings.ArtworkCacheCleared"), autoClear: true);
         }
         catch (Exception ex)
         {
-            SetScanStatus($"Failed to clear cache: {ex.Message}", autoClear: true);
+            SetScanStatus(Loc.T("Settings.ClearCacheFailed", ex.Message), autoClear: true);
         }
     }
 
@@ -8268,13 +8268,13 @@ public partial class SettingsViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             IsUpToDate = false;
-            ShowUpdateError("Update check timed out. Try again later.");
+            ShowUpdateError(Loc.T("Settings.UpdateCheckTimedOut"));
             _ = ClearUpdateStatusAfterDelay();
         }
         catch (Exception ex)
         {
             IsUpToDate = false;
-            ShowUpdateError("Couldn't check for updates. Try again later.");
+            ShowUpdateError(Loc.T("Settings.UpdateCheckFailed"));
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex);
         }
@@ -8299,7 +8299,7 @@ public partial class SettingsViewModel : ViewModelBase
         IsUpdateAvailable = false;
         IsDownloadingUpdate = true;
         DownloadProgress = 0;
-        UpdateStatusText = "Downloading update...";
+        UpdateStatusText = Loc.T("Settings.DownloadingUpdate");
         _autoDownloadRunning = automatic;
         _autoDownloadPrerelease = automatic && known is { IsPrerelease: true };
         var recheck = false;
@@ -8320,7 +8320,7 @@ public partial class SettingsViewModel : ViewModelBase
             update ??= await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, token);
             if (update is null || update.InstallerApiUrl is null)
             {
-                UpdateStatusText = "Update no longer available.";
+                UpdateStatusText = Loc.T("Settings.UpdateGone");
                 IsDownloadingUpdate = false;
                 _ = ClearUpdateStatusAfterDelay();
                 return;
@@ -8330,7 +8330,7 @@ public partial class SettingsViewModel : ViewModelBase
                 DebugLog.Write("Updater", $"Auto-update: downloading {update.TagName} ({update.InstallerSize} bytes).");
 
             // The percentage lives on the download pill; the line below just names the release.
-            UpdateStatusText = $"Downloading {update.TagName} in the background.";
+            UpdateStatusText = Loc.T("Settings.DownloadingInBackground", update.TagName);
             var progress = new Progress<double>(p =>
                 Dispatcher.UIThread.Post(() =>
                 {
@@ -8347,7 +8347,7 @@ public partial class SettingsViewModel : ViewModelBase
                 update, progress, token, requireChecksums: true);
             live = false;
 
-            UpdateStatusText = "Update ready to install.";
+            UpdateStatusText = Loc.T("Settings.UpdateReady");
             if (MayQueue(update))
             {
                 try
@@ -8379,13 +8379,13 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("corrupted"))
         {
-            ShowUpdateError("Download corrupted. Try again.");
+            ShowUpdateError(Loc.T("Settings.DownloadCorrupted"));
             _ = ClearUpdateStatusAfterDelay();
             if (automatic) RecordAutoDownloadFailure(update, ex, hard: false);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("SHA-256"))
         {
-            ShowUpdateError("Update failed verification.");
+            ShowUpdateError(Loc.T("Settings.UpdateVerifyFailed"));
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex.Message);
             if (automatic) RecordAutoDownloadFailure(update, ex, hard: true);
@@ -8394,9 +8394,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             // The user (Cancel), the toggle or leaving the pre-release channel stopped it:
             // not a failure to back off from.
-            UpdateStatusText = "Download cancelled.";
+            UpdateStatusText = Loc.T("Settings.DownloadCancelled");
             _ = ClearUpdateStatusAfterDelay();
-            DebugLog.Write("Updater", "Download cancelled.");
+            DebugLog.Write("Updater", Loc.T("Settings.DownloadCancelled"));
             if (automatic && update is { IsPrerelease: true } && !IncludePrereleaseUpdates)
             {
                 recheck = true; // pre-releases turned off: ask the stable channel instead (below)
@@ -8412,7 +8412,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ShowUpdateError("Download failed. Try again.");
+            ShowUpdateError(Loc.T("Settings.DownloadFailed"));
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex);
             if (automatic) RecordAutoDownloadFailure(update, ex, hard: false);
@@ -8491,7 +8491,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         if (IsAutoInstallPending && IsReadyToInstall)
-            UpdateStatusText = "Update ready to install."; // manual Install & Restart still works
+            UpdateStatusText = Loc.T("Settings.UpdateReady"); // manual Install & Restart still works
         IsAutoInstallPending = false;
         IsAutoInstallPostponed = false;
     }
@@ -8538,7 +8538,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             LatestVersionTag = done.Tag;
             ShowWhatsNew = true;
-            UpdateStatusText = $"Updated to {UpdateService.CurrentVersion.ToString(3)}.";
+            UpdateStatusText = Loc.T("Settings.UpdatedTo", UpdateService.CurrentVersion.ToString(3));
         }
         if (UpdateService.LaunchInstallNote is { } note)
         {
@@ -8650,7 +8650,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         else
         {
-            ShowUpdateError("Couldn't start installer. Download manually from GitHub.");
+            ShowUpdateError(Loc.T("Settings.InstallerFailed"));
             IsReadyToInstall = false;
         }
     }
@@ -8797,7 +8797,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, "Couldn't load releases. Try again later.");
+            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.ReleasesLoadFailed"));
             ShowDevReleasesEmpty = DevReleases.Count == 0;
             DebugLog.Write("VersionManager", ex);
         }
@@ -8851,8 +8851,8 @@ public partial class SettingsViewModel : ViewModelBase
 
         IsDevDownloading = true;
         DevDownloadProgress = 0;
-        DevStatusText = $"Downloading {item.TagName}...";
-        DebugLog.Write("VersionManager", $"Installing {item.TagName}...");
+        DevStatusText = Loc.T("Settings.DownloadingTag", item.TagName);
+        DebugLog.Write("VersionManager", Loc.T("Settings.InstallingTag", item.TagName));
 
         try
         {
@@ -8864,7 +8864,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Dispatcher.UIThread.Post(() =>
                 {
                     DevDownloadProgress = p;
-                    DevStatusText = $"Downloading {item.TagName}... {p:F0}%";
+                    DevStatusText = Loc.T("Settings.DownloadingTagPercent", item.TagName, p);
                 }));
 
             // requireChecksums, same as the normal update path. This defaulted to false,
@@ -8873,7 +8873,7 @@ public partial class SettingsViewModel : ViewModelBase
             var installerPath = await _updateService.DownloadInstallerAsync(
                 item.Info, progress, _devCts.Token, requireChecksums: true);
 
-            DevStatusText = $"Installing {item.TagName}...";
+            DevStatusText = Loc.T("Settings.InstallingTag", item.TagName);
             if (_updateService.LaunchInstaller(installerPath))
             {
                 // TryShutdown so the ShutdownRequested save handler runs (see InstallUpdate).
@@ -8885,17 +8885,17 @@ public partial class SettingsViewModel : ViewModelBase
             }
             else
             {
-                TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, "Couldn't start installer. Download manually from GitHub.");
+                TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.InstallerFailed"));
                 DebugLog.Write("VersionManager", "LaunchInstaller returned false.");
             }
         }
         catch (OperationCanceledException)
         {
-            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, "Download cancelled.");
+            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.DownloadCancelled"));
         }
         catch (Exception ex)
         {
-            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, "Download failed. Try again.");
+            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.DownloadFailed"));
             DebugLog.Write("VersionManager", ex);
         }
         finally
@@ -8915,7 +8915,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         IsDevDownloading = true;
         DevDownloadProgress = 0;
-        DevStatusText = $"Downloading {item.TagName}...";
+        DevStatusText = Loc.T("Settings.DownloadingTag", item.TagName);
 
         try
         {
@@ -8944,23 +8944,23 @@ public partial class SettingsViewModel : ViewModelBase
                 Dispatcher.UIThread.Post(() =>
                 {
                     DevDownloadProgress = p;
-                    DevStatusText = $"Downloading {item.TagName}... {p:F0}%";
+                    DevStatusText = Loc.T("Settings.DownloadingTagPercent", item.TagName, p);
                 }));
 
             var path = await _updateService.DownloadInstallerAsync(
                 item.Info, progress, _devCts.Token, destination);
 
-            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, $"{item.TagName} saved to Downloads.");
+            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.SavedToDownloads", item.TagName));
             DebugLog.Write("VersionManager", $"Downloaded {item.TagName} to {path}");
             Helpers.PlatformHelper.ShowInFileManager(path);
         }
         catch (OperationCanceledException)
         {
-            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, "Download cancelled.");
+            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.DownloadCancelled"));
         }
         catch (Exception ex)
         {
-            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, "Download failed. Try again.");
+            TransientStatus.Show(nameof(DevStatusText), v => DevStatusText = v, Loc.T("Settings.DownloadFailed"));
             DebugLog.Write("VersionManager", ex);
         }
         finally

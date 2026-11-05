@@ -2157,7 +2157,7 @@
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Popular" xml:space="preserve">
-    <value>Más Sentidos</value>
+    <value>Canciones principales</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Albums" xml:space="preserve">
@@ -2181,7 +2181,7 @@
     <comment>Tab in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Songs" xml:space="preserve">
-    <value>Cantores</value>
+    <value>Canciones</value>
     <comment>Tab in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.SimilarArtists" xml:space="preserve">
@@ -2217,7 +2217,7 @@
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.SongsTile" xml:space="preserve">
-    <value>Cantores</value>
+    <value>Canciones</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.TotalLengthTile" xml:space="preserve">
@@ -7431,4 +7431,209 @@
   <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>Buscar toda la música</value></data>
   <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>Busca todas las canciones de este teléfono o elige la carpeta donde está tu música. Noctis la lee donde está y nunca sube nada.</value></data>
   <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis ya no puede leer la música de este teléfono. Permite Música y audio en los ajustes de Noctis.</value></data>
+  <data name="Main.DropPreparingImport" xml:space="preserve"><value>Preparando la importación…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropScanningFolders" xml:space="preserve"><value>Analizando las carpetas soltadas…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropImportingFiles" xml:space="preserve"><value>Importando archivos: {0} de {1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>Actualizando la biblioteca…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedOne" xml:space="preserve"><value>Se movió 1 archivo a {0}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedMany" xml:space="preserve"><value>Se movieron {0} archivos a {1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>«{0}» contiene {1} canciones de {2} álbumes distintos.
+
+¿Crear una playlist llamada «{0}» con estas canciones?</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>Los proveedores de letras están desactivados en Ajustes.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.Instrumental" xml:space="preserve"><value>Esta canción es instrumental.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.SearchFailedOffline" xml:space="preserve"><value>La búsqueda falló: revisa tu conexión a internet.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.NoLyricsFound" xml:space="preserve"><value>No se encontró la letra.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>No se pudo leer el archivo: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} está vacío.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImported" xml:space="preserve"><value>Se importó {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>Se importó {0} como letra sin sincronizar (no hay marcas de tiempo).</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>El servicio de búsqueda no está disponible.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Se necesitan título y artista.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFound" xml:space="preserve"><value>Letra encontrada</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsNotFound" xml:space="preserve"><value>No se encontró la letra</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsLrclibNoAnswer" xml:space="preserve"><value>La búsqueda falló: LRCLIB no respondió (ocupado o sin conexión). Inténtalo de nuevo en un momento.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Sidebar.FolderHintExisting" xml:space="preserve"><value>Carpetas existentes: {0}. Escribe un nombre nuevo para crear una carpeta.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.FolderHint" xml:space="preserve"><value>Escribe un nombre para crear una carpeta.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.MoveToFolderTitle" xml:space="preserve"><value>Mover a carpeta</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RenameFolderTitle" xml:space="preserve"><value>Cambiar nombre de la carpeta</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RemoveFolderConfirm" xml:space="preserve"><value>¿Quitar la carpeta «{0}»? Las playlists que contiene se conservan.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Playlist.DeleteConfirm" xml:space="preserve"><value>¿Seguro que quieres eliminar «{0}»? No se puede deshacer.</value><comment>Delete playlist confirmation</comment></data>
+  <data name="Main.StartupFailed" xml:space="preserve"><value>Noctis no pudo terminar de iniciarse, así que algunas partes de la app podrían no funcionar. Los detalles se escribieron en el registro de depuración.</value><comment>Startup failure notice</comment></data>
+  <data name="Picker.ChooseLyricsBackground" xml:space="preserve"><value>Elegir fondo de la letra</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SaveVideo" xml:space="preserve"><value>Guardar vídeo</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectCoverArt" xml:space="preserve"><value>Seleccionar portada</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtwork" xml:space="preserve"><value>Seleccionar ilustración</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>Seleccionar ilustración animada</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>Descargar ilustración animada</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ImportLyrics" xml:space="preserve"><value>Importar letra</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadCoverArt" xml:space="preserve"><value>Descargar portada</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.LocateFfmpeg" xml:space="preserve"><value>Buscar ffmpeg</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProgram" xml:space="preserve"><value>Elegir un programa</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectMusicFolder" xml:space="preserve"><value>Seleccionar carpeta de música</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtistPicture" xml:space="preserve"><value>Seleccionar imagen del artista</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProfilePicture" xml:space="preserve"><value>Elegir foto de perfil</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.AllFiles" xml:space="preserve"><value>Todos los archivos</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Audio" xml:space="preserve"><value>Audio</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Images" xml:space="preserve"><value>Imágenes</value><comment>File picker file type name</comment></data>
+  <data name="Picker.JpegImage" xml:space="preserve"><value>Imagen JPEG</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PngImage" xml:space="preserve"><value>Imagen PNG</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Lyrics" xml:space="preserve"><value>Letras</value><comment>File picker file type name</comment></data>
+  <data name="Picker.M3uPlaylist" xml:space="preserve"><value>Playlist M3U</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Mp4Video" xml:space="preserve"><value>Vídeo MP4</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PluginZip" xml:space="preserve"><value>Plugin de Noctis (.zip)</value><comment>File picker file type name</comment></data>
+  <data name="Picker.VideoOrGif" xml:space="preserve"><value>Vídeo o GIF</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Video" xml:space="preserve"><value>Vídeo</value><comment>File picker file type name</comment></data>
+  <data name="AudioCd.Tracks" xml:space="preserve"><value>{0} pista|{0} pistas</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NotSupported" xml:space="preserve"><value>Los CD de audio no son compatibles con esta plataforma.</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDrive" xml:space="preserve"><value>No se encontró ninguna unidad óptica.</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.Reading" xml:space="preserve"><value>Leyendo el disco…</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDisc" xml:space="preserve"><value>No hay ningún CD de audio en la unidad.</value><comment>Audio CD page</comment></data>
+  <data name="Playlist.SortManual" xml:space="preserve"><value>Manual</value><comment>Playlist page sort pill</comment></data>
+  <data name="Home.GoodMorning" xml:space="preserve"><value>Buenos días</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodAfternoon" xml:space="preserve"><value>Buenas tardes</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodEvening" xml:space="preserve"><value>Buenas tardes</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodNight" xml:space="preserve"><value>Buenas noches</value><comment>Home page greeting</comment></data>
+  <data name="BulkLyrics.Remove" xml:space="preserve"><value>Quitar</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetch" xml:space="preserve"><value>Buscar</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleRemove" xml:space="preserve"><value>Quitar la letra de {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Buscar letras para tu biblioteca ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Buscar la letra de {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Elimina las letras que Noctis guardó para estas canciones (sus archivos .lrc y las letras en caché). Los archivos de letras que hiciste tú no se tocan.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Busca letras en internet, primero las sincronizadas por palabra, y las guarda junto a tus canciones. Tus propios archivos de letras nunca se reemplazan.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Aún no se ha quitado nada.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Ready" xml:space="preserve"><value>Listo.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Hide" xml:space="preserve"><value>Ocultar</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Removing" xml:space="preserve"><value>Quitando</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetching" xml:space="preserve"><value>Buscando</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovingProgress" xml:space="preserve"><value>Quitando {0:N0} de {1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.LookingUpProgress" xml:space="preserve"><value>Buscando {0:N0} de {1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingToRemove" xml:space="preserve"><value>No hay letras que quitar.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovedFrom" xml:space="preserve"><value>Se quitó la letra de {0} canción.|Se quitó la letra de {0} canciones.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StoppedSummary" xml:space="preserve"><value>Detenido · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.DoneSummary" xml:space="preserve"><value>Listo · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Stopped" xml:space="preserve"><value>Detenido.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Failed" xml:space="preserve"><value>Error: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumWordSynced" xml:space="preserve"><value>{0:N0} sincronizadas por palabra</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumLineSynced" xml:space="preserve"><value>{0:N0} sincronizadas por línea</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumPlainOnly" xml:space="preserve"><value>{0:N0} solo sin sincronizar</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumUpgraded" xml:space="preserve"><value>{0:N0} mejoradas</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNotFound" xml:space="preserve"><value>{0:N0} no encontradas</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKept" xml:space="preserve"><value>{0:N0} se dejaron como estaban</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumCheckedBefore" xml:space="preserve"><value>{0:N0} ya buscadas antes</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>{0:N0} con error</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>{0:N0} conservaron tu propio archivo de letra</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} ocupado, inténtalo más tarde</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>nada que hacer</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>1 canción solo tiene letra sin sincronizar. Lyrics Studio puede sincronizarla en este PC con su modelo de voz: puede tardar un minuto o más por canción (más rápido con tarjeta gráfica) y revisas cada una antes de guardarla.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} canciones solo tienen letra sin sincronizar. Lyrics Studio puede sincronizarlas en este PC con su modelo de voz: puede tardar un minuto o más por canción (más rápido con tarjeta gráfica) y revisas cada una antes de guardarla.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>Las primeras {0} se abren a la vez.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="Count.Songs" xml:space="preserve"><value>{0:N0} canción|{0:N0} canciones</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} pista|{0:N0} pistas</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Items" xml:space="preserve"><value>{0:N0} elemento|{0:N0} elementos</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} h {1} min</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Count.MinutesShort" xml:space="preserve"><value>{0} min</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Tray.OpenNoctis" xml:space="preserve"><value>Abrir Noctis</value><comment>Tray icon menu</comment></data>
+  <data name="Tray.Quit" xml:space="preserve"><value>Salir</value><comment>Tray icon menu</comment></data>
+  <data name="Settings.NotConnected" xml:space="preserve"><value>No conectado</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedAs" xml:space="preserve"><value>Conectado como {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedTo" xml:space="preserve"><value>Conectado a {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.WindowsOnly" xml:space="preserve"><value>Solo disponible en Windows.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis se quitó de la lista «Abrir con».</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registrado. Elige Noctis en Configuración → Aplicaciones → Aplicaciones predeterminadas, o haz clic derecho en una canción → Abrir con.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesFailed" xml:space="preserve"><value>No se pudieron actualizar los tipos de archivo: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Reagrupando artistas…</value><comment>Settings status line</comment></data>
+  <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Restaurando los créditos de artista originales…</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>No se pudieron actualizar los créditos de artista.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Los créditos de artista ya están al día.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>Créditos de artista actualizados en {0:N0} pistas.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegNotFound" xml:space="preserve"><value>No encontrado: indica una ruta abajo o instala ffmpeg en tu PATH.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegChecking" xml:space="preserve"><value>Comprobando {0}…</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpeningBrowser" xml:space="preserve"><value>Abriendo el navegador…</value><comment>Settings status line</comment></data>
+  <data name="Settings.LastFmAuthUrlFailed" xml:space="preserve"><value>No se pudo obtener la URL de autorización. Revisa la clave de API.</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpenBrowserFailed" xml:space="preserve"><value>No se pudo abrir el navegador.</value><comment>Settings status line</comment></data>
+  <data name="Settings.WaitingForAuth" xml:space="preserve"><value>Esperando la autorización en el navegador…</value><comment>Settings status line</comment></data>
+  <data name="Settings.TokenRequired" xml:space="preserve"><value>Se necesita un token</value><comment>Settings status line</comment></data>
+  <data name="Settings.Validating" xml:space="preserve"><value>Validando…</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterServerAddress" xml:space="preserve"><value>Escribe la dirección del servidor.</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>Escribe el usuario y la contraseña.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderMissing" xml:space="preserve"><value>Esa carpeta no existe.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>Ya está incluida en «{0}».</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>«{0}» está dentro de esa carpeta: quítala primero.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>Analizando la biblioteca</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>Analizando la biblioteca {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
+  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>Reconstruyendo el índice de la biblioteca</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoTracksFound" xml:space="preserve"><value>No se encontraron pistas.</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>Biblioteca indexada.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanError" xml:space="preserve"><value>Error de análisis: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexRebuildError" xml:space="preserve"><value>Error al reconstruir el índice: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetDone" xml:space="preserve"><value>Se restablecieron todos los ajustes y datos.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>Caché de ilustraciones vaciada.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>No se pudo vaciar la caché: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoFolderSelected" xml:space="preserve"><value>Ninguna carpeta seleccionada</value><comment>Settings status line</comment></data>
+  <data name="Settings.UpdateCheckTimedOut" xml:space="preserve"><value>Se agotó el tiempo al buscar actualizaciones. Inténtalo más tarde.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateCheckFailed" xml:space="preserve"><value>No se pudieron buscar actualizaciones. Inténtalo más tarde.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingUpdate" xml:space="preserve"><value>Descargando la actualización…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateGone" xml:space="preserve"><value>La actualización ya no está disponible.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingInBackground" xml:space="preserve"><value>Descargando {0} en segundo plano.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateReady" xml:space="preserve"><value>Actualización lista para instalar.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCorrupted" xml:space="preserve"><value>La descarga está dañada. Inténtalo de nuevo.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>La actualización no superó la verificación.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCancelled" xml:space="preserve"><value>Descarga cancelada.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadFailed" xml:space="preserve"><value>La descarga falló. Inténtalo de nuevo.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallerFailed" xml:space="preserve"><value>No se pudo iniciar el instalador. Descárgalo manualmente desde GitHub.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.ReleasesLoadFailed" xml:space="preserve"><value>No se pudieron cargar las versiones. Inténtalo más tarde.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdatedTo" xml:space="preserve"><value>Actualizado a {0}.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTag" xml:space="preserve"><value>Descargando {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTagPercent" xml:space="preserve"><value>Descargando {0}… {1:F0} %</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallingTag" xml:space="preserve"><value>Instalando {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.SavedToDownloads" xml:space="preserve"><value>{0} se guardó en Descargas.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadStarting" xml:space="preserve"><value>Iniciando…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadVerifying" xml:space="preserve"><value>Verificando…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingPill" xml:space="preserve"><value>Descargando</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.Checking" xml:space="preserve"><value>Buscando…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpToDate" xml:space="preserve"><value>Al día</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.CheckForUpdates" xml:space="preserve"><value>Buscar actualizaciones</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateAvailable" xml:space="preserve"><value>Actualización disponible</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateTo" xml:space="preserve"><value>Actualizar a {0}</value><comment>Settings › About update status</comment></data>
+  <data name="Palette.GoTo" xml:space="preserve"><value>Ir a {0}</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryPage" xml:space="preserve"><value>Página</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAction" xml:space="preserve"><value>Acción</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategorySong" xml:space="preserve"><value>Canción</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAlbum" xml:space="preserve"><value>Álbum</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryArtist" xml:space="preserve"><value>Artista</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AudioSetting" xml:space="preserve"><value>Ajuste de audio</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AppearanceSetting" xml:space="preserve"><value>Ajuste de apariencia</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>Sincroniza o transcribe letras de canciones sin letra sincronizada</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyrics" xml:space="preserve"><value>Buscar letras para la biblioteca…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyricsSub" xml:space="preserve"><value>Busca la letra de cada canción, primero las sincronizadas por palabra</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>Buscar ilustraciones animadas para la biblioteca…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>Añade portadas animadas de Apple Music a los álbumes</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleShuffle" xml:space="preserve"><value>Activar/desactivar aleatorio</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CycleRepeat" xml:space="preserve"><value>Cambiar modo de repetición</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>Activar/desactivar fundido</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleTransitions" xml:space="preserve"><value>Activar/desactivar transiciones</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>Activar/desactivar portadas animadas</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Menu.OpenFileWith" xml:space="preserve"><value>Abrir archivo con</value><comment>Song context menu › Tools</comment></data>
+  <data name="Menu.OpenIn" xml:space="preserve"><value>Abrir en {0}</value><comment>Song context menu › Tools</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>El álbum es explícito</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} artistas seleccionados</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} canciones seleccionadas</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>No se pudieron escribir las etiquetas en «{0}». Puede que otra app tenga el archivo abierto o que sea de solo lectura: ciérralo allí o revisa el archivo e inténtalo de nuevo.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>No se pudieron escribir las etiquetas en {0} archivos (p. ej., «{1}»). Puede que otra app los tenga abiertos o que sean de solo lectura: ciérralos allí o revisa los archivos e inténtalo de nuevo.</value><comment>Metadata window</comment></data>
+  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>Buscar ilustración animada para 1 álbum</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>Buscar ilustraciones animadas para {0:N0} álbumes</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>No hay álbumes que buscar.</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>Buscando</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>{0:N0} guardadas</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumNoMatch" xml:space="preserve"><value>{0:N0} sin coincidencia clara</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumHadOne" xml:space="preserve"><value>{0:N0} ya tenían una</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="Lyrics.TrySource" xml:space="preserve"><value>Probar {0}</value><comment>Lyrics page</comment></data>
+  <data name="Server.NoAlbums" xml:space="preserve"><value>Aún no hay álbumes. La biblioteca de música de este servidor está vacía, o no se pudo acceder a ella.</value><comment>Server page</comment></data>
+  <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>No se pudo cargar este álbum desde el servidor.</value><comment>Server page</comment></data>
+  <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>No se puede marcar mientras suena el audio del videoclip: desactiva el audio del videoclip y reinicia la canción</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Nada que guardar: marca al menos una línea</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Guardado · no se pudo escribir la letra en el archivo de audio (¿en uso o de solo lectura?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>No se pudo guardar: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
 </root>

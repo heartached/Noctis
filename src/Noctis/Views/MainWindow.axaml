@@ -227,7 +227,7 @@
                         </Panel.IsVisible>
                         <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                             <ToolTip.Tip>
-                                <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
+                                <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterDisplay}"/></TextBlock>
                             </ToolTip.Tip>
                             <PathIcon Data="{StaticResource FilterIcon}"/>
                             <Button.Flyout>
@@ -272,7 +272,7 @@
                         <Panel VerticalAlignment="Center">
                             <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                                 <ToolTip.Tip>
-                                    <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
+                                    <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterDisplay}"/><Run Text=" · "/><Run Text="{Binding QualityFilterDisplay}"/></TextBlock>
                                 </ToolTip.Tip>
                                 <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>

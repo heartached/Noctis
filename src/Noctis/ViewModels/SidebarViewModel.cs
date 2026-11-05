@@ -618,10 +618,10 @@ public partial class SidebarViewModel : ViewModelBase
                 if (t != null) totalDuration += t.Duration;
             }
         }
-        var tracksLabel = item.TrackCount == 1 ? "1 track" : $"{item.TrackCount:N0} tracks";
+        var tracksLabel = Loc.Plural("Count.Tracks", item.TrackCount);
         var durationLabel = totalDuration.TotalHours >= 1
-            ? $"{(int)totalDuration.TotalHours} hr {totalDuration.Minutes} min"
-            : $"{(int)Math.Round(totalDuration.TotalMinutes)} min";
+            ? Loc.T("Count.HoursMinutes", (int)totalDuration.TotalHours, totalDuration.Minutes)
+            : Loc.T("Count.MinutesShort", (int)Math.Round(totalDuration.TotalMinutes));
         item.MetaText = $"{tracksLabel} · {durationLabel}";
 
         // Resolve up to 4 unique album arts for collage thumbnail
@@ -745,9 +745,9 @@ public partial class SidebarViewModel : ViewModelBase
 
         var existing = GetFolderNames();
         var hint = existing.Count > 0
-            ? "Existing folders: " + string.Join(", ", existing) + ". Type a new name to create a folder."
-            : "Type a name to create a folder.";
-        var name = await Views.TextPromptDialog.ShowAsync("Move to folder", playlist.Folder, hint, "Move");
+            ? Loc.T("Sidebar.FolderHintExisting", string.Join(", ", existing))
+            : Loc.T("Sidebar.FolderHint");
+        var name = await Views.TextPromptDialog.ShowAsync(Loc.T("Sidebar.MoveToFolderTitle"), playlist.Folder, hint, Loc.T("SendTo.Move"));
         if (name == null) return;
 
         await SetPlaylistFolderAsync(playlist, name);
@@ -766,7 +766,7 @@ public partial class SidebarViewModel : ViewModelBase
     private async Task RenameFolder(PlaylistNavItem? item)
     {
         if (item is not { IsFolder: true }) return;
-        var newName = await Views.TextPromptDialog.ShowAsync("Rename folder", item.Label, null, "Rename");
+        var newName = await Views.TextPromptDialog.ShowAsync(Loc.T("Sidebar.RenameFolderTitle"), item.Label, null, Loc.T("Mobile.Rename"));
         if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, item.Label, StringComparison.Ordinal)) return;
 
         var wasCollapsed = _collapsedFolders.Remove(item.Label);
@@ -796,7 +796,7 @@ public partial class SidebarViewModel : ViewModelBase
     {
         if (item is not { IsFolder: true }) return;
         var confirmed = await Views.ConfirmationDialog.ShowAsync(
-            $"Remove the folder \"{item.Label}\"? The playlists inside it are kept.");
+            Loc.T("Sidebar.RemoveFolderConfirm", item.Label));
         if (!confirmed) return;
 
         _collapsedFolders.Remove(item.Label);
@@ -932,7 +932,7 @@ public partial class SidebarViewModel : ViewModelBase
     {
         var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
         var name = playlist?.Name ?? "this playlist";
-        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{name}\"? This cannot be undone.");
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(Loc.T("Playlist.DeleteConfirm", name));
         if (!confirmed) return;
         await DeletePlaylistAsync(playlistId);
     }

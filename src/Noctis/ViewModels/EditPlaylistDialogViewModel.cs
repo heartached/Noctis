@@ -179,7 +179,7 @@ public partial class EditPlaylistDialogViewModel : ViewModelBase
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Images") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images")) { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
             }
         });
 

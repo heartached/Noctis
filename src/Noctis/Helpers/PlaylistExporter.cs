@@ -38,7 +38,7 @@ public static class PlaylistExporter
             DefaultExtension = "m3u8",
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("M3U playlist") { Patterns = new[] { "*.m3u8", "*.m3u" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.M3uPlaylist")) { Patterns = new[] { "*.m3u8", "*.m3u" } }
             }
         });
         if (file == null) return false;

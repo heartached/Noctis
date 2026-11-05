@@ -39,7 +39,10 @@ public partial class BulkLyricsViewModel : ViewModelBase
     [ObservableProperty] private string _studioOfferText = string.Empty;
     public string TitleText { get; }
     public string SubtitleText { get; }
-    public string ActionText => IsRemove ? "Remove" : "Fetch";
+    public string ActionText => IsRemove ? L("BulkLyrics.Remove") : L("BulkLyrics.Fetch");
+
+    private static string L(string key) => Noctis.Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Noctis.Localization.Loc.T(key, args);
 
     public ObservableCollection<Row> Rows { get; } = new();
 
@@ -61,18 +64,16 @@ public partial class BulkLyricsViewModel : ViewModelBase
         IsRemove = remove;
         IsLibrary = library && !remove;
         var n = tracks.Count;
-        var songs = n == 1 ? "1 song" : $"{n:N0} songs";
-        TitleText = remove ? $"Remove lyrics from {songs}" : IsLibrary ? $"Find lyrics for your library ({songs})" : $"Fetch lyrics for {songs}";
-        SubtitleText = remove
-            ? "Deletes the lyrics Noctis saved for these songs (its .lrc files and cached lyrics). Lyrics files you made yourself are left alone."
-            : "Finds lyrics online, word-synced first, and saves them next to your songs. Your own lyrics files are never replaced.";
+        var songs = n == 1 ? L("LibrarySongs.SummarySong") : L("LibrarySongs.SummarySongs", n);
+        TitleText = remove ? L("BulkLyrics.TitleRemove", songs) : IsLibrary ? L("BulkLyrics.TitleLibrary", songs) : L("BulkLyrics.TitleFetch", songs);
+        SubtitleText = remove ? L("BulkLyrics.SubtitleRemove") : L("BulkLyrics.SubtitleFetch");
         foreach (var t in tracks)
         {
             var row = new Row(t);
             Rows.Add(row);
             _rowById.TryAdd(t.Id, row);
         }
-        StatusMessage = remove ? "Nothing removed yet." : "Ready.";
+        StatusMessage = remove ? L("BulkLyrics.NothingRemovedYet") : L("BulkLyrics.Ready");
         RowStatusesLoaded = LoadRowStatusesAsync();
     }
 
@@ -109,7 +110,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
     }
 
     /// <summary>"Hide" while a run goes on (it keeps running), "Close" otherwise.</summary>
-    public string CloseText => IsRunning ? "Hide" : "Close";
+    public string CloseText => IsRunning ? L("BulkLyrics.Hide") : L("BulkLyrics.Close");
     public bool CanChangeOptions => IsFetch && !IsRunning && !IsDone;
 
     [RelayCommand]
@@ -118,7 +119,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         if (!CanStart) return;
         IsRunning = true;
         Progress = 0;
-        StatusMessage = IsRemove ? "Removing" : "Fetching";
+        StatusMessage = IsRemove ? L("BulkLyrics.Removing") : L("BulkLyrics.Fetching");
         _cts = new CancellationTokenSource();
         var progress = new Progress<LyricsBulkProgress>(p => Dispatcher.UIThread.Post(() =>
         {
@@ -126,30 +127,30 @@ public partial class BulkLyricsViewModel : ViewModelBase
             var row = _rowById.GetValueOrDefault(p.TrackId)
                       ?? Rows.FirstOrDefault(r => r.Track.Title == p.CurrentTitle && !r.Done) ?? Rows.FirstOrDefault(r => !r.Done);
             if (row is not null) { row.Status = p.Outcome; row.Done = true; row.Failed = p.Outcome is "failed" or "not found" or "sources busy"; }
-            if (IsRunning) StatusMessage = $"{(IsRemove ? "Removing" : "Looking up")} {p.Done:N0} of {p.Total:N0}";
+            if (IsRunning) StatusMessage = L(IsRemove ? "BulkLyrics.RemovingProgress" : "BulkLyrics.LookingUpProgress", p.Done, p.Total);
         }));
         try
         {
             if (IsRemove)
             {
                 var removed = await _service.RemoveAsync(_tracks, progress, _cts.Token);
-                StatusMessage = removed == 0 ? "No lyrics to remove." : $"Removed lyrics from {removed} song{(removed == 1 ? "" : "s")}.";
+                StatusMessage = removed == 0 ? L("BulkLyrics.NothingToRemove") : Noctis.Localization.Loc.Plural("BulkLyrics.RemovedFrom", removed);
             }
             else
             {
                 var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck), progress, _cts.Token);
-                StatusMessage = (_cts.IsCancellationRequested ? "Stopped · " : "Done · ") + Summarize(s);
+                StatusMessage = L(_cts.IsCancellationRequested ? "BulkLyrics.StoppedSummary" : "BulkLyrics.DoneSummary", Summarize(s));
                 OfferStudio(s.PlainOnlyTracks);
             }
             IsDone = true;
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Stopped.";
+            StatusMessage = L("BulkLyrics.Stopped");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Failed — {ex.Message}";
+            StatusMessage = L("BulkLyrics.Failed", ex.Message);
         }
         finally
         {
@@ -161,18 +162,18 @@ public partial class BulkLyricsViewModel : ViewModelBase
     internal static string Summarize(LyricsBulkSummary s)
     {
         var parts = new List<string>();
-        if (s.WordSynced > 0) parts.Add($"{s.WordSynced:N0} word-synced");
-        if (s.Synced - s.WordSynced > 0) parts.Add($"{s.Synced - s.WordSynced:N0} line-synced");
-        if (s.PlainOnly > 0) parts.Add($"{s.PlainOnly:N0} plain only");
-        if (s.Upgraded > 0) parts.Add($"{s.Upgraded:N0} upgraded");
-        if (s.NotFound > 0) parts.Add($"{s.NotFound:N0} not found");
+        if (s.WordSynced > 0) parts.Add(L("BulkLyrics.SumWordSynced", s.WordSynced));
+        if (s.Synced - s.WordSynced > 0) parts.Add(L("BulkLyrics.SumLineSynced", s.Synced - s.WordSynced));
+        if (s.PlainOnly > 0) parts.Add(L("BulkLyrics.SumPlainOnly", s.PlainOnly));
+        if (s.Upgraded > 0) parts.Add(L("BulkLyrics.SumUpgraded", s.Upgraded));
+        if (s.NotFound > 0) parts.Add(L("BulkLyrics.SumNotFound", s.NotFound));
         var kept = s.Skipped - s.CheckedBefore;
-        if (kept > 0) parts.Add($"{kept:N0} kept as they were");
-        if (s.CheckedBefore > 0) parts.Add($"{s.CheckedBefore:N0} looked up before");
-        if (s.Failed > 0) parts.Add($"{s.Failed:N0} failed");
-        if (s.KeptOwnFile > 0) parts.Add($"{s.KeptOwnFile:N0} kept your own lyrics file");
-        if (s.BusySources.Count > 0) parts.Add($"{string.Join(", ", s.BusySources)} busy, try again later");
-        return parts.Count == 0 ? "nothing to do" : string.Join(" · ", parts);
+        if (kept > 0) parts.Add(L("BulkLyrics.SumKept", kept));
+        if (s.CheckedBefore > 0) parts.Add(L("BulkLyrics.SumCheckedBefore", s.CheckedBefore));
+        if (s.Failed > 0) parts.Add(L("BulkLyrics.SumFailed", s.Failed));
+        if (s.KeptOwnFile > 0) parts.Add(L("BulkLyrics.SumKeptOwnFile", s.KeptOwnFile));
+        if (s.BusySources.Count > 0) parts.Add(L("BulkLyrics.SumBusy", string.Join(", ", s.BusySources)));
+        return parts.Count == 0 ? L("BulkLyrics.SumNothing") : string.Join(" · ", parts);
     }
 
     // Lyrics Studio can time plain lyrics on this PC with its speech model (Lullaby): offered,
@@ -183,10 +184,8 @@ public partial class BulkLyricsViewModel : ViewModelBase
         CanTimeInStudio = _openStudio is not null && plainOnly.Count > 0;
         if (!CanTimeInStudio) return;
         var n = Math.Min(plainOnly.Count, StudioBatch);
-        StudioOfferText = (plainOnly.Count == 1 ? "1 song has" : $"{plainOnly.Count:N0} songs have")
-            + " plain lyrics only. Lyrics Studio can time them on this PC with its speech model: it can take a minute or more per song"
-            + " (faster on a graphics card), and you check each one before it's saved."
-            + (plainOnly.Count > n ? $" The first {n} open at a time." : string.Empty);
+        StudioOfferText = (plainOnly.Count == 1 ? L("BulkLyrics.StudioOfferOne") : L("BulkLyrics.StudioOfferMany", plainOnly.Count))
+            + (plainOnly.Count > n ? " " + L("BulkLyrics.StudioOfferFirst", n) : string.Empty);
     }
 
     [RelayCommand]

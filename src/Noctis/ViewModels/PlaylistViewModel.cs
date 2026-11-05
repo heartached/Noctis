@@ -37,7 +37,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private int _trackCount;
 
     /// <summary>Header stats: "1 track", "12 tracks" (the header read "1 tracks").</summary>
-    public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
+    public string TrackCountText => Noctis.Localization.Loc.Plural("Count.Tracks", TrackCount);
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
 
@@ -69,17 +69,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
     public string SortLabel => SortMode switch
     {
-        PlaylistSortMode.Title => "Title",
-        PlaylistSortMode.Artist => "Artist",
-        PlaylistSortMode.Album => "Album",
-        PlaylistSortMode.Duration => "Duration",
-        PlaylistSortMode.RecentlyAdded => "Recently Added",
-        PlaylistSortMode.ReleaseDateOldest => "Release Date (Oldest)",
-        PlaylistSortMode.ReleaseDateNewest => "Release Date (Newest)",
-        PlaylistSortMode.Badge => "Badge",
-        PlaylistSortMode.DateModifiedNewest => "Date Modified (Newest)",
-        PlaylistSortMode.DateModifiedOldest => "Date Modified (Oldest)",
-        _ => "Manual"
+        PlaylistSortMode.Title => Noctis.Localization.Loc.T("Playlist.Title"),
+        PlaylistSortMode.Artist => Noctis.Localization.Loc.T("Playlist.Artist"),
+        PlaylistSortMode.Album => Noctis.Localization.Loc.T("Playlist.Album"),
+        PlaylistSortMode.Duration => Noctis.Localization.Loc.T("Playlist.Duration"),
+        PlaylistSortMode.RecentlyAdded => Noctis.Localization.Loc.T("Playlist.RecentlyAdded"),
+        PlaylistSortMode.ReleaseDateOldest => Noctis.Localization.Loc.T("Playlist.ReleaseDateOldest"),
+        PlaylistSortMode.ReleaseDateNewest => Noctis.Localization.Loc.T("Playlist.ReleaseDateNewest"),
+        PlaylistSortMode.Badge => Noctis.Localization.Loc.T("Playlist.SortBadge"),
+        PlaylistSortMode.DateModifiedNewest => Noctis.Localization.Loc.T("Playlist.DateModifiedNewest"),
+        PlaylistSortMode.DateModifiedOldest => Noctis.Localization.Loc.T("Playlist.DateModifiedOldest"),
+        _ => Noctis.Localization.Loc.T("Playlist.SortManual")
     };
 
     partial void OnSortModeChanged(PlaylistSortMode value)
@@ -1154,7 +1154,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task DeletePlaylist()
     {
-        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{_playlist.Name}\"? This cannot be undone.");
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(Localization.Loc.T("Playlist.DeleteConfirm", _playlist.Name));
         if (!confirmed) return;
         await _sidebar.DeletePlaylistAsync(_playlist.Id);
         BackRequested?.Invoke(this, EventArgs.Empty);

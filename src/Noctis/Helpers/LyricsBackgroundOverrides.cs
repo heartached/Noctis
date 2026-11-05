@@ -39,8 +39,8 @@ public static class LyricsBackgroundOverrides
     /// <summary>The picker filter shared with the Settings "Choose" button.</summary>
     public static FilePickerFileType[] MediaFilter => new[]
     {
-        new FilePickerFileType("Video or GIF") { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov", "*.mkv", "*.gif" } },
-        new FilePickerFileType("All files") { Patterns = new[] { "*" } },
+        new FilePickerFileType(Noctis.Localization.Loc.T("Picker.VideoOrGif")) { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov", "*.mkv", "*.gif" } },
+        new FilePickerFileType(Noctis.Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } },
     };
 
     private static SettingsViewModel? Settings => App.Services?.GetService<MainWindowViewModel>()?.Settings;
@@ -55,7 +55,7 @@ public static class LyricsBackgroundOverrides
         {
             var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Choose Lyrics Background",
+                Title = Noctis.Localization.Loc.T("Picker.ChooseLyricsBackground"),
                 AllowMultiple = false,
                 FileTypeFilter = MediaFilter,
             });

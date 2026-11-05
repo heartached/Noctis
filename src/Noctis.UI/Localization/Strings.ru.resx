@@ -3715,4 +3715,209 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>Найти всю музыку</value></data>
   <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>Найдите все песни на этом телефоне или выберите папку с музыкой. Noctis читает её на месте и ничего не загружает.</value></data>
   <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis больше не может читать музыку на этом телефоне. Разрешите «Музыка и аудио» в настройках Noctis.</value></data>
+  <data name="Main.DropPreparingImport" xml:space="preserve"><value>Подготовка импорта…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropScanningFolders" xml:space="preserve"><value>Сканирование перетащенных папок…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropImportingFiles" xml:space="preserve"><value>Импорт файлов: {0} из {1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>Обновление медиатеки…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedOne" xml:space="preserve"><value>1 файл перемещён в {0}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedMany" xml:space="preserve"><value>Файлов перемещено в {1}: {0}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>«{0}» содержит {1} треков из {2} разных альбомов.
+
+Создать плейлист «{0}» с этими треками?</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>Источники текстов отключены в настройках.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.Instrumental" xml:space="preserve"><value>Этот трек — инструментал.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.SearchFailedOffline" xml:space="preserve"><value>Поиск не удался — проверьте подключение к интернету.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.NoLyricsFound" xml:space="preserve"><value>Текст не найден.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Не удалось прочитать файл: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>Файл {0} пуст.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImported" xml:space="preserve"><value>Импортирован {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} импортирован как обычный текст (метки времени не найдены).</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Сервис поиска недоступен.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Нужны название и исполнитель.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFound" xml:space="preserve"><value>Текст найден</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsNotFound" xml:space="preserve"><value>Текст не найден</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsLrclibNoAnswer" xml:space="preserve"><value>Поиск не удался — LRCLIB не ответил (занят или недоступен). Попробуйте чуть позже.</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Sidebar.FolderHintExisting" xml:space="preserve"><value>Существующие папки: {0}. Введите новое имя, чтобы создать папку.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.FolderHint" xml:space="preserve"><value>Введите имя, чтобы создать папку.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.MoveToFolderTitle" xml:space="preserve"><value>Переместить в папку</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RenameFolderTitle" xml:space="preserve"><value>Переименовать папку</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RemoveFolderConfirm" xml:space="preserve"><value>Удалить папку «{0}»? Плейлисты в ней сохранятся.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Playlist.DeleteConfirm" xml:space="preserve"><value>Удалить «{0}»? Это действие нельзя отменить.</value><comment>Delete playlist confirmation</comment></data>
+  <data name="Main.StartupFailed" xml:space="preserve"><value>Noctis не смог полностью запуститься, поэтому часть функций может не работать. Подробности записаны в журнал отладки.</value><comment>Startup failure notice</comment></data>
+  <data name="Picker.ChooseLyricsBackground" xml:space="preserve"><value>Выбрать фон текста</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SaveVideo" xml:space="preserve"><value>Сохранить видео</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectCoverArt" xml:space="preserve"><value>Выбрать обложку</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtwork" xml:space="preserve"><value>Выбрать обложку</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>Выбрать анимированную обложку</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>Скачать анимированную обложку</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ImportLyrics" xml:space="preserve"><value>Импорт текста</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadCoverArt" xml:space="preserve"><value>Скачать обложку</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.LocateFfmpeg" xml:space="preserve"><value>Указать ffmpeg</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProgram" xml:space="preserve"><value>Выбрать программу</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectMusicFolder" xml:space="preserve"><value>Выбрать папку с музыкой</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtistPicture" xml:space="preserve"><value>Выбрать фото исполнителя</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProfilePicture" xml:space="preserve"><value>Выбрать фото профиля</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.AllFiles" xml:space="preserve"><value>Все файлы</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Audio" xml:space="preserve"><value>Аудио</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Images" xml:space="preserve"><value>Изображения</value><comment>File picker file type name</comment></data>
+  <data name="Picker.JpegImage" xml:space="preserve"><value>Изображение JPEG</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PngImage" xml:space="preserve"><value>Изображение PNG</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Lyrics" xml:space="preserve"><value>Тексты песен</value><comment>File picker file type name</comment></data>
+  <data name="Picker.M3uPlaylist" xml:space="preserve"><value>Плейлист M3U</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Mp4Video" xml:space="preserve"><value>Видео MP4</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PluginZip" xml:space="preserve"><value>Плагин Noctis (.zip)</value><comment>File picker file type name</comment></data>
+  <data name="Picker.VideoOrGif" xml:space="preserve"><value>Видео или GIF</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Video" xml:space="preserve"><value>Видео</value><comment>File picker file type name</comment></data>
+  <data name="AudioCd.Tracks" xml:space="preserve"><value>{0} трек|{0} трека|{0} треков</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NotSupported" xml:space="preserve"><value>Аудио-CD не поддерживаются на этой платформе.</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDrive" xml:space="preserve"><value>Оптический привод не найден.</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.Reading" xml:space="preserve"><value>Чтение диска…</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDisc" xml:space="preserve"><value>В приводе нет аудио-CD.</value><comment>Audio CD page</comment></data>
+  <data name="Playlist.SortManual" xml:space="preserve"><value>Вручную</value><comment>Playlist page sort pill</comment></data>
+  <data name="Home.GoodMorning" xml:space="preserve"><value>Доброе утро</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodAfternoon" xml:space="preserve"><value>Добрый день</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodEvening" xml:space="preserve"><value>Добрый вечер</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodNight" xml:space="preserve"><value>Доброй ночи</value><comment>Home page greeting</comment></data>
+  <data name="BulkLyrics.Remove" xml:space="preserve"><value>Удалить</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetch" xml:space="preserve"><value>Загрузить</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleRemove" xml:space="preserve"><value>Удалить тексты: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Найти тексты для медиатеки ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Загрузить тексты: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Удаляет тексты, сохранённые Noctis для этих песен (его файлы .lrc и кэш). Файлы текстов, созданные вами, не затрагиваются.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Ищет тексты в интернете (сначала с пословной синхронизацией) и сохраняет их рядом с песнями. Ваши собственные файлы текстов никогда не заменяются.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Пока ничего не удалено.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Ready" xml:space="preserve"><value>Готово к запуску.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Hide" xml:space="preserve"><value>Скрыть</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Removing" xml:space="preserve"><value>Удаление</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetching" xml:space="preserve"><value>Загрузка</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovingProgress" xml:space="preserve"><value>Удаление: {0:N0} из {1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.LookingUpProgress" xml:space="preserve"><value>Поиск: {0:N0} из {1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingToRemove" xml:space="preserve"><value>Нет текстов для удаления.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovedFrom" xml:space="preserve"><value>Текст удалён у {0} песни.|Тексты удалены у {0} песен.|Тексты удалены у {0} песен.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StoppedSummary" xml:space="preserve"><value>Остановлено · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.DoneSummary" xml:space="preserve"><value>Готово · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Stopped" xml:space="preserve"><value>Остановлено.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Failed" xml:space="preserve"><value>Ошибка — {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumWordSynced" xml:space="preserve"><value>с пословной синхронизацией: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumLineSynced" xml:space="preserve"><value>с построчной синхронизацией: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumPlainOnly" xml:space="preserve"><value>только обычный текст: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumUpgraded" xml:space="preserve"><value>улучшено: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNotFound" xml:space="preserve"><value>не найдено: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKept" xml:space="preserve"><value>оставлено без изменений: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumCheckedBefore" xml:space="preserve"><value>уже искали раньше: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>ошибок: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>сохранён ваш файл текста: {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} занят, попробуйте позже</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>делать нечего</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>У 1 песни есть только обычный текст. Lyrics Studio может синхронизировать его на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>У {0:N0} песен есть только обычный текст. Lyrics Studio может синхронизировать их на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>Первые {0} откроются сразу.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="Count.Songs" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} трек|{0:N0} трека|{0:N0} треков</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Items" xml:space="preserve"><value>{0:N0} элемент|{0:N0} элемента|{0:N0} элементов</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} ч {1} мин</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Count.MinutesShort" xml:space="preserve"><value>{0} мин</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Tray.OpenNoctis" xml:space="preserve"><value>Открыть Noctis</value><comment>Tray icon menu</comment></data>
+  <data name="Tray.Quit" xml:space="preserve"><value>Выйти</value><comment>Tray icon menu</comment></data>
+  <data name="Settings.NotConnected" xml:space="preserve"><value>Не подключено</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedAs" xml:space="preserve"><value>Подключено как {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedTo" xml:space="preserve"><value>Подключено к {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.WindowsOnly" xml:space="preserve"><value>Доступно только в Windows.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis удалён из списка «Открыть с помощью».</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Зарегистрировано. Выберите Noctis в «Параметры → Приложения → Приложения по умолчанию» или щёлкните песню правой кнопкой → «Открыть с помощью».</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Не удалось обновить типы файлов: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Перегруппировка исполнителей…</value><comment>Settings status line</comment></data>
+  <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Восстановление исходных исполнителей…</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Не удалось обновить исполнителей.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Исполнители уже актуальны.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>Исполнители обновлены у треков: {0:N0}.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegNotFound" xml:space="preserve"><value>Не найден — укажите путь ниже или установите ffmpeg в PATH.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegChecking" xml:space="preserve"><value>Проверка {0}…</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpeningBrowser" xml:space="preserve"><value>Открытие браузера…</value><comment>Settings status line</comment></data>
+  <data name="Settings.LastFmAuthUrlFailed" xml:space="preserve"><value>Не удалось получить адрес авторизации. Проверьте ключ API.</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpenBrowserFailed" xml:space="preserve"><value>Не удалось открыть браузер.</value><comment>Settings status line</comment></data>
+  <data name="Settings.WaitingForAuth" xml:space="preserve"><value>Ожидание авторизации в браузере…</value><comment>Settings status line</comment></data>
+  <data name="Settings.TokenRequired" xml:space="preserve"><value>Нужен токен</value><comment>Settings status line</comment></data>
+  <data name="Settings.Validating" xml:space="preserve"><value>Проверка…</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterServerAddress" xml:space="preserve"><value>Введите адрес сервера.</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>Введите имя пользователя и пароль.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderMissing" xml:space="preserve"><value>Такой папки нет.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>Уже входит в «{0}».</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>«{0}» находится внутри этой папки — сначала удалите её.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>Сканирование медиатеки</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>Сканирование медиатеки {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
+  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>Перестроение индекса медиатеки</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoTracksFound" xml:space="preserve"><value>Треки не найдены.</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>Медиатека проиндексирована.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanError" xml:space="preserve"><value>Ошибка сканирования: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexRebuildError" xml:space="preserve"><value>Ошибка перестроения индекса: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetDone" xml:space="preserve"><value>Все настройки и данные сброшены.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>Кэш обложек очищен.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>Не удалось очистить кэш: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoFolderSelected" xml:space="preserve"><value>Папка не выбрана</value><comment>Settings status line</comment></data>
+  <data name="Settings.UpdateCheckTimedOut" xml:space="preserve"><value>Время проверки обновлений истекло. Попробуйте позже.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateCheckFailed" xml:space="preserve"><value>Не удалось проверить обновления. Попробуйте позже.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingUpdate" xml:space="preserve"><value>Загрузка обновления…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateGone" xml:space="preserve"><value>Обновление больше недоступно.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingInBackground" xml:space="preserve"><value>{0} загружается в фоне.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateReady" xml:space="preserve"><value>Обновление готово к установке.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCorrupted" xml:space="preserve"><value>Загрузка повреждена. Попробуйте ещё раз.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>Обновление не прошло проверку.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCancelled" xml:space="preserve"><value>Загрузка отменена.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadFailed" xml:space="preserve"><value>Загрузка не удалась. Попробуйте ещё раз.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallerFailed" xml:space="preserve"><value>Не удалось запустить установщик. Скачайте его вручную с GitHub.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.ReleasesLoadFailed" xml:space="preserve"><value>Не удалось загрузить список версий. Попробуйте позже.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdatedTo" xml:space="preserve"><value>Обновлено до {0}.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTag" xml:space="preserve"><value>Загрузка {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTagPercent" xml:space="preserve"><value>Загрузка {0}… {1:F0}%</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallingTag" xml:space="preserve"><value>Установка {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.SavedToDownloads" xml:space="preserve"><value>{0} сохранён в «Загрузки».</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadStarting" xml:space="preserve"><value>Запуск…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadVerifying" xml:space="preserve"><value>Проверка…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingPill" xml:space="preserve"><value>Загрузка</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.Checking" xml:space="preserve"><value>Проверка…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpToDate" xml:space="preserve"><value>Актуально</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.CheckForUpdates" xml:space="preserve"><value>Проверить обновления</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateAvailable" xml:space="preserve"><value>Доступно обновление</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateTo" xml:space="preserve"><value>Обновить до {0}</value><comment>Settings › About update status</comment></data>
+  <data name="Palette.GoTo" xml:space="preserve"><value>Перейти: {0}</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryPage" xml:space="preserve"><value>Страница</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAction" xml:space="preserve"><value>Действие</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategorySong" xml:space="preserve"><value>Песня</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAlbum" xml:space="preserve"><value>Альбом</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryArtist" xml:space="preserve"><value>Исполнитель</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AudioSetting" xml:space="preserve"><value>Настройка звука</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AppearanceSetting" xml:space="preserve"><value>Настройка оформления</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>Синхронизировать или расшифровать тексты песен без синхронизации</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyrics" xml:space="preserve"><value>Найти тексты для медиатеки…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyricsSub" xml:space="preserve"><value>Найти тексты для каждой песни, сначала с пословной синхронизацией</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>Найти анимированные обложки для медиатеки…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>Добавить анимированные обложки из Apple Music</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleShuffle" xml:space="preserve"><value>Вкл./выкл. перемешивание</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CycleRepeat" xml:space="preserve"><value>Сменить режим повтора</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>Вкл./выкл. кроссфейд</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleTransitions" xml:space="preserve"><value>Вкл./выкл. переходы между песнями</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>Вкл./выкл. анимированные обложки</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Menu.OpenFileWith" xml:space="preserve"><value>Открыть файл с помощью</value><comment>Song context menu › Tools</comment></data>
+  <data name="Menu.OpenIn" xml:space="preserve"><value>Открыть в {0}</value><comment>Song context menu › Tools</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>Альбом с ненормативной лексикой</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>Выбрано исполнителей: {0}</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SongsSelected" xml:space="preserve"><value>Выбрано песен: {0}</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>Не удалось записать теги в «{0}». Возможно, файл открыт в другой программе или доступен только для чтения — закройте его там или проверьте файл и попробуйте снова.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>Не удалось записать теги в файлы ({0}), например «{1}». Возможно, они открыты в другой программе или доступны только для чтения — закройте их там или проверьте файлы и попробуйте снова.</value><comment>Metadata window</comment></data>
+  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>Найти анимированную обложку для 1 альбома</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>Найти анимированные обложки для альбомов: {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>Нет альбомов для поиска.</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>Поиск</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>сохранено: {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumNoMatch" xml:space="preserve"><value>без точного совпадения: {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumHadOne" xml:space="preserve"><value>уже были: {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="Lyrics.TrySource" xml:space="preserve"><value>Попробовать {0}</value><comment>Lyrics page</comment></data>
+  <data name="Server.NoAlbums" xml:space="preserve"><value>Альбомов пока нет. Медиатека на этом сервере пуста — или к ней не удалось подключиться.</value><comment>Server page</comment></data>
+  <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>Не удалось загрузить этот альбом с сервера.</value><comment>Server page</comment></data>
+  <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>Метки недоступны, пока играет звук клипа — выключите звук клипа и перезапустите песню</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Нечего сохранять — поставьте метку хотя бы на одну строку</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Сохранено · не удалось записать текст в аудиофайл (используется или только для чтения?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>Не удалось сохранить: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
 </root>

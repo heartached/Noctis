@@ -390,7 +390,7 @@ public sealed class TrackContextMenuBuilder
         Tools.Items.Add(Spectrogram);
         SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
         Tools.Items.Add(SendToFolder);
-        OpenWith = MenuV2.Row(host, "Open File With", "MenuLineOpenWith");
+        OpenWith = MenuV2.Row(host, Loc.T("Menu.OpenFileWith"), "MenuLineOpenWith");
         Tools.Items.Add(OpenWith);
         DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
         Tools.Items.Add(DontScrobble);

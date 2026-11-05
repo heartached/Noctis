@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -98,8 +99,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Audio-quality filter chips (Lossless / Hi-Res), toggleable.</summary>
     public ObservableCollection<QualityChip> QualityChips { get; } = new()
     {
-        new QualityChip { Key = "lossless", Label = "Lossless" },
-        new QualityChip { Key = "hires", Label = "Hi-Res" },
+        new QualityChip { Key = "lossless", Label = Loc.T("Main.Lossless") },
+        new QualityChip { Key = "hires", Label = Loc.T("Main.HiRes") },
     };
 
     /// <summary>Active quality filter: "" (off), "lossless", or "hires".</summary>
@@ -131,14 +132,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Label for the sort dropdown button.</summary>
     public string AlbumSortLabel => AlbumSortMode switch
     {
-        "title" => "Title",
-        "dateadded" => "Recently added",
-        "datemodified" => "Date Modified",
-        "mostplayed" => "Most played",
-        "albumartist" => "Album Artist",
-        "year" => "Year",
-        "random" => "Random",
-        _ => "Default",
+        "title" => Loc.T("Main.Title"),
+        "dateadded" => Loc.T("Main.RecentlyAdded"),
+        "datemodified" => Loc.T("Main.DateModified"),
+        "mostplayed" => Loc.T("Main.MostPlayed"),
+        "albumartist" => Loc.T("Main.AlbumArtist"),
+        "year" => Loc.T("Main.Year"),
+        "random" => Loc.T("Main.Random"),
+        _ => Loc.T("Main.Default"),
     };
 
     /// <summary>Whether the direction controls apply to the current mode.
@@ -404,7 +405,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
 
     /// <summary>Dynamic header: artist name when filtered, "Albums" otherwise.</summary>
-    public string HeaderText => IsArtistFiltered ? ArtistFilterName : "Albums";
+    public string HeaderText => IsArtistFiltered ? ArtistFilterName : Loc.T("Nav.Albums");
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
@@ -484,13 +485,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         ReleaseTypeChips = new ObservableCollection<ReleaseTypeChip>
         {
-            new() { Filter = null, Label = "All", IsActive = true },
-            new() { Filter = ReleaseType.Album, Label = "Albums" },
-            new() { Filter = ReleaseType.Single, Label = "Singles" },
-            new() { Filter = ReleaseType.EP, Label = "EPs" },
-            new() { Filter = ReleaseType.Live, Label = "Live Albums" },
-            new() { Filter = ReleaseType.Compilation, Label = "Compilations" },
-            new() { Filter = ReleaseType.Other, Label = "Other" },
+            new() { Filter = null, Label = Loc.T("Main.All"), IsActive = true },
+            new() { Filter = ReleaseType.Album, Label = Loc.T("Main.Albums") },
+            new() { Filter = ReleaseType.Single, Label = Loc.T("Main.Singles") },
+            new() { Filter = ReleaseType.EP, Label = Loc.T("Main.EPs") },
+            new() { Filter = ReleaseType.Live, Label = Loc.T("Main.LiveAlbums") },
+            new() { Filter = ReleaseType.Compilation, Label = Loc.T("Main.Compilations") },
+            new() { Filter = ReleaseType.Other, Label = Loc.T("Main.Other") },
         };
 
         // Mark dirty when library changes — actual reload deferred to next Refresh() call.
@@ -975,7 +976,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         var rows = new List<object>
         {
-            new ArtistSectionHeader { Title = capped ? "Top Songs" : "Songs" },
+            new ArtistSectionHeader { Title = capped ? Loc.T("ArtistDetail.Popular") : Loc.T("ArtistDetail.Songs") },
         };
 
         for (var i = 0; i < orderedSongs.Count; i += SongsPerRow)
@@ -990,7 +991,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
 
         if (albumRows.Count > 0)
-            rows.Add(new ArtistSectionHeader { Title = "Albums" });
+            rows.Add(new ArtistSectionHeader { Title = Loc.T("ArtistDetail.Albums") });
         rows.AddRange(albumRows);
         return rows;
     }
