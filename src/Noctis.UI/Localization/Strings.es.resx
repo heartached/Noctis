@@ -3805,14 +3805,6 @@
     <value>Buscar portada animada</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>Nombre del álbum, o URL de Apple Music</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>escribe el nombre de un álbum y pulsa Enter, o pega un enlace de Apple Music</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>Elegir portada animada</value>
     <comment>Text in MetadataWindow.axaml</comment>
