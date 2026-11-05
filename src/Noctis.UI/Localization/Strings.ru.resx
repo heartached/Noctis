@@ -3102,6 +3102,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.CarouselJewelCase" xml:space="preserve"><value>Коробка CD</value><comment>Albums view menu: carousel case style</comment></data>
   <data name="Main.CarouselVinyl" xml:space="preserve"><value>Винил</value><comment>Albums view menu: carousel case style</comment></data>
   <data name="Main.CarouselCassette" xml:space="preserve"><value>Кассета</value><comment>Albums view menu: carousel case style</comment></data>
+  <data name="Main.CarouselStyleCarouselOnly" xml:space="preserve"><value>Стиль карусели (только в виде «Карусель»)</value><comment>Albums view menu: tooltip on the greyed carousel case styles while the grid is shown (GitHub #176)</comment></data>
   <data name="ArtistDetail.ShowCarousel" xml:space="preserve"><value>Показать каруселью</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
   <data name="ArtistDetail.ShowGrid" xml:space="preserve"><value>Показать сеткой</value><comment>Artist page Albums tab view toggle tooltip</comment></data>
   <data name="LibrarySongs.Composer" xml:space="preserve"><value>Композитор</value><comment>Songs list column header (GitHub #151)</comment></data>
