@@ -3676,4 +3676,21 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Альбомы не найдены</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Очистить поиск</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Не удалось записать теги в «{0}»: теги файлов DSDIFF (.dff) доступны только для чтения. Конвертируйте файл в DSD (.dsf), чтобы изменить теги.</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>Выбрать</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>Выберите песни</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>Выбрано: {0}</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>Выбрать все</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Снять выбор</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>Готово</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Импорт плейлиста</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>Импортировано песен: {0} из {1}</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>Импортирован {0} плейлист|Импортировано {0} плейлиста|Импортировано {0} плейлистов</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>Плейлисты не импортированы</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>Ни одной песни из «{0}» нет на этом телефоне</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>Найдено песен: {0} из {1}.</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>Эти строки не совпали ни с одной песней на телефоне:</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>«{0}» — не плейлист M3U</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Не удалось прочитать «{0}»</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Открыть плейлист</value></data>
 </root>

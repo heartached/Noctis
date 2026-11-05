@@ -2476,4 +2476,21 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Eşleşen albüm yok</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Aramayı temizle</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>"{0}" dosyasına etiket yazılamadı: DSDIFF (.dff) dosyalarının etiketleri salt okunurdur. Etiketleri düzenlemek için dosyayı DSD (.dsf) biçimine dönüştürün.</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>Seç</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>Öğe Seç</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>{0} seçildi</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>Tümünü Seç</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Seçimi Kaldır</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>Bitti</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Çalma Listesi İçe Aktar</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>{1} şarkıdan {0} tanesi içe aktarıldı</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} çalma listesi içe aktarıldı|{0} çalma listesi içe aktarıldı</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>Hiç çalma listesi içe aktarılmadı</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>“{0}” içindeki şarkıların hiçbiri bu telefonda yok</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{1} şarkıdan {0} tanesi bulundu.</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>Bu satırlar telefondaki hiçbir şarkıyla eşleşmedi:</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}” bir M3U çalma listesi değil</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>“{0}” okunamadı</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Çalma Listesini Aç</value></data>
 </root>

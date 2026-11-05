@@ -7392,4 +7392,21 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>لا توجد ألبومات مطابقة</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>مسح البحث</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>تعذّر كتابة الوسوم في "{0}": وسوم ملفات DSDIFF (.dff) للقراءة فقط. حوّل الملف إلى DSD (.dsf) لتعديل وسومه.</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>تحديد</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>تحديد العناصر</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>تم تحديد {0}</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>تحديد الكل</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>إلغاء تحديد الكل</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>تم</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>استيراد قائمة تشغيل</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>تم استيراد {0} من {1} أغنية</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمتي تشغيل|تم استيراد {0} قوائم تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>لم تُستورد أي قوائم تشغيل</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>لا توجد أي أغنية من «{0}» على هذا الهاتف</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>تم العثور على {0} من {1} أغنية.</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>هذه الأسطر لم تطابق أي أغنية على هذا الهاتف:</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>«{0}» ليست قائمة تشغيل M3U</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>تعذّرت قراءة «{0}»</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>فتح قائمة التشغيل</value></data>
 </root>
