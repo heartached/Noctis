@@ -33,8 +33,11 @@
              ticked row in Find Metadata. The 1.5px ring is always there (transparent when not
              selected) so selecting only recolours it and nothing shifts. The ListBoxItem
              itself stays clear: Fluent's grey selection box would sit behind the card. -->
+        <!-- Right gutter: the overlay scrollbar ran over the cards' right edge and rounded
+             corners (owner 11-04). The bar now sits in its own lane beside the cards. -->
         <Style Selector="ListBox.ls-results">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0,0,14,0" />
         </Style>
         <Style Selector="ListBox.ls-results ListBoxItem">
             <Setter Property="Padding" Value="0" />
