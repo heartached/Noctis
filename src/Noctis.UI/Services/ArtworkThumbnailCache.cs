@@ -157,6 +157,15 @@ public static class ArtworkThumbnailCache
         return Convert.ToHexString(hash[..8]);
     }
 
+    /// <summary>
+    /// WebP lossless "quality", which for lossless is encoder effort: the pixels are the same
+    /// at any value, only the time and the file size change. Measured on a 3000 px cover
+    /// shrunk to 768 (a maximised 4K grid tile; HiDpiGridScrollCostTests): 70 took 129 ms
+    /// (JPEG source) / 155 ms (PNG), more than the decode itself, for files within 1% of 25's,
+    /// which takes 29 / 37 ms. Every first view of a cover paid it before its tile showed.
+    /// </summary>
+    internal const float LosslessEffort = 25;
+
     private static void TryWrite(string thumb, SKBitmap bitmap)
     {
         // Write aside and rename, so a reader never sees half a file.
@@ -165,7 +174,7 @@ public static class ArtworkThumbnailCache
         {
             using var pixmap = bitmap.PeekPixels();
             if (pixmap == null) return;
-            using var data = pixmap.Encode(new SKWebpEncoderOptions(SKWebpEncoderCompression.Lossless, 70));
+            using var data = pixmap.Encode(new SKWebpEncoderOptions(SKWebpEncoderCompression.Lossless, LosslessEffort));
             if (data == null || data.Size == 0) return;
             using (var stream = File.Create(temp))
                 data.SaveTo(stream);
