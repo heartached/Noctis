@@ -546,6 +546,17 @@ public class CachedImage : Image
         }
     }
     private static int _maxConcurrentDecodes;
+
+    /// <summary>
+    /// The desktop's <see cref="MaxConcurrentDecodes"/>: half the logical cores, 2 to 4.
+    /// Unlimited, a glide down the Albums grid had 15-24 cover decodes running at once (headless
+    /// probe, 11-04), each up to a 36 MB full-size decode of a big cover, so on a 4-core laptop
+    /// they took the cores from the UI and render threads; and since every tile started at once,
+    /// tiles already scrolled past were never skipped. A maximised 4K window draws its tiles at
+    /// the 768 bucket, four times the pixels of a small window's 384 (Discord, Jafezy: "slow
+    /// when I maximise, smooth when the window is smaller").
+    /// </summary>
+    public static int DesktopDecodeLimit(int processorCount) => Math.Clamp(processorCount / 2, 2, 4);
     private static SemaphoreSlim? _decodeGate;
 
     /// <summary>Decodes running right now (tests read it).</summary>

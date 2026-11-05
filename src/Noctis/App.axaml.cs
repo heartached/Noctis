@@ -160,6 +160,8 @@ public partial class App : Application
         global::Noctis.Services.LibraryService.ArtworkFileReplaced += global::Noctis.Services.ArtworkCache.Invalidate;
         // Downscaled cover decodes kept on disk: a 3000px cover is decoded at full size once.
         ArtworkThumbnailCache.Enable(System.IO.Path.Combine(Noctis.Helpers.AppPaths.DataRoot, "cache", "artwork_thumbs"));
+        // A few cover decodes at a time, so a grid glide leaves cores to the UI and render threads.
+        CachedImage.MaxConcurrentDecodes = CachedImage.DesktopDecodeLimit(Environment.ProcessorCount);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             Noctis.Services.StartupTrace.Mark("avalonia-initialized");
