@@ -3797,14 +3797,6 @@
     <value>搜索动态封面</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>专辑名或 Apple Music 链接</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>输入专辑名后按 Enter,或粘贴 Apple Music 链接</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>选择动态封面</value>
     <comment>Text in MetadataWindow.axaml</comment>
