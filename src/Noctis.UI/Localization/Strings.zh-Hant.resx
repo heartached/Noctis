@@ -7392,4 +7392,14 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>沒有相符的專輯</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>清除搜尋</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>無法寫入「{0}」的標籤：DSDIFF (.dff) 檔案的標籤為唯讀。請將其轉換為 DSD (.dsf) 後再編輯標籤。</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>自動尋找所有音樂</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>無需選擇資料夾，加入這支手機及其 SD 卡上的所有歌曲。歌曲旁的歌詞檔（.lrc、.ttml）只會從下方加入的資料夾讀取。</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>所有音樂</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis 未獲准讀取這支手機上的音樂。若要開啟，請在 Noctis 的設定中允許「音樂和音訊」。</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis 已無法讀取這支手機上的音樂。歌曲仍會列出，但在 Noctis 的設定中允許「音樂和音訊」之前無法播放。</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>開啟設定</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>為手機未列出的音樂（部分 SD 卡和 USB 隨身碟）加入資料夾，或用來讀取歌曲旁的歌詞檔。</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>尋找所有音樂</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>尋找這支手機上的所有歌曲，或選擇存放音樂的資料夾。Noctis 就地讀取，絕不上傳任何內容。</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis 已無法讀取這支手機上的音樂。請在 Noctis 的設定中允許「音樂和音訊」。</value></data>
 </root>

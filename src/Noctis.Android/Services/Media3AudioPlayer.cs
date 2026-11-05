@@ -339,7 +339,8 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         State = PlaybackState.Stopped;
         if (CurrentMediaPath is { } path && !SafGrants.CanRead(_context, path))
         {
-            PlaybackError?.Invoke(this, Loc.T("Mobile.Player.LostFolderAccess"));
+            PlaybackError?.Invoke(this, Loc.T(Noctis.Mobile.Services.DeviceMusicScan.IsDeviceMusicPath(path)
+                ? "Mobile.Player.LostMusicAccess" : "Mobile.Player.LostFolderAccess"));
             return;
         }
         // Redacted: the text reaches the log and the Now Playing error line.

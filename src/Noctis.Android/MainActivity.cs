@@ -22,12 +22,14 @@ public class MainActivity : AvaloniaMainActivity
     private const int PickFolderRequest = 4242;
     private const int PostNotificationsRequest = 4243;
     private const int CreateDocumentRequest = 4244;
+    private const int AudioPermissionRequest = 4245;
 
     /// <summary>The live activity, for services that need to start system UI (the SAF picker).</summary>
     public static MainActivity? Current { get; private set; }
 
     private TaskCompletionSource<string?>? _pickFolder;
     private TaskCompletionSource<string?>? _createDocument;
+    private TaskCompletionSource<bool>? _permission;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -152,6 +154,9 @@ public class MainActivity : AvaloniaMainActivity
         // instance and leave Settings' ExportLogsCommand running forever.
         _createDocument?.TrySetResult(null);
         _createDocument = null;
+        // And a pending permission dialog: its answer would land on the new instance.
+        _permission?.TrySetResult(false);
+        _permission = null;
         BackRequested -= OnBackRequested;
         if (ReferenceEquals(Current, this)) Current = null;
         base.OnDestroy();
@@ -166,6 +171,34 @@ public class MainActivity : AvaloniaMainActivity
         intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantPersistableUriPermission);
         StartActivityForResult(intent, PickFolderRequest);
         return _pickFolder.Task;
+    }
+
+    /// <summary>Shows the system permission dialog for <paramref name="permission"/> (Find All Music);
+    /// resolves true once granted. Android answers at once, refused, when it no longer shows the
+    /// dialog (refused twice): the caller then points at the app's settings.</summary>
+    public Task<bool> RequestPermissionAsync(string permission)
+    {
+        _permission?.TrySetResult(false);
+        _permission = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            RequestPermissions(new[] { permission }, AudioPermissionRequest);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Android", $"{permission} request failed: {ex.Message}");
+            _permission.TrySetResult(false);
+        }
+        return _permission.Task;
+    }
+
+    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+    {
+        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != AudioPermissionRequest) return;
+        var pending = _permission;
+        _permission = null;
+        pending?.TrySetResult(grantResults.Length > 0 && grantResults.All(r => r == Permission.Granted));
     }
 
     /// <summary>Shows the system "save as" picker; resolves to the new document's URI or null.</summary>

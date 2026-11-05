@@ -751,8 +751,30 @@
 
                 <ScrollViewer Name="SubScroll" Classes="page-scroll" HorizontalScrollBarVisibility="Disabled" IsVisible="False">
                     <Panel>
-                        <!-- Music Folders: each folder with its Remove, then Add Folder, then Scan on Startup. -->
+                        <!-- Music Folders: Find All Music Automatically (where the host offers it), each folder
+                             with its Remove, then Add Folder, then Scan on Startup. -->
                         <StackPanel Name="FoldersPane" Classes="grouped-content" IsVisible="{Binding ShowsFoldersPane}">
+                            <StackPanel Name="AllMusicGroup" IsVisible="{Binding Shell.Library.CanFindAllMusic}">
+                                <Border Classes="group-card">
+                                    <ToggleButton Name="AllMusicSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Folders.AllMusic}"
+                                                  IsChecked="{Binding Shell.Library.AllMusic}">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Folders.AllMusic}" />
+                                    </ToggleButton>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Folders.AllMusicHint}" />
+                            </StackPanel>
+                            <!-- The permission refused, or taken away since: why, and the way to the system settings. -->
+                            <StackPanel Name="AllMusicHelpGroup" IsVisible="{Binding Shell.Library.ShowAllMusicHelp}">
+                                <Border Classes="group-card">
+                                    <Button Name="OpenAppSettingsButton" Classes="row accent-row" Command="{Binding Shell.Library.OpenAppSettingsCommand}"
+                                            AutomationProperties.Name="{loc:T Mobile.Folders.OpenSettings}">
+                                        <views:SettingRow Classes="setting-row">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Folders.OpenSettings}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                </Border>
+                                <TextBlock Name="AllMusicHelpLabel" Classes="group-footnote" Foreground="#E5484D" Text="{Binding Shell.Library.AllMusicHelpText}" />
+                            </StackPanel>
                             <StackPanel>
                                 <Border Name="FoldersCard" Classes="group-card">
                                     <StackPanel>

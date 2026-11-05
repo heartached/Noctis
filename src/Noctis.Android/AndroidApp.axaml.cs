@@ -129,7 +129,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Online = LrcLibOnlineLyricsSource.Create(persistence.DataDirectory, new HttpClient()),
         };
         var shell = new ShellViewModel(
-            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
+            // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
+            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history) { DeviceMusic = AndroidDeviceMusic.Create(context) },
             nowPlaying,
             lyrics)
         {
@@ -350,6 +351,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         if (_shell == null) return;
         _shell.Background.Suspended = false;
         _shell.IsSuspended = false;
+        // Back from the system settings: the audio permission may have been allowed or taken away.
+        _shell.Library.RecheckDeviceMusic();
     }
 
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes

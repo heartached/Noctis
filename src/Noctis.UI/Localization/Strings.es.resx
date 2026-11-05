@@ -7392,4 +7392,14 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Ningún álbum coincide</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Borrar búsqueda</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>No se pudieron escribir las etiquetas en «{0}»: las etiquetas de los archivos DSDIFF (.dff) son de solo lectura. Conviértelo a DSD (.dsf) para editarlas.</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Buscar toda la música automáticamente</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Añade todas las canciones de este teléfono y su tarjeta SD sin elegir carpetas. Los archivos de letras (.lrc, .ttml) junto a una canción solo se leen en las carpetas que añadas abajo.</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Toda la música</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis no tiene permiso para leer la música de este teléfono. Para activarlo, permite Música y audio en los ajustes de Noctis.</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis ya no puede leer la música de este teléfono. Sus canciones siguen en la lista, pero no se reproducirán hasta que permitas Música y audio en los ajustes de Noctis.</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>Abrir ajustes</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>Añade una carpeta para la música que el teléfono no muestra (algunas tarjetas SD y unidades USB) o para leer los archivos de letras junto a sus canciones.</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>Buscar toda la música</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>Busca todas las canciones de este teléfono o elige la carpeta donde está tu música. Noctis la lee donde está y nunca sube nada.</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis ya no puede leer la música de este teléfono. Permite Música y audio en los ajustes de Noctis.</value></data>
 </root>

@@ -3676,4 +3676,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Альбомы не найдены</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Очистить поиск</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Не удалось записать теги в «{0}»: теги файлов DSDIFF (.dff) доступны только для чтения. Конвертируйте файл в DSD (.dsf), чтобы изменить теги.</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Находить всю музыку автоматически</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Добавляет все песни на этом телефоне и его SD-карте без выбора папок. Файлы текстов (.lrc, .ttml) рядом с песней читаются только в папках, добавленных ниже.</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Вся музыка</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis не получил доступ к музыке на этом телефоне. Чтобы включить функцию, разрешите «Музыка и аудио» в настройках Noctis.</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis больше не может читать музыку на этом телефоне. Песни остаются в списке, но не будут воспроизводиться, пока вы не разрешите «Музыка и аудио» в настройках Noctis.</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>Открыть настройки</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>Добавьте папку для музыки, которую телефон не показывает (некоторые SD-карты и USB-накопители), или чтобы читать файлы текстов рядом с песнями.</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>Найти всю музыку</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>Найдите все песни на этом телефоне или выберите папку с музыкой. Noctis читает её на месте и ничего не загружает.</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis больше не может читать музыку на этом телефоне. Разрешите «Музыка и аудио» в настройках Noctis.</value></data>
 </root>

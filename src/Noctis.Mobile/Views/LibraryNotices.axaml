@@ -15,8 +15,27 @@
             <StackPanel Spacing="10">
                 <TextBlock Classes="section" Text="{loc:T Mobile.Notice.AddMusicTitle}" />
                 <TextBlock Classes="subtle" TextWrapping="Wrap"
-                           Text="{loc:T Mobile.Notice.AddMusicText}" />
-                <Button Classes="pill-accent" Content="{loc:T Mobile.Notice.ChooseFolder}" Command="{Binding Library.AddFolderCommand}" />
+                           Text="{Binding Library.ConnectCardText}" />
+                <!-- Find All Music (Android's media index, asks for the audio permission) first where
+                     the host offers it; picking a folder stays for an SD card or a chosen folder. -->
+                <Button Name="FindAllMusicButton" Classes="pill-accent" Content="{loc:T Mobile.Notice.FindAllMusic}"
+                        Command="{Binding Library.FindAllMusicCommand}" IsVisible="{Binding Library.CanFindAllMusic}" />
+                <TextBlock Name="ConnectAllMusicHelp" Classes="subtle" TextWrapping="Wrap"
+                           Text="{Binding Library.AllMusicHelpText}" IsVisible="{Binding Library.AllMusicDenied}" />
+                <Button Classes="pill" Content="{loc:T Mobile.Folders.OpenSettings}"
+                        Command="{Binding Library.OpenAppSettingsCommand}" IsVisible="{Binding Library.AllMusicDenied}" />
+                <Button Name="ChooseFolderButton" Classes="pill-accent" Content="{loc:T Mobile.Notice.ChooseFolder}"
+                        Command="{Binding Library.AddFolderCommand}" IsVisible="{Binding !Library.CanFindAllMusic}" />
+                <Button Classes="pill" Content="{loc:T Mobile.Notice.ChooseFolder}"
+                        Command="{Binding Library.AddFolderCommand}" IsVisible="{Binding Library.CanFindAllMusic}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Find All Music is on but the audio permission was taken away in the system settings. -->
+        <Border Name="AllMusicLostCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowAllMusicLost}">
+            <StackPanel Spacing="10">
+                <TextBlock Text="{loc:T Mobile.Folders.AllMusicLost}" TextWrapping="Wrap" />
+                <Button Classes="pill" Content="{loc:T Mobile.Folders.OpenSettings}" Command="{Binding Library.OpenAppSettingsCommand}" />
             </StackPanel>
         </Border>
 

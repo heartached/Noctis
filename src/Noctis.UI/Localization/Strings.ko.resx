@@ -7392,4 +7392,14 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>일치하는 앨범 없음</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>검색 지우기</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>"{0}"에 태그를 쓸 수 없습니다. DSDIFF(.dff) 파일의 태그는 읽기 전용입니다. 태그를 편집하려면 DSD(.dsf)로 변환하세요.</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>모든 음악 자동으로 찾기</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>폴더를 고르지 않고 이 휴대폰과 SD 카드의 모든 곡을 추가합니다. 곡 옆의 가사 파일(.lrc, .ttml)은 아래에서 추가한 폴더에서만 읽습니다.</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>모든 음악</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis가 이 휴대폰의 음악을 읽도록 허용되지 않았습니다. 켜려면 Noctis 설정에서 음악 및 오디오를 허용하세요.</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis가 더 이상 이 휴대폰의 음악을 읽을 수 없습니다. 곡은 목록에 남지만 Noctis 설정에서 음악 및 오디오를 허용할 때까지 재생되지 않습니다.</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>설정 열기</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>휴대폰이 표시하지 않는 음악(일부 SD 카드와 USB 드라이브)이나 곡 옆의 가사 파일을 읽으려면 폴더를 추가하세요.</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>모든 음악 찾기</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>이 휴대폰의 모든 곡을 찾거나 음악이 있는 폴더를 선택하세요. Noctis는 그 자리에서 읽으며 아무것도 업로드하지 않습니다.</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis가 더 이상 이 휴대폰의 음악을 읽을 수 없습니다. Noctis 설정에서 음악 및 오디오를 허용하세요.</value></data>
 </root>

@@ -7392,4 +7392,14 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>لا توجد ألبومات مطابقة</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>مسح البحث</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>تعذّر كتابة الوسوم في "{0}": وسوم ملفات DSDIFF (.dff) للقراءة فقط. حوّل الملف إلى DSD (.dsf) لتعديل وسومه.</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>العثور على كل الموسيقى تلقائيًا</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>يضيف كل الأغاني الموجودة على هذا الهاتف وبطاقة SD الخاصة به دون اختيار مجلدات. لا تُقرأ ملفات الكلمات (.lrc و.ttml) الموجودة بجانب الأغنية إلا من المجلدات التي تضيفها أدناه.</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>كل الموسيقى</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>لم يُسمح لـ Noctis بقراءة الموسيقى على هذا الهاتف. لتفعيل ذلك، اسمح بإذن الموسيقى والصوت في إعدادات Noctis.</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>لم يعد بإمكان Noctis قراءة الموسيقى على هذا الهاتف. تبقى أغانيها في القائمة لكنها لن تُشغَّل حتى تسمح بإذن الموسيقى والصوت في إعدادات Noctis.</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>فتح الإعدادات</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>أضف مجلدًا للموسيقى التي لا يعرضها الهاتف (بعض بطاقات SD ومحركات USB)، أو لقراءة ملفات الكلمات بجانب أغانيه.</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>العثور على كل الموسيقى</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>اعثر على كل الأغاني على هذا الهاتف، أو اختر المجلد الذي توجد فيه موسيقاك. يقرأها Noctis في مكانها ولا يرفع أي شيء أبدًا.</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>لم يعد بإمكان Noctis قراءة الموسيقى على هذا الهاتف. اسمح بإذن الموسيقى والصوت في إعدادات Noctis.</value></data>
 </root>
