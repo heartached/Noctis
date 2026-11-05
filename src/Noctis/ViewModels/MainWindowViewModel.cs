@@ -510,7 +510,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 Navigate("home");
         });
         audioCd.StartWatching();
-        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory, Settings);
+        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory, Settings,
+            App.Services?.GetService<LastFmTasteService>());
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence, Settings);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
         // Keep the top-bar dropdown labels in sync with the Albums grid filters/sort.

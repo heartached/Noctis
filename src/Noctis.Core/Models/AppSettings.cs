@@ -716,6 +716,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether Home's "New in Library" section shows its rows.</summary>
     public bool HomeNewAlbumsExpanded { get; set; } = true;
 
+    /// <summary>Whether Home's "From your Last.fm" section (GitHub #177) shows its rows.</summary>
+    public bool HomeLastFmExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's "Discover on Last.fm" section (GitHub #177) shows its list.</summary>
+    public bool HomeLastFmDiscoverExpanded { get; set; } = true;
+
     /// <summary>Show New in Library above the recently played Albums row (default: below it).</summary>
     public bool HomeNewAlbumsFirst { get; set; }
 
@@ -1010,6 +1016,11 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
+
+    /// <summary>GitHub #177: Home's "From your Last.fm" mixes and Discover, read from the
+    /// connected account. On by default: they only show while an account is connected, and
+    /// connecting is the opt-in; this lets a connected user turn them off.</summary>
+    public bool LastFmTasteEnabled { get; set; } = true;
 
     /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).
     /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>

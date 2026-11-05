@@ -3921,4 +3921,28 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Нечего сохранять — поставьте метку хотя бы на одну строку</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Сохранено · не удалось записать текст в аудиофайл (используется или только для чтения?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>Не удалось сохранить: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Home.LastFm.Title" xml:space="preserve"><value>Из вашего Last.fm</value><comment>Home section title (GitHub #177)</comment></data>
+  <data name="Home.LastFm.Subtitle" xml:space="preserve"><value>Миксы по вашим прослушиваниям в Last.fm из песен вашей медиатеки</value><comment>Home Last.fm section: line under the title</comment></data>
+  <data name="Home.LastFm.Loading" xml:space="preserve"><value>Читаем ваш Last.fm…</value><comment>Home Last.fm section: first read in progress</comment></data>
+  <data name="Home.LastFm.NoMatches" xml:space="preserve"><value>Ни одной из песен, которые вы слушаете в Last.fm, пока нет в медиатеке.</value><comment>Home Last.fm section: the account's songs matched nothing in the library</comment></data>
+  <data name="Home.LastFm.Error.UserNotFound" xml:space="preserve"><value>Last.fm не знает этот аккаунт.</value><comment>Home Last.fm section error</comment></data>
+  <data name="Home.LastFm.Error.Private" xml:space="preserve"><value>Этот аккаунт Last.fm скрывает свои прослушивания.</value><comment>Home Last.fm section error</comment></data>
+  <data name="Home.LastFm.Error.ShowingSaved" xml:space="preserve"><value>Не удалось связаться с Last.fm. Показаны сохранённые миксы.</value><comment>Home Last.fm section: refresh failed, older mixes still shown</comment></data>
+  <data name="Home.LastFm.Error.Unreachable" xml:space="preserve"><value>Не удалось связаться с Last.fm. Попробуйте обновить позже.</value><comment>Home Last.fm section: refresh failed, nothing saved</comment></data>
+  <data name="Home.LastFm.Refresh" xml:space="preserve"><value>Обновить</value><comment>Home Last.fm section: button that reads Last.fm again</comment></data>
+  <data name="Home.LastFm.Refreshing" xml:space="preserve"><value>Обновление…</value><comment>Home Last.fm section: the Refresh button while reading</comment></data>
+  <data name="Home.LastFm.RefreshTip" xml:space="preserve"><value>Заново загрузить ваши чарты Last.fm</value><comment>Tooltip / screen-reader name of the Home Last.fm Refresh button</comment></data>
+  <data name="Home.LastFm.TopSongs" xml:space="preserve"><value>Ваши топ-песни Last.fm</value><comment>Home Last.fm mix: the account's top tracks found in the library</comment></data>
+  <data name="Home.LastFm.Loved" xml:space="preserve"><value>Любимые в Last.fm</value><comment>Home Last.fm mix: loved tracks found in the library</comment></data>
+  <data name="Home.LastFm.TopArtists" xml:space="preserve"><value>От исполнителей, которых вы слушаете чаще всего</value><comment>Home Last.fm mix: library songs by the account's top artists</comment></data>
+  <data name="Home.LastFm.Shuffle" xml:space="preserve"><value>Перемешать</value><comment>Home Last.fm mix: shuffle button label, followed by the mix's song count</comment></data>
+  <data name="Home.LastFm.ShuffleMix" xml:space="preserve"><value>Перемешать весь микс</value><comment>Tooltip / screen-reader name of a Last.fm mix's shuffle button</comment></data>
+  <data name="Home.LastFm.Discover" xml:space="preserve"><value>Открыть в Last.fm</value><comment>Home section title: artists/albums from Last.fm not in the library (GitHub #177)</comment></data>
+  <data name="Home.LastFm.DiscoverLine" xml:space="preserve"><value>Исполнители и альбомы, которых у вас ещё нет, по вашему Last.fm</value><comment>Home Discover section: line under the title</comment></data>
+  <data name="Home.LastFm.OpenOnLastFm" xml:space="preserve"><value>Открыть в Last.fm</value><comment>Tooltip of a Discover entry: opens its Last.fm page in the browser</comment></data>
+  <data name="Home.LastFm.SimilarTo" xml:space="preserve"><value>Похоже на {0}</value><comment>Discover entry detail; {0} = one or two of the user's artists</comment></data>
+  <data name="Home.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · в ваших топ-альбомах Last.fm</value><comment>Discover album entry detail; {0} = the album's artist</comment></data>
+  <data name="Home.LastFm.ArtistYouPlay" xml:space="preserve"><value>В ваших топ-исполнителях Last.fm</value><comment>Discover artist entry detail: a top artist with no songs in the library</comment></data>
+  <data name="Settings.LastFmTaste.Title" xml:space="preserve"><value>Миксы и рекомендации</value><comment>Settings › Integrations › Last.fm toggle (GitHub #177)</comment></data>
+  <data name="Settings.LastFmTaste.Line" xml:space="preserve"><value>На главной: миксы из ваших песен и исполнители для знакомства по вашим чартам Last.fm. Ничего не отправляется.</value><comment>Settings › Integrations › Last.fm: what the mixes toggle does</comment></data>
 </root>

@@ -7386,6 +7386,19 @@
                                               IsChecked="{Binding LastFmScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #177: Home's "From your Last.fm" mixes and Discover (read-only). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.LastFmTaste.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.LastFmTaste.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LastFmTaste.Title}"
+                                              IsChecked="{Binding LastFmTasteEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <!-- GitHub #160: one-way play count import from LastFm (SettingsViewModel.PlayCountImport.cs). -->
                     <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">

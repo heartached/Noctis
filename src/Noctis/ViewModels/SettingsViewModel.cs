@@ -1560,6 +1560,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _homeRecentAlbumsCount = 6;
     [ObservableProperty] private int _homeNewAlbumsCount = 10;
     [ObservableProperty] private bool _homeNewAlbumsExpanded = true;
+    [ObservableProperty] private bool _homeLastFmExpanded = true;
+    [ObservableProperty] private bool _homeLastFmDiscoverExpanded = true;
     [ObservableProperty] private bool _homeNewAlbumsFirst;
 
     public IReadOnlyList<int> HomeAlbumCountChoices => AppSettings.HomeAlbumCountChoices;
@@ -1567,6 +1569,8 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnHomeRecentAlbumsCountChanged(int value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeNewAlbumsCountChanged(int value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeNewAlbumsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeLastFmExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeLastFmDiscoverExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeNewAlbumsFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Noctis server (OpenSubsonic API for phones / other clients) ──
@@ -2683,6 +2687,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
     [ObservableProperty] private string _lastFmStatusText = Loc.T("Settings.NotConnected");
+    /// <summary>GitHub #177: Home's Last.fm mixes and Discover; see <see cref="AppSettings.LastFmTasteEnabled"/>.</summary>
+    [ObservableProperty] private bool _lastFmTasteEnabled = true;
 
     // ── ListenBrainz ──
     [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
@@ -3452,6 +3458,8 @@ public partial class SettingsViewModel : ViewModelBase
             HomeRecentAlbumsCount = AppSettings.SnapHomeAlbumCount(_settings.HomeRecentAlbumsCount);
             HomeNewAlbumsCount = AppSettings.SnapHomeAlbumCount(_settings.HomeNewAlbumsCount);
             HomeNewAlbumsExpanded = _settings.HomeNewAlbumsExpanded;
+            HomeLastFmExpanded = _settings.HomeLastFmExpanded;
+            HomeLastFmDiscoverExpanded = _settings.HomeLastFmDiscoverExpanded;
             HomeNewAlbumsFirst = _settings.HomeNewAlbumsFirst;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             BackgroundBlurAmount = Math.Clamp(_settings.BackgroundBlurAmount, 0, 1);
@@ -3570,6 +3578,7 @@ public partial class SettingsViewModel : ViewModelBase
             DiscordStatusDisplay = DiscordPresenceOptions.ParseStatusDisplay(_settings.DiscordStatusDisplay).ToString();
             LastFmScrobblingEnabled = _settings.LastFmScrobblingEnabled;
             LastFmUsername = _settings.LastFmUsername;
+            LastFmTasteEnabled = _settings.LastFmTasteEnabled;
 
             if (_lastFm != null && !string.IsNullOrEmpty(_settings.LastFmSessionKey))
             {
@@ -3969,6 +3978,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeRecentAlbumsCount = AppSettings.SnapHomeAlbumCount(HomeRecentAlbumsCount);
         _settings.HomeNewAlbumsCount = AppSettings.SnapHomeAlbumCount(HomeNewAlbumsCount);
         _settings.HomeNewAlbumsExpanded = HomeNewAlbumsExpanded;
+        _settings.HomeLastFmExpanded = HomeLastFmExpanded;
+        _settings.HomeLastFmDiscoverExpanded = HomeLastFmDiscoverExpanded;
         _settings.HomeNewAlbumsFirst = HomeNewAlbumsFirst;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.BackgroundBlurAmount = Math.Clamp(BackgroundBlurAmount, 0, 1);
@@ -4039,6 +4050,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.DiscordStatusDisplay = DiscordPresenceOptions.ParseStatusDisplay(DiscordStatusDisplay).ToString();
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
+        _settings.LastFmTasteEnabled = LastFmTasteEnabled;
         if (_lastFm is LastFmService lfm)
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
 
@@ -6307,6 +6319,8 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnLastFmTasteEnabledChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
     [RelayCommand]
     private async Task LoginLastFm()
     {
@@ -6401,6 +6415,8 @@ public partial class SettingsViewModel : ViewModelBase
         LastFmUsername = "";
         LastFmStatusText = Loc.T("Settings.NotConnected");
         _ = SaveAsync();
+        // The account's charts behind Home's Last.fm mixes (GitHub #177) go with it.
+        _ = App.Services?.GetService<LastFmTasteService>()?.ClearAsync();
     }
 
     // ── ListenBrainz handlers ──
@@ -7904,6 +7920,8 @@ public partial class SettingsViewModel : ViewModelBase
             HomeRediscoveredExpanded = defaultSettings.HomeRediscoveredExpanded;
             HomeLastPlayedExpanded = defaultSettings.HomeLastPlayedExpanded;
             HomeNewAlbumsExpanded = defaultSettings.HomeNewAlbumsExpanded;
+            HomeLastFmExpanded = defaultSettings.HomeLastFmExpanded;
+            HomeLastFmDiscoverExpanded = defaultSettings.HomeLastFmDiscoverExpanded;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
@@ -7988,6 +8006,7 @@ public partial class SettingsViewModel : ViewModelBase
             DiscordStatusDisplay = DiscordPresenceOptions.ParseStatusDisplay(defaultSettings.DiscordStatusDisplay).ToString();
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
+            LastFmTasteEnabled = defaultSettings.LastFmTasteEnabled;
             IsLastFmConnected = false;
             LastFmStatusText = Loc.T("Settings.NotConnected");
             // Without this the session key survived in the service and SyncToSettings
