@@ -1681,12 +1681,15 @@ public partial class SettingsViewModel : ViewModelBase
     {
         try
         {
-            if (restart && _noctisServer is not null) await _noctisServer.StopAsync();
+            // Start and stop run on a worker thread: building and starting Kestrel (the
+            // WebApplication builder, HTTPS) ran on the UI thread after the certificate's await,
+            // 150-350 ms the first time the switch went on, which froze its slide and the card.
+            if (restart && _noctisServer is { } restarting) await Task.Run(restarting.StopAsync);
 
             if (!NoctisServerEnabled)
             {
                 StopPairingQr();
-                if (_noctisServer is not null) await _noctisServer.StopAsync();
+                if (_noctisServer is { } running) await Task.Run(running.StopAsync);
                 NoctisServerUrl = string.Empty;
                 NoctisServerStartFailed = false;
                 NoctisServerError = string.Empty;
@@ -1696,7 +1699,9 @@ public partial class SettingsViewModel : ViewModelBase
                 return;
             }
 
-            RefreshServerUsers();
+            // The phone list off the UI thread: the switch also turns sync on, whose ledger seed
+            // would hold the ledger while this read waited for it.
+            RefreshServerUsers(phonesInBackground: true);
             if (_noctisServer is null)
             {
                 // The library's collections are bound to views: mutations from Kestrel
@@ -1736,18 +1741,28 @@ public partial class SettingsViewModel : ViewModelBase
                     LyricsCacheDirectory = LyricsViewModel.LyricsCacheDir,
                 };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
-                _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevices);
+                _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevicesInBackground);
                 _noctisServer.PairingCodeUsed += (_, _) => Dispatcher.UIThread.Post(OnPairingCodeUsed);
             }
-            if (!_noctisServer.IsRunning)
+            var server = _noctisServer;
+            var port = _settings.NoctisServerPort is >= 1024 and <= 65535 ? _settings.NoctisServerPort : 4747;
+            var dataDirectory = ServerDataDirectory;
+            var (fingerprint, ip) = await Task.Run(async () =>
             {
-                var cert = await Task.Run(() => ServerCertificate.LoadOrCreate(ServerDataDirectory));
-                NoctisServerFingerprint = ServerCertificate.Fingerprint(cert);
-                var port = _settings.NoctisServerPort is >= 1024 and <= 65535 ? _settings.NoctisServerPort : 4747;
-                await _noctisServer.StartAsync(port, cert);
-            }
-            var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
-            NoctisServerUrl = $"https://{ip}:{_noctisServer.Port}";
+                string? print = null;
+                if (!server.IsRunning)
+                {
+                    var cert = ServerCertificate.LoadOrCreate(dataDirectory);
+                    print = ServerCertificate.Fingerprint(cert);
+                    await server.StartAsync(port, cert).ConfigureAwait(false);
+                }
+                return (print, WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>");
+            });
+            if (fingerprint is not null) NoctisServerFingerprint = fingerprint;
+            // Switched off while it started: the stop queued behind this pass closes it, so
+            // don't open the card for a moment in between.
+            if (!NoctisServerEnabled) return;
+            NoctisServerUrl = $"https://{ip}:{server.Port}";
             NoctisServerStartFailed = false;
             NoctisServerError = string.Empty;
             SetNoctisServerQr(QrCodeBitmap.TryRender(NoctisServerUrl));
@@ -1797,7 +1812,7 @@ public partial class SettingsViewModel : ViewModelBase
         old?.Dispose();
     }
 
-    private void RefreshServerUsers()
+    private void RefreshServerUsers(bool phonesInBackground = false)
     {
         try
         {
@@ -1808,7 +1823,8 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
         // Deleting an account or changing its password signs its devices out.
-        RefreshPhoneDevices();
+        if (phonesInBackground) RefreshPhoneDevicesInBackground();
+        else RefreshPhoneDevices();
     }
 
     /// <summary>Account errors ("Use a password of at least 8 characters.") leave on their own like

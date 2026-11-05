@@ -68,7 +68,7 @@ public partial class SettingsViewModel
     {
         var sync = App.Services?.GetService<ILibrarySyncService>();
         if (sync is not null)
-            sync.Changed += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevices);
+            sync.Changed += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevicesInBackground);
         return sync;
     }
 
@@ -126,18 +126,29 @@ public partial class SettingsViewModel
         {
             // First enable: put the existing favourites/ratings/play counts into the ledger so
             // a phone that connects today sees the library as it is, not only future changes.
+            // One seed at a time: on, off, on used to run two over each other, and a seed of a
+            // big library holds the ledger for seconds (one write per song).
             var tracks = _library.Tracks.ToList();
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var playlists = await _persistence.LoadPlaylistsAsync();
-                    if (Sync is { } sync) await sync.SeedAsync(tracks, playlists);
-                }
-                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "Sync.SeedFailed", ex.Message); }
-            });
+            var sync = Sync;
+            _syncSeed = _syncSeed.ContinueWith(_ => SeedSyncLedgerAsync(sync, tracks), TaskScheduler.Default).Unwrap();
         }
-        RefreshPhoneDevices();
+        // Off the UI thread: the ledger read waited out the seed's writes on the UI thread,
+        // 0.2-1.3 s with a 20,000-song library, which froze the switch mid-slide.
+        RefreshPhoneDevicesInBackground();
+    }
+
+    private Task _syncSeed = Task.CompletedTask;
+
+    private async Task SeedSyncLedgerAsync(ILibrarySyncService? sync, List<Track> tracks)
+    {
+        // Switched off again before this seed's turn: nothing to do (the next "on" seeds).
+        if (sync is null || !SyncEnabled) return;
+        try
+        {
+            var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+            await sync.SeedAsync(tracks, playlists).ConfigureAwait(false);
+        }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "Sync.SeedFailed", ex.Message); }
     }
 
     partial void OnSyncDeviceNameChanged(string value)
@@ -163,23 +174,71 @@ public partial class SettingsViewModel
     /// </summary>
     private void RefreshPhoneDevices()
     {
+        _phoneDevicesGeneration++;
+        ApplyPhoneDevices(ReadPhoneDevices(ServerUsers, Sync));
+    }
+
+    /// <summary>Newest refresh wins: a background read that lands after a newer one is dropped.</summary>
+    private int _phoneDevicesGeneration;
+
+    /// <summary>
+    /// <see cref="RefreshPhoneDevices"/> with the two database reads on a worker thread, for the
+    /// switches and the ledger's own change events. The ledger is SQLite and a seed or a phone's
+    /// push holds it while it writes; read on the UI thread, that wait froze the window.
+    /// </summary>
+    private async void RefreshPhoneDevicesInBackground()
+    {
+        var generation = ++_phoneDevicesGeneration;
+        // Sync off needs no read to know the line is empty: clear it with the switch.
+        if (!SyncEnabled) SyncStatusText = string.Empty;
+        var users = ServerUsers;
+        var sync = Sync;
+        PhoneDevicesSnapshot snapshot;
+        try { snapshot = await Task.Run(() => ReadPhoneDevices(users, sync)); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "Phone.DevicesRead", ex.Message); return; }
+        if (generation != _phoneDevicesGeneration) return;
+        ApplyPhoneDevices(snapshot);
+    }
+
+    private sealed record PhoneDevicesSnapshot(IReadOnlyList<ServerDevice> Keys, string? KeysError,
+        IReadOnlyList<SyncDevice> Synced, string? LedgerError, string? DeviceId);
+
+    private static PhoneDevicesSnapshot ReadPhoneDevices(ServerUserStore users, ILibrarySyncService? sync)
+    {
         IReadOnlyList<ServerDevice> keys = Array.Empty<ServerDevice>();
-        try { keys = ServerUsers.Devices(); }
-        catch (Exception ex) { ShowServerUserError(ex.Message); }
+        string? keysError = null;
+        try { keys = users.Devices(); }
+        catch (Exception ex) { keysError = ex.Message; }
 
         IReadOnlyList<SyncDevice> synced = Array.Empty<SyncDevice>();
         string? ledgerError = null;
-        if (Sync is { } sync)
+        string? deviceId = null;
+        if (sync is not null)
         {
-            SyncDeviceIdText = sync.DeviceId;
-            try { synced = sync.Devices().Where(d => !string.Equals(d.Id, sync.DeviceId, StringComparison.OrdinalIgnoreCase)).ToList(); }
+            deviceId = sync.DeviceId;
+            try { synced = sync.Devices().Where(d => !string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase)).ToList(); }
             catch (Exception ex) { ledgerError = ex.Message; }
         }
+        return new PhoneDevicesSnapshot(keys, keysError, synced, ledgerError, deviceId);
+    }
+
+    private void ApplyPhoneDevices(PhoneDevicesSnapshot snapshot)
+    {
+        if (snapshot.KeysError is { } keysError) ShowServerUserError(keysError);
+        if (snapshot.DeviceId is { } deviceId) SyncDeviceIdText = deviceId;
+        var synced = snapshot.Synced;
+        var ledgerError = snapshot.LedgerError;
 
         var now = DateTime.UtcNow;
-        PhoneDevices.Clear();
-        foreach (var row in BuildPhoneDeviceRows(keys, synced, SyncEnabled, now)) PhoneDevices.Add(row);
-        OnPropertyChanged(nameof(HasPhoneDevices));
+        var rows = BuildPhoneDeviceRows(snapshot.Keys, synced, SyncEnabled, now);
+        // Same rows (the usual case for a switch flip): leave the list alone rather than
+        // rebuilding every row's template under the switch's slide.
+        if (!rows.SequenceEqual(PhoneDevices))
+        {
+            PhoneDevices.Clear();
+            foreach (var row in rows) PhoneDevices.Add(row);
+            OnPropertyChanged(nameof(HasPhoneDevices));
+        }
         SyncStatusText = ledgerError is not null ? Localization.Loc.T("Phone.SyncFailed", ledgerError)
             : !SyncEnabled ? string.Empty
             : synced.Count == 0 ? Localization.Loc.T("Phone.NotSyncedYet")
