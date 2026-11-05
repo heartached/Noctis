@@ -7398,4 +7398,21 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>일치하는 앨범 없음</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>검색 지우기</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>"{0}"에 태그를 쓸 수 없습니다. DSDIFF(.dff) 파일의 태그는 읽기 전용입니다. 태그를 편집하려면 DSD(.dsf)로 변환하세요.</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>선택</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>항목 선택</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>{0}개 선택됨</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>모두 선택</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>모두 선택 해제</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>완료</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>플레이리스트 가져오기</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}곡 중 {0}곡을 가져왔습니다</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>플레이리스트 {0}개를 가져왔습니다</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>가져온 플레이리스트가 없습니다</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>“{0}”의 곡이 이 휴대폰에 없습니다</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{1}곡 중 {0}곡을 찾았습니다.</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>다음 줄은 이 휴대폰의 곡과 일치하지 않습니다:</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}”은(는) M3U 플레이리스트가 아닙니다</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>“{0}”을(를) 읽을 수 없습니다</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>플레이리스트 열기</value></data>
 </root>

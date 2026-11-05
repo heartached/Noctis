@@ -148,6 +148,14 @@
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddToQueue}" VerticalAlignment="Center" />
                                                 </Grid>
                                             </Button>
+                                            <!-- A song list's Select mode, this song ticked first (an album's: none yet). -->
+                                            <Button Name="MenuSelect" Classes="row np-row" Command="{Binding SelectCommand}" IsVisible="{Binding CanSelect}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhSelect}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.Select}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A song's rating: five stars (a tap sets it) and Clear while it has one. -->
                                             <Grid Name="MenuRate" ColumnDefinitions="56,*,Auto" MinHeight="44" IsVisible="{Binding CanRate}">
                                                 <PathIcon Data="{DynamicResource PhStar}" Width="20" Height="20" Foreground="{DynamicResource MenuGlassText}"

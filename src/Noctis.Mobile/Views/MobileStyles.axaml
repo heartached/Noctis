@@ -387,6 +387,32 @@
         <Setter Property="Width" Value="24" />
         <Setter Property="Height" Value="24" />
     </Style>
+    <!-- A word in a header glass pill (Select mode's Select All and Done); Done in the accent. -->
+    <Style Selector="Button.glass-text">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="MinWidth" Value="44" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.glass-text.accent">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.glass-text.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+
+    <!-- Select mode's check circle on a song row: a grey ring, the accent disc once ticked. -->
+    <Style Selector="views|SelectCheck">
+        <Setter Property="RingBrush" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        <Setter Property="FillBrush" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
 
     <!-- A rail or grid cover (RailTile): rounded square; artists override to a circle below. -->
     <Style Selector="Border.art.rail">

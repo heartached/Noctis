@@ -7398,4 +7398,21 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>Aucun album trouvé</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Effacer la recherche</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Impossible d’écrire les tags dans « {0} » : les tags des fichiers DSDIFF (.dff) sont en lecture seule. Convertissez-le en DSD (.dsf) pour les modifier.</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>Sélectionner</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>Sélectionner des éléments</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>{0} sélectionné(s)</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>Tout sélectionner</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Tout désélectionner</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>OK</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Importer une playlist</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>{0} morceaux importés sur {1}</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} playlist importée|{0} playlists importées</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>Aucune playlist importée</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>Aucun morceau de « {0} » n’est sur ce téléphone</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{0} morceaux trouvés sur {1}.</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>Ces lignes ne correspondent à aucun morceau du téléphone :</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0} : {1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>« {0} » n’est pas une playlist M3U</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Impossible de lire « {0} »</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Ouvrir la playlist</value></data>
 </root>

@@ -50,6 +50,8 @@
     <StreamGeometry x:Key="PhChevronRight">M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6zM0 0ZM24 24Z</StreamGeometry>
     <!-- check mark = desktop CheckmarkIcon -->
     <StreamGeometry x:Key="PhCheck">M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41zM0 0ZM24 24Z</StreamGeometry>
+    <!-- Select (song lists' Select mode): a ring with the check mark inside, iOS's checkmark.circle -->
+    <StreamGeometry x:Key="PhSelect">F1 M12 2.38Q15.98 2.38 18.8 5.2Q21.62 8.02 21.62 12Q21.62 15.98 18.8 18.8Q15.98 21.62 12 21.62Q8.02 21.62 5.2 18.8Q2.38 15.98 2.38 12Q2.38 8.02 5.2 5.2Q8.02 2.38 12 2.38ZM12 4.62Q8.95 4.62 6.79 6.79Q4.62 8.95 4.62 12Q4.62 15.05 6.79 17.21Q8.95 19.38 12 19.38Q15.05 19.38 17.21 17.21Q19.38 15.05 19.38 12Q19.38 8.95 17.21 6.79Q15.05 4.62 12 4.62ZM10.6 13.9L15.6 8.9L17.1 10.4L10.6 16.9L7 13.3L8.5 11.8ZM0 0ZM24 24Z</StreamGeometry>
     <!-- magnifier = desktop SearchIcon (sidebar search) -->
     <StreamGeometry x:Key="PhSearch">M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM0 0ZM24 24Z</StreamGeometry>
     <!-- profile = desktop RailPersonIcon (Settings › Account) -->

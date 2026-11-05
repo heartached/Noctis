@@ -7398,4 +7398,21 @@
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>沒有相符的專輯</value></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>清除搜尋</value></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>無法寫入「{0}」的標籤：DSDIFF (.dff) 檔案的標籤為唯讀。請將其轉換為 DSD (.dsf) 後再編輯標籤。</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>選取</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>選取項目</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>已選取 {0} 項</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>全選</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>取消全選</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>完成</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>匯入播放列表</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>已匯入 {0}/{1} 首歌曲</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>已匯入 {0} 個播放列表</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>未匯入任何播放列表</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>「{0}」中的歌曲都不在此手機上</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>找到 {0}/{1} 首歌曲。</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>以下各行未對應到此手機上的歌曲：</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>「{0}」不是 M3U 播放列表</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>無法讀取「{0}」</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>開啟播放列表</value></data>
 </root>

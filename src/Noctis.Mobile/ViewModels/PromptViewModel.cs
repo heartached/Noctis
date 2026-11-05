@@ -31,6 +31,15 @@ public sealed partial class PromptViewModel : ObservableObject
     public string Title { get; }
     public string Message { get; }
     public bool HasMessage => Message.Length > 0;
+
+    /// <summary>Lines listed under the message in a short scrolling box (an import's lines
+    /// that matched nothing).</summary>
+    public IReadOnlyList<string> Details { get; init; } = Array.Empty<string>();
+
+    public bool HasDetails => Details.Count > 0;
+
+    /// <summary>The last button's label: Cancel, or Done / OK on a prompt that only reports.</summary>
+    public string CancelLabel { get; init; } = Noctis.Localization.Loc.T("Mobile.Cancel");
     public IReadOnlyList<PromptAction> Actions { get; }
 
     /// <summary>A name to type (Rename): the field shows, and the actions wait for a name.</summary>

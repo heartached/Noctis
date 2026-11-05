@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.SelectionHeader"
+             x:DataType="vm:TrackSelection"
+             IsVisible="{Binding IsActive}">
+    <!-- Select mode's top bar (Apple Music's): Select All in a glass pill, "3 Selected" in the
+         middle, Done in the accent. A page lays it over its own header while Select mode is on. -->
+    <Grid ColumnDefinitions="Auto,*,Auto" Height="44">
+        <controls:GlassPanel Classes="header-glass" Width="NaN">
+            <Button Name="SelectAllButton" Classes="glass-text" Command="{Binding ToggleAllCommand}"
+                    AutomationProperties.Name="{Binding SelectAllLabel}">
+                <TextBlock Text="{Binding SelectAllLabel}" />
+            </Button>
+        </controls:GlassPanel>
+        <TextBlock Grid.Column="1" Name="SelectionCount" Text="{Binding HeaderText}" FontSize="17" FontWeight="SemiBold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0" MaxLines="1" TextTrimming="CharacterEllipsis" />
+        <controls:GlassPanel Grid.Column="2" Classes="header-glass" Width="NaN">
+            <Button Name="SelectDoneButton" Classes="glass-text accent" Command="{Binding EndCommand}"
+                    AutomationProperties.Name="{loc:T Mobile.Select.Done}">
+                <TextBlock Text="{loc:T Mobile.Select.Done}" />
+            </Button>
+        </controls:GlassPanel>
+    </Grid>
+</UserControl>

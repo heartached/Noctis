@@ -34,10 +34,14 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
     public BulkObservableCollection<PlaylistRow> Rows { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPlaylists))]
+    [NotifyPropertyChangedFor(nameof(HasPlaylists), nameof(HasTools))]
     private int _playlistCount;
 
     public bool HasPlaylists => PlaylistCount > 0;
+
+    /// <summary>The header's tools pill: search and sort with playlists to show, ⋯ (Import
+    /// Playlist) whenever the phone can import.</summary>
+    public bool HasTools => HasPlaylists || Shell.CanImportPlaylists;
 
     /// <summary>The search found nothing (the tools stay up so it can be cleared).</summary>
     public bool ShowNoMatches => HasPlaylists && Playlists.Count == 0;

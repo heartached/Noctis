@@ -3682,4 +3682,21 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>No albums match</value><comment>Albums page search with no results</comment></data>
   <data name="Mobile.ClearSearch" xml:space="preserve"><value>Clear Search</value><comment>Screen reader: the list pages' search field clear button</comment></data>
   <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>Couldn’t write tags to "{0}": tags in DSDIFF (.dff) files are read-only. Convert it to DSD (.dsf) to edit its tags.</value><comment>Tag editor save error for a .dff file. {0} = file name</comment></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>Select</value><comment>Song lists: enters Select mode (tick several songs, then act on them)</comment></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>Select Items</value><comment>Select mode top bar before any song is ticked</comment></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>{0} Selected</value><comment>Select mode top bar. {0} = number of ticked songs</comment></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>Select All</value><comment>Select mode: tick every song in the list</comment></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Deselect All</value><comment>Select mode: untick every song</comment></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>Done</value><comment>Select mode: leave it; also closes the import result</comment></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Import Playlist</value><comment>Playlists page menu: import .m3u/.m3u8 files</comment></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>Imported {0} of {1} songs</value><comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>Imported {0} playlist|Imported {0} playlists</value><comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>No playlists imported</value><comment>Import result title when no file made a playlist</comment></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>None of the songs in “{0}” are on this phone</value><comment>Import result title. {0} = playlist file name</comment></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{0} of {1} songs found.</value><comment>Import result line for several files. {0} found, {1} total</comment></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>These lines matched no song on this phone:</value><comment>Import result: above the list of playlist lines that matched nothing</comment></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value><comment>One unmatched line when several files were imported. {0} = playlist name, {1} = line</comment></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}” isn’t an M3U playlist</value><comment>Import result: a picked file that is not .m3u/.m3u8. {0} = file name</comment></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Couldn’t read “{0}”</value><comment>Import result: a picked file that could not be read. {0} = file name</comment></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Open Playlist</value><comment>Import result button: open the new playlist</comment></data>
 </root>

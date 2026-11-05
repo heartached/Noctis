@@ -23,12 +23,14 @@ public class MainActivity : AvaloniaMainActivity
     private const int PickFolderRequest = 4242;
     private const int PostNotificationsRequest = 4243;
     private const int CreateDocumentRequest = 4244;
+    private const int OpenDocumentsRequest = 4245;
 
     /// <summary>The live activity, for services that need to start system UI (the SAF picker).</summary>
     public static MainActivity? Current { get; private set; }
 
     private TaskCompletionSource<string?>? _pickFolder;
     private TaskCompletionSource<string?>? _createDocument;
+    private TaskCompletionSource<IReadOnlyList<global::Android.Net.Uri>>? _openDocuments;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -159,6 +161,9 @@ public class MainActivity : AvaloniaMainActivity
         // instance and leave Settings' ExportLogsCommand running forever.
         _createDocument?.TrySetResult(null);
         _createDocument = null;
+        // And a pending playlist import (Playlists ⋯ › Import Playlist).
+        _openDocuments?.TrySetResult(Array.Empty<global::Android.Net.Uri>());
+        _openDocuments = null;
         BackRequested -= OnBackRequested;
         AndroidFrameRate.Instance.Detach(this);
         if (ReferenceEquals(Current, this)) Current = null;
@@ -189,9 +194,46 @@ public class MainActivity : AvaloniaMainActivity
         return _createDocument.Task;
     }
 
+    /// <summary>
+    /// Shows the system document picker (ACTION_OPEN_DOCUMENT) for one or more files of
+    /// <paramref name="mimeTypes"/>; resolves to the picked URIs (empty when backed out of).
+    /// The grant is the one-time read the result carries: the caller reads the files at once,
+    /// so no persistable permission is taken (the 128/512 cap stays for music folders).
+    /// </summary>
+    public Task<IReadOnlyList<global::Android.Net.Uri>> OpenDocumentsAsync(string[] mimeTypes)
+    {
+        _openDocuments?.TrySetResult(Array.Empty<global::Android.Net.Uri>());
+        _openDocuments = new TaskCompletionSource<IReadOnlyList<global::Android.Net.Uri>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var intent = new Intent(Intent.ActionOpenDocument);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType("*/*");
+        intent.PutExtra(Intent.ExtraMimeTypes, mimeTypes);
+        intent.PutExtra(Intent.ExtraAllowMultiple, true);
+        intent.AddFlags(ActivityFlags.GrantReadUriPermission);
+        StartActivityForResult(intent, OpenDocumentsRequest);
+        return _openDocuments.Task;
+    }
+
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
+        if (requestCode == OpenDocumentsRequest)
+        {
+            var pendingOpen = _openDocuments;
+            _openDocuments = null;
+            if (pendingOpen == null) return;
+            var uris = new List<global::Android.Net.Uri>();
+            if (resultCode == Result.Ok && data != null)
+            {
+                // Several picked: ClipData; one: Data (some pickers fill both with the same file).
+                if (data.ClipData is { } clip)
+                    for (var i = 0; i < clip.ItemCount; i++)
+                        if (clip.GetItemAt(i)?.Uri is { } u) uris.Add(u);
+                if (uris.Count == 0 && data.Data is { } single) uris.Add(single);
+            }
+            pendingOpen.TrySetResult(uris);
+            return;
+        }
         if (requestCode == CreateDocumentRequest)
         {
             var pendingDocument = _createDocument;

@@ -53,6 +53,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Tint = shell.TintFactory();
         Tint.HeroFade = true;
         Tint.Enabled = shell.ArtworkPageColors;
+        Selection = new TrackSelection(shell, () => Album.Tracks, () => Album.Name);
         Shell.Library.Refreshed += OnRefreshed;
         Shell.Player.PropertyChanged += OnPlayerChanged;
         Shell.PropertyChanged += OnShellChanged;
@@ -62,6 +63,21 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     public ShellViewModel Shell { get; }
     public Guid AlbumId { get; }
+
+    /// <summary>Select mode on the track list (a song's menu › Select, or the album's ⋯ › Select).</summary>
+    public TrackSelection Selection { get; }
+
+    [RelayCommand]
+    private void BeginSelect() => Selection.Begin();
+
+    /// <summary>A row's ⋯ or long press: the song's menu (with Select); in Select mode it ticks.</summary>
+    [RelayCommand]
+    private void OpenSongMenu(Track? track)
+    {
+        if (track == null) return;
+        if (Selection.IsActive) Selection.Toggle(track);
+        else Shell.OpenTrackMenu(track, null, Selection);
+    }
     public PageTint Tint { get; }
 
     [ObservableProperty]
@@ -254,6 +270,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         var fresh = Shell.Library.Service.GetAlbumById(AlbumId);
         if (fresh != null && !ReferenceEquals(fresh, Album)) Apply(fresh);
         else IsFavourite = Album.IsAllTracksFavorite;   // a favourite toggled here or elsewhere
+        Selection.Prune();
     }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
@@ -298,6 +315,11 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     private void PlayTrack(AlbumTrackRow? row)
     {
         if (row == null) return;
+        if (Selection.IsActive)
+        {
+            Selection.Toggle(row.Track);
+            return;
+        }
         PlayFrom(Tracks.ToList().IndexOf(row));
     }
 
@@ -319,10 +341,11 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     [RelayCommand] private void OpenArtist() => Shell.OpenArtistCommand.Execute(Album.Artist);
 
-    [RelayCommand] private void More() => Shell.OpenAlbumSheetCommand.Execute(Album);
+    [RelayCommand] private void More() => Shell.OpenAlbumMenu(Album, Selection);
 
     public override void OnClosed()
     {
+        Selection.End();
         _descriptionCts.Cancel();
         Shell.Library.Refreshed -= OnRefreshed;
         Shell.Player.PropertyChanged -= OnPlayerChanged;

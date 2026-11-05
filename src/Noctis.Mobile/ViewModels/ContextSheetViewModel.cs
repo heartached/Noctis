@@ -26,11 +26,16 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     /// <summary>A song's menu; <paramref name="inPlaylist"/> is the playlist whose page it was opened
     /// on, for Remove from Playlist.</summary>
-    public static ContextSheetViewModel ForTrack(ShellViewModel shell, Track track, Playlist? inPlaylist = null) =>
-        new(shell, track.Title, track.Artist, track.AlbumArtworkPath, new[] { track }) { Track = track, InPlaylist = inPlaylist };
+    public static ContextSheetViewModel ForTrack(ShellViewModel shell, Track track, Playlist? inPlaylist = null, TrackSelection? selection = null) =>
+        new(shell, track.Title, track.Artist, track.AlbumArtworkPath, new[] { track }) { Track = track, InPlaylist = inPlaylist, SelectIn = selection };
 
-    public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album) =>
-        new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album };
+    /// <summary>Several songs (Select mode's Add to Playlist): "3 songs", the first one's cover.</summary>
+    public static ContextSheetViewModel ForTracks(ShellViewModel shell, IReadOnlyList<Track> tracks) =>
+        new(shell, Loc.Plural("Mobile.Count.Songs", tracks.Count), string.Empty,
+            tracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.AlbumArtworkPath))?.AlbumArtworkPath, tracks);
+
+    public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album, TrackSelection? selection = null) =>
+        new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album, SelectIn = selection };
 
     /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
     /// <paramref name="artworkPath"/> (the cover the row showed).</summary>
@@ -56,6 +61,21 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     /// <summary>The playlist page a song's menu was opened on.</summary>
     public Playlist? InPlaylist { get; private init; }
+
+    /// <summary>The song list a song's menu was opened on, when it has Select mode: the menu's
+    /// Select enters it with this song ticked (Apple's long press › Select).</summary>
+    public TrackSelection? SelectIn { get; private init; }
+
+    public bool CanSelect => SelectIn != null && (Track != null || Album != null);
+
+    [RelayCommand]
+    private void Select()
+    {
+        var selection = SelectIn;
+        var track = Track;
+        _shell.CloseSheet();
+        selection?.Begin(track);
+    }
 
     // ── Playlist editing (desktop parity) ──
 
