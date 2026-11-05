@@ -142,8 +142,10 @@ from your own computer), and signing out stops it.
 - **Foreground service (media playback) and wake lock**, so music keeps playing with the
   screen off.
 - **Internet and network state**, used only for the connections described under Network.
+- **Music and audio** (on Android 12 and older, read storage), only if you turn on Find All
+  Music Automatically, to add the songs on your device to your library.
 
-Noctis does not request location, contacts, camera, microphone, phone, storage or media
+Noctis does not request location, contacts, camera, microphone, phone, photo or video
 permissions.
 
 ## Backups
