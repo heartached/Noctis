@@ -7636,4 +7636,21 @@
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>保存するものがありません。少なくとも 1 行にスタンプしてください</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>保存しました · オーディオファイルに歌詞を書き込めませんでした（使用中または読み取り専用？）</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>保存に失敗しました: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>あなたのLast.fmから</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>あなたのLast.fmトップソング</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Last.fmでお気に入り</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>よく聴くアーティストから</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Last.fmを読み込み中…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Last.fmで聴いている曲はまだライブラリにありません。</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fmはこのアカウントを認識していません。</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>このLast.fmアカウントは再生履歴を非公開にしています。</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fmに接続できません。保存済みのミックスを表示しています。</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>Last.fmに接続できません。後でもう一度お試しください。</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Last.fmで見つける</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>{0}に似ています</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · トップアルバム</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>トップアーティスト</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0}をLast.fmで開く</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>ミックスとおすすめ</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>ホームに、Last.fmのチャートから作ったあなたの曲のミックスと新しいアーティストを表示します。使うのはアカウント名だけで、何も送信しません。</value></data>
 </root>

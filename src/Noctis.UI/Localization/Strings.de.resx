@@ -3936,4 +3936,21 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Home.LastFm.ArtistYouPlay" xml:space="preserve"><value>In deinen Last.fm-Top-Künstlern</value><comment>Discover artist entry detail: a top artist with no songs in the library</comment></data>
   <data name="Settings.LastFmTaste.Title" xml:space="preserve"><value>Mixe und Empfehlungen</value><comment>Settings › Integrations › Last.fm toggle (GitHub #177)</comment></data>
   <data name="Settings.LastFmTaste.Line" xml:space="preserve"><value>Home zeigt Mixe aus deinen Songs und Künstler zum Entdecken, aus deinen Last.fm-Charts. Es wird nichts zurückgesendet.</value><comment>Settings › Integrations › Last.fm: what the mixes toggle does</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>Aus deinem Last.fm</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>Deine Last.fm-Top-Titel</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Auf Last.fm geliebt</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>Von Künstlern, die du am meisten hörst</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Dein Last.fm wird gelesen …</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Keiner der Titel, die du auf Last.fm hörst, ist schon in deiner Mediathek.</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm kennt dieses Konto nicht.</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>Dieses Last.fm-Konto hält sein Hören privat.</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fm nicht erreichbar. Deine gespeicherten Mixe werden gezeigt.</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>Last.fm nicht erreichbar. Versuch es später noch einmal.</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Entdecken auf Last.fm</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>Ähnlich wie {0}</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · In deinen Top-Alben</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>In deinen Top-Künstlern</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0} auf Last.fm öffnen</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mixe und Empfehlungen</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Home zeigt Mixe deiner Titel und Künstler zum Entdecken, aus deinen Last.fm-Charts. Nur dein Kontoname wird verwendet; nichts wird zurückgesendet.</value></data>
 </root>

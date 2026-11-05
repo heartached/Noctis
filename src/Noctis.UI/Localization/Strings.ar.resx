@@ -7636,4 +7636,21 @@
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>لا شيء لحفظه — اختم سطرًا واحدًا على الأقل</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>تم الحفظ · تعذّرت كتابة الكلمات في الملف الصوتي (قيد الاستخدام أو للقراءة فقط؟)</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>فشل الحفظ: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>من Last.fm الخاص بك</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>أفضل أغانيك على Last.fm</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>المفضلة على Last.fm</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>من الفنانين الذين تستمع إليهم أكثر</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>جارٍ قراءة Last.fm…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>لا توجد في مكتبتك بعد أي من الأغاني التي تستمع إليها على Last.fm.</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>لا يعرف Last.fm هذا الحساب.</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>يُبقي حساب Last.fm هذا استماعه خاصًا.</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>تعذّر الوصول إلى Last.fm. تُعرض مزيجاتك المحفوظة.</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>تعذّر الوصول إلى Last.fm. حاول لاحقًا.</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>اكتشف على Last.fm</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>مشابه لـ {0}</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · ضمن أفضل ألبوماتك</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>ضمن أفضل فنانيك</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>فتح {0} على Last.fm</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>مزيجات وتوصيات</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>تعرض الصفحة الرئيسية مزيجات من أغانيك وفنانين لاكتشافهم من قوائم Last.fm الخاصة بك. يُستخدم اسم حسابك فقط؛ ولا يُرسل أي شيء.</value></data>
 </root>

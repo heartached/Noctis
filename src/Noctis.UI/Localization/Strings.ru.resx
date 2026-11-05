@@ -3945,4 +3945,21 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Home.LastFm.ArtistYouPlay" xml:space="preserve"><value>В ваших топ-исполнителях Last.fm</value><comment>Discover artist entry detail: a top artist with no songs in the library</comment></data>
   <data name="Settings.LastFmTaste.Title" xml:space="preserve"><value>Миксы и рекомендации</value><comment>Settings › Integrations › Last.fm toggle (GitHub #177)</comment></data>
   <data name="Settings.LastFmTaste.Line" xml:space="preserve"><value>На главной: миксы из ваших песен и исполнители для знакомства по вашим чартам Last.fm. Ничего не отправляется.</value><comment>Settings › Integrations › Last.fm: what the mixes toggle does</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>Из вашего Last.fm</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>Ваши топ-треки Last.fm</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Любимое на Last.fm</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>От исполнителей, которых вы слушаете чаще всего</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Читаем ваш Last.fm…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Ни одной песни, которую вы слушаете на Last.fm, пока нет в медиатеке.</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm не знает этот аккаунт.</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>Этот аккаунт Last.fm скрывает свои прослушивания.</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Не удалось связаться с Last.fm. Показаны сохранённые миксы.</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>Не удалось связаться с Last.fm. Попробуйте позже.</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Новое для вас на Last.fm</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>Похоже на {0}</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · В ваших топ-альбомах</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>В ваших топ-исполнителях</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Открыть {0} на Last.fm</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Миксы и рекомендации</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>На главной — миксы из ваших песен и исполнители для открытия по вашим чартам Last.fm. Используется только имя аккаунта; ничего не отправляется.</value></data>
 </root>

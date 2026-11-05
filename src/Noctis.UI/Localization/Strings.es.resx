@@ -7636,4 +7636,21 @@
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Nada que guardar: marca al menos una línea</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Guardado · no se pudo escribir la letra en el archivo de audio (¿en uso o de solo lectura?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>No se pudo guardar: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>De tu Last.fm</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>Tus canciones top de Last.fm</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Favoritas en Last.fm</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>De los artistas que más escuchas</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Leyendo tu Last.fm…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Ninguna de las canciones que escuchas en Last.fm está aún en tu biblioteca.</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm no conoce esta cuenta.</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>Esta cuenta de Last.fm mantiene sus escuchas en privado.</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>No se pudo conectar con Last.fm. Se muestran tus mezclas guardadas.</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>No se pudo conectar con Last.fm. Inténtalo más tarde.</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Descubre en Last.fm</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>Similar a {0}</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · En tus álbumes top</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>En tus artistas top</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Abrir {0} en Last.fm</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mezclas y recomendaciones</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Inicio muestra mezclas de tus canciones y artistas por descubrir, a partir de tus listas de Last.fm. Solo se usa el nombre de tu cuenta; no se envía nada.</value></data>
 </root>

@@ -7636,4 +7636,21 @@
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>沒有可儲存的內容 — 請至少為一行打點</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>已儲存 · 無法將歌詞寫入音訊檔案（使用中或唯讀？）</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>儲存失敗：{0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>來自你的 Last.fm</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>你的 Last.fm 熱門歌曲</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Last.fm 上喜愛的歌曲</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>來自你最常聽的藝人</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>正在讀取你的 Last.fm…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>你在 Last.fm 上聽的歌曲還沒有在資料庫中。</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm 找不到此帳號。</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>此 Last.fm 帳號的收聽記錄不公開。</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>無法連線 Last.fm。顯示已儲存的混音。</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>無法連線 Last.fm。請稍後再試。</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>在 Last.fm 上探索</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>與{0}相似</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · 在你的熱門專輯中</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>在你的熱門藝人中</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>在 Last.fm 上開啟{0}</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>混音與推薦</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>主頁根據你的 Last.fm 排行顯示你的歌曲混音和可探索的藝人。僅使用你的帳號名稱，不會回傳任何內容。</value></data>
 </root>

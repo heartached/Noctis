@@ -7636,4 +7636,21 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Rien à enregistrer — horodate au moins une ligne</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Enregistré · impossible d’écrire les paroles dans le fichier audio (utilisé ou en lecture seule ?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>Échec de l’enregistrement : {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>De votre Last.fm</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>Vos titres phares Last.fm</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Aimés sur Last.fm</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>Des artistes que vous écoutez le plus</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Lecture de votre Last.fm…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Aucun des titres que vous écoutez sur Last.fm n’est encore dans votre bibliothèque.</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm ne connaît pas ce compte.</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>Ce compte Last.fm garde ses écoutes privées.</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Impossible de joindre Last.fm. Vos mix enregistrés sont affichés.</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>Impossible de joindre Last.fm. Réessayez plus tard.</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Découvrir sur Last.fm</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>Proche de {0}</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · Dans vos albums phares</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>Dans vos artistes phares</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Ouvrir {0} sur Last.fm</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mix et recommandations</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>L’accueil affiche des mix de vos titres et des artistes à découvrir, d’après vos classements Last.fm. Seul le nom de votre compte est utilisé ; rien n’est renvoyé.</value></data>
 </root>

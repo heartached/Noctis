@@ -110,6 +110,15 @@ public sealed partial class ShellViewModel : ObservableObject
     /// injected, and the paragraph then stays hidden.</summary>
     public IAlbumDescriptionSource? AlbumDescriptions { get; init; }
 
+    /// <summary>The connected Last.fm account's charts for Home's From Your Last.fm and Discover
+    /// on Last.fm (GitHub #177); null in tests unless injected, and both sections then stay hidden.</summary>
+    public LastFmTasteService? LastFmTaste { get; init; }
+
+    private LastFmHomeViewModel? _lastFm;
+
+    /// <summary>Home's Last.fm sections; made on first use, after the host's init values are set.</summary>
+    public LastFmHomeViewModel LastFm => _lastFm ??= new LastFmHomeViewModel(this, LastFmTaste);
+
     /// <summary>Artist photos (Deezer on Android) for the artist page, the Artists grid, pinned
     /// artists, the artist sheet and search; null in tests unless injected, and the artist's
     /// album cover then stands in everywhere.</summary>
@@ -373,6 +382,7 @@ public sealed partial class ShellViewModel : ObservableObject
         foreach (var row in LibraryRows.Rows) row.Relabel();
         Library.Relabel();
         Player.Relabel();
+        _lastFm?.Relabel();
         _playlistsRoot?.Relabel();
         _favoritesRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
@@ -1007,6 +1017,10 @@ public sealed partial class ShellViewModel : ObservableObject
             case Artist artist:
                 OpenArtist(artist.Name);
                 break;
+            case LastFmMix mix:
+                // From Your Last.fm: the mix's songs as a list, in its order, as the library holds them now.
+                Navigate(new SongListPageViewModel(this, mix.TitleKey, () => mix.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>()));
+                break;
             case Track track:
                 // A song plays the rail it sits on: On Repeat, else the pinned songs.
                 var onRepeat = Library.OnRepeatRail.Select(CurrentPayload).OfType<Track>().ToList();
@@ -1272,6 +1286,8 @@ public sealed partial class ShellViewModel : ObservableObject
         // library; a failure (the computer is off, another network) is logged and never
         // reaches the UI — Settings → Account shows the next manual sync's error instead.
         if (Account is { IsSignedIn: true } account) StartupSync = SyncOnStartAsync(account);
+        // Home's Last.fm sections (cached for 12 h: normally no request).
+        _ = LastFm.RefreshAsync(force: false);
     }
 
     private static async Task SyncOnStartAsync(INoctisAccountService account)

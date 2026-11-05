@@ -2720,4 +2720,21 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Kaydedilecek bir şey yok — en az bir satıra zaman damgası koy</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Kaydedildi · sözler ses dosyasına yazılamadı (kullanımda veya salt okunur mu?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>Kaydetme başarısız: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>Last.fm’inden</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>Last.fm’deki En Çok Dinlediğin Şarkılar</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Last.fm’de Sevilenler</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>En Çok Dinlediğin Sanatçılardan</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Last.fm’in okunuyor…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Last.fm’de dinlediğin şarkıların hiçbiri henüz kitaplığında yok.</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm bu hesabı tanımıyor.</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>Bu Last.fm hesabı dinlemelerini gizli tutuyor.</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fm’e ulaşılamadı. Kayıtlı mikslerin gösteriliyor.</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>Last.fm’e ulaşılamadı. Daha sonra yeniden dene.</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Last.fm’de Keşfet</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>{0} benzeri</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · En çok dinlediğin albümlerde</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>En çok dinlediğin sanatçılarda</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0} öğesini Last.fm’de aç</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Miksler ve Öneriler</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Ana sayfa, Last.fm listelerinden şarkılarının mikslerini ve keşfedilecek sanatçıları gösterir. Yalnızca hesap adın kullanılır; hiçbir şey geri gönderilmez.</value></data>
 </root>
