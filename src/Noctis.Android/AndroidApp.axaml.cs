@@ -191,7 +191,17 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _player.HasPreviousInQueue = () => shell.Player.HasPrevious;
 
         if (ApplicationLifetime is IActivityApplicationLifetime activity)
-            activity.MainViewFactory = () => new ShellView { DataContext = shell };
+            activity.MainViewFactory = () =>
+            {
+                var view = new ShellView { DataContext = shell };
+                // Scroll-freeze diagnostic, off unless `adb shell setprop debug.noctis.stalls 1`.
+                if (ReadSystemProperty("debug.noctis.stalls") == "1")
+                    view.AttachedToVisualTree += (_, _) =>
+                    {
+                        if (Avalonia.Controls.TopLevel.GetTopLevel(view) is { } top) FrameStallMonitor.Start(top);
+                    };
+                return view;
+            };
 
         _ = StartAsync(persistence, library, history);
 
@@ -265,6 +275,21 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             {
                 DebugLog.Write("Account", $"Stream trust update failed: {ex.Message}");
             }
+        }
+    }
+
+    /// <summary>An Android system property (getprop), empty when unset or unreadable.</summary>
+    private static string ReadSystemProperty(string name)
+    {
+        try
+        {
+            using var cls = Java.Lang.Class.ForName("android.os.SystemProperties");
+            using var get = cls.GetMethod("get", Java.Lang.Class.FromType(typeof(Java.Lang.String)));
+            return get.Invoke(null, new Java.Lang.String(name))?.ToString() ?? "";
+        }
+        catch (Exception)
+        {
+            return "";
         }
     }
 
