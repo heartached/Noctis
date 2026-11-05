@@ -127,7 +127,7 @@ public sealed class Loc : INotifyPropertyChanged
     }
 
     /// <summary>The language whose plural rules apply: the translation the strings come from
-    /// (a German phone reads the English fallback, so English rules).</summary>
+    /// (a Dutch phone reads the English fallback, so English rules).</summary>
     private static string PluralLanguage()
     {
         try { return CultureInfo.GetCultureInfo(Resolve(Instance._culture.Name)).TwoLetterISOLanguageName; }

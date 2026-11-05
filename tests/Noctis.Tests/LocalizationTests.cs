@@ -79,6 +79,7 @@ public class LocalizationTests
     [InlineData("fr", "fr")]
     [InlineData("zh-CN", "zh-Hans")]
     [InlineData("ru-RU", "ru")]
+    [InlineData("de-AT", "de")]
     [InlineData("pt-BR", "en")] // no Portuguese → English
     public void Resolve_MapsASettingToAShippedTranslation(string setting, string expected)
         => Assert.Equal(expected, Loc.Resolve(setting));
@@ -166,6 +167,7 @@ public class LocalizationTests
     /// </summary>
     [Theory]
     [InlineData("ru")]
+    [InlineData("de")]
     public void CompleteTranslation_MatchesEnglishKeysAndPlaceholders(string culture)
     {
         var dir = Path.Combine(FindRepoRoot(), "src", "Noctis.UI", "Localization");

@@ -25,13 +25,13 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// The phone app in every language (beta, Russian phone): no English left in the phone's views
-/// and view models, every phone key in all ten Strings files with the right plural forms, the
+/// and view models, every phone key in all eleven Strings files with the right plural forms, the
 /// Settings › Language picker, and large titles that shrink rather than slide under their pill.
 /// </summary>
 [Collection("Localization")] // Loc.Instance is process-wide: these tests must not interleave
 public class MobileLocalizationTests
 {
-    private static readonly string[] Cultures = { "ar", "es", "fr", "ja", "ko", "ru", "tr", "zh-Hans", "zh-Hant" };
+    private static readonly string[] Cultures = { "ar", "de", "es", "fr", "ja", "ko", "ru", "tr", "zh-Hans", "zh-Hant" };
 
     // ── Every user-visible phone string goes through Strings.resx ──
 
@@ -109,7 +109,7 @@ public class MobileLocalizationTests
         Assert.True(found.Count == 0, "English in phone code (use Loc.T / Loc.Plural with a Mobile.… key):\n" + string.Join("\n", found));
     }
 
-    /// <summary>Every Mobile.* key is in all ten files, with the English placeholders and the
+    /// <summary>Every Mobile.* key is in all eleven files, with the English placeholders and the
     /// number of plural forms its language has.</summary>
     [Fact]
     public void EveryPhoneKey_IsTranslatedInEveryLanguage()
@@ -117,7 +117,7 @@ public class MobileLocalizationTests
         var dir = Path.Combine(FindRepoRoot(), "src", "Noctis.UI", "Localization");
         var english = ReadValues(Path.Combine(dir, "Strings.resx")).Where(e => e.Key.StartsWith("Mobile.", StringComparison.Ordinal)).ToList();
         Assert.True(english.Count > 400, $"only {english.Count} Mobile.* keys");
-        var forms = new Dictionary<string, int> { ["ar"] = 6, ["es"] = 2, ["fr"] = 2, ["ja"] = 1, ["ko"] = 1, ["ru"] = 3, ["tr"] = 2, ["zh-Hans"] = 1, ["zh-Hant"] = 1 };
+        var forms = new Dictionary<string, int> { ["ar"] = 6, ["de"] = 2, ["es"] = 2, ["fr"] = 2, ["ja"] = 1, ["ko"] = 1, ["ru"] = 3, ["tr"] = 2, ["zh-Hans"] = 1, ["zh-Hant"] = 1 };
         static string Placeholders(string v) => string.Join(" ", Regex.Matches(v, @"\{[^{}]*\}").Select(m => m.Value).Distinct().OrderBy(p => p, StringComparer.Ordinal));
         var problems = new List<string>();
         foreach (var culture in Cultures)
@@ -176,10 +176,13 @@ public class MobileLocalizationTests
             Loc.Instance.SetCulture("en");
             Assert.Equal("1 song", Loc.Plural("Mobile.Count.Songs", 1));
             Assert.Equal("44 songs", Loc.Plural("Mobile.Count.Songs", 44));
-            // A language with no translation (German) reads English, by English rules.
-            Loc.Instance.SetCulture("de");
+            // A language with no translation (Dutch) reads English, by English rules.
+            Loc.Instance.SetCulture("nl");
             Assert.Equal("1 song", Loc.Plural("Mobile.Count.Songs", 1));
             Assert.Equal("2 songs", Loc.Plural("Mobile.Count.Songs", 2));
+            Loc.Instance.SetCulture("de");
+            Assert.Equal("1 Song", Loc.Plural("Mobile.Count.Songs", 1));
+            Assert.Equal("2 Songs", Loc.Plural("Mobile.Count.Songs", 2));
             Loc.Instance.SetCulture("ja");
             Assert.Equal("3曲", Loc.Plural("Mobile.Count.Songs", 3).Replace(" ", string.Empty));
         }
@@ -216,13 +219,13 @@ public class MobileLocalizationTests
         await page.Loaded;
         Loc.Instance.SetCulture("en");
 
-        // System first, then English and the nine translations, each in its own words.
+        // System first, then English and the ten translations, each in its own words.
         var choices = page.LanguageChoices;
         Assert.Equal(Loc.SystemLanguage, choices[0].Code);
         Assert.True(choices[0].IsSelected);
         Assert.Contains(choices, c => c.Code == "ru" && c.Label == "Русский");
         Assert.Contains(choices, c => c.Code == "ar");
-        Assert.Equal(11, choices.Count);
+        Assert.Equal(12, choices.Count);
 
         var songsRow = rig.Shell.LibraryRows.Rows.First(r => r.Kind == LibraryRowKind.Songs);
         var relabelled = new List<string?>();

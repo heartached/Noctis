@@ -7,6 +7,7 @@ files:
     # Chinese keeps its script so Simplified and Traditional stay separate files.
     languages_mapping:
       locale:
+        de-DE: de
         es-ES: es
         fr: fr
         ja: ja
