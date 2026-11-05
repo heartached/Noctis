@@ -404,8 +404,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public Thickness TopSafePadding => new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
     public Thickness BottomSafePadding => new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
 
-    /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it.</summary>
-    public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen;
+    /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it;
+    /// a song list's Select mode puts its action bar in the pill's place.</summary>
+    public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen && !IsSelecting;
 
     /// <summary>The mini player as its own capsule above the full tab bar.</summary>
     public bool IsMiniBarExpandedVisible => IsMiniBarVisible && !IsTabBarCollapsed;
@@ -437,7 +438,8 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         // Under the Queue the bar stands expanded (OnIsQueueOpenChanged): a list moving in the
         // hidden tab content must not fold it there.
-        if (deltaY == 0 || IsQueueOpen) return;
+        // Select mode's action bar stands in the unfolded bar's room: it does not fold either.
+        if (deltaY == 0 || IsQueueOpen || IsSelecting) return;
         if (offsetY <= 1)
         {
             _scrollRun = 0;
@@ -461,7 +463,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void ExpandTabBar() => UnfoldTabBar();
 
-    partial void OnCurrentPageChanged(MobilePage? value) => UnfoldTabBar();
+    partial void OnCurrentPageChanged(MobilePage? value)
+    {
+        EndActiveSelection();
+        UnfoldTabBar();
+    }
 
     /// <summary>The tab bar stays up under the Queue sheet (ShellView), and the folded row has
     /// no place there: opening the Queue unfolds it.</summary>
@@ -690,6 +696,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSelectedTabChanged(MobileTab value)
     {
+        EndActiveSelection();
         UnfoldTabBar();
     }
 
@@ -795,6 +802,8 @@ public sealed partial class ShellViewModel : ObservableObject
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
+        // A song list's Select mode ends before its page goes (as Done would).
+        if (ActiveSelection is { } selection) { selection.End(); return true; }
         if (CurrentPage?.TryGoBackWithin() == true) return true;
         if (GoBack()) return true;
         if (_libraryRows is { IsEditing: true } rows) { rows.FinishEditing(); return true; }
@@ -1013,14 +1022,18 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>A song's menu on a list; <paramref name="inPlaylist"/> is the playlist whose page
     /// it is on, which adds Remove from Playlist.</summary>
-    public void OpenTrackMenu(Track track, Playlist? inPlaylist) =>
-        Sheet = ContextSheetViewModel.ForTrack(this, track, inPlaylist);
+    public void OpenTrackMenu(Track track, Playlist? inPlaylist, TrackSelection? selection = null) =>
+        Sheet = ContextSheetViewModel.ForTrack(this, track, inPlaylist, selection);
 
     [RelayCommand]
     private void OpenAlbumSheet(Album? album)
     {
         if (album != null) Sheet = ContextSheetViewModel.ForAlbum(this, CurrentAlbum(album));
     }
+
+    /// <summary>The album page's ⋯: the album's menu, with Select for its track list.</summary>
+    public void OpenAlbumMenu(Album album, TrackSelection selection) =>
+        Sheet = ContextSheetViewModel.ForAlbum(this, CurrentAlbum(album), selection);
 
     [RelayCommand]
     private void OpenPlaylistSheet(Playlist? playlist)

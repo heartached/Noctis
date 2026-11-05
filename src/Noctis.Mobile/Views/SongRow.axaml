@@ -33,6 +33,7 @@
             </Grid>
         </StackPanel>
         <Button Grid.Column="2" Name="MoreButton" Classes="icon" Width="36" Height="36"
+                IsVisible="{Binding $parent[views:SongRow].IsMenuVisible}"
                 Command="{Binding $parent[views:SongRow].MenuCommand}"
                 CommandParameter="{Binding}">
             <!-- Button.icon's 24 box, as every other row's ⋯ (album, artist, queue). -->

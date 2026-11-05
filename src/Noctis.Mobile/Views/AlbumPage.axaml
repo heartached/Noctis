@@ -253,19 +253,22 @@
                             <!-- Apple's row: a narrow number column with the title right after it, the
                                  explicit badge straight after the title (the desktop's compact badge), and
                                  only ⋯ at the end: favouriting is in its menu (owner 10-19, no row heart). -->
+                            <!-- In Select mode the check circle leads the row, a tap ticks it and ⋯ steps aside. -->
                             <Button Classes="row"
                                     Command="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).PlayTrackCommand}"
                                     CommandParameter="{Binding}"
-                                    views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                    views:LongPress.Command="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).OpenSongMenuCommand}"
                                     views:LongPress.CommandParameter="{Binding Track}">
-                                <Grid ColumnDefinitions="30,*,Auto,Auto" Height="50" Margin="14,0,8,0">
-                                    <TextBlock Name="RowNumber" Classes="album-subtle" FontSize="15" Text="{Binding Number}"
+                                <Grid ColumnDefinitions="Auto,30,*,Auto,Auto" Height="50" Margin="14,0,8,0">
+                                    <views:SelectCheck Name="RowCheck" Track="{Binding Track}" Margin="4,0,-4,0"
+                                                       Selection="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).Selection}" />
+                                    <TextBlock Grid.Column="1" Name="RowNumber" Classes="album-subtle" FontSize="15" Text="{Binding Number}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowsNumber}" />
-                                    <views:PlayingBars Name="EqBars" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    <views:PlayingBars Grid.Column="1" Name="EqBars" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                        IsPlaying="{Binding IsAnimating}" IsVisible="{Binding IsCurrent}" />
                                     <!-- Left-aligned, so the star column is the title's own width up to the
                                          room left, and the badge follows the title, not the row's end. -->
-                                    <Grid Grid.Column="1" Name="RowTitleCell" ColumnDefinitions="*,Auto" HorizontalAlignment="Left"
+                                    <Grid Grid.Column="2" Name="RowTitleCell" ColumnDefinitions="*,Auto" HorizontalAlignment="Left"
                                           VerticalAlignment="Center" Margin="4,0,8,0">
                                         <TextBlock Name="RowTitle" FontSize="16" Text="{Binding Track.Title}" MaxLines="1"
                                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -275,13 +278,14 @@
                                         </Border>
                                     </Grid>
                                     <!-- The song's stars or heart (Settings › Library › Show in Song Rows), right-aligned before ⋯. -->
-                                    <views:RowMark Grid.Column="2" Name="RowMark" DataContext="{Binding Track}" Margin="0,0,4,0" />
-                                    <Button Grid.Column="3" Name="RowMore" Classes="icon" Width="40" Height="40"
-                                            Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
-                                            CommandParameter="{Binding Track}">
+                                    <views:RowMark Grid.Column="3" Name="RowMark" DataContext="{Binding Track}" Margin="0,0,4,0" />
+                                    <Button Grid.Column="4" Name="RowMore" Classes="icon" Width="40" Height="40"
+                                            Command="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).OpenSongMenuCommand}"
+                                            CommandParameter="{Binding Track}"
+                                            IsVisible="{Binding !$parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).Selection.IsActive}">
                                         <PathIcon Data="{DynamicResource PhMore}" />
                                     </Button>
-                                    <Border Grid.Column="1" Grid.ColumnSpan="3" Classes="rule" Height="0.5" Margin="4,0,0,0"
+                                    <Border Grid.Column="2" Grid.ColumnSpan="3" Classes="rule" Height="0.5" Margin="4,0,0,0"
                                             VerticalAlignment="Bottom" IsHitTestVisible="False" />
                                 </Grid>
                             </Button>
@@ -326,7 +330,8 @@
 
         <!-- Round Liquid Glass buttons floating over the cover: back and the album's sheet, with the
              album's name between them once its big title has gone under them. -->
-        <Grid Name="TopBar" VerticalAlignment="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,6,16,0">
+        <Grid Name="TopBar" VerticalAlignment="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,6,16,0"
+              IsVisible="{Binding !Selection.IsActive}">
             <controls:GlassPanel Classes="header-glass">
                 <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
                     <PathIcon Data="{DynamicResource PhBack}" />
@@ -341,5 +346,8 @@
                 </Button>
             </controls:GlassPanel>
         </Grid>
+
+        <!-- Select mode's bar (Select All, "3 Selected", Done) in the buttons' place. -->
+        <views:SelectionHeader Name="SelectBar" VerticalAlignment="Top" Margin="16,6,16,0" DataContext="{Binding Selection}" />
     </Panel>
 </UserControl>

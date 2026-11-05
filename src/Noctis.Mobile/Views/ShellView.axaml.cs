@@ -189,7 +189,7 @@ public partial class ShellView : UserControl
         if (e.PropertyName == nameof(ShellViewModel.IsLyricsOpen)) ShowLyrics(animate: true);
         if (e.PropertyName == nameof(ShellViewModel.SelectedTab)) FadeInTab();
         if (e.PropertyName is nameof(ShellViewModel.IsTabBarCollapsed) or nameof(ShellViewModel.IsMiniBarVisible)
-            or nameof(ShellViewModel.SelectedTab) or nameof(ShellViewModel.SafeArea))
+            or nameof(ShellViewModel.SelectedTab) or nameof(ShellViewModel.SafeArea) or nameof(ShellViewModel.IsSelecting))
             ApplyChromeLayout();
     }
 
@@ -298,7 +298,8 @@ public partial class ShellView : UserControl
     {
         if (_vm is not { } vm) return;
         var folded = vm.IsTabBarCollapsed;
-        var mini = vm.IsMiniBarVisible;
+        // Select mode's action bar takes the mini player's capsule, so the chrome stands as tall.
+        var mini = vm.IsMiniBarVisible || vm.IsSelecting;
         var width = ChromeHost.Bounds.Width;
 
         var expandedHeight = ExpandedChromeHeight(mini);
@@ -334,9 +335,12 @@ public partial class ShellView : UserControl
         SearchBubbleContent.Opacity = searchBubble ? 1 : 0;
         SearchBubble.IsHitTestVisible = searchBubble;
 
+        var miniMargin = folded ? new Thickness(Bubble + FoldGap, 0, searchBubble ? Bubble + FoldGap : 0, 0) : new Thickness(0, 0, 0, TabHeight + Gap);
         MiniBar.Height = MiniHeight;
-        MiniBar.Margin = folded ? new Thickness(Bubble + FoldGap, 0, searchBubble ? Bubble + FoldGap : 0, 0) : new Thickness(0, 0, 0, TabHeight + Gap);
+        MiniBar.Margin = miniMargin;
         MiniNextButton.IsVisible = !folded;
+        SelectionBar.Height = MiniHeight;
+        SelectionBar.Margin = miniMargin;
 
         var index = TabIndex(vm.SelectedTab);
         var pillWidth = SelectionPillWidth(width);

@@ -317,6 +317,16 @@
                             </Grid>
                         </Panel>
                     </controls:GlassPanel>
+
+                    <!-- A song list's Select mode: its actions in the mini player's capsule, same
+                         glass, same place (ShellView.ApplyChromeLayout); the mini player steps aside. -->
+                    <controls:GlassPanel Name="SelectionBar" Classes="liquid" CornerRadius="26" VerticalAlignment="Bottom"
+                                         IsVisible="{Binding IsSelecting}">
+                        <Panel>
+                            <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="26" IsHitTestVisible="False" />
+                            <views:SelectionActions Name="SelectionActions" DataContext="{Binding ActiveSelection}" />
+                        </Panel>
+                    </controls:GlassPanel>
                 </Panel>
             </Panel>
         </Panel>

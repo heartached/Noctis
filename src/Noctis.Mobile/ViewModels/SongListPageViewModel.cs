@@ -41,11 +41,19 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             new SortChoice("Mobile.Sort.MostPlayed", SongSort.MostPlayed),
             new SortChoice("Mobile.RecentlyPlayed", SongSort.RecentlyPlayed),
         };
+        Selection = new TrackSelection(shell, () => Songs, () => Title, () => Playlist);
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
     }
 
     public ShellViewModel Shell { get; }
+
+    /// <summary>Select mode: ticks, the "N Selected" bar and the shell's action bar.</summary>
+    public TrackSelection Selection { get; }
+
+    /// <summary>The tools' Select button: Select mode with nothing ticked yet.</summary>
+    [RelayCommand]
+    private void BeginSelect() => Selection.Begin();
 
     /// <summary>A playlist's page reads the name the library holds now (a rename shows at once).</summary>
     public override string Title => Playlist?.Name ?? Localized(_title);
@@ -68,7 +76,9 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     [RelayCommand]
     private void OpenSongMenu(Track? track)
     {
-        if (track != null) Shell.OpenTrackMenu(track, Playlist);
+        if (track == null) return;
+        if (Selection.IsActive) Selection.Toggle(track);   // a long press in Select mode ticks, as a tap does
+        else Shell.OpenTrackMenu(track, Playlist, Selection);
     }
 
     /// <summary>The rows shown: the source, filtered and sorted.</summary>
@@ -205,6 +215,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         // this, and a Reset on an unchanged list tore down and re-realised every row on screen.
         MobileLibrary.ReplaceIfChanged(Songs, Order(rows).ToList());
         SongCount = Songs.Count;
+        Selection.Prune();
     }
 
     private IEnumerable<Track> Order(IEnumerable<Track> rows)
@@ -238,6 +249,11 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     private void Play(Track? track)
     {
         if (track == null) return;
+        if (Selection.IsActive)
+        {
+            Selection.Toggle(track);
+            return;
+        }
         var list = Songs.ToList();
         var index = list.IndexOf(track);
         if (index >= 0) Shell.Player.PlayTracks(list, index, Title);
@@ -255,5 +271,9 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         if (Songs.Count > 0) Shell.Player.PlayShuffled(Songs.ToList(), source: Title);
     }
 
-    public override void OnClosed() => Shell.Library.Refreshed -= OnRefreshed;
+    public override void OnClosed()
+    {
+        Selection.End();
+        Shell.Library.Refreshed -= OnRefreshed;
+    }
 }

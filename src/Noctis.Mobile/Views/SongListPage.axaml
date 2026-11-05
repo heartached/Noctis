@@ -8,7 +8,15 @@
              x:Class="Noctis.Mobile.Views.SongListPage"
              x:DataType="vm:SongListPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,4,16,8" IsVisible="{Binding !IsEmbedded}">
+        <!-- Select mode's bar (Select All, "3 Selected", Done) over the title row, embedded too. -->
+        <views:SelectionHeader Grid.Row="0" Name="SelectBar" DataContext="{Binding Selection}" Margin="16,4,16,8" />
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,4,16,8">
+            <Grid.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="!IsEmbedded" />
+                    <Binding Path="!Selection.IsActive" />
+                </MultiBinding>
+            </Grid.IsVisible>
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
                 <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
@@ -64,12 +72,19 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:Track">
                         <!-- The row's ⋯ and a long press: the page's song menu (on a playlist's page
-                             it offers Remove from Playlist). -->
+                             it offers Remove from Playlist; Select starts Select mode). In Select mode
+                             the check circle leads the row, a tap ticks it and the ⋯ steps aside. -->
                         <Button Classes="row"
                                 views:LongPress.Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}"
                                 Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).PlayCommand}"
                                 CommandParameter="{Binding}">
-                            <views:SongRow MenuCommand="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}" />
+                            <Grid ColumnDefinitions="Auto,*">
+                                <views:SelectCheck Name="RowCheck" Margin="8,0,-8,0" Track="{Binding}"
+                                                   Selection="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).Selection}" />
+                                <views:SongRow Grid.Column="1"
+                                               MenuCommand="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}"
+                                               IsMenuVisible="{Binding !$parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).Selection.IsActive}" />
+                            </Grid>
                         </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
