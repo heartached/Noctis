@@ -121,7 +121,9 @@ public sealed class Loc : INotifyPropertyChanged
         var forms = Instance.Get(key).Split('|');
         var form = forms[Math.Min(PluralForm(PluralLanguage(), count), forms.Length - 1)];
         var values = new object[args.Length + 1];
-        values[0] = count;
+        // The count with the language's digit grouping ("14,208", "14 208"), whether the form
+        // writes {0} or {0:N0}: the phone's forms wrote {0}, which printed "14208 scrobbles".
+        values[0] = count.ToString("N0", Instance._culture);
         args.CopyTo(values, 1);
         return string.Format(Instance._culture, form, values);
     }

@@ -157,6 +157,21 @@ public class MobileLocalizationTests
     public void PluralForm_FollowsTheLanguagesRules(string language, long n, int form) =>
         Assert.Equal(form, Loc.PluralForm(language, n));
 
+    /// <summary>11-05 (full suite): "ferlin · 14208 scrobbles". The count keeps the language's digit
+    /// grouping whatever the form writes ({0} or {0:N0}).</summary>
+    [AvaloniaFact]
+    public void Plural_GroupsTheCountsDigits()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("14,208 scrobbles", Loc.Plural("Mobile.Count.Scrobbles", 14208));
+            Assert.Equal("1 scrobble", Loc.Plural("Mobile.Count.Scrobbles", 1));
+            Assert.Equal("1,234 songs", Loc.Plural("Count.Songs", 1234));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
     [AvaloniaFact]
     public void Plural_Russian_HasItsThreeForms()
     {
