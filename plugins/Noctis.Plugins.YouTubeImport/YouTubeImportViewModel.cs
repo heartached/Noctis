@@ -173,7 +173,9 @@ public partial class YouTubeImportViewModel : ObservableObject
         StatusMessage = "Downloading yt-dlp…";
         try
         {
-            await _service.Tool.InstallAsync(new Progress<double>(p => Dispatcher.UIThread.Post(() => InstallProgress = p)), _lifetime);
+            var detail = new Progress<DownloadReport>(r => Dispatcher.UIThread.Post(() =>
+                StatusMessage = $"Downloading yt-dlp… · {DownloadFormat.Format(r.MegabitsPerSec, r.Eta)}"));
+            await _service.Tool.InstallAsync(new Progress<double>(p => Dispatcher.UIThread.Post(() => InstallProgress = p)), _lifetime, detail);
             ToolInstalled = true;
             StatusMessage = "yt-dlp is ready.";
             await RefreshVersionAsync();

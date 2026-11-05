@@ -425,6 +425,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PlayCountAfterHint" xml:space="preserve"><value>Какую часть песни нужно прослушать, чтобы она засчиталась.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayCountAfterImmediately" xml:space="preserve"><value>Сразу</value><comment>"Count a play after" choice: counted as soon as the song starts (SettingsViewModel)</comment></data>
   <data name="Settings.PlayCountAfterPercent" xml:space="preserve"><value>{0}%</value><comment>"Count a play after" choice; {0} = percent of the song (SettingsViewModel)</comment></data>
+  <data name="Settings.PlaysReRankAtSongEnd" xml:space="preserve"><value>Перемещать в рейтинге в конце песни</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaysReRankAtSongEndHint" xml:space="preserve"><value>Песни в сортировке по числу прослушиваний переходят на новое место, когда песня заканчивается. Выкл.: они остаются на месте, пока не начнётся следующая песня.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.GaplessPlayback" xml:space="preserve"><value>Воспроизведение без пауз</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TracksFlowIntoEach" xml:space="preserve"><value>Треки переходят друг в друга без пауз.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Автовоспроизведение</value><comment>Text in SettingsView.axaml</comment></data>

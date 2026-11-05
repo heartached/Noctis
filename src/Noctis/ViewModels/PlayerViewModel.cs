@@ -697,6 +697,12 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Fires when a new track starts playing.</summary>
     public event EventHandler<Track>? TrackStarted;
 
+    /// <summary>Fires when the current song is over and leaves (natural end, skip, stop,
+    /// queue replace) — before <see cref="CurrentTrack"/> changes and before the next
+    /// song's <see cref="TrackStarted"/>. Lets lists re-rank the finished row at song
+    /// end instead of waiting for the next song to start.</summary>
+    public event EventHandler<Track>? TrackEnding;
+
     /// <summary>Fires when a play is counted (play count, Last Played, play log): at the
     /// start, or once enough of the song was heard (GitHub #101).</summary>
     public event EventHandler<Track>? PlayCounted;
@@ -1802,6 +1808,8 @@ public partial class PlayerViewModel : ViewModelBase
             AdvanceQueue(QueueAdvanceReason.UserSkip);
         else
         {
+            if (CurrentTrack != null)
+                TrackEnding?.Invoke(this, CurrentTrack);
             CancelAutoMixTransition("track removed");
             _audioPlayer.Stop();
             State = PlaybackState.Stopped;
@@ -2083,6 +2091,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// at its start and keep the queue's History and Repeat All cycle.</summary>
     private void StopAtQueueEnd()
     {
+        if (CurrentTrack != null)
+            TrackEnding?.Invoke(this, CurrentTrack);
         _hasPendingSeekTarget = false;
         CancelAutoMixTransition("queue ended");
         CancelNaturalEndFallback();
@@ -2103,6 +2113,8 @@ public partial class PlayerViewModel : ViewModelBase
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "StopAndClear",
             $"reason={reason}, track={CurrentTrack?.Id}, upNext={UpNext.Count}, history={History.Count}");
+        if (CurrentTrack != null)
+            TrackEnding?.Invoke(this, CurrentTrack);
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
             CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
@@ -3073,6 +3085,11 @@ public partial class PlayerViewModel : ViewModelBase
 
         RecordSkipOnReplace();
 
+        // The outgoing song is over before the next one starts: let lists re-rank it now
+        // (Songs sorted by Plays), not on the next TrackStarted.
+        if (CurrentTrack != null)
+            TrackEnding?.Invoke(this, CurrentTrack);
+
         // Save playback position for the outgoing track if it has RememberPlaybackPosition
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
@@ -3385,6 +3402,8 @@ public partial class PlayerViewModel : ViewModelBase
             // (clearing the flag below would otherwise lift it over the stopped output).
             if (SleepTimerFadeSeconds > 0)
                 _playbackFadeHoldUntilPlay = true;
+            if (CurrentTrack != null)
+                TrackEnding?.Invoke(this, CurrentTrack);
             StopAfterCurrentTrack = false;
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
@@ -4371,6 +4390,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// </summary>
     private void StopAfterPlaybackErrors(string reason)
     {
+        if (CurrentTrack != null)
+            TrackEnding?.Invoke(this, CurrentTrack);
         _hasPendingSeekTarget = false;
         CancelAutoMixTransition("player stopped");
         CancelNaturalEndFallback();

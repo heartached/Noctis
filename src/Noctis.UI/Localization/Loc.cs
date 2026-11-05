@@ -46,7 +46,7 @@ public sealed class Loc : INotifyPropertyChanged
     /// Strings.*.resx files by LocalizationTests.KnownCultures_ListsEveryShippedTranslation.
     /// </summary>
     public static IReadOnlyList<string> KnownCultures { get; } =
-        new[] { "ar", "es", "fr", "ja", "ko", "ru", "tr", "zh-Hans", "zh-Hant" };
+        new[] { "ar", "de", "es", "fr", "ja", "ko", "ru", "tr", "zh-Hans", "zh-Hant" };
 
     private static IReadOnlyList<string> DiscoverSupported()
     {

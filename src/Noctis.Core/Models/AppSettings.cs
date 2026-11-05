@@ -287,6 +287,11 @@ public class AppSettings : IJsonOnDeserializing
     public static int SnapPlayCountThreshold(int percent) =>
         PlayCountThresholdChoices.MinBy(c => Math.Abs((long)c - percent));
 
+    /// <summary>Songs sorted by Plays move to their new rank when the song ends, not when
+    /// the next one starts. On for new installs; builds predating the setting keep the old
+    /// on-change behaviour (<see cref="OnDeserializing"/>).</summary>
+    public bool PlaysReRankAtSongEnd { get; set; } = true;
+
     /// <summary>Master toggle for Apple-style song transitions (drives AutoMixTransitionMode).</summary>
     public bool SongTransitionsEnabled { get; set; }
     /// <summary>Transition style when enabled: "AutoMix" (key/tempo aware) or "Crossfade" (fixed duration).</summary>
@@ -1290,6 +1295,8 @@ public class AppSettings : IJsonOnDeserializing
         IgnoreLeadingWordsInArtistSort = false;
         // Sleep timer Fade Out (2026-10-29): the timer used to pause outright.
         SleepTimerFadeSeconds = 0;
+        // Plays re-rank at song end (2026-11-04): the list used to re-rank on song change.
+        PlaysReRankAtSongEnd = false;
     }
 }
 
