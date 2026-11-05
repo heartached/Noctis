@@ -192,6 +192,21 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
+        <!-- Island Search Lyrics while a search runs: the glyph breathes (Opacity only). -->
+        <Style Selector="Button.lyrics-searching controls|LineIcon">
+            <Style.Animations>
+                <Animation Duration="0:0:0.9" IterationCount="INFINITE"
+                           Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="1.0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="0.35"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
         <Style Selector="Button.artist-link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -1622,6 +1637,30 @@
                                       Data="{StaticResource MiniPlayerIcon}" />
                             </Canvas>
                         </Viewbox>
+                    </Button>
+
+                    <!-- Search Lyrics, lyrics-page copy only: shown while the page centres the player
+                         for a song with no lyrics (LyricsView.ApplyNoLyricsCentered calls
+                         ShowLyricsSearch), in place of the old text row under the player. Its
+                         DataContext is the LyricsViewModel, set from code; the tooltip carries what
+                         that row said (searching / the failure reason / marked as no lyrics — Undo
+                         is under … ▸ Lyrics and in the dialog). Code grows Width 0 → 34 and fades
+                         the glyph, so the cluster slides apart instead of jumping. -->
+                    <Button x:Name="LyricsSearchButton"
+                            Classes="secondary-btn"
+                            x:DataType="vm:LyricsViewModel"
+                            DataContext="{x:Null}"
+                            IsVisible="False"
+                            Width="0" Height="34"
+                            ClipToBounds="True"
+                            Classes.lyrics-searching="{Binding IsSearching}"
+                            Command="{Binding OpenLyricsSearchCommand}"
+                            ToolTip.Tip="{Binding NoLyricsSearchTip}"
+                            AutomationProperties.Name="{loc:T Lyrics.SearchLyrics}"
+                            AutomationProperties.HelpText="{Binding NoLyricsSearchTip}">
+                        <Panel x:Name="LyricsSearchGlyph" Width="34" Height="34" Opacity="0">
+                            <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineLyricsSearch}" Foreground="{DynamicResource IslandIconFill}" />
+                        </Panel>
                     </Button>
 
                     <!-- Lyrics and Queue: while their page / panel is open, the same faint accent

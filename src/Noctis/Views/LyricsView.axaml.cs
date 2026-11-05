@@ -379,9 +379,10 @@ public partial class LyricsView : UserControl
 
     // ── Centred layout for songs with no lyrics (Discord request) ──
     // Wide mode only: the left panel spans both columns, so its stack sits in the middle
-    // of the page, and the lyrics column fades out (its search / marked / searching states
-    // reappear under the player in CenteredNoLyricsActions). Narrow mode already runs the
-    // header full width with the lyrics below it, so it keeps the lyrics column as is.
+    // of the page, and the lyrics column fades out (its Search Lyrics moves into the player
+    // island: PlaybackBarView.ShowLyricsSearch, its states in that button's tooltip). Narrow
+    // mode already runs the header full width with the lyrics below it, so it keeps the
+    // lyrics column as is.
 
     private const int NoLyricsCenterSlideMs = 560;
     private static readonly Avalonia.Animation.Easings.Easing NoLyricsCenterEase = new CubicBezierEase(0.22, 1, 0.36, 1);
@@ -391,12 +392,13 @@ public partial class LyricsView : UserControl
     /// <summary>Applies <see cref="LyricsViewModel.IsNoLyricsCentered"/>. Animated: the left
     /// panel is moved to its new grid slot at once and offset back to where it was drawn,
     /// then that offset glides to zero (so a resize mid-slide still ends in the right place),
-    /// while the lyrics column and the centred actions cross-fade. Not animated (attach,
-    /// resize across the breakpoint): everything snaps.</summary>
+    /// while the lyrics column fades and the island's Search Lyrics grows in. Not animated
+    /// (attach, resize across the breakpoint): everything snaps.</summary>
     private void ApplyNoLyricsCentered(bool animate)
     {
-        if (LeftPanel is null || RightPanel is null || CenteredNoLyricsActions is null) return;
-        var want = !_isNarrowMode && DataContext is LyricsViewModel { IsNoLyricsCentered: true };
+        if (LeftPanel is null || RightPanel is null || LyricsPlaybackBar is null) return;
+        var lyricsVm = DataContext as LyricsViewModel;
+        var want = !_isNarrowMode && lyricsVm is { IsNoLyricsCentered: true };
         if (animate && want == _noLyricsCenterApplied) return;
         var changed = want != _noLyricsCenterApplied;
         _noLyricsCenterApplied = want;
@@ -433,8 +435,7 @@ public partial class LyricsView : UserControl
 
         FadeTo(RightPanel, want ? 0.0 : 1.0, slide ? duration : TimeSpan.Zero);
         RightPanel.IsHitTestVisible = !want;
-        FadeTo(CenteredNoLyricsActions, want ? 1.0 : 0.0, slide ? duration : TimeSpan.Zero);
-        CenteredNoLyricsActions.IsHitTestVisible = want;
+        LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, want, slide, duration);
     }
 
     private static void FadeTo(Control control, double opacity, TimeSpan duration)

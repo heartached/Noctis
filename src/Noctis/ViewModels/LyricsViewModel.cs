@@ -590,8 +590,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         // A song marked as having none has nothing to share (ShareLyrics returns on zero lines).
         OnPropertyChanged(nameof(ShareAvailable));
+        OnPropertyChanged(nameof(NoLyricsSearchTip));
         UpdateNoLyricsCentered();
     }
+
+    /// <summary>
+    /// Tooltip of the Search Lyrics button the player island carries while the page is
+    /// centred for a song with no lyrics (it took the place of the text row under the
+    /// player): what the page knows about the song's lyrics, then what the button does.
+    /// </summary>
+    public string NoLyricsSearchTip
+    {
+        get
+        {
+            var search = Localization.Loc.T("Lyrics.SearchLyrics");
+            if (IsSearching) return Localization.Loc.T("Lyrics.SearchingLyrics");
+            if (IsMarkedNoLyrics) return Localization.Loc.T("Lyrics.MarkedNoLyrics") + "\n" + search;
+            return string.IsNullOrEmpty(SearchFailedMessage) ? search : SearchFailedMessage + "\n" + search;
+        }
+    }
+
+    partial void OnSearchFailedMessageChanged(string value) => OnPropertyChanged(nameof(NoLyricsSearchTip));
 
     /// <summary>
     /// The lyrics page centres the player (cover, track info, controls) instead of the
@@ -3757,7 +3776,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShareAvailable));
         UpdateNoLyricsCentered();
     }
-    partial void OnIsSearchingChanged(bool value) => OnPropertyChanged(nameof(ShareAvailable));
+    partial void OnIsSearchingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShareAvailable));
+        OnPropertyChanged(nameof(NoLyricsSearchTip));
+    }
 
     /// <summary>
     /// Opens the share-card dialog with the current lyrics, pre-selecting the
