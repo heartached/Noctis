@@ -669,7 +669,7 @@ public class YouTubeImportPluginTests : IDisposable
     {
         var m = PluginManifest.TryLoad(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport"))!;
         var plugin = new YouTubeImportPlugin();
-        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.0", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
+        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.1", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
         Assert.Equal((plugin.Info.Id, plugin.Info.Name, plugin.Info.Version, plugin.Info.Description), (m.Id, m.Name, m.Version, m.Description));
         Assert.Equal("Save audio from a YouTube link to your library.", m.Description);
         Assert.Equal(new[] { "library.import", "network" }, m.Permissions);
