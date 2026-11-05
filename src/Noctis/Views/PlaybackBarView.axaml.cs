@@ -1806,7 +1806,7 @@ public partial class PlaybackBarView : UserControl
             _quickPlayTile = MenuV2.Tile(this, menu.Hide, "MenuLinePlay", Loc.T("PlaybackBar.Play"));
             _quickShuffleTile = MenuV2.Tile(this, menu.Hide, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
             _quickPlayNextTile = MenuV2.Tile(this, menu.Hide, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
-            _quickQueueTile = MenuV2.Tile(this, menu.Hide, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+            _quickQueueTile = MenuV2.Tile(this, menu.Hide, "MenuLineAddToQueue", Loc.T("LibraryAlbums.AddQueue"));
             menu.Items.Insert(0, MenuV2.TileRow(_quickPlayTile, _quickShuffleTile, _quickPlayNextTile, _quickQueueTile));
         }
 

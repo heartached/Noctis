@@ -829,7 +829,7 @@
                                         </MenuItem>
                                         <MenuItem Header="{loc:T ArtistDetail.AddQueue}" Command="{Binding AddAllToQueueCommand}">
                                             <MenuItem.Icon>
-                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T ArtistDetail.ShufflePopular}" Command="{Binding ShufflePopularCommand}">

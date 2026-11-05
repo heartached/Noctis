@@ -625,7 +625,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="6"
                                         IsVisible="{Binding !AlbumAddedToQueue}">
                                 <controls:LineIcon Width="17" Height="17" VerticalAlignment="Center"
-                                                   Data="{StaticResource MenuLineQueue}"
+                                                   Data="{StaticResource MenuLineAddToQueue}"
                                                    Foreground="{Binding $parent[Button].Foreground}" />
                                 <TextBlock Text="{loc:T AlbumDetail.AddQueue}"
                                            FontSize="14"
@@ -710,7 +710,7 @@
                         <MenuItem Header="{loc:T AlbumDetail.AddQueue}"
                                   Command="{Binding AddAlbumToQueueCommand}">
                             <MenuItem.Icon>
-                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />

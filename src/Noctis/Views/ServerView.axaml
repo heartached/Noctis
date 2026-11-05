@@ -195,7 +195,7 @@
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
                                               CommandParameter="{Binding}">
                                         <MenuItem.Icon>
-                                            <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                            <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </ContextMenu>
@@ -290,7 +290,7 @@
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
-                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                     </ContextMenu>

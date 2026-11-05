@@ -22,7 +22,7 @@ public partial class DropOverlay : UserControl
     /// it used to draw is the menus' Add to Playlist glyph (the third zone).
     /// </summary>
     private Geometry? QueueIconData =>
-        this.TryFindResource("MenuLineQueue", out var res) && res is Geometry g ? g : _playIconData;
+        this.TryFindResource("MenuLineAddToQueue", out var res) && res is Geometry g ? g : _playIconData;
 
     /// <summary>The play glyph from the XAML, kept so the icon can switch back to it.</summary>
     private Geometry? _playIconData;

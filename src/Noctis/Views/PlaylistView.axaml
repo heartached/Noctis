@@ -585,7 +585,7 @@
                                     <MenuItem Header="{loc:T Playlist.AddQueue}"
                                               Command="{Binding AddAllToQueueCommand}">
                                         <MenuItem.Icon>
-                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineQueue}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />

@@ -104,7 +104,7 @@ public partial class LibraryPlaylistsView : UserControl
             QuickPlay = MenuV2.Tile(host, Menu, "MenuLinePlay", Loc.T("LibraryPlaylists.Play"));
             QuickShuffle = MenuV2.Tile(host, Menu, "MenuLineShuffle", Loc.T("LibraryPlaylists.Shuffle"));
             QuickPlayNext = MenuV2.Tile(host, Menu, "MenuLinePlayNext", Loc.T("LibraryPlaylists.PlayNext"));
-            QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineQueue", Loc.T("LibraryPlaylists.AddQueue"));
+            QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineAddToQueue", Loc.T("LibraryPlaylists.AddQueue"));
             items.Add(MenuV2.TileRow(QuickPlay, QuickShuffle, QuickPlayNext, QuickAddToQueue));
 
             items.Add(new Separator());
