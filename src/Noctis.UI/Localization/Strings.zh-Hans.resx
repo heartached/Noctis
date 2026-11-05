@@ -7528,4 +7528,112 @@
   <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>有 1 首歌曲只有普通歌词。Lyrics Studio 可以在这台电脑上用语音模型为其计时：每首歌可能需要一分钟或更久（有显卡时更快），保存前你会逐首检查。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>有 {0:N0} 首歌曲只有普通歌词。Lyrics Studio 可以在这台电脑上用语音模型为其计时：每首歌可能需要一分钟或更久（有显卡时更快），保存前你会逐首检查。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>一次打开前 {0} 首。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 首歌曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} 首曲目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Items" xml:space="preserve"><value>{0:N0} 个项目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} 小时 {1} 分钟</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Count.MinutesShort" xml:space="preserve"><value>{0} 分钟</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Tray.OpenNoctis" xml:space="preserve"><value>打开 Noctis</value><comment>Tray icon menu</comment></data>
+  <data name="Tray.Quit" xml:space="preserve"><value>退出</value><comment>Tray icon menu</comment></data>
+  <data name="Settings.NotConnected" xml:space="preserve"><value>未连接</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedAs" xml:space="preserve"><value>已以 {0} 身份连接</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedTo" xml:space="preserve"><value>已连接到 {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.WindowsOnly" xml:space="preserve"><value>仅在 Windows 上可用。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>已从“打开方式”列表中移除 Noctis。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>已注册。在“设置 → 应用 → 默认应用”中选择 Noctis，或右键单击歌曲 → 打开方式。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesFailed" xml:space="preserve"><value>无法更新文件类型：{0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.RegroupingArtists" xml:space="preserve"><value>正在重新分组艺人…</value><comment>Settings status line</comment></data>
+  <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>正在恢复原始艺人信息…</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>无法更新艺人信息。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>艺人信息已是最新。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>已更新 {0:N0} 首曲目的艺人信息。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegNotFound" xml:space="preserve"><value>未找到 — 请在下方设置路径，或将 ffmpeg 安装到 PATH。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegChecking" xml:space="preserve"><value>正在检查 {0}…</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpeningBrowser" xml:space="preserve"><value>正在打开浏览器…</value><comment>Settings status line</comment></data>
+  <data name="Settings.LastFmAuthUrlFailed" xml:space="preserve"><value>无法获取授权网址。请检查 API 密钥。</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpenBrowserFailed" xml:space="preserve"><value>无法打开浏览器。</value><comment>Settings status line</comment></data>
+  <data name="Settings.WaitingForAuth" xml:space="preserve"><value>正在等待浏览器中的授权…</value><comment>Settings status line</comment></data>
+  <data name="Settings.TokenRequired" xml:space="preserve"><value>需要令牌</value><comment>Settings status line</comment></data>
+  <data name="Settings.Validating" xml:space="preserve"><value>正在验证…</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterServerAddress" xml:space="preserve"><value>请输入服务器地址。</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>请输入用户名和密码。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderMissing" xml:space="preserve"><value>该文件夹不存在。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>已包含在“{0}”中。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>“{0}”位于该文件夹内 — 请先将其移除。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>正在扫描资料库</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>正在扫描资料库 {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
+  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>正在重建资料库索引</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoTracksFound" xml:space="preserve"><value>未找到曲目。</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>资料库已编入索引。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanError" xml:space="preserve"><value>扫描出错：{0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexRebuildError" xml:space="preserve"><value>重建索引出错：{0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetDone" xml:space="preserve"><value>所有设置和数据已重置。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>已清除插图缓存。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>无法清除缓存：{0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoFolderSelected" xml:space="preserve"><value>未选择文件夹</value><comment>Settings status line</comment></data>
+  <data name="Settings.UpdateCheckTimedOut" xml:space="preserve"><value>检查更新超时。请稍后再试。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateCheckFailed" xml:space="preserve"><value>无法检查更新。请稍后再试。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingUpdate" xml:space="preserve"><value>正在下载更新…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateGone" xml:space="preserve"><value>更新已不可用。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingInBackground" xml:space="preserve"><value>正在后台下载 {0}。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateReady" xml:space="preserve"><value>更新已可安装。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCorrupted" xml:space="preserve"><value>下载已损坏。请重试。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>更新未通过验证。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCancelled" xml:space="preserve"><value>已取消下载。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadFailed" xml:space="preserve"><value>下载失败。请重试。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallerFailed" xml:space="preserve"><value>无法启动安装程序。请从 GitHub 手动下载。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.ReleasesLoadFailed" xml:space="preserve"><value>无法加载版本。请稍后再试。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdatedTo" xml:space="preserve"><value>已更新到 {0}。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTag" xml:space="preserve"><value>正在下载 {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTagPercent" xml:space="preserve"><value>正在下载 {0}… {1:F0}%</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallingTag" xml:space="preserve"><value>正在安装 {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.SavedToDownloads" xml:space="preserve"><value>{0} 已保存到“下载”。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadStarting" xml:space="preserve"><value>正在开始…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadVerifying" xml:space="preserve"><value>正在验证…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingPill" xml:space="preserve"><value>正在下载</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.Checking" xml:space="preserve"><value>正在检查…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpToDate" xml:space="preserve"><value>已是最新</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.CheckForUpdates" xml:space="preserve"><value>检查更新</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateAvailable" xml:space="preserve"><value>有可用更新</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateTo" xml:space="preserve"><value>更新到 {0}</value><comment>Settings › About update status</comment></data>
+  <data name="Palette.GoTo" xml:space="preserve"><value>转到{0}</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryPage" xml:space="preserve"><value>页面</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAction" xml:space="preserve"><value>操作</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategorySong" xml:space="preserve"><value>歌曲</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAlbum" xml:space="preserve"><value>专辑</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryArtist" xml:space="preserve"><value>艺人</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AudioSetting" xml:space="preserve"><value>音频设置</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AppearanceSetting" xml:space="preserve"><value>外观设置</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>为没有同步歌词的歌曲计时或转写歌词</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyrics" xml:space="preserve"><value>为资料库查找歌词…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyricsSub" xml:space="preserve"><value>为每首歌查找歌词，优先逐字同步</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>为资料库查找动态插图…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>从 Apple Music 为专辑添加动态封面</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleShuffle" xml:space="preserve"><value>切换随机播放</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CycleRepeat" xml:space="preserve"><value>切换重复模式</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>切换淡入淡出</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleTransitions" xml:space="preserve"><value>切换歌曲过渡</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>切换动态封面</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Menu.OpenFileWith" xml:space="preserve"><value>打开方式</value><comment>Song context menu › Tools</comment></data>
+  <data name="Menu.OpenIn" xml:space="preserve"><value>在 {0} 中打开</value><comment>Song context menu › Tools</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>专辑含露骨内容</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>已选择 {0} 位艺人</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SongsSelected" xml:space="preserve"><value>已选择 {0} 首歌曲</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>无法将标签写入“{0}”。可能有其他应用打开了该文件，或文件为只读 — 请在那里关闭它或检查文件，然后重试。</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>无法将标签写入 {0} 个文件（例如“{1}”）。可能有其他应用打开了它们，或文件为只读 — 请在那里关闭它们或检查文件，然后重试。</value><comment>Metadata window</comment></data>
+  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>为 1 张专辑查找动态插图</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>为 {0:N0} 张专辑查找动态插图</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>没有要查找的专辑。</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>正在查找</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>{0:N0} 个已保存</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumNoMatch" xml:space="preserve"><value>{0:N0} 个无明确匹配</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumHadOne" xml:space="preserve"><value>{0:N0} 个已有</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="Lyrics.TrySource" xml:space="preserve"><value>试试 {0}</value><comment>Lyrics page</comment></data>
+  <data name="Server.NoAlbums" xml:space="preserve"><value>还没有专辑。此服务器上的音乐资料库为空，或无法访问。</value><comment>Server page</comment></data>
+  <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>无法从服务器加载此专辑。</value><comment>Server page</comment></data>
+  <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>播放音乐视频音频时无法打点 — 请关闭音乐视频音频并重新开始播放歌曲</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>没有可保存的内容 — 请至少为一行打点</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>已保存 · 无法将歌词写入音频文件（正在使用或只读？）</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>保存失败：{0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
 </root>

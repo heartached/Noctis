@@ -186,7 +186,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
             await LoadAlbumPageAsync();
             if (Albums.Count == 0)
             {
-                StatusText = "No albums yet. The music library on this server is empty — or it couldn't be reached.";
+                StatusText = Noctis.Localization.Loc.T("Server.NoAlbums");
                 // The clients fold network failures into empty results, so this
                 // is the one spot that knows the server browse came back empty.
                 DebugLog.Write("Server", "Album browse returned nothing — empty library or unreachable server.");
@@ -294,7 +294,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
                 AlbumTracks.Add(track);
             if (AlbumTracks.Count == 0)
             {
-                StatusText = "Couldn't load this album from the server.";
+                StatusText = Noctis.Localization.Loc.T("Server.AlbumLoadFailed");
                 DebugLog.Write("Server", $"Album load returned no tracks: {tile.Name}");
             }
         }
@@ -374,7 +374,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         var parts = new List<string>(3);
         if (!string.IsNullOrWhiteSpace(album.Artist)) parts.Add(album.Artist);
         if (album.Year > 0) parts.Add(album.Year.ToString());
-        if (album.SongCount > 0) parts.Add(album.SongCount == 1 ? "1 song" : $"{album.SongCount} songs");
+        if (album.SongCount > 0) parts.Add(Noctis.Localization.Loc.Plural("Count.Songs", album.SongCount));
         return string.Join(" · ", parts);
     }
 

@@ -140,7 +140,7 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     private void SetLayout(string? name) => Layout = CoverFlowLayouts.Parse(name);
 
     /// <summary>Human label for the current layout (the dropdown's face).</summary>
-    public string LayoutLabel => Layout.ToString();
+    public string LayoutLabel => Noctis.Localization.Loc.T("Main." + Layout);
 
     public PlayerViewModel Player => _player;
 

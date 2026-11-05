@@ -330,7 +330,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     internal static string LatestReleaseSongsLineFor(Album a)
     {
-        var count = a.TrackCount == 1 ? "1 song" : $"{a.TrackCount} songs";
+        var count = Noctis.Localization.Loc.Plural("Count.Songs", a.TrackCount);
         var total = a.TotalDuration > TimeSpan.Zero
             ? a.TotalDuration
             : TimeSpan.FromTicks(a.Tracks?.Sum(t => t.Duration.Ticks) ?? 0);

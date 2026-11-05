@@ -158,11 +158,11 @@ public class PopupLineIconTests
         Assert.False(Noctis.ViewModels.CommandPaletteViewModel.IsLine("FavoritesIcon"));
 
         var palette = File.ReadAllText(Src("Noctis", "ViewModels", "CommandPaletteViewModel.cs"));
-        Assert.Contains("\"Go to Queue\", \"queue\", \"MenuLineQueue\"", palette);
-        Assert.Contains("\"Go to Lyrics\", \"lyrics\", \"MenuLineLyrics\"", palette);
-        Assert.Contains("\"Go to Favorites\", \"favorites\", \"FavoritesIcon\"", palette);
+        Assert.Contains("Loc.T(\"Tab.Queue\")), \"queue\", \"MenuLineQueue\"", palette);
+        Assert.Contains("Loc.T(\"Tab.Lyrics\")), \"lyrics\", \"MenuLineLyrics\"", palette);
+        Assert.Contains("Loc.T(\"Nav.Favorites\")), \"favorites\", \"FavoritesIcon\"", palette);
         // Lyrics Studio: the sidebar's own glyph (also the Studio picker's header), not Lyrics'.
-        Assert.Contains("\"Lyrics Studio…\", \"SidebarLyricsStudioIcon\"", palette);
+        Assert.Contains("Loc.T(\"Palette.LyricsStudio\"), \"SidebarLyricsStudioIcon\"", palette);
         Assert.Contains("IconGlyph = \"SidebarLyricsStudioIcon\"", File.ReadAllText(Src("Noctis", "ViewModels", "SidebarViewModel.cs")));
 
         var row = XDocument.Load(Src("Noctis", "Views", "CommandPaletteDialog.axaml"))

@@ -249,7 +249,7 @@ public partial class MetadataViewModel : ViewModelBase
     private bool _loadedIsExplicit;
 
     public bool ShowExplicitCheckbox => _albumScoped && !_multiSelect;
-    public string ExplicitCheckboxLabel => "Album is explicit";
+    public string ExplicitCheckboxLabel => Localization.Loc.T("Metadata.AlbumIsExplicit");
 
     [ObservableProperty] private string _language = string.Empty;
     [ObservableProperty] private string _mood = string.Empty;
@@ -271,9 +271,9 @@ public partial class MetadataViewModel : ViewModelBase
 
     /// <summary>Track title and artist for the header.</summary>
     public string HeaderTitle => _multiSelect
-        ? $"{DistinctArtistCount} artists selected"
+        ? Localization.Loc.T("Metadata.ArtistsSelected", DistinctArtistCount)
         : (_albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title);
-    public string HeaderArtist => _multiSelect ? $"{SongCount} songs selected" : _track.Artist;
+    public string HeaderArtist => _multiSelect ? Localization.Loc.T("Metadata.SongsSelected", SongCount) : _track.Artist;
     public string HeaderAlbum => _multiSelect ? string.Empty : _track.Album;
 
     /// <summary>True when editing an arbitrary multi-track selection (blank art, "N selected" header).</summary>
@@ -2780,10 +2780,8 @@ public partial class MetadataViewModel : ViewModelBase
             SaveErrorMessage = failedWrites.All(f => Path.GetExtension(f).Equals(".dff", StringComparison.OrdinalIgnoreCase))
                 ? Localization.Loc.T("Metadata.DffTagsReadOnly", failedWrites[0])
                 : failedWrites.Count == 1
-                ? $"Couldn't write tags to \"{failedWrites[0]}\". Another app may have the file open, " +
-                  "or it may be read-only — close it there or check the file, then try again."
-                : $"Couldn't write tags to {failedWrites.Count} files (e.g. \"{failedWrites[0]}\"). " +
-                  "Another app may have them open, or they may be read-only — close them there or check the files, then try again.";
+                ? Localization.Loc.T("Metadata.WriteFailedOne", failedWrites[0])
+                : Localization.Loc.T("Metadata.WriteFailedMany", failedWrites.Count, failedWrites[0]);
             return;
         }
 

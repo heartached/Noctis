@@ -7528,4 +7528,112 @@
   <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>أغنية واحدة لها كلمات عادية فقط. يمكن لـ Lyrics Studio توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} أغانٍ لها كلمات عادية فقط. يمكن لـ Lyrics Studio توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>تُفتح أول {0} في المرة الواحدة.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="Count.Songs" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} مقطع|{0:N0} مقطع|{0:N0} مقطعان|{0:N0} مقاطع|{0:N0} مقطعًا|{0:N0} مقطع</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Items" xml:space="preserve"><value>{0:N0} عنصر|{0:N0} عنصر|{0:N0} عنصران|{0:N0} عناصر|{0:N0} عنصرًا|{0:N0} عنصر</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} س {1} د</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Count.MinutesShort" xml:space="preserve"><value>{0} د</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Tray.OpenNoctis" xml:space="preserve"><value>فتح Noctis</value><comment>Tray icon menu</comment></data>
+  <data name="Tray.Quit" xml:space="preserve"><value>إنهاء</value><comment>Tray icon menu</comment></data>
+  <data name="Settings.NotConnected" xml:space="preserve"><value>غير متصل</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedAs" xml:space="preserve"><value>متصل باسم {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedTo" xml:space="preserve"><value>متصل بـ {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.WindowsOnly" xml:space="preserve"><value>متاح على Windows فقط.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>تمت إزالة Noctis من قائمة "فتح باستخدام".</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>تم التسجيل. اختر Noctis من الإعدادات ← التطبيقات ← التطبيقات الافتراضية، أو انقر بزر الماوس الأيمن على أغنية ← فتح باستخدام.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesFailed" xml:space="preserve"><value>تعذّر تحديث أنواع الملفات: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.RegroupingArtists" xml:space="preserve"><value>جارٍ إعادة تجميع الفنانين…</value><comment>Settings status line</comment></data>
+  <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>جارٍ استعادة بيانات الفنانين الأصلية…</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>تعذّر تحديث بيانات الفنانين.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>بيانات الفنانين محدّثة بالفعل.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>تم تحديث بيانات الفنانين في {0:N0} مقطع.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegNotFound" xml:space="preserve"><value>غير موجود — حدّد مسارًا أدناه أو ثبّت ffmpeg ضمن PATH.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegChecking" xml:space="preserve"><value>جارٍ التحقق من {0}…</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpeningBrowser" xml:space="preserve"><value>جارٍ فتح المتصفح…</value><comment>Settings status line</comment></data>
+  <data name="Settings.LastFmAuthUrlFailed" xml:space="preserve"><value>تعذّر الحصول على رابط التفويض. تحقق من مفتاح API.</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpenBrowserFailed" xml:space="preserve"><value>تعذّر فتح المتصفح.</value><comment>Settings status line</comment></data>
+  <data name="Settings.WaitingForAuth" xml:space="preserve"><value>بانتظار التفويض في المتصفح…</value><comment>Settings status line</comment></data>
+  <data name="Settings.TokenRequired" xml:space="preserve"><value>الرمز مطلوب</value><comment>Settings status line</comment></data>
+  <data name="Settings.Validating" xml:space="preserve"><value>جارٍ التحقق…</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterServerAddress" xml:space="preserve"><value>أدخل عنوان الخادم.</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>أدخل اسم المستخدم وكلمة المرور.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderMissing" xml:space="preserve"><value>هذا المجلد غير موجود.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>مشمول بالفعل ضمن "{0}".</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>"{0}" موجود داخل هذا المجلد — أزله أولًا.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>جارٍ فحص المكتبة</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>جارٍ فحص المكتبة {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
+  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>جارٍ إعادة بناء فهرس المكتبة</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoTracksFound" xml:space="preserve"><value>لم يتم العثور على مقاطع.</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>تمت فهرسة المكتبة.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanError" xml:space="preserve"><value>خطأ في الفحص: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexRebuildError" xml:space="preserve"><value>خطأ في إعادة بناء الفهرس: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetDone" xml:space="preserve"><value>تمت إعادة تعيين كل الإعدادات والبيانات.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>تم مسح ذاكرة الأعمال الفنية المؤقتة.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>تعذّر مسح الذاكرة المؤقتة: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoFolderSelected" xml:space="preserve"><value>لم يتم اختيار مجلد</value><comment>Settings status line</comment></data>
+  <data name="Settings.UpdateCheckTimedOut" xml:space="preserve"><value>انتهت مهلة البحث عن التحديثات. حاول لاحقًا.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateCheckFailed" xml:space="preserve"><value>تعذّر البحث عن التحديثات. حاول لاحقًا.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingUpdate" xml:space="preserve"><value>جارٍ تنزيل التحديث…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateGone" xml:space="preserve"><value>لم يعد التحديث متاحًا.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingInBackground" xml:space="preserve"><value>جارٍ تنزيل {0} في الخلفية.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateReady" xml:space="preserve"><value>التحديث جاهز للتثبيت.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCorrupted" xml:space="preserve"><value>التنزيل تالف. حاول مرة أخرى.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>فشل التحقق من التحديث.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCancelled" xml:space="preserve"><value>تم إلغاء التنزيل.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadFailed" xml:space="preserve"><value>فشل التنزيل. حاول مرة أخرى.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallerFailed" xml:space="preserve"><value>تعذّر تشغيل المثبّت. نزّله يدويًا من GitHub.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.ReleasesLoadFailed" xml:space="preserve"><value>تعذّر تحميل الإصدارات. حاول لاحقًا.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdatedTo" xml:space="preserve"><value>تم التحديث إلى {0}.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTag" xml:space="preserve"><value>جارٍ تنزيل {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTagPercent" xml:space="preserve"><value>جارٍ تنزيل {0}… {1:F0}%</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallingTag" xml:space="preserve"><value>جارٍ تثبيت {0}…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.SavedToDownloads" xml:space="preserve"><value>تم حفظ {0} في التنزيلات.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadStarting" xml:space="preserve"><value>جارٍ البدء…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadVerifying" xml:space="preserve"><value>جارٍ التحقق…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingPill" xml:space="preserve"><value>جارٍ التنزيل</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.Checking" xml:space="preserve"><value>جارٍ التحقق…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpToDate" xml:space="preserve"><value>محدّث</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.CheckForUpdates" xml:space="preserve"><value>البحث عن تحديثات</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateAvailable" xml:space="preserve"><value>يتوفر تحديث</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateTo" xml:space="preserve"><value>التحديث إلى {0}</value><comment>Settings › About update status</comment></data>
+  <data name="Palette.GoTo" xml:space="preserve"><value>الانتقال إلى {0}</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryPage" xml:space="preserve"><value>صفحة</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAction" xml:space="preserve"><value>إجراء</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategorySong" xml:space="preserve"><value>أغنية</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAlbum" xml:space="preserve"><value>ألبوم</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryArtist" xml:space="preserve"><value>فنان</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AudioSetting" xml:space="preserve"><value>إعداد الصوت</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AppearanceSetting" xml:space="preserve"><value>إعداد المظهر</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>توقيت أو تفريغ كلمات الأغاني التي لا تحتوي على كلمات متزامنة</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyrics" xml:space="preserve"><value>البحث عن كلمات للمكتبة…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyricsSub" xml:space="preserve"><value>البحث عن كلمات كل أغنية، المتزامنة كلمةً بكلمة أولًا</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>البحث عن أعمال فنية متحركة للمكتبة…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>إضافة أغلفة متحركة من Apple Music إلى الألبومات</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleShuffle" xml:space="preserve"><value>تبديل التشغيل العشوائي</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CycleRepeat" xml:space="preserve"><value>تبديل وضع التكرار</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>تبديل التلاشي المتقاطع</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleTransitions" xml:space="preserve"><value>تبديل الانتقالات بين الأغاني</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>تبديل الأغلفة المتحركة</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Menu.OpenFileWith" xml:space="preserve"><value>فتح الملف باستخدام</value><comment>Song context menu › Tools</comment></data>
+  <data name="Menu.OpenIn" xml:space="preserve"><value>فتح في {0}</value><comment>Song context menu › Tools</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>الألبوم صريح</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>تم تحديد {0} فنانين</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SongsSelected" xml:space="preserve"><value>تم تحديد {0} أغانٍ</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>تعذّرت كتابة الوسوم في "{0}". ربما يكون الملف مفتوحًا في تطبيق آخر أو للقراءة فقط — أغلقه هناك أو تحقق من الملف ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>تعذّرت كتابة الوسوم في {0} ملفات (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
+  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>البحث عن عمل فني متحرك لألبوم واحد</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>البحث عن أعمال فنية متحركة لـ {0:N0} ألبومات</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>لا توجد ألبومات للبحث عنها.</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>جارٍ البحث</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>{0:N0} محفوظة</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumNoMatch" xml:space="preserve"><value>{0:N0} بلا تطابق واضح</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumHadOne" xml:space="preserve"><value>{0:N0} لديها واحد بالفعل</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="Lyrics.TrySource" xml:space="preserve"><value>جرّب {0}</value><comment>Lyrics page</comment></data>
+  <data name="Server.NoAlbums" xml:space="preserve"><value>لا توجد ألبومات بعد. مكتبة الموسيقى على هذا الخادم فارغة — أو تعذّر الوصول إليها.</value><comment>Server page</comment></data>
+  <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>تعذّر تحميل هذا الألبوم من الخادم.</value><comment>Server page</comment></data>
+  <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>الختم متوقف أثناء تشغيل صوت الفيديو الموسيقي — أوقف صوت الفيديو الموسيقي وأعد تشغيل الأغنية</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>لا شيء لحفظه — اختم سطرًا واحدًا على الأقل</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>تم الحفظ · تعذّرت كتابة الكلمات في الملف الصوتي (قيد الاستخدام أو للقراءة فقط؟)</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>فشل الحفظ: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
 </root>

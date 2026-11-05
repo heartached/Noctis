@@ -1498,7 +1498,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     _alternateOnlineResult = alternate;
                     _alternateSource = altSource;
                     HasAlternateLyrics = true;
-                    AlternateLyricsLabel = $"Try {altSource}";
+                    AlternateLyricsLabel = Localization.Loc.T("Lyrics.TrySource", altSource);
                 }
 
                 // lrc.red (searched, so on in Settings) has the song only line-synced or plain:
@@ -1682,7 +1682,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _alternateOnlineResult = prevResult;
         _alternateSource = prevSource;
         HasAlternateLyrics = prevResult != null && prevResult.HasLyrics;
-        AlternateLyricsLabel = $"Try {prevSource}";
+        AlternateLyricsLabel = Localization.Loc.T("Lyrics.TrySource", prevSource);
     }
 
     // ── Search Lyrics with a source picker (issue #113) ──
@@ -1970,7 +1970,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 _alternateOnlineResult = previous;
                 _alternateSource = previousSource;
                 HasAlternateLyrics = true;
-                AlternateLyricsLabel = $"Try {previousSource}";
+                AlternateLyricsLabel = Localization.Loc.T("Lyrics.TrySource", previousSource);
             }
             else if (_alternateSource == Services.Lyrics.OnlineLyricsSource.LrcRed)
             {

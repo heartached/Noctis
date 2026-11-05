@@ -618,10 +618,10 @@ public partial class SidebarViewModel : ViewModelBase
                 if (t != null) totalDuration += t.Duration;
             }
         }
-        var tracksLabel = item.TrackCount == 1 ? "1 track" : $"{item.TrackCount:N0} tracks";
+        var tracksLabel = Loc.Plural("Count.Tracks", item.TrackCount);
         var durationLabel = totalDuration.TotalHours >= 1
-            ? $"{(int)totalDuration.TotalHours} hr {totalDuration.Minutes} min"
-            : $"{(int)Math.Round(totalDuration.TotalMinutes)} min";
+            ? Loc.T("Count.HoursMinutes", (int)totalDuration.TotalHours, totalDuration.Minutes)
+            : Loc.T("Count.MinutesShort", (int)Math.Round(totalDuration.TotalMinutes));
         item.MetaText = $"{tracksLabel} · {durationLabel}";
 
         // Resolve up to 4 unique album arts for collage thumbnail

@@ -37,7 +37,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private int _trackCount;
 
     /// <summary>Header stats: "1 track", "12 tracks" (the header read "1 tracks").</summary>
-    public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
+    public string TrackCountText => Noctis.Localization.Loc.Plural("Count.Tracks", TrackCount);
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
 
