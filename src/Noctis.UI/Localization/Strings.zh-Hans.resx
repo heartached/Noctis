@@ -3899,6 +3899,9 @@
     <value>最大</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>专辑或艺人</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music 上没有匹配的专辑。请尝试其他名称。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>下载失败。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>下载中…</value>
     <comment>Text in MetadataWindow.axaml</comment>

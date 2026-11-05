@@ -3899,6 +3899,9 @@
     <value>最大</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>アルバムまたはアーティスト</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music に一致するアルバムがありません。別の名前で試してください。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>ダウンロードに失敗しました。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>ダウンロード中…</value>
     <comment>Text in MetadataWindow.axaml</comment>

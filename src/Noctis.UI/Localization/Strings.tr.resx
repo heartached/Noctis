@@ -1067,6 +1067,9 @@
   <data name="Metadata.FromAppleMusic" xml:space="preserve"><value>Apple Music'ten</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Standard" xml:space="preserve"><value>Standart</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Max" xml:space="preserve"><value>En yüksek</value><comment>Content in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Albüm veya sanatçı</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music'te eşleşen albüm yok. Başka bir ad deneyin.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>İndirme başarısız oldu.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>İndiriliyor…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Kapak Ara</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Dosyadan ekle</value><comment>Content in MetadataWindow.axaml</comment></data>

@@ -3899,6 +3899,9 @@
     <value>Max</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Album ou artiste</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Aucun album correspondant sur Apple Music. Essayez un autre nom.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>Échec du téléchargement.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>Téléchargement…</value>
     <comment>Text in MetadataWindow.axaml</comment>

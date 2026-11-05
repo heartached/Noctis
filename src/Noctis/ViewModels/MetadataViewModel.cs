@@ -115,6 +115,10 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _isDownloadingArtwork;
     [ObservableProperty] private bool _hasArtworkSearchResults;
     [ObservableProperty] private string _artworkSearchStatus = string.Empty;
+    /// <summary>The artwork chooser's own search box; empty = the track's tags.</summary>
+    [ObservableProperty] private string _artworkSearchInput = string.Empty;
+    /// <summary>The query the artwork chooser's box shows when the search came from the tags.</summary>
+    [ObservableProperty] private string _artworkSearchQueryHint = string.Empty;
     [ObservableProperty] private bool _isArtworkSearchOpen;
 
     // ── iTunes animated-cover search ──
@@ -1632,18 +1636,23 @@ public partial class MetadataViewModel : ViewModelBase
     [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task SearchArtwork()
     {
-        if (_itunes == null) { ArtworkSearchStatus = "Search service unavailable."; return; }
+        if (_itunes == null) { ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearchUnavailable"); return; }
 
         var gen = ++_artworkSearchGeneration;
         IsSearchingArtwork = true;
-        ArtworkSearchStatus = "Searching…";
+        ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearching");
         ClearArtworkSearchResults();
         HasArtworkSearchResults = false;
         IsArtworkSearchOpen = true;
         try
         {
-            var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
-            var album = GetArtworkSearchAlbumTerm();
+            // The chooser's box (same as the animated one): a typed name replaces the tags and
+            // is read as the album, artist words included, so no artist filter applies.
+            var typed = (ArtworkSearchInput ?? string.Empty).Trim();
+            var artist = typed.Length > 0 ? string.Empty
+                : !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+            var album = typed.Length > 0 ? typed : GetArtworkSearchAlbumTerm();
+            ArtworkSearchQueryHint = typed.Length > 0 || string.IsNullOrWhiteSpace(artist) ? album : $"{album} — {artist}";
             var results = await _itunes.SearchAlbumsAsync(artist, album);
             if (gen != _artworkSearchGeneration) return;
 
@@ -1672,14 +1681,14 @@ public partial class MetadataViewModel : ViewModelBase
             }
 
             HasArtworkSearchResults = ArtworkSearchResults.Count > 0;
-            ArtworkSearchStatus = HasArtworkSearchResults
-                ? $"{ArtworkSearchResults.Count} result(s). Click one to apply."
-                : "No matches found.";
+            // As the animated chooser: no status once results show (the tiles speak for
+            // themselves); the line stays for errors.
+            ArtworkSearchStatus = HasArtworkSearchResults ? string.Empty : Localization.Loc.T("Metadata.ArtNoMatches");
         }
         catch (Exception ex)
         {
             if (gen == _artworkSearchGeneration)
-                ArtworkSearchStatus = $"Search failed: {ex.Message}";
+                ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearchFailed", ex.Message);
         }
         finally
         {
@@ -1696,13 +1705,19 @@ public partial class MetadataViewModel : ViewModelBase
     private async Task SelectHighestArtworkResult(ArtworkSearchResult? result)
         => await SelectArtworkResultAsync(result, useHighestResolution: true);
 
+    /// <summary>A Standard / Max pill on the chooser card.</summary>
+    [RelayCommand]
+    private async Task SelectArtworkChoice(ArtworkSearchChoice? choice)
+        => await SelectArtworkResultAsync(choice?.Owner, choice?.Highest == true);
+
     private async Task SelectArtworkResultAsync(ArtworkSearchResult? result, bool useHighestResolution)
     {
         var candidate = result?.Candidate;
         if (candidate == null || _itunes == null) return;
 
         IsDownloadingArtwork = true;
-        ArtworkSearchStatus = "Downloading…";
+        // The spinner row carries its own "Downloading…" label (as the animated chooser).
+        ArtworkSearchStatus = string.Empty;
         try
         {
             byte[]? data = null;
@@ -1714,7 +1729,7 @@ public partial class MetadataViewModel : ViewModelBase
             }
             if (data is null)
             {
-                ArtworkSearchStatus = "Download failed.";
+                ArtworkSearchStatus = Localization.Loc.T("Metadata.ArtDownloadFailed");
                 return;
             }
 
@@ -1728,12 +1743,12 @@ public partial class MetadataViewModel : ViewModelBase
             ArtworkPreview = new Bitmap(ms);
             DisposePreview(oldArt);
             HasArtwork = true;
-            ArtworkSearchStatus = "Applied. Click Save to keep.";
+            ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimApplied");
             IsArtworkSearchOpen = false;
         }
         catch (Exception ex)
         {
-            ArtworkSearchStatus = $"Failed: {ex.Message}";
+            ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimDownloadFailed", ex.Message);
         }
         finally
         {
@@ -3010,18 +3025,36 @@ public partial class CustomTagItem : ObservableObject
     [ObservableProperty] private string _value = string.Empty;
 }
 
-public sealed class ArtworkSearchResult : IDisposable
+public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
 {
     public ArtworkSearchResult(ITunesArtworkService.ArtworkCandidate candidate, Bitmap? thumbnail)
     {
         Candidate = candidate;
         Thumbnail = thumbnail;
+        Choices = new[]
+        {
+            new ArtworkSearchChoice(this, Highest: false, Localization.Loc.T("Metadata.Standard")),
+            new ArtworkSearchChoice(this, Highest: true, Localization.Loc.T("Metadata.Max")),
+        };
     }
 
     public ITunesArtworkService.ArtworkCandidate Candidate { get; }
     public Bitmap? Thumbnail { get; }
     public string CollectionName => Candidate.CollectionName;
     public string ArtistName => Candidate.ArtistName;
+
+    /// <summary>Standard, then Max (the accent pill).</summary>
+    public IReadOnlyList<ArtworkSearchChoice> Choices { get; }
+
+    Bitmap? IArtworkChooserItem.Poster => Thumbnail;
+    string IArtworkChooserItem.Detail => string.Empty;
+    bool IArtworkChooserItem.HasDetail => false;
+    bool IArtworkChooserItem.CanPreview => false;
+    string? IArtworkChooserItem.PosterTip => null;
+    string? IArtworkChooserItem.PreviewPath => null;
+    bool IArtworkChooserItem.IsPreviewing => false;
+    bool IArtworkChooserItem.IsPreviewLoading => false;
+    IReadOnlyList<IArtworkChooserChoice> IArtworkChooserItem.Choices => Choices;
 
     public void Dispose() => Thumbnail?.Dispose();
 }

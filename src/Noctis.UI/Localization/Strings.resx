@@ -1554,6 +1554,9 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.FromAppleMusic" xml:space="preserve"><value>From Apple Music</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Standard" xml:space="preserve"><value>Standard</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Max" xml:space="preserve"><value>Max</value><comment>Content in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Album or artist</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>No matching albums on Apple Music. Try another name.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>Download failed.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>Downloading…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Search Artwork</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Add from file</value><comment>Content in MetadataWindow.axaml</comment></data>
