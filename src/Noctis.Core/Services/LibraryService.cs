@@ -2674,9 +2674,13 @@ public class LibraryService : ILibraryService
         {
             foreach (var t in targets)
             {
+                // An album artist the grouping rule filled in (not from a tag) matches in the
+                // library but not in the file: write it too, or other apps and the next
+                // regroup still see the song split (GitHub #178).
                 var changed = !string.Equals(t.Album, album, StringComparison.Ordinal)
                               || !string.Equals(t.AlbumArtist, albumArtist, StringComparison.Ordinal)
-                              || t.AlbumId != albumId;
+                              || t.AlbumId != albumId
+                              || t.AlbumArtistFromTag != true;
                 if (!changed) continue;
                 grouped++;
                 t.Album = album;

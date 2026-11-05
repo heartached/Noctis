@@ -488,6 +488,28 @@ public class GroupAlbums178Tests : IDisposable
     }
 
     [Fact]
+    public async Task GroupIntoAlbum_WritesTheTags_OfSongsTheRuleAlreadyGrouped()
+    {
+        // The rule files these under "Various Artists" in the library only; their files have
+        // no album artist. Grouping them with a namesake must still write every file.
+        var a = WriteMp3(Path.Combine("Prem Poojari", "01.mp3"), "Prem Poojari", new[] { "K. J. Yesudas" });
+        var b = WriteMp3(Path.Combine("Prem Poojari", "02.mp3"), "Prem Poojari", new[] { "K. S. Chithra" });
+        var c = WriteMp3(Path.Combine("Other", "01.mp3"), "Prem Poojari", new[] { "Someone Else" });
+        var (library, _) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != 3) Assert.Fail(ScanMissReport.Describe(library, Music));
+        Assert.Equal(Track.VariousArtists, library.AllTracks.Single(t => t.FilePath == a).AlbumArtist);
+
+        var result = await library.GroupIntoAlbumAsync(library.AllTracks.ToList(), "Prem Poojari", Track.VariousArtists);
+
+        Assert.Equal(3, result.Grouped);
+        Assert.Single(library.Albums);
+        Assert.Equal(new[] { Track.VariousArtists }, ReadAlbumArtists(a));
+        Assert.Equal(new[] { Track.VariousArtists }, ReadAlbumArtists(b));
+        Assert.Equal(new[] { Track.VariousArtists }, ReadAlbumArtists(c));
+    }
+
+    [Fact]
     public async Task GroupIntoAlbum_ReadOnlyFile_StillGroups_AndIsReported()
     {
         var a = WriteMp3(Path.Combine("A", "01.mp3"), "One", new[] { "X" }, new[] { "X" });
