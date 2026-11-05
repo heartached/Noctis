@@ -180,6 +180,13 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     private void OnRediscoveredContextRequested(object? sender, ContextRequestedEventArgs e)
         => OpenTrackMenu(sender, e, static vm => vm.PlayRediscoveredCommand, static vm => vm.ShuffleRediscoveredCommand);
 
+    // GitHub #177: a Last.fm mix pill; Play / Shuffle act on its own mix (the ItemsControl's Tag).
+    private void OnLastFmMixContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if ((sender as Control)?.FindAncestorOfType<ItemsControl>()?.Tag is not LastFmMixRow row) return;
+        OpenTrackMenu(sender, e, _ => row.PlayCommand, _ => row.ShuffleCommand);
+    }
+
     private void OpenTrackMenu(object? sender, ContextRequestedEventArgs e,
         Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
     {

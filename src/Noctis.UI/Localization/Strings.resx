@@ -3921,4 +3921,28 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Nothing to save — stamp at least one line</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Saved · couldn't write the lyrics into the audio file (in use or read-only?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>Save failed: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Home.LastFm.Title" xml:space="preserve"><value>From your Last.fm</value><comment>Home section title (GitHub #177)</comment></data>
+  <data name="Home.LastFm.Subtitle" xml:space="preserve"><value>Mixes from your Last.fm listening, made of songs in your library</value><comment>Home Last.fm section: line under the title</comment></data>
+  <data name="Home.LastFm.Loading" xml:space="preserve"><value>Reading your Last.fm…</value><comment>Home Last.fm section: first read in progress</comment></data>
+  <data name="Home.LastFm.NoMatches" xml:space="preserve"><value>None of the songs you play on Last.fm are in your library yet.</value><comment>Home Last.fm section: the account's songs matched nothing in the library</comment></data>
+  <data name="Home.LastFm.Error.UserNotFound" xml:space="preserve"><value>Last.fm doesn't know this account.</value><comment>Home Last.fm section error</comment></data>
+  <data name="Home.LastFm.Error.Private" xml:space="preserve"><value>This Last.fm account keeps its listening private.</value><comment>Home Last.fm section error</comment></data>
+  <data name="Home.LastFm.Error.ShowingSaved" xml:space="preserve"><value>Couldn't reach Last.fm. Showing your saved mixes.</value><comment>Home Last.fm section: refresh failed, older mixes still shown</comment></data>
+  <data name="Home.LastFm.Error.Unreachable" xml:space="preserve"><value>Couldn't reach Last.fm. Try Refresh later.</value><comment>Home Last.fm section: refresh failed, nothing saved</comment></data>
+  <data name="Home.LastFm.Refresh" xml:space="preserve"><value>Refresh</value><comment>Home Last.fm section: button that reads Last.fm again</comment></data>
+  <data name="Home.LastFm.Refreshing" xml:space="preserve"><value>Refreshing…</value><comment>Home Last.fm section: the Refresh button while reading</comment></data>
+  <data name="Home.LastFm.RefreshTip" xml:space="preserve"><value>Read your Last.fm charts again</value><comment>Tooltip / screen-reader name of the Home Last.fm Refresh button</comment></data>
+  <data name="Home.LastFm.TopSongs" xml:space="preserve"><value>Your Last.fm Top Songs</value><comment>Home Last.fm mix: the account's top tracks found in the library</comment></data>
+  <data name="Home.LastFm.Loved" xml:space="preserve"><value>Loved on Last.fm</value><comment>Home Last.fm mix: loved tracks found in the library</comment></data>
+  <data name="Home.LastFm.TopArtists" xml:space="preserve"><value>From the artists you play most</value><comment>Home Last.fm mix: library songs by the account's top artists</comment></data>
+  <data name="Home.LastFm.Shuffle" xml:space="preserve"><value>Shuffle</value><comment>Home Last.fm mix: shuffle button label, followed by the mix's song count</comment></data>
+  <data name="Home.LastFm.ShuffleMix" xml:space="preserve"><value>Shuffle this whole mix</value><comment>Tooltip / screen-reader name of a Last.fm mix's shuffle button</comment></data>
+  <data name="Home.LastFm.Discover" xml:space="preserve"><value>Discover on Last.fm</value><comment>Home section title: artists/albums from Last.fm not in the library (GitHub #177)</comment></data>
+  <data name="Home.LastFm.DiscoverLine" xml:space="preserve"><value>Artists and albums you don't have yet, picked from your Last.fm</value><comment>Home Discover section: line under the title</comment></data>
+  <data name="Home.LastFm.OpenOnLastFm" xml:space="preserve"><value>Open on Last.fm</value><comment>Tooltip of a Discover entry: opens its Last.fm page in the browser</comment></data>
+  <data name="Home.LastFm.SimilarTo" xml:space="preserve"><value>Similar to {0}</value><comment>Discover entry detail; {0} = one or two of the user's artists</comment></data>
+  <data name="Home.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · in your Last.fm top albums</value><comment>Discover album entry detail; {0} = the album's artist</comment></data>
+  <data name="Home.LastFm.ArtistYouPlay" xml:space="preserve"><value>In your Last.fm top artists</value><comment>Discover artist entry detail: a top artist with no songs in the library</comment></data>
+  <data name="Settings.LastFmTaste.Title" xml:space="preserve"><value>Mixes and Recommendations</value><comment>Settings › Integrations › Last.fm toggle (GitHub #177)</comment></data>
+  <data name="Settings.LastFmTaste.Line" xml:space="preserve"><value>Home shows mixes of your songs and artists to discover, from your Last.fm charts. Nothing is sent back.</value><comment>Settings › Integrations › Last.fm: what the mixes toggle does</comment></data>
 </root>
