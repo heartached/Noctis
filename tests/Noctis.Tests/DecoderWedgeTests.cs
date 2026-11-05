@@ -171,6 +171,10 @@ public class DecoderWedgeTests
             Assert.True(new Mp3DecoderFallbackList(store).Contains(mp3));
             Assert.False(new Mp3DecoderFallbackList(store).Contains(Path.Combine(dir, "other.mp3")));
 
+            // A tag rewritten in place (a rating) moves the write time, not the size.
+            File.SetLastWriteTimeUtc(mp3, DateTime.UtcNow.AddMinutes(5));
+            Assert.True(new Mp3DecoderFallbackList(store).Contains(mp3));
+
             File.WriteAllBytes(mp3, new byte[120]); // fixed / re-encoded
             Assert.False(new Mp3DecoderFallbackList(store).Contains(mp3));
             Assert.False(new Mp3DecoderFallbackList(null).Contains(mp3));
@@ -179,6 +183,35 @@ public class DecoderWedgeTests
         {
             try { Directory.Delete(dir, true); } catch { }
         }
+    }
+
+    [Theory]
+    // writeEndMs, block frames @ 1 kHz, expected frames kept (-1 = no cut)
+    [InlineData(900, 50, -1)]   // the block ends before the cut
+    [InlineData(980, 50, 20)]   // straddles the cut at 1000
+    [InlineData(1000, 50, 0)]   // starts right on it
+    [InlineData(1010, 50, -1)]  // past it (a seek beyond): keeps playing
+    public void DamageAhead_EndsTheInputAtTheCut(long writeEndMs, int frames, int expected)
+    {
+        var damage = new[] { new Mp3FrameScan.Damage(1000, 1030), new Mp3FrameScan.Damage(5000, 5026) };
+        Assert.Equal(expected, VlcAudioPlayer.DamageCutFrames(writeEndMs, frames, 1000, damage, out var run));
+        if (expected >= 0) Assert.Equal(1030, run.ResumeMs);
+    }
+
+    [Fact]
+    public void EndWithFade_FadesTheNewest_KeepsThePadding_AndRefusesMore()
+    {
+        var seg = new GaplessTrackSegment(1000, 1, null, basePositionMs: 2000) { TailTrimFrames = 50 };
+        Assert.True(seg.Write(Tone(100)));
+        Assert.Equal(2100, seg.WriteEndMs);
+        seg.EndWithFade(20);
+        Assert.True(seg.EndOfStream);
+        Assert.False(seg.Write(Tone(10)));
+        var all = new float[100];
+        Assert.Equal(100, seg.Read(all, 0, 100)); // no encoder padding cut: not the file's end
+        Assert.Equal(0.5f, all[79]);
+        Assert.Equal(0f, all[99]);
+        Assert.True(seg.IsFinished);
     }
 
     [Fact]

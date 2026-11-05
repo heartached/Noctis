@@ -81,13 +81,91 @@ internal static class Mp3FrameScan
         }
         if (!vbr) return false;
 
+        var seconds = Walk(stream, audioStart, firstFrame, null, out var audioBytes);
+        if (seconds <= 0) return false;
+        duration = TimeSpan.FromSeconds(seconds);
+        averageKbps = (int)Math.Round(audioBytes * 8d / seconds / 1000d);
+        return true;
+    }
+
+    /// <summary>A run of damaged bytes inside the audio, in media time: <see cref="CutMs"/> is
+    /// where the last frame before it starts (it may hold the first damaged bytes), <see cref="ResumeMs"/>
+    /// where the frames after it begin. The damaged bytes themselves carry no time.</summary>
+    internal readonly record struct Damage(long CutMs, long ResumeMs);
+
+    // Long recordings (DJ mixes, live sets) are where damaged data turns up and where the
+    // player cannot afford to discover it late; a song-length file pays only the header check.
+    internal const int DamageScanMinMinutes = 20;
+    // Damaged runs closer together than this are reported as one.
+    private const int DamageMergeMs = 2000;
+
+    /// <summary>
+    /// The damaged runs inside a local MP3 of at least <see cref="DamageScanMinMinutes"/>
+    /// minutes (junk between frames, overwritten data: anything the frame chain has to resync
+    /// over), so the player can switch decoders cleanly before LibVLC's mpg123 reaches them
+    /// (Discord, Tangent, 11-05: the switch made at the wedge still left a gap). Empty for a
+    /// clean file, a shorter one (after reading a few KB) or on error. Reads the whole file.
+    /// </summary>
+    public static IReadOnlyList<Damage> FindDamage(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 1, FileOptions.SequentialScan);
+            return FindDamage(stream);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Same, over a seekable stream. Internal for tests.</summary>
+    internal static IReadOnlyList<Damage> FindDamage(Stream stream, int minMinutes = DamageScanMinMinutes)
+    {
+        var length = stream.Length;
+        long start = 0;
+        var id3 = new byte[10];
+        stream.Position = 0;
+        if (stream.ReadAtLeast(id3, id3.Length, throwOnEndOfStream: false) == id3.Length &&
+            id3[0] == (byte)'I' && id3[1] == (byte)'D' && id3[2] == (byte)'3')
+            start = Id3v2TotalSize(id3);
+        if (start >= length) return [];
+        var head = ReadAt(stream, start, SyncSearchBytes + 2048);
+        var first = FindFrame(head, 0, SyncSearchBytes, out var firstFrame);
+        if (first < 0) return [];
+        // A song or a long recording: by the lowest bitrate among the first frame and a few
+        // sampled through the file (a VBR file's first frame alone can read a third short).
+        var kbps = firstFrame.Kbps;
+        for (var p = 1; p <= BitrateProbes; p++)
+        {
+            var probe = ReadAt(stream, start + first + (length - start - first) * p / (BitrateProbes + 1), ProbeBytes);
+            if (FindFrame(probe, 0, probe.Length, out var f) >= 0) kbps = Math.Min(kbps, f.Kbps);
+        }
+        var estimatedSeconds = (length - start - first) * 8d / (kbps * 1000d);
+        if (estimatedSeconds < minMinutes * 60) return [];
+        var damage = new List<Damage>();
+        Walk(stream, start + first, firstFrame, damage, out _);
+        return damage;
+    }
+
+    /// <summary>
+    /// Walks every frame from <paramref name="audioStart"/>; returns the seconds counted and,
+    /// into <paramref name="damage"/> when given, each run of bytes it had to resync over.
+    /// </summary>
+    private static double Walk(Stream stream, long audioStart, Frame firstFrame, List<Damage>? damage, out long audioBytes)
+    {
+        var length = stream.Length;
         // Walk every frame. A gap (junk, a damaged frame) resyncs on the next valid pair of
         // headers; an ID3v1/APE tag at the end ends the walk. The pair sets the format counted
         // from there on, so a file joined from recordings of different sample rates counts
         // every part: matching only the first frame's format stopped the count at the join
         // and the player clamped every seek there.
         double seconds = 0;
-        long audioBytes = 0;
+        audioBytes = 0;
+        // Damage bookkeeping: where the gap began (-1 = in sync) and the last frame's length.
+        double gapAt = -1, lastFrameSeconds = 0;
+        var gapIsTag = false;
         var current = firstFrame;
         var block = new byte[WalkBlockBytes + 4096];
         var blockStart = audioStart;
@@ -110,10 +188,19 @@ internal static class Mp3FrameScan
                         blockStart + pos + frame.Length <= length;
             if (whole && frame.SampleRate == current.SampleRate && frame.Version == current.Version)
             {
-                seconds += (double)frame.Samples / frame.SampleRate;
+                lastFrameSeconds = (double)frame.Samples / frame.SampleRate;
+                seconds += lastFrameSeconds;
                 audioBytes += frame.Length;
                 pos += frame.Length;
+                gapAt = -1;
                 continue;
+            }
+            if (gapAt < 0)
+            {
+                gapAt = seconds;
+                // A tag between two joined files is not damage (the demuxer steps over it).
+                var at = block.AsSpan(pos, filled - pos);
+                gapIsTag = at.StartsWith("ID3"u8) || at.StartsWith("TAG"u8) || at.StartsWith("APETAGEX"u8);
             }
             // A whole frame of another format starts a new part if the next header confirms it
             // (FindFrame then returns pos itself); anything else is searched past.
@@ -125,14 +212,20 @@ internal static class Mp3FrameScan
                 pos = Math.Max(pos + 1, filled - 2048);
                 continue;
             }
+            // Bytes were skipped to get back in sync: damage, unless before the first frame or a tag.
+            if (damage != null && next != pos && seconds > 0 && !gapIsTag)
+            {
+                var run = new Damage((long)((gapAt - lastFrameSeconds) * 1000), (long)Math.Ceiling(gapAt * 1000));
+                // Junk scattered between frames is one damaged stretch, skipped in one switch.
+                if (damage.Count > 0 && run.CutMs - damage[^1].ResumeMs < DamageMergeMs)
+                    damage[^1] = damage[^1] with { ResumeMs = run.ResumeMs };
+                else
+                    damage.Add(run);
+            }
             current = found;
             pos = next;
         }
-
-        if (seconds <= 0) return false;
-        duration = TimeSpan.FromSeconds(seconds);
-        averageKbps = (int)Math.Round(audioBytes * 8d / seconds / 1000d);
-        return true;
+        return seconds;
     }
 
     private static byte[] ReadAt(Stream stream, long offset, int count)
