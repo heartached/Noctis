@@ -43,8 +43,8 @@
 winget install heartached.Noctis
 
 # Scoop (add the bucket once, then install)
-scoop bucket add noctis https://github.com/heartached/scoop-bucket
-scoop install noctis
+scoop bucket add extras
+scoop install extras/noctis
 ```
 
 Or download the installer or portable zip from the
