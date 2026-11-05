@@ -175,6 +175,8 @@ public class LyricsNoLyricsCenterTests : IDisposable
 
         Assert.Equal("This track is instrumental.", rig.Vm.SearchFailedMessage);
         Assert.True(rig.Vm.IsNoLyricsCentered);
+        // The island's Search Lyrics says why there are none (the old row's caption).
+        Assert.Equal("This track is instrumental.\nSearch Lyrics", rig.Vm.NoLyricsSearchTip);
         // Probe "none" → automatic search → instrumental: one switch, at the end.
         Assert.Equal(new[] { true }, rig.History);
     }
@@ -189,6 +191,7 @@ public class LyricsNoLyricsCenterTests : IDisposable
 
         Assert.True(rig.Vm.IsMarkedNoLyrics);
         Assert.True(rig.Vm.IsNoLyricsCentered);
+        Assert.Equal("Marked as no lyrics\nSearch Lyrics", rig.Vm.NoLyricsSearchTip);
     }
 
     /// <summary>Bug: ShareAvailable only looked at the search states, so a song marked as having
@@ -323,7 +326,7 @@ public class LyricsNoLyricsCenterTests : IDisposable
 
 /// <summary>The lyrics page applying <see cref="LyricsViewModel.IsNoLyricsCentered"/>: the left
 /// panel spans the page, the lyrics column fades out of the way, and Search Lyrics stays
-/// reachable under the player; narrow windows keep the lyrics column.</summary>
+/// reachable as a button inside the player island; narrow windows keep the lyrics column.</summary>
 public class LyricsNoLyricsCenterViewTests
 {
     private sealed class StubLrcLib : ILrcLibService
@@ -385,7 +388,10 @@ public class LyricsNoLyricsCenterViewTests
     [AvaloniaFact]
     public async Task WideWindow_Centers_AndSearchLyricsStaysReachable_ThenLyricsSplitItAgain()
     {
-        var (vm, _) = MakeViewModel();
+        var (vm, player) = MakeViewModel();
+        player.IsLyricsPageActive = true; // the lyrics-page pill's own (compact) width
+        var opened = 0;
+        vm.ShowLyricsSearchDialog = _ => { opened++; return Task.CompletedTask; };
         var view = new Noctis.Views.LyricsView { DataContext = vm };
         var win = new Avalonia.Controls.Window { Width = 1600, Height = 900, Content = view };
         try
@@ -396,40 +402,67 @@ public class LyricsNoLyricsCenterViewTests
 
             var left = view.FindControl<Avalonia.Controls.Border>("LeftPanel")!;
             var right = view.FindControl<Avalonia.Controls.Grid>("RightPanel")!;
-            var actions = view.FindControl<Avalonia.Controls.Panel>("CenteredNoLyricsActions")!;
             var stack = view.FindControl<Avalonia.Controls.StackPanel>("LeftContentStack")!;
+            var bar = view.FindControl<Noctis.Views.PlaybackBarView>("LyricsPlaybackBar")!;
+            var button = bar.FindControl<Avalonia.Controls.Button>("LyricsSearchButton")!;
+            var island = bar.FindControl<Avalonia.Controls.Border>("IslandBorder")!;
             await PumpAsync();
 
             Assert.Equal(2, Avalonia.Controls.Grid.GetColumnSpan(left));
             Assert.False(right.IsHitTestVisible);
-            Assert.True(actions.IsHitTestVisible);
             Assert.Equal(0.0, right.Opacity, 2);
-            Assert.Equal(1.0, actions.Opacity, 2);
 
             // The stack sits in the middle of the page.
             var stackCentre = stack.TranslatePoint(new Avalonia.Point(stack.Bounds.Width / 2, 0), win)!.Value.X;
             Assert.Equal(800, stackCentre, 0);
 
-            // Search Lyrics under the player is on screen and takes the click.
-            var button = view.FindControl<Avalonia.Controls.Button>("CenteredSearchLyricsButton")!;
+            // Search Lyrics sits inside the island at full size, and the pill keeps its
+            // lyrics-page width with every button still inside it.
             Assert.True(button.IsEffectivelyVisible);
+            Assert.Equal(34, button.Bounds.Width, 1);
+            var pillWidth = island.Bounds.Width; // 340 + the opt-in extras (mini player is on)
+            Assert.Equal(376, pillWidth, 1);
+            var islandRect = new Avalonia.Rect(island.TranslatePoint(default, win)!.Value, island.Bounds.Size);
+            foreach (var b in island.GetVisualDescendants().OfType<Avalonia.Controls.Button>().Where(b => b.IsEffectivelyVisible && b.Bounds.Width > 0))
+            {
+                var r = new Avalonia.Rect(b.TranslatePoint(default, win)!.Value, b.Bounds.Size);
+                Assert.True(islandRect.Contains(r), $"{b.Name ?? b.GetType().Name} {r} spills out of the island {islandRect}");
+            }
+            Assert.Equal("Search Lyrics", Avalonia.Controls.ToolTip.GetTip(button));
+            Assert.Equal("Search Lyrics", Avalonia.Automation.AutomationProperties.GetName(button));
+
+            // It takes the click and opens the search dialog.
             var centre = button.TranslatePoint(new Avalonia.Point(button.Bounds.Width / 2, button.Bounds.Height / 2), win)!.Value;
             Assert.InRange(centre.Y, 0, 900);
             var hit = win.InputHitTest(centre) as Avalonia.Visual;
             Assert.NotNull(hit);
             Assert.True(ReferenceEquals(hit, button) || Avalonia.VisualTree.VisualExtensions.IsVisualAncestorOf(button, hit!),
                 $"hit {hit?.GetType().Name}, not the Search Lyrics button");
+            button.Command!.Execute(button.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, opened);
+
+            // A search running: the tooltip says so.
+            vm.IsSearching = true;
+            Assert.Equal("Searching for Lyrics", Avalonia.Controls.ToolTip.GetTip(button));
+            vm.IsSearching = false;
 
             // Lyrics land (every apply path drops the Search Lyrics state first): back to split.
             vm.ShowSearchButton = false;
             Assert.True(vm.IsNoLyricsCentered); // held: not known yet
             vm.LyricLines.Add(new LyricLine { Text = "found", Timestamp = TimeSpan.FromSeconds(1) });
             Assert.False(vm.IsNoLyricsCentered);
+            // Mid-slide the button is still there, narrowing (its width animates, no jump).
+            await PumpAsync(60);
+            Assert.True(button.IsVisible);
+            Assert.InRange(button.Bounds.Width, 0.5, 33.5);
             await PumpAsync();
             Assert.Equal(1, Avalonia.Controls.Grid.GetColumnSpan(left));
             Assert.True(right.IsHitTestVisible);
-            Assert.False(actions.IsHitTestVisible);
             Assert.Equal(1.0, right.Opacity, 2);
+            // The island gives the button back once it has slid shut; the pill never resized.
+            Assert.False(button.IsVisible);
+            Assert.Equal(pillWidth, island.Bounds.Width, 1);
         }
         finally
         {
@@ -450,10 +483,11 @@ public class LyricsNoLyricsCenterViewTests
             Assert.True(vm.IsNoLyricsCentered);
 
             var right = view.FindControl<Avalonia.Controls.Grid>("RightPanel")!;
-            var actions = view.FindControl<Avalonia.Controls.Panel>("CenteredNoLyricsActions")!;
+            var bar = view.FindControl<Noctis.Views.PlaybackBarView>("LyricsPlaybackBar")!;
             Assert.True(right.IsHitTestVisible);
             Assert.Equal(1.0, right.Opacity, 2);
-            Assert.False(actions.IsHitTestVisible);
+            // The lyrics column keeps its own Search Lyrics; the island stays as it was.
+            Assert.False(bar.FindControl<Avalonia.Controls.Button>("LyricsSearchButton")!.IsVisible);
         }
         finally
         {
