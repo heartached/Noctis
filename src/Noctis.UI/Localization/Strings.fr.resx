@@ -7065,6 +7065,9 @@
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Couleur de progression remplit la barre de lecture de la couleur de la pochette au fil du morceau. Ligne de progression trace une fine ligne le long de son bord inférieur. Les deux désactivés, la barre est en verre uni.</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Télécharger en Wi-Fi uniquement</value></data>
   <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Les morceaux de votre ordinateur se téléchargent uniquement en Wi-Fi, jamais via les données mobiles. La diffusion en continu n’est pas concernée.</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Mouvement fluide</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Jusqu’à 120 Hz</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permet à l’écran de se rafraîchir jusqu’à 120 fois par seconde sur les téléphones compatibles, pour un défilement et des animations plus fluides. Désactivez-le pour garder l’écran à 60 Hz et économiser la batterie.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Stockage utilisé</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Supprimer tous les téléchargements</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Les téléchargements supprimés restent sur votre ordinateur et peuvent toujours être diffusés.</value></data>

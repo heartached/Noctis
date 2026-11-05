@@ -557,8 +557,21 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Smooth Motion: up to 120 Hz on, 60 Hz off (AndroidFrameRate). -->
+                                    <ToggleButton Name="SmoothMotionSwitch" Classes="switch-row" IsChecked="{Binding SmoothMotion}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.SmoothMotion}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconMotion}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.SmoothMotion}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.SmoothMotionHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
                                 </StackPanel>
                             </Border>
+                            <TextBlock Name="SmoothMotionFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Settings.SmoothMotionFootnote}" />
                         </StackPanel>
 
                         <!-- Library: Music Folders and Downloads are pages; Rescan is an action, its state under it. -->

@@ -7065,6 +7065,9 @@
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>يملأ لون التقدّم شريط المشغّل بلون الغلاف أثناء تشغيل الأغنية. ويرسم خط التقدّم خطًا رفيعًا على حافته السفلية. عند إيقاف الاثنين يصبح الشريط زجاجًا عاديًا.</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>التنزيل عبر Wi-Fi فقط</value></data>
   <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>تُنزَّل أغاني الكمبيوتر عبر Wi-Fi فقط، ولا تُنزَّل أبدًا عبر بيانات الجوال. لا يتأثر البث.</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>حركة سلسة</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>حتى 120 هرتز</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>تتيح للشاشة التحديث حتى 120 مرة في الثانية على الهواتف التي تدعم ذلك، لتمرير ورسوم متحركة أكثر سلاسة. أوقفها لإبقاء الشاشة على 60 هرتز وتوفير البطارية.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>مساحة التخزين المستخدمة</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>إزالة كل التنزيلات</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>تبقى التنزيلات المزالة على الكمبيوتر ويمكن بثها كالمعتاد.</value></data>

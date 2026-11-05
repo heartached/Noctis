@@ -570,6 +570,38 @@ public sealed partial class SettingsPageViewModel : MobilePage
         ? Loc.T("Mobile.Settings.PickUpFootnote", AccountPageViewModel.ServerLabel(Shell.Account!.Account!))
         : Loc.T("Mobile.Settings.PickUpFootnoteGeneric");
 
+    // ── Smooth Motion ──
+
+    /// <summary>Settings › Appearance › Smooth Motion (on by default): the screen's fastest refresh
+    /// rate, up to 120 Hz, or 60 Hz (Standard) off. Applied through the host at once and saved on
+    /// its own, as the Wi-Fi switch is; the app applies the saved value at start (AndroidApp).</summary>
+    [ObservableProperty] private bool _smoothMotion = true;
+
+    /// <summary>The settings.json write of the Smooth Motion switch; tests await it.</summary>
+    internal Task PendingSmoothMotionSave { get; private set; } = Task.CompletedTask;
+
+    private bool _smoothMotionSetBeforeLoad;
+
+    partial void OnSmoothMotionChanged(bool value)
+    {
+        if (_loading) return;
+        _smoothMotionSetBeforeLoad = true;
+        Shell.FrameRate?.Request(value);
+        PendingSmoothMotionSave = SaveSmoothMotionAsync(value);
+    }
+
+    private async Task SaveSmoothMotionAsync(bool value)
+    {
+        try
+        {
+            await Shell.Library.Persistence.UpdateSettingsAsync(settings => settings.MobileSmoothMotion = value);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Settings", $"Save failed: {ex.Message}");
+        }
+    }
+
     // ── Downloads ──
 
     /// <summary>Settings → Downloads → Download on Wi-Fi Only (on by default): a download asked for on
@@ -620,9 +652,13 @@ public sealed partial class SettingsPageViewModel : MobilePage
             DebugLog.Write("Settings", $"Load failed: {ex.Message}");
             return;
         }
-        if (_wifiSetBeforeLoad) return;
         _loading = true;
-        try { DownloadWifiOnly = settings.MobileDownloadWifiOnly; }
+        try
+        {
+            if (!_wifiSetBeforeLoad) DownloadWifiOnly = settings.MobileDownloadWifiOnly;
+            // Shown only: the app applied the saved rate at start.
+            if (!_smoothMotionSetBeforeLoad) SmoothMotion = settings.MobileSmoothMotion;
+        }
         finally { _loading = false; }
     }
 

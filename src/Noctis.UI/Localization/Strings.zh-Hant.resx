@@ -7065,6 +7065,9 @@
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>「進度色彩」會在歌曲播放時以封面色彩填滿播放列。「進度線」會沿著播放列底部繪製一條細線。兩者都關閉時，播放列為純玻璃效果。</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>僅透過 Wi-Fi 下載</value></data>
   <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>電腦上的歌曲只會透過 Wi-Fi 下載，絕不使用行動數據。串流播放不受影響。</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>流暢動態</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最高 120 Hz</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>在支援的手機上，螢幕每秒最多更新 120 次，捲動和動畫更流暢。關閉後螢幕維持 60 Hz，更省電。</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>已使用的儲存空間</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>移除所有下載項目</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>移除的下載項目仍會保留在你的電腦上，並可繼續串流播放。</value></data>

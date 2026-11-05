@@ -58,6 +58,10 @@ public sealed partial class ShellViewModel : ObservableObject
     /// still while it is. Null in tests unless injected.</summary>
     public IBatterySaver? BatterySaver { get; init; }
 
+    /// <summary>The screen's refresh rate (Android): Settings › Appearance › Smooth Motion asks it
+    /// for the fastest one or for 60 Hz. Null in tests unless injected.</summary>
+    public IFrameRateHost? FrameRate { get; init; }
+
     /// <summary>Scrobbling straight from the phone (Settings → Scrobbling): counts plays by the
     /// desktop's rule and sends them to Last.fm / ListenBrainz. The host sets it; Settings makes
     /// one on first use when it is missing (tests), and from then on it follows playback.

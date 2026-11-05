@@ -135,6 +135,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         {
             Outputs = new AndroidOutputSwitcher(context),
             BatterySaver = new AndroidBatterySaver(context),
+            FrameRate = AndroidFrameRate.Instance,
             Theme = this,
             Logs = new AndroidLogExporter(context),
             Links = new AndroidUrlLauncher(context),
@@ -302,6 +303,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             if (await PhoneThemes.MigrateAsync(persistence, settings))
                 DebugLog.Write("Theme", $"Migrated to the {settings.MobileThemeName} theme (Match Theme {settings.MobileAccentFollowsTheme})");
             ApplyTheme(settings.MobileAppearance, PhoneThemes.DarkThemeFor(settings), settings.AccentColorHex, settings.MobileAccentFollowsTheme);
+            // Settings › Appearance › Smooth Motion: up to 120 Hz unless the user chose Standard.
+            AndroidFrameRate.Instance.Request(settings.MobileSmoothMotion);
             // Settings › Background, before the first page paints rather than after the library loads.
             _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.

@@ -7065,6 +7065,9 @@
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Color de progreso rellena la barra del reproductor con el color de la portada mientras suena la canción. Línea de progreso dibuja una línea fina en su borde inferior. Con ambos desactivados, la barra es de cristal liso.</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Descargar solo con Wi-Fi</value></data>
   <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Las canciones de tu equipo solo se descargan con Wi-Fi, nunca con datos móviles. No afecta al streaming.</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Movimiento fluido</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Hasta 120 Hz</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permite que la pantalla se actualice hasta 120 veces por segundo en los teléfonos compatibles, para un desplazamiento y unas animaciones más fluidos. Desactívalo para mantener la pantalla a 60 Hz y ahorrar batería.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Almacenamiento usado</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Eliminar todas las descargas</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Las descargas eliminadas siguen en tu equipo y se pueden seguir escuchando en streaming.</value></data>

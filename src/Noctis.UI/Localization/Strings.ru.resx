@@ -3349,6 +3349,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>«Цвет прогресса» заполняет панель плеера цветом обложки по ходу песни. «Линия прогресса» рисует тонкую линию вдоль её нижнего края. Если оба выключены, панель — просто стекло.</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Скачивать только по Wi‑Fi</value></data>
   <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Песни с компьютера скачиваются только по Wi‑Fi, никогда через мобильный интернет. На потоковое воспроизведение это не влияет.</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Плавное движение</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>До 120 Гц</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Экран обновляется до 120 раз в секунду на телефонах, которые это поддерживают, — прокрутка и анимация становятся плавнее. Выключите, чтобы оставить 60 Гц и сэкономить заряд.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Удалённые загрузки остаются на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>

@@ -181,6 +181,11 @@ public class AppSettings : IJsonOnDeserializing
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;
 
+    /// <summary>Phone, Settings › Appearance › Smooth Motion: the app asks the screen for its fastest
+    /// refresh rate (up to 120 Hz on phones that have it); off, it asks for 60 Hz, which uses less
+    /// battery. On by default.</summary>
+    public bool MobileSmoothMotion { get; set; } = true;
+
     /// <summary>Phone, Settings › Background: the page background. "Off" (the default, and what a
     /// settings file without the field reads as) is the plain theme colour; "Artwork" a mesh of
     /// the playing cover's colours; otherwise the id of a Neutral or Colour mesh ("ash", "ember").</summary>
