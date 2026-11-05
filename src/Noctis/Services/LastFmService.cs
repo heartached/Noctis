@@ -39,23 +39,43 @@ public class LastFmService : ILastFmService
         // If we have a session key, validate it by getting user info
         if (!string.IsNullOrEmpty(sessionKey))
         {
-            _ = Task.Run(async () =>
+            SessionCheck = Task.Run(async () =>
             {
                 try
                 {
-                    var name = await GetAuthenticatedUsernameAsync();
-                    Username = name;
-                    if (!string.IsNullOrEmpty(name)) UsernameResolved?.Invoke(this, name);
+                    var (name, dead) = await GetAuthenticatedUsernameAsync();
+                    if (dead)
+                    {
+                        // Last.fm itself says the key is revoked (error 9): forget it.
+                        if (_sessionKey == sessionKey)
+                        {
+                            _sessionKey = null;
+                            Username = null;
+                            SessionExpired?.Invoke(this, EventArgs.Empty);
+                        }
+                        return;
+                    }
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        Username = name;
+                        UsernameResolved?.Invoke(this, name);
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Session key may be expired
-                    _sessionKey = null;
-                    Username = null;
+                    // Offline at startup, a timeout, Last.fm down: the key is still good. This
+                    // used to drop it on ANY failure, and the next settings save then wrote the
+                    // empty key to settings.json (SettingsViewModel persists GetSessionKey()):
+                    // one launch without network signed the user out of Last.fm for good, while
+                    // the page kept reading "Connected" and scrobbles silently stopped.
+                    DebugLog.Write("LastFm", $"Session check failed: {ex.GetType().Name}");
                 }
             });
         }
     }
+
+    /// <summary>The session check <see cref="Configure"/> started (tests await it).</summary>
+    internal Task? SessionCheck { get; private set; }
 
     public async Task<string> GetAuthUrlAsync()
     {
@@ -293,7 +313,9 @@ public class LastFmService : ILastFmService
         return await HttpSafety.ReadStringBoundedAsync(resp.Content);
     }
 
-    private async Task<string?> GetAuthenticatedUsernameAsync()
+    /// <summary>The account name for the session key, and whether Last.fm rejected the key
+    /// itself. Throws for network trouble and server errors (the key may still be good).</summary>
+    private async Task<(string? Name, bool DeadSession)> GetAuthenticatedUsernameAsync()
     {
         var parameters = new SortedDictionary<string, string>
         {
@@ -307,14 +329,36 @@ public class LastFmService : ILastFmService
         parameters["format"] = "json";
 
         var url = BuildUrl(parameters);
-        var response = await GetStringBoundedAsync(url);
+        // Not GetStringBoundedAsync: Last.fm answers a revoked key with a 4xx AND an error
+        // body, and only the body's code tells "revoked" from a server hiccup.
+        using var resp = await _http.GetAsync(url);
+        var response = await HttpSafety.ReadStringBoundedAsync(resp.Content);
+        if (IsDeadSessionReply(response)) return (null, true);
+        resp.EnsureSuccessStatusCode();
         using var doc = JsonDocument.Parse(response);
 
         if (doc.RootElement.TryGetProperty("user", out var user) &&
             user.TryGetProperty("name", out var name))
-            return name.GetString();
+            return (name.GetString(), false);
 
-        return null;
+        return (null, false);
+    }
+
+    /// <summary>Last.fm error 9, "Invalid session key - Please re-authenticate".</summary>
+    internal static bool IsDeadSessionReply(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty("error", out var err) &&
+                   err.ValueKind == JsonValueKind.Number && err.TryGetInt32(out var code) && code == 9;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static string GenerateSignature(SortedDictionary<string, string> parameters)
