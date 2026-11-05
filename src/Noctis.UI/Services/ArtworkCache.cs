@@ -19,6 +19,15 @@ namespace Noctis.Services;
 /// </summary>
 public static class ArtworkCache
 {
+    /// <summary>
+    /// Whether decoded covers register their native size with GC.AddMemoryPressure (on by default:
+    /// the desktop relies on it). The phone turns it off at startup: on Android the pressure forces
+    /// full collections, and each one makes ART run an explicit concurrent GC on the UI thread
+    /// (9-38 ms on the emulator), a hitch per burst of covers while scrolling (11-05). Read per
+    /// entry when it is added, so flipping it never unbalances Add/Remove.
+    /// </summary>
+    public static bool UseMemoryPressure { get; set; } = true;
+
     private sealed class CacheEntry
     {
         public readonly Bitmap Bitmap;
@@ -29,6 +38,7 @@ public static class ArtworkCache
         public long LastAccess; // atomic via Interlocked
         public int Refs; // live holders, atomic via Interlocked
         public int State; // 0 = cached, 1 = removed from the cache, 2 = disposed
+        public bool Pressured; // GC.AddMemoryPressure was called for Bytes (undo it once, on dispose)
 
         public CacheEntry(string key, string path, int width, Bitmap bitmap, long accessCounter)
         {
@@ -81,6 +91,10 @@ public static class ArtworkCache
 
     /// <summary>Approximate resident bytes currently held by the cache (diagnostic).</summary>
     internal static long ResidentBytes => Interlocked.Read(ref _totalBytes);
+
+    private static long _pressureBytes;
+    /// <summary>Test seam: memory pressure currently registered with the GC by this cache.</summary>
+    internal static long PressureBytes => Interlocked.Read(ref _pressureBytes);
 
     /// <summary>Number of cached bitmaps currently resident (diagnostic).</summary>
     internal static int Count => Cache.Count;
@@ -323,7 +337,12 @@ public static class ArtworkCache
             // in the finalizer queue for ages while native memory climbs into the GBs.
             // Registering the real cost makes Gen2 collections (and thus finalization
             // of evicted, no-longer-referenced bitmaps) keep pace with decode churn.
-            GC.AddMemoryPressure(newEntry.Bytes);
+            if (UseMemoryPressure)
+            {
+                GC.AddMemoryPressure(newEntry.Bytes);
+                Interlocked.Add(ref _pressureBytes, newEntry.Bytes);
+                newEntry.Pressured = true;
+            }
 
             // Evict if over capacity — non-blocking; skip if another thread is already evicting
             if ((Cache.Count > MaxCacheSize || Interlocked.Read(ref _totalBytes) > MaxCacheBytes) &&
@@ -391,6 +410,8 @@ public static class ArtworkCache
         EntryByBitmap.TryRemove(entry.Bitmap, out _);
         try { entry.Bitmap.Dispose(); }
         catch { /* a bitmap the platform already tore down */ }
+        if (!entry.Pressured) return;
+        Interlocked.Add(ref _pressureBytes, -entry.Bytes);
         try { GC.RemoveMemoryPressure(entry.Bytes); }
         catch { /* mismatched pressure is non-fatal */ }
     }

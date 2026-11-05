@@ -82,6 +82,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // Two cover decodes at a time: mid-range phones have two fast cores, and a grid fling
         // otherwise ran a full-size decode per tile at once (see CachedImage.MaxConcurrentDecodes).
         Noctis.Controls.CachedImage.MaxConcurrentDecodes = 2;
+        // No GC memory pressure per cover: on Android it forces full collections, each one an
+        // explicit ART GC on the UI thread, a scroll hitch per burst of covers (ArtworkCache).
+        Noctis.Services.ArtworkCache.UseMemoryPressure = false;
 
         // DebugLog is an in-memory ring with no output of its own, so every handled error the
         // app logs — startup, library scan, playback, SAF listing — would be invisible on a
