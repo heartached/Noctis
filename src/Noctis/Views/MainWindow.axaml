@@ -1140,7 +1140,7 @@
                                     Classes="accent-pill queue-action"
                                     Content="{loc:T Main.Clear}"
                                     Click="OnQueueClearClick"
-                                    IsEnabled="{Binding !!Player.UpNext.Count}"
+                                    IsEnabled="{Binding Player.CanClearQueue}"
                                     Padding="0,9"
                                     FontSize="13"
                                     FontWeight="Bold"
@@ -1158,7 +1158,7 @@
                              list instead, in place between the played songs and Up Next. -->
                         <Panel DockPanel.Dock="Top" IsVisible="{Binding !Player.KeepPlayedInQueue}">
                         <StackPanel x:Name="QueueNowPlaying"
-                                    IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    IsVisible="{Binding Player.ShowQueueCurrentTrack}">
                             <TextBlock Text="{loc:T Queue.NowPlaying}"
                                        FontSize="11"
                                        FontWeight="SemiBold"

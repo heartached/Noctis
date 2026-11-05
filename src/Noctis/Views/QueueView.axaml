@@ -64,7 +64,7 @@
                     CornerRadius="8"
                     Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                     Margin="0,0,0,24"
-                    IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    IsVisible="{Binding Player.ShowQueueCurrentTrack}">
                 <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch">
                     <!-- Now-playing mark: the island's own filled play glyph as a vector (was
                          a 512px Play ICON.png mask, soft at 16px). -->

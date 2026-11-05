@@ -57,7 +57,7 @@ public class QueueIssue134Tests
         if (vm.KeepPlayedInQueue)
         {
             rows.AddRange(vm.History.Reverse());
-            if (vm.CurrentTrack != null) rows.Add(vm.CurrentTrack);
+            if (vm.ShowQueueCurrentTrack) rows.Add(vm.CurrentTrack!); // GitHub #175: not after Clear Queue
         }
         rows.AddRange(vm.UpNext);
         return rows;

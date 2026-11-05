@@ -891,7 +891,9 @@ public partial class PlayerViewModel : ViewModelBase
         // track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were all
         // silent no-ops, and only a natural track end wrapped.
         UpNext.Count > 0 ||
-        (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || PlayedInThisQueue > 0));
+        (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || PlayedInThisQueue > 0)) ||
+        // GitHub #175: a song Clear Queue took out of the queue restarts with Repeat on.
+        (RepeatMode != RepeatMode.Off && _currentClearedFromQueue && CurrentTrack != null);
 
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void Next()
@@ -915,7 +917,9 @@ public partial class PlayerViewModel : ViewModelBase
     private void Previous()
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "Previous", $"pos={Position.TotalSeconds:F1}s, historyLen={History.Count}");
-        if (Position.TotalSeconds > 3)
+        // GitHub #175: after Clear Queue the playing song is all there is, so Previous
+        // restarts it rather than reaching back past the clear.
+        if (Position.TotalSeconds > 3 || (_currentClearedFromQueue && CurrentTrack != null))
         {
             // Restart current track
             CancelAutoMixTransition("user skipped");
@@ -1905,6 +1909,9 @@ public partial class PlayerViewModel : ViewModelBase
         _radioSeed = null;
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        // The started song is the new queue's, even when it is the one Clear Queue took out
+        // (the same Track, so the CurrentTrack change that would bring it back never fires).
+        SetCurrentClearedFromQueue(false);
 
         // Move current to history if playing
         if (CurrentTrack != null)
@@ -2038,15 +2045,31 @@ public partial class PlayerViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Clears all upcoming tracks.</summary>
+    /// <summary>
+    /// Clears the queue: every upcoming track, and the playing song's place in it (GitHub
+    /// #175). The song plays on uninterrupted but the panel shows the queue empty. Unless
+    /// something is queued after it, it is then the whole queue: Repeat replays it, Next with
+    /// Repeat on and Previous restart it, and with Repeat off the queue ends after it. Played
+    /// songs (Keep Played Songs) stay; they have their own Clear Played.
+    /// </summary>
     public void ClearQueue()
     {
-        DebugLogger.Info(DebugLogger.Category.Queue, "ClearQueue", $"cleared={UpNext.Count} tracks");
+        DebugLogger.Info(DebugLogger.Category.Queue, "ClearQueue", $"cleared={UpNext.Count} tracks, current={CurrentTrack?.Id}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
-        RemoveFromRepeatCycle(UpNext);
+        // The Repeat All cycle is the playing song alone: removing only the upcoming tracks
+        // kept the ones played before it, so a queue cleared mid-album wrapped back to the
+        // album's first song instead of replaying the song left playing.
+        _repeatCycleTracks = CurrentTrack is { } playing ? new List<Track> { playing } : new List<Track>();
+        // What played and what was started past belong to the cleared queue.
+        _queueHistoryDepth = 0;
+        _precedingInQueue.Clear();
+        // The Shuffle-off order: Shuffle off re-adds the tracks shuffling leaves out
+        // (Skip When Shuffling, snoozed) from it, which brought cleared tracks back.
+        _originalQueue.Clear();
         UpNext.Clear();
         _parkedExplicit.Clear();
+        SetCurrentClearedFromQueue(CurrentTrack != null);
     }
 
     /// <summary>
@@ -3402,9 +3425,11 @@ public partial class PlayerViewModel : ViewModelBase
         // Handle repeat one mode — replay via PlayTrack() so PlayCount is
         // incremented, TrackStarted fires, and all state updates properly.
         // Only on natural end: an explicit Next/Previous must still advance,
-        // otherwise the user is stuck on the repeating track.
+        // otherwise the user is stuck on the repeating track. Except when there is nothing
+        // to advance to because Clear Queue left only this song (GitHub #175).
         if (RepeatMode == RepeatMode.One && CurrentTrack != null &&
-            reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix)
+            (reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix ||
+             (reason == QueueAdvanceReason.UserSkip && _currentClearedFromQueue && UpNext.Count == 0)))
         {
             PlayTrack(CurrentTrack);
             return;
