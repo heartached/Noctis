@@ -3789,14 +3789,6 @@
     <value>움직이는 아트워크 검색</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>앨범 이름 또는 Apple Music URL</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>앨범 이름을 입력하고 Enter를 누르거나 Apple Music 링크를 붙여넣으세요</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>움직이는 아트워크 선택</value>
     <comment>Text in MetadataWindow.axaml</comment>
