@@ -1,3 +1,4 @@
+using Noctis.Localization;
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia.Threading;
@@ -680,20 +681,21 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         foreach (var t in FilteredTracks)
             total += t.Duration;
 
-        var songs = count == 1 ? "song" : "songs";
+        // Was hard-coded English (seen in German, 11-04).
+        var songs = count == 1 ? Loc.T("LibrarySongs.SummarySong") : Loc.T("LibrarySongs.SummarySongs", count);
         string time;
         if (total.TotalHours >= 1)
         {
             var hours = (int)Math.Round(total.TotalHours);
-            time = hours == 1 ? "1 hour" : $"{hours:N0} hours";
+            time = hours == 1 ? Loc.T("LibrarySongs.SummaryHour") : Loc.T("LibrarySongs.SummaryHours", hours);
         }
         else
         {
             var minutes = (int)Math.Round(total.TotalMinutes);
-            time = minutes == 1 ? "1 minute" : $"{minutes} minutes";
+            time = minutes == 1 ? Loc.T("LibrarySongs.SummaryMinute") : Loc.T("LibrarySongs.SummaryMinutes", minutes);
         }
 
-        SummaryText = $"{count:N0} {songs} · {time}";
+        SummaryText = $"{songs} · {time}";
     }
 
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>

@@ -1537,6 +1537,12 @@
   <data name="PlaybackBar.Pitch" xml:space="preserve"><value>Perde</value><comment>Speed menu → pitch submenu header (island)</comment></data>
   <data name="PlaybackBar.PitchNormal" xml:space="preserve"><value>Normal</value><comment>Pitch submenu: reset to ±0 semitones</comment></data>
   <data name="LibrarySongs.RateTip" xml:space="preserve"><value>Puanla (bir yıldıza tıkla; temizlemek için aynı yıldıza yeniden tıkla)</value><comment>ToolTip on the Songs row stars</comment></data>
+  <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>1 şarkı</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0} şarkı</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>1 saat</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} saat</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 dakika</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} dakika</value><comment>Songs page top bar summary</comment></data>
 
   <data name="SendTo.Title" xml:space="preserve"><value>Klasöre Gönder</value><comment>Dialog title</comment></data>
   <data name="SendTo.Destination" xml:space="preserve"><value>Hedef</value><comment>Send to Folder dialog</comment></data>

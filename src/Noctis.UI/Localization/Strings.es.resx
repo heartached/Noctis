@@ -5565,6 +5565,12 @@
     <value>Tarifa (haga clic en una estrella; haga clic en la misma estrella otra vez para limpiar)</value>
     <comment>ToolTip on the Songs row stars</comment>
   </data>
+  <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>1 canción</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0} canciones</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>1 hora</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} horas</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 minuto</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} minutos</value><comment>Songs page top bar summary</comment></data>
   <data name="SendTo.Title" xml:space="preserve">
     <value>Enviar a la carpeta</value>
     <comment>Dialog title</comment>

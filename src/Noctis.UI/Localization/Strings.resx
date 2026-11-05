@@ -3109,6 +3109,12 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Columns.Reset" xml:space="preserve"><value>Reset Columns</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Resize {0} column</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
   <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
+  <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>1 song</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0} songs</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>1 hour</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} hours</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 minute</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} minutes</value><comment>Songs page top bar summary</comment></data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Import Play Counts</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
   <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Copy your play counts into Noctis. Nothing is sent back.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
   <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Import</value><comment>Settings › Integrations: starts the play count import</comment></data>

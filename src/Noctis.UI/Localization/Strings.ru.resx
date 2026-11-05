@@ -3109,6 +3109,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Columns.Reset" xml:space="preserve"><value>Сбросить столбцы</value><comment>List header right-click menu: column order and widths back to default (GitHub #151)</comment></data>
   <data name="Columns.ResizeName" xml:space="preserve"><value>Изменить ширину столбца «{0}»</value><comment>Screen-reader name of a column divider; {0} is the column name (GitHub #151)</comment></data>
   <data name="LibrarySongs.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Songs list column header, View Options and Sort menu: the file's ReplayGain track gain (GitHub #151)</comment></data>
+  <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>1 песня</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>Песен: {0:N0}</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>1 ч</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} ч</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 мин</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} мин</value><comment>Songs page top bar summary</comment></data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Импорт числа прослушиваний</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
   <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Перенести число прослушиваний в Noctis. Ничего не отправляется обратно.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
   <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Импорт</value><comment>Settings › Integrations: starts the play count import</comment></data>

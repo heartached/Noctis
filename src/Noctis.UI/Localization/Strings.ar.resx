@@ -5565,6 +5565,12 @@
     <value>تقييم (انقر على نجمة؛ انقر على نفس النجمة مرة أخرى لمسح)</value>
     <comment>ToolTip on the Songs row stars</comment>
   </data>
+  <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>أغنية واحدة</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0} أغنية</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>ساعة واحدة</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} ساعة</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>دقيقة واحدة</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} دقيقة</value><comment>Songs page top bar summary</comment></data>
   <data name="SendTo.Title" xml:space="preserve">
     <value>إرسال إلى المجلد</value>
     <comment>Dialog title</comment>
