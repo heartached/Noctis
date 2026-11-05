@@ -416,6 +416,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
 
+    /// <summary>A command used the Ctrl-selection up. The view clears its own set on this:
+    /// it pushes a copy on every menu open, so clearing only the copy left the old albums
+    /// selected there, out of sight once the library rebuilt them, and the next command
+    /// acted on them too (GitHub #178).</summary>
+    public event EventHandler? CtrlSelectionConsumed;
+
+    private void ConsumeCtrlSelection()
+    {
+        CtrlSelectedAlbums.Clear();
+        CtrlSelectionConsumed?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>The Ctrl-selection when the acted-on album is part of it (or none was given), else just that album.</summary>
     private List<Album> SelectionOr(Album? album) =>
         album == null || CtrlSelectedAlbums.Contains(album) ? CtrlSelectedAlbums.ToList() : new List<Album> { album };
@@ -1210,7 +1222,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private Task SnoozeAlbumForMonth(Album album)
     {
         var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
         return _player.SnoozeTracksForMonthAsync(tracks);
     }
 
@@ -1290,7 +1302,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
     }
 
     [RelayCommand]
@@ -1313,7 +1325,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
         await _library.SaveTrackUserStateAsync(changed);
         _library.NotifyFavoritesChanged(changed);
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
     }
 
     [RelayCommand]
@@ -1325,7 +1337,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (selection.Count > 1)
         {
             var tracks = selection.SelectMany(a => a.Tracks ?? new()).ToList();
-            CtrlSelectedAlbums.Clear();
+            ConsumeCtrlSelection();
             await MetadataHelper.OpenBatchMetadataWindow(tracks);
             return;
         }
@@ -1362,7 +1374,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private async Task SendAlbumToFolder(Album album)
     {
         var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
@@ -1383,7 +1395,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private async Task GroupIntoOneAlbum(Album album)
     {
         var albums = SelectionOr(album).Where(a => a?.Tracks is { Count: > 0 }).Distinct().ToList();
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
         if (albums.Count == 1)
             albums = AlbumGrouping.SameNameAlbums(_library.Albums, albums[0])
                 .Where(a => a.Tracks is { Count: > 0 }).ToList();
@@ -1437,7 +1449,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
     }
 
     // sourceKey is the cached SearchText.Normalize key (Album.SearchNameKey,

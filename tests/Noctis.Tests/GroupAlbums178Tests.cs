@@ -570,6 +570,8 @@ public class GroupAlbums178Tests : IDisposable
             return Task.FromResult<(string, string)?>((name!, "Sushin Shyam"));
         };
         vm.CtrlSelectedAlbums = new List<Album> { a1, a2 };
+        var consumed = 0;
+        vm.CtrlSelectionConsumed += (_, _) => consumed++;
 
         await vm.GroupIntoOneAlbumCommand.ExecuteAsync(a1);
 
@@ -578,6 +580,29 @@ public class GroupAlbums178Tests : IDisposable
         Assert.Equal(new[] { t1, t2 }, call.Tracks);
         Assert.Equal(("Malik", "Sushin Shyam"), (call.Album, call.AlbumArtist));
         Assert.Empty(vm.CtrlSelectedAlbums);
+        // The view clears its own selection on this, or the old albums ride into the next command.
+        Assert.Equal(1, consumed);
+    }
+
+    /// <summary>The Albums view drops a selection a command used, and selected albums a
+    /// rebuild no longer shows (they rode into the next Group as invisible extras, GitHub #178).</summary>
+    [Fact]
+    public void AlbumsView_ClearsItsSelection_OnConsume_AndPrunesItOnRebuild()
+    {
+        var src = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Noctis", "Views", "LibraryAlbumsView.axaml.cs"));
+        Assert.Contains("_vm.CtrlSelectionConsumed += OnCtrlSelectionConsumed;", src);
+        Assert.Contains("_vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;", src);
+        Assert.Contains("_selectedAlbums.RemoveWhere(a => !shown.Contains(a));", src);
+        var vmSrc = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Noctis", "ViewModels", "LibraryAlbumsViewModel.cs"));
+        // Every command that used the selection goes through ConsumeCtrlSelection.
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(vmSrc, @"CtrlSelectedAlbums\.Clear\(\);"));
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "Noctis.sln"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("Noctis.sln not found");
     }
 
     [AvaloniaFact]
