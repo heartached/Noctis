@@ -155,6 +155,25 @@ public sealed class GlassMenuBackdrop : Decorator
         return new Rect(topLeft, bottomRight);
     }
 
+    /// <summary>The popups this card's popup opened from (a tooltip or list inside a flyout, a
+    /// submenu's parent menu), in this control's coordinates: they sit between the card and
+    /// the window, so the window copy must not show where they are. Without this a tooltip over
+    /// the Edit Info artwork chooser frosted the editor behind the chooser card, as if the
+    /// tooltip were a hole into the back.</summary>
+    internal List<Rect> ParentPopupRects()
+    {
+        var rects = new List<Rect>();
+        if (_window is null || TopLevel.GetTopLevel(this) is not PopupRoot root) return rects;
+        for (var top = root.ParentTopLevel; top is PopupRoot parent; top = parent.ParentTopLevel)
+        {
+            var size = parent.ClientSize;
+            var topLeft = this.PointToClient(parent.PointToScreen(default));
+            var bottomRight = this.PointToClient(parent.PointToScreen(new Point(size.Width, size.Height)));
+            rects.Add(new Rect(topLeft, bottomRight));
+        }
+        return rects;
+    }
+
     public override void Render(DrawingContext context)
     {
         if (_window is null || Fade <= 0) return;
@@ -165,7 +184,13 @@ public sealed class GlassMenuBackdrop : Decorator
         context.DrawRectangle(new ImmutableSolidColorBrush(BaseColor()), null, shape);
         if (_shot?.Bitmap is not { } bitmap || WindowRect() is not { } rect) return;
         using (context.PushClip(shape))
+        {
             context.DrawImage(bitmap, new Rect(bitmap.Size), rect);
+            // Where a parent popup covers the window, the card reads as the plain card.
+            var fill = new ImmutableSolidColorBrush(BaseColor());
+            foreach (var covered in ParentPopupRects())
+                context.DrawRectangle(fill, null, covered);
+        }
     }
 
     /// <summary>One window copy, shared by the cards open over it.</summary>
