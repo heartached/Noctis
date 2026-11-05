@@ -2430,6 +2430,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// from the library. Off by default (new behavior-changing extras ship opt-in).</summary>
     [ObservableProperty] private bool _autoplayEnabled;
 
+    /// <summary>Songs sorted by Plays re-rank when the song ends. Off: they keep their
+    /// place until the next song starts (the old on-change behaviour).</summary>
+    [ObservableProperty] private bool _playsReRankAtSongEnd = true;
+
     /// <summary>Keep played songs in the queue (GitHub #124). Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
 
@@ -3469,6 +3473,7 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
+            PlaysReRankAtSongEnd = _settings.PlaysReRankAtSongEnd;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
             RemoveMissingFromQueue = _settings.RemoveMissingFromQueue;
             var queueRows = QueueRowLayout.FromSettings(_settings);
@@ -3975,6 +3980,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
+        _settings.PlaysReRankAtSongEnd = PlaysReRankAtSongEnd;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
         _settings.RemoveMissingFromQueue = RemoveMissingFromQueue;
         var queueRows = CurrentQueueRowLayout;
@@ -5995,6 +6001,13 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnPlaysReRankAtSongEndChanged(bool value)
+    {
+        // Live: Songs reads this through its FinishedPlays predicate on every song end.
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnBpmKeyAnalysisEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -7888,6 +7901,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Read from defaultSettings, not literals: these drifted from AppSettings the
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
+            PlaysReRankAtSongEnd = defaultSettings.PlaysReRankAtSongEnd;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
             RemoveMissingFromQueue = defaultSettings.RemoveMissingFromQueue;
             QueueRowLine1 = defaultSettings.QueueRowLine1;

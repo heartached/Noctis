@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.ViewModels;
 using Xunit;
 
@@ -11,7 +12,8 @@ namespace Noctis.Tests;
 /// Discord (Andre, 10-28): Songs sorted by Plays (descending) never re-ranked while he
 /// played. A counted play raises no LibraryUpdated, so the list stayed clean: the Plays
 /// cell counted up (Track.PlayCount is observable) but the row kept its old place.
-/// The row now moves once its song is over (the next one starts), and only that row.
+/// The row now moves once its song ends (Settings → Playback → Re-rank Plays at song
+/// end), or on the next song's start when that is off — and only that row.
 /// </summary>
 public class LibrarySongsPlaysReRankTests : IDisposable
 {
@@ -136,5 +138,66 @@ public class LibrarySongsPlaysReRankTests : IDisposable
         await PumpFor(300);
 
         Assert.Equal(0, changes);
+    }
+
+    private sealed class NoOpPlayHistoryService : IPlayHistoryService
+    {
+        public IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
+    private async Task<(LibrarySongsViewModel vm, PlayerViewModel player, Track b)> CreateWithSettingAsync(bool reRankAtEnd)
+    {
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistoryService());
+        settings.PlaysReRankAtSongEnd = reRankAtEnd;
+        var vm = new LibrarySongsViewModel(lib, player, new SidebarViewModel(persistence, lib), persistence, settings);
+        var a = Trk("a", 10);
+        var b = Trk("b", 10);
+        var c = Trk("c", 0);
+        lib.TrackList.AddRange(new[] { a, b, c });
+
+        vm.SelectSortCommand.Execute("Plays");
+        vm.SelectSortCommand.Execute("Descending");
+        vm.IsActive = true;
+        await PumpUntil(() => vm.FilteredTracks.Count == 3);
+
+        player.PlayFromRow(vm.FilteredTracks.ToList(), 1); // b counts 10 -> 11, stays put
+        await PumpFor(200);
+        Assert.Equal(11, b.PlayCount);
+        Assert.Equal("abc", Order(vm));
+        return (vm, player, b);
+    }
+
+    [AvaloniaFact]
+    public async Task CountedPlay_AtEndMode_ReRanksWhenSongEndsWithNoNext()
+    {
+        var (vm, player, _) = await CreateWithSettingAsync(reRankAtEnd: true);
+
+        player.StopAndClear("test");
+        await PumpUntil(() => Order(vm) == "bac", budgetMs: 6000);
+
+        Assert.Equal("bac", Order(vm));
+    }
+
+    [AvaloniaFact]
+    public async Task CountedPlay_OnChangeMode_HoldsUntilNextSongStarts()
+    {
+        var (vm, player, _) = await CreateWithSettingAsync(reRankAtEnd: false);
+
+        // Song ends with no next: off means the row holds its old place.
+        player.StopAndClear("test");
+        await PumpFor(300);
+        Assert.Equal("abc", Order(vm));
+
+        // The pending move lands when the next song starts.
+        player.PlayFromRow(vm.FilteredTracks.ToList(), 2); // c counts 0 -> 1
+        await PumpUntil(() => Order(vm) == "bac", budgetMs: 6000);
+        Assert.Equal("bac", Order(vm));
     }
 }

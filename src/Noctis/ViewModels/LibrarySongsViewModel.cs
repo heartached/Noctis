@@ -107,8 +107,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         _library.LibraryUpdated += _libraryUpdatedHandler;
 
         // A counted play raises no LibraryUpdated (see HomeViewModel.OnPlayCounted): the row's
-        // Plays cell ticked up live but a Plays sort never re-ranked (Discord, Andre 10-28).
-        _finishedPlays = new FinishedPlays(_player, ReRankFinished);
+        // Plays cell ticks up live but a Plays sort never re-ranked (Discord, Andre 10-28).
+        // At song end or on song change, per Settings → Playback (PlaysReRankAtSongEnd).
+        _finishedPlays = new FinishedPlays(_player, ReRankFinished, () => _settings?.PlaysReRankAtSongEnd ?? true);
     }
 
     /// <summary>
@@ -510,8 +511,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     // ── Live Plays re-rank (Discord, Andre 10-28) ──
     // Apple Music's way: the Plays cell counts up in place at once (Track.PlayCount is
-    // observable), and the row moves to its new rank once its song is over (the next one
-    // starts or is counted), so the playing row never jumps out from under the pointer.
+    // observable), and the row moves to its new rank once its song ends (TrackEnding),
+    // so the playing row never jumps out from under the pointer while it plays.
     // Only the counted rows move; the other rows keep their place, scroll and selection.
     private readonly FinishedPlays _finishedPlays;
     private DispatcherTimer? _reRankRetry;
@@ -527,7 +528,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         _finishedPlays.Flush();
     }
 
-    /// <summary>Moves the counted rows whose song is over to their new rank (FinishedPlays).
+    /// <summary>Moves the counted rows whose song ended to their new rank (FinishedPlays).
     /// False keeps them pending: hidden (activation flushes) or busy (retried shortly).</summary>
     private bool ReRankFinished(List<Track> finished)
     {

@@ -137,9 +137,21 @@ public sealed class YouTubeImporter : IYouTubeImporter
         }
 
         progress?.Report(new YouTubeImportProgress("Downloading", 0.05));
-        var downloadProgress = new Progress<double>(f => progress?.Report(new YouTubeImportProgress("Downloading", 0.05 + 0.75 * f)));
+        var lastFraction = 0.05;
+        var downloadProgress = new Progress<double>(f =>
+        {
+            lastFraction = 0.05 + 0.75 * f;
+            progress?.Report(new YouTubeImportProgress("Downloading", lastFraction));
+        });
+        var downloadDetail = new Progress<DownloadDetail>(d =>
+        {
+            var stage = d.MegabitsPerSec is { } mbps
+                ? $"Downloading · {DownloadFormat.Format(mbps, d.Eta)}"
+                : "Downloading";
+            progress?.Report(new YouTubeImportProgress(stage, lastFraction));
+        });
         var produced = await Tool.DownloadAsync(info.Url, folder, ffmpeg, downloadProgress, ct,
-            status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format).ConfigureAwait(false);
+            status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format, downloadDetail).ConfigureAwait(false);
 
         try
         {
