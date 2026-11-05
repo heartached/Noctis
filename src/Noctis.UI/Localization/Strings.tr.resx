@@ -3805,14 +3805,6 @@
     <value>Hareketli Kapak Ara</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.AlbumNameAppleMusic" xml:space="preserve">
-    <value>Albüm adı veya Apple Music URL'si</value>
-    <comment>Watermark in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.TypeAlbumNamePress" xml:space="preserve">
-    <value>bir albüm adı yazıp Enter'a bas ya da bir Apple Music bağlantısı yapıştır</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.ChooseAnimatedArtwork" xml:space="preserve">
     <value>Hareketli Kapak Seç</value>
     <comment>Text in MetadataWindow.axaml</comment>
