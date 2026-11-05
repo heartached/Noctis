@@ -59,6 +59,10 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
 
     [ObservableProperty] private bool _sendPlays = true;
     [ObservableProperty] private bool _showNowPlaying = true;
+
+    /// <summary>Mixes and Recommendations (GitHub #177): Home's From Your Last.fm and Discover on
+    /// Last.fm, read from the account this phone connected.</summary>
+    [ObservableProperty] private bool _lastFmTaste = true;
     [ObservableProperty] private string _waitingText = Loc.Plural("Mobile.Count.Plays", 0);
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasStatusMessage))] private string _statusMessage = string.Empty;
 
@@ -72,6 +76,10 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
     /// <summary>The Send Plays / Show Now Playing switches act on the phone's own sending only: they
     /// show in From This Phone mode alone (Through Computer, the phone sends nothing for them to stop).</summary>
     public bool PhoneControlsEnabled => IsFromPhone;
+
+    /// <summary>The Mixes and Recommendations switch shows while this phone has Last.fm connected:
+    /// Home reads that account's charts, whichever way the plays are sent.</summary>
+    public bool ShowTasteSwitch => _scrobbler.LastFmConnected;
 
     /// <summary>The computer's services as its last sync said; null when it has not said.</summary>
     private ComputerScrobbling? Computer => _shell.Account is { IsSignedIn: true } account ? account.ComputerScrobbling : null;
@@ -128,6 +136,11 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
         if (!_syncing) _ = _scrobbler.SetShowNowPlayingAsync(value);
     }
 
+    partial void OnLastFmTasteChanged(bool value)
+    {
+        if (!_syncing) _ = _scrobbler.SetLastFmTasteEnabledAsync(value);
+    }
+
     /// <summary>The UI language changed: the summary and every line re-read.</summary>
     public void Relabel() => Refresh();
 
@@ -140,6 +153,7 @@ public sealed partial class ScrobblingSettingsViewModel : ObservableObject
             IsFromPhone = _scrobbler.FromPhone;
             SendPlays = _scrobbler.SendPlays;
             ShowNowPlaying = _scrobbler.ShowNowPlaying;
+            LastFmTaste = _scrobbler.LastFmTasteEnabled;
         }
         finally
         {

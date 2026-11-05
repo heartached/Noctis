@@ -67,6 +67,7 @@ public sealed class PhoneScrobbler
         public string LbToken { get; init; } = string.Empty;
         public string LbUser { get; init; } = string.Empty;
         public IReadOnlySet<string> Excluded { get; init; } = new HashSet<string>();
+        public bool Taste { get; init; } = true;
     }
 
     public PhoneScrobbler(IPersistenceService persistence, HttpClient http, TimeProvider? time = null)
@@ -116,6 +117,7 @@ public sealed class PhoneScrobbler
         LbToken = s.ListenBrainzScrobblingEnabled ? s.ListenBrainzToken ?? string.Empty : string.Empty,
         LbUser = s.ListenBrainzUsername ?? string.Empty,
         Excluded = new HashSet<string>(s.ScrobbleExcludedKeys ?? new List<string>()),
+        Taste = s.LastFmTasteEnabled,
     };
 
     public bool FromPhone => _cfg.FromPhone || !HasComputerRoute;
@@ -126,9 +128,14 @@ public sealed class PhoneScrobbler
     public string LastFmUser => _cfg.LastFmUser;
     public string ListenBrainzUser => _cfg.LbUser;
 
+    /// <summary>Settings › Scrobbling › Mixes and Recommendations (AppSettings.LastFmTasteEnabled):
+    /// Home's From Your Last.fm and Discover on Last.fm, read from the connected account's charts.</summary>
+    public bool LastFmTasteEnabled => _cfg.Taste;
+
     public Task SetFromPhoneAsync(bool value) => Apply(c => c with { FromPhone = value }, s => s.MobileScrobbleFromPhone = value);
     public Task SetSendPlaysAsync(bool value) => Apply(c => c with { SendPlays = value }, s => s.MobileScrobbleSendPlays = value);
     public Task SetShowNowPlayingAsync(bool value) => Apply(c => c with { NowPlaying = value }, s => s.MobileScrobbleNowPlaying = value);
+    public Task SetLastFmTasteEnabledAsync(bool value) => Apply(c => c with { Taste = value }, s => s.LastFmTasteEnabled = value);
 
     private async Task Apply(Func<Settings, Settings> cfg, Action<AppSettings> save)
     {

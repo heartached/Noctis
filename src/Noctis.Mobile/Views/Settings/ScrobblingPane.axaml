@@ -187,6 +187,18 @@
             <TextBlock Name="StatusMessageLabel" Classes="group-footnote" Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" />
         </StackPanel>
 
+        <!-- Home's From Your Last.fm and Discover on Last.fm (GitHub #177): read from the account
+             connected here, so the switch shows only while one is. -->
+        <StackPanel Name="TasteGroup" IsVisible="{Binding ShowTasteSwitch}">
+            <Border Name="TasteCard" Classes="group-card">
+                <ToggleButton Name="TasteSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Scrobbling.Taste}"
+                              IsChecked="{Binding LastFmTaste}">
+                    <TextBlock Classes="row-label" Text="{loc:T Mobile.Scrobbling.Taste}" />
+                </ToggleButton>
+            </Border>
+            <TextBlock Name="TasteFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Scrobbling.TasteFootnote}" />
+        </StackPanel>
+
         <StackPanel>
             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Scrobbling.WhileListening}" />
             <Border Name="ListeningCard" Classes="group-card">
