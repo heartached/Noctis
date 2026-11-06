@@ -417,6 +417,16 @@
          through Grid.Row/Column/Span attached properties from code-behind. -->
     <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*" RowDefinitions="Auto,*"
           Background="{Binding FullBackgroundBrush}">
+        <!-- GitHub #184 (Background Behind the Sidebar): the grid's own colour / gradient,
+             repeated on a layer that can reach under the sidebar rail with the backdrops
+             below (BackdropBleed). Only shown while that setting stretches the layers. -->
+        <Border x:Name="LyricsBackdropFill"
+                Grid.ColumnSpan="2"
+                Grid.RowSpan="2"
+                ZIndex="-1"
+                IsHitTestVisible="False"
+                IsVisible="False"
+                Background="{Binding FullBackgroundBrush}"/>
         <!-- AMLL/Apple-Music–style background: heavily-blurred album cover filling the page.
              A subtle scrim on top keeps lyric text legible against bright art. -->
         <Grid x:Name="LyricsBlurBackdrop"

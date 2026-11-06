@@ -4337,6 +4337,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #184: the page's background reaches under the sidebar rail (off by default). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsBackgroundBehindSidebar}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsBackgroundBehindSidebarHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsBackgroundBehindSidebar}"
+                                          IsChecked="{Binding LyricsBackgroundBehindSidebar}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #181: the lyrics page's progress bar draws the song's waveform (off by default). -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

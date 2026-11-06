@@ -625,6 +625,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page centres the player when the song has no lyrics.
     /// Driven by Settings; display-only.</summary>
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>GitHub #184: the lyrics page's background reaches under the sidebar rail.
+    /// Driven by Settings; display-only (LyricsView extends its backdrop layers).</summary>
+    [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
     /// <summary>Whether the lyrics show TTML translations / romanization / background vocals
     /// under each line (issue #78). Driven by Settings; display-only, no re-parse.</summary>
     [ObservableProperty] private bool _lyricsShowTranslations = true;

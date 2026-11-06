@@ -1218,6 +1218,11 @@ public class AppSettings : IJsonOnDeserializing
     /// instead of leaving the lyrics half empty. Ships on.</summary>
     public bool LyricsCenterWhenNoLyrics { get; set; } = true;
 
+    /// <summary>GitHub #184: the lyrics page's background (blurred cover, flowing style,
+    /// background video, colour) reaches the window's left edge under the sidebar rail, so
+    /// the rail sits on the artwork instead of a dark column. Off by default.</summary>
+    public bool LyricsBackgroundBehindSidebar { get; set; }
+
     /// <summary>Show a TTML file's translation under each lyric line (issue #78).</summary>
     public bool LyricsShowTranslations { get; set; } = true;
 

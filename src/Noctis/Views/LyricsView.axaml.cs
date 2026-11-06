@@ -64,6 +64,9 @@ public partial class LyricsView : UserControl
     // RenderTransform crashes Avalonia at startup.
     private readonly FlowingArtworkAnimator _flow;
 
+    // GitHub #184: Background Behind the Sidebar stretches these same layers to the window edge.
+    private readonly BackdropBleed _backdropBleed;
+
     public LyricsView()
     {
         InitializeComponent();
@@ -84,6 +87,9 @@ public partial class LyricsView : UserControl
         LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
 
         _flow = new FlowingArtworkAnimator(this, FlowBackdrop, FlowLayer1, FlowLayer2, BeatGlow, GetBeatContext);
+        _backdropBleed = new BackdropBleed(MainLayoutGrid,
+            LyricsBackdropFill, LyricsBlurBackdrop, LyricsMediaBackdrop, MusicVideoBackdropLayer,
+            KawarpLayer, PluginLayerHost);
         AttachedToVisualTree += (_, _) => HookPluginLayers();
         DetachedFromVisualTree += (_, _) => UnhookPluginLayers();
         LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
@@ -178,8 +184,9 @@ public partial class LyricsView : UserControl
 
             // Start the artwork flow if the artwork background mode is active.
             UpdateFlowAnimationState(vm);
+            ApplyBackdropBleed(vm);
         }
-
+        _backdropBleed.Attach();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -224,6 +231,7 @@ public partial class LyricsView : UserControl
 
         // The artwork flow only makes sense while this page can be seen.
         _flow.Enabled = false;
+        _backdropBleed.Detach();
 
         base.OnDetachedFromVisualTree(e);
     }
@@ -778,6 +786,18 @@ public partial class LyricsView : UserControl
                 or nameof(PlayerViewModel.ShowsMusicVideoFullSize) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsBackgroundBehindSidebar) &&
+                 DataContext is LyricsViewModel bleedVm)
+            ApplyBackdropBleed(bleedVm);
+    }
+
+    /// <summary>GitHub #184: the backdrop layers reach under the sidebar rail while the
+    /// setting is on (the colour fill layer shows only then; off, the grid paints it).</summary>
+    private void ApplyBackdropBleed(LyricsViewModel vm)
+    {
+        var on = vm.Player.LyricsBackgroundBehindSidebar;
+        LyricsBackdropFill.IsVisible = on;
+        _backdropBleed.Enabled = on;
     }
 
     // ── Plugin visual layers ──
