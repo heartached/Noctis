@@ -405,6 +405,11 @@ public class AppSettings : IJsonOnDeserializing
     public static int SnapAnimatedArtworkCacheMb(int mb) =>
         AnimatedArtworkCacheSizeChoices.MinBy(c => Math.Abs((long)c - mb));
 
+    /// <summary>GitHub #185: the loop quality the fetch on opening an album and Find Animated
+    /// Artwork download, "1080p" or "2160p" (<see cref="AnimatedArtworkQualities"/>). 2160p falls
+    /// back to the 1080p loop when an album has none.</summary>
+    public string AnimatedArtworkQuality { get; set; } = AnimatedArtworkQualities.Default;
+
     /// <summary>Album pages take their background colour from the cover's edge colour,
     /// Apple-Music style, with the page text flipping dark on light covers. Ships on
     /// (2026-10-18; a settings.json saved before the toggle existed keeps it off, see

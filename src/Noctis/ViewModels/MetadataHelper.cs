@@ -211,10 +211,13 @@ public static class MetadataHelper
         {
             var services = App.Services!;
             var persistence = services.GetRequiredService<IPersistenceService>();
+            // GitHub #185: the quality Settings › Artwork names, read per album.
+            var settings = services.GetService<MainWindowViewModel>()?.Settings;
             var service = AnimatedArtworkBulkService.For(
                 services.GetRequiredService<ITunesArtworkService>(),
                 new AnimatedCoverService(persistence),
-                Path.Combine(persistence.DataDirectory, "animated_artwork_bulk_ledger.json"));
+                Path.Combine(persistence.DataDirectory, "animated_artwork_bulk_ledger.json"),
+                () => settings?.AnimatedArtworkPrefersMax == true);
             var albums = AnimatedArtworkBulkService.GroupAlbums(services.GetRequiredService<ILibraryService>().Tracks);
             _libraryArtworkRun = new BulkAnimatedArtworkViewModel(albums, service);
         }

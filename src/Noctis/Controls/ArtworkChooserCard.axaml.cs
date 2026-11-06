@@ -59,6 +59,10 @@ public partial class ArtworkChooserCard : UserControl
     public static readonly StyledProperty<bool> IsDownloadingProperty =
         AvaloniaProperty.Register<ArtworkChooserCard, bool>(nameof(IsDownloading));
 
+    /// <summary>GitHub #185: the running download's bar (percent, speed, time left, Cancel).</summary>
+    public static readonly StyledProperty<ViewModels.ArtworkDownloadProgress?> DownloadProperty =
+        AvaloniaProperty.Register<ArtworkChooserCard, ViewModels.ArtworkDownloadProgress?>(nameof(Download));
+
     /// <summary>Run with the clicked quality pill's choice.</summary>
     public static readonly StyledProperty<ICommand?> PickCommandProperty =
         AvaloniaProperty.Register<ArtworkChooserCard, ICommand?>(nameof(PickCommand));
@@ -85,6 +89,7 @@ public partial class ArtworkChooserCard : UserControl
     public string? StatusDetail { get => GetValue(StatusDetailProperty); set => SetValue(StatusDetailProperty, value); }
     public bool IsCheckingMore { get => GetValue(IsCheckingMoreProperty); set => SetValue(IsCheckingMoreProperty, value); }
     public bool IsDownloading { get => GetValue(IsDownloadingProperty); set => SetValue(IsDownloadingProperty, value); }
+    public ViewModels.ArtworkDownloadProgress? Download { get => GetValue(DownloadProperty); set => SetValue(DownloadProperty, value); }
     public ICommand? PickCommand { get => GetValue(PickCommandProperty); set => SetValue(PickCommandProperty, value); }
     public ICommand? PreviewCommand { get => GetValue(PreviewCommandProperty); set => SetValue(PreviewCommandProperty, value); }
 }

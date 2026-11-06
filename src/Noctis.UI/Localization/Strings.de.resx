@@ -3175,6 +3175,10 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Cache-Größe</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Ist er voll, werden die ältesten Cover entfernt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{0} von {1} belegt</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Animated Artwork Quality</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
+  <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>For covers found automatically. 2160p looks sharper but each cover is about 3× the size, so the cache fills sooner. Albums without a 2160p cover get 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>
+  <data name="Settings.AnimArtQuality2160" xml:space="preserve"><value>2160p (Max)</value><comment>Animated Artwork Quality option</comment></data>
+  <data name="Metadata.CancelDownload" xml:space="preserve"><value>Cancel download</value><comment>Edit Info artwork chooser: the download bar's Cancel button (accessible name and tooltip)</comment></data>
   <data name="Settings.DataFolder" xml:space="preserve"><value>Datenordner</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderHint" xml:space="preserve"><value>Deine Bibliothek, Cover und Caches. Verschiebe sie auf ein anderes Laufwerk, um Platz zu sparen.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderChange" xml:space="preserve"><value>Ordner ändern</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>

@@ -39,12 +39,17 @@ public partial class MetadataViewModel
     private AnimatedArtworkSearchResult? _previewingResult;
     private int _animatedPreviewRequest;
 
+    /// <summary>GitHub #185: the Animated Artwork chooser's download bar (percent, speed, time left).</summary>
+    public ArtworkDownloadProgress AnimatedArtworkDownload { get; } = new();
+
     partial void OnIsAnimatedArtworkSearchOpenChanged(bool value)
     {
-        // Closed: stop opening album pages, stop decoding the preview and drop its temp file.
+        // Closed: stop opening album pages, stop decoding the preview and drop its temp file,
+        // stop a picked loop still downloading (its partial file is deleted).
         // Whatever was found stays listed; a later search starts over anyway.
         if (value) return;
         _animatedSearchCts?.Cancel();
+        AnimatedArtworkDownload.Cancel();
         ClearAnimatedPreview();
     }
 
@@ -267,7 +272,8 @@ public partial class MetadataViewModel
         result.IsPreviewLoading = true;
         try
         {
-            var path = await DownloadAnimatedVariantAsync(variant, generation, reportErrors: false);
+            var path = await DownloadAnimatedVariantAsync(variant, generation, reportErrors: false,
+                ct: _animatedSearchCts?.Token ?? default);
             if (string.IsNullOrWhiteSpace(path)) return;
             if (request != _animatedPreviewRequest || generation != _animatedSearchGeneration ||
                 !IsAnimatedArtworkSearchOpen || !AnimatedArtworkSearchResults.Contains(result))
@@ -312,13 +318,20 @@ public partial class MetadataViewModel
             return;
 
         IsDownloadingAnimatedCover = true;
-        // Clear any prior error; the spinner row carries its own "Downloading…" label.
+        // Clear any prior error; the bar carries its own "Downloading…" label.
         AnimatedSearchStatus = string.Empty;
+        var ct = AnimatedArtworkDownload.Begin();
         try
         {
-            var tempPath = await DownloadAnimatedVariantAsync(choice.Variant);
+            var tempPath = await DownloadAnimatedVariantAsync(choice.Variant, ct: ct, onProgress: AnimatedArtworkDownload.Report);
             if (string.IsNullOrWhiteSpace(tempPath))
                 return;
+            if (ct.IsCancellationRequested)
+            {
+                // Closed while the last bytes landed: not applied.
+                TryDeleteFile(tempPath);
+                return;
+            }
 
             _newAnimatedCoverSource = tempPath;
             _animatedCoverRemoved = false;
@@ -334,6 +347,7 @@ public partial class MetadataViewModel
         }
         finally
         {
+            AnimatedArtworkDownload.End();
             IsDownloadingAnimatedCover = false;
         }
     }
@@ -343,30 +357,22 @@ public partial class MetadataViewModel
 
     /// <param name="generation">The search a background preview belongs to; its failure is only
     /// reported while that search is still the current one. Null for a user's own pick.</param>
+    /// <param name="ct">Cancelled when the pop-up or the window closes; nothing is left on disk then.</param>
+    /// <param name="onProgress">Bytes saved and the expected total (0 when unknown), for the bar.</param>
     private async Task<string?> DownloadAnimatedVariantAsync(
-        ITunesArtworkService.AnimatedArtworkVariant variant, int? generation = null, bool reportErrors = true)
+        ITunesArtworkService.AnimatedArtworkVariant variant, int? generation = null, bool reportErrors = true,
+        CancellationToken ct = default, Action<long, long>? onProgress = null)
     {
-        bool Report() => reportErrors && (generation == null || generation == _animatedSearchGeneration);
+        bool Report() => reportErrors && !ct.IsCancellationRequested
+                         && (generation == null || generation == _animatedSearchGeneration);
 
+        // Streamed straight to the file (plain or HLS); a failed or cancelled download deletes it.
         var tempPath = Path.Combine(Path.GetTempPath(), $"noctis-animatedcover-{Guid.NewGuid():N}.mp4");
-        if (!variant.IsHls)
-        {
-            var data = await _itunes!.DownloadAsync(variant.Url,
-                maxBytes: ITunesArtworkService.MaxAnimatedCoverBytes);
-            if (data is null or { Length: 0 })
-            {
-                if (Report()) AnimatedSearchStatus = Loc.T("Metadata.AnimCoverDownloadFailed");
-                return null;
-            }
-
-            await File.WriteAllBytesAsync(tempPath, data);
-            return tempPath;
-        }
-
-        if (!await _itunes!.DownloadHlsVariantAsMp4Async(variant, tempPath))
+        if (!await _itunes!.DownloadHlsVariantAsMp4Async(variant, tempPath, ct, onProgress))
         {
             TryDeleteFile(tempPath);
-            if (Report()) AnimatedSearchStatus = Loc.T("Metadata.AnimHlsDownloadFailed");
+            if (Report())
+                AnimatedSearchStatus = Loc.T(variant.IsHls ? "Metadata.AnimHlsDownloadFailed" : "Metadata.AnimCoverDownloadFailed");
             return null;
         }
 
@@ -377,6 +383,9 @@ public partial class MetadataViewModel
     internal void DisposeAnimatedSearch()
     {
         _animatedSearchCts?.Cancel();
+        // A pick still downloading in either chooser stops with the window (GitHub #185).
+        AnimatedArtworkDownload.Cancel();
+        ArtworkDownload.Cancel();
         _animatedSearchGeneration++;
         ClearAnimatedResults();
     }

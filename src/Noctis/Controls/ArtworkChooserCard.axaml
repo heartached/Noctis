@@ -231,20 +231,40 @@
                            VerticalAlignment="Center"/>
             </StackPanel>
 
-            <!-- Downloading indicator (shown after a quality is clicked) -->
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Center"
-                        Spacing="8"
+            <!-- Downloading (shown after a quality is clicked). GitHub #185: a bar with percent,
+                 speed and time left, as the plugin download rows (Settings › Plugins); without a
+                 length from the server it runs indeterminate. Closing the pop-up cancels it. -->
+            <StackPanel HorizontalAlignment="Center"
+                        Width="300"
+                        Spacing="4"
                         IsVisible="{Binding #Root.IsDownloading}">
-                <!-- Own IsVisible mirrors the parent's so the [IsVisible=True] animation gate
-                     can see it. -->
-                <Ellipse Classes="loading-spinner"
-                         VerticalAlignment="Center"
-                         IsVisible="{Binding #Root.IsDownloading}"/>
-                <TextBlock Text="{loc:T Metadata.Downloading}"
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="{loc:T Metadata.Downloading}"
+                               FontSize="11"
+                               Opacity="0.75"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1"
+                            Classes="chooser-pill pill-secondary"
+                            Content="{loc:T Settings.Cancel}"
+                            AutomationProperties.Name="{loc:T Metadata.CancelDownload}"
+                            ToolTip.Tip="{loc:T Metadata.CancelDownload}"
+                            Command="{Binding #Root.Download.CancelDownloadCommand, FallbackValue={x:Null}}"
+                            IsVisible="{Binding #Root.Download, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            MinHeight="0"
+                            Padding="10,2"
+                            FontSize="10.5"
+                            VerticalAlignment="Center"/>
+                </Grid>
+                <ProgressBar Minimum="0" Maximum="1" Height="3" CornerRadius="2"
+                             HorizontalAlignment="Stretch"
+                             AutomationProperties.Name="{loc:T Metadata.Downloading}"
+                             Value="{Binding #Root.Download.Fraction, FallbackValue=0}"
+                             IsIndeterminate="{Binding #Root.Download.IsIndeterminate, FallbackValue=True}"/>
+                <TextBlock Text="{Binding #Root.Download.Detail, FallbackValue={x:Null}}"
                            FontSize="11"
-                           Opacity="0.75"
-                           VerticalAlignment="Center"/>
+                           Opacity="0.6"
+                           IsVisible="{Binding #Root.Download.Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}"/>
             </StackPanel>
 
             <!-- Errors once results are showing (a failed download), so a failed pick is never
