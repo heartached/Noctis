@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Noctis.Helpers;
 
@@ -42,20 +41,16 @@ public partial class TextPromptDialog : Window
         base.OnOpened(e);
         Dispatcher.UIThread.Post(() =>
         {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
             InputBox.Focus();
             InputBox.SelectAll();
         }, DispatcherPriority.Loaded);
     }
 
-    private async Task CloseAnimatedAsync()
+    // PillDialogHost animates the close on every path.
+    private void CloseOnce()
     {
         if (_closing) return;
         _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
         Close();
     }
 
@@ -77,7 +72,7 @@ public partial class TextPromptDialog : Window
         var text = InputBox.Text?.Trim() ?? string.Empty;
         Result = text;
         SecondResult = SecondBox.IsVisible ? SecondBox.Text?.Trim() ?? string.Empty : null;
-        _ = CloseAnimatedAsync();
+        CloseOnce();
     }
 
     private void OnConfirmClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Confirm();
@@ -86,7 +81,7 @@ public partial class TextPromptDialog : Window
     {
         Result = null;
         SecondResult = null;
-        _ = CloseAnimatedAsync();
+        CloseOnce();
     }
 
     private void OnInputKeyDown(object? sender, KeyEventArgs e)
@@ -101,13 +96,9 @@ public partial class TextPromptDialog : Window
             e.Handled = true;
             Result = null;
             SecondResult = null;
-            _ = CloseAnimatedAsync();
+            CloseOnce();
         }
     }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e) => e.Handled = true;
-
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e) => e.Handled = true;
 
     /// <summary>Shows the prompt over the main window. Null = cancelled.</summary>
     public static async Task<string?> ShowAsync(string title, string? initialText = null, string? hint = null, string? confirmLabel = null)
