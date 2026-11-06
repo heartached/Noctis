@@ -97,21 +97,18 @@
              letter's row sits at row × height. Right margin leaves the strip its lane. -->
         <ScrollViewer Grid.Row="3" Classes="page-scroll" Name="ArtistScroll" views:ScrollMemory.IsEnabled="True"
                       HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Name="ArtistGrid" ItemsSource="{Binding Rows}" Margin="10,4,26,16">
-                <ItemsControl.ItemsPanel>
+            <views:RowItemsControl Name="ArtistGrid" ItemsSource="{Binding Rows}" Margin="10,4,26,16">
+                <views:RowItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />
                     </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
+                </views:RowItemsControl.ItemsPanel>
+                <views:RowItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArtistGridRow">
-                        <ItemsControl ItemsSource="{Binding Artists}" Height="{x:Static vm:ArtistListPageViewModel.RowHeight}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{x:Static vm:ArtistListPageViewModel.Columns}" VerticalAlignment="Top" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <!-- Circles built once per row and handed the next artist (SlotRow). -->
+                        <views:SlotRow Items="{Binding Artists}" Height="{x:Static vm:ArtistListPageViewModel.RowHeight}"
+                                       Columns="{x:Static vm:ArtistListPageViewModel.Columns}">
+                            <views:SlotRow.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ArtistListItem">
                                     <Button Classes="row" VerticalAlignment="Top"
                                             views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenArtistSheetCommand}"
@@ -128,11 +125,11 @@
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:SlotRow.ItemTemplate>
+                        </views:SlotRow>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </views:RowItemsControl.ItemTemplate>
+            </views:RowItemsControl>
         </ScrollViewer>
 
         <!-- The A–Z strip, centred in the part of the page the floating bar does not cover.

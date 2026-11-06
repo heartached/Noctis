@@ -26,21 +26,18 @@
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
         <ScrollViewer Classes="page-scroll" Grid.Row="2" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">
-                <ItemsControl.ItemsPanel>
+            <!-- Rows built once and handed the next row (RowItemsControl), tiles built once per
+                 row and handed the next album (SlotRow): a fling only rebinds. -->
+            <views:RowItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">
+                <views:RowItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />
                     </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
+                </views:RowItemsControl.ItemsPanel>
+                <views:RowItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:AlbumRow">
-                        <ItemsControl ItemsSource="{Binding Albums}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="2" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <views:SlotRow Items="{Binding Albums}" Columns="2">
+                            <views:SlotRow.ItemTemplate>
                                 <DataTemplate x:DataType="models:Album">
                                     <Button Classes="row" Margin="6"
                                             views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
@@ -49,11 +46,11 @@
                                         <views:AlbumTile />
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:SlotRow.ItemTemplate>
+                        </views:SlotRow>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </views:RowItemsControl.ItemTemplate>
+            </views:RowItemsControl>
         </ScrollViewer>
     </Grid>
 </UserControl>

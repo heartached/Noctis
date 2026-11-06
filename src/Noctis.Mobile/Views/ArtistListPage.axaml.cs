@@ -40,7 +40,9 @@ public partial class ArtistListPage : UserControl
     private void ShowRow(Control container)
     {
         HideRow(container);
-        if (container.DataContext is not ArtistGridRow row || _vm == null) return;
+        // A RowItemsControl container hosts the row, whose DataContext is the item.
+        var shown = container is RowHost { Row: { } hosted } ? hosted.DataContext : container.DataContext;
+        if (shown is not ArtistGridRow row || _vm == null) return;
         _shownRows[container] = row;
         foreach (var item in row.Artists) _vm.Photos.Request(item);
     }
