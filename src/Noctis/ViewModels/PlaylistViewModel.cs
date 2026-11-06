@@ -796,7 +796,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _playlist.ModifiedAt = DateTime.UtcNow;
         UpdateHeaderStats(_unfilteredTracks ?? Tracks);
         UpdateEmptyStateFlags(_playlist.TrackIds.Count);
-        RebuildFeaturedArtists(Tracks.ToList());
+        // The rail describes the whole playlist too, not the search results.
+        RebuildFeaturedArtists((_unfilteredTracks ?? Tracks).ToList());
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
         CtrlSelectedTracks.Clear();
