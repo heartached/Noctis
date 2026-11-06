@@ -27,6 +27,19 @@
     <Style Selector="ScrollBar">
         <Setter Property="AllowAutoHide" Value="True" />
     </Style>
+    <!-- Android's indicator: unseen at rest, shown while the list moves, faded out a second
+         after it stops (ScrollBarFade sets "scrolling"). -->
+    <Style Selector="ScrollViewer /template/ ScrollBar">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.3" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ScrollViewer.scrolling /template/ ScrollBar">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
 
     <!-- Text. Noctis.UI's Styles.axaml sets every TextBlock to the Inter SemiBold face (the
          desktop's look), a single-weight family, so no FontWeight below Bold could show on the
@@ -158,6 +171,12 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <!-- On a card the fill is the card's own colour in Ink, Smoke and Dark (#1C1C1E on #1C1C1E),
+         so the pill had no shape at all ("Choose folder", dark mode). The raised card colour
+         shows it in every theme. -->
+    <Style Selector="Border.card Button.pill">
+        <Setter Property="Background" Value="{DynamicResource PhoneCardBrush}" />
     </Style>
     <Style Selector="Button.pill-accent">
         <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
