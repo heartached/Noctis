@@ -49,11 +49,20 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private string? _headerArtPath;
 
     /// <summary>GitHub #114: the header cover opens full size when there is a still cover to
-    /// show. An animated cover plays over the still one; the viewer shows the still.</summary>
+    /// show. An animated cover plays over the still one, in the viewer too (Discord ask).</summary>
     public bool CanViewArtwork => !string.IsNullOrEmpty(HeaderArtPath);
 
-    /// <summary>Shows a cover file full size until the viewer closes; tests swap it out.</summary>
-    internal Func<string, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
+    /// <summary>Shows a cover full size until the viewer closes; tests swap it out.</summary>
+    internal Func<Views.ArtworkViewerRequest, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
+
+    /// <summary>What the viewer shows for <paramref name="stillPath"/>: the header's animated
+    /// cover too when the header plays one (Animated Artwork on and a loop found or fetched),
+    /// started or paused as the viewer's play/pause button was last left.</summary>
+    internal Views.ArtworkViewerRequest BuildArtworkViewerRequest(string stillPath)
+        => new(stillPath,
+            ShowAnimatedCover ? AnimatedCoverPath : null,
+            _settings?.ArtworkViewerAnimated ?? true,
+            on => { if (_settings != null) _settings.ArtworkViewerAnimated = on; });
 
     /// <summary>True when this album's track is currently playing AND animated covers are enabled AND a cover exists.</summary>
     public bool IsCurrentAlbumPlaying =>
@@ -840,7 +849,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// viewer is up, so a double-click on the cover opens one viewer, not two.</summary>
     [RelayCommand(CanExecute = nameof(CanViewArtwork))]
     private Task ViewArtwork()
-        => HeaderArtPath is { Length: > 0 } path ? ShowArtworkViewer(path) : Task.CompletedTask;
+        => HeaderArtPath is { Length: > 0 } path ? ShowArtworkViewer(BuildArtworkViewerRequest(path)) : Task.CompletedTask;
 
     [RelayCommand]
     private async Task EditAlbumDescription()

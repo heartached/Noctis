@@ -1,14 +1,26 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Services;
 
 namespace Noctis.Views;
+
+/// <summary>What the full-size viewer shows: the still cover and, when the album has one
+/// and Animated Artwork is on, its animated cover. <paramref name="PlayAnimated"/> is the
+/// remembered play/pause choice; <paramref name="PlayAnimatedChanged"/> stores a new one.</summary>
+public sealed record ArtworkViewerRequest(
+    string StillPath,
+    string? AnimatedPath = null,
+    bool PlayAnimated = true,
+    Action<bool>? PlayAnimatedChanged = null);
 
 /// <summary>
 /// GitHub #114: the album page's cover, full size, over the dimmed window. The cover is
@@ -26,8 +38,13 @@ public partial class ArtworkViewerDialog : Window
     /// page's cover, not a request to close.</summary>
     private const int DismissGuardMs = 300;
 
+    /// <summary>How long the animated cover takes to fade out before its decoder lease goes.</summary>
+    private const int AnimatedFadeMs = 250;
+
     private readonly string? _path;
     private readonly PixelSize? _sourceSize;
+    private readonly ArtworkViewerRequest? _request;
+    private int _pauseToken;
     private readonly Stopwatch _sinceOpened = new();
     private bool _closing;
     private bool _closed;
@@ -37,6 +54,12 @@ public partial class ArtworkViewerDialog : Window
 
     /// <summary>Device-pixel width the sharp decode was asked for (the drawn width); 0 before open.</summary>
     internal int FullDecodeWidth { get; private set; }
+
+    /// <summary>The album has an animated cover to offer (the play/pause button shows).</summary>
+    internal bool HasAnimatedCover => _request?.AnimatedPath is { Length: > 0 };
+
+    /// <summary>The animated cover is wanted on screen (not paused with the button).</summary>
+    internal bool IsAnimatedOn { get; private set; }
 
     public ArtworkViewerDialog()
     {
@@ -49,6 +72,83 @@ public partial class ArtworkViewerDialog : Window
         _sourceSize = SkiaArtworkDecoder.ReadFilePixelSize(path); // header only
         SizeText.Text = _sourceSize is { } s ? $"{s.Width} × {s.Height}" : string.Empty;
         PreviewImage.SourcePath = path;
+    }
+
+    /// <summary>The still cover, plus the animated one on top when the request carries it.</summary>
+    public ArtworkViewerDialog(ArtworkViewerRequest request) : this(request.StillPath)
+    {
+        _request = request;
+        if (!HasAnimatedCover) return;
+
+        AnimatedImage.Source = request.AnimatedPath;
+        AnimatedImage.IsVisible = true;
+        AnimatedImage.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == Controls.AnimatedCoverImage.HasFrameProperty) UpdateAnimatedOpacity();
+        };
+        AnimatedToggle.IsVisible = true;
+        IsAnimatedOn = request.PlayAnimated;
+        // Leased once the window is shown (AnimatedCoverImage's own visibility rules): the
+        // album page's header already runs this file's decoder, so the viewer joins it and
+        // its current frame shows at once.
+        AnimatedImage.IsActive = IsAnimatedOn;
+        UpdateAnimatedToggle();
+    }
+
+    /// <summary>Plays or pauses the animated cover; <paramref name="remember"/> stores the
+    /// choice for the next viewer.</summary>
+    internal void SetAnimated(bool on, bool remember)
+    {
+        if (!HasAnimatedCover || _closed || on == IsAnimatedOn) return;
+        IsAnimatedOn = on;
+        var token = ++_pauseToken;
+        if (on)
+        {
+            AnimatedImage.IsActive = true;
+        }
+        else
+        {
+            _ = ReleaseAfterFadeAsync(token);
+        }
+        UpdateAnimatedOpacity();
+        UpdateAnimatedToggle();
+        if (remember) _request?.PlayAnimatedChanged?.Invoke(on);
+    }
+
+    /// <summary>Paused: fade out over the still, then give the decoder lease back (a play
+    /// press during the fade keeps it).</summary>
+    private async Task ReleaseAfterFadeAsync(int token)
+    {
+        await Task.Delay(AnimatedFadeMs);
+        if (token == _pauseToken && !IsAnimatedOn && !_closed)
+            AnimatedImage.IsActive = false;
+    }
+
+    /// <summary>Gives the animated cover's decoder lease back at once (not after the usual
+    /// hand-off linger): the decoder stops unless the album page behind still shows the file.</summary>
+    private void ReleaseAnimated()
+    {
+        _pauseToken++;
+        AnimatedImage.IsActive = false;
+        AnimatedImage.Source = null;
+    }
+
+    private void UpdateAnimatedOpacity()
+        => AnimatedImage.Opacity = IsAnimatedOn && AnimatedImage.HasFrame ? 1 : 0;
+
+    private void UpdateAnimatedToggle()
+    {
+        var label = Loc.T(IsAnimatedOn ? "ArtworkViewer.PauseAnimated" : "ArtworkViewer.PlayAnimated");
+        ToolTip.SetTip(AnimatedToggle, label);
+        AutomationProperties.SetName(AnimatedToggle, label);
+        if (this.TryFindResource(IsAnimatedOn ? "MenuLinePause" : "MenuLinePlay", out var glyph) && glyph is Geometry g)
+            AnimatedToggleIcon.Data = g;
+    }
+
+    private void OnAnimatedToggleClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        e.Handled = true;
+        SetAnimated(!IsAnimatedOn, remember: true);
     }
 
     /// <summary>
@@ -144,6 +244,14 @@ public partial class ArtworkViewerDialog : Window
         Close();
     }
 
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        // Before the window hides and detaches: either of those would only release the
+        // animated cover after its hand-off linger.
+        if (!e.Cancel) ReleaseAnimated();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         // Full-size covers run to tens of MB: let go now rather than at the next collection.
@@ -152,6 +260,7 @@ public partial class ArtworkViewerDialog : Window
         FullBitmap?.Dispose();
         FullBitmap = null;
         PreviewImage.SourcePath = null;
+        ReleaseAnimated();
         base.OnClosed(e);
     }
 
@@ -186,12 +295,15 @@ public partial class ArtworkViewerDialog : Window
     }
 
     /// <summary>Shows <paramref name="path"/> full size over the main window until it is closed.</summary>
-    public static async Task ShowAsync(string path)
+    public static Task ShowAsync(string path) => ShowAsync(new ArtworkViewerRequest(path));
+
+    /// <summary>Shows the request's cover (animated when it has one) over the main window until it is closed.</summary>
+    public static async Task ShowAsync(ArtworkViewerRequest request)
     {
         if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
         {
-            var dialog = new ArtworkViewerDialog(path);
+            var dialog = new ArtworkViewerDialog(request);
             DialogHelper.SizeToOwner(dialog, owner);
             await dialog.ShowDialog(owner);
         }
