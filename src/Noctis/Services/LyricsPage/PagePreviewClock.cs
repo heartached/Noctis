@@ -2,7 +2,7 @@ namespace Noctis.Services.LyricsPage;
 
 /// <summary>
 /// The track time the share dialog's live Lyrics Page preview shows: the playback position
-/// while this song plays, otherwise the clip looping from its start. Both carry the word
+/// while it follows playback (Sync on, inside the clip), otherwise the clip looping from its start. Both carry the word
 /// lookahead, as every exported frame does (<see cref="LyricsPageFrames.TrackTime"/>).
 /// The caller owns the clock (a Stopwatch in the view-model); this stays deterministic.
 /// </summary>

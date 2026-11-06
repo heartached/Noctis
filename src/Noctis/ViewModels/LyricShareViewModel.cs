@@ -211,7 +211,20 @@ public partial class LyricShareViewModel : ViewModelBase
     partial void OnPageBackgroundStrengthChanged(int value)
     {
         if (value is < 0 or > 100) { PageBackgroundStrength = Math.Clamp(value, 0, 100); return; }
-        if (IsPageLayout) RefreshPreview();
+        if (!IsPageLayout) return;
+        // Only the layer over the background changes: the shown animator takes it as it is, so a
+        // slider drag neither restarts the loop nor a clip's ffmpeg. A build in flight read the
+        // old value, so that one is redone.
+        if (_animator is LyricsPageAnimator page && !_previewRendering && !_previewStale)
+        {
+            page.BackgroundStrength = value;
+            _animLastT = double.NaN;
+            RenderAnimatedFrame();
+        }
+        else
+        {
+            RefreshPreview();
+        }
     }
 
     partial void OnPageBackgroundPathChanged(string value)
@@ -574,6 +587,7 @@ public partial class LyricShareViewModel : ViewModelBase
     // An animator is disposed only once the draw in flight (_pageDraw) has finished.
     private readonly System.Diagnostics.Stopwatch _pagePreviewClock = new();
     private ShareClipTiming _pagePreviewTiming;
+    private bool _keepPageClock;
     private Task _pageDraw = Task.CompletedTask;
     private bool _pageDrawBusy;
     private byte[]? _pageFrame;
@@ -835,7 +849,7 @@ public partial class LyricShareViewModel : ViewModelBase
         }
 
         // Small lookahead so the highlight lands as the line begins, matching the lyrics page.
-        var adjusted = position + TimeSpan.FromMilliseconds(350);
+        var adjusted = position + TimeSpan.FromSeconds(SyncLeadSeconds);
         int index = -1;
         for (int i = 0; i < Lines.Count; i++)
         {
@@ -877,8 +891,22 @@ public partial class LyricShareViewModel : ViewModelBase
         RaiseSelectionChanged();
         OnPropertyChanged(nameof(KaraokeAvailable));
         OnPropertyChanged(nameof(CardOptionsSummary));
+        // The page preview follows playback by itself: rebuilding it at each line would snap its
+        // list (a new animator's first frame). Only once playback has left its clip is it redone.
+        if (IsPageLayout && _animator is LyricsPageAnimator && _player != null
+            && PlaybackInPagePreview(_player.Position.TotalSeconds))
+            return;
         RefreshPreview();
     }
+
+    /// <summary>How far ahead of a line Sync picks it (<see cref="UpdateSyncHighlight"/>).</summary>
+    private const double SyncLeadSeconds = 0.35;
+
+    /// <summary>Whether playback at <paramref name="seconds"/> is inside the page preview's clip
+    /// (from Sync's lead before its start).</summary>
+    private bool PlaybackInPagePreview(double seconds) =>
+        seconds >= _pagePreviewTiming.StartSeconds - SyncLeadSeconds
+        && seconds < _pagePreviewTiming.StartSeconds + _pagePreviewTiming.DurationSeconds;
 
     partial void OnSyncEnabledChanged(bool value)
     {
@@ -967,6 +995,9 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             IsPanelLayout = false;
             IsPosterLayout = false;
+            // The page's picks set the clip's time window; following playback would re-pick
+            // them, and rebuild the preview, at every line.
+            if (SyncEnabled) SyncEnabled = false;
             FillPageRange();
         }
         else
@@ -1294,7 +1325,12 @@ public partial class LyricShareViewModel : ViewModelBase
             }
             dispatcher.Post(() =>
             {
-                if (animator != null) _pagePreviewTiming = timing;
+                if (animator != null)
+                {
+                    // Same clip (an option changed, not the range): the loop goes on where it was.
+                    _keepPageClock = _animator is LyricsPageAnimator && _pagePreviewTiming == timing;
+                    _pagePreviewTiming = timing;
+                }
                 OnPreviewRendered(null, animator);
             });
         });
@@ -1338,8 +1374,9 @@ public partial class LyricShareViewModel : ViewModelBase
         DisposeAnimator(_animator);
         _animator = animator;
         _animLastT = double.NaN;
-        if (animator is LyricsPageAnimator) _pagePreviewClock.Restart();
-        else _pagePreviewClock.Reset();
+        if (animator is not LyricsPageAnimator) _pagePreviewClock.Reset();
+        else if (!_keepPageClock || !_pagePreviewClock.IsRunning) _pagePreviewClock.Restart();
+        _keepPageClock = false;
 
         if (_animBitmap == null
             || _animBitmap.PixelSize.Width != animator.PixelWidth
@@ -1394,12 +1431,18 @@ public partial class LyricShareViewModel : ViewModelBase
             animator?.Dispose();
     }
 
-    /// <summary>The track time the animated preview shows now: the page follows playback while
-    /// this song plays and otherwise loops its clip; the card follows playback.</summary>
-    private double AnimatedPreviewTime() => _animator is LyricsPageAnimator
-        ? PagePreviewClock.TrackTime(IsOurTrackPlaying && _player?.State == PlaybackState.Playing,
-            GetSmoothedPositionSeconds(), _pagePreviewClock.Elapsed.TotalSeconds, _pagePreviewTiming)
-        : GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+    /// <summary>The track time the animated preview shows now. The card follows playback. The
+    /// page loops its clip, and follows playback only with Sync on while this song plays inside
+    /// that clip: it previews the clip, not wherever the song is.</summary>
+    internal double AnimatedPreviewTime()
+    {
+        if (_animator is not LyricsPageAnimator)
+            return GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+        bool playing = SyncEnabled && IsOurTrackPlaying && _player?.State == PlaybackState.Playing;
+        double position = playing ? GetSmoothedPositionSeconds() : 0;
+        return PagePreviewClock.TrackTime(playing && PlaybackInPagePreview(position), position,
+            _pagePreviewClock.Elapsed.TotalSeconds, _pagePreviewTiming);
+    }
 
     private void OnAnimTick()
     {

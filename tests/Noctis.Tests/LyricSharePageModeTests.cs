@@ -719,6 +719,144 @@ public class LyricSharePageModeTests
         finally { vm.Detach(); }
     }
 
+    private static object? Animator(LyricShareViewModel vm) =>
+        typeof(LyricShareViewModel).GetField("_animator",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(vm);
+
+    /// <summary>A dialog on 30 synced lines 2 s apart while its song plays at <paramref name="positionSeconds"/>.</summary>
+    private static (LyricShareViewModel Vm, PlayerViewModel Player) WhilePlaying(TestPersistenceService persistence,
+        double positionSeconds)
+    {
+        var player = new PlayerViewModel(new FakeAudioPlayer(), new FakeLibraryService(), persistence, new FakeAnimatedCoverService());
+        var song = Song();
+        player.CurrentTrack = song;
+        player.Position = TimeSpan.FromSeconds(positionSeconds);
+        player.State = PlaybackState.Playing;
+        var lines = Enumerable.Range(0, 30).Select(i => $"line {i}").ToList();
+        var stamps = Enumerable.Range(0, 30).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+        return (new LyricShareViewModel(song, lines, stamps, player), player);
+    }
+
+    /// <summary>
+    /// Bug: Sync stayed on in the Lyrics Page, so each new line re-picked the range and rebuilt
+    /// the preview, whose new list snapped at every line change. Entering the page turns it off.
+    /// </summary>
+    [AvaloniaFact]
+    public void Entering_the_page_turns_sync_off_and_keeps_its_picks()
+    {
+        using var persistence = new TestPersistenceService();
+        var (vm, _) = WhilePlaying(persistence, 10);
+        try
+        {
+            Assert.True(vm.SyncEnabled);
+            Assert.Equal(Span(5, 8), Picked(vm));
+            vm.LayoutIndex = 2;
+            Assert.False(vm.SyncEnabled);
+            Assert.Equal(Span(5, 8), Picked(vm));
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>Bug: with Sync off the page preview still showed wherever the song was playing,
+    /// not the clip being made. It loops the clip.</summary>
+    [AvaloniaFact]
+    public void With_sync_off_the_page_preview_shows_the_clip_not_the_playback()
+    {
+        using var persistence = new TestPersistenceService();
+        var (vm, _) = WhilePlaying(persistence, 40);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[3]);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.LayoutIndex = 2;
+            Assert.False(vm.SyncEnabled);
+            Assert.True(PumpUntil(() => Animator(vm) != null && vm.IsPreviewCurrent, 5000), "page preview never appeared");
+
+            var timing = vm.GetClipTiming();
+            var t = vm.AnimatedPreviewTime();
+            Assert.InRange(t, timing.StartSeconds, timing.StartSeconds + timing.DurationSeconds + 0.1);
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>With Sync turned back on the page preview follows playback inside its clip; the
+    /// line steps do not rebuild it (no snap), and playback leaving the clip does.</summary>
+    [AvaloniaFact]
+    public void With_sync_on_the_page_preview_follows_playback_without_rebuilding_each_line()
+    {
+        using var persistence = new TestPersistenceService();
+        var (vm, player) = WhilePlaying(persistence, 10);
+        try
+        {
+            vm.LayoutIndex = 2;   // range 5-8: the clip 10-18 s
+            Assert.True(PumpUntil(() => Animator(vm) != null && vm.IsPreviewCurrent, 5000), "page preview never appeared");
+            vm.ToggleSyncCommand.Execute(null);
+            Assert.True(vm.SyncEnabled);
+            Assert.True(PumpUntil(() => vm.IsPreviewCurrent, 5000));
+            var shown = Animator(vm);
+            Assert.InRange(vm.AnimatedPreviewTime(), 10.0, 11.5);
+
+            player.Position = TimeSpan.FromSeconds(12.1);   // the next line: Sync re-picks 6-9
+            Assert.Equal(Span(6, 9), Picked(vm));
+            PumpUntil(() => false, 300);
+            Assert.Same(shown, Animator(vm));
+            Assert.InRange(vm.AnimatedPreviewTime(), 12.1, 13.5);
+
+            player.Position = TimeSpan.FromSeconds(30);   // out of the clip: redone around playback
+            Assert.True(PumpUntil(() => !ReferenceEquals(shown, Animator(vm)) && vm.IsPreviewCurrent, 5000),
+                "the preview was not rebuilt once playback left its clip");
+            Assert.InRange(vm.AnimatedPreviewTime(), 30.0, 31.5);
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>Bug: every option change restarted the preview loop at the clip start (and with a
+    /// clip background restarted its ffmpeg). The same clip keeps its place.</summary>
+    [AvaloniaFact]
+    public void An_option_change_on_the_same_clip_keeps_the_loop_going()
+    {
+        var vm = WordTimed(12);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[3]);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.LayoutIndex = 2;   // the clip 6-12 s
+            Assert.True(PumpUntil(() => Animator(vm) != null && vm.IsPreviewCurrent, 5000), "page preview never appeared");
+            var first = Animator(vm);
+            Thread.Sleep(800);
+
+            vm.SafeZonesEnabled = !vm.SafeZonesEnabled;   // rebuilds the animator, same clip
+            Assert.True(PumpUntil(() => !ReferenceEquals(first, Animator(vm)) && vm.IsPreviewCurrent, 5000), "no rebuild");
+            var into = vm.AnimatedPreviewTime() - vm.GetClipTiming().StartSeconds;
+            Assert.True(into >= 0.7, $"the loop restarted: {into:F2} s into the clip");
+        }
+        finally { vm.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void Readability_strength_changes_the_page_preview_without_a_rebuild()
+    {
+        var vm = WordTimed(12);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[3]);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.LayoutIndex = 2;
+            Assert.True(PumpUntil(() => Animator(vm) != null && vm.IsPreviewCurrent, 5000), "page preview never appeared");
+            var shown = Animator(vm);
+
+            vm.PageBackgroundStrength = 10;
+            PumpUntil(() => false, 300);
+            Assert.Same(shown, Animator(vm));
+            Assert.True(vm.IsPreviewCurrent);
+            Assert.Equal(10, vm.PageSpec.BackgroundStrength);   // the export reads it as it stands
+        }
+        finally { vm.Detach(); }
+    }
+
     private static HashSet<string> TempEntries(string pattern) =>
         new(System.IO.Directory.EnumerateFileSystemEntries(System.IO.Path.GetTempPath(), pattern), StringComparer.OrdinalIgnoreCase);
 
