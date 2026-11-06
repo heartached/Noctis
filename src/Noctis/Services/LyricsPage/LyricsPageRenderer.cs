@@ -37,11 +37,19 @@ public static class LyricsPageRenderer
         }
     }
 
-    /// <summary>The frame at track time <paramref name="tSeconds"/> as a PNG, at <paramref name="scale"/>.</summary>
-    public static byte[] RenderStillPng(LyricsPageSpec spec, double tSeconds, float scale = 1f)
+    /// <summary>A clip background under the still decodes one frame a second: ffmpeg pipes ~t
+    /// frames to reach time t, not 60 per second of it at full size.</summary>
+    internal const int StillBackgroundFps = 1;
+
+    /// <summary>The frame at track time <paramref name="tSeconds"/> as a PNG, at <paramref name="scale"/>
+    /// (a clip background shows its frame at the whole second). <paramref name="ct"/> is checked
+    /// before the draw and before the encode.</summary>
+    public static byte[] RenderStillPng(LyricsPageSpec spec, double tSeconds, float scale = 1f, CancellationToken ct = default)
     {
-        using var animator = new LyricsPageAnimator(spec, scale);
+        ct.ThrowIfCancellationRequested();
+        using var animator = new LyricsPageAnimator(spec, scale, null, blockingBackground: true, backgroundFps: StillBackgroundFps);
         animator.Draw(tSeconds);
+        ct.ThrowIfCancellationRequested();
         using var img = animator.Snapshot();
         using var data = img.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();

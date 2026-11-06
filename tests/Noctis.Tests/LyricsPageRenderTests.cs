@@ -407,4 +407,56 @@ public class LyricsPageRenderTests
         Assert.Equal(540, bitmap.Width);
         Assert.Equal(960, bitmap.Height);
     }
+
+    /// <summary>
+    /// Bug: the still over a clip background asked ffmpeg for 60 frames a second, so a still
+    /// 40 s into the clip piped ~2400 full-size frames for one picture. It asks for one a second.
+    /// </summary>
+    [Fact]
+    public void Still_over_a_clip_asks_ffmpeg_for_one_frame_a_second()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "NoctisTests", "lyrics-page-still-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var argsFile = Path.Combine(dir, "args.txt");
+            string ffmpeg;
+            if (OperatingSystem.IsWindows())
+            {
+                ffmpeg = Path.Combine(dir, "ffmpeg.cmd");
+                File.WriteAllText(ffmpeg, $"@echo off\r\necho %* > \"{argsFile}\"\r\n");
+            }
+            else
+            {
+                ffmpeg = Path.Combine(dir, "ffmpeg");
+                File.WriteAllText(ffmpeg, $"#!/bin/sh\necho \"$@\" > \"{argsFile}\"\n");
+                File.SetUnixFileMode(ffmpeg, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            var clip = Path.Combine(dir, "bg.mp4");
+            File.WriteAllText(clip, "clip");
+            var spec = Spec(ShareCardFormat.Story) with
+            {
+                BackgroundKind = LyricsPageBackgroundKind.Custom, BackgroundMediaPath = clip, FfmpegPath = ffmpeg,
+            };
+
+            var png = LyricsPageRenderer.RenderStillPng(spec, 40, 0.25f);   // the stand-in ends at once: the wash shows
+            Assert.NotEmpty(png);
+            Assert.True(File.Exists(argsFile), "ffmpeg was not started");
+            var args = File.ReadAllText(argsFile);
+            Assert.Contains(",fps=1,", args);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void Still_render_stops_when_cancelled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            LyricsPageRenderer.RenderStillPng(Spec(ShareCardFormat.Story), 12.08, 0.5f, cts.Token));
+    }
 }

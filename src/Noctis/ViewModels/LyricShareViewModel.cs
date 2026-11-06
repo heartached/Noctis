@@ -1706,7 +1706,12 @@ public partial class LyricShareViewModel : ViewModelBase
         try
         {
             // Off the UI thread: a clip background waits for its frame.
-            return await Task.Run(() => LyricsPageRenderer.RenderStillPng(spec, t, ShareCardRenderer.CardExportScale));
+            var ct = _lifetime.Token;
+            return await Task.Run(() => LyricsPageRenderer.RenderStillPng(spec, t, ShareCardRenderer.CardExportScale, ct), ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;   // the dialog closed meanwhile
         }
         catch (Exception ex)
         {
@@ -1889,11 +1894,15 @@ public partial class LyricShareViewModel : ViewModelBase
 
     private CancellationTokenSource? _exportCts;
 
+    /// <summary>Cancelled when the dialog closes (<see cref="Detach"/>): stops a still render.</summary>
+    private readonly CancellationTokenSource _lifetime = new();
+
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
     {
         // A preview render still running disposes what it made (and the cover) when it lands.
         _detached = true;
+        _lifetime.Cancel();
         if (!_previewRendering) { _previewArt?.Dispose(); _previewArt = null; }
 
         // Stop a running export. Detach() previously tore down only the preview animator,
