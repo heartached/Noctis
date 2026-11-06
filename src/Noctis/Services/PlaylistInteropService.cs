@@ -43,6 +43,9 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
     /// </summary>
     internal static string PortablePath(string baseDir, string trackPath)
     {
+        // A server stream or phone document is a URI: GetFullPath read it as a file name under
+        // the working folder and wrote a "../../…/http:/host/…" path no player can open.
+        if (!Track.IsFilesystemPath(trackPath)) return trackPath;
         try
         {
             var full = Path.GetFullPath(trackPath);
