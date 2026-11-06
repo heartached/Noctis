@@ -5,9 +5,9 @@
                      xmlns:controls="using:Noctis.Controls"
                      x:Class="Noctis.Mobile.Views.PlaylistTools"
                      x:DataType="vm:PlaylistListPageViewModel"
-                     Classes="header-glass" Width="NaN" IsVisible="{Binding HasTools}">
+                     Classes="header-glass" Width="NaN">
     <!-- The playlist list's tools, in the same glass pill as a song list's (ListTools): search in
-         the list and sort it. Each lights up while it changes what is shown. -->
+         the list and sort it (each lights up while it changes what is shown), and New Playlist. -->
     <StackPanel Orientation="Horizontal" Margin="4,0">
         <Button Name="PlaylistSearchButton" Classes="glass-round" Classes.on="{Binding IsSearchOpen}" IsVisible="{Binding HasPlaylists}"
                 Command="{Binding ToggleSearchCommand}" AutomationProperties.Name="{loc:T Mobile.Playlists.SearchName}">
@@ -17,6 +17,12 @@
                 IsVisible="{Binding HasPlaylists}"
                 AutomationProperties.Name="{loc:T Mobile.Playlists.SortName}">
             <PathIcon Data="{DynamicResource PhSort}" />
+        </Button>
+        <!-- New Playlist: a name, then the empty playlist joins the list (a song's ⋯ › Add to
+             Playlist makes one too, with that song). -->
+        <Button Name="NewPlaylistButton" Classes="glass-round" Command="{Binding Shell.AskNewPlaylistCommand}"
+                AutomationProperties.Name="{loc:T Mobile.Playlists.New}">
+            <PathIcon Data="{DynamicResource PhPlus}" />
         </Button>
         <!-- The list's ⋯ (Import Playlist), there with no playlists yet too: an Android-only
              listener's way to bring playlists in. -->

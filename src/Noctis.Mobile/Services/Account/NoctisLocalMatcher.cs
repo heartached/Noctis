@@ -8,16 +8,20 @@ namespace Noctis.Mobile.Services.Account;
 /// instead of two. A desktop song matches a local file when the titles agree on their base form
 /// (a feat. credit, "- Remastered 2011" or "(Deluxe)" do not matter) AND carry the same version
 /// markers (a Live, Remix, Acoustic or Radio Edit never matches the studio song), the credited
-/// artists share a name, and the durations are within <see cref="DurationToleranceSeconds"/>.
+/// artists share a name, and the durations are within <see cref="DurationToleranceSeconds"/> or
+/// the two files have the very same size (the same file: the phone reads a song through its
+/// content stream, without the desktop's MP3 frame count or ffprobe, so a headerless VBR MP3 has
+/// TagLib's guess of its length there, often a minute off, and some files no length at all).
 /// The album only breaks ties (a single and its album copy are the same recording).
 /// Local files are indexed by title key, so 10k+ songs cost one pass, not a pairwise scan.
 /// </summary>
 internal static class NoctisLocalMatcher
 {
-    /// <summary>The desktop reports whole seconds (up to 0.5 s of rounding) next to the file's exact length.</summary>
+    /// <summary>How far the lengths may differ. The desktop reports whole seconds, cut (203.9 s is
+    /// 203), so the gap is measured to the second it stands for (<see cref="Gap"/>).</summary>
     internal const double DurationToleranceSeconds = 2.5;
 
-    private sealed record Entry(Track Track, HashSet<string> Artists, string Album, double Seconds);
+    private sealed record Entry(Track Track, HashSet<string> Artists, string Album, double Seconds, long Size);
 
     /// <summary>desktop song id → the phone's own track. <paramref name="sticky"/> pairs (from the
     /// last sync) hold while both sides still exist, so a tag edit never flips a link.</summary>
@@ -29,11 +33,12 @@ internal static class NoctisLocalMatcher
         var byId = new Dictionary<Guid, Entry>();
         foreach (var t in library)
         {
-            if (t.SourceType != SourceType.Local || t.Duration <= TimeSpan.Zero) continue;
+            // A file without a length can still be the same file (its size).
+            if (t.SourceType != SourceType.Local || (t.Duration <= TimeSpan.Zero && t.FileSize <= 0)) continue;
             var key = TitleKey(t.Title);
             var artists = Artists(t.Artist);
             if (key.Length == 0 || artists.Count == 0) continue;
-            var e = new Entry(t, artists, MatchText.Fold(t.Album), t.Duration.TotalSeconds);
+            var e = new Entry(t, artists, MatchText.Fold(t.Album), t.Duration.TotalSeconds, t.FileSize);
             byId[t.Id] = e;
             if (!index.TryGetValue(key, out var list)) index[key] = list = new List<Entry>();
             list.Add(e);
@@ -49,7 +54,7 @@ internal static class NoctisLocalMatcher
         for (var pass = 0; pass < 2; pass++)
         foreach (var s in songs)
         {
-            if (result.ContainsKey(s.Id) || s.DurationSeconds <= 0) continue;
+            if (result.ContainsKey(s.Id) || (s.DurationSeconds <= 0 && s.Size <= 0)) continue;
             var key = TitleKey(s.Title);
             if (key.Length == 0 || !index.TryGetValue(key, out var candidates)) continue;
             var artists = Artists(s.Artist);
@@ -61,11 +66,13 @@ internal static class NoctisLocalMatcher
             foreach (var c in candidates)
             {
                 if (claimed.Contains(c.Track.Id)) continue;
-                var diff = Math.Abs(c.Seconds - s.DurationSeconds);
-                if (diff > DurationToleranceSeconds || !c.Artists.Overlaps(artists)) continue;
+                var sameFile = s.Size > 0 && c.Size == s.Size;
+                var diff = s.DurationSeconds > 0 && c.Seconds > 0 ? Gap(c.Seconds, s.DurationSeconds) : double.MaxValue;
+                if ((!sameFile && diff > DurationToleranceSeconds) || !c.Artists.Overlaps(artists)) continue;
                 var sameAlbum = album.Length > 0 && album == c.Album;
                 if (pass == 0 && !sameAlbum) continue;
-                var score = diff;
+                // The same file beats any length.
+                var score = sameFile ? -1 : diff;
                 if (score < bestScore || (score == bestScore && best is not null && c.Track.Id.CompareTo(best.Track.Id) < 0))
                 {
                     best = c;
@@ -78,6 +85,11 @@ internal static class NoctisLocalMatcher
         }
         return result;
     }
+
+    /// <summary>Seconds between a file's exact length and the desktop's cut whole second
+    /// (<paramref name="desktopSeconds"/> stands for [s, s + 1)).</summary>
+    private static double Gap(double seconds, int desktopSeconds) =>
+        seconds < desktopSeconds ? desktopSeconds - seconds : Math.Max(0, seconds - (desktopSeconds + 1));
 
     /// <summary>Folded base title plus its sorted version markers; empty when there is no real title.</summary>
     private static string TitleKey(string? title)

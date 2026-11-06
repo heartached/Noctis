@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Ninguna playlist coincide</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Buscar playlists</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Ordenar playlists</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Nueva playlist</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Crear</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Reproducir a continuación</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Añadir a la cola</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Ir al álbum</value></data>

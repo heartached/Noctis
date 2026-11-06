@@ -13,6 +13,9 @@ public sealed record NoctisAccount
 {
     /// <summary>"https://host:port", no trailing slash, no path.</summary>
     public required string ServerUrl { get; init; }
+    /// <summary>The computer's other addresses from its QR code (it lists up to four), tried in
+    /// turn when <see cref="ServerUrl"/> stops answering; empty for a password sign-in.</summary>
+    public IReadOnlyList<string> OtherServerUrls { get; init; } = Array.Empty<string>();
     public required string UserName { get; init; }
     /// <summary>The per-device API key ("nk_…") from noctisSignIn.</summary>
     public required string DeviceKey { get; init; }

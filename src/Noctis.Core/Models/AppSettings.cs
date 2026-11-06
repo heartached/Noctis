@@ -181,6 +181,11 @@ public class AppSettings : IJsonOnDeserializing
     /// unknown reads as Cover.</summary>
     public string MobileNowPlayingArtwork { get; set; } = "Cover";
 
+    /// <summary>Phone: the sort each list was left in, by list ("Nav.Songs", "Nav.Playlists",
+    /// "Playlist:{id}"): a sort name, with " desc" when reversed. A list in its own order has no
+    /// entry; a name the phone does not know reads as its own order.</summary>
+    public Dictionary<string, string> MobileListSorts { get; set; } = new();
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;
