@@ -667,6 +667,7 @@ public partial class LyricShareViewModel : ViewModelBase
     public bool CanExportVideo =>
         !IsRendering
         && HasSelection
+        && (!IsPageLayout || PageLayoutAvailable)
         && !string.IsNullOrWhiteSpace(_track.FilePath)
         && File.Exists(_track.FilePath);
 
@@ -960,6 +961,7 @@ public partial class LyricShareViewModel : ViewModelBase
     partial void OnIsPageLayoutChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(CanExportVideo));
         OnPropertyChanged(nameof(LayoutIndex));
         if (value)
         {
@@ -1669,6 +1671,9 @@ public partial class LyricShareViewModel : ViewModelBase
     /// </summary>
     public async Task<byte[]?> RenderExportPngAsync()
     {
+        if (IsPageLayout)
+            return await RenderPageStillPngAsync();
+
         var selected = CardSelection().Select(l => l.Text).ToList();
         if (selected.Count == 0) return null;
 
@@ -1682,6 +1687,31 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
                 "Share card export render failed", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The Lyrics Page still for Save Card and Copy: the page's frame halfway through the range's
+    /// first line (<see cref="LyricsPageRenderer.StillTime"/>), at Save Card's 2× scale.
+    /// </summary>
+    private async Task<byte[]?> RenderPageStillPngAsync()
+    {
+        if (PickedSpan() is not { } span) return null;
+        var spec = BuildPageSpec();
+        var timing = GetClipTiming();
+        double? nextStart = Lines.Skip(span.First + 1)
+            .Select(l => l.Timestamp?.TotalSeconds).FirstOrDefault(s => s != null);
+        var t = LyricsPageRenderer.StillTime(timing, nextStart);
+        try
+        {
+            // Off the UI thread: a clip background waits for its frame.
+            return await Task.Run(() => LyricsPageRenderer.RenderStillPng(spec, t, ShareCardRenderer.CardExportScale));
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                "Lyrics Page still render failed", ex.Message);
             return null;
         }
     }
@@ -1728,7 +1758,17 @@ public partial class LyricShareViewModel : ViewModelBase
             var timing = GetClipTiming();
             string error;
 
-            if (!(KaraokeEnabled && KaraokeAvailable))
+            if (IsPageLayout)
+            {
+                // Lyrics Page: the page's motion frame by frame at 60 fps, on a worker (a clip
+                // background waits for each frame), with the short audio fade in and out.
+                var pageSpec = BuildPageSpec();
+                (ok, error) = await RenderFrameClipAsync(ffmpeg, LyricsPageFrames.Fps, timing, workPath, cts,
+                    (frameDir, report, ct) => LyricsPageRenderer.RenderFrames(
+                        pageSpec, timing, LyricsPageFrames.Fps, frameDir, report, ct),
+                    ShareClipRenderer.PageFadeSeconds);
+            }
+            else if (!(KaraokeEnabled && KaraokeAvailable))
             {
                 // Base-resolution still: the clip is 1080p-bound, so the 2× supersampled
                 // export card would only quadruple the encode cost.
@@ -1739,39 +1779,10 @@ public partial class LyricShareViewModel : ViewModelBase
             {
                 // Karaoke path: per-frame word sweep → JPEG sequence → ffmpeg mux.
                 var karaoke = BuildKaraokeLines(selected);
-                var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
-                Directory.CreateDirectory(frameDir);
-                try
-                {
-                    // Progress: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
-                    // work, so the footer counts it. Reports still queued when the run ends
-                    // (cancel, done) must not overwrite the final status.
-                    StatusText = L("ShareLyrics.Saving", 0);
-                    var progress = new Progress<(int Done, int Total)>(p =>
-                    {
-                        if (p.Total <= 0) return;
-                        var pct = (int)Math.Round(100.0 * p.Done / p.Total);
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            if (IsRendering && !token.IsCancellationRequested && ReferenceEquals(_exportCts, cts))
-                                StatusText = L("ShareLyrics.Saving", pct);
-                        });
-                    });
-
-                    await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                        spec, karaoke, timing, KaraokeFps, frameDir,
-                        (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
-                        token), token);
-
-                    StatusText = L("ShareLyrics.Encoding");
-                    var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
-                    (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                        ffmpeg, pattern, KaraokeFps, _track.FilePath, workPath, timing, token);
-                }
-                finally
-                {
-                    try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
-                }
+                (ok, error) = await RenderFrameClipAsync(ffmpeg, KaraokeFps, timing, workPath, cts,
+                    (frameDir, report, ct) => ShareCardRenderer.RenderKaraokeFrames(
+                        spec, karaoke, timing, KaraokeFps, frameDir, report, ct),
+                    fadeSeconds: 0);
             }
 
             // ShareClipRenderer turns a killed ffmpeg into (false, "cancelled"): that is a
@@ -1802,6 +1813,50 @@ public partial class LyricShareViewModel : ViewModelBase
             if (ReferenceEquals(_exportCts, cts)) _exportCts = null;
             cts.Dispose();
             IsRendering = false;
+        }
+    }
+
+    /// <summary>
+    /// A frame-sequence clip (karaoke card, Lyrics Page): <paramref name="renderFrames"/> writes
+    /// JPEGs into a temp frame folder on a worker while the footer counts the pass, then ffmpeg
+    /// muxes them with the audio slice into <paramref name="workPath"/>. The frame folder is
+    /// always deleted.
+    /// </summary>
+    private async Task<(bool ok, string error)> RenderFrameClipAsync(string ffmpeg, int fps, ShareClipTiming timing,
+        string workPath, CancellationTokenSource cts, Action<string, Action<int, int>, CancellationToken> renderFrames,
+        double fadeSeconds)
+    {
+        var token = cts.Token;
+        var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(frameDir);
+        try
+        {
+            // Progress: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
+            // work, so the footer counts it. Reports still queued when the run ends
+            // (cancel, done) must not overwrite the final status.
+            StatusText = L("ShareLyrics.Saving", 0);
+            var progress = new Progress<(int Done, int Total)>(p =>
+            {
+                if (p.Total <= 0) return;
+                var pct = (int)Math.Round(100.0 * p.Done / p.Total);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (IsRendering && !token.IsCancellationRequested && ReferenceEquals(_exportCts, cts))
+                        StatusText = L("ShareLyrics.Saving", pct);
+                });
+            });
+
+            await Task.Run(() => renderFrames(frameDir,
+                (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)), token), token);
+
+            StatusText = L("ShareLyrics.Encoding");
+            var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
+            return await ShareClipRenderer.RenderFramesAsync(
+                ffmpeg, pattern, fps, _track.FilePath, workPath, timing, token, fadeSeconds);
+        }
+        finally
+        {
+            try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
         }
     }
 

@@ -718,4 +718,84 @@ public class LyricSharePageModeTests
         }
         finally { vm.Detach(); }
     }
+
+    private static HashSet<string> TempEntries(string pattern) =>
+        new(System.IO.Directory.EnumerateFileSystemEntries(System.IO.Path.GetTempPath(), pattern), StringComparer.OrdinalIgnoreCase);
+
+    // App.Services is process-wide; safe because the suite runs one class at a time
+    // (HeadlessTestApp: DisableTestParallelization), and it is always restored.
+    [AvaloniaFact]
+    public void Closing_during_the_page_frame_pass_cancels_and_leaves_nothing()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"noctis-share-test-{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(dir);
+        var previous = App.Services;
+        try
+        {
+            App.Services = new LyricShareDialogTests.FfmpegOnly(LyricShareDialogTests.WriteSlowFfmpeg(dir));
+            var audio = System.IO.Path.Combine(dir, "song.flac");
+            System.IO.File.WriteAllText(audio, "audio");
+            var lines = Enumerable.Range(0, 30).Select(i => $"line {i}").ToList();
+            var stamps = Enumerable.Range(0, 30).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+            var vm = new LyricShareViewModel(Song(filePath: audio), lines, stamps, null);
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[0]);
+            vm.ToggleLine(vm.Lines[20]);   // a 40 s clip: thousands of frames
+            vm.LayoutIndex = 2;
+            Assert.True(vm.CanExportVideo);
+
+            var output = System.IO.Path.Combine(dir, "clip.mp4");
+            var framesBefore = TempEntries("noctis-karaoke-*");
+            var clipsBefore = TempEntries("noctis-clip-*.mp4");
+            var export = vm.ExportClipAsync(output);
+            Assert.True(PumpUntil(() => Enumerable.Range(1, 100).Any(n => vm.StatusText == Localization.Loc.T("ShareLyrics.Saving", n)), 20000),
+                $"the frame pass never reported progress ({vm.StatusText})");
+            Assert.NotEmpty(TempEntries("noctis-karaoke-*").Except(framesBefore));
+
+            vm.Detach();   // what closing the dialog does
+
+            Assert.True(PumpUntil(() => export.IsCompleted, 8000), "the export kept running after the dialog closed");
+            Assert.Equal(Localization.Loc.T("ShareLyrics.Cancelled"), export.Result);
+            Assert.False(System.IO.File.Exists(output), "a clip was left behind");
+            Assert.Empty(TempEntries("noctis-karaoke-*").Except(framesBefore));
+            Assert.Empty(TempEntries("noctis-clip-*.mp4").Except(clipsBefore));
+            Assert.False(vm.IsRendering);
+        }
+        finally
+        {
+            App.Services = previous;
+            try { System.IO.Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    [AvaloniaFact]
+    public void Page_save_card_renders_the_mid_line_still()
+    {
+        var vm = WordTimed(12);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[3]);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.LayoutIndex = 2;
+            vm.FormatIndex = 1;
+
+            var render = vm.RenderExportPngAsync();
+            Assert.True(PumpUntil(() => render.IsCompleted, 10000));
+            var png = render.Result;
+            Assert.NotNull(png);
+            using var bitmap = SkiaSharp.SKBitmap.Decode(png);
+            Assert.Equal(2160, bitmap.Width);
+            Assert.Equal(3840, bitmap.Height);
+
+            // The still is the page's frame halfway through the range's first line, as the
+            // renderer draws it (at the same 2x scale).
+            var timing = vm.GetClipTiming();
+            var expected = Noctis.Services.LyricsPage.LyricsPageRenderer.RenderStillPng(vm.PageSpec,
+                Noctis.Services.LyricsPage.LyricsPageRenderer.StillTime(timing, 8), ShareCardRenderer.CardExportScale);
+            using var want = SkiaSharp.SKBitmap.Decode(expected);
+            Assert.True(want.Bytes.AsSpan().SequenceEqual(bitmap.Bytes), "not the mid-line still");
+        }
+        finally { vm.Detach(); }
+    }
 }

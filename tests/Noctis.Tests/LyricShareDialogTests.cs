@@ -222,7 +222,7 @@ public class LyricShareDialogTests
     // ── Clip export ──
 
     /// <summary>Fakes the converter service so ExportClipAsync finds "ffmpeg" (our script).</summary>
-    private sealed class FfmpegOnly(string path) : IAudioConverterService, IServiceProvider
+    internal sealed class FfmpegOnly(string path) : IAudioConverterService, IServiceProvider
     {
         public string? GetFfmpegPath() => path;
         public Task<string?> ValidateFfmpegAsync(string? p = null, CancellationToken ct = default) => Task.FromResult<string?>("ffmpeg");
