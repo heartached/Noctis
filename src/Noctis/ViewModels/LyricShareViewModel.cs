@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Services.LyricsPage;
 
 namespace Noctis.ViewModels;
 
@@ -116,6 +117,13 @@ public partial class LyricShareViewModel : ViewModelBase
 {
     /// <summary>Spotify caps at ~5; we allow a little more before the card gets cramped.</summary>
     public const int MaxLines = 8;
+
+    /// <summary>Lines the Lyrics Page video shows above and below the picked range, as the
+    /// lyrics page has its neighbours on screen.</summary>
+    public const int PageContextLines = 10;
+
+    /// <summary>The song's last line holds the clip at least this long after it starts.</summary>
+    private const double PageLastLineMinSeconds = 4;
 
     private static string L(string key) => Localization.Loc.T(key);
     private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
@@ -821,6 +829,9 @@ public partial class LyricShareViewModel : ViewModelBase
         else
         {
             KeepFirstCardLines();
+            // The 60 s warning is the page's; a card has no such limit.
+            if (StatusText == L("ShareLyrics.PageMaxLength", (int)ShareClipTiming.MaxSeconds))
+                StatusText = string.Empty;
         }
         RaiseSelectionChanged();
         if (value) RefreshPreview();
@@ -832,6 +843,7 @@ public partial class LyricShareViewModel : ViewModelBase
     /// </summary>
     private void FillPageRange()
     {
+        StatusText = string.Empty;   // a card's status says nothing about the page
         int first = -1, last = -1;
         for (int i = 0; i < Lines.Count; i++)
         {
@@ -869,26 +881,55 @@ public partial class LyricShareViewModel : ViewModelBase
 
     /// <summary>
     /// Whether lines <paramref name="first"/>..<paramref name="last"/> fit one Lyrics Page clip:
-    /// from the range's first timestamp to where its last line really ends (the next line's
-    /// start, or the last timed line in the range plus the 15 s fallback when no line follows)
-    /// is at most 60 s. The clip clamps to 60 s, so a longer range would cut its last line.
+    /// <see cref="PageClipWindow"/> is at most 60 s. The clip clamps to 60 s, so a longer range
+    /// would cut its last line. Nothing timed in the range: the clip uses its fallback length.
     /// </summary>
     private bool PageRangeFits(int first, int last)
+        => PageClipWindow(first, last) is not { } window
+           || window.End - window.Start <= ShareClipTiming.MaxSeconds;
+
+    /// <summary>
+    /// The Lyrics Page clip of lines <paramref name="first"/>..<paramref name="last"/>, in track
+    /// seconds, its end not yet capped: from the range's earliest timestamp to the next timed
+    /// line's start. When no timed line follows (the range ends on the song's last timed line),
+    /// to where that line is sung out: its end tag, else its last word's end, but at least 4 s
+    /// after it starts, not the card's flat 15 s. Null when no line in the range is timed.
+    /// One function for the 60 s check, the clip and the page spec, so the three agree.
+    /// </summary>
+    private (double Start, double End)? PageClipWindow(int first, int last)
     {
-        double? start = null, lastStart = null;
+        double? start = null;
+        SelectableLyricLine? lastTimed = null;
         for (int i = first; i <= last; i++)
         {
             if (Lines[i].Timestamp is not { } ts) continue;
             start = start is { } s ? Math.Min(s, ts.TotalSeconds) : ts.TotalSeconds;
-            lastStart = ts.TotalSeconds;
+            lastTimed = Lines[i];
         }
-        if (start is not { } startSeconds || lastStart is not { } lastSeconds)
-            return true;   // nothing timed in the range: the clip uses its fallback length
+        if (start is not { } startSeconds || lastTimed?.Timestamp is not { } lastStart)
+            return null;
+        startSeconds = Math.Max(0, startSeconds);
 
-        double end = lastSeconds + ShareClipTiming.FallbackSeconds;
         for (int i = last + 1; i < Lines.Count; i++)
-            if (Lines[i].Timestamp is { } ts) { end = ts.TotalSeconds; break; }
-        return end - Math.Max(0, startSeconds) <= ShareClipTiming.MaxSeconds;
+            if (Lines[i].Timestamp is { } next) return (startSeconds, next.TotalSeconds);
+
+        double lineStart = lastStart.TotalSeconds;
+        double? sungEnd = lastTimed.EndTimestamp?.TotalSeconds
+            ?? (lastTimed.Words is { Count: > 0 } words ? (words[^1].End ?? words[^1].Start).TotalSeconds : null);
+        return (startSeconds, Math.Max(sungEnd ?? lineStart, lineStart + PageLastLineMinSeconds));
+    }
+
+    /// <summary>The first and last picked line, or null when none is picked.</summary>
+    private (int First, int Last)? PickedSpan()
+    {
+        int first = -1, last = -1;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            if (!Lines[i].IsSelected) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+        return first < 0 ? null : (first, last);
     }
 
     /// <summary>Picks exactly lines <paramref name="first"/>..<paramref name="last"/> in one go
@@ -1235,43 +1276,111 @@ public partial class LyricShareViewModel : ViewModelBase
         for (int i = 0; i < selected.Count; i++)
         {
             var line = selected[i];
-            // The next line of the song, not the next picked one: picks can skip lines, and
-            // the last pick has none. Either way the open word swept on over lines that are
-            // sung meanwhile (or ran 2 s past the next line's start).
-            TimeSpan? nextLineStart = null;
-            for (int j = Lines.IndexOf(line) + 1; j > 0 && j < Lines.Count; j++)
-                if (Lines[j].Timestamp is { } ts) { nextLineStart = ts; break; }
             if (line.Words is not { Count: > 0 } words)
             {
                 result.Add(new KaraokeLine { StartSeconds = line.Timestamp?.TotalSeconds });
                 continue;
             }
 
-            var karaokeWords = new List<KaraokeWord>(words.Count);
-            for (int k = 0; k < words.Count; k++)
-            {
-                var token = ShareCardRenderer.SanitizeForRender(words[k].Text);
-                if (token.Length == 0)
-                    continue;   // pure-whitespace word carries no rendered token
-                double start = words[k].Start.TotalSeconds;
-                double end = words[k].End?.TotalSeconds
-                    ?? (k + 1 < words.Count ? words[k + 1].Start.TotalSeconds
-                        : line.EndTimestamp?.TotalSeconds
-                          ?? KaraokeSweep.ResolveOpenLastWordEnd(words[k].Start, nextLineStart).TotalSeconds);
-                karaokeWords.Add(new KaraokeWord(token, start, end));
-            }
             result.Add(new KaraokeLine
             {
                 StartSeconds = line.Timestamp?.TotalSeconds,
-                Words = karaokeWords,
+                Words = ToKaraokeWords(line, words, line.EndTimestamp),
             });
         }
         return result;
     }
 
+    /// <summary>
+    /// One word layer of <paramref name="line"/> (its words, or its adlib row) as sanitized
+    /// tokens with resolved end times: explicit end, next word, <paramref name="layerEnd"/>,
+    /// then the lyrics page's open-word end (the next lyric line's start, capped at +2 s).
+    /// </summary>
+    private List<KaraokeWord> ToKaraokeWords(SelectableLyricLine line, IReadOnlyList<WordTiming> words, TimeSpan? layerEnd)
+    {
+        // The next line of the song, not the next picked one: picks can skip lines, and
+        // the last pick has none. Either way the open word swept on over lines that are
+        // sung meanwhile (or ran 2 s past the next line's start).
+        TimeSpan? nextLineStart = null;
+        for (int j = Lines.IndexOf(line) + 1; j > 0 && j < Lines.Count; j++)
+            if (Lines[j].Timestamp is { } ts) { nextLineStart = ts; break; }
+
+        var karaokeWords = new List<KaraokeWord>(words.Count);
+        for (int k = 0; k < words.Count; k++)
+        {
+            var token = ShareCardRenderer.SanitizeForRender(words[k].Text);
+            if (token.Length == 0)
+                continue;   // pure-whitespace word carries no rendered token
+            double start = words[k].Start.TotalSeconds;
+            double end = words[k].End?.TotalSeconds
+                ?? (k + 1 < words.Count ? words[k + 1].Start.TotalSeconds
+                    : layerEnd?.TotalSeconds
+                      ?? KaraokeSweep.ResolveOpenLastWordEnd(words[k].Start, nextLineStart).TotalSeconds);
+            karaokeWords.Add(new KaraokeWord(token, start, end));
+        }
+        return karaokeWords;
+    }
+
+    /// <summary>The Lyrics Page video's spec from the dialog as it stands (tests).</summary>
+    internal LyricsPageSpec PageSpec => BuildPageSpec();
+
+    /// <summary>
+    /// The Lyrics Page video's spec: the picked range plus up to <see cref="PageContextLines"/>
+    /// lines either side, as the lyrics page shows its neighbours. Edits count only inside
+    /// the range (outside, the lines read as the lyrics page has them); an edited line drops
+    /// its word timing, which belongs to the words it replaced, and lights as a whole line.
+    /// </summary>
+    private LyricsPageSpec BuildPageSpec()
+    {
+        var lines = new List<LyricsPageLine>();
+        if (PickedSpan() is { } span)
+        {
+            int from = Math.Max(0, span.First - PageContextLines);
+            int to = Math.Min(Lines.Count - 1, span.Last + PageContextLines);
+            for (int i = from; i <= to; i++)
+            {
+                var line = Lines[i];
+                bool inRange = i >= span.First && i <= span.Last;
+                bool edited = inRange && line.Text != line.OriginalText;
+                lines.Add(new LyricsPageLine
+                {
+                    Text = inRange ? line.Text : line.OriginalText,
+                    StartSeconds = line.Timestamp?.TotalSeconds,
+                    EndSeconds = line.EndTimestamp?.TotalSeconds,
+                    Words = !edited && line.Words is { Count: > 0 } words
+                        ? ToKaraokeWords(line, words, line.EndTimestamp) : null,
+                    BackgroundWords = line.BackgroundWords is { Count: > 0 } adlibs
+                        ? ToKaraokeWords(line, adlibs, line.BackgroundEndTimestamp) : null,
+                    Voice = line.Voice,
+                    IsBackgroundOnly = line.IsBackgroundOnly,
+                });
+            }
+        }
+
+        return new LyricsPageSpec
+        {
+            Title = _track.Title,
+            Artist = _track.ArtistDisplay,
+            ArtworkPath = _track.AlbumArtworkPath,
+            IsExplicit = _track.IsExplicit,
+            Format = IsStory ? ShareCardFormat.Story : ShareCardFormat.Square,
+            Lines = lines,
+            SafeZones = IsStory,
+            BackgroundKind = LyricsPageBackgroundKind.ArtworkWash,
+            BackgroundStrength = PageBackgroundTint.DefaultStrength,
+            FfmpegPath = App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath(),
+            ClipStartSeconds = GetClipTiming().StartSeconds,
+        };
+    }
+
     /// <summary>Derives the clip's audio window from the selected lines and playback position.</summary>
     public ShareClipTiming GetClipTiming()
     {
+        // The Lyrics Page ends a range on the song's last line with that line, not 15 s on.
+        if (IsPageLayout && PickedSpan() is { } span && PageClipWindow(span.First, span.Last) is { } page)
+            return new ShareClipTiming(page.Start,
+                Math.Clamp(page.End - page.Start, ShareClipTiming.MinSeconds, ShareClipTiming.MaxSeconds));
+
         var lines = Lines.Select(l => new ShareClipLine(l.Timestamp, l.IsSelected)).ToList();
         double? position = IsOurTrackPlaying ? _player?.Position.TotalSeconds : null;
         return ShareClipTiming.Compute(lines, position);

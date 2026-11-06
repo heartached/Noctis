@@ -7,6 +7,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.ViewModels;
 using Xunit;
 
@@ -224,6 +225,181 @@ public class LyricSharePageModeTests
             vm.ToggleLine(vm.Lines[9]);
             Assert.Equal(new[] { 2, 9 }, Picked(vm));
             Assert.Equal(Localization.Loc.T("ShareLyrics.SelectedCount", 2, LyricShareViewModel.MaxLines), vm.SelectionSummary);
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary><paramref name="count"/> lines 2 s apart, each two words long ("wNa" at N·2 s,
+    /// "wNb" at N·2 + 0.8 s, the second word open-ended).</summary>
+    private static LyricShareViewModel WordTimed(int count, Track? track = null)
+    {
+        var lines = Enumerable.Range(0, count).Select(i => $"w{i}a w{i}b").ToList();
+        var stamps = Enumerable.Range(0, count).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+        var words = Enumerable.Range(0, count).Select(i => (IReadOnlyList<WordTiming>?)new[]
+        {
+            new WordTiming { Text = $"w{i}a ", Start = TimeSpan.FromSeconds(i * 2) },
+            new WordTiming { Text = $"w{i}b", Start = TimeSpan.FromSeconds(i * 2 + 0.8) },
+        }).ToList();
+        return new LyricShareViewModel(track ?? Song(), lines, stamps, null, words);
+    }
+
+    [AvaloniaFact]
+    public void Page_spec_shows_context_lines_and_applies_edits_only_inside_the_range()
+    {
+        var track = Song("Gummo", "6ix9ine");
+        track.IsExplicit = true;
+        var vm = WordTimed(40, track);
+        try
+        {
+            vm.Lines[25].Text = "outside edit";   // typed while on the card
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[15]);
+            vm.ToggleLine(vm.Lines[17]);
+            vm.LayoutIndex = 2;
+            Assert.Equal(Span(15, 17), Picked(vm));
+            vm.Lines[16].Text = "changed";
+
+            var spec = vm.PageSpec;
+            Assert.Equal(10, LyricShareViewModel.PageContextLines);
+            Assert.Equal(Span(5, 27).Select(i => (double?)(i * 2)), spec.Lines.Select(l => l.StartSeconds));
+            Assert.Equal("w5a w5b", spec.Lines[0].Text);
+
+            var edited = spec.Lines[16 - 5];
+            Assert.Equal("changed", edited.Text);
+            Assert.Null(edited.Words);
+
+            var outside = spec.Lines[25 - 5];
+            Assert.Equal(vm.Lines[25].OriginalText, outside.Text);
+            Assert.Equal("w25a w25b", outside.Text);
+            Assert.NotNull(outside.Words);
+
+            // Same word ends as the card's karaoke: the open last word runs to the next line.
+            Assert.Equal(2, spec.Lines[15 - 5].Words!.Count);
+            Assert.Equal(vm.CardKaraoke[0].Words, spec.Lines[15 - 5].Words);
+
+            Assert.Equal(vm.GetClipTiming().StartSeconds, spec.ClipStartSeconds);
+            Assert.Equal(30, spec.ClipStartSeconds);
+            Assert.Equal(ShareCardFormat.Square, spec.Format);
+            Assert.False(spec.SafeZones);
+            Assert.True(spec.IsExplicit);
+            Assert.Equal("Gummo", spec.Title);
+            Assert.Equal(track.ArtistDisplay, spec.Artist);
+
+            vm.FormatIndex = 1;
+            spec = vm.PageSpec;
+            Assert.Equal(ShareCardFormat.Story, spec.Format);
+            Assert.True(spec.SafeZones);
+        }
+        finally { vm.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void Page_spec_window_stops_at_the_song_edges()
+    {
+        var vm = PageRange(12, 2, 3);
+        try
+        {
+            Assert.Equal(Span(0, 11).Select(i => (double?)(i * 2)), vm.PageSpec.Lines.Select(l => l.StartSeconds));
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>Lines 2 s apart; the song's last line (index count - 1) ends at <paramref name="lastEnd"/>.</summary>
+    private static LyricShareViewModel EndingAt(int count, double? lastEnd)
+    {
+        var lines = Enumerable.Range(0, count).Select(i => $"line {i}").ToList();
+        var stamps = Enumerable.Range(0, count).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+        var ends = Enumerable.Range(0, count)
+            .Select(i => i == count - 1 && lastEnd is { } e ? (TimeSpan?)TimeSpan.FromSeconds(e) : null).ToList();
+        return new LyricShareViewModel(Song(), lines, stamps, null, endTimestamps: ends);
+    }
+
+    /// <summary>The song's last line has no next line: the clip ends with it (at least 4 s
+    /// after it starts), not 15 s after the range starts.</summary>
+    [AvaloniaFact]
+    public void A_range_ending_on_the_last_line_ends_the_clip_with_that_line()
+    {
+        var vm = EndingAt(10, lastEnd: 23);   // line 9 sings 18-23 s
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.ToggleLine(vm.Lines[9]);
+            vm.LayoutIndex = 2;
+            Assert.Equal(Span(5, 9), Picked(vm));
+            Assert.Equal(new ShareClipTiming(10, 13), vm.GetClipTiming());
+            Assert.Equal(10, vm.PageSpec.ClipStartSeconds);
+            Assert.Equal(23, vm.PageSpec.Lines.Last().EndSeconds);
+
+            vm.LayoutIndex = 0;   // the card keeps its flat 15 s
+            Assert.Equal(new ShareClipTiming(10, ShareClipTiming.FallbackSeconds), vm.GetClipTiming());
+        }
+        finally { vm.Detach(); }
+
+        var open = EndingAt(10, lastEnd: null);   // no end, no words: start + 4 s
+        try
+        {
+            open.ClearSelectionCommand.Execute(null);
+            open.ToggleLine(open.Lines[5]);
+            open.ToggleLine(open.Lines[9]);
+            open.LayoutIndex = 2;
+            Assert.Equal(new ShareClipTiming(10, 12), open.GetClipTiming());
+        }
+        finally { open.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void A_last_line_ending_past_sixty_seconds_is_refused()
+    {
+        // Line 25, the last, starts at 50 s. Ending at 55 s it fits (the old 15 s guess refused it).
+        var fits = EndingAt(26, lastEnd: 55);
+        try
+        {
+            fits.ClearSelectionCommand.Execute(null);
+            fits.ToggleLine(fits.Lines[0]);
+            fits.LayoutIndex = 2;
+            fits.ToggleLine(fits.Lines[25]);
+            Assert.Equal(Span(0, 25), Picked(fits));
+            Assert.Equal(new ShareClipTiming(0, 55), fits.GetClipTiming());
+        }
+        finally { fits.Detach(); }
+
+        var tooLong = EndingAt(26, lastEnd: 62);
+        try
+        {
+            tooLong.ClearSelectionCommand.Execute(null);
+            tooLong.ToggleLine(tooLong.Lines[0]);
+            tooLong.LayoutIndex = 2;
+            tooLong.ToggleLine(tooLong.Lines[25]);
+            Assert.Equal(Span(0, 0), Picked(tooLong));
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageMaxLength", 60), tooLong.StatusText);
+        }
+        finally { tooLong.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void Entering_the_page_clears_a_stale_status_and_leaving_clears_the_length_warning()
+    {
+        var vm = Synced(60);
+        try
+        {
+            vm.ReportStatus("Saved");
+            vm.LayoutIndex = 2;   // lines 0-3 fit
+            Assert.Equal(string.Empty, vm.StatusText);
+
+            vm.LayoutIndex = 0;
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[0]);
+            vm.ToggleLine(vm.Lines[50]);
+            vm.LayoutIndex = 2;
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageMaxLength", 60), vm.StatusText);
+            vm.LayoutIndex = 0;
+            Assert.Equal(string.Empty, vm.StatusText);
+
+            vm.LayoutIndex = 2;
+            vm.ReportStatus("Copied");   // any other status stays when leaving
+            vm.LayoutIndex = 1;
+            Assert.Equal("Copied", vm.StatusText);
         }
         finally { vm.Detach(); }
     }
