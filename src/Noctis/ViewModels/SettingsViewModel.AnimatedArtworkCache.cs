@@ -30,6 +30,42 @@ public partial class SettingsViewModel
 
     private long _animatedArtworkCacheSizeBytes;
 
+    /// <summary>GitHub #185: the loop quality fetched loops (on opening an album, Find Animated
+    /// Artwork) are downloaded at, one of <see cref="AnimatedArtworkQualities.All"/>.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(AnimatedArtworkPrefersMax), nameof(SelectedAnimatedArtworkQualityOption))]
+    private string _animatedArtworkQuality = AnimatedArtworkQualities.Default;
+
+    /// <summary>True when fetched loops should be the 2160p ones (falling back to 1080p).</summary>
+    public bool AnimatedArtworkPrefersMax => AnimatedArtworkQualities.PrefersMax(AnimatedArtworkQuality);
+
+    /// <summary>One quality in the picker: the setting's value and what the list shows.</summary>
+    public sealed record AnimatedArtworkQualityOption(string Value, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<AnimatedArtworkQualityOption> AnimatedArtworkQualityOptions { get; } = new[]
+    {
+        new AnimatedArtworkQualityOption(AnimatedArtworkQualities.P1080, AnimatedArtworkQualities.P1080),
+        new AnimatedArtworkQualityOption(AnimatedArtworkQualities.P2160, Loc.T("Settings.AnimArtQuality2160")),
+    };
+
+    public AnimatedArtworkQualityOption? SelectedAnimatedArtworkQualityOption
+    {
+        get => AnimatedArtworkQualityOptions.FirstOrDefault(o => o.Value == AnimatedArtworkQualities.Normalize(AnimatedArtworkQuality));
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            AnimatedArtworkQuality = value.Value;
+        }
+    }
+
+    partial void OnAnimatedArtworkQualityChanged(string value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     /// <summary>One cache size in the picker.</summary>
     public sealed record CacheSizeOption(int Megabytes, string Label)
     {
@@ -107,6 +143,7 @@ public partial class SettingsViewModel
     {
         AnimatedArtworkAutoFetch = _settings.AnimatedArtworkAutoFetch;
         AnimatedArtworkCacheMb = AppSettings.SnapAnimatedArtworkCacheMb(_settings.AnimatedArtworkCacheMb);
+        AnimatedArtworkQuality = AnimatedArtworkQualities.Normalize(_settings.AnimatedArtworkQuality);
         _ = RefreshAnimatedArtworkCacheUsageAsync();
     }
 
@@ -114,5 +151,6 @@ public partial class SettingsViewModel
     {
         _settings.AnimatedArtworkAutoFetch = AnimatedArtworkAutoFetch;
         _settings.AnimatedArtworkCacheMb = AppSettings.SnapAnimatedArtworkCacheMb(AnimatedArtworkCacheMb);
+        _settings.AnimatedArtworkQuality = AnimatedArtworkQualities.Normalize(AnimatedArtworkQuality);
     }
 }

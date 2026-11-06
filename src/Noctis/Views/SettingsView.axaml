@@ -3175,6 +3175,24 @@
                 </Grid>
                 <controls:CollapsibleContent IsOpen="{Binding AnimatedArtworkAutoFetch}" Lift="10" Motion="Glide">
                 <StackPanel Classes="sub-setting" Spacing="10" Margin="2,10,0,0">
+                    <!-- GitHub #185: the quality fetched loops download at (also Find Animated
+                         Artwork); 2160p falls back to 1080p when an album has none. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AnimArtQuality}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AnimArtQualityDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.AnimArtQuality}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding AnimatedArtworkQualityOptions}"
+                                  SelectedItem="{Binding SelectedAnimatedArtworkQualityOption}"
+                                  MinWidth="96"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.AnimArtCacheSize}" FontSize="13" FontWeight="SemiBold"/>

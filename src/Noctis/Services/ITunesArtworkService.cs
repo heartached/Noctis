@@ -186,8 +186,10 @@ public sealed class ITunesArtworkService
     public const long MaxAnimatedCoverBytes = 256L * 1024 * 1024;
 
     /// <summary>Downloads the bytes at <paramref name="url"/>; returns null on failure or oversize.</summary>
+    /// <param name="onProgress">Bytes read so far and the length the server declared (0 when it sent none),
+    /// from the reading thread (GitHub #185: the chooser pop-ups' download bar).</param>
     public async Task<byte[]?> DownloadAsync(string url, CancellationToken ct = default,
-        long maxBytes = HttpSafety.MaxImageBytes)
+        long maxBytes = HttpSafety.MaxImageBytes, Action<long, long>? onProgress = null)
     {
         try
         {
@@ -199,7 +201,11 @@ public sealed class ITunesArtworkService
             req.Headers.UserAgent.ParseAdd(AppleMusicHtmlUserAgent);
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!resp.IsSuccessStatusCode) return null;
-            return await HttpSafety.ReadBytesBoundedAsync(resp.Content, maxBytes, ct);
+            if (onProgress is null)
+                return await HttpSafety.ReadBytesBoundedAsync(resp.Content, maxBytes, ct);
+            using var buffer = new MemoryStream();
+            await StreamBodyAsync(resp.Content, buffer, maxBytes, onProgress, ct);
+            return buffer.ToArray();
         }
         catch (Exception ex)
         {
@@ -477,30 +483,53 @@ public sealed class ITunesArtworkService
         }
     }
 
+    /// <summary>
+    /// Saves a loop to <paramref name="destinationPath"/>: a plain file as is, an HLS variant as
+    /// its parts joined. Streamed to disk part by part (a 2160p loop is ~90 MB: buffering it
+    /// whole put that, twice over, on the large-object heap). False on any failure or on
+    /// cancellation, and then nothing is left at <paramref name="destinationPath"/>.
+    /// </summary>
+    /// <param name="onProgress">Bytes saved so far and the expected total (0 while it is not
+    /// known: an HLS loop's total is known once its last part's length is).</param>
     public async Task<bool> DownloadHlsVariantAsMp4Async(
         AnimatedArtworkVariant variant,
         string destinationPath,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Action<long, long>? onProgress = null)
     {
+        var ok = false;
+        try
+        {
+            ok = await SaveVariantAsync(variant, destinationPath, onProgress, ct);
+        }
+        catch (Exception ex)
+        {
+            if (!ct.IsCancellationRequested)
+                DebugLog.Write(LogSource, $"download of {variant.Url} failed: {ex.Message}");
+        }
+        if (!ok)
+        {
+            try { if (File.Exists(destinationPath)) File.Delete(destinationPath); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best effort */ }
+        }
+        return ok;
+    }
+
+    private async Task<bool> SaveVariantAsync(
+        AnimatedArtworkVariant variant, string destinationPath, Action<long, long>? onProgress, CancellationToken ct)
+    {
+        var parts = new List<Uri>();
         if (!variant.IsHls)
         {
-            var data = await DownloadAsync(variant.Url, ct, MaxAnimatedCoverBytes);
-            if (data is null or { Length: 0 })
-                return false;
-
-            await File.WriteAllBytesAsync(destinationPath, data, ct);
-            return true;
+            parts.Add(new Uri(variant.Url));
         }
-
-        try
+        else
         {
             var playlist = await GetTextAsync(variant.Url, ct);
             if (string.IsNullOrWhiteSpace(playlist))
                 return false;
 
             var baseUri = new Uri(variant.Url);
-            var parts = new List<Uri>();
-
             foreach (var rawLine in playlist.Split('\n'))
             {
                 var line = rawLine.Trim();
@@ -518,39 +547,73 @@ public sealed class ITunesArtworkService
                 if (!line.StartsWith("#", StringComparison.Ordinal))
                     parts.Add(new Uri(baseUri, line));
             }
+            parts = parts.DistinctBy(p => p.ToString()).ToList();
 
-            if (parts.Count == 0)
+            // A playlist line may carry an absolute URI to any host; a segment off the Apple
+            // allowlist means a hostile or broken playlist, and joining the rest would be garbage.
+            if (parts.Count == 0 || parts.Any(p => !IsAppleMediaHost(p.ToString())))
                 return false;
+        }
 
-            await using var output = File.Create(destinationPath);
-            foreach (var part in parts.DistinctBy(p => p.ToString()))
+        await using var output = File.Create(destinationPath);
+        long before = 0;
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var last = i == parts.Count - 1;
+            var partBase = before;
+            using var req = new HttpRequestMessage(HttpMethod.Get, parts[i]);
+            req.Headers.UserAgent.ParseAdd(AppleMusicHtmlUserAgent);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (!resp.IsSuccessStatusCode)
             {
-                // A playlist line may carry an absolute URI to any host; a segment
-                // off the Apple allowlist means a hostile or broken playlist, and
-                // concatenating the remaining parts would be garbage anyway.
-                if (!IsAppleMediaHost(part.ToString()))
-                    return false;
-
-                // Animated-cover cap, not the 24MB image cap: Apple often serves the
-                // whole loop as ONE fMP4 part (~31MB at 1080p, ~90MB at 2160p), and
-                // the image cap silently failed every download over 24MB.
-                var data = await DownloadAsync(part.ToString(), ct, MaxAnimatedCoverBytes);
-                if (data is null or { Length: 0 })
-                    return false;
-
-                await output.WriteAsync(data, ct);
+                DebugLog.Write(LogSource, $"download of {parts[i]} returned HTTP {(int)resp.StatusCode}");
+                return false;
             }
 
-            // The stream's own length: the file on disk lags behind its write buffer until the
-            // stream is flushed, so a short loop (one part under the 4 kB buffer) read as empty.
-            await output.FlushAsync(ct);
-            return output.Length > 0;
+            // Animated-cover cap, not the 24MB image cap: Apple often serves the whole loop
+            // as ONE fMP4 part (~31MB at 1080p, ~90MB at 2160p). The cap is per loop, not per part.
+            var written = await StreamBodyAsync(resp.Content, output, MaxAnimatedCoverBytes - before,
+                onProgress is null ? null : (done, total) =>
+                    onProgress(partBase + done, last && total > 0 ? partBase + total : 0),
+                ct);
+            if (written == 0)
+                return false;
+            before += written;
         }
-        catch (Exception ex)
+
+        // The stream's own length: the file on disk lags behind its write buffer until the
+        // stream is flushed, so a short loop (one part under the 4 kB buffer) read as empty.
+        await output.FlushAsync(ct);
+        onProgress?.Invoke(before, before);
+        return output.Length > 0;
+    }
+
+    /// <summary>
+    /// Copies a response body into <paramref name="output"/>, reporting bytes read and the
+    /// declared length (0 when none); throws <see cref="HttpRequestException"/> past
+    /// <paramref name="maxBytes"/>, as <see cref="HttpSafety.ReadBytesBoundedAsync"/>.
+    /// </summary>
+    private static async Task<long> StreamBodyAsync(
+        HttpContent content, Stream output, long maxBytes, Action<long, long>? onProgress, CancellationToken ct)
+    {
+        var declared = content.Headers.ContentLength ?? 0;
+        if (declared > maxBytes)
+            throw new HttpRequestException($"Response body ({declared} bytes) exceeds the {maxBytes}-byte limit.");
+        onProgress?.Invoke(0, declared);
+
+        await using var stream = await content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        var chunk = new byte[81920];
+        long done = 0;
+        int read;
+        while ((read = await stream.ReadAsync(chunk, ct).ConfigureAwait(false)) > 0)
         {
-            DebugLog.Write(LogSource, $"HLS download of {variant.Url} failed: {ex.Message}");
-            return false;
+            if (done + read > maxBytes)
+                throw new HttpRequestException($"Response body exceeds the {maxBytes}-byte limit.");
+            await output.WriteAsync(chunk.AsMemory(0, read), ct).ConfigureAwait(false);
+            done += read;
+            onProgress?.Invoke(done, declared);
         }
+        return done;
     }
 
     private static string CleanUrl(string u) => u.Replace("\\u002F", "/").Replace("\\/", "/");
