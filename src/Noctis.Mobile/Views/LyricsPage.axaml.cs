@@ -190,7 +190,11 @@ public partial class LyricsPage : UserControl
         if (_landscape == landscape && side == _sideWidth) return;
         _landscape = landscape;
         _sideWidth = side;
-        Split.ColumnDefinitions = landscape ? new ColumnDefinitions($"{side},*") : new ColumnDefinitions("*");
+        // Built, not parsed: "{side},*" formats in the phone's culture, and "444,27,*" (German,
+        // French, Russian...) is three columns - the lyrics got a 27 dp one and spilled off screen.
+        Split.ColumnDefinitions = landscape
+            ? new ColumnDefinitions { new ColumnDefinition(side, GridUnitType.Pixel), new ColumnDefinition(1, GridUnitType.Star) }
+            : new ColumnDefinitions { new ColumnDefinition(1, GridUnitType.Star) };
         Grid.SetColumn(LyricsSide, landscape ? 1 : 0);
         SideArtBox.IsVisible = landscape;
         SideArtBox.Margin = new Thickness(safe.Left + 24, safe.Top, 24, safe.Bottom + 8);

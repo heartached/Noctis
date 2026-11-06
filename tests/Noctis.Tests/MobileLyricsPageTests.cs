@@ -52,6 +52,50 @@ public class MobileLyricsPageTests
     private static Track NewTrack() =>
         new() { Id = Guid.NewGuid(), Title = "Song", Artist = "Tester", FilePath = "content://x/1", Duration = TimeSpan.FromSeconds(90) };
 
+    /// <summary>Beta 2 (lead's live test): paused lyrics in landscape spilled off screen on a
+    /// phone in a decimal-comma culture - the split was parsed from "{side},*", which formats as
+    /// "444,27,*" there, three columns. Two columns in any culture, the transport inside the screen.</summary>
+    [AvaloniaFact]
+    public void Landscape_SplitsInTwo_InADecimalCommaCulture()
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+        try
+        {
+            var (shell, _, files, _) = MakeShell();
+            files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+            var view = new ShellView { DataContext = shell };
+            var window = new Window { Width = 915, Height = 412, Content = view };
+            window.Show();
+            shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+            shell.Player.TogglePlayPauseCommand.Execute(null);   // paused: the transport shows
+            shell.OpenNowPlayingCommand.Execute(null);
+            shell.ToggleLyricsCommand.Execute(null);
+            for (var i = 0; i < 3; i++)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+            }
+
+            var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+            var split = page.FindControl<Grid>("Split")!;
+            Assert.Equal(2, split.ColumnDefinitions.Count);
+            Assert.True(page.FindControl<Control>("SideArtBox")!.IsVisible);
+            var side = page.FindControl<Control>("LyricsSide")!;
+            var left = side.TranslatePoint(default, page)!.Value.X;
+            Assert.True(left > page.Bounds.Width / 3, $"lyrics side starts at {left}");
+            Assert.Equal(page.Bounds.Width, left + side.Bounds.Width, 1);
+            var next = page.FindControl<Control>("NextButton")!;
+            Assert.True(next.IsEffectivelyVisible);
+            Assert.True(next.TranslatePoint(new Point(next.Bounds.Width, 0), page)!.Value.X <= page.Bounds.Width);
+            window.Close();
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     [AvaloniaFact]
     public void IssueExample_ShowsWordsAndTranslation_AndTheToggleHidesIt()
     {
