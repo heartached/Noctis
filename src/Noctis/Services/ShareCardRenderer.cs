@@ -468,7 +468,7 @@ public static class ShareCardRenderer
     }
 
     /// <summary>Held-note glow blur radius, in em — the page's EmphasisGlowBlurConverter.</summary>
-    private const float KaraokeGlowRadiusEm = 0.45f;
+    internal const float KaraokeGlowRadiusEm = 0.45f;
 
     /// <summary>
     /// Renders the karaoke frame sequence for a clip: the same card as

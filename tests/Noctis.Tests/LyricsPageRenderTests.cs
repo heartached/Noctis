@@ -1,0 +1,288 @@
+using System.Runtime.InteropServices;
+using Noctis.Models;
+using Noctis.Services;
+using Noctis.Services.LyricsPage;
+using SkiaSharp;
+using Xunit;
+
+namespace Noctis.Tests;
+
+public class LyricsPageRenderTests
+{
+    private const float PreviewScale = 0.5f;
+
+    private static LyricsPageSpec Spec(ShareCardFormat format, bool safeZones = true,
+        IReadOnlyList<LyricsPageLine>? lines = null) => LyricsPageTestData.Spec(format, safeZones, lines);
+
+    /// <summary>The frame at <paramref name="t"/> as BGRA premul bytes.</summary>
+    private static byte[] Frame(LyricsPageAnimator animator, double t)
+    {
+        var buffer = new byte[animator.PixelWidth * animator.PixelHeight * 4];
+        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+        try { animator.RenderFrame(t, handle.AddrOfPinnedObject(), animator.PixelWidth * 4); }
+        finally { handle.Free(); }
+        return buffer;
+    }
+
+    /// <summary>Only what sits behind the page: the background <see cref="PageBackgrounds"/> makes
+    /// for <paramref name="spec"/>, no header and no lyrics.</summary>
+    private static byte[] BackgroundOnly(LyricsPageSpec spec, int w, int h)
+    {
+        using var background = PageBackgrounds.Create(spec, w, h, LyricsPageFrames.Fps, true, null);
+        var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+        using var surface = SKSurface.Create(info);
+        surface.Canvas.Clear(SKColors.Black);
+        background.Draw(surface.Canvas, 0);
+        var buffer = new byte[w * h * 4];
+        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+        try { surface.ReadPixels(info, handle.AddrOfPinnedObject(), w * 4, 0, 0); }
+        finally { handle.Free(); }
+        return buffer;
+    }
+
+    /// <summary>Pixels wholly inside <paramref name="zone"/> (canvas px) at <paramref name="scale"/>.</summary>
+    private static IEnumerable<(int X, int Y)> PixelsIn(SKRect zone, float scale, int w, int h)
+    {
+        int x0 = Math.Max(0, (int)Math.Ceiling(zone.Left * scale)), x1 = Math.Min(w, (int)Math.Floor(zone.Right * scale));
+        int y0 = Math.Max(0, (int)Math.Ceiling(zone.Top * scale)), y1 = Math.Min(h, (int)Math.Floor(zone.Bottom * scale));
+        for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
+                yield return (x, y);
+    }
+
+    private static int Brightness(byte[] px, int w, int x, int y)
+    {
+        int i = (y * w + x) * 4;
+        return Math.Max(px[i], Math.Max(px[i + 1], px[i + 2]));
+    }
+
+    /// <summary>The engine lines and their layout, built as the animator builds them.</summary>
+    private static (List<LyricLine> Lines, IReadOnlyList<PageLineLayout> Layout) Layout(LyricsPageSpec spec, LyricsPageGeometry g)
+    {
+        var lines = LyricsPageEngine.BuildLines(spec.Lines);
+        using var face = ShareCardRenderer.ResolveTypeface(SKFontStyleWeight.Bold);
+        return (lines, LyricsPageLineLayout.Build(lines, g, face));
+    }
+
+    private static int IndexAt(List<LyricLine> lines, double seconds) =>
+        lines.FindIndex(l => !l.IsIntroPlaceholder && l.Timestamp is { } ts && Math.Abs(ts.TotalSeconds - seconds) < 1e-6);
+
+    /// <summary>Line <paramref name="index"/>'s top on the canvas at <paramref name="t"/> (after a draw at t).</summary>
+    private static double LineTop(LyricsPageAnimator a, IReadOnlyList<PageLineLayout> layout, int index, double t) =>
+        a.Geometry.Viewport.Top + layout[index].Top - a.Motion.ScrollOffset(t) + a.Motion.LineLags(t)[index];
+
+    [Theory]
+    [InlineData(ShareCardFormat.Story)]
+    [InlineData(ShareCardFormat.Square)]
+    public void No_lyric_or_header_pixel_lands_in_a_safe_zone(ShareCardFormat format)
+    {
+        var spec = Spec(format) with { Title = "A very long song title that would run across the whole header row", IsExplicit = true };
+        using var animator = new LyricsPageAnimator(spec, PreviewScale);
+        int w = animator.PixelWidth, h = animator.PixelHeight;
+        var reference = BackgroundOnly(spec, w, h);
+        var zones = SocialSafeZones.Zones(format, true);
+        Assert.NotEmpty(zones);
+
+        foreach (var t in new[] { 10.1, 12.0, 13.4, 14.2, 25.0, 31.0 })
+        {
+            var frame = Frame(animator, t);
+            foreach (var zone in zones)
+                foreach (var (x, y) in PixelsIn(zone, PreviewScale, w, h))
+                {
+                    int i = (y * w + x) * 4;
+                    if (frame[i] != reference[i] || frame[i + 1] != reference[i + 1] || frame[i + 2] != reference[i + 2])
+                    {
+                        var diffs = new List<string>();
+                        foreach (var (xx, yy) in PixelsIn(zone, PreviewScale, w, h))
+                        {
+                            int j = (yy * w + xx) * 4;
+                            if (frame[j] != reference[j] || frame[j + 1] != reference[j + 1] || frame[j + 2] != reference[j + 2])
+                                diffs.Add($"({xx},{yy}):{frame[j]}/{reference[j]}");
+                        }
+                        Assert.Fail($"{format} t={t}: pixel ({x},{y}) in zone {zone} differs from the background: {diffs.Count} {string.Join(" ", diffs.Take(40))}");
+                    }
+                }
+        }
+
+        // The check is not vacuous: outside the zones the frame does carry header and lyrics.
+        var last = Frame(animator, 31.0);
+        Assert.NotEqual(reference, last);
+    }
+
+    [Fact]
+    public void Safe_zone_overlay_is_preview_only()
+    {
+        var spec = Spec(ShareCardFormat.Story);
+        using var shown = new LyricsPageAnimator(spec, PreviewScale) { ShowSafeZones = true };
+        using var hidden = new LyricsPageAnimator(spec, PreviewScale) { ShowSafeZones = false };
+        int w = shown.PixelWidth, h = shown.PixelHeight;
+        var reference = BackgroundOnly(spec, w, h);
+        var withOverlay = Frame(shown, 12.0);
+        var without = Frame(hidden, 12.0);
+
+        int changed = 0, total = 0;
+        foreach (var zone in SocialSafeZones.Zones(ShareCardFormat.Story, true))
+            foreach (var (x, y) in PixelsIn(zone, PreviewScale, w, h))
+            {
+                int i = (y * w + x) * 4;
+                total++;
+                if (withOverlay[i] != reference[i] || withOverlay[i + 1] != reference[i + 1] || withOverlay[i + 2] != reference[i + 2])
+                    changed++;
+                Assert.Equal(reference[i], without[i]);
+                Assert.Equal(reference[i + 1], without[i + 1]);
+                Assert.Equal(reference[i + 2], without[i + 2]);
+            }
+        Assert.Equal(total, changed);
+    }
+
+    [Fact]
+    public void Identical_frame_times_render_identical_frames()
+    {
+        var spec = Spec(ShareCardFormat.Square);
+        var timing = new ShareClipTiming(10, 8);
+        using var a = new LyricsPageAnimator(spec, PreviewScale);
+        using var b = new LyricsPageAnimator(spec, PreviewScale);
+        byte[]? lastA = null, lastB = null;
+        for (int n = 0; n <= 120; n++)
+        {
+            double t = LyricsPageFrames.TrackTime(n, LyricsPageFrames.Fps, timing);
+            a.Draw(t);
+            b.Draw(t);
+            if (n == 120)
+            {
+                lastA = Frame(a, t);
+                lastB = Frame(b, t);
+            }
+        }
+        Assert.Equal(lastA, lastB);
+    }
+
+    [Fact]
+    public void Settled_neighbour_lines_do_not_move_while_the_current_line_is_sung()
+    {
+        var spec = Spec(ShareCardFormat.Story);
+        using var animator = new LyricsPageAnimator(spec, PreviewScale);
+        var (lines, layout) = Layout(spec, animator.Geometry);
+        int w = animator.PixelWidth;
+
+        // Played through at 60 fps from 11.5 s. Frames 30/42 = 12.0/12.2 s: the first line is sung,
+        // the intro dots sit above it. Frames 270/282 = 16.0/16.2 s: the second line is sung, the
+        // glide from the first (from 13.3 s) has landed, the first line sits above.
+        var captured = new Dictionary<int, (byte[] Frame, double Top)>();
+        var pairs = new[] { (30, 42, 10.0), (270, 282, 14.0) };
+        for (int n = 0; n <= 282; n++)
+        {
+            double t = 11.5 + n / 60.0;
+            var pair = pairs.FirstOrDefault(p => p.Item1 == n || p.Item2 == n);
+            if (pair == default)
+            {
+                animator.Draw(t);
+                continue;
+            }
+            int above = IndexAt(lines, pair.Item3) - 1;
+            captured[n] = (Frame(animator, t), LineTop(animator, layout, above, t));
+        }
+
+        foreach (var (from, to, active) in pairs)
+        {
+            int above = IndexAt(lines, active) - 1;
+            Assert.True(above >= 0);
+            var (first, top1) = captured[from];
+            var (second, top2) = captured[to];
+            Assert.Equal(top1, top2);
+
+            int y0 = Math.Max(0, (int)Math.Floor(top1 * PreviewScale));
+            int y1 = (int)Math.Ceiling((top1 + layout[above].Height) * PreviewScale);
+            Assert.True(y1 > y0);
+            var rows1 = first.AsSpan(y0 * w * 4, (y1 - y0) * w * 4).ToArray();
+            var rows2 = second.AsSpan(y0 * w * 4, (y1 - y0) * w * 4).ToArray();
+            Assert.Equal(rows1, rows2);
+        }
+    }
+
+    [Fact]
+    public void Interlude_dots_show_three_lit_dots_mid_gap()
+    {
+        var spec = Spec(ShareCardFormat.Story);
+        using var animator = new LyricsPageAnimator(spec, PreviewScale);
+        using var empty = new LyricsPageAnimator(spec with { Lines = Array.Empty<LyricsPageLine>() }, PreviewScale);
+        var (lines, _) = Layout(spec, animator.Geometry);
+        int dots = lines.FindIndex(l => l.IsInterlude);
+        Assert.True(dots > 0);
+
+        // Mid-gap (dots 39.85 → next line 51.5), at a breathing peak (two whole breaths after the
+        // dots activated) so the dots sit at full size on their nominal centres.
+        double activated = lines[dots].Timestamp!.Value.TotalSeconds - Noctis.Helpers.LineMotion.HalfTravelMs / 1000.0;
+        double t = activated + 4 * 2.1;
+        Assert.InRange(t, 44.0, 48.5);
+        var frame = Frame(animator, t);
+        var reference = Frame(empty, t);
+        Assert.Equal(dots, animator.Motion.Timeline.ActiveIndex);
+        Assert.InRange(animator.Motion.DotsScale(dots, t), 0.999, 1.0);
+
+        var g = animator.Geometry;
+        int w = animator.PixelWidth;
+        float cy = g.Viewport.Top + g.AnchorY;
+        for (int k = 0; k < 3; k++)
+        {
+            float cx = g.Viewport.Left + 16 * g.Scale + k * 20 * g.Scale;
+            int x = (int)(cx * PreviewScale), y = (int)(cy * PreviewScale);
+            Assert.True(Brightness(frame, w, x, y) > Brightness(reference, w, x, y) + 40,
+                $"dot {k} at ({x},{y}) is not lit: {Brightness(frame, w, x, y)} vs {Brightness(reference, w, x, y)}");
+        }
+    }
+
+    /// <summary>The brightest pixel in rows [y0, y1) between x0 and x1.</summary>
+    private static int MaxInk(byte[] px, int w, int x0, int x1, int y0, int y1)
+    {
+        int max = 0;
+        for (int y = y0; y < y1; y++)
+            for (int x = x0; x < x1; x++)
+                max = Math.Max(max, Brightness(px, w, x, y));
+        return max;
+    }
+
+    [Fact]
+    public void Current_line_sweeps_and_line_synced_lines_light_whole()
+    {
+        // "hold me closer" at 10 s, 0.5 s a word: at 10.75 "hold" is sung, "closer" is not.
+        var words = Spec(ShareCardFormat.Story);
+        using (var animator = new LyricsPageAnimator(words, PreviewScale))
+        {
+            var (lines, layout) = Layout(words, animator.Geometry);
+            int line = IndexAt(lines, 10);
+            var frame = Frame(animator, 10.75);
+            var (left, right) = Halves(animator, layout, line, 10.75, frame);
+            Assert.True(left > right + 60, $"sung part {left} not brighter than unsung {right}");
+        }
+
+        var plain = Spec(ShareCardFormat.Story, lines: new[]
+        {
+            LyricsPageTestData.Plain(10, "hold me closer"),
+            LyricsPageTestData.Plain(14, "tiny dancer now"),
+        });
+        using (var animator = new LyricsPageAnimator(plain, PreviewScale))
+        {
+            var (lines, layout) = Layout(plain, animator.Geometry);
+            int line = IndexAt(lines, 10);
+            var frame = Frame(animator, 10.75);
+            var (left, right) = Halves(animator, layout, line, 10.75, frame);
+            Assert.True(left > 200, $"line not lit: {left}");
+            Assert.InRange(right, left - 20, left + 20);
+        }
+    }
+
+    /// <summary>Brightest ink of the first token vs the last token of line <paramref name="line"/>'s first row.</summary>
+    private static (int Left, int Right) Halves(LyricsPageAnimator a, IReadOnlyList<PageLineLayout> layout, int line, double t, byte[] frame)
+    {
+        var row = layout[line].Rows[0];
+        double top = LineTop(a, layout, line, t);
+        int y0 = (int)(top * PreviewScale), y1 = (int)((top + a.Geometry.RowHeight) * PreviewScale);
+        int Px(float x) => (int)(x * PreviewScale);
+        int left = MaxInk(frame, a.PixelWidth, Px(row.X + row.TokenX[0]), Px(row.X + row.TokenX[0] + row.TokenWidth[0]), y0, y1);
+        int k = row.Tokens.Length - 1;
+        int right = MaxInk(frame, a.PixelWidth, Px(row.X + row.TokenX[k] + row.TokenWidth[k] * 0.3f),
+            Px(row.X + row.TokenX[k] + row.TokenWidth[k]), y0, y1);
+        return (left, right);
+    }
+}
