@@ -6,6 +6,8 @@
 
 **A music player that respects what's yours. Zero tracking, total control.**
 
+[noctisapp.cc](https://noctisapp.cc)
+
 [![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=E74856&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases) &nbsp; [![Support](https://img.shields.io/badge/SUPPORT-BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black&labelColor=4F4F4F)](https://buymeacoffee.com/heartached)
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
@@ -43,14 +45,17 @@
 winget install heartached.Noctis
 
 # Scoop (add the bucket once, then install)
-scoop bucket add noctis https://github.com/heartached/scoop-bucket
-scoop install noctis
+scoop bucket add extras
+scoop install extras/noctis
 ```
+
+The Scoop package keeps its library and settings in Scoop's `persist\noctis\data`
+folder, so it starts with its own library rather than an installer copy's.
 
 Or download the installer or portable zip from the
 [latest release](https://github.com/heartached/Noctis/releases/latest).
 
-**macOS and Linux**: download the `.dmg` or AppImage from the
+**macOS and Linux**: download the `.dmg`, the AppImage (x64) or the `.tar.gz` (x64 and ARM64) from the
 [latest release](https://github.com/heartached/Noctis/releases/latest).
 Both ship with everything they need, so there is nothing else to install.
 
@@ -108,7 +113,7 @@ Options and client notes are in [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 
 - [x] Word-by-word karaoke lyrics, Apple Music style
 - [x] Reads plain text, LRC, word-level LRC, TTML and Lyricsfile sidecars
-- [x] Auto-fetched from LRCLIB and NetEase, cached offline
+- [x] Auto-fetched from LRCLIB, NetEase, Musixmatch, lrc.red, Unison, Kugou and YouTube Music, cached offline
 - [x] Lyrics panel you can keep open next to any page
 - [x] Written By credits for the songwriters and producers
 - [x] Built-in lyrics editor with `.lrc` export
@@ -145,7 +150,7 @@ Options and client notes are in [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 
 ### Languages
 
-- [x] English, Arabic, French, Japanese, Korean, Russian, Spanish, Turkish, Simplified Chinese and Traditional Chinese
+- [x] English, Arabic, French, German, Japanese, Korean, Russian, Spanish, Turkish, Simplified Chinese and Traditional Chinese
 - [x] Switch language from Settings without a restart
 
 <p align="center">
@@ -161,6 +166,8 @@ Noctis can be extended three ways, from safest to most powerful:
 - **Content packs**: themes, lyrics presets and languages as plain JSON, with no code. They keep working in restricted mode. See [Content packs](docs/PLUGINS.md#content-packs).
 - **Local API**: HTTP + JSON on 127.0.0.1 for Stream Deck buttons, OBS overlays and scripts in any language. Nothing runs inside Noctis. See the [Local API reference](docs/LOCAL-API.md).
 - **Plugins**: .NET libraries built on the `Noctis.Plugins.Abstractions` SDK, with a `plugin.json` manifest and permissions, installed from a .zip. See the [plugin guide](docs/PLUGINS.md).
+
+Official plugins install in one click from Settings › Plugins: A-B Loop, Add from YouTube, Album Roulette, Album Town, Chords, Lyric Motion, Mixxx and True Shuffle.
 
 Community plugins start off (restricted mode) and ask for approval before they run. Sample plugins, a sample content pack and Local API examples are in [`samples/`](samples/).
 
