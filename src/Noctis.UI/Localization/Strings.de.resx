@@ -297,6 +297,14 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve"><value>Ein Herz rechts, um den laufenden Song mit einem Klick zu favorisieren.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>Mini-Player</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>Eine Schaltfläche rechts für den Wechsel zum Mini-Player.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButton" xml:space="preserve"><value>Songtext-Schaltfläche</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButtonHint" xml:space="preserve"><value>Die Schaltfläche rechts, die die Songtextseite öffnet. Ausgeblendet öffnet sich die Seite weiter per Tastenkürzel oder über das Cover (siehe Klick auf das Cover).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick" xml:space="preserve"><value>Klick auf das Cover</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>Was ein Klick auf das Cover des Songs in der Player-Insel öffnet.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Mini-Player</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.LyricsPage" xml:space="preserve"><value>Songtextseite</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.FullScreenLyrics" xml:space="preserve"><value>Songtext im Vollbild</value><comment>Clicking the artwork choice: lyrics page with the window in full screen (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClickLyricsHiddenHint" xml:space="preserve"><value>Die Songtext-Schaltfläche ist ausgeblendet. Wähle Songtextseite oder Songtext im Vollbild, um Songtexte über die Insel zu öffnen, oder nutze das Tastenkürzel.</value><comment>Shown when the lyrics button is off and the artwork opens the mini player (SettingsView.axaml)</comment></data>
   <data name="Settings.IdleQueuePill" xml:space="preserve"><value>Leerlauf-Pille</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Solange nichts spielt, eine kleine „Nichts spielt · Warteschlange“-Pille statt des Players zeigen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player-Insel-Breite</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1812,6 +1820,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="PlaybackBar.ShuffleTip" xml:space="preserve"><value>Zufällig</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.EqualizerTip" xml:space="preserve"><value>Equalizer ein/aus</value><comment>ToolTip.Tip of the island EQ button (GitHub #94)</comment></data>
   <data name="PlaybackBar.MiniPlayerTip" xml:space="preserve"><value>Mini-Player</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.FullScreenLyricsTip" xml:space="preserve"><value>Songtext im Vollbild</value><comment>Island artwork tooltip when it opens full-screen lyrics (PlayerViewModel.IslandArtworkTip)</comment></data>
   <data name="PlaybackBar.ViewAlbumTip" xml:space="preserve"><value>Album ansehen</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve"><value>Explizit</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve"><value>Künstler ansehen</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>

@@ -195,9 +195,31 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private Action? _detachReopenActivation;
 
     /// <summary>
+    /// A click on the player island's artwork (GitHub #183): the mini player (default, the
+    /// behaviour before), the lyrics page (the lyrics button's command) or the lyrics page in
+    /// full screen, as Settings → Player → Clicking the artwork picked.
+    /// </summary>
+    public void HandleIslandArtworkClick(IslandArtworkClick action)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        IslandArtworkClickRouter.Route(action,
+            ToggleMiniPlayer,
+            () => vm.ToggleLyricsCommand.Execute(null),
+            () =>
+            {
+                // The F11 full screen with the lyrics page up is the immersive lyrics view
+                // (UpdateImmersiveLyricsState hides the sidebar); Esc / F11 leaves it.
+                vm.ShowLyricsPage();
+                if (WindowState != WindowState.FullScreen)
+                    ToggleFullScreen();
+            });
+    }
+
+    /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
     /// it if it's already open. Closing the mini player restores the main window.
-    /// Triggered by clicking the album art in the bottom player bar.
+    /// Triggered by clicking the album art in the bottom player bar (the default of
+    /// Settings → Player → Clicking the artwork) or the island's mini player button.
     /// </summary>
     public void ToggleMiniPlayer()
     {

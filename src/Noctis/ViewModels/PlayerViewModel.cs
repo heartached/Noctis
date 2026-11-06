@@ -437,6 +437,32 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _islandShowFavorite;
     /// <summary>GitHub #80: the mini player button in the right cluster (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowMiniPlayer = true;
+    /// <summary>GitHub #183: the lyrics button in the right cluster (Settings → Player).
+    /// The lyrics page's own bar keeps it regardless — see <see cref="IslandLyricsButtonVisible"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IslandLyricsButtonVisible))]
+    private bool _islandShowLyricsButton = true;
+    /// <summary>GitHub #183: what a click on the island's artwork opens ("MiniPlayer",
+    /// "LyricsPage" or "FullScreenLyrics"; see <see cref="Models.IslandArtworkClicks"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IslandArtworkClickAction))]
+    [NotifyPropertyChangedFor(nameof(IslandArtworkTip))]
+    private string _islandArtworkClick = Models.IslandArtworkClicks.DefaultSetting;
+
+    public Models.IslandArtworkClick IslandArtworkClickAction => Models.IslandArtworkClicks.Parse(IslandArtworkClick);
+
+    /// <summary>Tooltip and accessible name of the island artwork: what a click on it opens.</summary>
+    public string IslandArtworkTip => Localization.Loc.T(IslandArtworkClickAction switch
+    {
+        Models.IslandArtworkClick.LyricsPage => "PlaybackBar.LyricsTip",
+        Models.IslandArtworkClick.FullScreenLyrics => "PlaybackBar.FullScreenLyricsTip",
+        _ => "PlaybackBar.MiniPlayerTip",
+    });
+
+    /// <summary>The island's lyrics button: shown unless Settings → Player hides it, and
+    /// always on the lyrics page, where it is the button that closes the page (the artwork
+    /// is hidden there with the track box).</summary>
+    public bool IslandLyricsButtonVisible => IslandShowLyricsButton || IsLyricsPageActive;
     /// <summary>Elapsed / remaining time inside the island's track box (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowTime;
 
@@ -615,6 +641,7 @@ public partial class PlayerViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanMarkNoLyrics))]
+    [NotifyPropertyChangedFor(nameof(IslandLyricsButtonVisible))]
     private bool _isLyricsPageActive;
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;

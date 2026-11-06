@@ -3387,6 +3387,17 @@
                                               IsChecked="{Binding PlaybackBarShowFavorite}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #183: the stock Lyrics button can go; the lyrics page's own bar keeps it. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.LyricsButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LyricsButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LyricsButton}"
+                                              IsChecked="{Binding PlaybackBarShowLyrics}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.MiniPlayerButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3526,6 +3537,31 @@
                                               IsChecked="{Binding PlaybackBarShowTime}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                </StackPanel>
+            </Border>
+            <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.ArtworkClick}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ArtworkClickHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="ArtworkClickCombo"
+                              AutomationProperties.Name="{loc:T Settings.ArtworkClick}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding ArtworkClickOptions}"
+                              SelectedItem="{Binding SelectedArtworkClickOption}"
+                              MinWidth="200"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+                <TextBlock Text="{loc:T Settings.ArtworkClickLyricsHiddenHint}"
+                           IsVisible="{Binding ShowArtworkLyricsHint}"
+                           FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
             <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->

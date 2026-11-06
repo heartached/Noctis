@@ -298,6 +298,14 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve"><value>A heart on the right to favorite the playing song in one click.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>Mini player</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>A button on the right to switch to the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButton" xml:space="preserve"><value>Lyrics button</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButtonHint" xml:space="preserve"><value>The button on the right that opens the lyrics page. Hidden, the page still opens from its keyboard shortcut, or from the artwork (see Clicking the artwork).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick" xml:space="preserve"><value>Clicking the artwork</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>What a click on the song's artwork in the player island opens.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Mini Player</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.FullScreenLyrics" xml:space="preserve"><value>Full Screen Lyrics</value><comment>Clicking the artwork choice: lyrics page with the window in full screen (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClickLyricsHiddenHint" xml:space="preserve"><value>The lyrics button is hidden. Choose Lyrics Page or Full Screen Lyrics to open lyrics from the island, or use the keyboard shortcut.</value><comment>Shown when the lyrics button is off and the artwork opens the mini player (SettingsView.axaml)</comment></data>
   <data name="Settings.IdleQueuePill" xml:space="preserve"><value>Idle queue pill</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>While nothing is playing, show a small "Nothing playing · Queue" pill in place of the player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player Island Width</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1817,6 +1825,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.EqualizerTip" xml:space="preserve"><value>Equalizer on/off</value><comment>ToolTip.Tip of the island EQ button (GitHub #94)</comment></data>
   <data name="PlaybackBar.MiniPlayerTip" xml:space="preserve"><value>Mini Player</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.FullScreenLyricsTip" xml:space="preserve"><value>Full Screen Lyrics</value><comment>Island artwork tooltip when it opens full-screen lyrics (PlayerViewModel.IslandArtworkTip)</comment></data>
   <data name="PlaybackBar.ViewAlbumTip" xml:space="preserve"><value>View Album</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve"><value>View Artist</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
