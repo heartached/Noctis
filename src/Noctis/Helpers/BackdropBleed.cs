@@ -30,6 +30,7 @@ internal sealed class BackdropBleed
     private readonly Control _origin;
     private readonly List<Visual> _watched = new();
     private readonly List<TranslateTransform> _watchedTransforms = new();
+    private readonly List<(Visual Visual, bool Local)> _lifted = new();
     private bool _enabled;
     private bool _attached;
     // True once the watched chain reaches the window (or the scaled content's root).
@@ -74,6 +75,7 @@ internal sealed class BackdropBleed
     {
         _attached = false;
         Unwatch();
+        RestoreClips();
     }
 
     /// <summary>
@@ -106,6 +108,13 @@ internal sealed class BackdropBleed
             if (left < 0.5) left = 0;
         }
 
+        // The stretched layers draw outside their host's bounds, and the page's hosts clip:
+        // LyricsView (UserControl) and MainWindow's PageHost (ContentControl) are templated
+        // controls, which clip to their bounds by default, so without this the layers were
+        // laid out to the window edge but never drawn left of the page (#184 live report).
+        if (left > 0) LiftClips();
+        else RestoreClips();
+
         if (left == AppliedLeft && shift == AppliedShift) return;
         AppliedLeft = left;
         AppliedShift = left > 0 ? shift : 0;
@@ -131,6 +140,30 @@ internal sealed class BackdropBleed
                 layer.ClearValue(Visual.RenderTransformProperty);
             }
         }
+    }
+
+    /// <summary>Turns off ClipToBounds on the clipping visuals between the layers and the
+    /// window while the stretch is on, remembering each one's own value for
+    /// <see cref="RestoreClips"/>.</summary>
+    private void LiftClips()
+    {
+        foreach (var v in _watched)
+        {
+            if (!v.ClipToBounds || _lifted.Exists(l => ReferenceEquals(l.Visual, v))) continue;
+            var local = v.IsSet(Visual.ClipToBoundsProperty);
+            _lifted.Add((v, local));
+            v.ClipToBounds = false;
+        }
+    }
+
+    private void RestoreClips()
+    {
+        foreach (var (v, local) in _lifted)
+        {
+            if (local) v.ClipToBounds = true;
+            else v.ClearValue(Visual.ClipToBoundsProperty);
+        }
+        _lifted.Clear();
     }
 
     private void Rewatch()
