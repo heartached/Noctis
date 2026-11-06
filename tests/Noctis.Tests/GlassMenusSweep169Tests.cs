@@ -128,7 +128,10 @@ public class GlassMenusSweep169Tests
             }
             else
             {
-                if (frosted || inOverlay) Fail(what, "glass off but the card is tagged");
+                if (frosted) Fail(what, "glass off but the card is tagged");
+                // The main window keeps every card in its overlay layer glass on or off, so a
+                // card stays inside the window (11-06); other windows keep their native popups.
+                if (inOverlay != overlay) Fail(what, $"glass off: overlay={inOverlay}, expected {overlay}");
                 if (glass) Fail(what, "glass off but a GlassPanel is in the card");
             }
         }
@@ -518,7 +521,8 @@ public class GlassMenusSweep169Tests
                     var presenter = Assert.IsType<FlyoutPresenter>(flyout.Popup.Child);
                     Assert.True(glassOn == presenter.Classes.Contains(GlassMenus.GlassClass),
                         $"host={host} on={glassOn} track={GlassMenus.GetTrack(presenter)} classes={string.Join(",", presenter.Classes)} parent={presenter.Parent?.GetType().Name}");
-                    Assert.Equal(glassOn && host, flyout.Popup.ShouldUseOverlayLayer);
+                    // The main window keeps it in its overlay layer glass on or off (11-06).
+                    Assert.Equal(host, flyout.Popup.ShouldUseOverlayLayer);
                     Assert.Equal(glassOn, GlassMenus.FrostOf(card) != null);
                     if (!glassOn) Assert.Same(Brushes.Gray, card.Background);
                     // The drop-down motion fades the presenter's Fade on glass (the card's glass
@@ -574,7 +578,8 @@ public class GlassMenusSweep169Tests
             box.IsDropDownOpen = true;
             Pump();
             Assert.Null(GlassMenus.FrostOf(card));
-            Assert.False(popup.IsSet(Popup.ShouldUseOverlayLayerProperty));
+            // Plain now, still in the main window's overlay layer (11-06: cards stay inside the window).
+            Assert.True(popup.ShouldUseOverlayLayer);
             Assert.True(PumpUntil(() => card.Opacity == 1));
             box.IsDropDownOpen = false;
             Assert.True(PumpUntil(() => !box.IsDropDownOpen && !popup.IsOpen), "the plain list never closed");
