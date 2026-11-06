@@ -50,6 +50,12 @@ public static class MenuChrome
     {
         PaddingProperty.Changed.AddClassHandler<Control>((c, e) =>
         {
+            // A submenu card frosted by Liquid Glass hands its padding to its GlassPanel.
+            if (c is Border frosted && GlassMenus.GetSubmenuGlass(frosted) && GlassMenus.FrostOf(frosted) is { } glass)
+            {
+                glass.Padding = e.GetNewValue<Thickness?>() ?? default;
+                return;
+            }
             var property = c switch
             {
                 Border => Border.PaddingProperty,
@@ -67,24 +73,36 @@ public static class MenuChrome
             else c.ClearValue(Layoutable.MarginProperty);
         });
 
-        SubmenuCardProperty.Changed.AddClassHandler<Border>((b, e) =>
+        SubmenuCardProperty.Changed.AddClassHandler<Border>((b, e) => ApplySubmenuCard(b, e.GetNewValue<bool>()));
+    }
+
+    /// <summary>Gives <paramref name="b"/> the submenu card look, or clears it. A card frosted by
+    /// Liquid Glass (<see cref="GlassMenus.SubmenuGlassProperty"/>) is painted by its GlassPanel:
+    /// its fill and edge are left alone (masked meanwhile) and applied when the glass comes off.</summary>
+    internal static void ApplySubmenuCard(Border b, bool on)
+    {
+        var frosted = GlassMenus.GetSubmenuGlass(b);
+        if (on)
         {
-            if (e.GetNewValue<bool>())
+            if (!frosted)
             {
                 b.Bind(Border.BackgroundProperty, b.GetResourceObservable("AppSidebarBackground"));
-                b.Bind(Border.BorderBrushProperty, b.GetResourceObservable("MenuV2BorderBrush"));
                 b.SetValue(Border.BorderThicknessProperty, new Thickness(1));
-                b.SetValue(Border.CornerRadiusProperty, new CornerRadius(16));
-                b.SetValue(Layoutable.MaxWidthProperty, SubmenuMaxWidth);
             }
-            else
+            b.Bind(Border.BorderBrushProperty, b.GetResourceObservable("MenuV2BorderBrush"));
+            b.SetValue(Border.CornerRadiusProperty, new CornerRadius(16));
+            b.SetValue(Layoutable.MaxWidthProperty, SubmenuMaxWidth);
+        }
+        else
+        {
+            if (!frosted)
             {
                 b.ClearValue(Border.BackgroundProperty);
-                b.ClearValue(Border.BorderBrushProperty);
                 b.ClearValue(Border.BorderThicknessProperty);
-                b.ClearValue(Border.CornerRadiusProperty);
-                b.ClearValue(Layoutable.MaxWidthProperty);
             }
-        });
+            b.ClearValue(Border.BorderBrushProperty);
+            b.ClearValue(Border.CornerRadiusProperty);
+            b.ClearValue(Layoutable.MaxWidthProperty);
+        }
     }
 }

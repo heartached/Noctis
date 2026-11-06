@@ -31,6 +31,15 @@ public class PlaylistInteropServiceTests
         Assert.Equal(@"X:\Music\song.mp3", result);
     }
 
+    [Theory]
+    [InlineData("http://nas:4533/rest/stream?id=42")]
+    [InlineData("content://com.android.externalstorage.documents/document/primary%3AMusic%2Fa.mp3")]
+    public void PortablePath_Uri_IsWrittenAsStored(string uri)
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), "NoctisTests", "lib");
+        Assert.Equal(uri, PlaylistInteropService.PortablePath(baseDir, uri));
+    }
+
     [Fact]
     public async Task Export_WritesRelativePaths_ForTracksUnderPlaylistDir()
     {

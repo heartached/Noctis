@@ -146,7 +146,9 @@ public class MobileShellViewTests
 
         var miniBar = view.FindControl<GlassPanel>("MiniBar")!;
         var grid = miniBar.GetLogicalDescendants().OfType<Grid>().First();
-        var title = grid.Children.OfType<Button>().First(b => Grid.GetColumn(b) == 0);
+        // The row button sits in the swipe panel (TrackSwipeGesture), which holds column 0.
+        Assert.Equal(0, Grid.GetColumn(view.FindControl<Panel>("MiniSwipe")!));
+        var title = view.FindControl<Button>("MiniRow")!;
 
         // The star column's own width, from the first fixed-width sibling's left edge.
         var transports = grid.Children.OfType<Button>().Where(b => Grid.GetColumn(b) > 0).ToList();

@@ -5,6 +5,7 @@ using Android.Content.Res;
 using Android.OS;
 using Android.Views;
 using Avalonia.Android;
+using Noctis.Android.Services;
 using Noctis.Services;
 
 namespace Noctis.Android;
@@ -22,12 +23,16 @@ public class MainActivity : AvaloniaMainActivity
     private const int PickFolderRequest = 4242;
     private const int PostNotificationsRequest = 4243;
     private const int CreateDocumentRequest = 4244;
+    private const int OpenDocumentsRequest = 4245;
+    private const int AudioPermissionRequest = 4246;
 
     /// <summary>The live activity, for services that need to start system UI (the SAF picker).</summary>
     public static MainActivity? Current { get; private set; }
 
     private TaskCompletionSource<string?>? _pickFolder;
     private TaskCompletionSource<string?>? _createDocument;
+    private TaskCompletionSource<IReadOnlyList<global::Android.Net.Uri>>? _openDocuments;
+    private TaskCompletionSource<bool>? _permission;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -118,6 +123,9 @@ public class MainActivity : AvaloniaMainActivity
         // Another app, or the notification shade, may have moved the volume while we were away.
         AndroidApp.Current?.OnVolumeKey();
         AndroidApp.Current?.OnForegrounded();
+        // Smooth Motion: the window's display mode and the surface's rate, asked again on every
+        // return (another app may have left the display in a different mode).
+        AndroidFrameRate.Instance.Attach(this);
     }
 
     public override void OnWindowFocusChanged(bool hasFocus)
@@ -126,11 +134,14 @@ public class MainActivity : AvaloniaMainActivity
         // Avalonia puts its theme's status bar icons back when its view becomes visible again;
         // a page that asked for its own (the album cover) gets them back on top.
         if (hasFocus) AndroidApp.Current?.ReassertStatusBarIcons();
+        // Avalonia's SurfaceView is in the window by now even on the first launch.
+        if (hasFocus) AndroidFrameRate.Instance.Reapply();
     }
 
     protected override void OnPause()
     {
         base.OnPause();
+        AndroidFrameRate.Instance.Detach(this);
         // Screen off / home / task switch: checkpoint the queue and position now, since
         // Android may kill the process without any further callback.
         AndroidApp.Current?.OnBackgrounded();
@@ -152,7 +163,14 @@ public class MainActivity : AvaloniaMainActivity
         // instance and leave Settings' ExportLogsCommand running forever.
         _createDocument?.TrySetResult(null);
         _createDocument = null;
+        // And a pending playlist import (Playlists ⋯ › Import Playlist).
+        _openDocuments?.TrySetResult(Array.Empty<global::Android.Net.Uri>());
+        _openDocuments = null;
+        // And a pending permission dialog: its answer would land on the new instance.
+        _permission?.TrySetResult(false);
+        _permission = null;
         BackRequested -= OnBackRequested;
+        AndroidFrameRate.Instance.Detach(this);
         if (ReferenceEquals(Current, this)) Current = null;
         base.OnDestroy();
     }
@@ -168,6 +186,34 @@ public class MainActivity : AvaloniaMainActivity
         return _pickFolder.Task;
     }
 
+    /// <summary>Shows the system permission dialog for <paramref name="permission"/> (Find All Music);
+    /// resolves true once granted. Android answers at once, refused, when it no longer shows the
+    /// dialog (refused twice): the caller then points at the app's settings.</summary>
+    public Task<bool> RequestPermissionAsync(string permission)
+    {
+        _permission?.TrySetResult(false);
+        _permission = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            RequestPermissions(new[] { permission }, AudioPermissionRequest);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Android", $"{permission} request failed: {ex.Message}");
+            _permission.TrySetResult(false);
+        }
+        return _permission.Task;
+    }
+
+    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+    {
+        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != AudioPermissionRequest) return;
+        var pending = _permission;
+        _permission = null;
+        pending?.TrySetResult(grantResults.Length > 0 && grantResults.All(r => r == Permission.Granted));
+    }
+
     /// <summary>Shows the system "save as" picker; resolves to the new document's URI or null.</summary>
     public Task<string?> CreateDocumentAsync(string fileName, string mimeType)
     {
@@ -181,9 +227,46 @@ public class MainActivity : AvaloniaMainActivity
         return _createDocument.Task;
     }
 
+    /// <summary>
+    /// Shows the system document picker (ACTION_OPEN_DOCUMENT) for one or more files of
+    /// <paramref name="mimeTypes"/>; resolves to the picked URIs (empty when backed out of).
+    /// The grant is the one-time read the result carries: the caller reads the files at once,
+    /// so no persistable permission is taken (the 128/512 cap stays for music folders).
+    /// </summary>
+    public Task<IReadOnlyList<global::Android.Net.Uri>> OpenDocumentsAsync(string[] mimeTypes)
+    {
+        _openDocuments?.TrySetResult(Array.Empty<global::Android.Net.Uri>());
+        _openDocuments = new TaskCompletionSource<IReadOnlyList<global::Android.Net.Uri>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var intent = new Intent(Intent.ActionOpenDocument);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType("*/*");
+        intent.PutExtra(Intent.ExtraMimeTypes, mimeTypes);
+        intent.PutExtra(Intent.ExtraAllowMultiple, true);
+        intent.AddFlags(ActivityFlags.GrantReadUriPermission);
+        StartActivityForResult(intent, OpenDocumentsRequest);
+        return _openDocuments.Task;
+    }
+
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
+        if (requestCode == OpenDocumentsRequest)
+        {
+            var pendingOpen = _openDocuments;
+            _openDocuments = null;
+            if (pendingOpen == null) return;
+            var uris = new List<global::Android.Net.Uri>();
+            if (resultCode == Result.Ok && data != null)
+            {
+                // Several picked: ClipData; one: Data (some pickers fill both with the same file).
+                if (data.ClipData is { } clip)
+                    for (var i = 0; i < clip.ItemCount; i++)
+                        if (clip.GetItemAt(i)?.Uri is { } u) uris.Add(u);
+                if (uris.Count == 0 && data.Data is { } single) uris.Add(single);
+            }
+            pendingOpen.TrySetResult(uris);
+            return;
+        }
         if (requestCode == CreateDocumentRequest)
         {
             var pendingDocument = _createDocument;

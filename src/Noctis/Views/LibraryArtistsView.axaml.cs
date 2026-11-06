@@ -278,11 +278,11 @@ public partial class LibraryArtistsView : UserControl
 
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Select Artist Picture",
+                Title = Noctis.Localization.Loc.T("Picker.SelectArtistPicture"),
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Images")
+                    new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images"))
                     {
                         Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif" }
                     }

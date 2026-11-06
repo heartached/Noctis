@@ -72,21 +72,21 @@ public class ListeningHistoryHandoffTests : IDisposable
         Assert.Equal(new DateTime(2026, 10, 22), tokyo.Days[0]);
         Assert.Equal(new DateTime(2026, 10, 28), tokyo.Days[6]);
         Assert.Equal(3, tokyo.Plays);
-        Assert.Equal(TimeSpan.FromMinutes(3).Ticks, tokyo.DayTicks[0]);
-        Assert.Equal(TimeSpan.FromMinutes(3).Ticks, tokyo.DayTicks[5]);
-        Assert.Equal(TimeSpan.FromMinutes(3).Ticks, tokyo.DayTicks[6]);
-        Assert.Equal(TimeSpan.FromMinutes(9).Ticks, tokyo.TotalTicks);
+        Assert.Equal(TimeSpan.FromMinutes(1.5).Ticks, tokyo.DayTicks[0]);
+        Assert.Equal(TimeSpan.FromMinutes(1.5).Ticks, tokyo.DayTicks[5]);
+        Assert.Equal(TimeSpan.FromMinutes(1.5).Ticks, tokyo.DayTicks[6]);
+        Assert.Equal(TimeSpan.FromMinutes(4.5).Ticks, tokyo.TotalTicks);
 
         // The same log on UTC's clock: the window is Oct 22-28, the two Oct 21 plays are outside, and
         // both late plays are Oct 27.
         var utc = ListeningWeekCalculator.Compute(log, _ => TimeSpan.FromMinutes(3), now, TimeZoneInfo.Utc);
         Assert.Equal(2, utc.Plays);
         Assert.Equal(0, utc.DayTicks[6]);
-        Assert.Equal(TimeSpan.FromMinutes(6).Ticks, utc.DayTicks[5]);
+        Assert.Equal(TimeSpan.FromMinutes(3).Ticks, utc.DayTicks[5]);
     }
 
     [Fact]
-    public void Week_SkipsCountAsPlaysWithNoTime_AndUnknownLengthsCountThree()
+    public void Week_SkipsCountAsPlaysWithNoTime_AndUnknownLengthsCountHalfOfThree()
     {
         var known = Guid.NewGuid();
         var unknown = Guid.NewGuid();
@@ -101,8 +101,8 @@ public class ListeningHistoryHandoffTests : IDisposable
         var week = ListeningWeekCalculator.Compute(log, id => id == known ? TimeSpan.FromMinutes(4) : null, now, TimeZoneInfo.Utc);
 
         Assert.Equal(3, week.Plays);
-        Assert.Equal(TimeSpan.FromMinutes(7).Ticks, week.TotalTicks);
-        Assert.Equal("7 min this week", ListeningWeekCalculator.FormatSummary(week));
+        Assert.Equal(TimeSpan.FromMinutes(3.5).Ticks, week.TotalTicks);
+        Assert.Equal("3 min this week", ListeningWeekCalculator.FormatSummary(week));
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class ListeningHistoryHandoffTests : IDisposable
         Assert.Equal(new[] { "Song 3", "Song 4", "Song 2" }, vm.Recent.Select(r => r.Track.Title));
         Assert.Equal("12 min", vm.Recent[0].When);
         Assert.Equal("5 plays", vm.WeekPlays);
-        Assert.Equal("7 min this week", vm.Summary);   // 5 x 90 s
+        Assert.Equal("3 min this week", vm.Summary);   // 5 x 45 s: old events count half the song (PlayListening.LegacyShare)
         Assert.Equal(7, vm.Bars.Count);
         Assert.True(vm.Bars[^1].IsToday || vm.Bars.Any(b => b.IsToday));
         Assert.True(vm.HasRecent);
@@ -924,7 +924,7 @@ public class ListeningHistoryHandoffTests : IDisposable
         window.Show();
         window.UpdateLayout();
 
-        Assert.Equal("4 min", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "WeekTotalLabel").Text);
+        Assert.Equal("2 min", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "WeekTotalLabel").Text);
         Assert.Equal("3 plays", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "WeekPlaysLabel").Text);
         Assert.Equal("Forever", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "KeepValueLabel").Text);
         Assert.True(MobileFixtures.Named<Avalonia.Controls.Button>(pane, "ShowAllButton").IsVisible);

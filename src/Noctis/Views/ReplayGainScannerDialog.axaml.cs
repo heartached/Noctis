@@ -45,7 +45,7 @@ public partial class ReplayGainScannerDialog : Window
                 AllowMultiple = true,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Audio")
+                    new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Audio"))
                     {
                         Patterns = MetadataService.SupportedExtensions.Select(ext => "*" + ext).ToArray(),
                     },

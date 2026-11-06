@@ -165,6 +165,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private System.ComponentModel.PropertyChangedEventHandler? _currentTrackPropertyChangedHandler;
     private Track? _trackedFavoriteTrack;
     private Border? _sidebarWrapper;
+    private SidebarEdgePeek? _sidebarPeek;
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
@@ -367,6 +368,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
+        // Menus, submenus and tooltips frost in this window's overlay layer while Liquid Glass
+        // is on (GitHub #169); other windows' frost in their own popups.
+        GlassMenus.SetHost(this, true);
         // Pick Up on Computer: the window coming to the front is when a newer phone queue is offered.
         Activated += (_, _) => (DataContext as MainWindowViewModel)?.HandoffPrompt.Check();
 
@@ -406,8 +410,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         try
         {
             await ConfirmationDialog.ShowAsync(
-                "Noctis couldn't finish starting, so some parts of the app may not work. " +
-                "Details were written to the debug log.\n\n" + ex.Message);
+                Noctis.Localization.Loc.T("Main.StartupFailed") + "\n\n" + ex.Message);
         }
         catch { /* the dialog itself is best effort */ }
     }
@@ -509,6 +512,16 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // borderless transparent window painted the whole owner black on Win32 (09-07).
         AppGlass.Set(true, main, sidebar);
         QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: true);
+    }
+
+    /// <summary>Glass menus and tooltips (GlassMenus) tint their frost at the island's Glass
+    /// Opacity, as the island menus did since #104. An application resource: the mini player's,
+    /// the dialogs' and plugin windows' menus frost too (GitHub #169), and a window resource only
+    /// reached this window's.</summary>
+    private static void ApplyGlassMenuTint(double opacity)
+    {
+        if (Application.Current is { } app)
+            app.Resources["GlassMenuTintOpacity"] = Math.Clamp(opacity, 0, 1);
     }
 
     /// <summary>Card fade/scale plus the glass underlay's own Fade/scale, always together so the
@@ -622,8 +635,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 {
                     if (e.PropertyName == nameof(PlayerViewModel.CurrentArtPath))
                         ApplyArtworkAccent();
+                    else if (e.PropertyName == nameof(PlayerViewModel.IslandBackgroundOpacity))
+                        ApplyGlassMenuTint(vm.Player.IslandBackgroundOpacity);
                 };
                 vm.Player.PropertyChanged += _artworkAccentPlayerHandler;
+                ApplyGlassMenuTint(vm.Player.IslandBackgroundOpacity);
                 _artworkAccentSettingsHandler = (_, e) =>
                 {
                     if (e.PropertyName == nameof(SettingsViewModel.AccentFollowsArtwork))
@@ -857,6 +873,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     {
                         // Un-hiding restores the pinned layout when "Keep sidebar expanded" is on.
                         var pinned = !mainVm2.IsSidebarHidden && mainVm2.Settings.SidebarAlwaysExpanded;
+                        _sidebarPeek?.SyncHidden();
+                        if (!mainVm2.IsSidebarHidden)
+                            mainVm2.Sidebar.IsExpanded = pinned; // a peek may have left it expanded
                         if (_sidebarWrapper != null)
                         {
                             _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
@@ -915,6 +934,17 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         vm.Sidebar.IsExpanded = expanded;
                     };
                     vm.Settings.SidebarAlwaysExpandedChanged += _sidebarAlwaysExpandedHandler;
+
+                    // GitHub #171: a hidden sidebar (fullscreen lyrics) peeks in from the left edge.
+                    if (this.FindControl<Border>("SidebarRevealEdge") is { } revealEdge)
+                    {
+                        _sidebarPeek = new SidebarEdgePeek(revealEdge, _sidebarWrapper,
+                            () => vm.IsSidebarHidden,
+                            () => vm.Settings.SidebarHoverExpand,
+                            () => vm.Settings.SidebarAlwaysExpanded,
+                            expanded => vm.Sidebar.IsExpanded = expanded);
+                        _sidebarPeek.SyncHidden();
+                    }
                     // The settings load may have finished before this subscription existed,
                     // so apply the current value once now (idempotent).
                     _sidebarAlwaysExpandedHandler(vm.Settings, vm.Settings.SidebarAlwaysExpanded);
@@ -1179,18 +1209,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             var playback = new NativeMenu();
 
-            var playPause = new NativeMenuItem("Play / Pause");
+            var playPause = new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Action.PlayPause"));
             playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
             playback.Items.Add(playPause);
 
-            var next = new NativeMenuItem("Next Track")
+            var next = new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Action.NextTrack"))
             {
                 Gesture = shortcuts.Get(ShortcutAction.NextTrack),
             };
             next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
             playback.Items.Add(next);
 
-            var previous = new NativeMenuItem("Previous Track")
+            var previous = new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Action.PreviousTrack"))
             {
                 Gesture = shortcuts.Get(ShortcutAction.PreviousTrack),
             };
@@ -1205,7 +1235,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             };
 
             var windowMenu = new NativeMenu();
-            windowMenu.Items.Add(new NativeMenuItem("Playback") { Menu = playback });
+            windowMenu.Items.Add(new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Group.Playback")) { Menu = playback });
             NativeMenu.SetMenu(this, windowMenu);
 
             // Dock icon menu: the macOS counterpart of the Windows taskbar thumbnail buttons
@@ -1217,11 +1247,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 item.Click += (_, _) => run();
                 dock.Items.Add(item);
             }
-            AddDockItem("Play / Pause", () => vm.Player.PlayPauseCommand.Execute(null));
-            AddDockItem("Next Track", () => vm.Player.NextCommand.Execute(null));
-            AddDockItem("Previous Track", () => vm.Player.PreviousCommand.Execute(null));
+            AddDockItem(Noctis.Localization.Loc.T("Shortcuts.Action.PlayPause"), () => vm.Player.PlayPauseCommand.Execute(null));
+            AddDockItem(Noctis.Localization.Loc.T("Shortcuts.Action.NextTrack"), () => vm.Player.NextCommand.Execute(null));
+            AddDockItem(Noctis.Localization.Loc.T("Shortcuts.Action.PreviousTrack"), () => vm.Player.PreviousCommand.Execute(null));
             dock.Items.Add(new NativeMenuItemSeparator());
-            AddDockItem("Favorite", () => vm.Player.ToggleCurrentTrackFavoriteCommand.Execute(null));
+            AddDockItem(Noctis.Localization.Loc.T("Main.Favorite"), () => vm.Player.ToggleCurrentTrackFavoriteCommand.Execute(null));
             NativeDock.SetMenu(Application.Current!, dock);
         }
         catch (Exception ex)
@@ -1244,28 +1274,28 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             var menu = new NativeMenu();
 
-            var open = new NativeMenuItem("Open Noctis");
+            var open = new NativeMenuItem(Noctis.Localization.Loc.T("Tray.OpenNoctis"));
             open.Click += (_, _) => ShowFromTray();
             menu.Items.Add(open);
 
             menu.Items.Add(new NativeMenuItemSeparator());
 
             // Basic playback control without leaving the tray.
-            var playPause = new NativeMenuItem("Play / Pause");
+            var playPause = new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Action.PlayPause"));
             playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
             menu.Items.Add(playPause);
 
-            var next = new NativeMenuItem("Next Track");
+            var next = new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Action.NextTrack"));
             next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
             menu.Items.Add(next);
 
-            var previous = new NativeMenuItem("Previous Track");
+            var previous = new NativeMenuItem(Noctis.Localization.Loc.T("Shortcuts.Action.PreviousTrack"));
             previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
             menu.Items.Add(previous);
 
             menu.Items.Add(new NativeMenuItemSeparator());
 
-            var quit = new NativeMenuItem("Quit");
+            var quit = new NativeMenuItem(Noctis.Localization.Loc.T("Tray.Quit"));
             quit.Click += (_, _) =>
             {
                 _exitRequestedFromTray = true;
@@ -1315,7 +1345,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                                 ? "Noctis"
                                 : Truncate($"{track.Title} — {track.Artist}", 120);
                         }
-                        playPause.Header = vm.Player.State == PlaybackState.Playing ? "Pause" : "Play";
+                        playPause.Header = Noctis.Localization.Loc.T(vm.Player.State == PlaybackState.Playing ? "PlaybackBar.Pause" : "LibraryAlbums.Play");
                     }
                     catch { /* tray backends vary; never let this bubble */ }
                 });

@@ -1,18 +1,20 @@
 <controls:GlassPanel xmlns="https://github.com/avaloniaui"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                      xmlns:vm="using:Noctis.Mobile.ViewModels"
+                     xmlns:loc="using:Noctis.Localization"
                      xmlns:controls="using:Noctis.Controls"
                      x:Class="Noctis.Mobile.Views.ListTools"
                      x:DataType="vm:SongListPageViewModel"
                      Classes="header-glass" Width="NaN" IsVisible="{Binding HasSongs}">
     <!-- A song list's tools, in one glass pill beside its title (the Library header's pill):
-         search in the list, sort, filter. Each lights up while it changes what is shown.
+         sort and filter (the search is the page's own field, FindField, as on Artists). Each lights up while it changes what is shown.
          The pill is the control itself rather than glass inside a UserControl: wrapped, its
          shadow was cut off square at the UserControl's edges on the device. -->
     <StackPanel Orientation="Horizontal" Margin="4,0">
-        <Button Name="ListSearchButton" Classes="glass-round" Classes.on="{Binding IsSearchOpen}"
-                Command="{Binding ToggleSearchCommand}">
-            <PathIcon Data="{DynamicResource PhSearch}" />
+        <!-- Select mode (ticks, then act on several songs at once). -->
+        <Button Name="ListSelectButton" Classes="glass-round" Classes.on="{Binding Selection.IsActive}"
+                Command="{Binding BeginSelectCommand}" AutomationProperties.Name="{loc:T Mobile.Select}">
+            <PathIcon Data="{DynamicResource PhSelect}" />
         </Button>
         <Button Name="ListSortButton" Classes="glass-round" Classes.on="{Binding IsSorted}" Command="{Binding ShowSortMenuCommand}">
             <PathIcon Data="{DynamicResource PhSort}" />

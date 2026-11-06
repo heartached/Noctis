@@ -81,8 +81,27 @@ public class AudioQualityBadgeTests
     [Fact]
     public void UnknownFormat_ShowsNoBadge()
     {
-        var t = MakeTrack(filePath: "song.dsf", bitrate: 5645, sampleRate: 2822400);
+        var t = MakeTrack(filePath: "song.xyz", bitrate: 5645, sampleRate: 2822400);
         Assert.Equal(string.Empty, t.AudioQualityBadge);
+    }
+
+    /// <summary>DSD plays now (decoded to PCM): a 1-bit stream at 2.8 MHz and up is Hi-Res
+    /// Lossless, named by its rate the way DSD is ("DSD64 2.8 MHz"), from either container
+    /// or the scan's codec string.</summary>
+    [Theory]
+    [InlineData("song.dsf", "", 2822400, "DSD64 2.8 MHz")]
+    [InlineData("song.dff", "DSD", 5644800, "DSD128 5.6 MHz")]
+    [InlineData("song.bin", "DSD (DSF)", 11289600, "DSD256 11.3 MHz")]
+    [InlineData("song.dsf", "", 3072000, "DSD64 3.1 MHz")]
+    public void Dsd_IsHiResLossless_AndNamedByItsRate(string file, string codec, int rate, string label)
+    {
+        var t = MakeTrack(codec: codec, filePath: file, bitrate: 5645, sampleRate: rate, bitsPerSample: 1);
+        Assert.Equal("Hi-Res Lossless", t.AudioQualityBadge);
+        Assert.Equal("DSD", t.CodecShortName);
+        Assert.Equal(label, t.SampleRateFormatted);
+        Assert.Equal(label, t.QualityDetailLine);
+        Assert.Equal(label, t.AudioQualityDetailedInfo);
+        Assert.Equal(label, new AudioFileInfo { FilePath = file, Codec = codec, SampleRate = rate }.SampleRateFormatted);
     }
 
     // ── Tooltip detail / description ──
@@ -107,7 +126,7 @@ public class AudioQualityBadgeTests
     {
         var lossless = MakeTrack(codec: "FLAC", filePath: "song.flac");
         var lossy = MakeTrack(filePath: "song.mp3", bitrate: 320);
-        var unknown = MakeTrack(filePath: "song.dsf");
+        var unknown = MakeTrack(filePath: "song.xyz");
         Assert.Contains("Lossless", lossless.AudioQualityDescription);
         Assert.Contains("Compressed", lossy.AudioQualityDescription);
         Assert.Equal(string.Empty, unknown.AudioQualityDescription);
@@ -144,7 +163,7 @@ public class AudioQualityBadgeTests
     {
         var album = MakeAlbum(
             MakeTrack(codec: "FLAC", filePath: "a.flac", sampleRate: 44100, bitsPerSample: 16),
-            MakeTrack(filePath: "b.dsf", bitrate: 5645, sampleRate: 2822400));
+            MakeTrack(filePath: "b.xyz", bitrate: 5645, sampleRate: 2822400));
         Assert.False(album.IsMixedQuality);
         Assert.Equal("Lossless", album.AudioQualityBadge);
     }

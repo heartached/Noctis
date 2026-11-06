@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -38,8 +39,8 @@ public sealed class OptionsMenuViewModel
             items.Add(new OptionsMenuItem(shell, choice.Label, choice.IsSelected, () => page.ChooseSort(choice)));
         if (page.HasSortDirection)
         {
-            items.Add(new OptionsMenuItem(shell, "Ascending", !page.IsDescending, () => page.ChooseDirection(false)) { StartsGroup = true });
-            items.Add(new OptionsMenuItem(shell, "Descending", page.IsDescending, () => page.ChooseDirection(true)));
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.Sort.Ascending"), !page.IsDescending, () => page.ChooseDirection(false)) { StartsGroup = true });
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.Sort.Descending"), page.IsDescending, () => page.ChooseDirection(true)));
         }
         return Lined(items);
     }
@@ -50,11 +51,11 @@ public sealed class OptionsMenuViewModel
     {
         var items = new List<OptionsMenuItem>();
         if (list.OffersFavouritesFilter)
-            items.Add(new OptionsMenuItem(shell, "Favorites", list.OnlyFavourites, () => list.OnlyFavourites = !list.OnlyFavourites));
+            items.Add(new OptionsMenuItem(shell, Loc.T("Nav.Favorites"), list.OnlyFavourites, () => list.OnlyFavourites = !list.OnlyFavourites));
         if (list.CanFilterDownloaded)
-            items.Add(new OptionsMenuItem(shell, "Downloaded", list.OnlyDownloaded, () => list.OnlyDownloaded = !list.OnlyDownloaded));
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.Downloaded"), list.OnlyDownloaded, () => list.OnlyDownloaded = !list.OnlyDownloaded));
         if (list.IsFiltered)
-            items.Add(new OptionsMenuItem(shell, "Show All", false, () => { list.OnlyFavourites = false; list.OnlyDownloaded = false; }) { StartsGroup = true });
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.ShowAll"), false, () => { list.OnlyFavourites = false; list.OnlyDownloaded = false; }) { StartsGroup = true });
         return Lined(items);
     }
 
@@ -92,7 +93,7 @@ public sealed partial class OptionsMenuItem
     public bool IsChecked { get; }
 
     /// <summary>What a screen reader says: the label, and that it is the choice in use.</summary>
-    public string AccessibleName => IsChecked ? $"{Label}, selected" : Label;
+    public string AccessibleName => IsChecked ? Loc.T("Mobile.SelectedName", Label) : Label;
 
     /// <summary>The first row of a new group (Ascending, Show All): a band above it, no hairline.</summary>
     public bool StartsGroup { get; init; }

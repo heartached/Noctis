@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.Services;
 
@@ -130,9 +131,9 @@ public sealed class PhoneBackground : ObservableObject
     public bool BatterySaverOn => _saver?.IsOn ?? false;
 
     /// <summary>The current choice's name, as the Settings row shows it.</summary>
-    public string Summary => Choice == Off ? "Off"
-        : Choice == Artwork ? "Now Playing"
-        : BackgroundCatalog.Find(Choice)?.Name ?? "Off";
+    public string Summary => Choice == Off ? Loc.T("Mobile.Off")
+        : Choice == Artwork ? Loc.T("Mobile.NowPlaying")
+        : BackgroundCatalog.Find(Choice)?.Name ?? Loc.T("Mobile.Off");
 
     /// <summary>Raised after a change that Settings shows (choice, motion, strength).</summary>
     public event EventHandler? ChoiceChanged;
@@ -259,29 +260,53 @@ public sealed class PhoneBackground : ObservableObject
     /// <summary>The dictionary over the theme's: the page brush is the mesh, the surfaces on it
     /// translucent. A sheet's own page (Settings, Account: PhoneSheetBackgroundBrush) is the mesh
     /// too, never the translucent grouped grey: that showed the app under the sheet through it.
-    /// Built once. Dark stays near black and Light near white under the washes
-    /// (<see cref="BackgroundCatalog"/>), so the text on the glass keeps its contrast.</summary>
+    /// The dark glass is the theme's own grouped and card colours made translucent (a colour
+    /// theme's cards are tinted glass on its mesh, not the neutral grey: beta feedback 11-04).
+    /// Dark stays near black and Light near white under the washes (<see cref="BackgroundCatalog"/>),
+    /// so the text on the glass keeps its contrast.</summary>
     private ResourceDictionary Layer()
     {
-        if (_layer != null) return _layer;
-        static SolidColorBrush B(string hex) => new(Color.Parse(hex));
-        _layer = new ResourceDictionary();
-        _layer.ThemeDictionaries[ThemeVariant.Dark] = new ResourceDictionary
+        if (_layer == null)
         {
-            ["PhoneBackgroundBrush"] = _dark!.Brush,
-            ["PhoneSheetBackgroundBrush"] = _dark.Brush,
-            ["PhoneGroupedBackgroundBrush"] = B("#B31C1C1E"),
-            ["PhoneCardBrush"] = B("#E02C2C2E"),
-        };
-        _layer.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
+            static SolidColorBrush B(string hex) => new(Color.Parse(hex));
+            _layer = new ResourceDictionary();
+            _layer.ThemeDictionaries[ThemeVariant.Dark] = new ResourceDictionary
+            {
+                ["PhoneBackgroundBrush"] = _dark!.Brush,
+                ["PhoneSheetBackgroundBrush"] = _dark.Brush,
+            };
+            _layer.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
+            {
+                ["PhoneBackgroundBrush"] = _light!.Brush,
+                ["PhoneSheetBackgroundBrush"] = _light.Brush,
+                ["PhoneGroupedBackgroundBrush"] = B("#99FFFFFF"),
+                ["PhoneCardBrush"] = B("#CCFFFFFF"),
+            };
+        }
+        var dark = (ResourceDictionary)_layer.ThemeDictionaries[ThemeVariant.Dark];
+        var theme = PhoneThemes.DarkOrInk(_darkTheme);
+        // Only a new theme replaces them: a Strength drag re-attaches the layer at every step.
+        void Put(string key, Color c)
         {
-            ["PhoneBackgroundBrush"] = _light!.Brush,
-            ["PhoneSheetBackgroundBrush"] = _light.Brush,
-            ["PhoneGroupedBackgroundBrush"] = B("#99FFFFFF"),
-            ["PhoneCardBrush"] = B("#CCFFFFFF"),
-        };
+            if (dark.TryGetValue(key, out var old) && old is ISolidColorBrush b && b.Color == c) return;
+            dark[key] = new SolidColorBrush(c);
+        }
+        Put("PhoneGroupedBackgroundBrush", Glass(theme.Grouped, GroupedGlassAlpha));
+        Put("PhoneCardBrush", Glass(theme.Card, CardGlassAlpha));
         return _layer;
     }
+
+    /// <summary>The dark glass's alphas over the mesh: the grouped rows and the cards.</summary>
+    internal const byte GroupedGlassAlpha = 0xB3, CardGlassAlpha = 0xE0;
+
+    private static Color Glass(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);
+
+    // The dark theme the glass is drawn from (Settings › Theme); Ink until the host says.
+    private string? _darkTheme;
+
+    /// <summary>The dark theme's surfaces as the glass on the mesh (the light ones are white).</summary>
+    internal Color DarkGlass(bool card) => Glass(card ? PhoneThemes.DarkOrInk(_darkTheme).Card : PhoneThemes.DarkOrInk(_darkTheme).Grouped,
+        card ? CardGlassAlpha : GroupedGlassAlpha);
 
     private void Attach()
     {
@@ -296,9 +321,11 @@ public sealed class PhoneBackground : ObservableObject
         if (_layer != null) Application.Current?.Resources.MergedDictionaries.Remove(_layer);
     }
 
-    /// <summary>The theme was applied again (it rebuilds the palette): put the mesh back on top.</summary>
-    public void Reassert()
+    /// <summary>The theme was applied again (it rebuilds the palette): put the mesh back on top,
+    /// its glass in <paramref name="darkTheme"/>'s colours (null keeps the last one).</summary>
+    public void Reassert(string? darkTheme = null)
     {
+        if (darkTheme != null) _darkTheme = darkTheme;
         if (IsActive) Attach();
     }
 

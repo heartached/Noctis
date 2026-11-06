@@ -6,9 +6,9 @@
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.SongRow"
              x:DataType="models:Track">
-    <!-- One song: cover, title, artist, explicit badge, then the overflow button. No heart on the
-         row (owner 10-19, the album page's rule): Favorite is the first tile of the ⋯ menu, which
-         shows whether the song is one. -->
+    <!-- One song: cover, title, artist, explicit badge, then the overflow button. No heart button
+         on the row (owner 10-19, the album page's rule): Favorite is the first tile of the ⋯ menu.
+         The artist line ends in the small RowMark (stars or a heart, as Settings chooses). -->
     <Grid Name="RowGrid" ColumnDefinitions="Auto,*,Auto" Height="60" Margin="8,0">
         <Border Classes="art" Width="44" Height="44">
             <Panel>
@@ -25,9 +25,15 @@
                     <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
                 </Border>
             </Grid>
-            <TextBlock Classes="row-sub" Text="{Binding Artist}" />
+            <!-- The artist, and at the line's end the song's stars or heart (Settings › Library ›
+                 Show in Song Rows); without one the mark takes no room. -->
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="row-sub" Text="{Binding Artist}" />
+                <views:RowMark Grid.Column="1" Name="RowMark" Margin="6,0,0,0" />
+            </Grid>
         </StackPanel>
         <Button Grid.Column="2" Name="MoreButton" Classes="icon" Width="36" Height="36"
+                IsVisible="{Binding $parent[views:SongRow].IsMenuVisible}"
                 Command="{Binding $parent[views:SongRow].MenuCommand}"
                 CommandParameter="{Binding}">
             <!-- Button.icon's 24 box, as every other row's ⋯ (album, artist, queue). -->

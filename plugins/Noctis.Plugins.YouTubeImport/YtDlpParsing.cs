@@ -455,4 +455,47 @@ public static partial class YtDlpParsing
             ? Math.Clamp(p, 0, 100)
             : null;
     }
+
+    [GeneratedRegex(@"at\s+([\d.]+)(B|KiB|MiB|GiB)/s")]
+    private static partial Regex SpeedRegex();
+
+    [GeneratedRegex(@"ETA\s+(?:(\d+):)?(\d{1,2}):(\d{2})")]
+    private static partial Regex EtaRegex();
+
+    /// <summary>
+    /// Percent, speed and ETA from a <c>[download]  45.3% of 3.21MiB at 1.2MiB/s ETA 00:04</c>
+    /// line, else null. Speed comes back as bytes/s; ETA as a span. Either is null when the
+    /// line has none (early "at Unknown" lines, the "100% … in 00:05" done line).
+    /// </summary>
+    public static DownloadDetail? ParseDownloadDetail(string? line)
+    {
+        if (ParseProgressPercent(line) is not { } percent) return null;
+
+        double? bytesPerSec = null;
+        var speed = SpeedRegex().Match(line!);
+        if (speed.Success
+            && double.TryParse(speed.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            bytesPerSec = speed.Groups[2].Value switch
+            {
+                "KiB" => value * 1024,
+                "MiB" => value * 1024 * 1024,
+                "GiB" => value * 1024 * 1024 * 1024,
+                _ => value,
+            };
+        }
+
+        TimeSpan? eta = null;
+        var etaMatch = EtaRegex().Match(line!);
+        if (etaMatch.Success
+            && int.TryParse(etaMatch.Groups[2].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes)
+            && int.TryParse(etaMatch.Groups[3].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds))
+        {
+            var hours = etaMatch.Groups[1].Success
+                && int.TryParse(etaMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var h) ? h : 0;
+            eta = new TimeSpan(hours, minutes, seconds);
+        }
+
+        return new DownloadDetail(percent, bytesPerSec, eta);
+    }
 }

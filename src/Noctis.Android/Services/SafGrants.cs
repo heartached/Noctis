@@ -15,6 +15,8 @@ internal static class SafGrants
     public static bool CanRead(Context context, string uri)
     {
         if (!uri.StartsWith("content://", StringComparison.OrdinalIgnoreCase)) return true;
+        // A song found by Find All Music is read under the audio permission, not a tree grant.
+        if (Noctis.Mobile.Services.DeviceMusicScan.IsDeviceMusicPath(uri)) return AndroidDeviceMusic.HasPermissionIn(context);
         try
         {
             var grants = context.ContentResolver?.PersistedUriPermissions;

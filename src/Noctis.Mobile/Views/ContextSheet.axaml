@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
@@ -92,7 +93,7 @@
                                             </Grid>
 
                                             <StackPanel Name="PlaylistPicker" Spacing="6" IsVisible="{Binding IsPickingPlaylist}">
-                                                <TextBlock Classes="section" FontSize="16" Text="Add to Playlist" />
+                                                <TextBlock Classes="section" FontSize="16" Text="{loc:T Mobile.AddToPlaylist}" />
                                                 <ItemsControl ItemsSource="{Binding Playlists}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate x:DataType="models:Playlist">
@@ -105,8 +106,8 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                                 <Grid ColumnDefinitions="*,Auto">
-                                                    <TextBox Name="NewPlaylistBox" Classes="glass-field" Text="{Binding NewPlaylistName}" PlaceholderText="New playlist" />
-                                                    <Button Grid.Column="1" Classes="pill-accent" Margin="8,0,0,0" Content="Create"
+                                                    <TextBox Name="NewPlaylistBox" Classes="glass-field" Text="{Binding NewPlaylistName}" PlaceholderText="{loc:T Mobile.NewPlaylist}" />
+                                                    <Button Grid.Column="1" Classes="pill-accent" Margin="8,0,0,0" Content="{loc:T Common.Create}"
                                                             Command="{Binding CreatePlaylistCommand}" />
                                                 </Grid>
                                             </StackPanel>

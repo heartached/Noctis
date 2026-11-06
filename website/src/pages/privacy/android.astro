@@ -15,7 +15,7 @@ import { links } from '../../config/site';
  * artist-logo lookup in Noctis.Core ArtistLogoService, the opt-in Last.fm / ListenBrainz
  * scrobbling in Noctis.Core ScrobbleClients, the optional account link).
  */
-const updated = '2 November 2026';
+const updated = '4 November 2026';
 ---
 
 <Base
@@ -45,10 +45,14 @@ const updated = '2 November 2026';
       <h2 class="h3">What stays on your device</h2>
       <ul>
         <li>
-          <strong>The folders you choose.</strong> Noctis reads only the folders you pick
-          with Android’s folder picker. It has no general storage, media or audio
-          permission. Uninstalling the app, or clearing its storage in Android’s settings,
-          removes that access.
+          <strong>The folders you choose, and your phone’s music if you allow it.</strong>
+          Noctis reads the folders you pick with Android’s folder picker. Only if you turn on
+          Find All Music Automatically, it asks for Android’s music and audio permission (on
+          Android 12 and older, permission to read storage) and reads the songs Android lists
+          on your device, to add them to your library on the device; nothing from them leaves
+          the device. It has no other storage or media permission. Turning the option off
+          stops it; you can also take the permission back in Android’s settings. Uninstalling
+          the app, or clearing its storage in Android’s settings, removes that access.
         </li>
         <li>
           <strong>Your library index.</strong> Titles, artists, albums, artwork and lyrics
@@ -238,10 +242,15 @@ const updated = '2 November 2026';
           <strong>Internet and network state</strong>, used only for the connections
           described under Network.
         </li>
+        <li>
+          <strong>Music and audio</strong> (on Android 12 and older, read storage), only if
+          you turn on Find All Music Automatically, to add the songs on your device to your
+          library.
+        </li>
       </ul>
       <p>
-        Noctis does not request location, contacts, camera, microphone, phone, storage or
-        media permissions.
+        Noctis does not request location, contacts, camera, microphone, phone, photo or
+        video permissions.
       </p>
 
       <h2 class="h3">Backups</h2>

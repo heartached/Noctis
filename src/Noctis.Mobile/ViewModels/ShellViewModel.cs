@@ -26,6 +26,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Lyrics = lyrics;
         Player.PropertyChanged += OnPlayerChanged;
         Player.PlayRecorded += OnPlayRecorded;
+        Player.PlayCountThresholdPercent = () => PlayCountThresholdPercent;
         Search = new SearchPageViewModel(this);
     }
 
@@ -56,6 +57,10 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Whether Battery Saver is on (Android); Slow Motion in Settings › Background stands
     /// still while it is. Null in tests unless injected.</summary>
     public IBatterySaver? BatterySaver { get; init; }
+
+    /// <summary>The screen's refresh rate (Android): Settings › Appearance › Smooth Motion asks it
+    /// for the fastest one or for 60 Hz. Null in tests unless injected.</summary>
+    public IFrameRateHost? FrameRate { get; init; }
 
     /// <summary>Scrobbling straight from the phone (Settings → Scrobbling): counts plays by the
     /// desktop's rule and sends them to Last.fm / ListenBrainz. The host sets it; Settings makes
@@ -104,6 +109,15 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The album page's description paragraph (Last.fm on Android); null in tests unless
     /// injected, and the paragraph then stays hidden.</summary>
     public IAlbumDescriptionSource? AlbumDescriptions { get; init; }
+
+    /// <summary>The connected Last.fm account's charts for Home's From Your Last.fm and Discover
+    /// on Last.fm (GitHub #177); null in tests unless injected, and both sections then stay hidden.</summary>
+    public LastFmTasteService? LastFmTaste { get; init; }
+
+    private LastFmHomeViewModel? _lastFm;
+
+    /// <summary>Home's Last.fm sections; made on first use, after the host's init values are set.</summary>
+    public LastFmHomeViewModel LastFm => _lastFm ??= new LastFmHomeViewModel(this, LastFmTaste);
 
     /// <summary>Artist photos (Deezer on Android) for the artist page, the Artists grid, pinned
     /// artists, the artist sheet and search; null in tests unless injected, and the artist's
@@ -358,6 +372,22 @@ public sealed partial class ShellViewModel : ObservableObject
     /// first use, after the host has set <see cref="Account"/> (it decides the Downloaded row).</summary>
     public LibraryRowsViewModel LibraryRows => _libraryRows ??= new LibraryRowsViewModel(this);
 
+    /// <summary>
+    /// The UI language changed (Settings › Language, or the saved one applied at start). The
+    /// {loc:T} labels re-read on their own; this re-reads what the view models build in code:
+    /// the Library rows, the rails, the player's lines and every open page (Settings among them).
+    /// </summary>
+    public void Relabel()
+    {
+        foreach (var row in LibraryRows.Rows) row.Relabel();
+        Library.Relabel();
+        Player.Relabel();
+        _lastFm?.Relabel();
+        _playlistsRoot?.Relabel();
+        _favoritesRoot?.Relabel();
+        foreach (var page in Pages) page.Relabel();
+    }
+
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
     public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
@@ -381,15 +411,16 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
+        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
     public Thickness TopSafePadding => new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
     public Thickness BottomSafePadding => new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
 
-    /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it.</summary>
-    public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen;
+    /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it;
+    /// a song list's Select mode puts its action bar in the pill's place.</summary>
+    public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen && !IsSelecting;
 
     /// <summary>The mini player as its own capsule above the full tab bar.</summary>
     public bool IsMiniBarExpandedVisible => IsMiniBarVisible && !IsTabBarCollapsed;
@@ -421,7 +452,8 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         // Under the Queue the bar stands expanded (OnIsQueueOpenChanged): a list moving in the
         // hidden tab content must not fold it there.
-        if (deltaY == 0 || IsQueueOpen) return;
+        // Select mode's action bar stands in the unfolded bar's room: it does not fold either.
+        if (deltaY == 0 || IsQueueOpen || IsSelecting) return;
         if (offsetY <= 1)
         {
             _scrollRun = 0;
@@ -445,7 +477,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void ExpandTabBar() => UnfoldTabBar();
 
-    partial void OnCurrentPageChanged(MobilePage? value) => UnfoldTabBar();
+    partial void OnCurrentPageChanged(MobilePage? value)
+    {
+        EndActiveSelection();
+        UnfoldTabBar();
+    }
 
     /// <summary>The tab bar stays up under the Queue sheet (ShellView), and the folded row has
     /// no place there: opening the Queue unfolds it.</summary>
@@ -534,7 +570,35 @@ public sealed partial class ShellViewModel : ObservableObject
     /// theme's plain pages. On by default.</summary>
     [ObservableProperty] private bool _artworkPageColors = true;
 
+    /// <summary>Settings › Library › Show in Song Rows: the small mark at the end of a song row's
+    /// artist line (Views/RowMark, inherited from ShellView). Ratings by default: the stars show
+    /// only on rated songs, so an unrated library looks as before, and the owner's rule of no
+    /// heart on the rows (10-19) holds unless Favorites is chosen. Saved to settings.json
+    /// (MobileSongRowMark) and applied live.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SongRowMarkLabel))]
+    private SongRowMark _songRowMark = SongRowMark.Ratings;
+
+    /// <summary>The Show in Song Rows row's value ("Ratings").</summary>
+    public string SongRowMarkLabel => SongRowMarkName(SongRowMark);
+
+    internal static string SongRowMarkName(SongRowMark mark) => Loc.T("Mobile.Settings.SongRows." + mark);
+
     public bool ShowsMiniProgress => ShowMiniProgressFill || ShowMiniProgressLine;
+
+    /// <summary>Settings › Appearance › Now Playing Artwork: the plain cover (the default), or the
+    /// cover on a spinning record or CD (DiscArtwork). Saved with the player bar's settings
+    /// (MobileNowPlayingArtwork) and applied live.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsDiscArtwork))]
+    private NowPlayingArtworkStyle _nowPlayingArtwork;
+
+    /// <summary>Now Playing draws a disc in place of the square cover.</summary>
+    public bool ShowsDiscArtwork => NowPlayingArtwork != NowPlayingArtworkStyle.Cover;
+
+    /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
+    /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
+    [ObservableProperty] private bool _isSuspended;
 
     private bool _playerBarLoaded;
     // Switches flipped before the saved values were read (Settings opens while a cold start still
@@ -549,6 +613,8 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnShowMiniProgressFillChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressFill));
     partial void OnShowMiniProgressLineChanged(bool value) => SavePlayerBarSettings(nameof(ShowMiniProgressLine));
     partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
+    partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
+    partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
@@ -563,6 +629,10 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressFill))) ShowMiniProgressFill = settings.MobilePlayerBarProgressFill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowMiniProgressLine))) ShowMiniProgressLine = settings.MobilePlayerBarProgressLine;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ArtworkPageColors))) ArtworkPageColors = settings.MobileArtworkPageColors;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(SongRowMark)))
+                    SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
+                        ? mark : SongRowMark.Ratings;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
             }
             finally
             {
@@ -586,6 +656,8 @@ public sealed partial class ShellViewModel : ObservableObject
             return;
         }
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
+        var mark = SongRowMark.ToString();
+        var artwork = NowPlayingArtwork.ToString();
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -596,6 +668,8 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobilePlayerBarProgressFill = fill;
                     settings.MobilePlayerBarProgressLine = line;
                     settings.MobileArtworkPageColors = pages;
+                    settings.MobileSongRowMark = mark;
+                    settings.MobileNowPlayingArtwork = artwork;
                 });
             }
             catch (Exception ex)
@@ -621,7 +695,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account is not { } account || Player.CurrentTrack is not { } track) return;
         try
         {
-            if (!account.IsRemote(track)) return;
+            if (account.DesktopIdOf(track) is null) return;
             // With the scrobbler following playback, the play waits for its verdict (Through
             // Computer then has the computer send it on, once, only if it counted). Without one
             // nothing would ever decide it: it is sent as a plain count.
@@ -636,6 +710,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSelectedTabChanged(MobileTab value)
     {
+        EndActiveSelection();
         UnfoldTabBar();
     }
 
@@ -741,6 +816,8 @@ public sealed partial class ShellViewModel : ObservableObject
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
+        // A song list's Select mode ends before its page goes (as Done would).
+        if (ActiveSelection is { } selection) { selection.End(); return true; }
         if (CurrentPage?.TryGoBackWithin() == true) return true;
         if (GoBack()) return true;
         if (_libraryRows is { IsEditing: true } rows) { rows.FinishEditing(); return true; }
@@ -791,11 +868,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
-    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { OffersFavouritesFilter = false });
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { OffersFavouritesFilter = false });
 
-    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Recently Added", Library.RecentlyAdded));
+    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Mobile.RecentlyAdded", Library.RecentlyAdded));
 
     [RelayCommand] private void OpenAlbums() => Navigate(new AlbumGridPageViewModel(this));
 
@@ -804,11 +881,11 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand] private void OpenPlaylists() => Navigate(new PlaylistListPageViewModel(this));
 
     // Library sections' › headers.
-    [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Pinned", () => Library.PinnedRail));
+    [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Mobile.Pinned", () => Library.PinnedRail));
 
-    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "On Repeat", Library.OnRepeatTracks));
+    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks));
 
-    [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Recently Played", () => Library.RecentlyPlayedRail));
+    [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
@@ -872,11 +949,11 @@ public sealed partial class ShellViewModel : ObservableObject
     public void AskRenamePlaylist(Playlist playlist)
     {
         var current = CurrentPlaylist(playlist);
-        ShowPrompt(new PromptViewModel(this, "Rename Playlist", string.Empty,
-            new[] { new PromptAction("Save", p => RenamePlaylistAsync(current, p.Entered)) })
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.RenamePlaylist"), string.Empty,
+            new[] { new PromptAction(Loc.T("Mobile.Save"), p => RenamePlaylistAsync(current, p.Entered)) })
         {
             HasField = true,
-            FieldPlaceholder = "Playlist Name",
+            FieldPlaceholder = Loc.T("Mobile.PlaylistName"),
             FieldText = current.Name,
         });
     }
@@ -894,9 +971,9 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         var current = CurrentPlaylist(playlist);
         var synced = Account?.IsSyncedPlaylist(current.Id) == true;
-        ShowPrompt(new PromptViewModel(this, $"Delete “{current.Name}”?",
-            synced ? "It's deleted from your computer too. This can't be undone." : "This can't be undone. The songs stay in your library.",
-            new[] { new PromptAction("Delete Playlist", _ => DeletePlaylistAsync(current), isDestructive: true) }));
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.DeletePlaylistQuestion", current.Name),
+            synced ? Loc.T("Mobile.DeletePlaylistSynced") : Loc.T("Mobile.DeletePlaylistLocal"),
+            new[] { new PromptAction(Loc.T("Mobile.DeletePlaylist"), _ => DeletePlaylistAsync(current), isDestructive: true) }));
     }
 
     /// <summary>Deletes the playlist (and its page, if it is the one on top); one of the
@@ -940,12 +1017,16 @@ public sealed partial class ShellViewModel : ObservableObject
             case Artist artist:
                 OpenArtist(artist.Name);
                 break;
+            case LastFmMix mix:
+                // From Your Last.fm: the mix's songs as a list, in its order, as the library holds them now.
+                Navigate(new SongListPageViewModel(this, mix.TitleKey, () => mix.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>()));
+                break;
             case Track track:
                 // A song plays the rail it sits on: On Repeat, else the pinned songs.
                 var onRepeat = Library.OnRepeatRail.Select(CurrentPayload).OfType<Track>().ToList();
                 var pinned = Library.PinnedRail.Select(CurrentPayload).OfType<Track>().ToList();
-                if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, "On Repeat");
-                else if (pinned.IndexOf(track) is var p and >= 0) Player.PlayTracks(pinned, p, "Pinned");
+                if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, Loc.T("Mobile.OnRepeat"));
+                else if (pinned.IndexOf(track) is var p and >= 0) Player.PlayTracks(pinned, p, Loc.T("Mobile.Pinned"));
                 else Player.PlayTracks(new[] { track }, 0, null);
                 break;
         }
@@ -959,14 +1040,18 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>A song's menu on a list; <paramref name="inPlaylist"/> is the playlist whose page
     /// it is on, which adds Remove from Playlist.</summary>
-    public void OpenTrackMenu(Track track, Playlist? inPlaylist) =>
-        Sheet = ContextSheetViewModel.ForTrack(this, track, inPlaylist);
+    public void OpenTrackMenu(Track track, Playlist? inPlaylist, TrackSelection? selection = null) =>
+        Sheet = ContextSheetViewModel.ForTrack(this, track, inPlaylist, selection);
 
     [RelayCommand]
     private void OpenAlbumSheet(Album? album)
     {
         if (album != null) Sheet = ContextSheetViewModel.ForAlbum(this, CurrentAlbum(album));
     }
+
+    /// <summary>The album page's ⋯: the album's menu, with Select for its track list.</summary>
+    public void OpenAlbumMenu(Album album, TrackSelection selection) =>
+        Sheet = ContextSheetViewModel.ForAlbum(this, CurrentAlbum(album), selection);
 
     [RelayCommand]
     private void OpenPlaylistSheet(Playlist? playlist)
@@ -1053,6 +1138,28 @@ public sealed partial class ShellViewModel : ObservableObject
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
         Library.Service.NotifyFavoritesChanged(current);
+    }
+
+    /// <summary>
+    /// Rate <paramref name="tracks"/> 0 (none) to 5 stars, the favourite's path: the library's own
+    /// songs too, one journal write (which queues a desktop song's rating for the computer on the
+    /// next sync, NoctisAccountService.RecordTrackStates). Track.Rating notifies, so the rows'
+    /// stars follow at once.
+    /// </summary>
+    public async Task SetRatingAsync(IReadOnlyList<Track> tracks, int rating)
+    {
+        if (tracks.Count == 0) return;
+        rating = Math.Clamp(rating, 0, 5);
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).ToList();
+        foreach (var t in tracks.Concat(current)) t.Rating = rating;
+        try
+        {
+            await Library.Service.SaveTrackUserStateAsync(current);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Rating save failed: {ex.Message}");
+        }
     }
 
     [RelayCommand]
@@ -1179,6 +1286,8 @@ public sealed partial class ShellViewModel : ObservableObject
         // library; a failure (the computer is off, another network) is logged and never
         // reaches the UI — Settings → Account shows the next manual sync's error instead.
         if (Account is { IsSignedIn: true } account) StartupSync = SyncOnStartAsync(account);
+        // Home's Last.fm sections (cached for 12 h: normally no request).
+        _ = LastFm.RefreshAsync(force: false);
     }
 
     private static async Task SyncOnStartAsync(INoctisAccountService account)

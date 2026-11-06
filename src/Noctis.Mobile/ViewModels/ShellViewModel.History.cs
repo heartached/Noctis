@@ -25,7 +25,14 @@ public sealed partial class ShellViewModel
     /// <summary>Days of plays kept; 0 keeps them all.</summary>
     public int KeepHistoryDays { get; private set; }
 
-    /// <summary>Raised after any of the three changed, on the thread that changed it.</summary>
+    /// <summary>How much of a song (percent) must be heard before it counts as a play (play count,
+    /// Last Played, Listening History): the computer's "Count a play after", the same
+    /// <see cref="AppSettings.PlayCountThresholdPercent"/> in the phone's own settings file. 0, the
+    /// computer's default, counts a song as soon as it plays. Scrobbling keeps its own Last.fm rule
+    /// (half the song or four minutes: PhoneScrobbler) and is not affected.</summary>
+    public int PlayCountThresholdPercent { get; private set; }
+
+    /// <summary>Raised after any of the four changed, on the thread that changed it.</summary>
     public event EventHandler? HistoryPrefsChanged;
 
     private bool _historyPrefsLoaded;
@@ -42,6 +49,14 @@ public sealed partial class ShellViewModel
         if (ShareHistoryWithComputer == value) return;
         ShareHistoryWithComputer = value;
         SaveHistoryPref(nameof(ShareHistoryWithComputer), s => s.MobileShareHistory = value);
+    }
+
+    public void SetPlayCountThresholdPercent(int percent)
+    {
+        percent = AppSettings.SnapPlayCountThreshold(percent);
+        if (PlayCountThresholdPercent == percent) return;
+        PlayCountThresholdPercent = percent;
+        SaveHistoryPref(nameof(PlayCountThresholdPercent), s => s.PlayCountThresholdPercent = percent);
     }
 
     public void SetPickUpOnComputer(bool value)
@@ -101,6 +116,8 @@ public sealed partial class ShellViewModel
             if (!_historySetBeforeLoad.Contains(nameof(ShareHistoryWithComputer))) ShareHistoryWithComputer = settings.MobileShareHistory;
             if (!_historySetBeforeLoad.Contains(nameof(PickUpOnComputer))) PickUpOnComputer = settings.MobilePickUpOnComputer;
             if (!_historySetBeforeLoad.Contains(nameof(KeepHistoryDays))) KeepHistoryDays = settings.MobileKeepHistoryDays;
+            if (!_historySetBeforeLoad.Contains(nameof(PlayCountThresholdPercent)))
+                PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(settings.PlayCountThresholdPercent);
         }
         catch (Exception ex)
         {
@@ -113,6 +130,7 @@ public sealed partial class ShellViewModel
             var share = ShareHistoryWithComputer;
             var pick = PickUpOnComputer;
             var days = KeepHistoryDays;
+            var threshold = PlayCountThresholdPercent;
             var chosen = _historySetBeforeLoad.ToList();
             _historySetBeforeLoad.Clear();
             foreach (var name in chosen)
@@ -120,6 +138,7 @@ public sealed partial class ShellViewModel
                 {
                     nameof(ShareHistoryWithComputer) => s => s.MobileShareHistory = share,
                     nameof(PickUpOnComputer) => s => s.MobilePickUpOnComputer = pick,
+                    nameof(PlayCountThresholdPercent) => s => s.PlayCountThresholdPercent = threshold,
                     _ => s => s.MobileKeepHistoryDays = days,
                 });
         }
@@ -142,14 +161,14 @@ public sealed partial class ShellViewModel
     /// the song playing is the phone's own (the computer has no such song to continue).</summary>
     private PlayQueueShare? CaptureQueueShare()
     {
-        if (Account is not { } account || Player.CurrentTrack is not { } current || !account.IsRemote(current)) return null;
-        var ids = new List<Guid> { current.Id };
+        if (Account is not { } account || Player.CurrentTrack is not { } current || account.DesktopIdOf(current) is not { } currentId) return null;
+        var ids = new List<Guid> { currentId };
         foreach (var t in Player.UpNext)
         {
             if (ids.Count >= PhoneHandoff.MaxTracks) break;
-            if (account.IsRemote(t)) ids.Add(t.Id);
+            if (account.DesktopIdOf(t) is { } id) ids.Add(id);
         }
-        return new PlayQueueShare(ids, current.Id, (long)Math.Max(0, Player.Position.TotalMilliseconds));
+        return new PlayQueueShare(ids, currentId, (long)Math.Max(0, Player.Position.TotalMilliseconds));
     }
 
     private void OnPlayerChangedForPickUp(PropertyChangedEventArgs e)

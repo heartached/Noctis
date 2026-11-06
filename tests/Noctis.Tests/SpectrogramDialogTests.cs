@@ -408,6 +408,13 @@ public class SpectrogramDialogTests : IDisposable
         => Assert.Equal(expected, SpectrogramViewModel.ShortFormat(codec, path));
 
     [Fact]
+    public void Chips_NameDsdByItsRate()
+    {
+        var chips = SpectrogramViewModel.BuildChips(new Track { Codec = "DSD", FilePath = "x.dsf", SampleRate = 2822400, BitsPerSample = 1 });
+        Assert.Equal(new[] { "DSD", "DSD64 2.8 MHz" }, chips);
+    }
+
+    [Fact]
     public void Chips_LeaveOutUnknownFacts()
     {
         var chips = SpectrogramViewModel.BuildChips(new Track { Codec = "FLAC", FilePath = "x.flac", Duration = TimeSpan.FromMinutes(62) });

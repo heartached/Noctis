@@ -306,7 +306,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private bool HasHomeContent =>
         ContinueTrack != null || TopArtists.Count > 0 || TopSongRows.Count > 0 || LastPlayedRows.Count > 0
         || RecentlyPlayedAlbums.Count > 0 || TimeRotationTracks.Count > 0 || IsHeavyRotationVisible
-        || RediscoveredTracks.Count > 0;
+        || RediscoveredTracks.Count > 0 || HasLastFmMixes;
 
     private void UpdateEmptyLibraryState()
     {
@@ -339,7 +339,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     public HomeViewModel(PlayerViewModel player, ILibraryService library, SidebarViewModel sidebar,
         ArtistImageService? artistImages = null, IPlayHistoryService? playHistory = null,
-        SettingsViewModel? settings = null)
+        SettingsViewModel? settings = null, LastFmTasteService? lastFmTaste = null)
     {
         _player = player;
         _library = library;
@@ -349,6 +349,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         _settings = settings;
 
         AdoptPersistedSectionState();
+        InitLastFm(lastFmTaste);
 
         HeavyRotationTracks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsHeavyRotationVisible));
         NewInLibraryAlbums.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsNewInLibraryVisible));
@@ -508,6 +509,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             case "Rediscovered": IsRediscoveredExpanded = !IsRediscoveredExpanded; break;
             case "LastPlayed": IsLastPlayedExpanded = !IsLastPlayedExpanded; break;
             case "NewInLibrary": IsNewInLibraryExpanded = !IsNewInLibraryExpanded; break;
+            case "LastFm": IsLastFmExpanded = !IsLastFmExpanded; break;
+            case "LastFmDiscover": IsLastFmDiscoverExpanded = !IsLastFmDiscoverExpanded; break;
         }
     }
 
@@ -599,9 +602,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             // Time-aware rows depend on the clock and the play log, both of which
             // move without dirtying the library — rebuild them on every visit.
             _ = RefreshTimeAwareRowsAsync();
+            // Last.fm mixes: the cached charts unless they're older than the TTL (#177).
+            _ = RefreshLastFmAsync(force: false);
             return;
         }
         _isDirty = false;
+        // The library moved: the Last.fm mixes are matched against it again.
+        _lastFmNeedsRebuild = true;
 
         // #97: bracketed like PlayerViewModel.OnLibraryUpdated. A library publish marks
         // Home dirty, so every publish-driven refresh takes this path (500 ms after the
@@ -688,6 +695,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 _ = FetchTopArtistImagesAsync(TopArtists.ToList());
 
             await RefreshTimeAwareRowsAsync();
+            _ = RefreshLastFmAsync(force: false);
             _rowsBuilt = true;
             UpdateEmptyLibraryState();
             if (log) DebugLog.Write("Home", $"rebuild #{rebuild}: done");
@@ -836,10 +844,10 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var hour = DateTime.Now.Hour;
         return hour switch
         {
-            >= 5 and < 12 => "Good morning",
-            >= 12 and < 17 => "Good afternoon",
-            >= 17 and < 21 => "Good evening",
-            _ => "Good night"
+            >= 5 and < 12 => Noctis.Localization.Loc.T("Home.GoodMorning"),
+            >= 12 and < 17 => Noctis.Localization.Loc.T("Home.GoodAfternoon"),
+            >= 17 and < 21 => Noctis.Localization.Loc.T("Home.GoodEvening"),
+            _ => Noctis.Localization.Loc.T("Home.GoodNight")
         };
     }
 

@@ -139,6 +139,17 @@ public partial class Track : ObservableObject
     /// </summary>
     public Guid AlbumId { get; set; }
 
+    /// <summary>
+    /// GitHub #178: whether <see cref="AlbumArtist"/> came from the file's own album-artist
+    /// tag (true) or was filled in by Noctis (false: the first performer, "Various Artists"
+    /// for a compilation, or the folder name). Only the scan and the editor know; null for
+    /// tracks read before this existed and for server streams. Untagged tracks of one album
+    /// in one folder are re-keyed to a shared album artist by <see cref="Services.AlbumGrouping"/>;
+    /// a real tag is never overridden.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? AlbumArtistFromTag { get; set; }
+
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
 
@@ -780,7 +791,35 @@ public partial class Track : ObservableObject
 
     /// <summary>Formatted sample rate string.</summary>
     [JsonIgnore]
-    public string SampleRateFormatted => SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A";
+    public string SampleRateFormatted => DsdRateLabel ?? (SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A");
+
+    /// <summary>A DSD file (.dsf / .dff): a 1-bit stream at megahertz rates, not PCM.</summary>
+    [JsonIgnore]
+    public bool IsDsd => IsDsdFile(FilePath, Codec);
+
+    /// <summary>"DSD64 2.8 MHz" for a DSD track (see <see cref="FormatDsdRate"/>), else null.</summary>
+    [JsonIgnore]
+    public string? DsdRateLabel => IsDsd ? FormatDsdRate(SampleRate) : null;
+
+    internal static bool IsDsdFile(string? filePath, string? codec)
+    {
+        var ext = Path.GetExtension(filePath);
+        if (string.Equals(ext, ".dsf", StringComparison.OrdinalIgnoreCase) || string.Equals(ext, ".dff", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var c = codec ?? string.Empty;
+        return c.StartsWith("DSD", StringComparison.OrdinalIgnoreCase) || c.StartsWith("DSF", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// "DSD64 2.8 MHz" / "DSD128 5.6 MHz": how DSD rates are named (the multiple of 44.1 kHz,
+    /// or of 48 kHz for that family). Null below 1 MHz (no DSD rate known).
+    /// </summary>
+    internal static string? FormatDsdRate(int sampleRate)
+    {
+        if (sampleRate < 1_000_000) return null;
+        var multiple = sampleRate % 44100 == 0 ? sampleRate / 44100 : sampleRate / 48000;
+        return $"DSD{multiple} {sampleRate / 1_000_000.0:0.0} MHz";
+    }
 
     /// <summary>Date added in the user's short date format (Songs list column, GitHub #151).</summary>
     [JsonIgnore]
@@ -807,6 +846,9 @@ public partial class Track : ObservableObject
             if (codecLower.Contains("flac") || codecLower.Contains("alac") ||
                 codecLower.Contains("lossless") || codecLower.Contains("pcm") ||
                 codecLower.Contains("wavpack") || codecLower.Contains("monkey"))
+                return true;
+            // DSD is the 1-bit master format SACDs carry: lossless by definition.
+            if (IsDsd)
                 return true;
 
             // Fall back to file extension for explicitly lossless formats
@@ -883,6 +925,7 @@ public partial class Track : ObservableObject
             if (c.Contains("opus")) return "OPUS";
             if (c.Contains("vorbis")) return "OGG";
             if (c.Contains("wma") || c.Contains("windows media")) return "WMA";
+            if (IsDsd) return "DSD";
 
             // Fallback to file extension when the codec string matched nothing
             var ext = Path.GetExtension(FilePath).ToLowerInvariant();
@@ -926,6 +969,8 @@ public partial class Track : ObservableObject
             var parts = new List<string>();
             if (!IsLossless && Bitrate > 0)
                 parts.Add($"{Bitrate} kbps");
+            if (DsdRateLabel is { } dsd)
+                return dsd; // "DSD64 2.8 MHz" says bit depth, rate and codec at once
             if (BitsPerSample > 0 && SampleRate > 0)
                 parts.Add($"{BitsPerSample}-bit/{SampleRate / 1000.0:0.###} kHz");
             else if (BitsPerSample > 0)
@@ -946,6 +991,8 @@ public partial class Track : ObservableObject
         var sb = new System.Text.StringBuilder();
         if (!IsLossless && Bitrate > 0)
             sb.Append($" {Bitrate} kbps");
+        if (DsdRateLabel is { } dsd)
+            return " " + dsd;
         if (BitsPerSample > 0 && SampleRate > 0)
             sb.Append($" {BitsPerSample}-bit/{SampleRate / 1000.0:0.#}kHz");
         else if (BitsPerSample > 0)

@@ -6,6 +6,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -42,7 +43,13 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     private readonly IPersistenceService _persistence;
     private readonly Func<Func<LoadedLyrics>, Task<LoadedLyrics>> _runBackground;
     private readonly LyricsTimeline _timeline;
-    private readonly LyricsPlaybackClock _clock = new();
+    // The phone's position source may land a poll a few ms behind the last: hold, don't step back.
+    private readonly LyricsPlaybackClock _clock = new() { BackwardToleranceMs = BackwardToleranceMs };
+    internal const double BackwardToleranceMs = 250;
+
+    /// <summary>The player's last position poll and the wall time it was taken (see OnFrame).</summary>
+    private sealed record PolledPosition(double Ms, double AtMs);
+    private PolledPosition? _polled;
     private int _generation;
     private bool _settingsLoaded;
     // Settings changed by the user before InitializeAsync read the saved ones (Settings opens
@@ -63,7 +70,13 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         _timeline = new LyricsTimeline(Lines, TimeSpan.FromMilliseconds(WordLookaheadMs),
             TimeSpan.FromMilliseconds(WordLookaheadMs + LineMotion.HalfTravelMs));
         _nowPlaying.PropertyChanged += OnNowPlayingChanged;
+        _player.PositionChanged += OnPlayerPolled;
     }
+
+    /// <summary>Stamps each poll where it is taken. Now Playing's Position gets the same value
+    /// through a dispatcher post, which on a busy phone lands one or more long frames later.</summary>
+    private void OnPlayerPolled(object? sender, TimeSpan position) =>
+        Volatile.Write(ref _polled, new PolledPosition(position.TotalMilliseconds, NowMs()));
 
     /// <summary>
     /// Optional: the track the loader reads in place of the playing one (a desktop song's stand-in
@@ -86,6 +99,12 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _hasLyrics;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _isLoading;
     [ObservableProperty] private int _activeLineIndex = -1;
+
+    /// <summary>The line the page scrolls to: the newest started line, except while an earlier
+    /// line is still being sung over it (a duet, an overlapping TTML voice) - then the earliest
+    /// of those, so the list never scrolls past a line before its end
+    /// (<see cref="LyricsTimeline.ScrollIndex"/>, as the desktop's ScrollLineIndex).</summary>
+    [ObservableProperty] private int _scrollLineIndex = -1;
     [ObservableProperty] private bool _hasTranslations;
     [ObservableProperty] private bool _hasRomanizations;
     [ObservableProperty] private bool _showTranslation = true;
@@ -144,22 +163,22 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     public bool WantsFrames => IsSynced && _nowPlaying.IsPlaying;
 
     public string StatusText =>
-        IsSearchingOnline ? "Searching for Lyrics…"
-        : IsLoading ? "Loading lyrics…"
-        : IsInstrumental ? "Instrumental"
-        : !HasLyrics ? "No Lyrics"
-        : IsRawFallback ? "No synced lyrics"
+        IsSearchingOnline ? Loc.T("Mobile.Lyrics.Searching")
+        : IsLoading ? Loc.T("Mobile.Lyrics.Loading")
+        : IsInstrumental ? Loc.T("Mobile.Lyrics.Instrumental")
+        : !HasLyrics ? Loc.T("Mobile.Lyrics.None")
+        : IsRawFallback ? Loc.T("Mobile.Lyrics.NotSynced")
         : string.Empty;
 
     /// <summary>The line under the empty state's title.</summary>
     public string StatusDetail =>
         IsSearchingOnline ? string.Empty
-        : IsInstrumental ? "This song has no words to sing along to."
+        : IsInstrumental ? Loc.T("Mobile.Lyrics.InstrumentalDetail")
         // LRCLIB busy (503) or no network read as "none were found online" (emulator 10-20).
-        : OnlineLookupFailed ? "This song has no lyrics file or lyrics in its tags, and the online lyrics service couldn't be reached. It's asked again the next time this song plays."
+        : OnlineLookupFailed ? Loc.T("Mobile.Lyrics.OnlineFailedDetail")
         : FindLyricsOnline && Online != null
-            ? "This song has no lyrics file or lyrics in its tags, and none were found online."
-            : "This song has no lyrics file or lyrics in its tags.";
+            ? Loc.T("Mobile.Lyrics.NoneOnlineDetail")
+            : Loc.T("Mobile.Lyrics.NoneDetail");
 
     /// <summary>The empty state shows once the local load is done: no lyrics, searching
     /// online, or instrumental. (The local load takes milliseconds; flashing a "Loading" title
@@ -167,7 +186,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     public bool ShowsEmptyState => !HasLyrics && (!IsLoading || IsSearchingOnline);
 
     /// <summary>Credit under the last line for lyrics fetched online.</summary>
-    public string SourceCredit => Source == LyricsSource.Online ? "Lyrics from LRCLIB" : string.Empty;
+    public string SourceCredit => Source == LyricsSource.Online ? Loc.T("Mobile.Lyrics.FromLrclib") : string.Empty;
 
     public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
@@ -330,6 +349,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         _timeline.Reset();
         _clock.Reset();
         ActiveLineIndex = -1;
+        ScrollLineIndex = -1;
         Lines.ReplaceAll(Array.Empty<LyricLine>());
         IsSynced = false;
         HasLyrics = false;
@@ -438,25 +458,39 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// Advances the timeline to the audible position at wall time <paramref name="nowMs"/>.
     /// Called per rendered frame by the page while <see cref="WantsFrames"/>, and on paused seeks.
     /// </summary>
+    /// <summary>The audible position the last frame drew (tests read it).</summary>
+    internal double LastAudibleMs { get; private set; }
+
     public void OnFrame(double nowMs)
     {
         if (!IsSynced || Lines.Count == 0) return;
         var raw = _nowPlaying.Position.TotalMilliseconds;
         double audible;
-        if (_nowPlaying.IsPlaying)
+        if (_nowPlaying.IsPlaying && !_nowPlaying.IsSeeking)
         {
-            audible = _clock.Sample(raw, nowMs) - _player.OutputLatency.TotalMilliseconds;
+            // The clock is told when the reading was taken, not when this frame first saw it:
+            // a poll delivered behind a 200 ms frame otherwise read as the song being 200 ms
+            // behind, the sweep slowed, then sped up at the next poll ("desyncs and syncs").
+            var rawAt = Volatile.Read(ref _polled) is { } polled && polled.Ms == raw ? polled.AtMs : nowMs;
+            audible = _clock.Sample(raw, rawAt, nowMs) - _player.OutputLatency.TotalMilliseconds;
         }
         else
         {
+            // Paused, or a scrub steering the position: follow it verbatim, re-anchor after
+            // (as the desktop's GetPlaybackPosition).
             _clock.Reset();
             audible = raw;
         }
 
+        LastAudibleMs = audible;
         var step = _timeline.Update(TimeSpan.FromMilliseconds(Math.Max(0, audible)));
         // Also re-ramp when an overlapping (duet) line joins or leaves the lit set
         // while the active line stays.
         if (!step.ActiveSetChanged) return;
+        // The scroll target is resolved before the active index is published, so the page's
+        // handler of either change reads a settled pair.
+        var scroll = Math.Min(_timeline.ScrollIndex(TimeSpan.FromMilliseconds(Math.Max(0, audible)), TimeSpan.Zero), step.ActiveIndex);
+        ScrollLineIndex = scroll;
         ActiveLineIndex = step.ActiveIndex;
         ApplyOpacities(step.ActiveIndex);
     }
@@ -509,5 +543,6 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     {
         _disposed = true;
         _nowPlaying.PropertyChanged -= OnNowPlayingChanged;
+        _player.PositionChanged -= OnPlayerPolled;
     }
 }

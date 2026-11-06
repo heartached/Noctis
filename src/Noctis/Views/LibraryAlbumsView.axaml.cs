@@ -32,6 +32,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     public LibraryAlbumsView()
     {
         InitializeComponent();
+        AlbumCarousel.AlbumContextRequested += OnCarouselAlbumContextRequested;
 
         DataContextChanged += OnDataContextChanged;
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
@@ -174,10 +175,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             e.Handled = true;
     }
 
-    /// <param name="anchor">Screen point the menu grows out of (the click), or null.</param>
-    private bool OpenAlbumMenu(Button tile, PixelPoint? anchor)
+    /// <summary>GitHub #178: the carousel's cards get the grid tile's album menu.</summary>
+    private void OnCarouselAlbumContextRequested(object? sender, Album album)
     {
-        if (tile.DataContext is not Album album) return false;
+        if (sender is Control owner)
+            OpenAlbumMenu(album, owner, null);
+    }
+
+    /// <param name="anchor">Screen point the menu grows out of (the click), or null.</param>
+    private bool OpenAlbumMenu(Button tile, PixelPoint? anchor) =>
+        tile.DataContext is Album album && OpenAlbumMenu(album, tile, anchor);
+
+    private bool OpenAlbumMenu(Album album, Control tile, PixelPoint? anchor)
+    {
         if (DataContext is not LibraryAlbumsViewModel vm) return false;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
@@ -210,6 +220,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             searchLyricsCommand: vm.SearchLyricsAlbumCommand,
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
+        _albumMenuBuilder.BindGroupAlbums(album, vm.GroupIntoOneAlbumCommand); // GitHub #178
 
         OpenMenu(_albumMenuBuilder.Menu, tile);
         return true;
@@ -218,18 +229,34 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null)
+        {
             _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;
+        }
 
         _vm = DataContext as LibraryAlbumsViewModel;
         if (_vm != null)
         {
             _vm.FilteredAlbumRows.CollectionChanged += OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed += OnCtrlSelectionConsumed;
             _scrollResetFilterKey = _vm.FilterKey;
         }
     }
 
+    /// <summary>A menu command used the selection: drop it here too (GitHub #178).</summary>
+    private void OnCtrlSelectionConsumed(object? sender, EventArgs e) =>
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+
     private void OnFilteredRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        // A rebuild replaces the Album objects: selected ones no longer shown can't be seen
+        // or unselected, so they must not ride along into the next command (GitHub #178).
+        if (_vm != null && _selectedAlbums.Count > 0)
+        {
+            var shown = _vm.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToHashSet();
+            _selectedAlbums.RemoveWhere(a => !shown.Contains(a));
+        }
+
         // Scroll to top when an active filter (search text, chips or artist) changes, not on
         // every rebuild: a library reload or column-count change re-fills the same results
         // and keeps the user's place.
@@ -290,7 +317,10 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
         if (_vm != null)
+        {
             _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;
+        }
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());

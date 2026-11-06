@@ -1,6 +1,6 @@
 # Noctis for Android — Privacy policy
 
-Last updated 2 November 2026. Published at https://noctisapp.cc/privacy/android
+Last updated 4 November 2026. Published at https://noctisapp.cc/privacy/android
 (source: `website/src/pages/privacy/android.astro` on `main`; keep the two identical).
 
 Noctis for Android does not collect, sell or share any personal data or usage data. The
@@ -16,9 +16,14 @@ desktop app.
 
 ## What stays on your device
 
-- **The folders you choose.** Noctis reads only the folders you pick with Android's folder
-  picker. It has no general storage, media or audio permission. Uninstalling the app, or
-  clearing its storage in Android's settings, removes that access.
+- **The folders you choose, and your phone's music if you allow it.** Noctis reads the
+  folders you pick with Android's folder picker. Only if you turn on Find All Music
+  Automatically, it asks for Android's music and audio permission (on Android 12 and older,
+  permission to read storage) and reads the songs Android lists on your device, to add them to
+  your library on the device; nothing from them leaves the device. It has no other storage or
+  media permission. Turning the option off stops it; you can also take the permission back in
+  Android's settings. Uninstalling the app, or clearing its storage in Android's settings,
+  removes that access.
 - **Your library index.** Titles, artists, albums, artwork and lyrics read from the tags
   and lyric files in those folders are stored in the app's private storage so the library
   opens quickly.
@@ -137,8 +142,10 @@ from your own computer), and signing out stops it.
 - **Foreground service (media playback) and wake lock**, so music keeps playing with the
   screen off.
 - **Internet and network state**, used only for the connections described under Network.
+- **Music and audio** (on Android 12 and older, read storage), only if you turn on Find All
+  Music Automatically, to add the songs on your device to your library.
 
-Noctis does not request location, contacts, camera, microphone, phone, storage or media
+Noctis does not request location, contacts, camera, microphone, phone, photo or video
 permissions.
 
 ## Backups

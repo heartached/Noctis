@@ -430,7 +430,8 @@ public class QueueGitHub82_84_85Tests
         Assert.True(nowPlaying > 0 && list > 0, "both the now-playing row and the queue list must exist");
         Assert.True(nowPlaying < list, "the now-playing row must not be inside the queue ListBox");
         var section = xaml.Substring(nowPlaying, list - nowPlaying);
-        Assert.Contains("Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}", section);
+        // GitHub #175: hidden once Clear Queue takes the playing song out of the queue.
+        Assert.Contains("IsVisible=\"{Binding Player.ShowQueueCurrentTrack}\"", section);
         Assert.Contains("DataContext=\"{Binding Player.CurrentTrack}\"", section);
         Assert.Contains("{loc:T Queue.NowPlaying}", section);
 

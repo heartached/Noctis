@@ -35,27 +35,6 @@
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
         </Style>
 
-        <!-- "Find in Artists": a rounded grey field with the magnifier; the TextBox inside
-             drops Fluent's own box (border, focus underline, hover fill). -->
-        <Style Selector="Border.find-field">
-            <Setter Property="Background" Value="#1F808080" />
-            <Setter Property="CornerRadius" Value="11" />
-            <Setter Property="Height" Value="38" />
-        </Style>
-        <Style Selector="TextBox.find">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="6,0,0,0" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        <Style Selector="TextBox.find /template/ Border#PART_BorderElement, TextBox.find:pointerover /template/ Border#PART_BorderElement, TextBox.find:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
         <!-- One artist: a circle (the cover, else initials on a soft tint) and the name. -->
         <Style Selector="Border.avatar">
             <Setter Property="Width" Value="104" />
@@ -105,20 +84,13 @@
         </Button>
         <TextBlock Grid.Row="1" Name="ArtistsTitle" Classes="title" Text="{Binding Title}" Margin="20,0,20,8" />
 
-        <Border Grid.Row="2" Name="FindField" Classes="find-field" Margin="16,0,16,10" IsVisible="{Binding HasArtists}">
-            <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0,4,0">
-                <PathIcon Data="{DynamicResource PhSearch}" Width="20" Height="20" Margin="-2,0" Opacity="0.55" />
-                <TextBox Grid.Column="1" Name="FindBox" Classes="find" Text="{Binding Query}" PlaceholderText="Find in Artists" />
-                <Button Grid.Column="2" Name="ClearFindButton" Classes="icon" Width="32" Height="32" Command="{Binding ClearQueryCommand}"
-                        IsVisible="{Binding IsFiltering}">
-                    <PathIcon Data="{DynamicResource PhClose}" Width="20" Height="20" Opacity="0.55" />
-                </Button>
-            </Grid>
-        </Border>
+        <!-- "Find in Artists": the list pages' shared field (FindField), as on Albums and Songs. -->
+        <views:FindField Grid.Row="2" Name="FindField" Text="{Binding Query}" Placeholder="{loc:T Mobile.Artists.Find}"
+                         IsVisible="{Binding HasArtists}" />
 
-        <TextBlock Grid.Row="3" Name="NoArtistsText" Classes="subtle" Text="No artists" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="3" Name="NoArtistsText" Classes="subtle" Text="{loc:T Mobile.Artists.None}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding !HasArtists}" />
-        <TextBlock Grid.Row="3" Name="NoResultsText" Classes="subtle" Text="No artists match" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="3" Name="NoResultsText" Classes="subtle" Text="{loc:T Mobile.Artists.NoMatch}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
         <!-- Rows of three, virtualised; each row is ArtistListPageViewModel.RowHeight tall so a

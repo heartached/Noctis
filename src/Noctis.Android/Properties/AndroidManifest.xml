@@ -15,12 +15,13 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
-	<!-- No READ_MEDIA_AUDIO / READ_EXTERNAL_STORAGE: the library is read exclusively through
-	     the Storage Access Framework (AndroidFileSystemSource over DocumentsContract), and a
-	     persisted tree grant carries its own per-tree read access at every API level. The
-	     permission was therefore unused, and a *dangerous* permission that is never used still
-	     shows up in the Play listing as audio access — which is what a "no data collected"
-	     Data safety declaration gets questioned over. -->
+	<!-- Settings > Music Folders > Find All Music Automatically (opt-in, asked at runtime when it
+	     is turned on; privacy policy, "The folders you choose"): the phone's songs through
+	     MediaStore.Audio (AndroidFileSystemSource, DeviceMusicScan.Root). READ_MEDIA_AUDIO from
+	     Android 13, READ_EXTERNAL_STORAGE before (capped at 32, where Android ignores it). The
+	     folders picked through the Storage Access Framework still need neither. -->
+	<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 	<!-- The media notification itself. Declaring it is necessary but not sufficient: from
 	     API 33 this is a runtime permission, so MainActivity asks for it as well. Refusal
 	     only costs the notification and the lock-screen card — the service still runs in the

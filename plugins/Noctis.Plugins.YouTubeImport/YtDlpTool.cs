@@ -77,7 +77,7 @@ public sealed class YtDlpTool
         ToolsDirectory = toolsDirectory;
         Runner = RunProcessAsync;
         LatestVersionFetcher = FetchLatestVersionAsync;
-        Updater = ct => InstallCoreAsync(null, ct);
+        Updater = ct => InstallCoreAsync(null, null, ct);
     }
 
     /// <summary>Where the app-installed copy lives.</summary>
@@ -129,14 +129,14 @@ public sealed class YtDlpTool
     }
 
     /// <summary>Downloads the latest release asset into the tools folder (replacing an older copy).</summary>
-    public async Task<string> InstallAsync(IProgress<double>? progress, CancellationToken ct)
+    public async Task<string> InstallAsync(IProgress<double>? progress, CancellationToken ct, IProgress<DownloadReport>? report = null)
     {
         await _updateGate.WaitAsync(ct).ConfigureAwait(false);
-        try { return await InstallCoreAsync(progress, ct).ConfigureAwait(false); }
+        try { return await InstallCoreAsync(progress, report, ct).ConfigureAwait(false); }
         finally { _updateGate.Release(); }
     }
 
-    private async Task<string> InstallCoreAsync(IProgress<double>? progress, CancellationToken ct)
+    private async Task<string> InstallCoreAsync(IProgress<double>? progress, IProgress<DownloadReport>? report, CancellationToken ct)
     {
         Directory.CreateDirectory(ToolsDirectory);
         var asset = YtDlpParsing.ReleaseAssetName();
@@ -149,7 +149,7 @@ public sealed class YtDlpTool
         var temp = Path.Combine(ToolsDirectory, $"{asset}.{Guid.NewGuid():N}.part");
         try
         {
-            await DownloadFileAsync(YtDlpParsing.ReleaseDownloadUrl(), temp, progress, ct).ConfigureAwait(false);
+            await DownloadFileAsync(YtDlpParsing.ReleaseDownloadUrl(), temp, progress, report, ct).ConfigureAwait(false);
             var actual = await HashFileAsync(temp, ct).ConfigureAwait(false);
             if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
             {
@@ -179,7 +179,7 @@ public sealed class YtDlpTool
     /// Downloads <paramref name="url"/> to <paramref name="path"/>, retrying a dropped or stalled
     /// connection from the start (<see cref="InstallAttempts"/> tries).
     /// </summary>
-    private async Task DownloadFileAsync(string url, string path, IProgress<double>? progress, CancellationToken ct)
+    private async Task DownloadFileAsync(string url, string path, IProgress<double>? progress, IProgress<DownloadReport>? report, CancellationToken ct)
     {
         for (var attempt = 1; ; attempt++)
         {
@@ -192,6 +192,8 @@ public sealed class YtDlpTool
                 await using var target = File.Create(path);
                 using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 var buffer = new byte[1 << 16];
+                var tracker = new DownloadSpeedTracker();
+                var throttle = new ReportThrottle();
                 long done = 0;
                 while (true)
                 {
@@ -200,7 +202,10 @@ public sealed class YtDlpTool
                     if (n == 0) break;
                     await target.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
                     done += n;
+                    if (!throttle.Due()) continue;
                     if (total > 0) progress?.Report(Math.Min(0.99, done / (double)total));
+                    if (report is not null && tracker.Sample(done, total) is { } s)
+                        report.Report(new DownloadReport(done, total, s.BytesPerSec, s.Eta));
                 }
                 if (total > 0 && done != total) throw new IOException($"Download ended at {done} of {total} bytes.");
                 return;
@@ -426,25 +431,29 @@ public sealed class YtDlpTool
     /// Downloads the audio for <paramref name="url"/> (in <paramref name="format"/>, default M4A) into a fresh temp folder under
     /// <paramref name="targetDir"/> and returns the one file it produced.
     /// </summary>
-    public Task<string> DownloadAsync(string url, string targetDir, string? ffmpegPath, IProgress<double>? progress, CancellationToken ct, Action<string>? onStatus = null, AudioFormat? format = null)
+    public Task<string> DownloadAsync(string url, string targetDir, string? ffmpegPath, IProgress<double>? progress, CancellationToken ct, Action<string>? onStatus = null, AudioFormat? format = null, IProgress<DownloadDetail>? detail = null)
     {
         var ffmpegDir = ffmpegPath is null ? null : Path.GetDirectoryName(ffmpegPath);
         return RunWithBlockedRetryAsync("Download", (exe, js) =>
-            DownloadToScratchAsync("Download", exe, targetDir, template => YtDlpParsing.DownloadArgs(url, template, ffmpegDir, js, format), progress, ct),
+            DownloadToScratchAsync("Download", exe, targetDir, template => YtDlpParsing.DownloadArgs(url, template, ffmpegDir, js, format), progress, detail, ct),
             onStatus, ct);
     }
 
     private async Task<string> DownloadToScratchAsync(string operation, string exe, string targetDir,
-        Func<string, IReadOnlyList<string>> buildArgs, IProgress<double>? progress, CancellationToken ct)
+        Func<string, IReadOnlyList<string>> buildArgs, IProgress<double>? progress, IProgress<DownloadDetail>? detail, CancellationToken ct)
     {
         var scratch = Path.Combine(targetDir, ".noctis-download-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(scratch);
         try
         {
             var template = Path.Combine(scratch, "%(id)s.%(ext)s");
+            var throttle = new ReportThrottle();
             var (code, _, stderr) = await RunLoggedAsync(operation, exe, buildArgs(template), line =>
             {
-                if (YtDlpParsing.ParseProgressPercent(line) is { } pct) progress?.Report(pct / 100.0);
+                if (YtDlpParsing.ParseDownloadDetail(line) is not { } d) return;
+                if (d.Percent < 100 && !throttle.Due()) return;
+                progress?.Report(d.Percent / 100.0);
+                detail?.Report(d);
             }, ct).ConfigureAwait(false);
 
             var produced = Directory.EnumerateFiles(scratch)

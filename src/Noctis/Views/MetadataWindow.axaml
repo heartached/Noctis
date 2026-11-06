@@ -980,115 +980,20 @@
                         <FlyoutBase.AttachedFlyout>
                             <Flyout Placement="Center" ShowMode="Standard"
                                     FlyoutPresenterClasses="search-pop">
-                                <Panel>
-                                    <!-- Searching / status card (shown while loading, before results exist) -->
-                                    <Border Classes="pill-popover"
-                                            Padding="26,20"
-                                            MinWidth="220"
-                                            HorizontalAlignment="Center"
-                                            IsVisible="{Binding !HasArtworkSearchResults}">
-                                        <StackPanel Spacing="12">
-                                            <Ellipse Classes="loading-spinner"
-                                                     Width="18" Height="18"
-                                                     HorizontalAlignment="Center"
-                                                     IsVisible="{Binding IsSearchingArtwork}" />
-                                            <TextBlock Text="{Binding ArtworkSearchStatus}"
-                                                       FontSize="12.5"
-                                                       Opacity="0.85"
-                                                       TextWrapping="Wrap"
-                                                       TextAlignment="Center"
-                                                       MaxWidth="260"
-                                                       HorizontalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <!-- Full results card: hugs its content instead of a
-                                         fixed width so a single result doesn't float in a
-                                         huge empty box. -->
-                                    <Border Classes="pill-popover" Padding="22,18,22,20" MaxWidth="580"
-                                            HorizontalAlignment="Center"
-                                            IsVisible="{Binding HasArtworkSearchResults}">
-                                    <StackPanel Spacing="14">
-                                        <StackPanel Spacing="1">
-                                            <TextBlock Text="{loc:T Metadata.ChooseArtwork}"
-                                                       FontSize="14" FontWeight="Bold"/>
-                                            <TextBlock Text="{loc:T Metadata.FromAppleMusic}"
-                                                       FontSize="11" Opacity="0.5"/>
-                                        </StackPanel>
-                                        <ScrollViewer MaxHeight="340" HorizontalScrollBarVisibility="Disabled">
-                                            <ItemsControl ItemsSource="{Binding ArtworkSearchResults}"
-                                                          Margin="0,0,-14,-14">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <WrapPanel Orientation="Horizontal"/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Spacing="7" Width="118"
-                                                                    Margin="0,0,14,14"
-                                                                    ToolTip.Tip="{Binding CollectionName}">
-                                                            <Border CornerRadius="10" ClipToBounds="True"
-                                                                    Width="118" Height="118"
-                                                                    Background="#1AFFFFFF">
-                                                                <Image Source="{Binding Thumbnail}"
-                                                                       Stretch="UniformToFill"
-                                                                       RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                                            </Border>
-                                                            <StackPanel Spacing="1">
-                                                                <TextBlock Text="{Binding CollectionName}"
-                                                                           FontSize="11.5" FontWeight="SemiBold"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           MaxLines="1"/>
-                                                                <TextBlock Text="{Binding ArtistName}"
-                                                                           FontSize="10.5" Opacity="0.55"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           MaxLines="1"/>
-                                                            </StackPanel>
-                                                            <Grid ColumnDefinitions="*,6,*">
-                                                                <Button Grid.Column="0"
-                                                                        Classes="pill-secondary"
-                                                                        Content="{loc:T Metadata.Standard}"
-                                                                        HorizontalAlignment="Stretch"
-                                                                        MinHeight="0"
-                                                                        Padding="0,5"
-                                                                        FontSize="10.5"
-                                                                        Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectStandardArtworkResultCommand}"
-                                                                        CommandParameter="{Binding}" />
-                                                                <Button Grid.Column="2"
-                                                                        Classes="pill-primary"
-                                                                        Content="{loc:T Metadata.Max}"
-                                                                        HorizontalAlignment="Stretch"
-                                                                        MinHeight="0"
-                                                                        Padding="0,5"
-                                                                        FontSize="10.5"
-                                                                        Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectHighestArtworkResultCommand}"
-                                                                        CommandParameter="{Binding}" />
-                                                            </Grid>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-
-                                        <!-- Downloading indicator (shown after Standard/Max is clicked) -->
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Center"
-                                                    Spacing="8"
-                                                    IsVisible="{Binding IsDownloadingArtwork}">
-                                            <!-- Own IsVisible mirrors the parent's so the
-                                                 [IsVisible=True] animation gate can see it. -->
-                                            <Ellipse Classes="loading-spinner"
-                                                     VerticalAlignment="Center"
-                                                     IsVisible="{Binding IsDownloadingArtwork}"/>
-                                            <TextBlock Text="{loc:T Metadata.Downloading}"
-                                                       FontSize="11"
-                                                       Opacity="0.75"
-                                                       VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                    </Border>
-                                </Panel>
+                                <!-- One card for both search pop-ups (owner 11-04): Controls/ArtworkChooserCard. -->
+                                <controls:ArtworkChooserCard x:Name="ArtworkSearchCard"
+                                                             Title="{loc:T Metadata.ChooseArtwork}"
+                                                             Subtitle="{loc:T Metadata.FromAppleMusic}"
+                                                             SearchBoxHint="{loc:T Metadata.ArtSearchBoxHint}"
+                                                             Query="{Binding ArtworkSearchInput, Mode=TwoWay}"
+                                                             QueryHint="{Binding ArtworkSearchQueryHint}"
+                                                             SearchCommand="{Binding SearchArtworkCommand}"
+                                                             Items="{Binding ArtworkSearchResults}"
+                                                             HasResults="{Binding HasArtworkSearchResults}"
+                                                             IsSearching="{Binding IsSearchingArtwork}"
+                                                             Status="{Binding ArtworkSearchStatus}"
+                                                             IsDownloading="{Binding IsDownloadingArtwork}"
+                                                             PickCommand="{Binding SelectArtworkChoiceCommand}" />
                             </Flyout>
                         </FlyoutBase.AttachedFlyout>
 
@@ -1244,264 +1149,29 @@
                             CornerRadius="24"
                             ClipToBounds="True">
                         <!-- Chooser pop-up: opened from code-behind, centered over the preview so it
-                             reads as part of the tab. Same shape as the Artwork tab's chooser (a
+                             reads as part of the tab. The Artwork tab's chooser card (a
                              scrollable grid of albums) with the search box inside, so a miss can be
                              refined and searched again without closing it. -->
                         <FlyoutBase.AttachedFlyout>
                             <Flyout Placement="Center" ShowMode="Standard"
                                     FlyoutPresenterClasses="search-pop">
-                                <Border Classes="pill-popover" Padding="22,18,22,20" Width="600">
-                                    <Border.Styles>
-                                        <!-- Kill the accent-button hover/press scale that gets clipped by the flyout border. -->
-                                        <Style Selector="Button.anim-variant:pointerover">
-                                            <Setter Property="RenderTransform" Value="scale(1)" />
-                                        </Style>
-                                        <Style Selector="Button.anim-variant:pressed">
-                                            <Setter Property="RenderTransform" Value="scale(1)" />
-                                        </Style>
-                                        <!-- The poster is a button (click = preview) but should look like a tile. -->
-                                        <Style Selector="Button.anim-poster">
-                                            <Setter Property="Background" Value="Transparent" />
-                                            <Setter Property="BorderThickness" Value="0" />
-                                            <Setter Property="Padding" Value="0" />
-                                            <Setter Property="Cursor" Value="Hand" />
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                                        </Style>
-                                        <Style Selector="Button.anim-poster:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                                            <Setter Property="Background" Value="Transparent" />
-                                        </Style>
-                                        <Style Selector="Button.anim-poster:pressed /template/ ContentPresenter#PART_ContentPresenter">
-                                            <Setter Property="Background" Value="Transparent" />
-                                        </Style>
-                                        <Style Selector="Button.anim-poster Border.play-badge">
-                                            <Setter Property="Opacity" Value="0.85" />
-                                        </Style>
-                                        <Style Selector="Button.anim-poster:pointerover Border.play-badge">
-                                            <Setter Property="Opacity" Value="1" />
-                                        </Style>
-                                    </Border.Styles>
-                                    <StackPanel Spacing="12">
-                                        <StackPanel Spacing="1">
-                                            <TextBlock Text="{loc:T Metadata.ChooseAnimatedArtwork}"
-                                                       FontSize="14" FontWeight="Bold"/>
-                                            <TextBlock Text="{loc:T Metadata.FromAppleMusic}"
-                                                       FontSize="11" Opacity="0.5"/>
-                                        </StackPanel>
-
-                                        <!-- Refine and search again in place. Empty = the track's tags,
-                                             which the watermark shows. -->
-                                        <Grid ColumnDefinitions="*,8,Auto">
-                                            <TextBox x:Name="AnimatedChooserSearchBox"
-                                                     Grid.Column="0"
-                                                     Classes="pill-field"
-                                                     AutomationProperties.Name="{loc:T Metadata.AnimSearchBoxHint}"
-                                                     ToolTip.Tip="{loc:T Metadata.AnimSearchBoxHint}"
-                                                     Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
-                                                     Watermark="{Binding AnimatedSearchQueryHint}"
-                                                     FontSize="12">
-                                                <TextBox.KeyBindings>
-                                                    <KeyBinding Gesture="Enter" Command="{Binding SearchAnimatedCoverCommand}" />
-                                                </TextBox.KeyBindings>
-                                            </TextBox>
-                                            <Button Grid.Column="2"
-                                                    Classes="pill-primary anim-variant"
-                                                    MinHeight="0"
-                                                    Padding="16,7"
-                                                    FontSize="12"
-                                                    Command="{Binding SearchAnimatedCoverCommand}"
-                                                    AutomationProperties.Name="{loc:T Metadata.AnimSearchButton}">
-                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                    <PathIcon Data="{StaticResource SearchIcon}" Width="11" Height="11"
-                                                              VerticalAlignment="Center" />
-                                                    <TextBlock Text="{loc:T Metadata.AnimSearchButton}" VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </Button>
-                                        </Grid>
-
-                                        <!-- Searching / nothing found / error (before any result exists) -->
-                                        <StackPanel Spacing="8"
-                                                    Margin="0,14"
-                                                    HorizontalAlignment="Center"
-                                                    IsVisible="{Binding !HasAnimatedArtworkSearchResults}">
-                                            <Ellipse Classes="loading-spinner"
-                                                     Width="18" Height="18"
-                                                     HorizontalAlignment="Center"
-                                                     IsVisible="{Binding IsSearchingAnimatedCover}" />
-                                            <TextBlock Text="{Binding AnimatedSearchStatus}"
-                                                       FontSize="12.5"
-                                                       Opacity="0.85"
-                                                       TextWrapping="Wrap"
-                                                       TextAlignment="Center"
-                                                       MaxWidth="420"
-                                                       HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding AnimatedSearchDetail}"
-                                                       FontSize="11"
-                                                       Opacity="0.55"
-                                                       TextWrapping="Wrap"
-                                                       TextAlignment="Center"
-                                                       MaxWidth="420"
-                                                       HorizontalAlignment="Center"
-                                                       IsVisible="{Binding AnimatedSearchDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                        </StackPanel>
-
-                                        <!-- Results grid, best match first -->
-                                        <ScrollViewer MaxHeight="372"
-                                                      HorizontalScrollBarVisibility="Disabled"
-                                                      IsVisible="{Binding HasAnimatedArtworkSearchResults}">
-                                            <ItemsControl ItemsSource="{Binding AnimatedArtworkSearchResults}"
-                                                          Margin="0,0,-14,-14">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <WrapPanel Orientation="Horizontal"/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Spacing="7" Width="124"
-                                                                    Margin="0,0,14,14">
-                                                            <!-- Poster: the loop's still; click plays the loop in place. -->
-                                                            <Button Classes="anim-poster"
-                                                                    Width="124" Height="124"
-                                                                    ToolTip.Tip="{loc:T Metadata.AnimPreviewTip}"
-                                                                    AutomationProperties.Name="{Binding CollectionName}"
-                                                                    Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).PreviewAnimatedArtworkResultCommand}"
-                                                                    CommandParameter="{Binding}">
-                                                                <Border CornerRadius="10" ClipToBounds="True"
-                                                                        Background="#1AFFFFFF">
-                                                                    <Panel>
-                                                                        <Image Source="{Binding Poster}"
-                                                                               Stretch="UniformToFill"
-                                                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                                                        <controls:AnimatedCoverImage
-                                                                            Source="{Binding PreviewPath}"
-                                                                            IsActive="{Binding IsPreviewing}"
-                                                                            IsVisible="{Binding IsPreviewing}"/>
-                                                                        <Ellipse Classes="loading-spinner"
-                                                                                 Width="16" Height="16"
-                                                                                 HorizontalAlignment="Center"
-                                                                                 VerticalAlignment="Center"
-                                                                                 IsVisible="{Binding IsPreviewLoading}"/>
-                                                                        <Border Classes="play-badge"
-                                                                                Width="26" Height="26"
-                                                                                CornerRadius="13"
-                                                                                Background="#99000000"
-                                                                                HorizontalAlignment="Left"
-                                                                                VerticalAlignment="Bottom"
-                                                                                Margin="7">
-                                                                            <Border.IsVisible>
-                                                                                <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                                                                    <Binding Path="!IsPreviewing" />
-                                                                                    <Binding Path="!IsPreviewLoading" />
-                                                                                </MultiBinding>
-                                                                            </Border.IsVisible>
-                                                                            <Viewbox Width="10" Height="10" Margin="1,0,0,0"
-                                                                                     HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                                <Path Data="{StaticResource PlayIcon}" Fill="White" />
-                                                                            </Viewbox>
-                                                                        </Border>
-                                                                    </Panel>
-                                                                </Border>
-                                                            </Button>
-                                                            <StackPanel Spacing="1" ToolTip.Tip="{Binding CollectionName}">
-                                                                <TextBlock Text="{Binding CollectionName}"
-                                                                           FontSize="11.5" FontWeight="SemiBold"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           MaxLines="1"/>
-                                                                <TextBlock Text="{Binding ArtistName}"
-                                                                           FontSize="10.5" Opacity="0.55"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           MaxLines="1"/>
-                                                                <TextBlock Text="{Binding Detail}"
-                                                                           FontSize="10" Opacity="0.45"
-                                                                           TextTrimming="CharacterEllipsis"
-                                                                           MaxLines="1"
-                                                                           IsVisible="{Binding HasDetail}"/>
-                                                            </StackPanel>
-                                                            <!-- One button per quality; the largest is the accent one,
-                                                                 as Standard / Max on the Artwork chooser. -->
-                                                            <ItemsControl ItemsSource="{Binding Choices}" Margin="-3,0">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <UniformGrid Rows="1" />
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Button Classes="anim-variant"
-                                                                                Classes.pill-primary="{Binding IsPrimary}"
-                                                                                Classes.pill-secondary="{Binding IsSecondary}"
-                                                                                Content="{Binding Label}"
-                                                                                HorizontalAlignment="Stretch"
-                                                                                HorizontalContentAlignment="Center"
-                                                                                Margin="3,0"
-                                                                                MinHeight="0"
-                                                                                Padding="0,5"
-                                                                                FontSize="10.5"
-                                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectAnimatedArtworkResultCommand}"
-                                                                                CommandParameter="{Binding}" />
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-
-                                        <!-- More albums still being opened while some results already show -->
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Center"
-                                                    Spacing="8">
-                                            <StackPanel.IsVisible>
-                                                <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                                    <Binding Path="HasAnimatedArtworkSearchResults" />
-                                                    <Binding Path="IsProbingAnimatedCandidates" />
-                                                </MultiBinding>
-                                            </StackPanel.IsVisible>
-                                            <Ellipse Classes="loading-spinner"
-                                                     VerticalAlignment="Center"
-                                                     IsVisible="{Binding IsProbingAnimatedCandidates}"/>
-                                            <TextBlock Text="{loc:T Metadata.AnimCheckingMore}"
-                                                       FontSize="11"
-                                                       Opacity="0.75"
-                                                       VerticalAlignment="Center"/>
-                                        </StackPanel>
-
-                                        <!-- Downloading indicator (shown after a quality is clicked) -->
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Center"
-                                                    Spacing="8"
-                                                    IsVisible="{Binding IsDownloadingAnimatedCover}">
-                                            <!-- Own IsVisible mirrors the parent's so the
-                                                 [IsVisible=True] animation gate can see it. -->
-                                            <Ellipse Classes="loading-spinner"
-                                                     VerticalAlignment="Center"
-                                                     IsVisible="{Binding IsDownloadingAnimatedCover}"/>
-                                            <TextBlock Text="{loc:T Metadata.Downloading}"
-                                                       FontSize="11"
-                                                       Opacity="0.75"
-                                                       VerticalAlignment="Center"/>
-                                        </StackPanel>
-
-                                        <!-- Errors once results are showing (a failed download), so a
-                                             failed pick is never a silent no-op. Hidden while empty. -->
-                                        <TextBlock Text="{Binding AnimatedSearchStatus}"
-                                                   FontSize="11"
-                                                   Opacity="0.75"
-                                                   HorizontalAlignment="Center"
-                                                   TextWrapping="Wrap"
-                                                   MaxWidth="420"
-                                                   TextAlignment="Center">
-                                            <TextBlock.IsVisible>
-                                                <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                                    <Binding Path="HasAnimatedArtworkSearchResults" />
-                                                    <Binding Path="AnimatedSearchStatus" Converter="{x:Static StringConverters.IsNotNullOrEmpty}" />
-                                                </MultiBinding>
-                                            </TextBlock.IsVisible>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
+                                <!-- The same card as the Artwork chooser (Controls/ArtworkChooserCard). -->
+                                <controls:ArtworkChooserCard x:Name="AnimatedSearchCard"
+                                                             Title="{loc:T Metadata.ChooseAnimatedArtwork}"
+                                                             Subtitle="{loc:T Metadata.FromAppleMusic}"
+                                                             SearchBoxHint="{loc:T Metadata.AnimSearchBoxHint}"
+                                                             Query="{Binding AnimatedSearchInput, Mode=TwoWay}"
+                                                             QueryHint="{Binding AnimatedSearchQueryHint}"
+                                                             SearchCommand="{Binding SearchAnimatedCoverCommand}"
+                                                             Items="{Binding AnimatedArtworkSearchResults}"
+                                                             HasResults="{Binding HasAnimatedArtworkSearchResults}"
+                                                             IsSearching="{Binding IsSearchingAnimatedCover}"
+                                                             Status="{Binding AnimatedSearchStatus}"
+                                                             StatusDetail="{Binding AnimatedSearchDetail}"
+                                                             IsCheckingMore="{Binding IsProbingAnimatedCandidates}"
+                                                             IsDownloading="{Binding IsDownloadingAnimatedCover}"
+                                                             PickCommand="{Binding SelectAnimatedArtworkResultCommand}"
+                                                             PreviewCommand="{Binding PreviewAnimatedArtworkResultCommand}" />
                             </Flyout>
                         </FlyoutBase.AttachedFlyout>
                         <Panel>

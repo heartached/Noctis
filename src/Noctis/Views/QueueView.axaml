@@ -64,7 +64,7 @@
                     CornerRadius="8"
                     Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                     Margin="0,0,0,24"
-                    IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    IsVisible="{Binding Player.ShowQueueCurrentTrack}">
                 <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch">
                     <!-- Now-playing mark: the island's own filled play glyph as a vector (was
                          a 512px Play ICON.png mask, soft at 16px). -->
@@ -199,7 +199,7 @@
                         BorderThickness="0"
                         Padding="6,3"
                         Cursor="Hand"
-                        IsVisible="{Binding !!UpNext.Count}">
+                        IsVisible="{Binding Player.CanClearQueue}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
                         <!-- Vector line icon (was the 512px Clear Queue ICON.png mask). Dynamic:
                              IconsPages.axaml is merged at the app level. -->

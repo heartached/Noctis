@@ -101,6 +101,40 @@ public sealed class GaplessTrackSegment
     }
 
     /// <summary>
+    /// Damaged runs of the input's file found ahead of time (see Mp3FrameScan.FindDamage):
+    /// the play callback ends the segment before the decoder reaches one. Set any time.
+    /// </summary>
+    internal volatile Mp3FrameScan.Damage[]? DamageAhead;
+
+    /// <summary>Media position (ms) of the newest sample written: where the next block starts.</summary>
+    public long WriteEndMs
+    {
+        get { lock (_gate) return _basePositionMs + (_consumedFrames + _count / Channels) * 1000 / SampleRate; }
+    }
+
+    /// <summary>
+    /// Ends the input here on purpose (damaged data ahead): the newest <paramref name="fadeFrames"/>
+    /// fade out, nothing more is accepted, and the ring plays out. Unlike a drain, no encoder
+    /// padding is cut: this is not the file's end.
+    /// </summary>
+    public void EndWithFade(int fadeFrames)
+    {
+        lock (_gate)
+        {
+            if (_endOfStream || _abandoned) return;
+            var fade = Math.Min(_count / Channels, Math.Max(0, fadeFrames));
+            for (var f = 0; f < fade; f++)
+            {
+                var gain = (float)f / fade;
+                for (var c = 1; c <= Channels; c++)
+                    _ring[(_writeIdx - f * Channels - c + 2 * _ring.Length) % _ring.Length] *= gain;
+            }
+            _endOfStream = true;
+            Monitor.PulseAll(_gate);
+        }
+    }
+
+    /// <summary>
     /// Drop the (near-)zeros a decoder emits before its first real sample, then fade the first
     /// <paramref name="fadeInFrames"/> in. For an input reopened mid-stream after a decoder
     /// failure (VLC's avcodec primes ~57 ms of zeros, then the music starts at full level;

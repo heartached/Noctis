@@ -156,6 +156,82 @@
                             </Button>
                         </DataTemplate>
 
+        <!-- GitHub #177: a Last.fm mix pill, the play-history pill. The ItemsControl's Tag is the
+             mix (LastFmMixRow): a click plays the whole mix from this song. -->
+        <DataTemplate x:Key="LastFmMixPillTemplate" x:DataType="m:Track">
+            <Button Classes="browse-item home-history-pill"
+                    AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
+                    ContextRequested="OnLastFmMixContextRequested"
+                    Command="{Binding $parent[ItemsControl].((vm:LastFmMixRow)Tag).PlayCommand}"
+                    CommandParameter="{Binding}">
+                <Grid ColumnDefinitions="56,*">
+                    <Border Grid.Column="0" Width="56" Height="56" CornerRadius="6,0,0,6"
+                            ClipToBounds="True"
+                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <Panel>
+                            <TextBlock Text="{loc:T Home.Text}" FontSize="16" Opacity="0.2"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                            <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                  Stretch="UniformToFill"
+                                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                  IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <Button Classes="art-play-overlay"
+                                    Background="#66000000"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    CornerRadius="6,0,0,6"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="{loc:T LibrarySongs.PlayFromHereTip}"
+                                    Command="{Binding $parent[ItemsControl].((vm:LastFmMixRow)Tag).TogglePlayCommand}"
+                                    CommandParameter="{Binding}">
+                                <Panel>
+                                    <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsCurrentlyPlaying}"><Path Data="{StaticResource PlayIcon}" /></Viewbox>
+                                    <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsCurrentlyPlaying}"><Path Data="{StaticResource PauseIcon}" /></Viewbox>
+                                </Panel>
+                            </Button>
+                        </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                        <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
+                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <!-- GitHub #177: a Discover entry (artist or album the library lacks). The only action is
+             its Last.fm page in the browser: no store, no download. -->
+        <DataTemplate x:Key="LastFmDiscoverPillTemplate" x:DataType="vm:LastFmDiscoverRow">
+            <Button Classes="browse-item home-history-pill"
+                    AutomationProperties.Name="{Binding Title}"
+                    ToolTip.Tip="{loc:T Home.LastFm.OpenOnLastFm}"
+                    Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenLastFmPageCommand}"
+                    CommandParameter="{Binding}">
+                <Grid ColumnDefinitions="56,*,Auto">
+                    <Border Grid.Column="0" Width="56" Height="56" CornerRadius="6,0,0,6"
+                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <TextBlock Text="{Binding Glyph}" FontSize="18" Opacity="0.45"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                        <TextBlock Text="{Binding Detail}" FontSize="11" Opacity="0.55"
+                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="↗" FontSize="13" Opacity="0.45"
+                               VerticalAlignment="Center" Margin="0,0,12,0" />
+                </Grid>
+            </Button>
+        </DataTemplate>
+
         <!-- Album tile for both album rows (recently played Albums and New in Library,
              GitHub #159): bare cover + two text lines; the VM's AlbumTileSize sizes it. -->
         <DataTemplate x:Key="HomeAlbumTileTemplate" x:DataType="m:Album">
@@ -1237,6 +1313,154 @@
                                     </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+
+                <!-- ── GitHub #177: From your Last.fm. Mixes of songs already in the library, built
+                     from the connected account's charts (HomeViewModel.LastFm.cs); only while an
+                     account is connected and Settings › Integrations › Last.fm has it on. ── -->
+                <StackPanel x:Name="LastFmSection" IsVisible="{Binding IsLastFmSectionVisible}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Button Classes="section-toggle" Classes.expanded="{Binding IsLastFmExpanded}"
+                                Command="{Binding ToggleSectionCommand}" CommandParameter="LastFm"
+                                ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{loc:T Home.LastFm.Title}" FontSize="22" FontWeight="Bold" />
+                                    <Border Classes="section-chevron-box">
+                                        <Path Classes="section-chevron"
+                                              Width="28" Height="28"
+                                              Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                              StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding LastFmStatus}" FontSize="12" Opacity="0.5"
+                                           TextWrapping="Wrap" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="LastFmRefreshPill" Grid.Column="1" Classes="home-count-pill"
+                                AutomationProperties.Name="{loc:T Home.LastFm.RefreshTip}"
+                                ToolTip.Tip="{loc:T Home.LastFm.RefreshTip}"
+                                Command="{Binding RefreshLastFmCommand}">
+                            <Panel>
+                                <TextBlock Text="{loc:T Home.LastFm.Refresh}" FontSize="12" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" IsVisible="{Binding !IsLastFmRefreshing}" />
+                                <TextBlock Text="{loc:T Home.LastFm.Refreshing}" FontSize="12" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" IsVisible="{Binding IsLastFmRefreshing}" />
+                            </Panel>
+                        </Button>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding IsLastFmExpanded}" Lift="10" Motion="Glide">
+                        <StackPanel Margin="0,14,0,0" Spacing="18">
+                            <!-- Your Last.fm Top Songs -->
+                            <StackPanel Spacing="8" IsVisible="{Binding LastFmTopSongs.Count}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{loc:T Home.LastFm.TopSongs}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="home-count-pill"
+                                            AutomationProperties.Name="{loc:T Home.LastFm.ShuffleMix}"
+                                            ToolTip.Tip="{loc:T Home.LastFm.ShuffleMix}"
+                                            Command="{Binding LastFmTopSongs.ShuffleCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" VerticalAlignment="Center" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                                <Run Text="{loc:T Home.LastFm.Shuffle}" /><Run Text=" · " /><Run Text="{Binding LastFmTopSongs.Count}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding LastFmTopSongs.Shown}" Tag="{Binding LastFmTopSongs}"
+                                              ItemTemplate="{StaticResource LastFmMixPillTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="3" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                            <!-- Loved on Last.fm -->
+                            <StackPanel Spacing="8" IsVisible="{Binding LastFmLoved.Count}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{loc:T Home.LastFm.Loved}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="home-count-pill"
+                                            AutomationProperties.Name="{loc:T Home.LastFm.ShuffleMix}"
+                                            ToolTip.Tip="{loc:T Home.LastFm.ShuffleMix}"
+                                            Command="{Binding LastFmLoved.ShuffleCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" VerticalAlignment="Center" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                                <Run Text="{loc:T Home.LastFm.Shuffle}" /><Run Text=" · " /><Run Text="{Binding LastFmLoved.Count}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding LastFmLoved.Shown}" Tag="{Binding LastFmLoved}"
+                                              ItemTemplate="{StaticResource LastFmMixPillTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="3" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                            <!-- From the artists you play most on Last.fm -->
+                            <StackPanel Spacing="8" IsVisible="{Binding LastFmArtists.Count}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{loc:T Home.LastFm.TopArtists}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="home-count-pill"
+                                            AutomationProperties.Name="{loc:T Home.LastFm.ShuffleMix}"
+                                            ToolTip.Tip="{loc:T Home.LastFm.ShuffleMix}"
+                                            Command="{Binding LastFmArtists.ShuffleCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" VerticalAlignment="Center" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                                <Run Text="{loc:T Home.LastFm.Shuffle}" /><Run Text=" · " /><Run Text="{Binding LastFmArtists.Count}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding LastFmArtists.Shown}" Tag="{Binding LastFmArtists}"
+                                              ItemTemplate="{StaticResource LastFmMixPillTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="3" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+
+                <!-- ── GitHub #177: Discover on Last.fm. Artists and albums the library doesn't
+                     have; each opens its Last.fm page, nothing else. ── -->
+                <StackPanel x:Name="LastFmDiscoverSection" IsVisible="{Binding IsLastFmDiscoverVisible}">
+                    <Button Classes="section-toggle" Classes.expanded="{Binding IsLastFmDiscoverExpanded}"
+                            Command="{Binding ToggleSectionCommand}" CommandParameter="LastFmDiscover"
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
+                        <StackPanel Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{loc:T Home.LastFm.Discover}" FontSize="22" FontWeight="Bold" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{loc:T Home.LastFm.DiscoverLine}" FontSize="12" Opacity="0.5"
+                                       HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Button>
+                    <controls:CollapsibleContent IsOpen="{Binding IsLastFmDiscoverExpanded}" Lift="10" Motion="Glide">
+                        <ItemsControl ItemsSource="{Binding LastFmDiscover}"
+                                      ItemTemplate="{StaticResource LastFmDiscoverPillTemplate}"
+                                      Margin="0,14,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="3" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </controls:CollapsibleContent>
                 </StackPanel>

@@ -124,7 +124,7 @@ public class HighlightTextBlock : TextBlock
         };
         badge.Classes.Add("explicit-badge");
         badge.Classes.Add("compact");
-        ToolTip.SetTip(badge, "Explicit");
+        ToolTip.SetTip(badge, Noctis.Localization.Loc.T("Home.ExplicitTip"));
 
         return new InlineUIContainer
         {

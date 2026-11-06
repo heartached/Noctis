@@ -17,7 +17,10 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Controls;
+using IPseudoClasses = Avalonia.Controls.IPseudoClasses;
+using Noctis.Localization;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.ViewModels;
 using Noctis.Views;
 using Xunit;
@@ -392,7 +395,7 @@ public class MetadataArtworkSearchAnimationTests
             var motion = win.AnimatedSearchMotion!;
             var content = motion.Content!;
             Assert.True(PumpUntil(() => motion.IsOpen && Settled(content)), "chooser never settled open");
-            var box = content.GetVisualDescendants().OfType<TextBox>().Single(b => b.Name == "AnimatedChooserSearchBox");
+            var box = content.GetVisualDescendants().OfType<TextBox>().Single(b => b.Name == "ChooserSearchBox");
             box.Focus();
             Assert.True(PumpUntil(() => box.IsFocused));
             win.KeyTextInput("selena");
@@ -448,12 +451,12 @@ public class MetadataArtworkSearchAnimationTests
             Assert.All(qualityButtons, b => Assert.Same(vm.SelectAnimatedArtworkResultCommand, b.Command));
             Assert.Equal(3, qualityButtons.Count(b => b.Classes.Contains("pill-primary")));
             var posters = content.GetVisualDescendants().OfType<Button>()
-                .Where(b => b.IsEffectivelyVisible && b.Classes.Contains("anim-poster")).ToList();
+                .Where(b => b.IsEffectivelyVisible && b.Classes.Contains("chooser-poster")).ToList();
             Assert.Equal(3, posters.Count);
             Assert.All(posters, b => Assert.Same(vm.PreviewAnimatedArtworkResultCommand, b.Command));
 
             // Refine from the chooser's own box: a pasted link, Enter.
-            var box = content.GetVisualDescendants().OfType<TextBox>().Single(b => b.Name == "AnimatedChooserSearchBox");
+            var box = content.GetVisualDescendants().OfType<TextBox>().Single(b => b.Name == "ChooserSearchBox");
             Assert.Equal("Short n' Sweet — Sabrina Carpenter", box.Watermark);
             box.Focus();
             Assert.True(PumpUntil(() => box.IsFocused));
@@ -466,5 +469,152 @@ public class MetadataArtworkSearchAnimationTests
             Assert.True(motion.IsOpen);
         }
         finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+    // ── Owner 11-04: one chooser design for Artwork and Animated Artwork ──
+
+    private static ITunesArtworkService.ArtworkCandidate Candidate(long id, string title) =>
+        new(id, title, "Silk Sonic", "https://x/300.jpg", "https://x/1000.jpg", "https://x/max.jpg", "https://x/view");
+
+    [AvaloniaFact]
+    public void BothSearchPopups_AreTheSameChooserCard()
+    {
+        var (_, win) = Editor("Artwork");
+        try
+        {
+            var still = Assert.IsType<ArtworkChooserCard>(win.ArtworkSearchMotion!.Content);
+            var animated = Assert.IsType<ArtworkChooserCard>(win.AnimatedSearchMotion!.Content);
+            Assert.NotSame(still, animated);
+            Assert.Equal(Loc.T("Metadata.ChooseArtwork"), still.Title);
+            Assert.Equal(Loc.T("Metadata.ChooseAnimatedArtwork"), animated.Title);
+            Assert.Equal(still.Subtitle, animated.Subtitle);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
+    public void ArtworkChooser_HasTheAnimatedTiles_StandardMaxPills_SearchBox_AndNoHoverZoom()
+    {
+        var (vm, win) = Editor("Artwork");
+        try
+        {
+            vm.ArtworkSearchResults.Add(new ArtworkSearchResult(Candidate(1, "An Evening With Silk Sonic"), null));
+            vm.ArtworkSearchResults.Add(new ArtworkSearchResult(Candidate(2, "Leave the Door Open"), null));
+            vm.HasArtworkSearchResults = true;
+            vm.IsArtworkSearchOpen = true;
+            var motion = win.ArtworkSearchMotion!;
+            var content = motion.Content!;
+            Assert.True(PumpUntil(() => motion.IsOpen && Settled(content)), "pop-up never settled open");
+
+            Assert.Single(content.GetVisualDescendants().OfType<TextBox>(), b => b.Name == "ChooserSearchBox");
+            var pills = content.GetVisualDescendants().OfType<Button>()
+                .Where(b => b.IsEffectivelyVisible && b.CommandParameter is ArtworkSearchChoice).ToList();
+            Assert.Equal(4, pills.Count);
+            Assert.All(pills, b => Assert.Same(vm.SelectArtworkChoiceCommand, b.Command));
+            Assert.Equal(new object[] { Loc.T("Metadata.Max"), Loc.T("Metadata.Max") },
+                pills.Where(b => b.Classes.Contains("pill-primary")).Select(b => b.Content!));
+            Assert.Equal(new object[] { Loc.T("Metadata.Standard"), Loc.T("Metadata.Standard") },
+                pills.Where(b => b.Classes.Contains("pill-secondary")).Select(b => b.Content!));
+
+            // 12.png: hovering Standard / Max showed the album title, hanging off the card. The
+            // title tooltip now sits on the text lines only.
+            var card = (Visual)content;
+            foreach (var pill in pills)
+                for (Visual? v = pill; v != null && v != card; v = v.GetVisualParent())
+                    Assert.Null(ToolTip.GetTip((Control)v));
+
+            // Still covers don't preview: no hand, no tooltip, no play badge.
+            var posters = content.GetVisualDescendants().OfType<Button>()
+                .Where(b => b.IsEffectivelyVisible && b.Classes.Contains("chooser-poster")).ToList();
+            Assert.Equal(2, posters.Count);
+            Assert.All(posters, p => Assert.False(p.IsHitTestVisible));
+            Assert.All(posters, p => Assert.Null(ToolTip.GetTip(p)));
+            Assert.DoesNotContain(content.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("play-badge") && b.IsEffectivelyVisible);
+
+            // 11.png: the global hover zoom (Button:pointerover scale 1.045) grew a tile past the
+            // grid's clip, its top edge cut flat. Nothing in the card zooms.
+            foreach (var b in new[] { posters[0], pills[0], pills[1] })
+            {
+                ((IPseudoClasses)b.Classes).Set(":pointerover", true);
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(b.RenderTransform is null || b.RenderTransform.Value.IsIdentity,
+                    $"{string.Join(",", b.Classes)} zooms on hover");
+                ((IPseudoClasses)b.Classes).Set(":pointerover", false);
+            }
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
+    public void AnimatedChooser_PostersPreview_AndDoNotZoomOnHover()
+    {
+        var apple = new AnimatedArtworkChooserTests.Apple();
+        var http = new System.Net.Http.HttpClient(new AnimatedArtworkChooserTests.StubHandler(apple.Respond));
+        var track = new Track
+        {
+            Id = Guid.NewGuid(), Title = "Taste", Artist = "Sabrina Carpenter", AlbumArtist = "Sabrina Carpenter",
+            Album = "Short n' Sweet", AlbumId = Guid.NewGuid(), FilePath = "C:/m/does-not-exist/taste.flac",
+        };
+        var lib = new FakeLibraryService();
+        lib.TrackList.Add(track);
+        var vm = new MetadataViewModel(track, new SearchPopupsShotsTests.OkTags(), lib, new TestPersistenceService(),
+            new FakeAnimatedCoverService(), itunes: new ITunesArtworkService(http),
+            metadataSearch: new MetadataSearchPanelTests.FakeSearch());
+        var (_, win) = Editor("Animated Artwork", vm);
+        try
+        {
+            var search = vm.SearchAnimatedCoverCommand.ExecuteAsync(null);
+            Assert.True(PumpUntil(() => search.IsCompleted, 5000), "search never finished");
+            var motion = win.AnimatedSearchMotion!;
+            var content = motion.Content!;
+            Assert.True(PumpUntil(() => motion.IsOpen && Settled(content)), "chooser never settled open");
+            var poster = content.GetVisualDescendants().OfType<Button>()
+                .First(b => b.IsEffectivelyVisible && b.Classes.Contains("chooser-poster"));
+            Assert.True(poster.IsHitTestVisible);
+            Assert.Equal(Loc.T("Metadata.AnimPreviewTip"), ToolTip.GetTip(poster));
+            ((IPseudoClasses)poster.Classes).Set(":pointerover", true);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(poster.RenderTransform is null || poster.RenderTransform.Value.IsIdentity);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task ArtworkChooser_TypedQuery_SearchesItInsteadOfTheTags()
+    {
+        var urls = new List<string>();
+        const string json = """
+            {"resultCount":1,"results":[{"wrapperType":"collection","collectionType":"Album",
+            "collectionId":1585120236,"artistName":"Bruno Mars, Anderson .Paak & Silk Sonic","collectionName":"An Evening With Silk Sonic",
+            "collectionViewUrl":"https://music.apple.com/us/album/an-evening-with-silk-sonic/1585120236?uo=4",
+            "artworkUrl100":"https://is1-ssl.mzstatic.com/image/thumb/Music/v4/aa/bb/x.jpg/100x100bb.jpg"}]}
+            """;
+        var http = new System.Net.Http.HttpClient(new AnimatedArtworkChooserTests.StubHandler(req =>
+        {
+            var url = req.RequestUri!.AbsoluteUri;
+            lock (urls) urls.Add(url);
+            return System.Threading.Tasks.Task.FromResult(url.Contains("/search?", StringComparison.Ordinal)
+                ? new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new System.Net.Http.StringContent(json) }
+                : new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+        }));
+        var track = new Track { Title = "Skate", Artist = "Silk Sonic", Album = "Skate", FilePath = "C:/m/nope.flac" };
+        var vm = new MetadataViewModel(track, new SearchPopupsShotsTests.OkTags(), new FakeLibraryService(), new TestPersistenceService(),
+            new FakeAnimatedCoverService(), itunes: new ITunesArtworkService(http));
+        await vm.InitializeAsync();
+
+        vm.ArtworkSearchInput = "An Evening With Silk Sonic";
+        await vm.SearchArtworkCommand.ExecuteAsync(null);
+
+        Assert.True(vm.HasArtworkSearchResults, vm.ArtworkSearchStatus);
+        Assert.Equal("An Evening With Silk Sonic", Assert.Single(vm.ArtworkSearchResults).CollectionName);
+        Assert.Equal(string.Empty, vm.ArtworkSearchStatus);
+        Assert.Equal("An Evening With Silk Sonic", vm.ArtworkSearchQueryHint);
+        var searches = urls.Where(u => u.Contains("/search?", StringComparison.Ordinal)).ToList();
+        Assert.NotEmpty(searches);
+        Assert.All(searches, u => Assert.Contains("term=An%20Evening%20With%20Silk%20Sonic", u));
+
+        // Empty box: the tags again, shown as the watermark.
+        vm.ArtworkSearchInput = string.Empty;
+        await vm.SearchArtworkCommand.ExecuteAsync(null);
+        Assert.StartsWith("Skate — ", vm.ArtworkSearchQueryHint);
     }
 }

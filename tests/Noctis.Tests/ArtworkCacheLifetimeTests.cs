@@ -71,6 +71,29 @@ public class ArtworkCacheLifetimeTests : IDisposable
         Assert.True(IsDisposed(shown));
     }
 
+    /// <summary>11-05: the phone turns GC memory pressure off (on Android it forces full collections,
+    /// each an explicit ART GC on the UI thread). The desktop keeps it, and flipping the switch while
+    /// covers are cached never leaves pressure registered or removes more than was added.</summary>
+    [AvaloniaFact]
+    public void MemoryPressure_FollowsTheSwitch_AndStaysBalanced()
+    {
+        try
+        {
+            Assert.True(ArtworkCache.UseMemoryPressure);   // desktop default
+            var before = ArtworkCache.PressureBytes;
+            ArtworkCache.LoadAndCache(Path("p1"), 256);
+            Assert.Equal(before + 256L * 256 * 4, ArtworkCache.PressureBytes);
+
+            ArtworkCache.UseMemoryPressure = false;         // the phone's setting
+            ArtworkCache.LoadAndCache(Path("p2"), 256);
+            Assert.Equal(before + 256L * 256 * 4, ArtworkCache.PressureBytes);
+
+            ArtworkCache.ClearForTests();                   // disposes both: only p1's pressure comes off
+            Assert.Equal(before, ArtworkCache.PressureBytes);
+        }
+        finally { ArtworkCache.UseMemoryPressure = true; }
+    }
+
     [AvaloniaFact]
     public void Eviction_DisposesWhatItDrops_AndTheBudgetHolds()
     {
@@ -213,3 +236,12 @@ public class ArtworkCacheLifetimeTests : IDisposable
         catch (NullReferenceException) { return true; }
     }
 }
+
+/// <summary>
+/// The classes in this collection change ArtworkCache's process-wide state (DisposeGrace,
+/// MaxCacheBytes, ClearForTests, which disposes every cached bitmap even while shown). Run
+/// in parallel, that disposed bitmaps other UI tests still had on screen (UiScaleTests:
+/// ObjectDisposedException from Bitmap.Size in CachedImage.ArrangeOverride on CI).
+/// </summary>
+[CollectionDefinition("ArtworkCache", DisableParallelization = true)]
+public class ArtworkCacheCollection { }

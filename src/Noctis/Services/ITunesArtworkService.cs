@@ -91,6 +91,9 @@ public sealed class ITunesArtworkService
 
         /// <summary>Release year from the store, 0 when it gave none.</summary>
         public int ReleaseYear { get; init; }
+
+        /// <summary>Songs on the store album, 0 when it gave none.</summary>
+        public int TrackCount { get; init; }
     }
 
     public sealed record AnimatedArtworkVariant(
@@ -278,7 +281,14 @@ public sealed class ITunesArtworkService
     /// <param name="Album">The album title, or the whole typed query when <paramref name="Typed"/>.</param>
     /// <param name="Artist">The artist to search and rank with (empty for a typed query).</param>
     /// <param name="PreferArtist">The edited track's artist: only a tiebreak for typed queries.</param>
-    public sealed record AnimatedArtworkQuery(string Album, string Artist, string PreferArtist, bool Typed);
+    public sealed record AnimatedArtworkQuery(string Album, string Artist, string PreferArtist, bool Typed)
+    {
+        /// <summary>The local album's year, 0 when unknown: only breaks ties between editions.</summary>
+        public int Year { get; init; }
+
+        /// <summary>Songs in the local album, 0 when unknown: only breaks ties between editions.</summary>
+        public int TrackCount { get; init; }
+    }
 
     public sealed record RankedAlbumCandidate(ArtworkCandidate Candidate, double Score);
 
@@ -329,10 +339,20 @@ public sealed class ITunesArtworkService
             .Select((c, i) => (c, i,
                 relevance: AnimatedArtworkMatcher.TitleRelevance(c.CollectionName, c.ArtistName, query.Album, query.Typed),
                 score: AnimatedArtworkMatcher.Score(c.CollectionName, c.ArtistName, query.Album, query.Artist,
-                    query.PreferArtist, query.Typed, i)))
+                    query.PreferArtist, query.Typed, i)
+                    + AnimatedArtworkMatcher.EditionTieBreak(c.ReleaseYear, query.Year, c.TrackCount, query.TrackCount)))
             .ToList();
 
-        var relevant = scored.Where(s => s.relevance >= 0.3).ToList();
+        // A search from the tags knows the artist: a candidate whose title is not the album's
+        // AND whose credit is someone else is a different record, never an option (GitHub #167:
+        // "Wings of Love" by Erasure offered "Tears of Love" by Tears for Fears). A same-titled
+        // album under another credit stays, for a mistagged artist to be picked by hand.
+        bool OtherRecord((ArtworkCandidate c, int i, double relevance, double score) s)
+            => !query.Typed && query.Artist.Length > 0
+               && AnimatedArtworkMatcher.ArtistSimilarity(s.c.ArtistName, query.Artist) < AnimatedArtworkMatcher.SameArtist
+               && AnimatedArtworkMatcher.TitleSimilarity(s.c.CollectionName, query.Album) < AnimatedArtworkMatcher.SameTitle;
+
+        var relevant = scored.Where(s => s.relevance >= 0.3 && !OtherRecord(s)).ToList();
         if (relevant.Count == 0)
         {
             // A typed query may be just an artist ("selena gomez"): no title resembles it, so
@@ -728,10 +748,13 @@ public sealed class ITunesArtworkService
             r.GetString() is { Length: >= 4 } date)
             int.TryParse(date.AsSpan(0, 4), System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out year);
+        var trackCount = item.TryGetProperty("trackCount", out var tc) && tc.ValueKind == JsonValueKind.Number &&
+                         tc.TryGetInt32(out var count) ? count : 0;
         candidate = new ArtworkCandidate(id, name, artistName, thumb, standard, hiRes, viewUrl)
         {
             Explicitness = explicitness,
             ReleaseYear = year,
+            TrackCount = trackCount,
         };
         return true;
     }

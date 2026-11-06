@@ -61,7 +61,8 @@
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button Classes="pill-secondary"
+                <Button x:Name="CancelButton"
+                        Classes="pill-secondary"
                         Content="{loc:T Confirmation.Cancel}"
                         Click="OnCancelClick" />
                 <Button x:Name="ConfirmButton"

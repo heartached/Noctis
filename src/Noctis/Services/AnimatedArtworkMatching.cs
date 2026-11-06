@@ -198,6 +198,37 @@ internal static class AnimatedArtworkMatcher
         return score - Math.Max(0, sourceRank) * 0.5;
     }
 
+    /// <summary><see cref="TitleSimilarity"/> at or above this: the same title, or the same one
+    /// with only an edition/format wrapper ("(Deluxe)", "- Single") around it.</summary>
+    internal const double SameTitle = 0.9;
+
+    /// <summary><see cref="ArtistSimilarity"/> at or above this: the same credit, or one
+    /// containing the other as whole words ("Lady Gaga" in "Lady Gaga &amp; Bruno Mars").</summary>
+    internal const double SameArtist = 0.85;
+
+    /// <summary>
+    /// A small bonus for the store edition whose year and song count agree with the local
+    /// album, 0..5. Below the 8-point gap between an exact title and an edition wrapper
+    /// (100 vs 92), so it only orders editions that already match equally well: the original
+    /// before the 2011 remaster, the 12-song album before its 20-song deluxe. Unknowns (0)
+    /// add nothing.
+    /// </summary>
+    internal static double EditionTieBreak(int candidateYear, int wantedYear, int candidateTracks, int wantedTracks)
+    {
+        double bonus = 0;
+        if (candidateYear > 0 && wantedYear > 0)
+        {
+            var years = Math.Abs(candidateYear - wantedYear);
+            bonus += years == 0 ? 3 : years == 1 ? 1.5 : 0;
+        }
+        if (candidateTracks > 0 && wantedTracks > 0)
+        {
+            var tracks = Math.Abs(candidateTracks - wantedTracks);
+            bonus += tracks == 0 ? 2 : tracks <= 2 ? 1 : 0;
+        }
+        return bonus;
+    }
+
     /// <summary>The title part of <see cref="Score"/> on its own, for the relevance cut.</summary>
     internal static double TitleRelevance(string? candidateTitle, string? candidateArtist, string? wantedTitle, bool typed)
         => typed

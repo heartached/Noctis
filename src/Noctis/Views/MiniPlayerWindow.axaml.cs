@@ -1711,7 +1711,12 @@ public partial class MiniPlayerWindow : Window
         MorePopup.VerticalOffset = openUp ? -6 : 6;
         MorePopup.PlacementTarget = anchor;
 
-        MenuCard.Opacity = 0;
+        // Liquid Glass frosts the card (GitHub #169); its motion then fades the glass's Fade.
+        GlassMenus.ApplyCardPopup(MorePopup);
+        EnsureMenuFadeTransition();
+        var fade = MenuOpenAnimation.FadePropertyOf(MenuCard);
+        if (fade != Visual.OpacityProperty) MenuCard.Opacity = 1;
+        MenuCard.SetValue(fade, 0.0);
         MenuCard.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.96)");
         MorePopup.IsOpen = true;
         // The popup's content lays out now; the segment sizes itself from that pass.
@@ -1724,9 +1729,27 @@ public partial class MiniPlayerWindow : Window
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             if (!MorePopup.IsOpen) { LogMenu("ShowSkipped", MenuState()); return; }
-            MenuCard.Opacity = 1;
+            MenuCard.SetValue(fade, 1.0);
             MenuCard.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
         }, Avalonia.Threading.DispatcherPriority.Render);
+    }
+
+    private bool _menuFadeTransition;
+
+    /// <summary>The card's XAML transitions ease Opacity; a frosted card fades
+    /// MenuOpenAnimation.Fade instead (the blur ignores Opacity), with the same curve.</summary>
+    private void EnsureMenuFadeTransition()
+    {
+        if (_menuFadeTransition) return;
+        _menuFadeTransition = true;
+        // Hidden at rest, like the card's Opacity="0": the first open fades in from it.
+        MenuOpenAnimation.SetFade(MenuCard, 0);
+        (MenuCard.Transitions ??= new Avalonia.Animation.Transitions()).Add(new Avalonia.Animation.DoubleTransition
+        {
+            Property = MenuOpenAnimation.FadeProperty,
+            Duration = TimeSpan.FromMilliseconds(180),
+            Easing = new Avalonia.Animation.Easings.CubicEaseOut(),
+        });
     }
 
     private void OnMenuItemClick(object? sender, RoutedEventArgs e) => CloseMorePopup("item");
@@ -1739,7 +1762,7 @@ public partial class MiniPlayerWindow : Window
         LogMenu("CloseMorePopup", $"reason={reason} {MenuState()}");
 
         var generation = ++_menuCloseGeneration;
-        MenuCard.Opacity = 0;
+        MenuCard.SetValue(MenuOpenAnimation.FadePropertyOf(MenuCard), 0.0);
         MenuCard.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.96)");
         Avalonia.Threading.DispatcherTimer.RunOnce(() =>
         {
@@ -1749,7 +1772,7 @@ public partial class MiniPlayerWindow : Window
     }
 
     private string MenuState() =>
-        $"isOpen={MorePopup.IsOpen} opacity={MenuCard.Opacity:0.##} active={IsActive} gen={_menuCloseGeneration}";
+        $"isOpen={MorePopup.IsOpen} opacity={MenuCard.Opacity:0.##} fade={MenuOpenAnimation.GetFade(MenuCard):0.##} active={IsActive} gen={_menuCloseGeneration}";
 
     private void LogTransparency(string when) =>
         Noctis.Services.DebugLog.Write("MiniPlayer",

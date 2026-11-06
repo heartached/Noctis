@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Noctis.Helpers;
 using Noctis.Models;
+using Noctis.Services.Dsd;
 
 namespace Noctis.Services;
 
@@ -27,6 +28,9 @@ public sealed class AudioConvertOptions
 
     /// <summary>Output bit depth for lossless formats: "Auto", "16", or "24". Ignored for lossy formats.</summary>
     public string BitDepth { get; set; } = "Auto";
+
+    /// <summary>DSD rate for the "dsf" format: "DSD64", "DSD128" or "DSD256". Ignored otherwise.</summary>
+    public string DsdRate { get; set; } = "DSD64";
 
     /// <summary>Output directory. If empty, conversion runs alongside the source file.</summary>
     public string OutputFolder { get; set; } = string.Empty;
@@ -119,6 +123,9 @@ public sealed class AudioConverterService : IAudioConverterService
         new OutputFormatInfo("wav",     ".wav",  IsLossless: true,  ArtworkSupported: false),
         new OutputFormatInfo("aiff",    ".aiff", IsLossless: true,  ArtworkSupported: false),
         new OutputFormatInfo("wavpack", ".wv",   IsLossless: true,  ArtworkSupported: false),
+        // ffmpeg has no DSD encoder: ffmpeg only decodes, Noctis' own modulator writes the
+        // DSF (see ConvertToDsfAsync). The cover goes into the file's ID3v2 chunk.
+        new OutputFormatInfo("dsf",     ".dsf",  IsLossless: true,  ArtworkSupported: true),
     };
 
     /// <summary>Looks up a format descriptor by key (case-insensitive), or null if unknown.</summary>
@@ -322,7 +329,10 @@ public sealed class AudioConverterService : IAudioConverterService
                 : null;
 
             var existedBefore = File.Exists(outPath);
-            var (ok, error) = await RunFfmpegAsync(ffmpeg, track.FilePath, outPath, options, titleOverride, ct);
+            var isDsf = string.Equals(options.Format, "dsf", StringComparison.OrdinalIgnoreCase);
+            var (ok, error) = isDsf
+                ? await ConvertToDsfAsync(ffmpeg, track, outPath, options, progress, ct)
+                : await RunFfmpegAsync(ffmpeg, track.FilePath, outPath, options, titleOverride, ct);
             // A cancelled or failed run leaves ffmpeg's half-written output behind (10-08).
             // Remove it — but only a file this run created: with Overwrite on, a failure can
             // happen before ffmpeg touches an existing file, and that one must survive.
@@ -346,6 +356,8 @@ public sealed class AudioConverterService : IAudioConverterService
                 // copy matches the original everywhere the app reads tags.
                 if (options.CopyTags)
                     StampSourceMetadata(track, outPath, titleOverride);
+                if (isDsf)
+                    TagDsf(track.FilePath, outPath, options, titleOverride);
 
                 summary.Converted++;
                 summary.OutputPaths.Add(outPath);
@@ -379,6 +391,119 @@ public sealed class AudioConverterService : IAudioConverterService
         catch
         {
             // Non-fatal: the file is still valid with ffmpeg's copied tags.
+        }
+    }
+
+    /// <summary>
+    /// PCM → DSF. ffmpeg decodes the source (any format it reads, DSD included) to stereo
+    /// 32-bit float at 352.8 kHz on a pipe; <see cref="DsdEncoder"/> upsamples that to the DSD
+    /// rate, runs the sigma-delta modulator and writes the file, in constant memory. ffmpeg
+    /// can't do the last part: it has DSD decoders but no DSD encoder or DSF muxer.
+    /// Reports "Converting… N%" from the source's duration.
+    /// </summary>
+    private static async Task<(bool ok, string error)> ConvertToDsfAsync(
+        string ffmpeg, Track track, string output, AudioConvertOptions options,
+        IProgress<ConvertProgress> progress, CancellationToken ct)
+    {
+        var rate = DsdEncoder.RateFor(options.DsdRate) ?? DsdEncoder.Dsd64;
+        var psi = new ProcessStartInfo
+        {
+            FileName = ffmpeg,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (var a in BuildDsdDecodeArgs(track.FilePath)) psi.ArgumentList.Add(a);
+
+        try
+        {
+            using var p = Process.Start(psi);
+            if (p == null) return (false, "process start failed");
+            var stderrTask = p.StandardError.ReadToEndAsync();
+            var expectedFrames = Math.Max(1, track.Duration.TotalSeconds * DsdEncoder.PcmRate);
+            var lastPercent = -1;
+            long resets;
+            using (ct.Register(() => { try { if (!p.HasExited) p.Kill(true); } catch { } }))
+            {
+                resets = await Task.Run(() =>
+                {
+                    using var file = new FileStream(output, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 1 << 20);
+                    return DsdEncoder.Encode(p.StandardOutput.BaseStream, 2, rate, file, frames =>
+                    {
+                        var percent = (int)Math.Min(99, frames * 100 / expectedFrames);
+                        if (percent == lastPercent) return;
+                        lastPercent = percent;
+                        progress.Report(new ConvertProgress { Track = track, Status = $"Converting… {percent}%" });
+                    }, ct);
+                }, ct);
+                await p.WaitForExitAsync(ct);
+            }
+            var stderr = await stderrTask;
+            if (resets > 0)
+                DebugLog.Write("AudioConverter", $"DSD modulator reset {resets}x on '{Path.GetFileName(track.FilePath)}'");
+            if (p.ExitCode == 0) return (true, string.Empty);
+            var lastLine = stderr.Split('\n').LastOrDefault(l => !string.IsNullOrWhiteSpace(l))?.Trim() ?? $"exit {p.ExitCode}";
+            return (false, lastLine);
+        }
+        catch (OperationCanceledException)
+        {
+            return (false, "cancelled");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// ffmpeg arguments that decode the first audio stream to the encoder's input: raw stereo
+    /// float at <see cref="DsdEncoder.PcmRate"/> on stdout. The resampler gets a 128-tap filter:
+    /// ffmpeg's default (32) is already 0.5 dB down at 20 kHz going 44.1 → 352.8 kHz (measured);
+    /// 128 is flat to 20 kHz. Plain swr, not soxr, which not every ffmpeg build has.
+    /// </summary>
+    internal static List<string> BuildDsdDecodeArgs(string source) => new()
+    {
+        "-nostdin", "-hide_banner", "-loglevel", "error",
+        "-i", source,
+        "-map", "0:a:0", "-vn", "-sn", "-dn",
+        "-ac", "2",
+        "-af", FormattableString.Invariant($"aresample={DsdEncoder.PcmRate}:filter_size=128:cutoff=0.97"),
+        "-c:a", "pcm_f32le", "-f", "f32le", "pipe:1",
+    };
+
+    /// <summary>
+    /// The DSF gets its tags through TagLib only (no ffmpeg muxer wrote any): the title
+    /// override when tags aren't copied, and the source's pictures for "Embed artwork".
+    /// Best-effort, like <see cref="StampSourceMetadata"/>.
+    /// </summary>
+    private static void TagDsf(string source, string outPath, AudioConvertOptions options, string? titleOverride)
+    {
+        try
+        {
+            TagLib.IPicture[] pictures = Array.Empty<TagLib.IPicture>();
+            if (options.EmbedArtwork)
+            {
+                try
+                {
+                    using var src = TagLib.File.Create(source);
+                    pictures = src.Tag.Pictures ?? Array.Empty<TagLib.IPicture>();
+                }
+                catch
+                {
+                    // A source TagLib can't open (DSDIFF) has no pictures we can read.
+                }
+            }
+            var setTitle = !options.CopyTags && !string.IsNullOrWhiteSpace(titleOverride);
+            if (pictures.Length == 0 && !setTitle) return;
+            using var file = TagLib.File.Create(outPath);
+            if (pictures.Length > 0) file.Tag.Pictures = pictures;
+            if (setTitle) file.Tag.Title = titleOverride;
+            file.Save();
+        }
+        catch
+        {
+            // Non-fatal: the DSF plays without them.
         }
     }
 

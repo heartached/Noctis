@@ -1499,6 +1499,71 @@ public partial class PlaybackBarView : UserControl
         _volumeFlyoutCloseTimer = null;
     }
 
+    // ── Search Lyrics in the lyrics-page island (song with no lyrics) ──
+    // The lyrics-page pill (IslandLyricsPageWidth) has room for one more 34px button
+    // beside transport + "…" / lyrics / queue / volume (295px of 340, the extras add their
+    // own width), so the pill keeps its size and the clusters re-centre round it.
+
+    private const double LyricsSearchButtonWidth = 34;
+    private static readonly Avalonia.Animation.Easings.Easing LyricsSearchEase = new CubicBezierEase(0.22, 1, 0.36, 1);
+    private bool _lyricsSearchShown;
+    private int _lyricsSearchGeneration;
+    private Avalonia.Animation.Transitions? _lyricsSearchWidthTransitions;
+
+    /// <summary>Shows or hides the island's Search Lyrics button (lyrics page, centred
+    /// no-lyrics layout). <paramref name="lyrics"/> is the page's view model, which the
+    /// button binds to. Animated: the button's width grows from 0 (so its neighbours slide
+    /// apart) while its glyph fades in, and the reverse on the way out; otherwise it snaps.</summary>
+    public void ShowLyricsSearch(LyricsViewModel? lyrics, bool show, bool animate, TimeSpan duration)
+    {
+        if (lyrics != null) LyricsSearchButton.DataContext = lyrics;
+        show &= LyricsSearchButton.DataContext != null;
+        if (show == _lyricsSearchShown && (animate || LyricsSearchButton.IsVisible == show)) return;
+        _lyricsSearchShown = show;
+        var generation = ++_lyricsSearchGeneration;
+
+        if (animate && duration > TimeSpan.Zero)
+        {
+            // Kept, not rebuilt: replacing the collection mid-slide would snap the width.
+            // (After a snap the style's Opacity-only set is back, so compare by reference.)
+            _lyricsSearchWidthTransitions ??= new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition { Property = WidthProperty, Duration = duration, Easing = LyricsSearchEase },
+            };
+            if (!ReferenceEquals(LyricsSearchButton.Transitions, _lyricsSearchWidthTransitions))
+                LyricsSearchButton.Transitions = _lyricsSearchWidthTransitions;
+            LyricsSearchGlyph.Transitions ??= new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = LyricsSearchEase },
+            };
+        }
+        else
+        {
+            // Clear rather than null: secondary-btn's style brings its own (Opacity) transition.
+            LyricsSearchButton.ClearValue(TransitionsProperty);
+            LyricsSearchGlyph.Transitions = null;
+        }
+
+        if (show)
+        {
+            LyricsSearchButton.IsVisible = true;
+            LyricsSearchButton.Width = LyricsSearchButtonWidth;
+            LyricsSearchGlyph.Opacity = 1;
+            return;
+        }
+
+        LyricsSearchButton.Width = 0;
+        LyricsSearchGlyph.Opacity = 0;
+        if (!animate || duration <= TimeSpan.Zero)
+            LyricsSearchButton.IsVisible = false;
+        else
+            // Collapse once the width has run out, so the row's spacing goes with it.
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (generation == _lyricsSearchGeneration) LyricsSearchButton.IsVisible = false;
+            }, duration);
+    }
+
     /// <summary>Sizes the pill for the page it is on. Always an instant write — see the
     /// note on IslandBorder in the XAML for why the width must never animate. The
     /// persistent bar uses the user's stored width (PlayerViewModel, hydrated from
@@ -1730,7 +1795,7 @@ public partial class PlaybackBarView : UserControl
     /// Per open: puts the Play / Shuffle / Play Next / Add to Queue tiles on top (once), points
     /// them at the current track, fills View Artist with the credited names and settles the
     /// separators, as <see cref="TrackContextMenuBuilder"/> does for the other track menus.
-    /// The menu stays a MenuFlyout so Liquid Glass can frost it (GlassMenuFlyout).
+    /// The menu stays a MenuFlyout so Liquid Glass can frost it (GlassMenus).
     /// </summary>
     private void OnOptionsMenuOpening(object? sender, EventArgs e)
     {
@@ -1741,7 +1806,7 @@ public partial class PlaybackBarView : UserControl
             _quickPlayTile = MenuV2.Tile(this, menu.Hide, "MenuLinePlay", Loc.T("PlaybackBar.Play"));
             _quickShuffleTile = MenuV2.Tile(this, menu.Hide, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
             _quickPlayNextTile = MenuV2.Tile(this, menu.Hide, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
-            _quickQueueTile = MenuV2.Tile(this, menu.Hide, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+            _quickQueueTile = MenuV2.Tile(this, menu.Hide, "MenuLineAddToQueue", Loc.T("LibraryAlbums.AddQueue"));
             menu.Items.Insert(0, MenuV2.TileRow(_quickPlayTile, _quickShuffleTile, _quickPlayNextTile, _quickQueueTile));
         }
 

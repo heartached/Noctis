@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:loc="using:Noctis.Localization"
+             x:Class="Noctis.Mobile.Views.FindField"
+             Margin="16,0,16,10">
+
+    <!-- The list pages' in-page search (Artists, Albums, Songs and every song list), Apple's
+         "Find in Artists": a rounded grey field with the magnifier, filtering as you type, and a
+         clear button while it holds text. One control so the three pages match in look and
+         spacing (tester 11-04). The TextBox inside drops Fluent's own box (border, focus
+         underline, hover fill). -->
+    <UserControl.Styles>
+        <Style Selector="Border.find-field">
+            <Setter Property="Background" Value="#1F808080" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Height" Value="38" />
+        </Style>
+        <Style Selector="TextBox.find">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="6,0,0,0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <!-- Fluent's placeholder grey (and its half opacity) read 2.1–2.6:1 on the field in every
+             theme; the theme's secondary text is tuned to stay readable, as on TextBox.search-field. -->
+        <Style Selector="TextBox.find /template/ TextBlock#PART_Placeholder, TextBox.find /template/ TextBlock#PART_FloatingPlaceholder, TextBox.find:focus /template/ TextBlock#PART_Placeholder, TextBox.find:pointerover /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="TextBox.find /template/ Border#PART_BorderElement, TextBox.find:pointerover /template/ Border#PART_BorderElement, TextBox.find:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Classes="find-field">
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0,4,0">
+            <PathIcon Data="{DynamicResource PhSearch}" Width="20" Height="20" Margin="-2,0" Opacity="0.55" />
+            <TextBox Grid.Column="1" Name="FindBox" Classes="find"
+                     Text="{Binding $parent[views:FindField].Text}"
+                     PlaceholderText="{Binding $parent[views:FindField].Placeholder}" />
+            <Button Grid.Column="2" Name="ClearFindButton" Classes="icon" Width="32" Height="32" Click="OnClear"
+                    IsVisible="{Binding $parent[views:FindField].Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    AutomationProperties.Name="{loc:T Mobile.ClearSearch}">
+                <PathIcon Data="{DynamicResource PhClose}" Width="20" Height="20" Opacity="0.55" />
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

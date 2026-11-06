@@ -40,7 +40,9 @@ public class MobileThemeSweepTests
     private readonly ITestOutputHelper _o;
     public MobileThemeSweepTests(ITestOutputHelper o) => _o = o;
 
-    internal static readonly string[] Themes = { "Light", "Ink", "Smoke", "Dark", "Midnight" };
+    /// <summary>Light, the four dark styles, and colour themes from round the hue wheel (Settings ›
+    /// Theme; MobileThemePickerTests checks every one's palette).</summary>
+    internal static readonly string[] Themes = { "Light", "Ink", "Smoke", "Dark", "Midnight", "rose", "amber", "forest", "cobalt" };
 
     /// <summary>The floor every label and glyph keeps (WCAG's 3:1 for large text and UI parts).</summary>
     private const double Floor = 3.0;
@@ -290,6 +292,9 @@ public class MobileThemeSweepTests
     private static readonly Dictionary<string, string> Accents = new()
     {
         ["Light"] = "#F4D24B", ["Ink"] = MobileTheme.DefaultAccent, ["Smoke"] = "#4338CA", ["Dark"] = "#FF8547", ["Midnight"] = "#12C76F",
+        // A colour theme wears its own accent (Match Theme), or the user's: Indigo on Cobalt is the hardest.
+        ["rose"] = PhoneThemes.EffectiveAccent("rose", MobileTheme.DefaultAccent, true), ["amber"] = "#F4D24B",
+        ["forest"] = PhoneThemes.EffectiveAccent("forest", MobileTheme.DefaultAccent, true), ["cobalt"] = "#4338CA",
     };
 
     [AvaloniaFact]

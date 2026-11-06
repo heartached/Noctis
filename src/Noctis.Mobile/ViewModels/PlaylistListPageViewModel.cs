@@ -15,9 +15,9 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
         Shell = shell;
         SortChoices = new[]
         {
-            new SortChoice("Title", PlaylistSort.Title) { IsSelected = true },
-            new SortChoice("Recently Updated", PlaylistSort.RecentlyUpdated),
-            new SortChoice("Recently Added", PlaylistSort.RecentlyAdded),
+            new SortChoice("Mobile.Sort.Title", PlaylistSort.Title) { IsSelected = true },
+            new SortChoice("Mobile.Sort.RecentlyUpdated", PlaylistSort.RecentlyUpdated),
+            new SortChoice("Mobile.RecentlyAdded", PlaylistSort.RecentlyAdded),
         };
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
@@ -34,10 +34,14 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
     public BulkObservableCollection<PlaylistRow> Rows { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPlaylists))]
+    [NotifyPropertyChangedFor(nameof(HasPlaylists), nameof(HasTools))]
     private int _playlistCount;
 
     public bool HasPlaylists => PlaylistCount > 0;
+
+    /// <summary>The header's tools pill: search and sort with playlists to show, ⋯ (Import
+    /// Playlist) whenever the phone can import.</summary>
+    public bool HasTools => HasPlaylists || Shell.CanImportPlaylists;
 
     /// <summary>The search found nothing (the tools stay up so it can be cleared).</summary>
     public bool ShowNoMatches => HasPlaylists && Playlists.Count == 0;
@@ -113,5 +117,5 @@ public enum PlaylistSort { Title, RecentlyUpdated, RecentlyAdded }
 public sealed record PlaylistRow(Playlist Playlist, string? ArtworkPath)
 {
     public string Name => Playlist.Name;
-    public string Subtitle => Playlist.TrackIds.Count == 1 ? "1 song" : $"{Playlist.TrackIds.Count} songs";
+    public string Subtitle => Loc.Plural("Mobile.Count.Songs", Playlist.TrackIds.Count);
 }

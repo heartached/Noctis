@@ -403,7 +403,7 @@ public partial class LrcEditorViewModel : ViewModelBase
     private bool StampingBlockedByMusicVideoAudio()
     {
         if (!_player.IsPlayingMusicVideoAudio) return false;
-        StatusText = "Stamping is off while the music video's audio plays — turn off Music video audio and restart the song";
+        StatusText = Noctis.Localization.Loc.T("LrcEditor.StampingOffVideoAudio");
         return true;
     }
 
@@ -454,7 +454,7 @@ public partial class LrcEditorViewModel : ViewModelBase
 
         if (!content.Any(l => l.Timestamp.HasValue))
         {
-            StatusText = "Nothing to save — stamp at least one line";
+            StatusText = Noctis.Localization.Loc.T("LrcEditor.NothingToSave");
             return;
         }
 
@@ -517,7 +517,7 @@ public partial class LrcEditorViewModel : ViewModelBase
 
             if (tagsFailed)
             {
-                StatusText = "Saved · couldn't write the lyrics into the audio file (in use or read-only?)";
+                StatusText = Noctis.Localization.Loc.T("LrcEditor.SavedEmbedFailed");
                 Saved?.Invoke(this, EventArgs.Empty);
                 return;
             }
@@ -526,7 +526,7 @@ public partial class LrcEditorViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusText = $"Save failed: {ex.Message}";
+            StatusText = Noctis.Localization.Loc.T("LrcEditor.SaveFailed", ex.Message);
         }
     }
 }

@@ -9,6 +9,7 @@ using Avalonia.Headless;
 using Avalonia.Animation;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -95,10 +96,11 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         window.Close();
     }
 
-    /// <summary>The desktop menu's pop (MenuOpenAnimation.Pop, the same numbers): the card starts
-    /// at 0.9 with its frost faded out, grows from the ⋯ button on the desktop's soft decelerate,
-    /// rising steadily to rest with no overshoot, and the close runs it back down to 0.94, inert
-    /// at once, hiding the card after it.</summary>
+    /// <summary>The phone's pop (tester 11-04): the card starts at <see cref="PopMenu.PopScale"/>
+    /// with its frost and the dim faded out, holds that pose until it has been drawn, then springs
+    /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost and the dim
+    /// in together; the close is quicker and heads back into the button, inert at once, hiding
+    /// the card after it.</summary>
     [AvaloniaFact]
     public void TheMenu_GrowsOutOfTheButton_AndShrinksBackIntoIt_Smoothly()
     {
@@ -107,60 +109,201 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         var menu = MenuOf(view);
         var card = menu.FindControl<Panel>("Card")!;
         var glass = menu.FindControl<GlassPanel>("Glass")!;
+        var dim = menu.FindControl<Border>("Dim")!;
         var more = MobileFixtures.Named<Button>(view, "NowPlayingMore");
 
         // A tap's order (Click, then the command) without the input pass running the frames.
         more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         more.Command!.Execute(null);
         Assert.Same(more, menu.Anchor);
-        Assert.Equal(0.9, ScaleOf(card), 3);                             // the start, before any frame
+        Assert.Equal(PopMenu.PopScale, ScaleOf(card), 3);                // the start, before any frame
         Assert.Equal(0, glass.Fade);
+        Assert.Equal(0, dim.Opacity);
         // It grows out of the button: the origin is the ⋯ button's centre inside the card.
         var origin = card.RenderTransformOrigin.ToPixels(card.Bounds.Size);
         var centre = more.TranslatePoint(new Point(more.Bounds.Width / 2, more.Bounds.Height / 2), menu)!.Value
             - card.Bounds.Position;
         Assert.Equal(centre.X, origin.X, 1);
         Assert.Equal(centre.Y, origin.Y, 1);
-        Dispatcher.UIThread.RunJobs();                                   // the frame that sets the targets
+        // The start pose is held until it has been drawn (two frames on): no run starts inside
+        // the slow first frame. (Headless, the dispatcher runs those frames as jobs.)
+        Assert.Null(card.Transitions);
 
-        var grow = Assert.IsType<TransformOperationsTransition>(Assert.Single(card.Transitions!));
-        Assert.Equal(TimeSpan.FromMilliseconds(280), grow.Duration);
-        Assert.IsType<CubicBezierEase>(grow.Easing);
-        Assert.Equal(TimeSpan.FromMilliseconds(160), Assert.IsType<DoubleTransition>(Assert.Single(glass.Transitions!)).Duration);
-
-        var scales = new List<double> { 0.9 };
+        var scales = new List<double> { PopMenu.PopScale };
         var fades = new List<double> { 0 };
-        for (var i = 0; i < 30; i++)
+        var dims = new List<double> { 0 };
+        var checkedTransitions = false;
+        for (var i = 0; i < 40; i++)
         {
             Pump(1);
             scales.Add(ScaleOf(card));
             fades.Add(glass.Fade);
+            dims.Add(dim.Opacity);
+            if (!checkedTransitions && card.Transitions is { Count: > 0 })
+            {
+                checkedTransitions = true;
+                var grow = Assert.IsType<TransformOperationsTransition>(Assert.Single(card.Transitions));
+                Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopOpenMs), grow.Duration);
+                Assert.IsType<PopSpringEase>(grow.Easing);
+                var frost = Assert.IsType<DoubleTransition>(Assert.Single(glass.Transitions!));
+                var shade = Assert.IsType<DoubleTransition>(Assert.Single(dim.Transitions!));
+                Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopFadeMs), frost.Duration);
+                Assert.Equal(frost.Duration, shade.Duration);                // the dim fades with the frost
+                Assert.Same(frost.Easing, shade.Easing);
+            }
         }
-        output.WriteLine("open scale: " + string.Join(" ", scales.Select(v => v.ToString("0.000"))));
+        Assert.True(checkedTransitions);
+        output.WriteLine("open scale: " + string.Join(" ", scales.Select(v => v.ToString("0.0000"))));
         output.WriteLine("open fade:  " + string.Join(" ", fades.Select(v => v.ToString("0.000"))));
-        Assert.Contains(scales, s => s > 0.92 && s < 0.99);              // frames in between: a glide, not a snap
+        output.WriteLine("open dim:   " + string.Join(" ", dims.Select(v => v.ToString("0.000"))));
+        Assert.Contains(scales, s => s > PopMenu.PopScale + 0.02 && s < 0.99);   // frames in between: a glide, not a snap
         Assert.Equal(1, scales[^1], 3);
         Assert.Equal(1, fades[^1], 3);
-        for (var i = 1; i < scales.Count; i++)
-        {
+        Assert.Equal(1, dims[^1], 3);
+        Assert.All(scales, s => Assert.True(s <= 1.006, $"overshoot {s}: a hair past, not a bounce"));
+        // Rising to its peak without a step back on the way up.
+        var peak = scales.IndexOf(scales.Max());
+        for (var i = 1; i <= peak; i++)
             Assert.True(scales[i] >= scales[i - 1] - 1e-6, $"scale fell back at frame {i}: {string.Join(", ", scales)}");
-            Assert.True(scales[i] <= 1 + 1e-6, "overshoot");
-        }
 
         rig.Shell.CloseSheet();
         Assert.False(menu.IsHitTestVisible);                             // inert while it fades
         Assert.True(menu.IsVisible);
-        Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopCloseMs),
-            Assert.IsType<TransformOperationsTransition>(Assert.Single(card.Transitions!)).Duration);
+        var shrink = Assert.IsType<TransformOperationsTransition>(Assert.Single(card.Transitions!));
+        Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopCloseMs), shrink.Duration);
+        Assert.True(shrink.Duration < TimeSpan.FromMilliseconds(PopMenu.PopOpenMs), "the close is quicker than the open");
+        Assert.Equal(origin, card.RenderTransformOrigin.ToPixels(card.Bounds.Size));   // back into the button
         var closing = new List<double>();
-        for (var i = 0; i < (int)(PopMenu.PopCloseMs / 16) + 8; i++)
+        var closingFade = new List<double>();
+        for (var i = 0; i < (int)(PopMenu.PopCloseMs / 16) + 8 && menu.IsVisible; i++)
         {
             Pump(1);
             closing.Add(ScaleOf(card));
+            closingFade.Add(glass.Fade);
         }
         output.WriteLine("close scale: " + string.Join(" ", closing.Select(v => v.ToString("0.000"))));
-        Assert.Contains(closing, s => s > 0.94 + 1e-3 && s < 1 - 1e-3);  // shrinks through the frames
+        output.WriteLine("close fade:  " + string.Join(" ", closingFade.Select(v => v.ToString("0.000"))));
+        Assert.Contains(closing, s => s > PopMenu.PopCloseScale + 1e-3 && s < 1 - 1e-3);  // shrinks through the frames
         Assert.False(menu.IsVisible);
+        window.Close();
+    }
+
+    /// <summary>The open curve: a spring that is most of the way there at once, runs a hair past
+    /// and has settled (no visible snap) when the run ends; the close is shorter, its shrink
+    /// leaving at once while its fade holds a moment.</summary>
+    [Fact]
+    public void ThePopCurves_SpringOutQuickly_AndSettle_TheCloseIsShorter()
+    {
+        var ease = new PopSpringEase();
+        Assert.Equal(0, ease.Ease(0));
+        Assert.Equal(1, ease.Ease(1));
+        var samples = Enumerable.Range(0, 1001).Select(i => ease.Ease(i / 1000.0)).ToList();
+        var first90 = samples.FindIndex(v => v >= 0.9) / 1000.0;
+        output.WriteLine($"90 % at {first90:0.000} of the run ({first90 * PopMenu.PopOpenMs:0} ms), peak {samples.Max():0.0000}");
+        Assert.InRange(first90, 0.1, 0.35);                              // quick out of the button
+        Assert.InRange(samples.Max(), 1.01, 1.04);                       // a hair past
+        Assert.InRange(samples[999], 0.997, 1.003);                      // settled: the last frame does not snap
+        Assert.True(PopMenu.PopCloseMs < PopMenu.PopOpenMs);
+        Assert.True(PopMenu.PopCloseEase.Ease(0.25) > 0.5);
+        Assert.True(PopMenu.PopCloseFadeEase.Ease(0.25) < 0.15);
+    }
+
+    /// <summary>The origin follows the anchor (the ⋯ button, then the quality badge: two different
+    /// points), and while the card moves nothing about it is laid out again: only its render
+    /// transform, its frost and opacities change, so no frame of the run costs a layout pass.</summary>
+    [AvaloniaFact]
+    public void TheOrigin_FollowsTheAnchor_AndTheRunLaysNothingOut()
+    {
+        var song = MobileFixtures.Song("Tone", artist: "Band");
+        song.Codec = "FLAC"; song.BitsPerSample = 24; song.SampleRate = 96000;
+        using var rig = MobileFixtures.MakeRig(new[] { song });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        MobileFixtures.Land(window);
+        var menu = MenuOf(view);
+        var card = menu.FindControl<Panel>("Card")!;
+        var page = view.FindControl<NowPlayingPage>("NowPlaying")!;
+
+        var origins = new List<Point>();
+        foreach (var name in new[] { "NowPlayingMore", "QualityBadge" })
+        {
+            var anchor = MobileFixtures.Named<Button>(page, name);
+            anchor.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            anchor.Command!.Execute(null);
+            Assert.Same(anchor, menu.Anchor);
+            var origin = card.RenderTransformOrigin.ToPixels(card.Bounds.Size) + card.Bounds.Position;
+            var centre = anchor.TranslatePoint(new Point(anchor.Bounds.Width / 2, anchor.Bounds.Height / 2), menu)!.Value;
+            Assert.Equal(centre.X, origin.X, 1);
+            origins.Add(origin);
+
+            // From the first moving frame on, the card is never measured or arranged again.
+            Pump(3);
+            Assert.NotNull(card.Transitions);
+            var bounds = card.Bounds;
+            var invalidated = 0;
+            void Watch(object? s, AvaloniaPropertyChangedEventArgs e)
+            {
+                if (e.Property == Visual.BoundsProperty || e.Property == Layoutable.DesiredSizeProperty) invalidated++;
+            }
+            card.PropertyChanged += Watch;
+            var glass = menu.FindControl<GlassPanel>("Glass")!;
+            glass.PropertyChanged += Watch;
+            for (var i = 0; i < 25; i++)
+            {
+                Pump(1);
+                Assert.True(card.IsMeasureValid && card.IsArrangeValid);
+            }
+            card.PropertyChanged -= Watch;
+            glass.PropertyChanged -= Watch;
+            Assert.Equal(bounds, card.Bounds);
+            Assert.Equal(0, invalidated);
+            Assert.Equal(1, ScaleOf(card), 3);
+
+            rig.Shell.CloseSheet();
+            Pump((int)(PopMenu.PopCloseMs / 16) + 8);
+            Assert.False(menu.IsVisible);
+        }
+        output.WriteLine($"origins {origins[0]} {origins[1]}");
+        Assert.NotEqual(origins[0], origins[1]);
+        window.Close();
+    }
+
+    /// <summary>Still frames of the open at 0, 25, 50 and 100 % of its run, for a look (set
+    /// NOCTIS_MENU_SHOTS to a folder; real rendering only). Each pose is set from the curves at
+    /// that point of the run, not caught off the wall clock, which Skia's slow frames outran.</summary>
+    [AvaloniaFact]
+    public void Shots_TheMenuOpening()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_MENU_SHOTS");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+        var (rig, window, view) = OpenNowPlaying();
+        using var _ = rig;
+        var menu = MenuOf(view);
+        var card = menu.FindControl<Panel>("Card")!;
+        var glass = menu.FindControl<GlassPanel>("Glass")!;
+        var body = menu.FindControl<ScrollViewer>("Body")!;
+        var dim = menu.FindControl<Border>("Dim")!;
+        var more = MobileFixtures.Named<Button>(view, "NowPlayingMore");
+        more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        more.Command!.Execute(null);
+        Pump(30);
+        var spring = new PopSpringEase();
+        foreach (var pct in new[] { 0, 25, 50, 100 })
+        {
+            var t = pct / 100.0;
+            var fade = PopMenu.PopFadeEase.Ease(Math.Min(1, t * PopMenu.PopOpenMs / PopMenu.PopFadeMs));
+            var scale = PopMenu.PopScale + (1 - PopMenu.PopScale) * spring.Ease(t);
+            foreach (var c in new Control[] { card, glass, body, dim }) c.Transitions = null;
+            glass.Fade = fade;
+            body.Opacity = fade;
+            dim.Opacity = fade;
+            card.RenderTransform = new PopPose(scale, 0).Transform();
+            Pump(2);
+            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"menus-{pct:000}.png"));
+            output.WriteLine($"{pct} % ({t * PopMenu.PopOpenMs:0} ms): scale {scale:0.000}, fade {fade:0.000}");
+        }
         window.Close();
     }
 
@@ -325,9 +468,9 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         badge.Command!.Execute(null);
         Assert.Same(badge, menu.Anchor);
         Assert.IsType<QualityCardViewModel>(rig.Shell.PopMenu);
-        Assert.Equal(0.9, ScaleOf(card), 3);
+        Assert.Equal(PopMenu.PopScale, ScaleOf(card), 3);
         var origin = card.RenderTransformOrigin.ToPixels(card.Bounds.Size);
-        // Layout bounds, not a translated box: the card is drawn at 0.9 round the origin just now.
+        // Layout bounds, not a translated box: the card is drawn scaled down round the origin just now.
         var badgeCentre = badge.TranslatePoint(new Point(badge.Bounds.Width / 2, badge.Bounds.Height / 2), menu)!.Value - card.Bounds.Position;
         Assert.Equal(badgeCentre.X, origin.X, 1);
         Assert.Equal(card.Bounds.Height, origin.Y, 1);                   // the badge is below the card's foot
@@ -620,7 +763,9 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Pump(30);                                                        // the page settles (push, hero)
         MobileFixtures.Land(window);
         var albumPage = MobileFixtures.Find<AlbumPage>(view);
-        var rowMore = albumPage.GetVisualDescendants().OfType<Button>().First(b => b.Command == rig.Shell.OpenTrackSheetCommand);
+        // The rows' ⋯ open the page's song menu (with Select for its Select mode).
+        var albumVm = (AlbumPageViewModel)rig.Shell.CurrentPage!;
+        var rowMore = albumPage.GetVisualDescendants().OfType<Button>().First(b => b.Command == albumVm.OpenSongMenuCommand);
         Check(rowMore, "album track row", "MenuGoToArtist");   // no Go to Album on its own page
         Check(MobileFixtures.Named<Button>(albumPage, "MoreButton"), "album header", "MenuAddToQueue");
 
@@ -658,7 +803,7 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         // The lowest ⋯ still above the mini player.
         var page = MobileFixtures.Find<AlbumPage>(view);
         var low = page.GetVisualDescendants().OfType<Button>()
-            .Where(b => b.Command == rig.Shell.OpenTrackSheetCommand && b.IsEffectivelyVisible)
+            .Where(b => b.Command == ((AlbumPageViewModel)rig.Shell.CurrentPage!).OpenSongMenuCommand && b.IsEffectivelyVisible)
             .Select(b => (button: b, box: BoxIn(b, view)))
             .Where(x => x.box.Bottom < chromeTop - 4)
             .OrderBy(x => x.box.Top).Last();

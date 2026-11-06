@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             x:Class="Noctis.Mobile.Views.SelectionActions"
+             x:DataType="vm:TrackSelection">
+    <!-- Select mode's action bar, in the mini player's capsule above the tabs: what to do with
+         the ticked songs. Greyed until one is ticked; Download only while signed in to a
+         computer, Remove from Playlist only on a playlist's page. -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+        <Button Name="SelectAddToPlaylist" Classes="icon" Command="{Binding AddToPlaylistCommand}" IsEnabled="{Binding HasSelection}"
+                AutomationProperties.Name="{loc:T Mobile.AddToPlaylist}">
+            <PathIcon Data="{DynamicResource PhAddToPlaylist}" />
+        </Button>
+        <Button Name="SelectPlayNext" Classes="icon" Command="{Binding PlayNextCommand}" IsEnabled="{Binding HasSelection}"
+                AutomationProperties.Name="{loc:T Mobile.PlayNext}">
+            <PathIcon Data="{DynamicResource PhPlayNext}" />
+        </Button>
+        <Button Name="SelectAddToQueue" Classes="icon" Command="{Binding AddToQueueCommand}" IsEnabled="{Binding HasSelection}"
+                AutomationProperties.Name="{loc:T Mobile.AddToQueue}">
+            <PathIcon Data="{DynamicResource PhAddToQueue}" />
+        </Button>
+        <Button Name="SelectFavourite" Classes="icon" Command="{Binding ToggleFavouriteCommand}" IsEnabled="{Binding HasSelection}"
+                AutomationProperties.Name="{Binding FavouriteLabel}">
+            <Panel>
+                <PathIcon Data="{DynamicResource PhMenuHeart}" IsVisible="{Binding !IsAllFavourite}" />
+                <PathIcon Data="{DynamicResource PhMenuHeartFill}" IsVisible="{Binding IsAllFavourite}" />
+            </Panel>
+        </Button>
+        <Button Name="SelectDownload" Classes="icon" Command="{Binding DownloadCommand}" IsEnabled="{Binding CanDownload}"
+                IsVisible="{Binding OffersDownload}" AutomationProperties.Name="{loc:T Mobile.Download}">
+            <PathIcon Data="{DynamicResource PhDownload}" />
+        </Button>
+        <Button Name="SelectRemoveFromPlaylist" Classes="icon" Command="{Binding RemoveFromPlaylistCommand}" IsEnabled="{Binding CanRemoveFromPlaylist}"
+                IsVisible="{Binding OffersRemoveFromPlaylist}" AutomationProperties.Name="{loc:T Mobile.RemoveFromPlaylist}">
+            <PathIcon Data="{DynamicResource PhPlaylistRemove}" />
+        </Button>
+    </StackPanel>
+</UserControl>

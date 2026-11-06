@@ -28,6 +28,10 @@ public class AppSettings : IJsonOnDeserializing
     /// follow the listed ones in their default order and state.</summary>
     public List<string> PhoneLibraryRows { get; set; } = new();
 
+    /// <summary>Phone: Settings › Music Folders › Find All Music Automatically. The library also
+    /// takes every song Android's media index knows (MediaStore), besides the folders.</summary>
+    public bool PhoneAllMusic { get; set; }
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.</summary>
@@ -132,6 +136,16 @@ public class AppSettings : IJsonOnDeserializing
     /// <see cref="Theme"/>) or "Light".</summary>
     public string MobileAppearance { get; set; } = "System";
 
+    /// <summary>Phone, Settings › Theme: the dark theme ("Ink", "Smoke", "Dark", "Midnight" or a
+    /// colour theme named after its background, "forest"), shown when <see cref="MobileAppearance"/>
+    /// is "Dark", or "System" on a dark phone. Empty until the phone first starts with themes: it
+    /// is then migrated from <see cref="Theme"/> and <see cref="MobileBackground"/> (PhoneThemes).</summary>
+    public string MobileThemeName { get; set; } = "";
+
+    /// <summary>Phone, Settings › Accent › Match Theme: a colour theme's own accent is used instead
+    /// of <see cref="AccentColorHex"/>. Themes without one (Light, the dark styles) keep the accent.</summary>
+    public bool MobileAccentFollowsTheme { get; set; } = true;
+
     /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
     public double MobileLyricsTextScale { get; set; } = 1.0;
 
@@ -159,9 +173,22 @@ public class AppSettings : IJsonOnDeserializing
     /// deep shade of the cover's colour. Off, they keep the theme's plain pages. On by default.</summary>
     public bool MobileArtworkPageColors { get; set; } = true;
 
+    /// <summary>Phone, Settings › Library › Show in Song Rows: the small mark at the end of a song
+    /// row's artist line, "Off", "Ratings" (stars on rated songs; the default) or "Favorites" (a heart).</summary>
+    public string MobileSongRowMark { get; set; } = "Ratings";
+    /// <summary>Phone, Settings › Appearance › Now Playing Artwork: the cover as it is (Cover, the
+    /// default), or printed on a spinning record (Vinyl) or disc (CD). Saved by name; anything
+    /// unknown reads as Cover.</summary>
+    public string MobileNowPlayingArtwork { get; set; } = "Cover";
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;
+
+    /// <summary>Phone, Settings › Appearance › Smooth Motion: the app asks the screen for its fastest
+    /// refresh rate (up to 120 Hz on phones that have it); off, it asks for 60 Hz, which uses less
+    /// battery. On by default.</summary>
+    public bool MobileSmoothMotion { get; set; } = true;
 
     /// <summary>Phone, Settings › Background: the page background. "Off" (the default, and what a
     /// settings file without the field reads as) is the plain theme colour; "Artwork" a mesh of
@@ -357,6 +384,21 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
+
+    /// <summary>GitHub #167: look up an album's animated cover (clear matches only) when its
+    /// page opens, and keep it in a size-capped cache. Off by default: it asks Apple about
+    /// every album opened.</summary>
+    public bool AnimatedArtworkAutoFetch { get; set; }
+
+    /// <summary>The cap of that cache in MB; one of <see cref="AnimatedArtworkCacheSizeChoices"/>.</summary>
+    public int AnimatedArtworkCacheMb { get; set; } = 1024;
+
+    /// <summary>The cache sizes Settings offers, in MB.</summary>
+    public static IReadOnlyList<int> AnimatedArtworkCacheSizeChoices { get; } = new[] { 250, 500, 1024, 2048, 5120, 10240 };
+
+    /// <summary>The nearest of <see cref="AnimatedArtworkCacheSizeChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapAnimatedArtworkCacheMb(int mb) =>
+        AnimatedArtworkCacheSizeChoices.MinBy(c => Math.Abs((long)c - mb));
 
     /// <summary>Album pages take their background colour from the cover's edge colour,
     /// Apple-Music style, with the page text flipping dark on light covers. Ships on
@@ -674,6 +716,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether Home's "New in Library" section shows its rows.</summary>
     public bool HomeNewAlbumsExpanded { get; set; } = true;
 
+    /// <summary>Whether Home's "From your Last.fm" section (GitHub #177) shows its rows.</summary>
+    public bool HomeLastFmExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's "Discover on Last.fm" section (GitHub #177) shows its list.</summary>
+    public bool HomeLastFmDiscoverExpanded { get; set; } = true;
+
     /// <summary>Show New in Library above the recently played Albums row (default: below it).</summary>
     public bool HomeNewAlbumsFirst { get; set; }
 
@@ -969,6 +1017,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
 
+    /// <summary>GitHub #177: Home's "From your Last.fm" mixes and Discover, read from the
+    /// connected account. On by default: they only show while an account is connected, and
+    /// connecting is the opt-in; this lets a connected user turn them off.</summary>
+    public bool LastFmTasteEnabled { get; set; } = true;
+
     /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).
     /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>
     public bool ListenBrainzScrobblingEnabled { get; set; } = false;
@@ -1115,6 +1168,11 @@ public class AppSettings : IJsonOnDeserializing
     /// notes swell and glow letter by letter. Ships on; off keeps the words still (the
     /// sweep alone marks the vocal).</summary>
     public bool LyricsGlowAndLift { get; set; } = true;
+
+    /// <summary>The full-screen lyrics page slides the cover, track info and controls to the
+    /// middle when the song has no lyrics (none found, instrumental, or marked as none),
+    /// instead of leaving the lyrics half empty. Ships on.</summary>
+    public bool LyricsCenterWhenNoLyrics { get; set; } = true;
 
     /// <summary>Show a TTML file's translation under each lyric line (issue #78).</summary>
     public bool LyricsShowTranslations { get; set; } = true;

@@ -38,14 +38,14 @@ jobs:
             audit: true
 
           - name: macos-arm64
-            runs-on: macos-14
+            runs-on: macos-15
             rid: osx-arm64
             artifact: Noctis-macos-arm64
             run-tests: true
             audit: true
 
           - name: macos-x64
-            runs-on: macos-14
+            runs-on: macos-15
             rid: osx-x64
             artifact: Noctis-macos-x64
             run-tests: false
@@ -105,10 +105,31 @@ jobs:
       # Linux headless harnesses lay out and time the same views differently, so their
       # results are informational until those tests are made platform-neutral: the
       # step still runs and reports, but only the Windows leg gates the build.
+      # Wall-clock UI tests share one headless UI thread and a 2-4 core runner, so every
+      # full run fails a different 1-4 of ~9,300 (v1.6.8: four runs, no test failed twice).
+      # A failed run retries ONLY the failed tests once; a test that fails twice in a row
+      # still fails the step.
       - name: Run tests
         if: matrix.run-tests
         continue-on-error: ${{ matrix.rid != 'win-x64' }}
-        run: dotnet test tests/Noctis.Tests/Noctis.Tests.csproj -c Release -v minimal
+        shell: bash
+        run: |
+          if dotnet test tests/Noctis.Tests/Noctis.Tests.csproj -c Release -v minimal --logger "trx;LogFileName=run1.trx" --results-directory test-results; then
+            exit 0
+          fi
+          failed=$(grep -o '<UnitTestResult [^>]*outcome="Failed"' test-results/run1.trx | grep -o 'testName="[^"]*"' | sed -e 's/^testName="//' -e 's/"$//' -e 's/(.*//' | sort -u)
+          if [ -z "$failed" ]; then
+            echo "::error::Tests failed but no failed test was found in the TRX (crash or build error)."
+            exit 1
+          fi
+          count=$(echo "$failed" | wc -l)
+          if [ "$count" -gt 10 ]; then
+            echo "::error::$count tests failed; not retrying."
+            exit 1
+          fi
+          echo "Retrying $count failed test(s) once:"; echo "$failed"
+          filter=$(echo "$failed" | sed 's/^/FullyQualifiedName~/' | paste -sd'|' -)
+          dotnet test tests/Noctis.Tests/Noctis.Tests.csproj -c Release -v minimal --no-build --filter "$filter"
 
       - name: Publish self-contained
         run: >

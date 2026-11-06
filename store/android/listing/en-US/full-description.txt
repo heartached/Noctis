@@ -8,7 +8,7 @@ WORD-SYNCED LYRICS
 • Lyrics follow Android's font size setting.
 
 YOUR LIBRARY, YOUR FILES
-• Choose the folders that hold your music. Noctis reads only those folders and asks for no storage or media permission.
+• Find all the music on your phone automatically, or choose the folders that hold it. Noctis asks for the music and audio permission only if you turn on Find All Music.
 • Your library is built from your files' own tags and embedded cover art.
 • Plays MP3, FLAC, AAC/M4A, Ogg Vorbis, Opus and WAV.
 • Album pages with the full track list, and artist pages with their albums.

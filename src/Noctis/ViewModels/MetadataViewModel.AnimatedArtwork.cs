@@ -98,7 +98,12 @@ public partial class MetadataViewModel
                     typed ? $"search: typed \"{albumTerm}\"" : $"search: tags \"{albumTerm}\" by \"{artist}\"");
 
                 var ranked = await _itunes.FindAnimatedArtworkCandidatesAsync(
-                    new ITunesArtworkService.AnimatedArtworkQuery(albumTerm, artist, trackArtist, typed),
+                    new ITunesArtworkService.AnimatedArtworkQuery(albumTerm, artist, trackArtist, typed)
+                    {
+                        // Tie-breaks between editions only; a typed query is about something else.
+                        Year = !typed && int.TryParse(Year, out var year) ? year : 0,
+                        TrackCount = !typed && _albumScoped ? SongCount : 0,
+                    },
                     AnimatedCandidatesToOpen, ct);
                 if (!Current()) return;
 
@@ -378,7 +383,7 @@ public partial class MetadataViewModel
 }
 
 /// <summary>One album with motion artwork in the chooser grid.</summary>
-public sealed partial class AnimatedArtworkSearchResult : ObservableObject, IDisposable
+public sealed partial class AnimatedArtworkSearchResult : ObservableObject, IArtworkChooserItem, IDisposable
 {
     public AnimatedArtworkSearchResult(ITunesArtworkService.AnimatedArtworkAlbum album, double score)
     {
@@ -417,6 +422,10 @@ public sealed partial class AnimatedArtworkSearchResult : ObservableObject, IDis
 
     public bool HasDetail => Detail.Length > 0;
 
+    bool IArtworkChooserItem.CanPreview => true;
+    string? IArtworkChooserItem.PosterTip => Loc.T("Metadata.AnimPreviewTip");
+    IReadOnlyList<IArtworkChooserChoice> IArtworkChooserItem.Choices => Choices;
+
     [ObservableProperty] private Bitmap? _poster;
     [ObservableProperty] private string? _previewPath;
     [ObservableProperty] private bool _isPreviewLoading;
@@ -439,7 +448,7 @@ public sealed partial class AnimatedArtworkSearchResult : ObservableObject, IDis
 public sealed record AnimatedArtworkChoice(
     AnimatedArtworkSearchResult Owner,
     ITunesArtworkService.AnimatedArtworkVariant Variant,
-    bool IsPrimary)
+    bool IsPrimary) : IArtworkChooserChoice
 {
     public string Label => Variant.Label;
     public bool IsSecondary => !IsPrimary;

@@ -94,9 +94,14 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
         var chips = new List<string>();
         var format = ShortFormat(track.Codec, track.FilePath);
         if (format.Length > 0) chips.Add(format);
-        if (track.SampleRate > 0)
-            chips.Add((track.SampleRate / 1000.0).ToString("0.#", CultureInfo.CurrentCulture) + " kHz");
-        if (track.BitsPerSample > 0) chips.Add($"{track.BitsPerSample}-bit");
+        if (track.DsdRateLabel is { } dsd)
+            chips.Add(dsd); // "DSD64 2.8 MHz", not "2822.4 kHz" + "1-bit"
+        else
+        {
+            if (track.SampleRate > 0)
+                chips.Add((track.SampleRate / 1000.0).ToString("0.#", CultureInfo.CurrentCulture) + " kHz");
+            if (track.BitsPerSample > 0) chips.Add($"{track.BitsPerSample}-bit");
+        }
         if (track.Bitrate > 0) chips.Add($"{track.Bitrate} kbps");
         if (track.Duration > TimeSpan.Zero) chips.Add(FormatTime(track.Duration));
         return chips;

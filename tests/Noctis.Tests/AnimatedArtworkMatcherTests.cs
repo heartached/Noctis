@@ -114,7 +114,63 @@ public class AnimatedArtworkMatcherTests
         var ranked = ITunesArtworkService.RankAnimatedCandidates(candidates, query, max: 10)
             .Select(r => r.Candidate.CollectionId).ToList();
 
-        Assert.Equal(new long[] { 1750307020, 1752214909, 1795512297, 9 }, ranked);
+        // The karaoke record is neither the title nor the artist: not offered (GitHub #167).
+        Assert.Equal(new long[] { 1750307020, 1752214909, 1795512297 }, ranked);
+    }
+
+    [Fact]
+    public void Rank_TagSearch_NeverOffersADifferentTitleByADifferentArtist()
+    {
+        // GitHub #167 (enoversum): "Wings of Love" by Erasure offered "Tears of Love" by Tears
+        // for Fears — different title, artist and year. Two shared words were enough.
+        var query = new ITunesArtworkService.AnimatedArtworkQuery("Wings of Love", "Erasure", "Erasure", Typed: false);
+
+        var onlyWrong = ITunesArtworkService.RankAnimatedCandidates(new[] { C(1, "Tears of Love", "Tears for Fears") }, query, 10);
+        var both = ITunesArtworkService.RankAnimatedCandidates(
+            new[] { C(1, "Tears of Love", "Tears for Fears"), C(2, "Wings of Love", "Erasure") }, query, 10);
+
+        Assert.Empty(onlyWrong);
+        Assert.Equal(new long[] { 2 }, both.Select(r => r.Candidate.CollectionId));
+    }
+
+    [Fact]
+    public void Rank_TagSearch_KeepsTheSameTitleUnderAnotherCredit_ForAMistaggedArtist()
+    {
+        var query = new ITunesArtworkService.AnimatedArtworkQuery("Wings of Love", "Erasure", "Erasure", Typed: false);
+        var ranked = ITunesArtworkService.RankAnimatedCandidates(new[] { C(1, "Wings of Love", "Erasure & Friends Orchestra"), C(2, "Wings of Love", "Andy Bell") }, query, 10);
+        Assert.Equal(2, ranked.Count);
+    }
+
+    [Fact]
+    public void Rank_TagSearch_YearAndSongCountOnlyBreakTiesBetweenEditions()
+    {
+        // Two same-titled editions: the one from the local album's year with its song count first,
+        // even though the store listed the reissue first.
+        var reissue = C(1, "Wings of Love", "Erasure") with { ReleaseYear = 2011, TrackCount = 20 };
+        var original = C(2, "Wings of Love", "Erasure") with { ReleaseYear = 1988, TrackCount = 12 };
+        var deluxe = C(3, "Wings of Love (Deluxe)", "Erasure") with { ReleaseYear = 1988, TrackCount = 12 };
+        var query = new ITunesArtworkService.AnimatedArtworkQuery("Wings of Love", "Erasure", "Erasure", Typed: false)
+        {
+            Year = 1988,
+            TrackCount = 12,
+        };
+
+        var ranked = ITunesArtworkService.RankAnimatedCandidates(new[] { reissue, deluxe, original }, query, 10);
+
+        // The tie-break never lifts an edition wrapper over the exact title.
+        Assert.Equal(new long[] { 2, 1, 3 }, ranked.Select(r => r.Candidate.CollectionId));
+    }
+
+    [Theory]
+    [InlineData(1988, 1988, 12, 12, 5)]
+    [InlineData(1988, 1989, 12, 13, 2.5)]
+    [InlineData(2011, 1988, 20, 12, 0)]
+    [InlineData(0, 1988, 0, 12, 0)]
+    public void EditionTieBreak_StaysBelowTheEditionGap(int candidateYear, int year, int candidateTracks, int tracks, double expected)
+    {
+        var bonus = AnimatedArtworkMatcher.EditionTieBreak(candidateYear, year, candidateTracks, tracks);
+        Assert.Equal(expected, bonus, 3);
+        Assert.True(bonus < 8);
     }
 
     [Fact]

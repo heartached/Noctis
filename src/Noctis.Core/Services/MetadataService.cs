@@ -59,9 +59,9 @@ public class MetadataService : IMetadataService
         // the bundled VLC ships an asf demuxer + WMA decoders in libavcodec).
         // Like .mp4 above, a video-bearing .asf plays audio-only (--no-video).
         ".asf",
-        // DSD: .dsf is read by TagLib; .dff is read by DsdiffReader (TagLib ships no
-        // DSDIFF parser). Both now surface in the library, but playback is not yet
-        // supported — the bundled VLC 3.x has no DSD demuxer/decoder.
+        // DSD: .dsf is read (and tagged, ID3v2) by TagLib; .dff is read by DsdiffReader
+        // (TagLib ships no DSDIFF parser, so .dff tags are read-only). LibVLC 3 has no DSD
+        // decoder, so the player decodes both to PCM itself (DsdPcmInput / DsdPcmDecoder).
         ".dsf", ".dff"
     };
 
@@ -325,6 +325,7 @@ public class MetadataService : IMetadataService
         if (string.IsNullOrWhiteSpace(explicitAlbumArtist))
             explicitAlbumArtist = tag.FirstAlbumArtist ?? string.Empty;
         var albumArtist = Track.ResolveAlbumArtist(explicitAlbumArtist, tag.FirstPerformer, isCompilation);
+        var albumArtistFromTag = !string.IsNullOrWhiteSpace(explicitAlbumArtist);
         var riff = ReadRiffInfoFallback(file);
         var album = FirstNonEmpty(tag.Album, riff.Album, "Unknown Album");
         var title = string.IsNullOrWhiteSpace(tag.Title)
@@ -341,6 +342,7 @@ public class MetadataService : IMetadataService
             Title = title,
             Artist = artist,
             AlbumArtist = albumArtist,
+            AlbumArtistFromTag = albumArtistFromTag,
             Album = album,
             Genre = Track.JoinGenres(tag.Genres), // every genre, not just the first (GitHub #123 follow-up)
             TrackNumber = (int)tag.Track,
@@ -421,21 +423,23 @@ public class MetadataService : IMetadataService
                 return null;
 
             var fileInfo = new FileInfo(filePath);
-            var artist = string.IsNullOrWhiteSpace(info.Artist) ? "Unknown Artist" : info.Artist!;
-            const string album = "Unknown Album";
-            var title = string.IsNullOrWhiteSpace(info.Title)
-                ? Path.GetFileNameWithoutExtension(filePath)
-                : info.Title!;
+            // The ID3 chunk taggers write wins over DIIN (the mastering title/artist).
+            var id3 = ParseDsdiffId3(info.Id3);
+            var artist = FirstNonBlank(id3?.JoinedPerformers, info.Artist) ?? "Unknown Artist";
+            var albumArtist = FirstNonBlank(id3?.JoinedAlbumArtists) ?? artist;
+            var album = FirstNonBlank(id3?.Album) ?? "Unknown Album";
+            var title = FirstNonBlank(id3?.Title, info.Title) ?? Path.GetFileNameWithoutExtension(filePath);
 
             var track = new Track
             {
                 FilePath = filePath,
                 Title = title,
                 Artist = artist,
-                AlbumArtist = artist,
+                AlbumArtist = albumArtist,
+                AlbumArtistFromTag = FirstNonBlank(id3?.JoinedAlbumArtists) != null,
                 Album = album,
                 Duration = info.Duration,
-                AlbumId = Track.ComputeAlbumId(artist, album),
+                AlbumId = Track.ComputeAlbumId(albumArtist, album),
                 FileSize = fileInfo.Length,
                 LastModified = fileInfo.LastWriteTimeUtc,
                 DateAdded = DateTime.UtcNow,
@@ -444,6 +448,17 @@ public class MetadataService : IMetadataService
                 Bitrate = NormalizeBitrate(0, fileInfo.Length, info.Duration),
                 Codec = "DSD"
             };
+            if (id3 != null)
+            {
+                track.TrackNumber = (int)id3.Track;
+                track.TrackCount = (int)id3.TrackCount;
+                track.DiscNumber = (int)id3.Disc;
+                track.DiscCount = (int)id3.DiscCount;
+                track.Year = (int)id3.Year;
+                track.Genre = Track.JoinGenres(id3.Genres);
+                track.Composer = id3.FirstComposer ?? string.Empty;
+                embeddedArt = UseEmbeddedArtwork ? SelectBestEmbeddedPicture(id3.Pictures) : null;
+            }
             // Same folder/filename fallback as the TagLib path above.
             Helpers.FolderMetadata.TryApplyToTrack(track, MusicRootFolders);
             // DSDIFF carries no ReplayGain we read: nothing for the backfill to look up.
@@ -456,11 +471,29 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>The ID3v2 tag of a .dff's "ID3 " chunk; null when absent or unreadable.</summary>
+    private static TagLib.Id3v2.Tag? ParseDsdiffId3(byte[]? raw)
+    {
+        if (raw == null) return null;
+        try { return new TagLib.Id3v2.Tag(new TagLib.ByteVector(raw)); }
+        catch { return null; }
+    }
+
+    private static string? FirstNonBlank(params string?[] values) =>
+        values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
+
     public byte[]? ExtractEmbeddedArt(string filePath)
     {
         if (!UseEmbeddedArtwork) return null;
         try
         {
+            if (Path.GetExtension(filePath).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            {
+                using var dff = File.OpenRead(filePath);
+                var tag = ParseDsdiffId3(DsdiffReader.TryRead(dff)?.Id3);
+                return tag == null ? null : SelectBestEmbeddedPicture(tag.Pictures);
+            }
+
             using var file = TagLib.File.Create(filePath);
             return SelectBestEmbeddedPicture(file.Tag.Pictures);
         }
@@ -630,7 +663,7 @@ public class MetadataService : IMetadataService
 
     private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
-        return SaveTagsAtomically(targetFilePath, file =>
+        var ok = SaveTagsAtomically(targetFilePath, file =>
         {
             var tag = file.Tag;
 
@@ -693,6 +726,13 @@ public class MetadataService : IMetadataService
             ExtendedTagIO.WriteRating(file, track.Rating);
             ExtendedTagIO.WriteIsDisliked(file, track.IsDisliked);
         });
+        // The album artist is now in the file's own tag (written above), so the album-grouping
+        // pass must treat it as a real tag from here on, as the next scan of the file will
+        // (GitHub #178). Only for the track's own file: a converter writes to a new one.
+        if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
+            && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.AlbumArtistFromTag = true;
+        return ok;
     }
 
     /// <summary>The row's plain lyrics say what the file's lyrics text says: equal, or equal once

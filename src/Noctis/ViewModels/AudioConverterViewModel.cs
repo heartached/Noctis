@@ -39,14 +39,14 @@ public partial class AudioConverterViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BitrateApplies), nameof(BitDepthApplies), nameof(PcmBitDepthApplies),
-        nameof(ArtworkApplies), nameof(EmbedArtworkEffective), nameof(ExampleName))]
+        nameof(DsdRateApplies), nameof(ArtworkApplies), nameof(EmbedArtworkEffective), nameof(ExampleName))]
     private string _selectedFormat = "mp3";
 
     private OutputFormatInfo? Format => AudioConverterService.FindFormat(SelectedFormat);
 
     /// <summary>Bitrate applies to lossy formats only; bit depth to lossless only.</summary>
     public bool BitrateApplies => Format is { IsLossless: false };
-    public bool BitDepthApplies => Format is { IsLossless: true } && !IsPcm;
+    public bool BitDepthApplies => Format is { IsLossless: true } && !IsPcm && !IsDsd;
 
     /// <summary>
     /// WAV and AIFF: the encoder has no "keep the source depth" mode, "Auto" was written as
@@ -55,6 +55,13 @@ public partial class AudioConverterViewModel : ViewModelBase
     /// </summary>
     public bool PcmBitDepthApplies => IsPcm;
     private bool IsPcm => SelectedFormat is "wav" or "aiff";
+
+    /// <summary>DSD (.dsf): its quality is the DSD rate, not a bit depth (DSD is 1-bit).</summary>
+    public bool DsdRateApplies => IsDsd;
+    private bool IsDsd => SelectedFormat == "dsf";
+
+    public string[] DsdRateOptions { get; } = { "DSD64", "DSD128", "DSD256" };
+    [ObservableProperty] private string _selectedDsdRate = "DSD64";
 
     /// <summary>Only some containers carry an attached cover; the service drops it for the rest.</summary>
     public bool ArtworkApplies => Format is { ArtworkSupported: true };
@@ -249,6 +256,7 @@ public partial class AudioConverterViewModel : ViewModelBase
             Format = SelectedFormat,
             BitrateKbps = SelectedBitrate,
             BitDepth = IsPcm ? SelectedPcmBitDepth : SelectedBitDepth,
+            DsdRate = SelectedDsdRate,
             OutputFolder = OutputFolder?.Trim() ?? string.Empty,
             FilenamePattern = FilenamePattern,
             CopyTags = CopyTags,

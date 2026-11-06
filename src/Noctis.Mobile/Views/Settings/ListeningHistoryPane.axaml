@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
              xmlns:views="using:Noctis.Mobile.Views"
@@ -56,7 +57,7 @@
             <StackPanel Margin="16,14,16,16">
                 <!-- Left, as the total under it: the sheet caps a row-value's width (220), which
                      centred a stretched caption in the wide card. -->
-                <TextBlock Name="WeekCaption" Classes="row-value" Margin="0" HorizontalAlignment="Left" FontWeight="SemiBold" Text="This Week" />
+                <TextBlock Name="WeekCaption" Classes="row-value" Margin="0" HorizontalAlignment="Left" FontWeight="SemiBold" Text="{loc:T Mobile.History.ThisWeek}" />
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
                     <TextBlock Name="WeekTotalLabel" Classes="week-total" Text="{Binding WeekTotal}" />
                     <TextBlock Name="WeekPlaysLabel" Classes="row-value" Margin="0,0,0,5" VerticalAlignment="Bottom"
@@ -82,7 +83,7 @@
 
         <!-- Recently Played: the last three songs, then Show All. -->
         <StackPanel Name="RecentSection">
-            <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="Recently Played" />
+            <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="{loc:T Mobile.RecentlyPlayed}" />
             <Border Name="RecentCard" Classes="group-card">
                 <StackPanel>
                     <ItemsControl Name="RecentList" ItemsSource="{Binding Recent}">
@@ -105,12 +106,12 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <Grid Name="NoRecentRow" Classes="setting-row" IsVisible="{Binding !HasRecent}">
-                        <TextBlock Classes="row-label" Foreground="{DynamicResource PhoneSecondaryTextBrush}" Text="Nothing Played Yet" />
+                        <TextBlock Classes="row-label" Foreground="{DynamicResource PhoneSecondaryTextBrush}" Text="{loc:T Mobile.History.NothingPlayed}" />
                     </Grid>
                     <Button Name="ShowAllButton" Classes="row accent-row" Command="{Binding ShowAllCommand}"
-                            IsVisible="{Binding HasRecent}" AutomationProperties.Name="Show All">
+                            IsVisible="{Binding HasRecent}" AutomationProperties.Name="{loc:T Mobile.ShowAll}">
                         <Grid Classes="setting-row" ColumnDefinitions="*">
-                            <TextBlock Classes="row-label" Text="Show All" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.ShowAll}" />
                         </Grid>
                     </Button>
                 </StackPanel>
@@ -119,23 +120,31 @@
 
         <!-- History: how long plays are kept, and whether the computer hears of them. -->
         <StackPanel>
-            <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="History" />
+            <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="{loc:T Mobile.History.Header}" />
             <Border Classes="group-card">
                 <StackPanel>
-                    <Button Name="KeepRow" Classes="row" Command="{Binding ChooseKeepCommand}" AutomationProperties.Name="Keep History">
+                    <Button Name="KeepRow" Classes="row" Command="{Binding ChooseKeepCommand}" AutomationProperties.Name="{loc:T Mobile.History.Keep}">
                         <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
-                            <TextBlock Classes="row-label" Text="Keep History" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.History.Keep}" />
                             <TextBlock Grid.Column="1" Name="KeepValueLabel" Classes="row-value" HorizontalAlignment="Right" Text="{Binding KeepText}" />
+                            <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                        </Grid>
+                    </Button>
+                    <Border Classes="row-separator plain" />
+                    <Button Name="CountRow" Classes="row" Command="{Binding ChooseCountCommand}" AutomationProperties.Name="{loc:T Mobile.History.CountAfter}">
+                        <Grid Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.History.CountAfter}" />
+                            <TextBlock Grid.Column="1" Name="CountValueLabel" Classes="row-value" HorizontalAlignment="Right" Text="{Binding CountText}" />
                             <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
                         </Grid>
                     </Button>
                     <StackPanel IsVisible="{Binding HasAccount}">
                         <Border Classes="row-separator plain" />
-                        <ToggleButton Name="ShareSwitch" Classes="switch-row" AutomationProperties.Name="Share with Computer"
+                        <ToggleButton Name="ShareSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.History.Share}"
                                       IsChecked="{Binding ShareWithComputer}">
                             <StackPanel VerticalAlignment="Center" Margin="0,8">
-                                <TextBlock Classes="row-label" Text="Share with Computer" />
-                                <TextBlock Classes="row-sub" Text="Counts and Recently Played match on both" />
+                                <TextBlock Classes="row-label" Text="{loc:T Mobile.History.Share}" />
+                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.History.ShareHint}" />
                             </StackPanel>
                         </ToggleButton>
                     </StackPanel>
@@ -145,13 +154,13 @@
 
         <StackPanel>
             <Border Classes="group-card">
-                <Button Name="ClearButton" Classes="row accent-row" Command="{Binding AskClearCommand}" AutomationProperties.Name="Clear Listening History">
+                <Button Name="ClearButton" Classes="row accent-row" Command="{Binding AskClearCommand}" AutomationProperties.Name="{loc:T Mobile.History.ClearName}">
                     <Grid Classes="setting-row" ColumnDefinitions="*">
-                        <TextBlock Classes="row-label" Text="Clear Listening History…" />
+                        <TextBlock Classes="row-label" Text="{loc:T Mobile.History.ClearRow}" />
                     </Grid>
                 </Button>
             </Border>
-            <TextBlock Classes="group-footnote" Text="Clears this phone's plays. Plays already sent to Last.fm stay there." />
+            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.History.ClearHint}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -35,7 +36,7 @@ public sealed partial class AlbumTrackRow : ObservableObject
 /// desktop album page's DiscGroup header).</summary>
 public sealed record AlbumDiscHeader(int Disc)
 {
-    public string Label => $"Disc {Disc}";
+    public string Label => Loc.T("Mobile.Album.Disc", Disc);
 }
 
 /// <summary>
@@ -52,6 +53,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Tint = shell.TintFactory();
         Tint.HeroFade = true;
         Tint.Enabled = shell.ArtworkPageColors;
+        Selection = new TrackSelection(shell, () => Album.Tracks, () => Album.Name);
         Shell.Library.Refreshed += OnRefreshed;
         Shell.Player.PropertyChanged += OnPlayerChanged;
         Shell.PropertyChanged += OnShellChanged;
@@ -61,6 +63,21 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     public ShellViewModel Shell { get; }
     public Guid AlbumId { get; }
+
+    /// <summary>Select mode on the track list (a song's menu › Select, or the album's ⋯ › Select).</summary>
+    public TrackSelection Selection { get; }
+
+    [RelayCommand]
+    private void BeginSelect() => Selection.Begin();
+
+    /// <summary>A row's ⋯ or long press: the song's menu (with Select); in Select mode it ticks.</summary>
+    [RelayCommand]
+    private void OpenSongMenu(Track? track)
+    {
+        if (track == null) return;
+        if (Selection.IsActive) Selection.Toggle(track);
+        else Shell.OpenTrackMenu(track, null, Selection);
+    }
     public PageTint Tint { get; }
 
     [ObservableProperty]
@@ -191,16 +208,17 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     /// the songs alone when no length is known.</summary>
     public static string BuildSongsLine(Album album)
     {
-        static string Count(int n, string unit) => n == 1 ? $"1 {unit}" : $"{n} {unit}s";
-        var songs = Count(album.TrackCount, "song");
+        var songs = Loc.Plural("Mobile.Count.Songs", album.TrackCount);
         var total = album.TotalDuration;
         var hours = (int)total.TotalHours;
         var length = hours > 0
-            ? total.Minutes > 0 ? $"{Count(hours, "hour")}, {Count(total.Minutes, "minute")}" : Count(hours, "hour")
-            : total.TotalMinutes >= 1 ? Count((int)total.TotalMinutes, "minute")
-            : (int)total.TotalSeconds > 0 ? Count((int)total.TotalSeconds, "second")
+            ? total.Minutes > 0
+                ? Loc.T("Mobile.Album.ListJoin", Loc.Plural("Mobile.Count.Hours", hours), Loc.Plural("Mobile.Count.Minutes", total.Minutes))
+                : Loc.Plural("Mobile.Count.Hours", hours)
+            : total.TotalMinutes >= 1 ? Loc.Plural("Mobile.Count.Minutes", (int)total.TotalMinutes)
+            : (int)total.TotalSeconds > 0 ? Loc.Plural("Mobile.Count.Seconds", (int)total.TotalSeconds)
             : null;
-        return length == null ? songs : $"{songs}, {length}";
+        return length == null ? songs : Loc.T("Mobile.Album.ListJoin", songs, length);
     }
 
     private async Task LoadDescriptionAsync(string artist, string album, CancellationToken ct)
@@ -252,6 +270,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         var fresh = Shell.Library.Service.GetAlbumById(AlbumId);
         if (fresh != null && !ReferenceEquals(fresh, Album)) Apply(fresh);
         else IsFavourite = Album.IsAllTracksFavorite;   // a favourite toggled here or elsewhere
+        Selection.Prune();
     }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
@@ -296,6 +315,11 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     private void PlayTrack(AlbumTrackRow? row)
     {
         if (row == null) return;
+        if (Selection.IsActive)
+        {
+            Selection.Toggle(row.Track);
+            return;
+        }
         PlayFrom(Tracks.ToList().IndexOf(row));
     }
 
@@ -317,10 +341,11 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     [RelayCommand] private void OpenArtist() => Shell.OpenArtistCommand.Execute(Album.Artist);
 
-    [RelayCommand] private void More() => Shell.OpenAlbumSheetCommand.Execute(Album);
+    [RelayCommand] private void More() => Shell.OpenAlbumMenu(Album, Selection);
 
     public override void OnClosed()
     {
+        Selection.End();
         _descriptionCts.Cancel();
         Shell.Library.Refreshed -= OnRefreshed;
         Shell.Player.PropertyChanged -= OnPlayerChanged;

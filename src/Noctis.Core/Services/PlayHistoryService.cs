@@ -244,6 +244,27 @@ public sealed class PlayHistoryService : IPlayHistoryService
         }
     }
 
+    public void SetListened(Track track, TimeSpan listened)
+    {
+        var ms = Math.Max(0, (long)listened.TotalMilliseconds);
+        lock (_lock)
+        {
+            EnsureLoaded();
+            // The latest play of the track sits at (or very near) the tail, as for RecordSkip.
+            var floor = Math.Max(0, _count - 25);
+            for (var i = _count - 1; i >= floor; i--)
+            {
+                var e = _buffer![_start + i];
+                if (e.TrackId != track.Id) continue;
+                if (e.ListenedMs == ms) return;
+                e.ListenedMs = ms;
+                if (i < _count - TailCount) _baseDirtyVersion++;
+                ScheduleSave();
+                return;
+            }
+        }
+    }
+
     public void RemapTrackIds(IReadOnlyDictionary<Guid, Guid> remap)
     {
         if (remap.Count == 0) return;

@@ -241,6 +241,58 @@ public class FileSystemSourceScanTests : IDisposable
         Assert.Equal(new[] { "A1", "B1" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
     }
 
+    /// <summary>Find All Music (phone): the media index root yields songs by content URI with no
+    /// extension in the path ("…/audio/media/7"); the tags are read through the display name's
+    /// format. The permission taken away keeps them (with their plays); the option turned off
+    /// (the root no longer scanned) takes them out.</summary>
+    [Fact]
+    public async Task DeviceMusicRoot_ReadsSongsByContentUri_KeepsThemWhenTheRootIsOutOfReach()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        const string root = Noctis.Mobile.Services.DeviceMusicScan.Root;
+        var source = new MediaIndexSource(_music);
+        var (library, _) = MakeLibrary(source, scanPastUnavailable: true);
+
+        await library.ScanAsync(new[] { root }, ct);
+        Assert.Equal(new[] { "First", "Second" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
+        Assert.All(library.Tracks, t => Assert.StartsWith(root + "/", t.FilePath));
+        library.Tracks.Single(t => t.Title == "First").PlayCount = 5;
+
+        string[]? flagged = null;
+        library.ScanAborted += (_, roots) => flagged = roots;
+        source.Available = false;
+        await library.ScanAsync(new[] { root }, ct);
+        Assert.Equal(new[] { root }, flagged);
+        Assert.Equal(5, library.Tracks.Single(t => t.Title == "First").PlayCount);
+
+        source.Available = true;
+        await library.ScanAsync(Array.Empty<string>(), ct);
+        Assert.Empty(library.Tracks);
+    }
+
+    /// <summary>The fixture folder as MediaStore rows: "{root}/{n}" paths, names with their extension.</summary>
+    private sealed class MediaIndexSource : IFileSystemSource
+    {
+        private readonly string _dir;
+        public bool Available = true;
+        public MediaIndexSource(string dir) => _dir = dir;
+        public bool RootExists(string root) => Available;
+
+        public IEnumerable<ScanEntry> EnumerateAudioFiles(string root, IReadOnlyCollection<string> excludedRoots,
+            IReadOnlySet<string> ignoredFolderNames, Action<string> reportFailedDirectory)
+        {
+            var id = 0;
+            foreach (var file in Directory.EnumerateFiles(_dir).OrderBy(f => f, StringComparer.Ordinal))
+            {
+                if (!MetadataService.SupportedExtensions.Contains(Path.GetExtension(file))) continue;
+                var fi = new FileInfo(file);
+                var captured = file;
+                yield return new ScanEntry(Noctis.Mobile.Services.DeviceMusicScan.PathFor(++id), fi.Name, fi.Length, fi.LastWriteTimeUtc,
+                    LocalPath: null, OpenRead: () => File.OpenRead(captured));
+            }
+        }
+    }
+
     /// <summary>Several roots, each served from its own fixture folder; any can be made unavailable.</summary>
     private sealed class MultiRootSource : IFileSystemSource
     {

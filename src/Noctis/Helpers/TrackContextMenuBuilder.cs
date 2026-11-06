@@ -324,7 +324,7 @@ public sealed class TrackContextMenuBuilder
         QuickPlay = MenuV2.Tile(host, Menu, "MenuLinePlay", Loc.T("LibraryAlbums.Play"));
         QuickShuffle = MenuV2.Tile(host, Menu, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
         QuickPlayNext = MenuV2.Tile(host, Menu, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
-        QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+        QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineAddToQueue", Loc.T("LibraryAlbums.AddQueue"));
         items.Add(MenuV2.TileRow(QuickPlay, QuickShuffle, QuickPlayNext, QuickAddToQueue));
 
         items.Add(new Separator());
@@ -390,7 +390,7 @@ public sealed class TrackContextMenuBuilder
         Tools.Items.Add(Spectrogram);
         SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
         Tools.Items.Add(SendToFolder);
-        OpenWith = MenuV2.Row(host, "Open File With", "MenuLineOpenWith");
+        OpenWith = MenuV2.Row(host, Loc.T("Menu.OpenFileWith"), "MenuLineOpenWith");
         Tools.Items.Add(OpenWith);
         DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
         Tools.Items.Add(DontScrobble);

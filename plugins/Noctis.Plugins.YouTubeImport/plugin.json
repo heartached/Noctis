@@ -1,7 +1,7 @@
 {
   "id": "dev.noctis.plugins.youtubeimport",
   "name": "Add from YouTube",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Noctis",
   "description": "Save audio from a YouTube link to your library.",
   "type": "dotnet",

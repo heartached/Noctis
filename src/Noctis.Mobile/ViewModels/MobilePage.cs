@@ -1,5 +1,6 @@
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -10,6 +11,10 @@ public enum MobileTab { Home, Favorites, Playlists, Library, Search }
 /// <summary>How the page stack last changed: a page pushed (or presented), the top one popped,
 /// or a jump straight to the root (a tab tap) that no page slides through.</summary>
 public enum PageMove { Push, Pop, Reset }
+
+/// <summary>Settings › Library › Show in Song Rows: what a song row's small mark shows
+/// (Views/RowMark), the saved names in settings.json (MobileSongRowMark).</summary>
+public enum SongRowMark { Off, Ratings, Favorites }
 
 /// <summary>
 /// A page pushed over a tab's root (Songs, an album, an artist, Settings…). ShellView shows
@@ -41,4 +46,15 @@ public abstract partial class MobilePage : ObservableObject
     public virtual bool TryGoBackWithin() => false;
 
     public override string ToString() => Title;
+
+    /// <summary>The UI language changed: every binding on the page re-reads (titles, counts,
+    /// row values built in code). Pages with child view models add theirs.</summary>
+    public virtual void Relabel() => OnPropertyChanged(string.Empty);
+
+    /// <summary>A page title given as a Strings.resx key ("Mobile.RecentlyAdded", "Nav.Songs") reads
+    /// in the current language, so an open page follows a language switch; any other text (an
+    /// artist's or playlist's name) shows as given.</summary>
+    protected static string Localized(string titleOrKey) =>
+        titleOrKey.StartsWith("Mobile.", StringComparison.Ordinal) || titleOrKey.StartsWith("Nav.", StringComparison.Ordinal)
+            ? Loc.T(titleOrKey) : titleOrKey;
 }

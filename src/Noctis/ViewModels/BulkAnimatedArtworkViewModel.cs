@@ -24,13 +24,16 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isDone;
     [ObservableProperty] private double _progress;
-    [ObservableProperty] private string _statusMessage = "Ready.";
+    [ObservableProperty] private string _statusMessage = L("BulkLyrics.Ready");
+
+    private static string L(string key) => Noctis.Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Noctis.Localization.Loc.T(key, args);
     /// <summary>Ask again about albums an earlier run found nothing for.</summary>
     [ObservableProperty] private bool _recheck;
 
     public bool CanStart => !IsRunning && !IsDone && _albums.Count > 0;
     public bool CanChangeOptions => !IsRunning && !IsDone;
-    public string CloseText => IsRunning ? "Hide" : "Close";
+    public string CloseText => IsRunning ? L("BulkLyrics.Hide") : L("BulkLyrics.Close");
 
     public event EventHandler? Closed;
 
@@ -39,14 +42,14 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
         _albums = albums;
         _service = service;
         var n = albums.Count;
-        TitleText = n == 1 ? "Find animated artwork for 1 album" : $"Find animated artwork for {n:N0} albums";
+        TitleText = n == 1 ? L("BulkArtwork.TitleOne") : L("BulkArtwork.TitleMany", n);
         foreach (var album in albums)
         {
             var row = new Row(album[0], album.Any(t => t.IsExplicit));
             Rows.Add(row);
             _rowById.TryAdd(album[0].AlbumId, row);
         }
-        if (n == 0) StatusMessage = "No albums to look up.";
+        if (n == 0) StatusMessage = L("BulkArtwork.NoAlbums");
     }
 
     partial void OnIsRunningChanged(bool value)
@@ -68,7 +71,7 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
         if (!CanStart) return;
         IsRunning = true;
         Progress = 0;
-        StatusMessage = "Looking up";
+        StatusMessage = L("BulkArtwork.LookingUp");
         _cts = new CancellationTokenSource();
         var progress = new Progress<AnimatedArtworkBulkProgress>(p => Dispatcher.UIThread.Post(() =>
         {
@@ -79,18 +82,18 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
                 row.Done = true;
                 row.Found = p.Outcome == "animated artwork saved";
             }
-            if (IsRunning) StatusMessage = $"Looking up {p.Done:N0} of {p.Total:N0}";
+            if (IsRunning) StatusMessage = L("BulkLyrics.LookingUpProgress", p.Done, p.Total);
         }));
         try
         {
             // Off the UI thread: the cover checks and the ledger touch the disk.
             var s = await Task.Run(() => _service.RunAsync(_albums, Recheck, progress, _cts.Token));
-            StatusMessage = (_cts.IsCancellationRequested ? "Stopped · " : "Done · ") + Summarize(s);
+            StatusMessage = L(_cts.IsCancellationRequested ? "BulkLyrics.StoppedSummary" : "BulkLyrics.DoneSummary", Summarize(s));
             IsDone = true;
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Failed — {ex.Message}";
+            StatusMessage = L("BulkLyrics.Failed", ex.Message);
         }
         finally
         {
@@ -102,13 +105,13 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
     internal static string Summarize(AnimatedArtworkBulkSummary s)
     {
         var parts = new List<string>();
-        if (s.Found > 0) parts.Add($"{s.Found:N0} saved");
-        if (s.NotFound > 0) parts.Add($"{s.NotFound:N0} with no clear match");
+        if (s.Found > 0) parts.Add(L("BulkArtwork.SumSaved", s.Found));
+        if (s.NotFound > 0) parts.Add(L("BulkArtwork.SumNoMatch", s.NotFound));
         var had = s.Skipped - s.CheckedBefore;
-        if (had > 0) parts.Add($"{had:N0} already had one");
-        if (s.CheckedBefore > 0) parts.Add($"{s.CheckedBefore:N0} looked up before");
-        if (s.Failed > 0) parts.Add($"{s.Failed:N0} failed");
-        return parts.Count == 0 ? "nothing to do" : string.Join(" · ", parts);
+        if (had > 0) parts.Add(L("BulkArtwork.SumHadOne", had));
+        if (s.CheckedBefore > 0) parts.Add(L("BulkLyrics.SumCheckedBefore", s.CheckedBefore));
+        if (s.Failed > 0) parts.Add(L("BulkLyrics.SumFailed", s.Failed));
+        return parts.Count == 0 ? L("BulkLyrics.SumNothing") : string.Join(" · ", parts);
     }
 
     [RelayCommand]

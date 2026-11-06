@@ -194,6 +194,8 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="12" />
+            <!-- An option menu: its card frosts with Liquid Glass (GlassMenus, GitHub #169). -->
+            <Setter Property="(helpers:GlassMenus.Track)" Value="True" />
         </Style>
         <Style Selector="Border.ms-pop-card">
             <Setter Property="CornerRadius" Value="16" />

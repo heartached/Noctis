@@ -32,22 +32,40 @@ internal class Program
                 Thread.CurrentThread.SetApartmentState(ApartmentState.STA);
             }
 
+            // A restart from Settings (Data Folder, GitHub #165) starts this process before the
+            // old one has exited: wait for it, or the single-instance guard below would hand
+            // this launch to the exiting window and quit.
+            var waitForPid = WaitForPreviousInstance(args);
+
             // Audio files passed on the command line ("Open with Noctis" /
             // double-clicked track): forwarded to the running instance, or
             // played once this instance finishes starting.
             var filesToOpen = args
-                .Where(a => !a.StartsWith('-') && File.Exists(a))
+                .Where(a => !a.StartsWith('-') && a != waitForPid && File.Exists(a))
                 .ToArray();
 
             // One instance per user: launching again (e.g. pinned taskbar icon while
             // the app sits in the tray) surfaces the running window instead of
             // starting a second player.
             var ownsInstance = SingleInstanceGuard.TryAcquire();
+            if (!ownsInstance && SingleInstanceGuard.SignalFirstInstance(filesToOpen))
+                return;
+
+            // Where the data lives (GitHub #165), settled before anything reads the data root:
+            // finish a data folder move the last session copied, and make sure a folder the
+            // user moved the data to is really there. An unplugged drive must not turn into a
+            // fresh, empty library. Before the fall-through below logs: that resolves the data root.
+            var dataStart = DataLocation.PrepareAtStartup(AppPaths.HomeRoot, finishPendingMove: ownsInstance);
+            if (dataStart.Status == DataLocation.StartupStatus.Unavailable)
+            {
+                if (!AskToStartWithDefaultDataFolder(dataStart.ConfiguredRoot))
+                    return;
+                DataLocation.SessionFallbackFrom = dataStart.ConfiguredRoot;
+                AppPaths.OverrideDataRoot(AppPaths.HomeRoot);
+            }
+
             if (!ownsInstance)
             {
-                if (SingleInstanceGuard.SignalFirstInstance(filesToOpen))
-                    return;
-
                 // Nobody answered the activation pipe, so there is no live instance to
                 // surface — only something holding the instance guard. That is either a
                 // hung Noctis or (Windows) an unrelated process that got there first: the
@@ -83,6 +101,16 @@ internal class Program
 
             // Make services available to the Avalonia App
             App.Services = provider;
+
+            // A finished data folder move set the old copy aside; delete it off the UI path.
+            if (ownsInstance)
+            {
+                _ = Task.Run(() =>
+                {
+                    try { DataLocation.CleanupOldData(AppPaths.HomeRoot, AppPaths.DataRoot); }
+                    catch (Exception ex) { Services.DebugLog.Write("DataLocation", $"old data cleanup: {ex.Message}"); }
+                });
+            }
 
             // Auto-update: a verified release downloaded in an earlier session installs now, before the
             // audio engine or any window exists, so it never interrupts playback. Only the instance that
@@ -180,6 +208,96 @@ internal class Program
 
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+    /// <summary>The argument a Settings restart passes: the exiting process to wait for.</summary>
+    internal const string WaitForPidArgument = "--wait-for-pid";
+
+    /// <summary>Waits (up to 30 s) for the process named by <see cref="WaitForPidArgument"/> to
+    /// exit. Returns the pid argument so it is not mistaken for a file to open.</summary>
+    private static string? WaitForPreviousInstance(string[] args)
+    {
+        var i = Array.IndexOf(args, WaitForPidArgument);
+        if (i < 0 || i + 1 >= args.Length) return null;
+        if (int.TryParse(args[i + 1], out var pid) && pid != Environment.ProcessId)
+        {
+            try
+            {
+                using var previous = System.Diagnostics.Process.GetProcessById(pid);
+                previous.WaitForExit(30_000);
+            }
+            catch { /* already gone */ }
+        }
+        return args[i + 1];
+    }
+
+    /// <summary>
+    /// The data folder the user chose can't be reached (unplugged USB drive, offline share).
+    /// Asks whether to run this session on the default folder; false = quit. The chosen folder
+    /// stays the setting, so the next launch with the drive connected uses it again.
+    /// </summary>
+    private static bool AskToStartWithDefaultDataFolder(string configuredRoot)
+    {
+        var text = DataFolderUnavailableText(configuredRoot);
+        if (OperatingSystem.IsWindows())
+        {
+            const uint MB_YESNO = 0x04, MB_ICONWARNING = 0x30;
+            const int IDYES = 6;
+            return MessageBox(IntPtr.Zero, text, "Noctis — Data folder not found", MB_YESNO | MB_ICONWARNING) == IDYES;
+        }
+
+        Console.Error.WriteLine(text);
+        foreach (var (fileName, args) in DataFolderQuestionCommands(text, OperatingSystem.IsMacOS()))
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(fileName) { UseShellExecute = false };
+                foreach (var a in args) psi.ArgumentList.Add(a);
+                using var p = System.Diagnostics.Process.Start(psi);
+                if (p == null) continue;
+                p.WaitForExit();
+                // Every tool here exits 0 for "use the default folder" and non-zero for quit or
+                // a closed dialog; one that can't open a window exits at once, non-zero: quit.
+                return p.ExitCode == 0;
+            }
+            catch { /* not installed — try the next tool */ }
+        }
+        // No way to ask: quit rather than start on another folder unasked.
+        return false;
+    }
+
+    internal static string DataFolderUnavailableText(string configuredRoot) =>
+        "Noctis keeps its data in:\n" + configuredRoot + "\n\n" +
+        "That folder can't be reached right now. If it is on a USB or network drive, connect it and start Noctis again.\n\n" +
+        "Start with the default data folder for now? Your data in that folder stays as it is, " +
+        "and Noctis looks for it again at the next start. (To go back to the default folder for good, " +
+        "use Settings › Advanced › Data Folder › Use Default.)";
+
+    /// <summary>The yes/no dialog tools for <see cref="AskToStartWithDefaultDataFolder"/> on
+    /// macOS/Linux, tried in order. Exit code 0 = start with the default folder. Internal for tests.</summary>
+    internal static (string FileName, string[] Args)[] DataFolderQuestionCommands(string text, bool macOS)
+    {
+        if (macOS)
+        {
+            return new[]
+            {
+                ("/usr/bin/osascript", new[]
+                {
+                    "-e", "on run argv",
+                    "-e", "display dialog (item 1 of argv) with title \"Noctis\" buttons {\"Quit\", \"Use Default Folder\"} default button 2 cancel button 1 with icon caution",
+                    "-e", "end run",
+                    text,
+                }),
+            };
+        }
+
+        // zenity parses --text as Pango markup (see StartupErrorAlertCommands).
+        var markup = text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+        return new[]
+        {
+            ("zenity", new[] { "--question", "--title=Noctis — Data folder not found", "--ok-label=Use Default Folder", "--cancel-label=Quit", "--text=" + markup }),
+            ("kdialog", new[] { "--title", "Noctis — Data folder not found", "--yes-label", "Use Default Folder", "--no-label", "Quit", "--yesno", text }),
+        };
+    }
 
     /// <summary>
     /// macOS/Linux counterpart of the Windows startup MessageBox: the desktop's own
@@ -357,6 +475,9 @@ internal class Program
         });
         services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
         services.AddSingleton<ILastFmService, LastFmService>();
+        // GitHub #177: Home's Last.fm mixes and Discover (read-only account charts, cached 12 h).
+        services.AddSingleton(sp => new LastFmTasteService(sp.GetRequiredService<HttpClient>(),
+            Path.Combine(AppPaths.DataRoot, "cache", "lastfm_taste.json")));
         services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
         services.AddSingleton<ArtistInfoService>();

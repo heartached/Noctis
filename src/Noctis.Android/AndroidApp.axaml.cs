@@ -30,7 +30,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     private const string LogTag = "Noctis";
 
     private readonly MobileTheme _theme = new();
-    private (string Appearance, string DarkTheme, string Accent) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent);
+    private (string Appearance, string DarkTheme, string Accent, bool AccentFollowsTheme) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent, true);
     private PlatformThemeVariant? _appliedSystem;
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
@@ -79,6 +79,12 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // Android may clear; a missing one is simply decoded from the source once more.
         LibraryService.ArtworkFileReplaced += ArtworkCache.Invalidate;
         ArtworkThumbnailCache.Enable(Path.Combine((context.CacheDir ?? context.FilesDir!).AbsolutePath, "artwork_thumbs"));
+        // Two cover decodes at a time: mid-range phones have two fast cores, and a grid fling
+        // otherwise ran a full-size decode per tile at once (see CachedImage.MaxConcurrentDecodes).
+        Noctis.Controls.CachedImage.MaxConcurrentDecodes = 2;
+        // No GC memory pressure per cover: on Android it forces full collections, each one an
+        // explicit ART GC on the UI thread, a scroll hitch per burst of covers (ArtworkCache).
+        Noctis.Services.ArtworkCache.UseMemoryPressure = false;
 
         // DebugLog is an in-memory ring with no output of its own, so every handled error the
         // app logs — startup, library scan, playback, SAF listing — would be invisible on a
@@ -126,17 +132,21 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Online = LrcLibOnlineLyricsSource.Create(persistence.DataDirectory, new HttpClient()),
         };
         var shell = new ShellViewModel(
-            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
+            // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
+            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history) { DeviceMusic = AndroidDeviceMusic.Create(context) },
             nowPlaying,
             lyrics)
         {
             Outputs = new AndroidOutputSwitcher(context),
             BatterySaver = new AndroidBatterySaver(context),
+            FrameRate = AndroidFrameRate.Instance,
             Theme = this,
             Logs = new AndroidLogExporter(context),
             Links = new AndroidUrlLauncher(context),
             // Account → Scan QR Code: Google's code scanner (no camera permission, see the class).
             QrScanner = new AndroidQrScanner(),
+            // Playlists ⋯ › Import Playlist: .m3u / .m3u8 files from the system document picker.
+            PlaylistFiles = new AndroidPlaylistFilePicker(context),
             VersionText = DescribeVersion(context),
             Account = account,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
@@ -145,6 +155,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
             // when an album page opens (Settings → About says so).
             AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
+            // Home's From Your Last.fm and Discover on Last.fm (GitHub #177): the charts of the
+            // account connected in Settings → Scrobbling, read by its name only, cached for 12 h.
+            LastFmTaste = new LastFmTasteService(new HttpClient(), Path.Combine(persistence.DataDirectory, "cache", "lastfm_taste.json")),
             // The desktop's artist photos: Deezer, asked by artist name only when an artist page
             // opens or artist circles come into view (Settings → About says so).
             ArtistPhotos = DeezerArtistPhotoSource.Create(persistence.DataDirectory, new HttpClient(), library),
@@ -156,6 +169,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 : null,
         };
         _shell = shell;
+        // A fast word is one search, not one per letter (SearchPageViewModel.TypingDebounce).
+        shell.Search.TypingDebounce = TimeSpan.FromMilliseconds(150);
 
         if (account != null)
         {
@@ -182,7 +197,17 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _player.HasPreviousInQueue = () => shell.Player.HasPrevious;
 
         if (ApplicationLifetime is IActivityApplicationLifetime activity)
-            activity.MainViewFactory = () => new ShellView { DataContext = shell };
+            activity.MainViewFactory = () =>
+            {
+                var view = new ShellView { DataContext = shell };
+                // Scroll-freeze diagnostic, off unless `adb shell setprop debug.noctis.stalls 1`.
+                if (ReadSystemProperty("debug.noctis.stalls") == "1")
+                    view.AttachedToVisualTree += (_, _) =>
+                    {
+                        if (Avalonia.Controls.TopLevel.GetTopLevel(view) is { } top) FrameStallMonitor.Start(top);
+                    };
+                return view;
+            };
 
         _ = StartAsync(persistence, library, history);
 
@@ -259,6 +284,21 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         }
     }
 
+    /// <summary>An Android system property (getprop), empty when unset or unreadable.</summary>
+    private static string ReadSystemProperty(string name)
+    {
+        try
+        {
+            using var cls = Java.Lang.Class.ForName("android.os.SystemProperties");
+            using var get = cls.GetMethod("get", Java.Lang.Class.FromType(typeof(Java.Lang.String)));
+            return get.Invoke(null, new Java.Lang.String(name))?.ToString() ?? "";
+        }
+        catch (Exception)
+        {
+            return "";
+        }
+    }
+
     /// <summary>
     /// Last-chance logging. AsyncRelayCommand rethrows on the UI thread, so an exception that
     /// escapes any async command or event handler would otherwise end the process with nothing
@@ -289,8 +329,16 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         try
         {
             var settings = await persistence.LoadSettingsAsync();
+            // The shell is already on screen in the phone's language: a saved choice relabels it.
+            var cultureBefore = Loc.Instance.Culture.Name;
             Loc.Instance.SetCulture(settings.Language);
-            ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
+            if (Loc.Instance.Culture.Name != cultureBefore) _shell!.Relabel();
+            // Themes came in after the dark styles: the first start migrates Theme + Background once.
+            if (await PhoneThemes.MigrateAsync(persistence, settings))
+                DebugLog.Write("Theme", $"Migrated to the {settings.MobileThemeName} theme (Match Theme {settings.MobileAccentFollowsTheme})");
+            ApplyTheme(settings.MobileAppearance, PhoneThemes.DarkThemeFor(settings), settings.AccentColorHex, settings.MobileAccentFollowsTheme);
+            // Settings › Appearance › Smooth Motion: up to 120 Hz unless the user chose Standard.
+            AndroidFrameRate.Instance.Request(settings.MobileSmoothMotion);
             // Settings › Background, before the first page paints rather than after the library loads.
             _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
@@ -320,7 +368,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// </summary>
     public void OnBackgrounded()
     {
-        if (_shell != null) _shell.Background.Suspended = true;   // Slow Motion stands still
+        if (_shell != null)
+        {
+            _shell.Background.Suspended = true;   // Slow Motion stands still
+            _shell.IsSuspended = true;            // and so does Now Playing's record
+        }
         var save = _shell?.SaveStateAsync();
         // Matches NowPlayingViewModel.SaveStateNow: a background save that throws would
         // otherwise be an unobserved exception nobody ever sees.
@@ -329,10 +381,14 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             TaskContinuationOptions.OnlyOnFaulted);
     }
 
-    /// <summary>MainActivity, on resume: Slow Motion drifts again.</summary>
+    /// <summary>MainActivity, on resume: Slow Motion drifts again, the record turns again.</summary>
     public void OnForegrounded()
     {
-        if (_shell != null) _shell.Background.Suspended = false;
+        if (_shell == null) return;
+        _shell.Background.Suspended = false;
+        _shell.IsSuspended = false;
+        // Back from the system settings: the audio permission may have been allowed or taken away.
+        _shell.Library.RecheckDeviceMusic();
     }
 
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes
@@ -349,15 +405,21 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     public void OnVolumeKey() => _volume?.NotifyChanged();
 
     /// <summary>Settings (and startup, and a system dark-mode switch) re-theme through here.</summary>
-    public void ApplyTheme(string appearance, string darkTheme, string accentHex)
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex) =>
+        ApplyTheme(appearance, darkTheme, accentHex, _themeChoice.AccentFollowsTheme);
+
+    /// <summary>A colour theme's own accent wins while <paramref name="accentFollowsTheme"/> (Match Theme).</summary>
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme)
     {
-        _themeChoice = (appearance, darkTheme, accentHex);
+        _themeChoice = (appearance, darkTheme, accentHex, accentFollowsTheme);
         var system = SystemVariant();
         _appliedSystem = system;
         var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
-        DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
-        _theme.Apply(this, resolved, accentHex);
-        _shell?.Background.Reassert();   // the theme rebuilt its palette: the background mesh goes back on top
+        var accent = PhoneThemes.EffectiveAccent(resolved, accentHex, accentFollowsTheme);
+        DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}, accent {accent}");
+        _theme.Apply(this, resolved, accent);
+        // The theme rebuilt its palette: the background mesh goes back on top, its glass in the theme's colours.
+        _shell?.Background.Reassert(PhoneThemes.DarkOrInk(darkTheme).Id);
         // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
         Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
     }
@@ -411,7 +473,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     public void OnConfigurationChanged()
     {
         if (SystemVariant() == _appliedSystem) return;   // rotation, font scale, our own night-mode echo
-        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent);
+        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent, _themeChoice.AccentFollowsTheme);
     }
 
     /// <summary>

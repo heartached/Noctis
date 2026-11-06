@@ -93,6 +93,32 @@ public class AnimatedArtworkBulkTests : IDisposable
     }
 
     [Fact]
+    public async Task DifferentTitleByADifferentArtist_IsNeverPicked()
+    {
+        // GitHub #167: "Wings of Love" by Erasure must not end up with Tears for Fears' cover.
+        var svc = Service(_ => new[] { new RankedAlbumCandidate(Store("Tears of Love", "Tears for Fears"), 140) },
+            _ => Loop("Tears of Love"));
+        var s = await svc.RunAsync(new[] { Album("Wings of Love", "Erasure") }, false, null, CancellationToken.None);
+        Assert.Equal(1, s.NotFound);
+        Assert.Equal(0, _opens);
+        Assert.False(AnimatedArtworkBulkService.IsConfident(Store("Tears of Love", "Tears for Fears"), "Wings of Love", "Erasure"));
+        Assert.False(AnimatedArtworkBulkService.IsConfident(Store("Wings of Love", "Tears for Fears"), "Wings of Love", "Erasure"));
+        Assert.False(AnimatedArtworkBulkService.IsConfident(Store("Tears of Love", "Erasure"), "Wings of Love", "Erasure"));
+        Assert.True(AnimatedArtworkBulkService.IsConfident(Store("Wings of Love (Remastered)", "Erasure"), "Wings of Love", "Erasure"));
+    }
+
+    [Fact]
+    public async Task TheLookup_CarriesTheAlbumsYearAndSongCount()
+    {
+        AnimatedArtworkQuery? asked = null;
+        var album = Album("Wings of Love", "Erasure");
+        album[0].Year = 1988;
+        var svc = Service(q => { asked = q; return Array.Empty<RankedAlbumCandidate>(); }, _ => null);
+        await svc.RunAsync(new[] { album }, false, null, CancellationToken.None);
+        Assert.Equal((1988, 1), (asked!.Year, asked.TrackCount));
+    }
+
+    [Fact]
     public async Task TallOnlyLoop_IsNotUsed()
     {
         var svc = Service(_ => new[] { new RankedAlbumCandidate(Store("Album", "Artist"), 140) }, _ => Loop("Album", tallOnly: true));

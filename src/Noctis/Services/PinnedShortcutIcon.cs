@@ -111,6 +111,11 @@ public static class PinnedShortcutIcon
                 link.SetIconLocation(desired, 0);
                 file.Save(lnk, true);
                 SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW, lnk, IntPtr.Zero);
+                // UPDATEITEM alone often leaves the pinned button on the old icon (seen 11-04:
+                // shortcut on midnight.ico, button still Dark). ASSOCCHANGED makes Explorer
+                // re-read its icons; verified it repaints the button at once. Only runs on an
+                // App Icon change, so its cost doesn't matter.
+                SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
                 DebugLogger.Info(DebugLogger.Category.UI, "AppIcon.Pinned", $"{Path.GetFileName(lnk)} -> {id}");
             }
             finally
@@ -122,9 +127,14 @@ public static class PinnedShortcutIcon
 
     private const int SHCNE_UPDATEITEM = 0x00002000;
     private const uint SHCNF_PATHW = 0x0005;
+    private const int SHCNE_ASSOCCHANGED = 0x08000000;
+    private const uint SHCNF_IDLIST = 0x0000;
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern void SHChangeNotify(int eventId, uint flags, string item1, IntPtr item2);
+
+    [DllImport("shell32.dll")]
+    private static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 
     [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
     private class ShellLink { }

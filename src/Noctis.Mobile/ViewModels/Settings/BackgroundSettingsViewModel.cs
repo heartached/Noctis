@@ -5,6 +5,7 @@ using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Mobile.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -15,7 +16,6 @@ public sealed partial class BackgroundSwatch : ObservableObject
     {
         Choice = choice;
         Id = choice.Id;
-        Name = choice.Name;
         Paint(light);
     }
 
@@ -23,7 +23,9 @@ public sealed partial class BackgroundSwatch : ObservableObject
     private readonly MeshBrush _mesh = new();
 
     public string Id { get; }
-    public string Name { get; }
+    public string Name => Choice.Name;
+
+    internal void Relabel() => OnPropertyChanged(nameof(Name));
 
     /// <summary>The mesh at full strength (its own, so the page's drift never moves it).</summary>
     public IBrush Brush => _mesh.Brush;
@@ -107,11 +109,11 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
     public bool IsArtwork => Background.Choice == PhoneBackground.Artwork;
 
     /// <summary>The preview card's tag: "Preview · Ash".</summary>
-    public string PreviewTag => "Preview · " + Summary;
+    public string PreviewTag => Loc.T("Mobile.Background.PreviewTag", Summary);
 
     /// <summary>The song the preview's mini player shows: the playing one, or a stand-in.</summary>
-    public string PreviewTitle => _shell.Player.CurrentTrack?.Title is { Length: > 0 } t ? t : "Song Title";
-    public string PreviewArtist => _shell.Player.CurrentTrack?.Artist is { Length: > 0 } a ? a : "Artist";
+    public string PreviewTitle => _shell.Player.CurrentTrack?.Title is { Length: > 0 } t ? t : Loc.T("Mobile.Background.SongTitle");
+    public string PreviewArtist => _shell.Player.CurrentTrack?.Artist is { Length: > 0 } a ? a : Loc.T("Mobile.Artist");
 
     /// <summary>Slow Motion: the colours drift gently.</summary>
     public bool Motion
@@ -129,10 +131,17 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
 
     public double MinStrength => PhoneBackground.MinStrength;
 
+    /// <summary>The UI language changed: the names and lines re-read.</summary>
+    public void Relabel()
+    {
+        foreach (var swatch in Neutrals.Concat(Colours)) swatch.Relabel();
+        OnPropertyChanged(string.Empty);
+    }
+
     /// <summary>The line under Slow Motion and Strength.</summary>
     public string Footnote => Background.BatterySaverOn
-        ? "Battery Saver is on, so the colours stay still."
-        : "Motion uses a little more battery. It pauses when Battery Saver is on.";
+        ? Loc.T("Mobile.Background.BatterySaverOn")
+        : Loc.T("Mobile.Background.MotionFootnote");
 
     [RelayCommand]
     private void Pick(BackgroundSwatch? swatch)

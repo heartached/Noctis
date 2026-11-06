@@ -1,9 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
              xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:models="using:Noctis.Models"
              x:Class="Noctis.Mobile.Views.NowPlayingPage"
              x:DataType="vm:ShellViewModel"
              Background="#FF121214"
@@ -78,6 +80,38 @@
         <Style Selector="Border#ArtworkFrame.paused">
             <Setter Property="RenderTransform" Value="scale(0.8)" />
         </Style>
+        <!-- Vinyl or CD: the square cover stays in the tree, unseen (it decodes the artwork the
+             disc prints and the wash blurs), and the disc takes its place. The disc sits back a
+             little while paused too, less than the cover: its stopping says the rest. -->
+        <Style Selector="Border#ArtworkFrame.disc">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+        <Style Selector="Panel#DiscStage">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
+                        <TransformOperationsTransition.Easing>
+                            <views:GlideEase />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border#ArtworkGhostFrame">
+            <Setter Property="Width" Value="320" />
+            <Setter Property="Height" Value="320" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="Border#ArtworkGhostFrame.disc">
+            <Setter Property="Width" Value="296" />
+            <Setter Property="Height" Value="296" />
+            <Setter Property="CornerRadius" Value="148" />
+        </Style>
+        <Style Selector="Panel#DiscStage.paused">
+            <Setter Property="RenderTransform" Value="scale(0.92)" />
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -117,15 +151,17 @@
             <Grid Name="Layout" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="24,0,24,8">
                 <!-- Apple's grabber: tap to close (Back closes too). -->
                 <Button Grid.Row="0" Name="GrabberButton" Classes="row" HorizontalAlignment="Center" Width="96" Height="32"
-                        Command="{Binding CloseNowPlayingCommand}" AutomationProperties.Name="Close">
+                        Command="{Binding CloseNowPlayingCommand}" AutomationProperties.Name="{loc:T Common.Close}">
                     <Border Width="40" Height="5" CornerRadius="2.5" Background="#59FFFFFF"
                             HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
 
                 <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen. -->
                 <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8">
+                  <Panel Width="320" Height="320">
                     <Border Name="ArtworkFrame" Width="320" Height="320" CornerRadius="10"
-                            BoxShadow="0 10 28 0 #66000000" Classes.paused="{Binding !Player.IsPlaying}">
+                            BoxShadow="0 10 28 0 #66000000" Classes.paused="{Binding !Player.IsPlaying}"
+                            Classes.disc="{Binding ShowsDiscArtwork}">
                         <Border Classes="art" CornerRadius="10">
                             <Panel>
                                 <PathIcon Data="{DynamicResource SongsIcon}" Width="72" Height="72" Opacity="0.4" />
@@ -134,6 +170,34 @@
                             </Panel>
                         </Border>
                     </Border>
+                    <!-- Settings › Appearance › Now Playing Artwork: the cover on a record or a CD
+                         (DiscArtwork: painted once per cover, turned on the compositor). The
+                         shadow is a round border's, so the CD's hole stays see-through; the disc sits
+                         12 in from the cover's edges so all of its shadow fits inside the box (the
+                         row clips at it, and a cut shadow shows as a seam). -->
+                    <Panel Name="DiscStage" Margin="12" IsVisible="{Binding ShowsDiscArtwork}" Classes.paused="{Binding !Player.IsPlaying}">
+                        <Border Name="DiscShadow" CornerRadius="148" BoxShadow="0 4 11 0 #8C000000" IsHitTestVisible="False" />
+                        <views:DiscArtwork Name="Disc" Kind="{Binding NowPlayingArtwork}" Source="{Binding #Artwork.Source}"
+                                           IsSpinning="{Binding Player.IsPlaying}" IsVisible="{Binding ShowsDiscArtwork}" />
+                    </Panel>
+                  </Panel>
+                </Viewbox>
+
+                <!-- The cover a sideways swipe brings in (TrackSwipeGesture): the next song's from
+                     the right, the previous one's from the left, round on the record and CD
+                     styles. Unseen until the finger moves; its image's data is that Track. -->
+                <Viewbox Grid.Row="1" Name="ArtworkGhostBox" Stretch="Uniform" Margin="0,8"
+                         IsVisible="False" IsHitTestVisible="False">
+                  <Panel Width="320" Height="320">
+                    <Border Name="ArtworkGhostFrame" Classes="art"
+                            Classes.disc="{Binding ShowsDiscArtwork}">
+                        <Panel>
+                            <PathIcon Data="{DynamicResource SongsIcon}" Width="72" Height="72" Opacity="0.4" />
+                            <controls:CachedImage Name="GhostArtwork" x:DataType="models:Track" SourcePath="{Binding AlbumArtworkPath}"
+                                                  DecodeWidth="768" Stretch="UniformToFill" />
+                        </Panel>
+                    </Border>
+                  </Panel>
                 </Viewbox>
 
                 <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
@@ -154,7 +218,7 @@
                     </StackPanel>
                     <!-- Favourite and the rest live in the ⋯ menu (Apple's). -->
                     <Button Grid.Column="1" Name="NowPlayingMore" Classes="icon" Margin="8,0,-10,0" VerticalAlignment="Center"
-                            Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="More">
+                            Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                         <PathIcon Data="{DynamicResource PhMore}" Width="26" Height="26" />
                     </Button>
                 </Grid>
@@ -163,7 +227,7 @@
                     <!-- Seeks on release only (the code-behind); the times follow the drag. -->
                     <views:CapsuleSlider Name="SeekBar" Height="30" Minimum="0" Maximum="{Binding Player.Duration.TotalSeconds}"
                                          Value="{Binding Player.Position.TotalSeconds, Mode=OneWay}"
-                                         AutomationProperties.Name="Playback position" />
+                                         AutomationProperties.Name="{loc:T Mobile.PlaybackPosition}" />
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*" Margin="0,-4,0,0">
                         <TextBlock Name="ElapsedText" Classes="np-time" Text="{Binding Player.ElapsedText}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         <!-- The quality badge (owner 10-14): the playing file's class between the
@@ -174,7 +238,7 @@
                              white so it sits back from the times. A tap opens the quality card
                              (ShowQualityCard), which grows out of it. -->
                         <Button Grid.Column="1" Name="QualityBadge" Classes="row np-badge" Command="{Binding ShowQualityCardCommand}"
-                                IsVisible="{Binding Player.HasQuality}" AutomationProperties.Name="Audio quality">
+                                IsVisible="{Binding Player.HasQuality}" AutomationProperties.Name="{loc:T Mobile.AudioQuality}">
                             <Border Name="QualityPill" Classes="np-badge-pill">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <Viewbox Name="QualityGlyph" Width="16" Height="11" Margin="0,1,0,0" VerticalAlignment="Center">
@@ -195,15 +259,15 @@
                      Shuffle and Repeat are on the Queue page (Apple's). -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
                     <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
-                            Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="Previous">
+                            Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
                         <controls:TransportGlyph Kind="Previous" Width="44" Height="44" />
                     </Button>
                     <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport tx"
-                            Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
+                            Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
                         <controls:TransportGlyph Kind="PlayPause" Width="48" Height="48" IsPlaying="{Binding Player.IsPlaying}" />
                     </Button>
                     <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
-                            Command="{Binding Player.NextCommand}" AutomationProperties.Name="Next">
+                            Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
                         <controls:TransportGlyph Kind="Next" Width="44" Height="44" />
                     </Button>
                 </Grid>
@@ -211,7 +275,7 @@
                 <Grid Grid.Row="5" Name="VolumeRow" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Player.HasVolumeControl}">
                     <PathIcon Data="{DynamicResource PhVolumeLow}" Width="18" Height="18" Opacity="0.6" />
                     <views:CapsuleSlider Grid.Column="1" Name="VolumeSlider" Height="30" Minimum="0" Maximum="1" Margin="10,0"
-                                         Value="{Binding Player.VolumeLevel, Mode=TwoWay}" AutomationProperties.Name="Volume" />
+                                         Value="{Binding Player.VolumeLevel, Mode=TwoWay}" AutomationProperties.Name="{loc:T Mobile.Volume}" />
                     <PathIcon Grid.Column="2" Data="{DynamicResource PhVolumeHigh}" Width="18" Height="18" Opacity="0.6" />
                 </Grid>
 
@@ -220,15 +284,15 @@
                                IsVisible="{Binding Player.ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <Grid ColumnDefinitions="*,*,*" Margin="0,12,0,0">
                         <Button Grid.Column="0" Name="LyricsButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="Lyrics">
+                                Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="{loc:T Tab.Lyrics}">
                             <PathIcon Data="{DynamicResource PhLyrics}" />
                         </Button>
                         <Button Grid.Column="1" Name="OutputButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ShowOutputCommand}" AutomationProperties.Name="Output">
+                                Command="{Binding ShowOutputCommand}" AutomationProperties.Name="{loc:T Mobile.Output}">
                             <PathIcon Classes="speaker" Data="{DynamicResource PhVolumeHigh}" />
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
+                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="{loc:T Tab.Queue}">
                             <PathIcon Data="{DynamicResource PhQueue}" />
                         </Button>
                     </Grid>

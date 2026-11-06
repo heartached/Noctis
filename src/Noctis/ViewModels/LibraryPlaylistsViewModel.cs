@@ -80,11 +80,11 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
     public string SortLabel => SortMode switch
     {
-        "name" => "Name",
-        "created" => "Recently created",
-        "modified" => "Recently modified",
-        "tracks" => "Track count",
-        _ => "Default",
+        "name" => Noctis.Localization.Loc.T("Main.Name"),
+        "created" => Noctis.Localization.Loc.T("Main.RecentlyCreated"),
+        "modified" => Noctis.Localization.Loc.T("Main.RecentlyModified"),
+        "tracks" => Noctis.Localization.Loc.T("Main.TrackCount"),
+        _ => Noctis.Localization.Loc.T("Main.Default"),
     };
 
     partial void OnSortModeChanged(string value)
@@ -241,52 +241,14 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     {
         var playlist = ResolvePlaylist(item);
         if (playlist == null) return;
-        var tracks = ResolvePlaylistTracks(playlist);
-        if (tracks.Count == 0) return;
-
-        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
-            || desktop.MainWindow == null) return;
-        var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
-        if (topLevel == null) return;
-
-        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Export Playlist",
-            SuggestedFileName = SanitizeFileName(playlist.Name),
-            DefaultExtension = "m3u8",
-            FileTypeChoices = new[]
-            {
-                new FilePickerFileType("M3U playlist") { Patterns = new[] { "*.m3u8", "*.m3u" } }
-            }
-        });
-        if (file == null) return;
-
-        var path = file.TryGetLocalPath();
-        if (string.IsNullOrEmpty(path)) return;
-
-        var interop = App.Services!.GetRequiredService<IPlaylistInteropService>();
-        try
-        {
-            await interop.ExportM3uAsync(path, tracks);
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.Error(DebugLogger.Category.State, "Playlist.Export", ex.Message);
-        }
-    }
-
-    private static string SanitizeFileName(string name)
-    {
-        foreach (var c in Path.GetInvalidFileNameChars())
-            name = name.Replace(c, '_');
-        return string.IsNullOrWhiteSpace(name) ? "Playlist" : name.Trim();
+        await Helpers.PlaylistExporter.ExportAsync(playlist.Name, ResolvePlaylistTracks(playlist));
     }
 
     [RelayCommand]
     private async Task DeletePlaylist(PlaylistNavItem item)
     {
         if (item.PlaylistId == null) return;
-        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{item.Label}\"? This cannot be undone.");
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(Localization.Loc.T("Playlist.DeleteConfirm", item.Label));
         if (!confirmed) return;
         await _sidebar.DeletePlaylistAsync(item.PlaylistId.Value);
         OnPropertyChanged(nameof(Playlists));
@@ -307,11 +269,11 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Cover Art",
+            Title = Noctis.Localization.Loc.T("Picker.SelectCoverArt"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Images") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images")) { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
             }
         });
 

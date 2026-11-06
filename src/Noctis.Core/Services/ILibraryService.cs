@@ -216,6 +216,16 @@ public interface ILibraryService
     void NotifyMetadataChanged();
 
     /// <summary>
+    /// GitHub #178 "Group into One Album": files <paramref name="tracks"/> under one album named
+    /// <paramref name="album"/> by <paramref name="albumArtist"/>. Written to each file's Album and
+    /// Album Artist tags so it survives rescans and other apps; a file that cannot be written
+    /// (read-only, held open, a stream) still moves in the library and is listed in the result.
+    /// Cached covers follow to the new album. Rebuilds, saves and raises LibraryUpdated.
+    /// </summary>
+    Task<AlbumGroupResult> GroupIntoAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
+    /// <summary>
     /// Applies a "Merge Featured Artists From Titles" toggle flip to the already-indexed
     /// library immediately — a rescan reuses unchanged files wholesale, so it would never
     /// propagate the setting. On enable, merges in-memory; on disable, re-reads tags of
@@ -250,3 +260,7 @@ public interface ILibraryService
     /// </summary>
     void ReadReplayGainSoon(IEnumerable<Track> tracks) { }
 }
+
+/// <summary>Outcome of <see cref="ILibraryService.GroupIntoAlbumAsync"/>: the album the songs now
+/// share, how many songs moved, and the files whose tags could not be written.</summary>
+public sealed record AlbumGroupResult(Guid AlbumId, int Grouped, IReadOnlyList<string> UnwrittenFiles);

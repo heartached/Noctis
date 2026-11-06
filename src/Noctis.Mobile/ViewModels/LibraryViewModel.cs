@@ -5,6 +5,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -43,13 +44,17 @@ public sealed partial class LibraryViewModel : ObservableObject
         _library.LibraryUpdated += (_, _) => _marshal(RefreshFromLibrary);
         _library.FavoritesChanged += (_, _) => _marshal(RefreshFavourites);
         _library.ScanProgress += (_, n) => _marshal(() => ScanProgress = n);
-        _library.ScanAborted += (_, roots) => _marshal(() =>
+        _library.ScanAborted += (_, all) => _marshal(() =>
         {
+            // The phone's music index out of reach is the permission taken away, not a folder:
+            // it has its own card (AllMusicLost), set when the scan started.
+            var roots = all.Where(r => !DeviceMusicScan.IsDeviceMusicPath(r)).ToArray();
+            if (roots.Length == 0) return;
             UnavailableFolders = roots;
             NeedsReconnect = true;
             StatusText = roots.Length == 1
-                ? $"“{FolderName(roots[0])}” is unavailable. Reconnect it and rescan."
-                : $"{roots.Length} folders are unavailable. Reconnect them and rescan.";
+                ? Loc.T("Mobile.Library.FolderUnavailable", FolderName(roots[0]))
+                : Loc.Plural("Mobile.Library.FoldersUnavailable", roots.Length);
         });
     }
 
@@ -95,7 +100,135 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>A folder, or songs without one (a computer's, signed in with no folder on the
     /// phone): the Library rows, Edit and the sections show. Gated on a folder alone, a phone
     /// streaming its computer's library saw only "Add your music".</summary>
-    public bool HasMusic => HasFolders || SongCount > 0;
+    public bool HasMusic => HasFolders || AllMusic || SongCount > 0;
+
+    /// <summary>"All Music on This Phone" (null in hosts without Android's media index: the
+    /// option is hidden there). The host sets it before the library loads.</summary>
+    public IDeviceMusic? DeviceMusic { get; set; }
+
+    public bool CanFindAllMusic => DeviceMusic != null;
+
+    /// <summary>Settings › Music Folders › Find All Music Automatically (AppSettings.PhoneAllMusic):
+    /// every song in the phone's media index joins the folders' songs. Turning it on asks for the
+    /// permission first; refused, it stays off and <see cref="AllMusicDenied"/> explains.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections), nameof(ShowAllMusicLost),
+        nameof(ShowAllMusicHelp), nameof(AllMusicHelpText))]
+    private bool _allMusic;
+
+    /// <summary>The permission was just refused: the switch and the first-run card say how to
+    /// allow it in the system settings.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAllMusicHelp), nameof(AllMusicHelpText))]
+    private bool _allMusicDenied;
+
+    /// <summary>The option is on but the permission was taken away since: the songs found stay
+    /// listed (with their favourites and plays) but cannot play until it is allowed again.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAllMusicLost), nameof(HasNotice), nameof(ShowAllMusicHelp), nameof(AllMusicHelpText))]
+    private bool _allMusicLost;
+
+    public bool ShowAllMusicLost => AllMusic && AllMusicLost;
+
+    /// <summary>Under the switch: why the permission is needed and the way to the system settings.</summary>
+    public bool ShowAllMusicHelp => AllMusicDenied || ShowAllMusicLost;
+
+    public string AllMusicHelpText => ShowAllMusicLost ? Loc.T("Mobile.Folders.AllMusicLost") : Loc.T("Mobile.Folders.AllMusicDenied");
+
+    /// <summary>The first-run card's text: with Find All Music offered, it names both ways in.</summary>
+    public string ConnectCardText => CanFindAllMusic ? Loc.T("Mobile.Notice.AddMusicTextAll") : Loc.T("Mobile.Notice.AddMusicText");
+
+    private bool _applyingAllMusic;
+
+    /// <summary>A refusal while turning the option on: allowed later in the system settings, it
+    /// turns on when the app comes back (<see cref="RecheckDeviceMusic"/>).</summary>
+    private bool _allMusicWanted;
+
+    partial void OnAllMusicChanged(bool value)
+    {
+        if (_applyingAllMusic) return;
+        _ = SetAllMusicAsync(value);
+    }
+
+    private void ApplyAllMusic(bool value)
+    {
+        _applyingAllMusic = true;
+        AllMusic = value;
+        _applyingAllMusic = false;
+    }
+
+    /// <summary>The switch (or the first-run card) turned the option on or off.</summary>
+    internal async Task SetAllMusicAsync(bool on)
+    {
+        if (on)
+        {
+            var device = DeviceMusic;
+            var granted = false;
+            if (device != null)
+            {
+                try
+                {
+                    granted = device.HasPermission || await device.RequestPermissionAsync();
+                }
+                catch (Exception ex)
+                {
+                    DebugLog.Write("Library", $"Music permission request failed: {ex.Message}");
+                }
+            }
+            if (!granted)
+            {
+                _allMusicWanted = device != null;
+                _marshal(() =>
+                {
+                    ApplyAllMusic(false);
+                    AllMusicDenied = device != null;
+                });
+                return;
+            }
+            _allMusicWanted = false;
+            AllMusicDenied = false;
+            AllMusicLost = false;
+        }
+        else
+        {
+            _allMusicWanted = false;
+            AllMusicDenied = false;
+            AllMusicLost = false;
+        }
+        _marshal(() => ApplyAllMusic(on));
+        await UpdateSettingsAsync(s => s.PhoneAllMusic = on, nameof(AppSettings.PhoneAllMusic));
+        // Off: a pass must run even with no folder left, to take the songs out.
+        await ScanAsync(evenWithoutFolders: !on);
+    }
+
+    /// <summary>First-run card: Find All Music.</summary>
+    [RelayCommand] private void FindAllMusic() => AllMusic = true;
+
+    /// <summary>Noctis's page in the system settings, where a refused permission is allowed.</summary>
+    [RelayCommand] private void OpenAppSettings() => DeviceMusic?.OpenAppSettings();
+
+    /// <summary>The app came back to the front (maybe from the system settings): a permission
+    /// allowed there turns the option on (or back on) without another tap; one taken away
+    /// there shows.</summary>
+    public void RecheckDeviceMusic()
+    {
+        if (DeviceMusic is not { } device) return;
+        var has = device.HasPermission;
+        if (has && _allMusicWanted && !AllMusic)
+        {
+            AllMusic = true;
+            return;
+        }
+        if (has && AllMusicLost)
+        {
+            AllMusicLost = false;
+            _ = ScanAsync();
+        }
+        else if (!has && AllMusic)
+        {
+            AllMusicLost = true;
+        }
+    }
 
     /// <summary>The last scan aborted on an unreadable root (a revoked SAF grant, spec §7):
     /// the page offers to re-pick the folder, which is how a dead grant is recovered.</summary>
@@ -139,7 +272,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>Any card above the Library sections (connect, reconnect, scan progress), so an
     /// empty card area takes no room.</summary>
-    public bool HasNotice => ShowConnectCard || NeedsReconnect || IsScanning;
+    public bool HasNotice => ShowConnectCard || NeedsReconnect || IsScanning || ShowAllMusicLost;
 
     /// <summary>The plain status line; the reconnect card carries the text while it is up.</summary>
     public bool ShowStatusLine => !NeedsReconnect && !string.IsNullOrEmpty(StatusText);
@@ -384,6 +517,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// filter) re-read.</summary>
     public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>The UI language changed: the rails' subtitles ("Artist", "12 songs") and the open
+    /// pages' rows are rebuilt; the library itself is unchanged.</summary>
+    public void Relabel() => AfterUserEdit();
+
     /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
     private void AfterUserEdit()
     {
@@ -400,6 +537,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void ApplySettings(AppSettings settings)
     {
         SetFolders(settings.MusicFolders);
+        ApplyAllMusic(settings.PhoneAllMusic && DeviceMusic != null);
         // Not over the user's own flip: the start re-reads the settings (InitializeAsync) after the
         // host applied them, and a flip in between was put back (its save still in flight).
         if (!_scanOnStartupSetByUser)
@@ -467,9 +605,9 @@ public sealed partial class LibraryViewModel : ObservableObject
             if (!settings.MusicFolders.Any(f => FolderKey(f) == FolderKey(picked)))
             {
                 if (settings.MusicFolders.FirstOrDefault(f => IsInside(picked, f)) is { } covering)
-                    refusal = $"Already covered by “{FolderName(covering)}”.";
+                    refusal = Loc.T("Mobile.Library.AlreadyCovered", FolderName(covering));
                 else if (settings.MusicFolders.FirstOrDefault(f => IsInside(f, picked)) is { } inner)
-                    refusal = $"“{FolderName(inner)}” is inside that folder. Remove it first.";
+                    refusal = Loc.T("Mobile.Library.InsideFolder", FolderName(inner));
                 else
                     settings.MusicFolders.Add(picked);
             }
@@ -574,7 +712,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         UpdateSettingsAsync(s => s.ScanOnStartup = value, "Scan on startup");
 
     /// <summary>The host calls this once the library has loaded at launch.</summary>
-    public Task ScanAtStartupAsync() => ScanOnStartup && HasFolders ? ScanAsync() : Task.CompletedTask;
+    public Task ScanAtStartupAsync() => ScanOnStartup && (HasFolders || AllMusic) ? ScanAsync() : Task.CompletedTask;
 
     /// <summary>Set when a scan is asked for while one runs: the running one goes again once it
     /// ends, so a folder added or removed mid-scan is never left out of (or in) the library.</summary>
@@ -612,20 +750,30 @@ public sealed partial class LibraryViewModel : ObservableObject
                 // Each pass judges the folders afresh: one back in reach is no longer flagged.
                 UnavailableFolders = Array.Empty<string>();
                 NeedsReconnect = false;
-                StatusText = "Scanning…";
-                var folders = (await _persistence.LoadSettingsAsync()).MusicFolders.ToList();
+                StatusText = Loc.T("Mobile.Library.Scanning");
+                var settings = await _persistence.LoadSettingsAsync();
+                var folders = settings.MusicFolders.ToList();
+                if (settings.PhoneAllMusic && DeviceMusic is { } device)
+                {
+                    // Always walked while on: without the permission the root reads as out of
+                    // reach, which keeps its songs as they were instead of dropping them.
+                    device.Folders = folders.ToArray();
+                    var lost = !device.HasPermission;
+                    _marshal(() => AllMusicLost = lost);
+                    folders.Add(DeviceMusicScan.Root);
+                }
                 if (folders.Count == 0 && !_scanWithoutFolders) break;
                 _scanWithoutFolders = false;
                 await _library.ScanAsync(folders);
             }
             while (_scanAgain);
-            if (StatusText == "Scanning…") StatusText = string.Empty; // ScanAborted may have replaced it
-            if (HasFolders && !NeedsReconnect) LastScanLocal = DateTime.Now;
+            if (StatusText == Loc.T("Mobile.Library.Scanning")) StatusText = string.Empty; // ScanAborted may have replaced it
+            if ((HasFolders || AllMusic) && !NeedsReconnect) LastScanLocal = DateTime.Now;
         }
         catch (Exception ex)
         {
             DebugLog.Write("Library", $"Phone scan failed: {ex.Message}");
-            StatusText = "Scan failed. See the log.";
+            StatusText = Loc.T("Mobile.Library.ScanFailed");
         }
         finally
         {

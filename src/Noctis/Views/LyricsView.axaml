@@ -880,7 +880,10 @@
                 </Grid>
 
                 <!-- Lyrics-page playback controls; timeline and track metadata live above. -->
-                <views:PlaybackBarView DataContext="{Binding Player}"
+                <!-- While the page is centred for a song with no lyrics, this island carries a
+                     Search Lyrics button (ApplyNoLyricsCentered → ShowLyricsSearch). -->
+                <views:PlaybackBarView x:Name="LyricsPlaybackBar"
+                                        DataContext="{Binding Player}"
                                         HorizontalAlignment="Stretch"
                                         Margin="0,12,0,0"/>
 

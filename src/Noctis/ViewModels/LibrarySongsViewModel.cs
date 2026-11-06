@@ -1,3 +1,4 @@
+using Noctis.Localization;
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia.Threading;
@@ -551,34 +552,57 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>
     /// Moves just <paramref name="reRanked"/> to their place in <paramref name="sorted"/>.
+    /// A counted song still playing (Count a play after: Immediately counts the next song as
+    /// it starts) holds its place: it is left out of the comparison and never anchors a move,
+    /// or the move gave up and the whole list was replaced, the playing row jumping with it.
     /// False when the list differs in more than those rows: the caller replaces it whole.
     /// </summary>
     private bool TryMoveIntoPlace(List<Track> sorted, List<Track> reRanked)
     {
         if (sorted.Count != FilteredTracks.Count) return false;
-        var moves = new List<(Track Track, int To)>();
-        foreach (var t in reRanked)
+        var moving = new HashSet<Track>(ReferenceEqualityComparer.Instance);
+        foreach (var t in reRanked) moving.Add(t);
+        bool Held(Track t) => !moving.Contains(t) && _finishedPlays.IsHeld(t);
+
+        var rank = new Dictionary<Track, int>(sorted.Count, ReferenceEqualityComparer.Instance);
+        for (var i = 0; i < sorted.Count; i++) rank[sorted[i]] = i;
+        moving.RemoveWhere(t => !rank.ContainsKey(t) || FilteredTracks.IndexOf(t) < 0);
+
+        // Where t goes in the list without it: before the first steady row ranked after it.
+        int Target(Track t)
         {
-            var to = sorted.IndexOf(t);
-            if (to >= 0) moves.Add((t, to));
+            var r = rank[t];
+            var list = FilteredTracks;
+            var skipped = 0;
+            for (var i = 0; i < list.Count; i++)
+            {
+                var row = list[i];
+                if (ReferenceEquals(row, t)) { skipped = 1; continue; }
+                if (!moving.Contains(row) && !Held(row) && rank.TryGetValue(row, out var rr) && rr > r)
+                    return i - skipped;
+            }
+            return list.Count - skipped;
         }
 
-        if (moves.Count == 1)
+        var ordered = moving.OrderBy(t => rank[t]).ToList();
+        if (ordered.Count == 1)
         {
-            var from = FilteredTracks.IndexOf(moves[0].Track);
-            if (from < 0) return false;
-            if (from != moves[0].To) FilteredTracks.Move(from, moves[0].To);
+            var t = ordered[0];
+            var from = FilteredTracks.IndexOf(t);
+            var to = Target(t);
+            if (from != to) FilteredTracks.Move(from, to);
         }
-        else if (moves.Count > 1)
+        else if (ordered.Count > 1)
         {
-            // Out first, then in by target index: what is left already matches the sorted
-            // list, so each insert lands exactly.
-            foreach (var (t, _) in moves)
-                if (!FilteredTracks.Remove(t)) return false;
-            foreach (var (t, to) in moves.OrderBy(m => m.To))
-                FilteredTracks.Insert(to, t);
+            // Out first, then in by rank: each lands before the first steady row after it.
+            foreach (var t in ordered) FilteredTracks.Remove(t);
+            foreach (var t in ordered)
+            {
+                moving.Remove(t);
+                FilteredTracks.Insert(Target(t), t);
+            }
         }
-        return FilteredTracks.SequenceEqual(sorted);
+        return FilteredTracks.Where(t => !Held(t)).SequenceEqual(sorted.Where(t => !Held(t)));
     }
 
     /// <summary>A library reload was requested and hasn't landed yet (see ApplyFilterAndSort).</summary>
@@ -657,20 +681,21 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         foreach (var t in FilteredTracks)
             total += t.Duration;
 
-        var songs = count == 1 ? "song" : "songs";
+        // Was hard-coded English (seen in German, 11-04).
+        var songs = count == 1 ? Loc.T("LibrarySongs.SummarySong") : Loc.T("LibrarySongs.SummarySongs", count);
         string time;
         if (total.TotalHours >= 1)
         {
             var hours = (int)Math.Round(total.TotalHours);
-            time = hours == 1 ? "1 hour" : $"{hours:N0} hours";
+            time = hours == 1 ? Loc.T("LibrarySongs.SummaryHour") : Loc.T("LibrarySongs.SummaryHours", hours);
         }
         else
         {
             var minutes = (int)Math.Round(total.TotalMinutes);
-            time = minutes == 1 ? "1 minute" : $"{minutes} minutes";
+            time = minutes == 1 ? Loc.T("LibrarySongs.SummaryMinute") : Loc.T("LibrarySongs.SummaryMinutes", minutes);
         }
 
-        SummaryText = $"{count:N0} {songs} · {time}";
+        SummaryText = $"{songs} · {time}";
     }
 
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>

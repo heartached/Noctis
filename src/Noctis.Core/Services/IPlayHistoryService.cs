@@ -31,6 +31,10 @@ public interface IPlayHistoryService
     /// <summary>Marks the most recent play of the track as skipped.</summary>
     void RecordSkip(Track track);
 
+    /// <summary>Sets how long the latest play of the track was actually heard (the phone's
+    /// listening time). The default does nothing (test doubles).</summary>
+    void SetListened(Track track, TimeSpan listened) { }
+
     /// <summary>Writes any pending events to disk immediately.</summary>
     Task FlushAsync();
 

@@ -158,8 +158,6 @@ public static class MenuOpenAnimation
     private static readonly AttachedProperty<bool> CloseAfterAnimationProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, bool>("CloseAfterAnimation", typeof(MenuOpenAnimation));
 
-    private static WeakReference<MenuFlyoutPresenter>? _lastMenuFlyoutPresenter;
-
     static MenuOpenAnimation()
     {
         InputElement.PointerPressedEvent.AddClassHandler<TopLevel>((top, e) =>
@@ -242,9 +240,6 @@ public static class MenuOpenAnimation
 
     private static void TryRun(Control control)
     {
-        if (control is MenuFlyoutPresenter presenter)
-            _lastMenuFlyoutPresenter = new WeakReference<MenuFlyoutPresenter>(presenter);
-
         var now = Environment.TickCount64;
         if (now - control.GetValue(LastRunProperty) < ReopenGuardMs)
             return; // collapse the popup's double-attach into a single animation
@@ -262,6 +257,7 @@ public static class MenuOpenAnimation
         // transitions animate the change instead of snapping straight to the end state.
         var fade = FadePropertyOf(control);
         var offsetX = GetOffsetX(control);
+        ShowOpacityUnderFade(control, fade);
         control.SetValue(fade, 0.0);
         control.RenderTransform = TransformOperations.Parse(offsetX != 0
             ? $"translateX({offsetX.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)"
@@ -284,6 +280,7 @@ public static class MenuOpenAnimation
         var fade = FadePropertyOf(card);
         card.Transitions = null;
         card.IsHitTestVisible = true;
+        ShowOpacityUnderFade(card, fade);
         card.SetValue(fade, 0.0);
         card.RenderTransform = TransformOperations.Parse(
             $"scale({PopScale.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
@@ -576,7 +573,7 @@ public static class MenuOpenAnimation
             return;
         }
 
-        if (!TryGetLastMenuFlyoutPresenter(out var presenter))
+        if (!TryGetPresenter(flyout, out var presenter))
             return;
 
         e.Cancel = true;
@@ -601,7 +598,7 @@ public static class MenuOpenAnimation
             return;
 
         ResetCloseState(flyout);
-        if (TryGetLastMenuFlyoutPresenter(out var presenter))
+        if (TryGetPresenter(flyout, out var presenter))
             ResetMenuTransform(presenter);
     }
 
@@ -630,22 +627,16 @@ public static class MenuOpenAnimation
     }
 
     /// <summary>
-    /// KNOWN LIMITATION: this returns the most-recently-attached presenter, not
-    /// necessarily the one belonging to the flyout being closed. With two flyouts open in
-    /// sequence, closing the earlier one can animate (and reset the transform of) the
-    /// wrong presenter, leaving a flyout at Opacity 0 or translated.
-    ///
-    /// Resolving it properly needs the flyout's own presenter, and Avalonia 11.3 exposes
-    /// no public route to it — PopupFlyoutBase.Popup is protected and MenuFlyout does not
-    /// surface the presenter as a logical child. Left as-is rather than reaching into
-    /// internals; the failure mode is cosmetic and needs two flyouts in one gesture.
+    /// The flyout's own card. This used to be the most recently attached presenter of any
+    /// flyout: with two flyouts open, closing the first ran its close motion on the second
+    /// (still open) card and never on its own. Avalonia 12 exposes PopupFlyoutBase.Popup, so
+    /// the card is read from the flyout itself.
     /// </summary>
-    private static bool TryGetLastMenuFlyoutPresenter(out MenuFlyoutPresenter presenter)
+    private static bool TryGetPresenter(MenuFlyout flyout, out MenuFlyoutPresenter presenter)
     {
-        if (_lastMenuFlyoutPresenter?.TryGetTarget(out var target) == true &&
-            TopLevel.GetTopLevel(target) is not null)
+        if (flyout.Popup.Child is MenuFlyoutPresenter own && TopLevel.GetTopLevel(own) is not null)
         {
-            presenter = target;
+            presenter = own;
             return true;
         }
 
@@ -665,6 +656,14 @@ public static class MenuOpenAnimation
         if (GetUseFade(control)) SetFade(control, 1);
         control.IsHitTestVisible = true;
         control.RenderTransform = TransformOperations.Parse(GetPop(control) ? "scale(1)" : "translateY(0px)");
+    }
+
+    /// <summary>An open that fades <see cref="FadeProperty"/> (Liquid Glass) leaves Opacity alone,
+    /// and a plain close leaves the card at Opacity 0: a card closed plain and opened again with
+    /// glass on stayed invisible. Opacity goes back to 1 for such an open.</summary>
+    private static void ShowOpacityUnderFade(Control card, StyledProperty<double> fade)
+    {
+        if (fade != Visual.OpacityProperty) card.Opacity = 1;
     }
 
     /// <summary>The property the open/close fade drives: <see cref="FadeProperty"/> on a glass

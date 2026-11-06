@@ -117,6 +117,16 @@ public interface IPersistenceService
     /// </summary>
     string GetAnimatedCoverPath(Guid albumId, Guid? trackId, string extension);
 
+    /// <summary>
+    /// Where an automatically fetched animated cover is kept (GitHub #167): a size-capped,
+    /// least-recently-used cache beside the saved ones, <DataRoot>/animated_covers/cache/<albumId>.mp4.
+    /// Saved covers (picked by hand, or by Find Animated Artwork) never live here, so evicting
+    /// the cache can never take one of those.
+    /// </summary>
+    string GetCachedAnimatedCoverPath(Guid albumId)
+        => Path.Combine(Path.GetDirectoryName(GetAnimatedCoverPath(albumId, null, ".mp4")) ?? string.Empty,
+            "cache", $"{albumId}.mp4");
+
     /// <summary>Ensures the animated_covers directory exists. Idempotent.</summary>
     void EnsureAnimatedCoverDir();
 

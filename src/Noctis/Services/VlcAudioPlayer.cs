@@ -318,9 +318,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // A healthy decoder lands a block every few tens of ms (or waits on a full ring); one
     // that wrote nothing for this long while the errors came is the one that hit the damage.
     private const int DecoderWedgeWriterIdleMs = 200;
-    // Once the damage point is known the reopen waits only for the ring to run dry.
+    // How often the watcher looks again for the stuck writer while the storm lasts.
     private const int DecoderDamagePollMs = 40;
     private string? _decoderRecoveryOpenPath;
+    // The switch off the damaged input keeps what its ring still holds playing and queues the
+    // reopened input behind it, instead of clearing the engine and opening cold (Discord,
+    // Tangent, 11-05 on 1.6.7: "Gapless.ColdFallback" and an underrun of up to a second at
+    // the damage). Set right before the reopen's Play(); PlayInternal takes it.
+    private GaplessTrackSegment? _engineWarmReopenSegment;
+    // Damaged runs found ahead of time in long MP3s (see Mp3FrameScan.FindDamage), by path,
+    // with the file's size and write time when scanned. The play callback ends the input just
+    // before one and the file reopens on FFmpeg's decoder just past it, before mpg123 ever
+    // reaches the damage (see EngineCutBeforeDamage).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long Bytes, long Ticks, Mp3FrameScan.Damage[] Runs)> _mp3Damage =
+        new(StringComparer.FromComparison(Helpers.PathComparison.Comparison));
+    // The reopen past known damage uses FFmpeg's decoder once (the seek may land inside the
+    // damaged bytes), without adding the file to the fallback list.
+    private string? _avcodecOncePath;
     // After a storm, act only once the audible position stands still while the errors keep
     // coming: the line names no player (the standby one may be preparing a file), and the
     // engine ring still plays out what was decoded before the damage. Harness: ~4 s of
@@ -2204,6 +2218,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (t.Data.Audio.Channels > 0) channels = (int)t.Data.Audio.Channels;
                 break;
             }
+            // DSD media is never parsed (callback input); its PCM format is ours to tell.
+            if (DsdPcmInput.TryGetFormat(media, out var dsdRate, out var dsdChannels))
+                (rate, channels) = (dsdRate, dsdChannels);
             // amem delivers the wrong amount of audio from 262144 Hz up (see AmemRate), so a
             // 352.8/384 kHz source opens the device at 176.4/192 kHz and VLC resamples 2:1.
             // The sink renders at most stereo (LibVLC downmixes to what we pin below).
@@ -2911,7 +2928,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             int mp3TailTrimFrames;
             try
             {
-                media = new Media(_libVlc, normalizedPath, isRemote ? FromType.FromLocation : FromType.FromPath);
+                media = (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, normalizedPath))
+                        ?? new Media(_libVlc, normalizedPath, isRemote ? FromType.FromLocation : FromType.FromPath);
                 if (!isRemote)
                     ApplyReadAhead(media);
                 mp3TailTrimFrames = ApplyMp3Demux(media, normalizedPath, startPositionMs);
@@ -2937,7 +2955,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     media.AddOption(":audio-replay-gain-default=-7.0");
                 }
 
-                var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
+                var parseTask = DsdPcmInput.IsDsdMedia(media)
+                    ? Task.FromResult(MediaParsedStatus.Done) // see DsdPcmInput.IsDsdMedia
+                    : media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
                 bool parsed;
                 try
                 {
@@ -3397,17 +3417,31 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     extraDelayMs: engineFadeMs > 0 ? engineFadeMs + 500 : 0);
                 return;
             }
+            var warmReopen = false;
             if (_gaplessEngine)
             {
-                // Manual skip / fresh play on the engine: drop everything queued
-                // (also unblocks writers before the Stop below joins decoders).
-                EngineClearAll();
+                // The reopen off damaged MP3 data (see ReopenPastDamage): the ended segment
+                // keeps playing and the reopened input queues behind it.
+                if (Interlocked.Exchange(ref _engineWarmReopenSegment, null) is { } kept && !kept.Abandoned &&
+                    _gaplessSink is { } warmSink && ReferenceEquals(warmSink.Provider.ActiveSegment, kept))
+                {
+                    warmSink.Provider.ClearPending();
+                    warmReopen = true;
+                    DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WarmReopen",
+                        $"bufferedMs={kept.BufferedSamples / Math.Max(1, kept.Channels) * 1000L / kept.SampleRate}, atMs={Interlocked.Read(ref _pendingSeekMs)}");
+                }
+                else
+                {
+                    // Manual skip / fresh play on the engine: drop everything queued
+                    // (also unblocks writers before the Stop below joins decoders).
+                    EngineClearAll();
+                }
             }
 
             // Gapless: no crossfade, but the next track was prepared on the
             // standby player — hand off to it instantly at full volume instead
             // of the audible stop/parse/start path.
-            if (!canTransitionFade && !startPaused && !isPathless && _gaplessEnabled && hadPreviousMedia && !_standbyPrepared)
+            if (!canTransitionFade && !startPaused && !isPathless && _gaplessEnabled && hadPreviousMedia && !_standbyPrepared && !warmReopen)
             {
                 // No standby to hand off to — the audible cold open below is the
                 // seam. Logged so a "gapless still gaps" report can be tied to a
@@ -3431,7 +3465,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // headers must be parsed over the network.
             var media = isCd
                 ? CreateAudioCdMedia(_libVlc, filePath)
-                : new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
+                // DSD: decoded to PCM here, LibVLC 3 has no DSD decoder (see DsdPcmInput).
+                : (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, filePath))
+                  ?? new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
             if (!isCd && !isRemote)
                 ApplyReadAhead(media);
             // Off the engine the playback-speed button is LibVLC's rate; only media
@@ -3447,7 +3483,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // edit landing mid-parse must not abort the track being opened.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(openCancel);
             cts.CancelAfter(8000);
-            var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
+            var parseTask = DsdPcmInput.IsDsdMedia(media)
+                ? Task.FromResult(MediaParsedStatus.Done) // see DsdPcmInput.IsDsdMedia
+                : media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
             var clipParseTimedOut = false;
             try
             {
@@ -3486,13 +3524,15 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     ApplyReplayGain(_rgMode, _rgPreampDb);
                 targetVolume = GetTargetVlcVolume();
 
-                media = new Media(_libVlc, filePath, FromType.FromPath);
+                media = DsdPcmInput.TryCreateMedia(_libVlc, filePath) ?? new Media(_libVlc, filePath, FromType.FromPath);
                 ApplyReadAhead(media);
                 if (!_gaplessEngine)
                     media.AddOption(":audio-time-stretch");
                 using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                 fallbackCts.CancelAfter(8000);
-                parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+                parseTask = DsdPcmInput.IsDsdMedia(media)
+                    ? Task.FromResult(MediaParsedStatus.Done)
+                    : media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
                 try
                 {
                     parseTask.Wait(fallbackCts.Token);
@@ -4643,6 +4683,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     catch { /* diagnostic only */ }
                 }
 
+                // Damaged data ahead (see ScanMp3Damage): the input ends right before it.
+                if (seg.DamageAhead is { } damage && EngineCutBeforeDamage(slot, seg, damage, buf, sampleCount, sink.Channels, sink.SampleRate))
+                    return;
+
                 // Blocks when the ring is full (back-pressures this player's
                 // decoder); returns false when abandoned or timed out — the block
                 // is dropped (and traced, rate-limited).
@@ -4659,6 +4703,80 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // libvlc decoder thread: never throw.
             try { NoteEnginePlayThrew(slot, ex); } catch { }
         }
+    }
+
+    /// <summary>
+    /// Libvlc decoder thread. When this block of the playing input reaches a damaged run found
+    /// ahead of time, writes only what comes before it, ends the segment with a fade (its ring
+    /// keeps playing) and reopens the file just past the damage behind it, so mpg123 never
+    /// decodes the damaged bytes: no junk, no wedge, no wait for the error storm. True when it
+    /// took the block.
+    /// </summary>
+    private bool EngineCutBeforeDamage(int slot, GaplessTrackSegment seg, Mp3FrameScan.Damage[] damage,
+        short[] buf, int sampleCount, int channels, int sampleRate)
+    {
+        if (_isPaused || slot != EngineSlotOf(_player) || seg.EndOfStream || seg.Abandoned) return false;
+        var writeEndMs = seg.WriteEndMs;
+        var keep = DamageCutFrames(writeEndMs, sampleCount / channels, sampleRate, damage, out var run);
+        if (keep < 0) return false;
+        var path = _currentMediaPath;
+        if (string.IsNullOrEmpty(path) || !ReferenceEquals(Volatile.Read(ref _engineSegments[slot]), seg)) return false;
+        if (keep > 0) seg.Write(buf.AsSpan(0, keep * channels));
+        seg.EndWithFade(sampleRate * DecoderDamageFadeMs / 1000);
+        var sessionId = CurrentSessionId;
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Info, "Decoder.DamageAhead",
+            $"cutMs={run.CutMs}, resumeMs={run.ResumeMs}, writeEndMs={writeEndMs}, bufferedMs={seg.BufferedSamples / channels * 1000L / sampleRate}");
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            if (_disposed || sessionId != CurrentSessionId) return;
+            DebugLog.Write("Audio", $"Damaged MP3 data ahead at {TimeSpan.FromMilliseconds(run.CutMs):h\\:mm\\:ss}; " +
+                                    $"continuing past it on the FFmpeg decoder — {LogName(path)}");
+            ReopenPastDamage(path, run.ResumeMs, seg, remember: false);
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// Frames of a block starting at <paramref name="writeEndMs"/> to keep before the first
+    /// damaged run whose cut falls inside it; -1 when none does (a block that starts past a cut,
+    /// as after a seek beyond it, keeps playing). Pure; internal for tests.
+    /// </summary>
+    internal static int DamageCutFrames(long writeEndMs, int blockFrames, int sampleRate, Mp3FrameScan.Damage[] damage,
+        out Mp3FrameScan.Damage run)
+    {
+        run = default;
+        var blockEndMs = writeEndMs + (long)blockFrames * 1000 / sampleRate;
+        foreach (var d in damage)
+        {
+            if (d.CutMs < writeEndMs || d.CutMs >= blockEndMs) continue;
+            run = d;
+            return (int)Math.Min(blockFrames, (d.CutMs - writeEndMs) * sampleRate / 1000);
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// Reopens the playing file at <paramref name="atMs"/> on FFmpeg's MP3 decoder (the
+    /// Seek.Restart mechanism). With <paramref name="keep"/> (the damaged input's segment) its
+    /// ring plays out and the reopened input is queued behind it, so the switch is not a cold
+    /// open. <paramref name="remember"/> puts the file on the fallback list (a real wedge).
+    /// </summary>
+    private void ReopenPastDamage(string path, long atMs, GaplessTrackSegment? keep, bool remember)
+    {
+        if (remember) _avcodecMp3Paths.Add(path);
+        else Volatile.Write(ref _avcodecOncePath, path);
+        Volatile.Write(ref _decoderRecoveryOpenPath, path);
+        if (keep != null)
+        {
+            keep.EndWithFade(0); // already faded; nothing more from the stuck decoder
+            Volatile.Write(ref _engineWarmReopenSegment, keep);
+        }
+        lock (_seekGate) { _latestSeekMs = -1; }
+        _positionTimer.Stop();
+        Interlocked.Exchange(ref _pendingSeekMs, atMs > 0 ? atMs : -1);
+        // Paused in the moment between the cut and this: the reopened input waits paused too.
+        _restartPausedRequest = _isPaused;
+        Play(path, _currentFallbackPath);
     }
 
     // Engine play-callback diagnostics. Both run on libvlc's decoder threads, so their
@@ -4818,6 +4936,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             return;
         long bytes;
         try { bytes = new FileInfo(path).Length; } catch { return; }
+        ScanMp3Damage(path);
         if (_countedMp3Lengths.TryGetValue(path, out var known) && known.FileBytes == bytes)
             return;
         _ = Task.Run(() =>
@@ -4833,6 +4952,41 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(lengthMs));
         });
     }
+
+    /// <summary>
+    /// Looks for damaged data in a long local MP3 off the calling thread (see
+    /// Mp3FrameScan.FindDamage; a song-length file costs a header read) and hands what it finds
+    /// to the segments decoding that file. Remembered per file while its size and write time stay.
+    /// </summary>
+    private void ScanMp3Damage(string path)
+    {
+        long bytes, ticks;
+        try
+        {
+            var info = new FileInfo(path);
+            bytes = info.Length;
+            ticks = info.LastWriteTimeUtc.Ticks;
+        }
+        catch { return; }
+        if (_mp3Damage.TryGetValue(path, out var known) && known.Bytes == bytes && known.Ticks == ticks)
+            return;
+        _mp3Damage[path] = (bytes, ticks, []); // one scan at a time per file
+        _ = Task.Run(() =>
+        {
+            var runs = Mp3FrameScan.FindDamage(path).ToArray();
+            _mp3Damage[path] = (bytes, ticks, runs);
+            if (runs.Length == 0) return;
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DamageFound",
+                $"path={LogName(path)}, runs={runs.Length}, at={string.Join(";", runs.Take(8).Select(r => $"{r.CutMs}-{r.ResumeMs}"))}");
+            for (var slot = 0; slot < _engineRgInput.Length; slot++)
+                if (Volatile.Read(ref _engineRgInput[slot]) is { } input &&
+                    string.Equals(input.Item2, path, Helpers.PathComparison.Comparison))
+                    input.Item1.DamageAhead = runs;
+        });
+    }
+
+    private Mp3FrameScan.Damage[]? KnownMp3Damage(string path) =>
+        _mp3Damage.TryGetValue(path, out var known) && known.Runs.Length > 0 ? known.Runs : null;
 
     internal static long EngineReportedLengthMs(long vlcLengthMs, bool inputEnded, long deliveredMs)
     {
@@ -4862,6 +5016,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             sink.SampleRate, sink.Channels, slot, capacitySeconds: 20, Math.Max(0, basePositionMs));
         seg.Gain = EngineSegmentGain(slot, path);
         seg.TailTrimFrames = tailTrimFrames;
+        seg.DamageAhead = KnownMp3Damage(path);
         // The reopen after a decoder wedge: start on the music, faded in, not on priming zeros.
         if (ReferenceEquals(player, _player) &&
             string.Equals(Volatile.Read(ref _decoderRecoveryOpenPath), path, StringComparison.Ordinal))
@@ -4918,7 +5073,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// </summary>
     private void ApplyMp3DecoderFallback(Media media, string path)
     {
-        if (string.IsNullOrEmpty(path) || !_avcodecMp3Paths.Contains(path)) return;
+        if (string.IsNullOrEmpty(path)) return;
+        var once = Volatile.Read(ref _avcodecOncePath) is { } o && string.Equals(o, path, StringComparison.Ordinal) &&
+                   Interlocked.CompareExchange(ref _avcodecOncePath, null, o) == o;
+        if (!once && !_avcodecMp3Paths.Contains(path)) return;
         media.AddOption(":codec=avcodec,any");
         DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DecoderFallback", $"path={LogName(path)}, codec=avcodec");
     }
@@ -5004,34 +5162,38 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     {
         var started = Environment.TickCount64;
         var prev = HeardPositionMs();
-        var damageMs = TrimDamagedEngineTail(errors, out var damagedSeg, out var runsDryMs);
+        var damageMs = TrimDamagedEngineTail(errors, out var damagedSeg, out _);
         var prevTick = started;
         long atMs;
         while (true)
         {
-            Thread.Sleep(damagedSeg != null ? DecoderDamagePollMs : DecoderWedgePollMs);
-            if (_disposed || sessionId != CurrentSessionId || _isPaused) return;
-            var cur = HeardPositionMs();
-            var now0 = Environment.TickCount64;
-            if (damagedSeg != null && cur >= runsDryMs &&
-                damagedSeg.WriteIdleMs >= DecoderWedgeWriterIdleMs)
+            if (damagedSeg != null)
             {
-                // The trimmed ring has run dry and the decoder is still silent: reopen
-                // right at the damage.
+                // The damage point is known and the ring still holds what came before it:
+                // reopen now, queued behind it (see ReopenPastDamage), not once it ran dry.
                 atMs = damageMs;
                 break;
             }
+            Thread.Sleep(DecoderDamagePollMs);
+            if (_disposed || sessionId != CurrentSessionId || _isPaused) return;
+            var cur = HeardPositionMs();
+            var now0 = Environment.TickCount64;
             if (now0 - Volatile.Read(ref _decoderWedgeLastLineMs) > 1000)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
                     $"errors={errors}, reason=stormEnded, positionMs={cur}");
                 return;
             }
+            // The decoder may still have been landing frames between the errors when the storm
+            // was counted (Discord 11-05, 1.6.7: no Decoder.DamageTrimmed, so the reopen waited
+            // for the position to stand still, then opened cold): look again while it lasts.
+            damageMs = TrimDamagedEngineTail(errors, out damagedSeg, out _);
+            if (damagedSeg != null) continue;
             if (now0 - prevTick < DecoderWedgePollMs)
                 continue; // the stand-still check keeps its own cadence
             if (cur - prev < DecoderWedgePollMs / 5)
             {
-                atMs = damageMs >= 0 && cur <= damageMs ? damageMs : cur;
+                atMs = cur;
                 break;
             }
             prev = cur;
@@ -5073,14 +5235,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         switch (action)
         {
             case DecoderWedgeAction.ReopenOnAvcodec:
-                _avcodecMp3Paths.Add(path);
-                Volatile.Write(ref _decoderRecoveryOpenPath, path);
-                // The Seek.Restart mechanism: a fresh open at the position.
-                lock (_seekGate) { _latestSeekMs = -1; }
-                _positionTimer.Stop();
-                Interlocked.Exchange(ref _pendingSeekMs, atMs > 0 ? atMs : -1);
-                _restartPausedRequest = false;
-                Play(path, _currentFallbackPath);
+                ReopenPastDamage(path, atMs, damagedSeg, remember: true);
                 break;
             case DecoderWedgeAction.SkipAhead:
                 Seek(TimeSpan.FromMilliseconds(atMs + DecoderWedgeSkipMs(attempt)));

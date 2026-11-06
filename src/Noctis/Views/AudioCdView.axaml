@@ -85,7 +85,7 @@
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).AddTrackToQueueCommand}"
                                           CommandParameter="{Binding}">
                                     <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -218,7 +219,7 @@
         <Grid Name="Layout" Margin="{Binding TopSafePadding}" RowDefinitions="Auto,Auto,Auto,*">
             <!-- Apple's grabber: a tap goes back to Now Playing (Back does too). -->
             <Button Name="LyricsGrabber" Classes="row" HorizontalAlignment="Center" Width="96" Height="24"
-                    Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="Close lyrics">
+                    Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="{loc:T Mobile.Lyrics.Close}">
                 <Border Width="40" Height="5" CornerRadius="2.5" Background="#59FFFFFF"
                         HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
@@ -226,7 +227,7 @@
             <!-- Apple's header: the cover (a tap goes back to Now Playing), title and artist, ⋯. -->
             <Grid Grid.Row="1" Name="Header" ColumnDefinitions="Auto,*,Auto,Auto" Margin="24,6,10,4">
                 <Button Name="HeaderArtButton" Classes="row" Padding="0" Command="{Binding ToggleLyricsCommand}"
-                        AutomationProperties.Name="Close lyrics">
+                        AutomationProperties.Name="{loc:T Mobile.Lyrics.Close}">
                     <Border Width="60" Height="60" CornerRadius="8" ClipToBounds="True" Background="#26FFFFFF"
                             BoxShadow="0 4 12 0 #4D000000">
                         <Panel>
@@ -249,13 +250,13 @@
                                TextTrimming="CharacterEllipsis" MaxLines="1" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <ToggleButton Name="TranslationToggle" Classes="lyrics-pill" Content="Translation"
+                    <ToggleButton Name="TranslationToggle" Classes="lyrics-pill" Content="{loc:T Mobile.Lyrics.Translation}"
                                   IsChecked="{Binding Lyrics.ShowTranslation}" IsVisible="{Binding Lyrics.HasTranslations}" />
-                    <ToggleButton Name="RomajiToggle" Classes="lyrics-pill" Content="Romaji"
+                    <ToggleButton Name="RomajiToggle" Classes="lyrics-pill" Content="{loc:T Mobile.Lyrics.Romaji}"
                                   IsChecked="{Binding Lyrics.ShowRomanization}" IsVisible="{Binding Lyrics.HasRomanizations}" />
                 </StackPanel>
                 <Button Grid.Column="3" Name="LyricsMore" Classes="icon" VerticalAlignment="Center"
-                        Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="More">
+                        Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                     <PathIcon Data="{DynamicResource PhMore}" Width="26" Height="26" />
                 </Button>
             </Grid>
@@ -398,39 +399,39 @@
                 <StackPanel Margin="24,0,24,8">
                     <views:CapsuleSlider Name="SeekBar" Height="30" Minimum="0" Maximum="{Binding Player.Duration.TotalSeconds}"
                                          Value="{Binding Player.Position.TotalSeconds, Mode=OneWay}"
-                                         AutomationProperties.Name="Playback position" />
+                                         AutomationProperties.Name="{loc:T Mobile.PlaybackPosition}" />
                     <Grid ColumnDefinitions="*,*" Margin="0,-4,0,0">
                         <TextBlock Name="ElapsedText" Classes="np-time" Text="{Binding Player.ElapsedText}" HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1" Name="RemainingText" Classes="np-time" Text="{Binding Player.RemainingText}" HorizontalAlignment="Right" />
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,4">
                         <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
-                                Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="Previous">
+                                Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
                             <controls:TransportGlyph Kind="Previous" Width="38" Height="38" />
                         </Button>
                         <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport tx"
-                                Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
+                                Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
                             <controls:TransportGlyph Kind="PlayPause" Width="40" Height="40" IsPlaying="{Binding Player.IsPlaying}" />
                         </Button>
                         <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
-                                Command="{Binding Player.NextCommand}" AutomationProperties.Name="Next">
+                                Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
                             <controls:TransportGlyph Kind="Next" Width="38" Height="38" />
                         </Button>
                     </Grid>
                     <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">
                         <!-- Lit: this is the Lyrics screen; a tap goes back to Now Playing. -->
                         <Button Grid.Column="0" Name="LyricsButton" Classes="icon bottom" HorizontalAlignment="Center" Padding="0"
-                                Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="Lyrics">
+                                Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="{loc:T Tab.Lyrics}">
                             <Border Width="40" Height="40" CornerRadius="10" Background="#E6FFFFFF">
                                 <PathIcon Data="{DynamicResource PhLyrics}" Foreground="#FF1C1C1E" />
                             </Border>
                         </Button>
                         <Button Grid.Column="1" Name="OutputButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ShowOutputCommand}" AutomationProperties.Name="Output">
+                                Command="{Binding ShowOutputCommand}" AutomationProperties.Name="{loc:T Mobile.Output}">
                             <PathIcon Classes="speaker" Data="{DynamicResource PhVolumeHigh}" />
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon bottom" HorizontalAlignment="Center"
-                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
+                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="{loc:T Tab.Queue}">
                             <PathIcon Data="{DynamicResource PhQueue}" />
                         </Button>
                     </Grid>

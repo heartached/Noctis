@@ -1039,6 +1039,14 @@
     <value>歌われた単語がふわりと浮き上がり、伸ばした音が光ります（Apple Music 風）。オフにすると単語同期の歌詞は動きません。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
+    <value>歌詞がない曲ではプレーヤーを中央に表示</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
+    <value>歌詞がない曲やインスト曲では、歌詞ページのアートワーク・曲情報・操作ボタンを中央に移動します。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>再生バーの不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -3891,6 +3899,9 @@
     <value>最大</value>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>アルバムまたはアーティスト</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music に一致するアルバムがありません。別の名前で試してください。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>ダウンロードに失敗しました。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>ダウンロード中…</value>
     <comment>Text in MetadataWindow.axaml</comment>
@@ -5554,6 +5565,12 @@
     <value>Rate (click a star; click the same star to clear)</value>
     <comment>ToolTip on the Songs row stars</comment>
   </data>
+  <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>1曲</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0}曲</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>1時間</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0}時間</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1分</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0}分</value><comment>Songs page top bar summary</comment></data>
   <data name="SendTo.Title" xml:space="preserve">
     <value>フォルダーに送る</value>
     <comment>Dialog title</comment>
@@ -6839,4 +6856,801 @@
     <value>ルビー</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
+  <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve">
+    <value>アニメーションアートワークを削除</value>
+    <comment>Header in AlbumDetailView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetch" xml:space="preserve">
+    <value>アニメーションアートワークを自動で探す</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve">
+    <value>アルバムを開くと、アニメーションカバーを探します。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSize" xml:space="preserve">
+    <value>キャッシュサイズ</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
+    <value>いっぱいになると、古いカバーから削除されます。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
+    <value>{1} 中 {0} 使用</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.DataFolder" xml:space="preserve"><value>データフォルダー</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderHint" xml:space="preserve"><value>ライブラリ、カバー、キャッシュの保存場所です。別のドライブに移して容量を節約できます。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderChange" xml:space="preserve"><value>フォルダーを変更</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>デフォルトに戻す</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Noctis のデータを保存する場所を選択</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>このフォルダーには既に Noctis のデータがあります</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>{0} のライブラリと設定を使用しますか？何もコピーされず、{1} にある現在のデータはそのまま残ります。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>このフォルダーを使用</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopying" xml:space="preserve"><value>データをコピー中: {0} / {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>データを {0} にコピーしました。移動を完了するには Noctis を再起動してください。その後、古いコピーは削除されます。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartToSwitch" xml:space="preserve"><value>{0} の使用を開始するには Noctis を再起動してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartNow" xml:space="preserve"><value>今すぐ再起動</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderRestartManually" xml:space="preserve"><value>Noctis を再起動できませんでした。完了するには Noctis を終了してもう一度起動してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoved" xml:space="preserve"><value>データは {0} からここに移動されました。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderMoveFailed" xml:space="preserve"><value>データを移動できなかったため、何も変更されていません: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderFallback" xml:space="preserve"><value>{0} にアクセスできないため、Noctis は一時的にデフォルトのフォルダーを使用しています。ドライブを接続して Noctis を再起動してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSame" xml:space="preserve"><value>Noctis は既にそのフォルダーにデータを保存しています。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorInside" xml:space="preserve"><value>Noctis のデータフォルダーの外にあるフォルダーを選択してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotEmpty" xml:space="preserve"><value>そのフォルダーには他のファイルがあります。空のフォルダーか、Noctis のデータがあるフォルダーを選択してください。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorNotWritable" xml:space="preserve"><value>Noctis はそのフォルダーに書き込めません。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderErrorSpace" xml:space="preserve"><value>空き容量が足りません: データに {0} 必要ですが、空きは {1} です。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCopyFailed" xml:space="preserve"><value>データを移動できませんでした: {0}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderCancelled" xml:space="preserve"><value>移動をキャンセルしました。データはそのままです。</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderPreparing" xml:space="preserve"><value>準備しています…</value><comment>Settings › Advanced › Data Folder (GitHub #165): shown while the folder is checked and measured</comment></data>
+  <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <data name="Mobile.BackToSettings" xml:space="preserve"><value>設定に戻る</value></data>
+  <data name="Mobile.Account.SignInTitle" xml:space="preserve"><value>コンピュータにサインイン</value></data>
+  <data name="Mobile.Account.SignInSubtitle" xml:space="preserve"><value>コンピュータの音楽を、ここでストリーミング再生やダウンロードできます。</value></data>
+  <data name="Mobile.Account.ScanQrHeader" xml:space="preserve"><value>QRコードをスキャン</value></data>
+  <data name="Mobile.Account.QrStep1" xml:space="preserve"><value>コンピュータで Noctis › 設定 › アカウントとデバイス を開きます</value></data>
+  <data name="Mobile.Account.QrStep2" xml:space="preserve"><value>「スマートフォンでNoctisを使う」をオンにして、「スマートフォンを接続」をクリックします</value></data>
+  <data name="Mobile.Account.QrStep3" xml:space="preserve"><value>「QRコードをスキャン」をタップして、カメラをコードに向けます</value></data>
+  <data name="Mobile.Account.ScanQrButton" xml:space="preserve"><value>QRコードをスキャン</value></data>
+  <data name="Mobile.Account.ManualHeader" xml:space="preserve"><value>手動で入力</value></data>
+  <data name="Mobile.Account.ManualStep1" xml:space="preserve"><value>コンピュータで「スマートフォンを接続」をクリックし、「手動で入力」をクリックします</value></data>
+  <data name="Mobile.Account.ManualStep2" xml:space="preserve"><value>表示されたアドレス、メールアドレス、パスワードを入力します</value></data>
+  <data name="Mobile.Account.ManualStep3" xml:space="preserve"><value>セキュリティコードが一致することを確認します</value></data>
+  <data name="Mobile.Account.ServerAddress" xml:space="preserve"><value>サーバアドレス</value></data>
+  <data name="Mobile.Account.EmailOrUsername" xml:space="preserve"><value>メールアドレスまたはユーザ名</value></data>
+  <data name="Mobile.Account.Password" xml:space="preserve"><value>パスワード</value></data>
+  <data name="Mobile.Account.Required" xml:space="preserve"><value>必須</value></data>
+  <data name="Mobile.Account.ShowPassword" xml:space="preserve"><value>パスワードを表示</value></data>
+  <data name="Mobile.Account.SignIn" xml:space="preserve"><value>サインイン</value></data>
+  <data name="Mobile.Account.CheckCodeTitle" xml:space="preserve"><value>セキュリティコードを確認</value></data>
+  <data name="Mobile.Account.CheckCodeText" xml:space="preserve"><value>コンピュータの「スマートフォンを接続」の下にセキュリティコードが表示されています。このコードと一致する場合のみサインインしてください。</value></data>
+  <data name="Mobile.Account.TrustAndSignIn" xml:space="preserve"><value>信頼してサインイン</value></data>
+  <data name="Mobile.Cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>今すぐ同期</value></data>
+  <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>すべてダウンロード</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>コンピュータのすべての曲をこのスマートフォンに保存し、オフラインでも再生できるようにします。</value></data>
+  <data name="Mobile.Downloaded" xml:space="preserve"><value>ダウンロード済み</value></data>
+  <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
+  <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>ダウンロードを削除</value></data>
+  <data name="Mobile.Account.SignOut" xml:space="preserve"><value>サインアウト</value></data>
+  <data name="Mobile.NoAlbums" xml:space="preserve"><value>アルバムがありません</value></data>
+  <data name="Mobile.Play" xml:space="preserve"><value>再生</value></data>
+  <data name="Mobile.Album.More" xml:space="preserve"><value>さらに表示</value></data>
+  <data name="Mobile.Album.RecordLabel" xml:space="preserve"><value>レーベル</value></data>
+  <data name="Mobile.Artists.Find" xml:space="preserve"><value>アーティストを検索</value></data>
+  <data name="Mobile.Artists.NoMatch" xml:space="preserve"><value>一致するアーティストはありません</value></data>
+  <data name="Mobile.Artists.None" xml:space="preserve"><value>アーティストがありません</value></data>
+  <data name="Mobile.Shuffle" xml:space="preserve"><value>シャッフル</value></data>
+  <data name="Mobile.Favorite" xml:space="preserve"><value>お気に入り</value></data>
+  <data name="Mobile.Artist.TopSongs" xml:space="preserve"><value>トップソング</value></data>
+  <data name="Mobile.Artist.SinglesEps" xml:space="preserve"><value>シングル &amp; EP</value></data>
+  <data name="Mobile.Artist.AppearsOn" xml:space="preserve"><value>参加作品</value></data>
+  <data name="Mobile.AddToPlaylist" xml:space="preserve"><value>プレイリストに追加</value></data>
+  <data name="Mobile.NewPlaylist" xml:space="preserve"><value>新規プレイリスト</value></data>
+  <data name="Mobile.Pinned" xml:space="preserve"><value>ピン留め</value></data>
+  <data name="Mobile.Home.PinnedHint" xml:space="preserve"><value>アルバム、アーティスト、プレイリスト、曲を長押しして「ピン留め」を選ぶと、ここに表示されます。</value></data>
+  <data name="Mobile.RecentlyPlayed" xml:space="preserve"><value>最近再生した項目</value></data>
+  <data name="Mobile.OnRepeat" xml:space="preserve"><value>リピート中</value></data>
+  <data name="Mobile.Notice.AddMusicTitle" xml:space="preserve"><value>音楽を追加</value></data>
+  <data name="Mobile.Notice.AddMusicText" xml:space="preserve"><value>音楽が保存されているフォルダを選んでください。Noctisはその場所のまま読み込み、何もアップロードしません。</value></data>
+  <data name="Mobile.Notice.ChooseFolder" xml:space="preserve"><value>フォルダを選択</value></data>
+  <data name="Mobile.Notice.ReconnectFolder" xml:space="preserve"><value>フォルダを再接続</value></data>
+  <data name="Mobile.More" xml:space="preserve"><value>その他</value></data>
+  <data name="Mobile.RecentlyAdded" xml:space="preserve"><value>最近追加した項目</value></data>
+  <data name="Mobile.Lyrics.Close" xml:space="preserve"><value>歌詞を閉じる</value></data>
+  <data name="Mobile.Lyrics.Translation" xml:space="preserve"><value>翻訳</value></data>
+  <data name="Mobile.Lyrics.Romaji" xml:space="preserve"><value>ローマ字</value></data>
+  <data name="Mobile.PlaybackPosition" xml:space="preserve"><value>再生位置</value></data>
+  <data name="Mobile.Previous" xml:space="preserve"><value>前へ</value></data>
+  <data name="Mobile.PlayPause" xml:space="preserve"><value>再生/一時停止</value></data>
+  <data name="Mobile.Next" xml:space="preserve"><value>次へ</value></data>
+  <data name="Mobile.Output" xml:space="preserve"><value>出力</value></data>
+  <data name="Mobile.AudioQuality" xml:space="preserve"><value>音質</value></data>
+  <data name="Mobile.Volume" xml:space="preserve"><value>音量</value></data>
+  <data name="Mobile.Playlists.Find" xml:space="preserve"><value>プレイリスト内を検索</value></data>
+  <data name="Mobile.Playlists.None" xml:space="preserve"><value>プレイリストはまだありません。曲を長押しして作成できます。</value></data>
+  <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>一致するプレイリストはありません</value></data>
+  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>プレイリストを検索</value></data>
+  <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>プレイリストを並べ替え</value></data>
+  <data name="Mobile.PlayNext" xml:space="preserve"><value>次に再生</value></data>
+  <data name="Mobile.AddToQueue" xml:space="preserve"><value>キューに追加</value></data>
+  <data name="Mobile.GoToAlbum" xml:space="preserve"><value>アルバムへ移動</value></data>
+  <data name="Mobile.GoToArtist" xml:space="preserve"><value>アーティストへ移動</value></data>
+  <data name="Mobile.Rename" xml:space="preserve"><value>名前を変更</value></data>
+  <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>プレイリストから削除</value></data>
+  <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>プレイリストを削除</value></data>
+  <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>フォルダを追加…</value></data>
+  <data name="Mobile.RescanLibrary" xml:space="preserve"><value>ライブラリを再スキャン</value></data>
+  <data name="Mobile.OK" xml:space="preserve"><value>OK</value></data>
+  <data name="Mobile.ProfileButton" xml:space="preserve"><value>プロフィールと設定</value></data>
+  <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>次に再生</value></data>
+  <data name="Mobile.Queue.Clear" xml:space="preserve"><value>消去</value></data>
+  <data name="Mobile.Queue.Empty" xml:space="preserve"><value>次に再生する曲はありません</value></data>
+  <data name="Mobile.Repeat" xml:space="preserve"><value>リピート</value></data>
+  <data name="Mobile.NothingHere" xml:space="preserve"><value>まだ何もありません</value></data>
+  <data name="Mobile.Search" xml:space="preserve"><value>検索</value></data>
+  <data name="Mobile.Search.Placeholder" xml:space="preserve"><value>アーティスト、曲、アルバム、プレイリスト</value></data>
+  <data name="Mobile.Search.All" xml:space="preserve"><value>すべて</value></data>
+  <data name="Mobile.Search.Hint" xml:space="preserve"><value>ライブラリを検索</value></data>
+  <data name="Mobile.Search.NoResults" xml:space="preserve"><value>結果なし</value></data>
+  <data name="Mobile.Artist" xml:space="preserve"><value>アーティスト</value></data>
+  <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>スローモーション</value></data>
+  <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>色がゆっくりと移ろいます</value></data>
+  <data name="Mobile.Background.Strength" xml:space="preserve"><value>強さ</value></data>
+  <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>アートワークから</value></data>
+  <data name="Mobile.NowPlaying" xml:space="preserve"><value>再生中</value></data>
+  <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>曲のジャケットに合わせて変化します</value></data>
+  <data name="Mobile.Off" xml:space="preserve"><value>オフ</value></data>
+  <data name="Mobile.Background.OffHint" xml:space="preserve"><value>テーマの単色</value></data>
+  <data name="Mobile.Background.Neutral" xml:space="preserve"><value>ニュートラル</value></data>
+  <data name="Mobile.Background.Colour" xml:space="preserve"><value>カラー</value></data>
+  <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>今週</value></data>
+  <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>まだ再生履歴がありません</value></data>
+  <data name="Mobile.ShowAll" xml:space="preserve"><value>すべて表示</value></data>
+  <data name="Mobile.History.Header" xml:space="preserve"><value>履歴</value></data>
+  <data name="Mobile.History.Keep" xml:space="preserve"><value>履歴の保存期間</value></data>
+  <data name="Mobile.History.CountAfter" xml:space="preserve"><value>再生としてカウントするタイミング</value></data>
+  <data name="Mobile.History.Share" xml:space="preserve"><value>コンピュータと共有</value></data>
+  <data name="Mobile.History.ShareHint" xml:space="preserve"><value>再生回数と最近再生した項目が両方で一致します</value></data>
+  <data name="Mobile.History.ClearName" xml:space="preserve"><value>再生履歴を消去</value></data>
+  <data name="Mobile.History.ClearRow" xml:space="preserve"><value>再生履歴を消去…</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>このスマートフォンの再生履歴を消去します。Last.fmに送信済みの再生はそのまま残ります。</value></data>
+  <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>このスマートフォン</value></data>
+  <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>コンピュータ</value></data>
+  <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>サービス</value></data>
+  <data name="Mobile.Scrobbling.ThroughComputer" xml:space="preserve"><value>コンピュータ経由</value></data>
+  <data name="Mobile.Scrobbling.FromPhone" xml:space="preserve"><value>このスマートフォンから</value></data>
+  <data name="Mobile.Scrobbling.WhileListening" xml:space="preserve"><value>再生中</value></data>
+  <data name="Mobile.Scrobbling.SendPlays" xml:space="preserve"><value>再生を送信</value></data>
+  <data name="Mobile.Scrobbling.ShowNowPlaying" xml:space="preserve"><value>再生中の曲を表示</value></data>
+  <data name="Mobile.Scrobbling.Waiting" xml:space="preserve"><value>送信待ち</value></data>
+  <data name="Mobile.Settings.OnPhone" xml:space="preserve"><value>スマートフォンのみ</value></data>
+  <data name="Mobile.Settings.Appearance" xml:space="preserve"><value>外観</value></data>
+  <data name="Mobile.Settings.Background" xml:space="preserve"><value>背景</value></data>
+  <data name="Mobile.Settings.Theme" xml:space="preserve"><value>テーマ</value></data>
+  <data name="Mobile.Settings.Accent" xml:space="preserve"><value>アクセントカラー</value></data>
+  <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>プレーヤーバー</value></data>
+  <data name="Mobile.Settings.NowPlayingArtwork" xml:space="preserve"><value>再生中のアートワーク</value></data>
+  <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>ジャケット</value></data>
+  <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>レコード</value></data>
+  <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音楽フォルダ</value></data>
+  <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>ダウンロード</value></data>
+  <data name="Mobile.Settings.Listening" xml:space="preserve"><value>リスニング</value></data>
+  <data name="Mobile.Settings.Scrobbling" xml:space="preserve"><value>スクロブリング</value></data>
+  <data name="Mobile.Settings.ListeningHistory" xml:space="preserve"><value>再生履歴</value></data>
+  <data name="Mobile.Settings.PickUpName" xml:space="preserve"><value>コンピュータで続きを再生、キューと再生位置を引き継ぎます</value></data>
+  <data name="Mobile.Settings.PickUp" xml:space="preserve"><value>コンピュータで続きを再生</value></data>
+  <data name="Mobile.Settings.PickUpHint" xml:space="preserve"><value>キューと再生位置を引き継ぎます</value></data>
+  <data name="Mobile.Settings.Help" xml:space="preserve"><value>ヘルプ</value></data>
+  <data name="Mobile.Settings.ReportName" xml:space="preserve"><value>問題を報告、ブラウザで開きます</value></data>
+  <data name="Mobile.Settings.Report" xml:space="preserve"><value>問題を報告</value></data>
+  <data name="Mobile.Settings.ExportLogs" xml:space="preserve"><value>ログを書き出す</value></data>
+  <data name="Mobile.Settings.WebsiteName" xml:space="preserve"><value>Noctis Webサイト、ブラウザで開きます</value></data>
+  <data name="Mobile.Settings.Website" xml:space="preserve"><value>Noctis Webサイト</value></data>
+  <data name="Mobile.Settings.PrivacyName" xml:space="preserve"><value>プライバシーポリシー、ブラウザで開きます</value></data>
+  <data name="Mobile.Settings.Privacy" xml:space="preserve"><value>プライバシーポリシー</value></data>
+  <data name="Mobile.Settings.About" xml:space="preserve"><value>情報</value></data>
+  <data name="Mobile.Settings.Version" xml:space="preserve"><value>バージョン</value></data>
+  <data name="Mobile.Settings.WhatsNew" xml:space="preserve"><value>新機能</value></data>
+  <data name="Mobile.Settings.Licenses" xml:space="preserve"><value>オープンソースライセンス</value></data>
+  <data name="Mobile.Settings.Tagline" xml:space="preserve"><value>Noctis · あなたの音楽を、あなたのデバイスで。</value></data>
+  <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>アクセス権が失われました。曲を再生するには、このフォルダをもう一度追加してください。</value></data>
+  <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>利用できません。ストレージを再接続してから再スキャンしてください。</value></data>
+  <data name="Mobile.Folders.None" xml:space="preserve"><value>音楽フォルダはまだありません</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>このスマートフォンのライブラリは、これらのフォルダ内の音楽で構成されます。</value></data>
+  <data name="Mobile.Folders.Add" xml:space="preserve"><value>フォルダを追加</value></data>
+  <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>起動時にスキャン</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctisを開くたびに、これらのフォルダで新しい曲を探します。</value></data>
+  <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>アルバムの色</value></data>
+  <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>アートワークの色でページを彩る</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>アルバムとアーティストのページが、ジャケットの色を濃くした色合いになり、文字は白で表示されます。オフにすると、通常のライトまたはダークテーマを使います。</value></data>
+  <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>進行状況の色</value></data>
+  <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>進行状況のライン</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>「進行状況の色」は、曲の再生に合わせてプレーヤーバーをジャケットの色で満たします。「進行状況のライン」は、バーの下端に細い線を表示します。両方オフにすると、バーは無地のガラスになります。</value></data>
+  <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Wi-Fi接続時のみダウンロード</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>コンピュータの曲はWi-Fi接続時にのみダウンロードされ、モバイルデータ通信は使いません。ストリーミングには影響しません。</value></data>
+  <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>スムーズモーション</value></data>
+  <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最大120Hz</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>対応する端末では画面を毎秒最大120回更新し、スクロールやアニメーションをより滑らかにします。オフにすると画面は60Hzになり、バッテリーを節約できます。</value></data>
+  <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>使用済みストレージ</value></data>
+  <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>削除したダウンロードはコンピュータに残り、引き続きストリーミング再生できます。</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis自体はMITライセンスです。</value></data>
+  <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>翻訳を表示</value></data>
+  <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>ローマ字表記を表示</value></data>
+  <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>バックボーカルを表示</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>曲の歌詞に含まれている場合、行の下に小さな文字で表示します。</value></data>
+  <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>文字サイズ</value></data>
+  <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>歌詞の文字サイズ</value></data>
+  <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>行の最小不透明度</value></data>
+  <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>行の最小不透明度</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>すべての行をうっすら表示したままにするので、どの行でもタップしてその位置に移動できます。0%にすると、現在の行から離れた行は非表示になります。</value></data>
+  <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>分割された単語をつなげる</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML歌詞が単語を音節に分割している場合も、単語をひとまとまりで表示します。</value></data>
+  <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>オンラインで歌詞を検索</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>曲に歌詞ファイルもタグ内の歌詞もない場合、デスクトップアプリと同様に、タイトル、アーティスト、長さでLRCLIBに問い合わせます。見つかった歌詞はスマートフォンに保存されます。</value></data>
+  <data name="Mobile.ShowTabs" xml:space="preserve"><value>タブを表示</value></data>
+  <data name="Mobile.SongList.Find" xml:space="preserve"><value>このリスト内を検索</value></data>
+  <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0}曲</value></data>
+  <data name="Mobile.Count.Albums" xml:space="preserve"><value>{0}枚のアルバム</value></data>
+  <data name="Mobile.Count.Hours" xml:space="preserve"><value>{0}時間</value></data>
+  <data name="Mobile.Count.Minutes" xml:space="preserve"><value>{0}分</value></data>
+  <data name="Mobile.Count.Seconds" xml:space="preserve"><value>{0}秒</value></data>
+  <data name="Mobile.RemoveFromFavorites" xml:space="preserve"><value>お気に入りから削除</value></data>
+  <data name="Mobile.Favorited" xml:space="preserve"><value>お気に入り済み</value></data>
+  <data name="Mobile.Unpin" xml:space="preserve"><value>ピン留めを解除</value></data>
+  <data name="Mobile.PinToHome" xml:space="preserve"><value>ホームにピン留め</value></data>
+  <data name="Mobile.PinnedTile" xml:space="preserve"><value>ピン留め済み</value></data>
+  <data name="Mobile.Pin" xml:space="preserve"><value>ピン留め</value></data>
+  <data name="Mobile.DownloadAlbum" xml:space="preserve"><value>アルバムをダウンロード</value></data>
+  <data name="Mobile.DownloadPlaylist" xml:space="preserve"><value>プレイリストをダウンロード</value></data>
+  <data name="Mobile.Download" xml:space="preserve"><value>ダウンロード</value></data>
+  <data name="Mobile.RemoveDownload" xml:space="preserve"><value>ダウンロードを削除</value></data>
+  <data name="Mobile.AlreadyIn" xml:space="preserve"><value>すでに{0}にあります</value></data>
+  <data name="Mobile.AddedTo" xml:space="preserve"><value>{0}に追加しました</value></data>
+  <data name="Mobile.Sort.Ascending" xml:space="preserve"><value>昇順</value></data>
+  <data name="Mobile.Sort.Descending" xml:space="preserve"><value>降順</value></data>
+  <data name="Mobile.SelectedName" xml:space="preserve"><value>{0}、選択済み</value></data>
+  <data name="Mobile.Sort.Title" xml:space="preserve"><value>タイトル</value></data>
+  <data name="Mobile.Sort.RecentlyUpdated" xml:space="preserve"><value>最近更新した項目</value></data>
+  <data name="Mobile.Sort.MostRelevant" xml:space="preserve"><value>関連度順</value></data>
+  <data name="Mobile.Sort.ReleaseYear" xml:space="preserve"><value>リリース年</value></data>
+  <data name="Mobile.Sort.MostPlayed" xml:space="preserve"><value>再生回数順</value></data>
+  <data name="Mobile.Sort.PlaylistOrder" xml:space="preserve"><value>プレイリストの順序</value></data>
+  <data name="Mobile.Sort.DefaultOrder" xml:space="preserve"><value>デフォルトの順序</value></data>
+  <data name="Mobile.Sort.Artist" xml:space="preserve"><value>アーティスト</value></data>
+  <data name="Mobile.Sort.Album" xml:space="preserve"><value>アルバム</value></data>
+  <data name="Mobile.Sort.DateAdded" xml:space="preserve"><value>追加日</value></data>
+  <data name="Mobile.Sort.Time" xml:space="preserve"><value>時間</value></data>
+  <data name="Mobile.Search.PlaylistSubtitle" xml:space="preserve"><value>プレイリスト · {0}</value></data>
+  <data name="Mobile.SongList.NoSongs" xml:space="preserve"><value>曲がありません</value></data>
+  <data name="Mobile.SongList.NoMatch" xml:space="preserve"><value>一致する曲はありません</value></data>
+  <data name="Mobile.SongList.CountOf" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="Mobile.Album.Disc" xml:space="preserve"><value>ディスク{0}</value></data>
+  <data name="Mobile.Album.ListJoin" xml:space="preserve"><value>{0}、{1}</value></data>
+  <data name="Mobile.Artist.FeaturedSingle" xml:space="preserve"><value>注目のシングル</value></data>
+  <data name="Mobile.Artist.FeaturedEp" xml:space="preserve"><value>注目のEP</value></data>
+  <data name="Mobile.Artist.FeaturedAlbum" xml:space="preserve"><value>注目のアルバム</value></data>
+  <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>最も再生した作品</value></data>
+  <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>最新EP</value></data>
+  <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>最新シングル</value></data>
+  <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>コンピュータに接続できません。ダウンロード済みの曲を再生しています。</value></data>
+  <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>コンピュータに接続できません。コンピュータでNoctisを開くか、ダウンロード済みの曲を再生してください。</value></data>
+  <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>複数の曲を続けて再生できなかったため、再生を停止しました。</value></data>
+  <data name="Mobile.Player.PlayingFrom" xml:space="preserve"><value>{0}から再生中</value></data>
+  <data name="Mobile.Player.TrackOf" xml:space="preserve"><value>トラック{0}/{1}</value></data>
+  <data name="Mobile.Quality.HiResMeaning" xml:space="preserve"><value>24ビット/48kHzを超える音質：CDや通常のロスレスより高い解像度です。</value></data>
+  <data name="Mobile.RenamePlaylist" xml:space="preserve"><value>プレイリスト名を変更</value></data>
+  <data name="Mobile.Save" xml:space="preserve"><value>保存</value></data>
+  <data name="Mobile.PlaylistName" xml:space="preserve"><value>プレイリスト名</value></data>
+  <data name="Mobile.DeletePlaylistQuestion" xml:space="preserve"><value>「{0}」を削除しますか？</value></data>
+  <data name="Mobile.DeletePlaylistSynced" xml:space="preserve"><value>コンピュータからも削除されます。この操作は取り消せません。</value></data>
+  <data name="Mobile.DeletePlaylistLocal" xml:space="preserve"><value>この操作は取り消せません。曲はライブラリに残ります。</value></data>
+  <data name="Mobile.Library.FolderUnavailable" xml:space="preserve"><value>「{0}」は利用できません。再接続してから再スキャンしてください。</value></data>
+  <data name="Mobile.Library.FoldersUnavailable" xml:space="preserve"><value>{0}個のフォルダが利用できません。再接続してから再スキャンしてください。</value></data>
+  <data name="Mobile.Library.AlreadyCovered" xml:space="preserve"><value>すでに「{0}」に含まれています。</value></data>
+  <data name="Mobile.Library.InsideFolder" xml:space="preserve"><value>「{0}」はそのフォルダ内にあります。先にそちらを削除してください。</value></data>
+  <data name="Mobile.Library.Scanning" xml:space="preserve"><value>スキャン中…</value></data>
+  <data name="Mobile.Library.ScanFailed" xml:space="preserve"><value>スキャンに失敗しました。ログを確認してください。</value></data>
+  <data name="Mobile.Lyrics.Searching" xml:space="preserve"><value>歌詞を検索中…</value></data>
+  <data name="Mobile.Lyrics.Loading" xml:space="preserve"><value>歌詞を読み込み中…</value></data>
+  <data name="Mobile.Lyrics.Instrumental" xml:space="preserve"><value>インストゥルメンタル</value></data>
+  <data name="Mobile.Lyrics.None" xml:space="preserve"><value>歌詞なし</value></data>
+  <data name="Mobile.Lyrics.NotSynced" xml:space="preserve"><value>同期歌詞なし</value></data>
+  <data name="Mobile.Lyrics.InstrumentalDetail" xml:space="preserve"><value>この曲には歌詞がありません。</value></data>
+  <data name="Mobile.Lyrics.OnlineFailedDetail" xml:space="preserve"><value>この曲には歌詞ファイルもタグ内の歌詞もなく、オンライン歌詞サービスにも接続できませんでした。次回この曲を再生するときに再度問い合わせます。</value></data>
+  <data name="Mobile.Lyrics.NoneOnlineDetail" xml:space="preserve"><value>この曲には歌詞ファイルもタグ内の歌詞もなく、オンラインでも見つかりませんでした。</value></data>
+  <data name="Mobile.Lyrics.NoneDetail" xml:space="preserve"><value>この曲には歌詞ファイルもタグ内の歌詞もありません。</value></data>
+  <data name="Mobile.Lyrics.FromLrclib" xml:space="preserve"><value>歌詞提供：LRCLIB</value></data>
+  <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>プレビュー · {0}</value></data>
+  <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>曲のタイトル</value></data>
+  <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>バッテリーセーバーがオンのため、色は静止したままです。</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>動きがあると、バッテリーを少し多く消費します。バッテリーセーバーがオンのときは一時停止します。</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="Mobile.History.Forever" xml:space="preserve"><value>無期限</value></data>
+  <data name="Mobile.History.OneYear" xml:space="preserve"><value>1年</value></data>
+  <data name="Mobile.History.Days" xml:space="preserve"><value>{0}日</value></data>
+  <data name="Mobile.History.Immediately" xml:space="preserve"><value>すぐに</value></data>
+  <data name="Mobile.Time.Seconds" xml:space="preserve"><value>{0}秒</value></data>
+  <data name="Mobile.Time.Minutes" xml:space="preserve"><value>{0}分</value></data>
+  <data name="Mobile.Time.Hours" xml:space="preserve"><value>{0}時間</value></data>
+  <data name="Mobile.Time.HoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value></data>
+  <data name="Mobile.Time.Days" xml:space="preserve"><value>{0}日</value></data>
+  <data name="Mobile.Time.Months" xml:space="preserve"><value>{0}か月</value></data>
+  <data name="Mobile.Time.Now" xml:space="preserve"><value>今</value></data>
+  <data name="Mobile.History.WeekHours" xml:space="preserve"><value>今週{0}時間</value></data>
+  <data name="Mobile.History.WeekMinutes" xml:space="preserve"><value>今週{0}分</value></data>
+  <data name="Mobile.Count.Plays" xml:space="preserve"><value>{0}回再生</value></data>
+  <data name="Mobile.Count.Scrobbles" xml:space="preserve"><value>{0}件のスクロブル</value></data>
+  <data name="Mobile.History.KeepDetail" xml:space="preserve"><value>これより古い再生履歴は、このスマートフォンから削除されます。</value></data>
+  <data name="Mobile.History.CountAfterDetail" xml:space="preserve"><value>曲をどれだけ聴いたら1回の再生としてカウントするかを設定します。Last.fmのスクロブリングには独自のルールがあります。</value></data>
+  <data name="Mobile.History.ClearQuestion" xml:space="preserve"><value>再生履歴を消去しますか？</value></data>
+  <data name="Mobile.History.ClearDetail" xml:space="preserve"><value>このスマートフォンからすべての再生履歴が削除されます。Last.fmに送信済みの再生はそのまま残ります。</value></data>
+  <data name="Mobile.Scrobbling.RouteFromPhone" xml:space="preserve"><value>スマートフォンが再生をカウントし、Last.fmとListenBrainzに直接送信します。二重に送信されることはありません。</value></data>
+  <data name="Mobile.Scrobbling.RouteSignIn" xml:space="preserve"><value>「アカウント」でコンピュータにサインインすると、スマートフォンの同期時に再生がコンピュータに送られます。</value></data>
+  <data name="Mobile.Scrobbling.RouteNotShared" xml:space="preserve"><value>再生履歴の「コンピュータと共有」がオフのため、再生はこのスマートフォンに残ります。</value></data>
+  <data name="Mobile.Scrobbling.RouteUnknown" xml:space="preserve"><value>スマートフォンの同期時に、再生がコンピュータに送られます。コンピュータ上の最新のNoctisがそれをLast.fmとListenBrainzに転送します。</value></data>
+  <data name="Mobile.Scrobbling.RouteNoServices" xml:space="preserve"><value>スマートフォンの同期時に、再生がコンピュータに送られます。転送するには、コンピュータでLast.fmまたはListenBrainzを接続してください。</value></data>
+  <data name="Mobile.Scrobbling.RouteComputer" xml:space="preserve"><value>スマートフォンの同期時に再生がコンピュータに送られ、カウント対象の再生が転送されます。このスマートフォンにしかない曲はここに残ります。二重に送信されることはありません。</value></data>
+  <data name="Mobile.Scrobbling.Connected" xml:space="preserve"><value>接続済み</value></data>
+  <data name="Mobile.Scrobbling.NotConnected" xml:space="preserve"><value>未接続</value></data>
+  <data name="Mobile.Scrobbling.OnComputer" xml:space="preserve"><value>コンピュータで管理</value></data>
+  <data name="Mobile.Scrobbling.LastFmPitch" xml:space="preserve"><value>聴いている音楽をシェア</value></data>
+  <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>オープンで無料のリスニング統計</value></data>
+  <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>コンピュータで接続済み</value></data>
+  <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>コンピュータで設定</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>曲の半分または4分を再生すると1回の再生としてカウントされます。オフライン中の再生は、次回の同期までここで待機します。</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>曲の半分または4分を再生すると1回の再生としてカウントされます。オフライン中の再生は、スマートフォンがオンラインに戻るまでここで待機します。</value></data>
+  <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Last.fmに接続できませんでした。もう一度お試しください。</value></data>
+  <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Last.fmでNoctisを承認</value></data>
+  <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Last.fmにサインインして「Allow」をタップし、ここに戻って「完了」をタップしてください。</value></data>
+  <data name="Mobile.Scrobbling.LastFmNotApproved" xml:space="preserve"><value>Last.fmでの承認がまだ確認できません。ブラウザでNoctisを承認してから、もう一度お試しください。</value></data>
+  <data name="Mobile.Scrobbling.ConnectListenBrainz" xml:space="preserve"><value>ListenBrainzに接続</value></data>
+  <data name="Mobile.Scrobbling.TokenDetail" xml:space="preserve"><value>listenbrainz.org/profile にあるユーザトークンを貼り付けてください。</value></data>
+  <data name="Mobile.Scrobbling.Connect" xml:space="preserve"><value>接続</value></data>
+  <data name="Mobile.Scrobbling.ListenBrainzUnreachable" xml:space="preserve"><value>ListenBrainzに接続できませんでした。もう一度お試しください。</value></data>
+  <data name="Mobile.Scrobbling.TokenRejected" xml:space="preserve"><value>ListenBrainzがそのトークンを受け付けませんでした。</value></data>
+  <data name="Mobile.Scrobbling.UserToken" xml:space="preserve"><value>ユーザトークン</value></data>
+  <data name="Mobile.Scrobbling.SetUpDetail" xml:space="preserve"><value>コンピュータのNoctisでLast.fmとListenBrainzを接続してください。ここでサインインする場合は「このスマートフォンから」を選択してください。</value></data>
+  <data name="Mobile.Scrobbling.DisconnectQuestion" xml:space="preserve"><value>{0}との接続を解除しますか？</value></data>
+  <data name="Mobile.Scrobbling.DisconnectDetail" xml:space="preserve"><value>送信待ちの再生は破棄されます。サイト上のスクロブルはそのまま残ります。</value></data>
+  <data name="Mobile.Scrobbling.Disconnect" xml:space="preserve"><value>接続解除</value></data>
+  <data name="Mobile.BackgroundName.Graphite" xml:space="preserve"><value>グラファイト</value></data>
+  <data name="Mobile.BackgroundName.Ash" xml:space="preserve"><value>アッシュ</value></data>
+  <data name="Mobile.BackgroundName.PlumInk" xml:space="preserve"><value>プラムインク</value></data>
+  <data name="Mobile.BackgroundName.Olive" xml:space="preserve"><value>オリーブ</value></data>
+  <data name="Mobile.BackgroundName.Slate" xml:space="preserve"><value>スレート</value></data>
+  <data name="Mobile.BackgroundName.Pine" xml:space="preserve"><value>パイン</value></data>
+  <data name="Mobile.BackgroundName.Sand" xml:space="preserve"><value>サンド</value></data>
+  <data name="Mobile.BackgroundName.Mist" xml:space="preserve"><value>ミスト</value></data>
+  <data name="Mobile.BackgroundName.Ember" xml:space="preserve"><value>エンバー</value></data>
+  <data name="Mobile.BackgroundName.Harbour" xml:space="preserve"><value>ハーバー</value></data>
+  <data name="Mobile.BackgroundName.Amber" xml:space="preserve"><value>アンバー</value></data>
+  <data name="Mobile.BackgroundName.Dusk" xml:space="preserve"><value>夕暮れ</value></data>
+  <data name="Mobile.BackgroundName.Rose" xml:space="preserve"><value>ローズ</value></data>
+  <data name="Mobile.BackgroundName.Lagoon" xml:space="preserve"><value>ラグーン</value></data>
+  <data name="Mobile.BackgroundName.Orchid" xml:space="preserve"><value>オーキッド</value></data>
+  <data name="Mobile.BackgroundName.Forest" xml:space="preserve"><value>フォレスト</value></data>
+  <data name="Mobile.BackgroundName.Coral" xml:space="preserve"><value>コーラル</value></data>
+  <data name="Mobile.BackgroundName.Iris" xml:space="preserve"><value>アイリス</value></data>
+  <data name="Mobile.BackgroundName.Cobalt" xml:space="preserve"><value>コバルト</value></data>
+  <data name="Mobile.BackgroundName.Mint" xml:space="preserve"><value>ミント</value></data>
+  <data name="Mobile.Accent.Crimson" xml:space="preserve"><value>クリムゾン</value></data>
+  <data name="Mobile.Accent.Tangerine" xml:space="preserve"><value>タンジェリン</value></data>
+  <data name="Mobile.Accent.Gold" xml:space="preserve"><value>ゴールド</value></data>
+  <data name="Mobile.Accent.Emerald" xml:space="preserve"><value>エメラルド</value></data>
+  <data name="Mobile.Accent.Teal" xml:space="preserve"><value>ティール</value></data>
+  <data name="Mobile.Accent.Cerulean" xml:space="preserve"><value>セルリアン</value></data>
+  <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>インディゴ</value></data>
+  <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>オーキッド</value></data>
+  <data name="Mobile.Accent.Rose" xml:space="preserve"><value>ローズ</value></data>
+  <data name="Mobile.Accent.Custom" xml:space="preserve"><value>カスタム</value></data>
+  <data name="Mobile.Theme.System" xml:space="preserve"><value>システム</value></data>
+  <data name="Mobile.Theme.Light" xml:space="preserve"><value>ライト</value></data>
+  <data name="Mobile.Theme.Dark" xml:space="preserve"><value>ダーク</value></data>
+  <data name="Mobile.Theme.Ink" xml:space="preserve"><value>インク</value></data>
+  <data name="Mobile.Theme.Smoke" xml:space="preserve"><value>スモーク</value></data>
+  <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>ミッドナイト</value></data>
+  <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>システム、{0}</value></data>
+  <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>デバイスに合わせる</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>スマートフォンがライトモードのときはライト、ダークモードのときは{0}になります。</value></data>
+  <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>ライトとダーク</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>カラーテーマはページ、カード、ガラスに色を付け、同じ名前の背景と調和します。</value></data>
+  <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>テーマに合わせる</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>カラーテーマには専用のアクセントカラーがあります。下で色を選ぶとオフになります。</value></data>
+  <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>「{0}」を削除しますか？このフォルダの曲は、このスマートフォンのライブラリから外れます。ファイルはそのまま残ります。</value></data>
+  <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>「{0}」を削除しますか？</value></data>
+  <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>このフォルダの曲は、このスマートフォンのライブラリから外れます。ファイルはそのまま残ります。</value></data>
+  <data name="Mobile.Folders.Remove" xml:space="preserve"><value>フォルダを削除</value></data>
+  <data name="Mobile.Folders.ReadOnlyChosen" xml:space="preserve"><value>Noctisが読み取れるのは、ここで選択したフォルダのみです。</value></data>
+  <data name="Mobile.Folders.NoneValue" xml:space="preserve"><value>なし</value></data>
+  <data name="Mobile.Folders.RowNameWarning" xml:space="preserve"><value>{0}、{1}、アクセス権を失ったか接続できないフォルダがあります</value></data>
+  <data name="Mobile.Settings.LastScan" xml:space="preserve"><value>前回のスキャン：{0}</value></data>
+  <data name="Mobile.Settings.RescanHint" xml:space="preserve"><value>フォルダ内の新しい曲を探します</value></data>
+  <data name="Mobile.Settings.ScanToday" xml:space="preserve"><value>今日 {0}</value></data>
+  <data name="Mobile.Settings.ScanYesterday" xml:space="preserve"><value>昨日 {0}</value></data>
+  <data name="Mobile.Settings.ScanOnDay" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="Mobile.Settings.AddFolderToScan" xml:space="preserve"><value>スキャンするには音楽フォルダを追加してください。</value></data>
+  <data name="Mobile.Settings.ColourAndLine" xml:space="preserve"><value>色とライン</value></data>
+  <data name="Mobile.Settings.Plain" xml:space="preserve"><value>なし</value></data>
+  <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>両方オン</value></data>
+  <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>翻訳オン</value></data>
+  <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>ローマ字オン</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>{0}でNoctisを開くと、ここで再生していた曲の続きから再生するか確認されます。</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>コンピュータでNoctisを開くと、ここで再生していた曲の続きから再生するか確認されます。</value></data>
+  <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Wi-Fiのみ</value></data>
+  <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>すべてのネットワーク</value></data>
+  <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>すべてのダウンロードを削除しますか？</value></data>
+  <data name="Mobile.Downloads.RemoveDetail" xml:space="preserve"><value>{0}がこのスマートフォンから削除されます。コンピュータには残り、引き続きストリーミング再生できます。</value></data>
+  <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>ダウンロードを削除</value></data>
+  <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}曲</value></data>
+  <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0}個のプレイリスト</value></data>
+  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>設定のデザインを一新しました。プロフィールとライブラリの数値を一番上に、その下に外観、ライブラリ、リスニング、ヘルプ、情報が並びます。</value></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>ダウンロード専用のページができました。「Wi-Fi接続時のみダウンロード」(デフォルトでオン)と「すべてのダウンロードを削除」があります。</value></data>
+  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>「オープンソースライセンス」に、Noctisで使われているソフトウェアの一覧を掲載しました。</value></data>
+  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctisがあなたの言語に対応しました。設定 › 言語で選ぶか、スマートフォンの言語に合わせることができます。</value></data>
+  <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value></data>
+  <data name="Mobile.License.Media3" xml:space="preserve"><value>再生、メディアセッション、デコーダのJNIラッパー。</value></data>
+  <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザインターフェイスのフレームワーク。</value></data>
+  <data name="Mobile.License.Inter" xml:space="preserve"><value>書体（Avalonia.Fonts.Inter経由）。</value></data>
+  <data name="Mobile.License.Mvvm" xml:space="preserve"><value>ビューモデルの基盤。</value></data>
+  <data name="Mobile.License.TagLib" xml:space="preserve"><value>曲のタグとジャケットを読み取ります。</value></data>
+  <data name="Mobile.License.Sqlite" xml:space="preserve"><value>ライブラリのデータベース。SQLite自体はパブリックドメインです。</value></data>
+  <data name="Mobile.License.Skia" xml:space="preserve"><value>描画。</value></data>
+  <data name="Mobile.License.AndroidX" xml:space="preserve"><value>.NET向けのAndroidサポートライブラリ。</value></data>
+  <data name="Mobile.License.CodeScanner" xml:space="preserve"><value>アカウントページの「QRコードをスキャン」。Google Play開発者サービスがカメラを動作させ、コードのテキストのみを返します。</value></data>
+  <data name="Mobile.Settings.ExportHint" xml:space="preserve"><value>キーとパスワードは除去されます</value></data>
+  <data name="Mobile.Settings.SignedInAs" xml:space="preserve"><value>{0}としてサインイン中 · {1}</value></data>
+  <data name="Mobile.Settings.SyncedWith" xml:space="preserve"><value>{0}と同期済み</value></data>
+  <data name="Mobile.Settings.SyncPitch" xml:space="preserve"><value>PCのNoctisとライブラリを同期</value></data>
+  <data name="Mobile.Settings.ExportUnavailable" xml:space="preserve"><value>ここでは書き出しできません</value></data>
+  <data name="Mobile.Settings.LogSaved" xml:space="preserve"><value>ログを保存しました</value></data>
+  <data name="Mobile.Settings.ExportCancelled" xml:space="preserve"><value>書き出しをキャンセルしました</value></data>
+  <data name="Mobile.Settings.LogFailed" xml:space="preserve"><value>ログを保存できませんでした</value></data>
+  <data name="Mobile.Account.Title" xml:space="preserve"><value>アカウント</value></data>
+  <data name="Mobile.Account.SignOutQuestion" xml:space="preserve"><value>{0}からサインアウトしますか？</value></data>
+  <data name="Mobile.Account.StopSending" xml:space="preserve"><value>送信を停止</value></data>
+  <data name="Mobile.Account.SendSongs" xml:space="preserve"><value>スマートフォンの曲をコンピュータに送信</value></data>
+  <data name="Mobile.Account.SendTile" xml:space="preserve"><value>コンピュータに送信</value></data>
+  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>メールアドレスまたはユーザ名とパスワードを入力してください。</value></data>
+  <data name="Mobile.Account.Connecting" xml:space="preserve"><value>コンピュータに接続中…</value></data>
+  <data name="Mobile.Account.SigningIn" xml:space="preserve"><value>サインイン中…</value></data>
+  <data name="Mobile.Account.ScannerUnavailable" xml:space="preserve"><value>このスマートフォンではスキャナの準備ができていません。1分ほど待ってからもう一度試すか、下のコンピュータのアドレスでサインインしてください。</value></data>
+  <data name="Mobile.Account.NotAPairingCode" xml:space="preserve"><value>Noctisのサインインコードではありません。コンピュータの「スマートフォンを接続」の下にあるコードをスキャンしてください。</value></data>
+  <data name="Mobile.Account.Syncing" xml:space="preserve"><value>同期中…</value></data>
+  <data name="Mobile.Account.SyncedCounts" xml:space="preserve"><value>{0}と{1}を同期しました</value></data>
+  <data name="Mobile.Account.SongsUpdatedSyncOff" xml:space="preserve"><value>曲を更新しました。コンピュータで同期がオフになっています。</value></data>
+  <data name="Mobile.Account.StartingDownloads" xml:space="preserve"><value>ダウンロードを開始しています…</value></data>
+  <data name="Mobile.Account.DownloadsFinished" xml:space="preserve"><value>ダウンロード完了{0}</value></data>
+  <data name="Mobile.Account.Checking" xml:space="preserve"><value>コンピュータにある曲を確認中…</value></data>
+  <data name="Mobile.Account.SendStopped" xml:space="preserve"><value>停止しました。残りを送信するにはもう一度タップしてください。</value></data>
+  <data name="Mobile.Account.RemovingDownloads" xml:space="preserve"><value>ダウンロードを削除中…</value></data>
+  <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>サインアウト</value></data>
+  <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>サインアウトしてダウンロードを削除</value></data>
+  <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>このコンピュータの曲はスマートフォンのライブラリから外れます。いつでも再度サインインできます。</value></data>
+  <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>サインアウト中…</value></data>
+  <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>問題が発生しました。もう一度お試しください。</value></data>
+  <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>同期が完了しました</value></data>
+  <data name="Mobile.Account.LastSyncFailed" xml:space="preserve"><value>前回の同期が完了しませんでした。「今すぐ同期」をタップしてもう一度お試しください。</value></data>
+  <data name="Mobile.Account.NameOnServer" xml:space="preserve"><value>{1}の{0}</value></data>
+  <data name="Mobile.Account.OnServer" xml:space="preserve"><value>接続先：{0}</value></data>
+  <data name="Mobile.Account.DownloadedStorage" xml:space="preserve"><value>ダウンロード済み：{0}</value></data>
+  <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0}がコンピュータにありません</value></data>
+  <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0}件失敗</value></data>
+  <data name="Mobile.Account.Downloading" xml:space="preserve"><value>ダウンロード中 {0}/{1}{2}</value></data>
+  <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>コンピュータに接続できません。コンピュータでNoctisが開いていること、「スマートフォンでNoctisを使う」がオンになっていること、両方が同じWi-Fiに接続されていることを確認してください。</value></data>
+  <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>コンピュータのセキュリティコードが変更されました。新しいコードを信頼するには、サインアウトしてから再度サインインしてください。</value></data>
+  <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>サインイン中にコンピュータのセキュリティコードが変更されました。コードを確認して、もう一度お試しください。</value></data>
+  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>メールアドレス、ユーザ名、またはパスワードが正しくありません。</value></data>
+  <data name="Mobile.Account.Error.LockedOut" xml:space="preserve"><value>サインインの失敗が多すぎます。数分待ってから、もう一度お試しください。</value></data>
+  <data name="Mobile.Account.Error.SyncDisabled" xml:space="preserve"><value>コンピュータで同期がオフになっています。設定の「アカウントとデバイス」で「スマートフォンと同期」をオンにしてください。</value></data>
+  <data name="Mobile.Account.Error.SignedOut" xml:space="preserve"><value>コンピュータがこのスマートフォンをサインアウトしました。再度サインインしてください。</value></data>
+  <data name="Mobile.Account.Error.InvalidAddress" xml:space="preserve"><value>「スマートフォンを接続」の下に表示されているコンピュータのアドレスを入力してください（例：192.168.1.20 または https://192.168.1.20:4747）。</value></data>
+  <data name="Mobile.Account.Error.StorageFull" xml:space="preserve"><value>スマートフォンの空き容量がほとんどないため、ダウンロードを停止しました（常に1.5 GBの空きを確保します）。ダウンロードを削除するか、空き容量を増やしてください。</value></data>
+  <data name="Mobile.Account.Error.FileMissing" xml:space="preserve"><value>この曲のファイルがコンピュータに見つかりません。</value></data>
+  <data name="Mobile.Account.Error.NotNoctis" xml:space="preserve"><value>そのアドレスから応答がありましたが、Noctisではありません。「スマートフォンを接続」の下に表示されているアドレスとポートを確認してください。</value></data>
+  <data name="Mobile.Account.Error.UnknownHost" xml:space="preserve"><value>その名前のコンピュータは見つかりません。「スマートフォンを接続」の下に表示されているアドレス（例：192.168.1.20）を入力してください。</value></data>
+  <data name="Mobile.Account.Error.Outdated" xml:space="preserve"><value>コンピュータのNoctisが古いため、スマートフォンを接続できません。アップデートしてから、もう一度お試しください。</value></data>
+  <data name="Mobile.Account.Error.WifiRequired" xml:space="preserve"><value>ダウンロードはWi-Fiのみに設定されています。Wi-Fiに接続するか、設定の「ダウンロード」で変更してください。</value></data>
+  <data name="Mobile.Account.Error.Other" xml:space="preserve"><value>コンピュータで処理を完了できませんでした。しばらくしてから、もう一度お試しください。</value></data>
+  <data name="Mobile.Account.Error.PairingExpired" xml:space="preserve"><value>このコードは有効期限が切れているか、すでに使用されています。コンピュータに表示されている新しいコードをスキャンしてください。</value></data>
+  <data name="Mobile.Account.Error.QrWrongComputer" xml:space="preserve"><value>そのアドレスのコンピュータはコードを表示しているコンピュータではないため、何も送信されませんでした。スマートフォンが同じWi-Fiに接続されていることを確認してから、もう一度スキャンしてください。</value></data>
+  <data name="Mobile.Account.Error.QrUnreachable" xml:space="preserve"><value>コンピュータに接続できません。スマートフォンがコンピュータと同じWi-Fiに接続されていることを確認してから、もう一度スキャンしてください。</value></data>
+  <data name="Mobile.Account.CountOf" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="Mobile.Account.GettingLibrary" xml:space="preserve"><value>ライブラリを取得中…</value></data>
+  <data name="Mobile.Account.GettingCovers" xml:space="preserve"><value>ジャケットを取得中…</value></data>
+  <data name="Mobile.Account.SyncingFavorites" xml:space="preserve"><value>お気に入りと評価を同期中…</value></data>
+  <data name="Mobile.Account.SyncingPlaylists" xml:space="preserve"><value>プレイリストを同期中…</value></data>
+  <data name="Mobile.Account.SendingPlays" xml:space="preserve"><value>再生を送信中…</value></data>
+  <data name="Mobile.Account.SentOf" xml:space="preserve"><value>{0}/{1}を送信しました</value></data>
+  <data name="Mobile.Account.SendingOf" xml:space="preserve"><value>送信中 {0}/{1}</value></data>
+  <data name="Mobile.Account.AllOnComputer" xml:space="preserve"><value>すべてコンピュータにあります</value></data>
+  <data name="Mobile.Account.NothingToSend" xml:space="preserve"><value>このスマートフォンに送信する曲はありません</value></data>
+  <data name="Mobile.Account.Sent" xml:space="preserve"><value>{0}を送信しました</value></data>
+  <data name="Mobile.Account.AlreadyOnComputer" xml:space="preserve"><value>{0}はすでにコンピュータにあります</value></data>
+  <data name="Mobile.Size.GB" xml:space="preserve"><value>{0} GB</value></data>
+  <data name="Mobile.Size.MB" xml:space="preserve"><value>{0} MB</value></data>
+  <data name="Mobile.Account.NotSynced" xml:space="preserve"><value>未同期</value></data>
+  <data name="Mobile.Account.SyncedNow" xml:space="preserve"><value>たった今同期しました</value></data>
+  <data name="Mobile.Account.SyncedMinutes" xml:space="preserve"><value>{0}分前に同期</value></data>
+  <data name="Mobile.Account.SyncedHours" xml:space="preserve"><value>{0}時間前に同期</value></data>
+  <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>昨日同期</value></data>
+  <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0}日前に同期</value></data>
+  <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>{0}に同期</value></data>
+  <data name="Mobile.Language.System" xml:space="preserve"><value>システム</value></data>
+  <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>この曲のフォルダへのアクセス権が失われました。設定 → ライブラリでフォルダをもう一度追加してください。</value></data>
+  <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>このスマートフォンは{0}をデコードできないため、曲をスキップしました。</value></data>
+  <data name="Mobile.Player.UnknownFormat" xml:space="preserve"><value>不明な形式</value></data>
+  <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>不明なトラック</value></data>
+  <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SDカード</value></data>
+  <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>プレイリスト</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>ここで言語を選ばない限り、Noctisはスマートフォンの言語に従います。翻訳はコミュニティによって作成されています。</value></data>
+  <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>スキャン中… {0}個のファイル</value></data>
+  <data name="Mobile.MoreFor" xml:space="preserve"><value>{0}のその他のオプション</value></data>
+  <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0}を削除</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。アクセントカラーはボタン、スイッチ、ハイライトに使われます。</value></data>
+  <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>使用済みストレージ、{0}</value></data>
+  <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>曲の行に表示</value></data>
+  <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>オフ</value></data>
+  <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評価</value></data>
+  <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>お気に入り</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>曲の行の末尾に、曲の星の数またはお気に入りのハートを表示します。</value></data>
+  <data name="Mobile.Rate" xml:space="preserve"><value>評価</value></data>
+  <data name="Mobile.RateStars" xml:space="preserve"><value>5段階中{0}で評価</value></data>
+  <data name="Mobile.ClearRating" xml:space="preserve"><value>評価を消去</value></data>
+  <data name="Mobile.Albums.Find" xml:space="preserve"><value>アルバムを検索</value></data>
+  <data name="Mobile.Albums.NoMatch" xml:space="preserve"><value>一致するアルバムはありません</value></data>
+  <data name="Mobile.ClearSearch" xml:space="preserve"><value>検索を消去</value></data>
+  <data name="Metadata.DffTagsReadOnly" xml:space="preserve"><value>「{0}」にタグを書き込めませんでした：DSDIFF（.dff）ファイルのタグは読み取り専用です。タグを編集するには DSD（.dsf）に変換してください。</value></data>
+  <data name="Mobile.Select" xml:space="preserve"><value>選択</value></data>
+  <data name="Mobile.Select.Items" xml:space="preserve"><value>項目を選択</value></data>
+  <data name="Mobile.Select.Count" xml:space="preserve"><value>{0}件を選択中</value></data>
+  <data name="Mobile.Select.All" xml:space="preserve"><value>すべて選択</value></data>
+  <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>すべて選択解除</value></data>
+  <data name="Mobile.Select.Done" xml:space="preserve"><value>完了</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>プレイリストを読み込む</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}曲中{0}曲を読み込みました</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0}件のプレイリストを読み込みました</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>プレイリストは読み込まれませんでした</value></data>
+  <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>「{0}」の曲はこの端末にありません</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{1}曲中{0}曲が見つかりました。</value></data>
+  <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>次の行はこの端末の曲と一致しませんでした：</value></data>
+  <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>「{0}」はM3Uプレイリストではありません</value></data>
+  <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>「{0}」を読み込めませんでした</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>プレイリストを開く</value></data>
+  <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>すべての音楽を自動で検索</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>フォルダを選ばずに、このスマートフォンとSDカード内のすべての曲を追加します。曲の横にある歌詞ファイル（.lrc、.ttml）は、下で追加したフォルダからのみ読み込まれます。</value></data>
+  <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>すべての音楽</value></data>
+  <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctisにこのスマートフォンの音楽を読み取る許可がありません。オンにするには、Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
+  <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。曲はリストに残りますが、Noctisの設定で「音楽とオーディオ」を許可するまで再生できません。</value></data>
+  <data name="Mobile.Folders.OpenSettings" xml:space="preserve"><value>設定を開く</value></data>
+  <data name="Mobile.Folders.WithAllMusic" xml:space="preserve"><value>スマートフォンが一覧に表示しない音楽（一部のSDカードやUSBドライブ）や、曲の横にある歌詞ファイルを読み込むには、フォルダを追加してください。</value></data>
+  <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>すべての音楽を検索</value></data>
+  <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>このスマートフォンのすべての曲を検索するか、音楽が保存されているフォルダを選んでください。Noctisはその場所のまま読み込み、何もアップロードしません。</value></data>
+  <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
+  <data name="Main.DropPreparingImport" xml:space="preserve"><value>インポートを準備中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropScanningFolders" xml:space="preserve"><value>ドロップしたフォルダーをスキャン中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropImportingFiles" xml:space="preserve"><value>ファイルをインポート中 {0}/{1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>ライブラリを更新中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedOne" xml:space="preserve"><value>1 個のファイルを {0} に移動しました</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropMovedMany" xml:space="preserve"><value>{0} 個のファイルを {1} に移動しました</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>「{0}」には {2} 枚のアルバムから {1} 曲が含まれています。
+
+これらの曲で「{0}」というプレイリストを作成しますか？</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>歌詞プロバイダーが設定でオフになっています。</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.Instrumental" xml:space="preserve"><value>この曲はインストゥルメンタルです。</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.SearchFailedOffline" xml:space="preserve"><value>検索に失敗しました — インターネット接続を確認してください。</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Lyrics.NoLyricsFound" xml:space="preserve"><value>歌詞が見つかりません。</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
+  <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>ファイルを読み込めませんでした: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} は空です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} をインポートしました</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} を通常の歌詞としてインポートしました（タイムスタンプなし）。</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>検索サービスを利用できません。</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>タイトルとアーティストが必要です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsFound" xml:space="preserve"><value>歌詞が見つかりました</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsNotFound" xml:space="preserve"><value>歌詞が見つかりません</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsLrclibNoAnswer" xml:space="preserve"><value>検索に失敗しました — LRCLIB から応答がありません（混雑中またはオフライン）。しばらくしてからもう一度お試しください。</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Sidebar.FolderHintExisting" xml:space="preserve"><value>既存のフォルダー: {0}。新しい名前を入力するとフォルダーを作成します。</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.FolderHint" xml:space="preserve"><value>名前を入力するとフォルダーを作成します。</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.MoveToFolderTitle" xml:space="preserve"><value>フォルダーに移動</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RenameFolderTitle" xml:space="preserve"><value>フォルダー名を変更</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RemoveFolderConfirm" xml:space="preserve"><value>フォルダー「{0}」を削除しますか？中のプレイリストは残ります。</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Playlist.DeleteConfirm" xml:space="preserve"><value>「{0}」を削除しますか？元に戻すことはできません。</value><comment>Delete playlist confirmation</comment></data>
+  <data name="Main.StartupFailed" xml:space="preserve"><value>Noctis の起動を完了できなかったため、アプリの一部が動作しない可能性があります。詳細はデバッグログに書き込まれました。</value><comment>Startup failure notice</comment></data>
+  <data name="Picker.ChooseLyricsBackground" xml:space="preserve"><value>歌詞の背景を選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SaveVideo" xml:space="preserve"><value>ビデオを保存</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectCoverArt" xml:space="preserve"><value>カバーアートを選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtwork" xml:space="preserve"><value>アートワークを選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>アニメーションアートワークを選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>アニメーションアートワークをダウンロード</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ImportLyrics" xml:space="preserve"><value>歌詞をインポート</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadCoverArt" xml:space="preserve"><value>カバーアートをダウンロード</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.LocateFfmpeg" xml:space="preserve"><value>ffmpeg を指定</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProgram" xml:space="preserve"><value>プログラムを選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectMusicFolder" xml:space="preserve"><value>音楽フォルダーを選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtistPicture" xml:space="preserve"><value>アーティスト画像を選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ChooseProfilePicture" xml:space="preserve"><value>プロフィール画像を選択</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.AllFiles" xml:space="preserve"><value>すべてのファイル</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Audio" xml:space="preserve"><value>オーディオ</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Images" xml:space="preserve"><value>画像</value><comment>File picker file type name</comment></data>
+  <data name="Picker.JpegImage" xml:space="preserve"><value>JPEG 画像</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PngImage" xml:space="preserve"><value>PNG 画像</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Lyrics" xml:space="preserve"><value>歌詞</value><comment>File picker file type name</comment></data>
+  <data name="Picker.M3uPlaylist" xml:space="preserve"><value>M3U プレイリスト</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Mp4Video" xml:space="preserve"><value>MP4 ビデオ</value><comment>File picker file type name</comment></data>
+  <data name="Picker.PluginZip" xml:space="preserve"><value>Noctis プラグイン (.zip)</value><comment>File picker file type name</comment></data>
+  <data name="Picker.VideoOrGif" xml:space="preserve"><value>ビデオまたは GIF</value><comment>File picker file type name</comment></data>
+  <data name="Picker.Video" xml:space="preserve"><value>ビデオ</value><comment>File picker file type name</comment></data>
+  <data name="AudioCd.Tracks" xml:space="preserve"><value>{0} 曲</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NotSupported" xml:space="preserve"><value>このプラットフォームではオーディオ CD に対応していません。</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDrive" xml:space="preserve"><value>光学ドライブが見つかりません。</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.Reading" xml:space="preserve"><value>ディスクを読み込み中…</value><comment>Audio CD page</comment></data>
+  <data name="AudioCd.NoDisc" xml:space="preserve"><value>ドライブにオーディオ CD がありません。</value><comment>Audio CD page</comment></data>
+  <data name="Playlist.SortManual" xml:space="preserve"><value>手動</value><comment>Playlist page sort pill</comment></data>
+  <data name="Home.GoodMorning" xml:space="preserve"><value>おはようございます</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodAfternoon" xml:space="preserve"><value>こんにちは</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodEvening" xml:space="preserve"><value>こんばんは</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodNight" xml:space="preserve"><value>おやすみなさい</value><comment>Home page greeting</comment></data>
+  <data name="BulkLyrics.Remove" xml:space="preserve"><value>削除</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetch" xml:space="preserve"><value>取得</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleRemove" xml:space="preserve"><value>{0}の歌詞を削除</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>ライブラリの歌詞を探す（{0}）</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0}の歌詞を取得</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis がこれらの曲に保存した歌詞（.lrc ファイルとキャッシュ）を削除します。自分で作成した歌詞ファイルはそのままです。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>オンラインで歌詞を探し（単語同期を優先）、曲の横に保存します。自分の歌詞ファイルが置き換えられることはありません。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>まだ何も削除していません。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Ready" xml:space="preserve"><value>準備完了。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Hide" xml:space="preserve"><value>隠す</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Removing" xml:space="preserve"><value>削除中</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Fetching" xml:space="preserve"><value>取得中</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovingProgress" xml:space="preserve"><value>削除中 {0:N0}/{1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.LookingUpProgress" xml:space="preserve"><value>検索中 {0:N0}/{1:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.NothingToRemove" xml:space="preserve"><value>削除する歌詞はありません。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RemovedFrom" xml:space="preserve"><value>{0} 曲から歌詞を削除しました。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StoppedSummary" xml:space="preserve"><value>停止しました · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.DoneSummary" xml:space="preserve"><value>完了 · {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Stopped" xml:space="preserve"><value>停止しました。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.Failed" xml:space="preserve"><value>失敗 — {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumWordSynced" xml:space="preserve"><value>単語同期 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumLineSynced" xml:space="preserve"><value>行同期 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumPlainOnly" xml:space="preserve"><value>通常の歌詞のみ {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumUpgraded" xml:space="preserve"><value>アップグレード {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNotFound" xml:space="preserve"><value>見つからない {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKept" xml:space="preserve"><value>そのまま {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumCheckedBefore" xml:space="preserve"><value>以前に検索済み {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>失敗 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>自分の歌詞ファイルを保持 {0:N0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} は混雑中です。後でもう一度お試しください</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>処理するものはありません</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>1 曲は通常の歌詞のみです。Lyrics Studio はこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} 曲は通常の歌詞のみです。Lyrics Studio はこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>最初の {0} 曲を一度に開きます。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} トラック</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Items" xml:space="preserve"><value>{0:N0} 項目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.HoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Count.MinutesShort" xml:space="preserve"><value>{0}分</value><comment>Short duration (sidebar playlist row)</comment></data>
+  <data name="Tray.OpenNoctis" xml:space="preserve"><value>Noctis を開く</value><comment>Tray icon menu</comment></data>
+  <data name="Tray.Quit" xml:space="preserve"><value>終了</value><comment>Tray icon menu</comment></data>
+  <data name="Settings.NotConnected" xml:space="preserve"><value>未接続</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedAs" xml:space="preserve"><value>{0} として接続中</value><comment>Settings status line</comment></data>
+  <data name="Settings.ConnectedTo" xml:space="preserve"><value>{0} に接続中</value><comment>Settings status line</comment></data>
+  <data name="Settings.WindowsOnly" xml:space="preserve"><value>Windows でのみ利用できます。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis を「プログラムから開く」の一覧から削除しました。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>登録しました。設定 → アプリ → 既定のアプリで Noctis を選ぶか、曲を右クリック → プログラムから開くを選んでください。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesFailed" xml:space="preserve"><value>ファイルの種類を更新できませんでした: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.RegroupingArtists" xml:space="preserve"><value>アーティストを再グループ化中…</value><comment>Settings status line</comment></data>
+  <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>元のアーティスト表記を復元中…</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>アーティスト表記を更新できませんでした。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>アーティスト表記はすでに最新です。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>{0:N0} 曲のアーティスト表記を更新しました。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegNotFound" xml:space="preserve"><value>見つかりません — 下でパスを指定するか、PATH に ffmpeg をインストールしてください。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FfmpegChecking" xml:space="preserve"><value>{0} を確認中…</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpeningBrowser" xml:space="preserve"><value>ブラウザーを開いています…</value><comment>Settings status line</comment></data>
+  <data name="Settings.LastFmAuthUrlFailed" xml:space="preserve"><value>認証 URL を取得できませんでした。API キーを確認してください。</value><comment>Settings status line</comment></data>
+  <data name="Settings.OpenBrowserFailed" xml:space="preserve"><value>ブラウザーを開けませんでした。</value><comment>Settings status line</comment></data>
+  <data name="Settings.WaitingForAuth" xml:space="preserve"><value>ブラウザーでの認証を待っています…</value><comment>Settings status line</comment></data>
+  <data name="Settings.TokenRequired" xml:space="preserve"><value>トークンが必要です</value><comment>Settings status line</comment></data>
+  <data name="Settings.Validating" xml:space="preserve"><value>確認中…</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterServerAddress" xml:space="preserve"><value>サーバーのアドレスを入力してください。</value><comment>Settings status line</comment></data>
+  <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>ユーザー名とパスワードを入力してください。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderMissing" xml:space="preserve"><value>そのフォルダーは存在しません。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>すでに「{0}」に含まれています。</value><comment>Settings status line</comment></data>
+  <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>「{0}」はそのフォルダー内にあります。先に削除してください。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>ライブラリをスキャン中</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>ライブラリをスキャン中 {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
+  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>ライブラリのインデックスを再構築中</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoTracksFound" xml:space="preserve"><value>トラックが見つかりません。</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>ライブラリのインデックスを作成しました。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanError" xml:space="preserve"><value>スキャンエラー: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexRebuildError" xml:space="preserve"><value>インデックス再構築エラー: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetDone" xml:space="preserve"><value>すべての設定とデータをリセットしました。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>アートワークのキャッシュを消去しました。</value><comment>Settings status line</comment></data>
+  <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>キャッシュを消去できませんでした: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.NoFolderSelected" xml:space="preserve"><value>フォルダーが選択されていません</value><comment>Settings status line</comment></data>
+  <data name="Settings.UpdateCheckTimedOut" xml:space="preserve"><value>アップデートの確認がタイムアウトしました。後でもう一度お試しください。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateCheckFailed" xml:space="preserve"><value>アップデートを確認できませんでした。後でもう一度お試しください。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingUpdate" xml:space="preserve"><value>アップデートをダウンロード中…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateGone" xml:space="preserve"><value>このアップデートは利用できなくなりました。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingInBackground" xml:space="preserve"><value>{0} をバックグラウンドでダウンロード中です。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateReady" xml:space="preserve"><value>アップデートをインストールする準備ができました。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCorrupted" xml:space="preserve"><value>ダウンロードが破損しています。もう一度お試しください。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>アップデートの検証に失敗しました。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadCancelled" xml:space="preserve"><value>ダウンロードをキャンセルしました。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadFailed" xml:space="preserve"><value>ダウンロードに失敗しました。もう一度お試しください。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallerFailed" xml:space="preserve"><value>インストーラーを起動できませんでした。GitHub から手動でダウンロードしてください。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.ReleasesLoadFailed" xml:space="preserve"><value>リリースを読み込めませんでした。後でもう一度お試しください。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdatedTo" xml:space="preserve"><value>{0} にアップデートしました。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTag" xml:space="preserve"><value>{0} をダウンロード中…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingTagPercent" xml:space="preserve"><value>{0} をダウンロード中… {1:F0}%</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.InstallingTag" xml:space="preserve"><value>{0} をインストール中…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.SavedToDownloads" xml:space="preserve"><value>{0} をダウンロードフォルダーに保存しました。</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadStarting" xml:space="preserve"><value>開始中…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadVerifying" xml:space="preserve"><value>検証中…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.DownloadingPill" xml:space="preserve"><value>ダウンロード中</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.Checking" xml:space="preserve"><value>確認中…</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpToDate" xml:space="preserve"><value>最新です</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.CheckForUpdates" xml:space="preserve"><value>アップデートを確認</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateAvailable" xml:space="preserve"><value>アップデートがあります</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateTo" xml:space="preserve"><value>{0} にアップデート</value><comment>Settings › About update status</comment></data>
+  <data name="Palette.GoTo" xml:space="preserve"><value>{0} に移動</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryPage" xml:space="preserve"><value>ページ</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAction" xml:space="preserve"><value>アクション</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategorySong" xml:space="preserve"><value>曲</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryAlbum" xml:space="preserve"><value>アルバム</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CategoryArtist" xml:space="preserve"><value>アーティスト</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AudioSetting" xml:space="preserve"><value>オーディオ設定</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.AppearanceSetting" xml:space="preserve"><value>外観の設定</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>同期歌詞のない曲の歌詞にタイミングを付ける・書き起こす</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyrics" xml:space="preserve"><value>ライブラリの歌詞を探す…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyricsSub" xml:space="preserve"><value>すべての曲の歌詞を検索（単語同期を優先）</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>ライブラリのアニメーションアートワークを探す…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>Apple Music の動くカバーをアルバムに追加</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleShuffle" xml:space="preserve"><value>シャッフルの切り替え</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.CycleRepeat" xml:space="preserve"><value>リピートモードを切り替え</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>クロスフェードの切り替え</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleTransitions" xml:space="preserve"><value>曲間トランジションの切り替え</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>アニメーションカバーの切り替え</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Menu.OpenFileWith" xml:space="preserve"><value>プログラムから開く</value><comment>Song context menu › Tools</comment></data>
+  <data name="Menu.OpenIn" xml:space="preserve"><value>{0} で開く</value><comment>Song context menu › Tools</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>アルバムは露骨な表現を含む</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} 人のアーティストを選択中</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} 曲を選択中</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>「{0}」にタグを書き込めませんでした。別のアプリでファイルが開かれているか、読み取り専用の可能性があります。そちらで閉じるかファイルを確認してから、もう一度お試しください。</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>{0} 個のファイル（例:「{1}」）にタグを書き込めませんでした。別のアプリで開かれているか、読み取り専用の可能性があります。そちらで閉じるかファイルを確認してから、もう一度お試しください。</value><comment>Metadata window</comment></data>
+  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>1 枚のアルバムのアニメーションアートワークを探す</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>{0:N0} 枚のアルバムのアニメーションアートワークを探す</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>検索するアルバムがありません。</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>検索中</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>保存 {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumNoMatch" xml:space="preserve"><value>明確な一致なし {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.SumHadOne" xml:space="preserve"><value>既にあり {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="Lyrics.TrySource" xml:space="preserve"><value>{0} を試す</value><comment>Lyrics page</comment></data>
+  <data name="Server.NoAlbums" xml:space="preserve"><value>まだアルバムがありません。このサーバーの音楽ライブラリが空か、接続できませんでした。</value><comment>Server page</comment></data>
+  <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>サーバーからこのアルバムを読み込めませんでした。</value><comment>Server page</comment></data>
+  <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>ミュージックビデオの音声再生中はスタンプできません。ミュージックビデオの音声をオフにして曲を最初から再生してください</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>保存するものがありません。少なくとも 1 行にスタンプしてください</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>保存しました · オーディオファイルに歌詞を書き込めませんでした（使用中または読み取り専用？）</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="LrcEditor.SaveFailed" xml:space="preserve"><value>保存に失敗しました: {0}</value><comment>Sync lyrics (LRC editor) status</comment></data>
+  <data name="Mobile.LastFm.Title" xml:space="preserve"><value>あなたのLast.fmから</value></data>
+  <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>あなたのLast.fmトップソング</value></data>
+  <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Last.fmでお気に入り</value></data>
+  <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>よく聴くアーティストから</value></data>
+  <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Last.fmを読み込み中…</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Last.fmで聴いている曲はまだライブラリにありません。</value></data>
+  <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fmはこのアカウントを認識していません。</value></data>
+  <data name="Mobile.LastFm.Private" xml:space="preserve"><value>このLast.fmアカウントは再生履歴を非公開にしています。</value></data>
+  <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fmに接続できません。保存済みのミックスを表示しています。</value></data>
+  <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>Last.fmに接続できません。後でもう一度お試しください。</value></data>
+  <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>Last.fmで見つける</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>{0}に似ています</value></data>
+  <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · トップアルバム</value></data>
+  <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>トップアーティスト</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0}をLast.fmで開く</value></data>
+  <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>ミックスとおすすめ</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>ホームに、Last.fmのチャートから作ったあなたの曲のミックスと新しいアーティストを表示します。使うのはアカウント名だけで、何も送信しません。</value></data>
 </root>

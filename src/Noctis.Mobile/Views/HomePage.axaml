@@ -26,7 +26,9 @@
 
     <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" Name="HomeHeader" ColumnDefinitions="*,Auto" Classes="tab-header">
-            <TextBlock Name="HomeTitle" Classes="title" Text="{loc:T Nav.Home}" />
+            <views:FitWidth Name="HomeTitleFit" VerticalAlignment="Center">
+                <TextBlock Name="HomeTitle" Classes="title" Text="{loc:T Nav.Home}" TextTrimming="CharacterEllipsis" />
+            </views:FitWidth>
             <views:ProfileButton Grid.Column="1" Name="HomeProfile" VerticalAlignment="Center"
                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
         </Grid>
@@ -44,7 +46,7 @@
                             IsHitTestVisible="{Binding Library.HasPinned}">
                         <StackPanel Orientation="Horizontal">
                             <PathIcon Data="{DynamicResource LibPinIcon}" />
-                            <TextBlock Classes="section" Text="Pinned" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.Pinned}" />
                             <PathIcon Name="PinnedChevron" Classes="chevron" Data="{DynamicResource LibChevronIcon}" IsVisible="{Binding Library.HasPinned}" />
                         </StackPanel>
                     </Button>
@@ -54,7 +56,7 @@
                     </ScrollViewer>
                     <Border Name="PinnedHint" Classes="card" Margin="20,0" Padding="16,14" IsVisible="{Binding !Library.HasPinned}">
                         <TextBlock Classes="subtle" TextWrapping="Wrap"
-                                   Text="Long-press an album, artist, playlist or song and choose Pin to keep it here." />
+                                   Text="{loc:T Mobile.Home.PinnedHint}" />
                     </Border>
                 </StackPanel>
 
@@ -62,7 +64,7 @@
                     <Button Name="RecentlyPlayedHeader" Classes="row section-header" Command="{Binding OpenRecentlyPlayedCommand}">
                         <StackPanel Orientation="Horizontal">
                             <PathIcon Data="{DynamicResource LibRecentlyPlayedIcon}" />
-                            <TextBlock Classes="section" Text="Recently Played" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.RecentlyPlayed}" />
                             <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
                         </StackPanel>
                     </Button>
@@ -76,7 +78,7 @@
                     <Button Name="OnRepeatHeader" Classes="row section-header" Command="{Binding OpenOnRepeatCommand}">
                         <StackPanel Orientation="Horizontal">
                             <PathIcon Data="{DynamicResource LibOnRepeatIcon}" />
-                            <TextBlock Classes="section" Text="On Repeat" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.OnRepeat}" />
                             <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
                         </StackPanel>
                     </Button>
@@ -84,6 +86,60 @@
                         <ItemsControl Name="OnRepeatRail" Margin="20,0" ItemsSource="{Binding Library.OnRepeatRail}"
                                       ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
                     </ScrollViewer>
+                </StackPanel>
+
+                <!-- From Your Last.fm (GitHub #177): mixes of library songs only, from the charts of
+                     the Last.fm account connected on this phone. Only while one is and Settings ›
+                     Scrobbling › Mixes and Recommendations is on. A tile opens the mix's songs. -->
+                <StackPanel Name="LastFmSection" Spacing="10" IsVisible="{Binding LastFm.IsSectionVisible}">
+                    <Button Name="LastFmHeader" Classes="row section-header" IsHitTestVisible="False">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource ChipSongsIcon}" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.LastFm.Title}" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Name="LastFmStatusLabel" Classes="subtle" Margin="20,-4,20,0" TextWrapping="Wrap"
+                               Text="{Binding LastFm.Status}" IsVisible="{Binding LastFm.HasStatus}" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="LastFmRail" Margin="20,0" ItemsSource="{Binding LastFm.Mixes}"
+                                      ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Discover on Last.fm: artists and albums the library lacks. A row only opens its
+                     Last.fm page in the browser. -->
+                <StackPanel Name="LastFmDiscoverSection" Spacing="10" IsVisible="{Binding LastFm.IsDiscoverVisible}">
+                    <Button Name="LastFmDiscoverHeader" Classes="row section-header" IsHitTestVisible="False">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource ChipArtistsIcon}" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.LastFm.Discover}" />
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="card" Margin="20,0" ClipToBounds="True">
+                        <ItemsControl Name="LastFmDiscoverList" ItemsSource="{Binding LastFm.Discover}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LastFmDiscoverEntry">
+                                    <Button Classes="row" AutomationProperties.Name="{Binding AccessibleName}"
+                                            Command="{Binding $parent[views:HomePage].((vm:ShellViewModel)DataContext).LastFm.OpenDiscoverCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,10">
+                                            <PathIcon Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                      Foreground="{DynamicResource AccentTextExactBrush}"
+                                                      Data="{DynamicResource ChipArtistsIcon}" IsVisible="{Binding !IsAlbum}" />
+                                            <PathIcon Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                      Foreground="{DynamicResource AccentTextExactBrush}"
+                                                      Data="{DynamicResource ChipAlbumsIcon}" IsVisible="{Binding IsAlbum}" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Classes="row-title" Text="{Binding Title}" />
+                                                <TextBlock Classes="row-sub" Text="{Binding Detail}" />
+                                            </StackPanel>
+                                            <PathIcon Grid.Column="2" Classes="list-chevron" Data="{DynamicResource LibChevronIcon}" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

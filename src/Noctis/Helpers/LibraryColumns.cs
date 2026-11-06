@@ -19,7 +19,7 @@ public static class LibraryColumns
     /// values; sort keys are LibrarySongsViewModel.BuildFilteredAndSortedTracks keys. Widths
     /// and the Title/Artist/Album stars are the header grid's from before #151.
     /// </summary>
-    public static ColumnLayout CreateSongs() => new(new[]
+    public static ColumnLayout CreateSongs() => new(FitLabels(new[]
     {
         new ColumnSpec { Key = "Title", Label = Loc.T("LibrarySongs.Title"), Star = 1, MinWidth = 140, CanHide = false, SortKey = "Title" },
         new ColumnSpec { Key = "Time", Label = Loc.T("LibrarySongs.Time"), Width = 80, MinWidth = 48, SortKey = "Time" },
@@ -39,10 +39,10 @@ public static class LibraryColumns
         new ColumnSpec { Key = "ReplayGain", Label = Loc.T("LibrarySongs.ReplayGain"), Width = 84, MinWidth = 56, DefaultVisible = false, SortKey = "ReplayGain" },
         new ColumnSpec { Key = "DateAdded", Label = Loc.T("Main.DateAdded"), Width = 96, MinWidth = 70, DefaultVisible = false, SortKey = "Date Added" },
         new ColumnSpec { Key = More, Width = 42, Pinned = true },
-    });
+    }));
 
     /// <summary>Artists list view columns, in the default order (sort keys: LibraryArtistsViewModel.SortMode).</summary>
-    public static ColumnLayout CreateArtists() => new(new[]
+    public static ColumnLayout CreateArtists() => new(FitLabels(new[]
     {
         new ColumnSpec { Key = "Name", Label = Loc.T("LibraryArtists.ColumnArtist"), Star = 1, MinWidth = 140, CanHide = false, SortKey = "name" },
         new ColumnSpec { Key = "Albums", Label = Loc.T("LibraryArtists.ColumnAlbums"), Width = 80, MinWidth = 50, SortKey = "albums" },
@@ -50,7 +50,30 @@ public static class LibraryColumns
         new ColumnSpec { Key = "Time", Label = Loc.T("LibraryArtists.ColumnTime"), Width = 90, MinWidth = 56, SortKey = "time" },
         new ColumnSpec { Key = "Genre", Label = Loc.T("LibraryArtists.ColumnGenre"), Width = 170, MinWidth = 70, SortKey = "genre" },
         new ColumnSpec { Key = More, Width = 42, Pinned = true },
-    });
+    }));
+
+    /// <summary>
+    /// A fixed-width column at least as wide as its header label, so a longer translation
+    /// isn't cut off (German "Wiedergaben" showed as "Wieder…" in the 55 px Plays column,
+    /// 11-04). Estimate: ~6.2 px per character of the 12 px header plus sort arrow and
+    /// padding; the English labels already fit, so their widths don't change.
+    /// </summary>
+    internal static ColumnSpec[] FitLabels(ColumnSpec[] specs)
+    {
+        for (var i = 0; i < specs.Length; i++)
+        {
+            var s = specs[i];
+            if (s.Star > 0 || string.IsNullOrEmpty(s.Label)) continue;
+            var need = Math.Ceiling(s.Label.Length * 6.2 + 22);
+            if (need > s.Width)
+                specs[i] = new ColumnSpec
+                {
+                    Key = s.Key, Label = s.Label, Width = need, MinWidth = s.MinWidth, Star = s.Star,
+                    DefaultVisible = s.DefaultVisible, CanHide = s.CanHide, Pinned = s.Pinned, SortKey = s.SortKey,
+                };
+        }
+        return specs;
+    }
 
     /// <summary>
     /// The Songs column's Settings flag (shared with View Options), or null for a column that

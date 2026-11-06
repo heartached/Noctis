@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
@@ -272,8 +273,8 @@
                                 <RowDefinition Height="Auto" MinHeight="32" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Name="UpNextLabel" Classes="section" Text="Up Next" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="Clear" VerticalAlignment="Center"
+                            <TextBlock Name="UpNextLabel" Classes="section" Text="{loc:T Mobile.Queue.UpNext}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="{loc:T Mobile.Queue.Clear}" VerticalAlignment="Center"
                                     Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
                             <!-- One line: "Playing from X · Track N of M"; the source trims first. -->
                             <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
@@ -292,7 +293,7 @@
                             </Grid>
                         </Grid>
 
-                        <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="Nothing up next" HorizontalAlignment="Center"
+                        <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="{loc:T Mobile.Queue.Empty}" HorizontalAlignment="Center"
                                    Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
 
                         <!-- Runs to the bottom of the sheet: in portrait the rows scroll under the control
@@ -352,14 +353,14 @@
                                     <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="28" IsHitTestVisible="False" />
                                     <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="8,0">
                                         <Button Grid.Column="0" Name="QueueListButton" Classes="icon pill-btn on"
-                                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="Queue">
+                                                Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="{loc:T Tab.Queue}">
                                             <Panel>
                                                 <Border Classes="wash" />
                                                 <PathIcon Data="{DynamicResource PhQueue}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon pill-btn" Classes.on="{Binding Player.IsRepeatOn}"
-                                                Command="{Binding Player.CycleRepeatCommand}" AutomationProperties.Name="Repeat">
+                                                Command="{Binding Player.CycleRepeatCommand}" AutomationProperties.Name="{loc:T Mobile.Repeat}">
                                             <Panel>
                                                 <Border Classes="wash" />
                                                 <PathIcon Data="{DynamicResource PhRepeat}" IsVisible="{Binding !Player.IsRepeatOne}" />
@@ -367,26 +368,26 @@
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon pill-btn tx"
-                                                Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="Previous">
+                                                Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
                                             <controls:TransportGlyph Kind="Previous" />
                                         </Button>
                                         <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon pill-btn tx"
-                                                Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="Play or pause">
+                                                Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
                                             <controls:TransportGlyph Classes="play" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
                                         </Button>
                                         <Button Grid.Column="4" Name="QueueNextButton" Classes="icon pill-btn tx"
-                                                Command="{Binding Player.NextCommand}" AutomationProperties.Name="Next">
+                                                Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
                                             <controls:TransportGlyph Kind="Next" />
                                         </Button>
                                         <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon pill-btn" Classes.on="{Binding Player.IsShuffleEnabled}"
-                                                Command="{Binding Player.ToggleShuffleCommand}" AutomationProperties.Name="Shuffle">
+                                                Command="{Binding Player.ToggleShuffleCommand}" AutomationProperties.Name="{loc:T Mobile.Shuffle}">
                                             <Panel>
                                                 <Border Classes="wash" />
                                                 <PathIcon Data="{DynamicResource PhShuffle}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="6" Name="QueueMoreButton" Classes="icon pill-btn"
-                                                Command="{Binding OpenCurrentTrackSheetCommand}" AutomationProperties.Name="More">
+                                                Command="{Binding OpenCurrentTrackSheetCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                                             <PathIcon Data="{DynamicResource PhMore}" />
                                         </Button>
                                     </Grid>

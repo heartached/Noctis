@@ -6,6 +6,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -26,9 +27,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     // Circuit breaker for the error→skip loop (a folder of dead URIs after a revoked grant).
     private const int MaxConsecutiveErrors = 5;
 
-    internal const string ComputerUnreachableSkipping = "Can't reach your computer. Playing your downloaded songs.";
-    internal const string ComputerUnreachableStopped = "Can't reach your computer. Open Noctis on it, or play songs you've downloaded.";
-    internal const string TooManyErrors = "Several songs in a row couldn't be played, so playback stopped.";
+    internal static string ComputerUnreachableSkipping => Loc.T("Mobile.Player.UnreachableSkipping");
+    internal static string ComputerUnreachableStopped => Loc.T("Mobile.Player.UnreachableStopped");
+    internal static string TooManyErrors => Loc.T("Mobile.Player.TooManyErrors");
 
     private readonly IAudioPlayer _player;
     private readonly ILibraryService _library;
@@ -51,6 +52,18 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     // See OnPlayerPosition: a track counts as played once its audio moves past that start.
     private Track? _unrecordedPlay;
     private TimeSpan _unrecordedFrom;
+    // How long the current song has actually been heard (ticks of moving audio, a seek or a
+    // stall is not listening), and the song whose play is in the log to credit it to.
+    private TimeSpan _listened;
+    private TimeSpan _listenAnchor;
+    private Track? _listenTrack;
+    private TimeSpan _flushedListened = TimeSpan.MinValue;
+    // A bigger forward step between two ticks is a jump, not listening.
+    private const double MaxListenStepSeconds = 2;
+
+    /// <summary>Settings > Player > Count a play after: how much of a song (percent) must be heard
+    /// before it is in the play log, 0 = as soon as it plays. Read per tick; null = 0.</summary>
+    public Func<int>? PlayCountThresholdPercent { get; set; }
     private readonly IVolumeControl? _volume;
     private bool _syncingVolume;
 
@@ -145,7 +158,14 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     public bool HasSourceLabel => !string.IsNullOrEmpty(SourceLabel);
 
-    public string PlayingFromText => HasSourceLabel ? $"Playing from {SourceLabel}" : string.Empty;
+    /// <summary>The UI language changed: "Playing from …" and "Track 3 of 12" re-read.</summary>
+    public void Relabel()
+    {
+        OnPropertyChanged(nameof(PlayingFromText));
+        SyncUpNext();
+    }
+
+    public string PlayingFromText => HasSourceLabel ? Loc.T("Mobile.Player.PlayingFrom", SourceLabel!) : string.Empty;
 
     /// <summary>"Track 3 of 12": the current track's place in this queue, counting the tracks
     /// added to it since. Empty when stopped or when the place is unknown (see
@@ -347,6 +367,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// The song a swipe left would bring in (the mini player's and the cover's, TrackSwipeGesture):
+    /// exactly what <see cref="NextCommand"/> would start, worked out on a copy of the queue, so
+    /// Up Next, a Repeat All wrap and songs passed over while the computer is out of reach all
+    /// count. Null where Next would stop: the swipe then rubber-bands and does nothing.
+    /// </summary>
+    public Track? PeekNext()
+    {
+        var saved = _queue;
+        _queue = saved.Clone();
+        try
+        {
+            return AdvancePlayable(QueueAdvance.UserSkip, out _);
+        }
+        finally
+        {
+            _queue = saved;
+        }
+    }
+
+    /// <summary>The song a swipe right would bring back: the one played before this. Unlike the
+    /// Previous button a swipe never restarts the song it slid away from, so with nothing before
+    /// it (or a queue that ran out, whose last song is only kept for the bar) it is null.</summary>
+    public Track? PeekPrevious() =>
+        _queue.Current != null && _queue.History.Count > 0 ? _queue.History[0] : null;
+
+    /// <summary>A swipe right let go past its threshold: the song before, from its start.</summary>
+    public void SkipToPrevious()
+    {
+        if (PeekPrevious() == null) return;
+        var previous = _queue.Back();
+        if (previous != null) StartTrack(previous, null);
+    }
+
+    /// <summary>
     /// The user grabbed the seek thumb. Suspends the position push until <see cref="EndSeek"/>:
     /// the player ticks four times a second, and each tick republishes <see cref="Position"/>
     /// into the Slider's Value, overwriting the value the drag put there (Slider writes its own
@@ -369,6 +423,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// <summary>The drag is over (or was cancelled): let position ticks move the thumb again.
     /// Idempotent, so a PointerCaptureLost after a normal release is harmless.</summary>
     public void EndSeek() => _seeking = false;
+
+    /// <summary>A held scrub is steering <see cref="Position"/> (the lyrics follow it verbatim).</summary>
+    public bool IsSeeking => _seeking;
 
     /// <summary>
     /// Mid-drag: shows <paramref name="position"/> in the elapsed and remaining times without
@@ -516,8 +573,13 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         // Not recorded yet: a file that fails to load (broken.mp3, a revoked grant) must not
         // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
+        FlushListened();
         _unrecordedPlay = track;
         _unrecordedFrom = fromPosition ?? TimeSpan.Zero;
+        _listened = TimeSpan.Zero;
+        _listenAnchor = _unrecordedFrom;
+        _listenTrack = null;
+        _flushedListened = TimeSpan.MinValue;
         _startedFrom = _unrecordedFrom;
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
@@ -555,6 +617,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StopPlayback()
     {
+        FlushListened();
         _player.Stop();
         IsPlaying = false;
         Position = TimeSpan.Zero;
@@ -570,7 +633,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // _queue.Current, not CurrentTrack: a queue that ran out keeps its last track loaded
         // for the mini bar, but has no place left to number.
         QueuePositionText = _queue.Current != null && _queue.PlayedInQueue is { } played
-            ? $"Track {played + 1} of {played + 1 + _queue.UpNext.Count}"
+            ? Loc.T("Mobile.Player.TrackOf", played + 1, played + 1 + _queue.UpNext.Count)
             : string.Empty;
     }
 
@@ -607,14 +670,46 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         }
         // Past the start, not merely Playing: the Android player reports Playing from Play()
         // on, and a file that never decodes keeps polling at its start position until the error.
-        if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom)
+        AccumulateListened(position, playing);
+        if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom
+            && ThresholdReached())
             RecordStartedPlay();
         // Position only: the queue *structure* is written by its own mutators, so rewriting it
         // here would re-serialize and fsync the whole queue every five seconds for a value
         // that did not change. See SavePositionNow.
         if ((DateTime.UtcNow - _lastSaveUtc).TotalSeconds >= SaveIntervalSeconds)
+        {
             SavePositionNow();
+            FlushListened();
+        }
     });
+
+    /// <summary>Adds what was heard since the previous tick (see <see cref="MaxListenStepSeconds"/>).</summary>
+    private void AccumulateListened(TimeSpan position, bool playing)
+    {
+        var step = position - _listenAnchor;
+        _listenAnchor = position;
+        if (playing && step > TimeSpan.Zero && step.TotalSeconds <= MaxListenStepSeconds)
+            _listened += step;
+    }
+
+    /// <summary>True once the song has been heard for the chosen share of its length. A song of
+    /// unknown length can't be measured against, so it counts at once.</summary>
+    private bool ThresholdReached()
+    {
+        var percent = Math.Clamp(PlayCountThresholdPercent?.Invoke() ?? 0, 0, 100);
+        var length = Duration > TimeSpan.Zero ? Duration : CurrentTrack?.Duration ?? TimeSpan.Zero;
+        return percent == 0 || length <= TimeSpan.Zero || _listened.TotalSeconds >= length.TotalSeconds * percent / 100.0;
+    }
+
+    /// <summary>Writes the heard time to the current song's play in the log (absolute, so a repeat
+    /// is harmless). Not for a play that is not in the log yet.</summary>
+    private void FlushListened()
+    {
+        if (_listenTrack is not { } track || _listened == _flushedListened) return;
+        _flushedListened = _listened;
+        _history?.SetListened(track, _listened);
+    }
 
     /// <summary>Raised once a started track's play is in the log (see <see cref="StartTrack"/>);
     /// the shell refreshes the Library Shelf and the Home rows from the log on it.</summary>
@@ -630,6 +725,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         var track = _unrecordedPlay!;
         _unrecordedPlay = null;
+        _listenTrack = track;
         _history?.RecordPlay(track);
         PlayRecorded?.Invoke(this, EventArgs.Empty);
     }

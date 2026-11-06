@@ -43,6 +43,9 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
     /// </summary>
     internal static string PortablePath(string baseDir, string trackPath)
     {
+        // A server stream or phone document is a URI: GetFullPath read it as a file name under
+        // the working folder and wrote a "../../…/http:/host/…" path no player can open.
+        if (!Track.IsFilesystemPath(trackPath)) return trackPath;
         try
         {
             var full = Path.GetFullPath(trackPath);
@@ -84,45 +87,9 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
         return resolved;
     }
 
-    // M3U8s written by VLC/foobar/web tools carry file:// URIs and/or
-    // percent-encoding ("%20"); matching them raw against library paths
-    // produced zero hits. Decode both forms; plain paths pass through.
-    //
-    // Internal so PlaylistImportParser — the parser the *live* import dialog actually
-    // uses — can share it. This logic lived only here, in ImportM3uAsync, which has no
-    // callers; the live path did a bare Replace('\\','/') + Path.Combine, so a
-    // VLC/foobar-exported .m3u8 fell through to fuzzy matching and entries without
-    // #EXTINF got titles like "Song%20Name" that the filename index couldn't match either.
-    internal static string DecodeM3uEntryPublic(string line) => DecodeM3uEntry(line);
-
-    private static string DecodeM3uEntry(string line)
-    {
-        if (line.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                return new Uri(line).LocalPath;
-            }
-            catch (UriFormatException)
-            {
-                // Fall through and treat it as a literal path.
-            }
-        }
-
-        if (line.Contains('%'))
-        {
-            try
-            {
-                return Uri.UnescapeDataString(line);
-            }
-            catch (UriFormatException)
-            {
-                // Literal % in a real filename — keep as-is.
-            }
-        }
-
-        return line;
-    }
+    // file:// URIs and percent-encoding: the shared decoder (PlaylistImportParser, which the
+    // import dialog and the phone's import use too).
+    private static string DecodeM3uEntry(string line) => PlaylistImportParser.DecodeM3uEntry(line);
 
     private static string NormalizePath(string value) =>
         value.Replace('/', '\\').Trim();

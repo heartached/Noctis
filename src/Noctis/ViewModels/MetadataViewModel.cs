@@ -115,6 +115,10 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _isDownloadingArtwork;
     [ObservableProperty] private bool _hasArtworkSearchResults;
     [ObservableProperty] private string _artworkSearchStatus = string.Empty;
+    /// <summary>The artwork chooser's own search box; empty = the track's tags.</summary>
+    [ObservableProperty] private string _artworkSearchInput = string.Empty;
+    /// <summary>The query the artwork chooser's box shows when the search came from the tags.</summary>
+    [ObservableProperty] private string _artworkSearchQueryHint = string.Empty;
     [ObservableProperty] private bool _isArtworkSearchOpen;
 
     // ── iTunes animated-cover search ──
@@ -245,7 +249,7 @@ public partial class MetadataViewModel : ViewModelBase
     private bool _loadedIsExplicit;
 
     public bool ShowExplicitCheckbox => _albumScoped && !_multiSelect;
-    public string ExplicitCheckboxLabel => "Album is explicit";
+    public string ExplicitCheckboxLabel => Localization.Loc.T("Metadata.AlbumIsExplicit");
 
     [ObservableProperty] private string _language = string.Empty;
     [ObservableProperty] private string _mood = string.Empty;
@@ -267,9 +271,9 @@ public partial class MetadataViewModel : ViewModelBase
 
     /// <summary>Track title and artist for the header.</summary>
     public string HeaderTitle => _multiSelect
-        ? $"{DistinctArtistCount} artists selected"
+        ? Localization.Loc.T("Metadata.ArtistsSelected", DistinctArtistCount)
         : (_albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title);
-    public string HeaderArtist => _multiSelect ? $"{SongCount} songs selected" : _track.Artist;
+    public string HeaderArtist => _multiSelect ? Localization.Loc.T("Metadata.SongsSelected", SongCount) : _track.Artist;
     public string HeaderAlbum => _multiSelect ? string.Empty : _track.Album;
 
     /// <summary>True when editing an arbitrary multi-track selection (blank art, "N selected" header).</summary>
@@ -1281,7 +1285,11 @@ public partial class MetadataViewModel : ViewModelBase
         foreach (var t in _albumTracks)
         {
             if (artistChg) t.Artist = Artist;
-            if (albumArtistChg) t.AlbumArtist = AlbumArtist;
+            if (albumArtistChg)
+            {
+                t.AlbumArtist = AlbumArtist;
+                t.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist); // the user's tag (GitHub #178)
+            }
             if (albumChg) t.Album = Album;
             if (composerChg) t.Composer = Composer;
             if (groupingChg) t.Grouping = Grouping;
@@ -1529,11 +1537,11 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Artwork",
+            Title = Noctis.Localization.Loc.T("Picker.SelectArtwork"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Images") { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Images")) { Patterns = new[] { "*.jpg", "*.jpeg", "*.png" } }
             }
         });
 
@@ -1566,12 +1574,12 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Animated Artwork",
+            Title = Noctis.Localization.Loc.T("Picker.SelectAnimatedArtwork"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Video") { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov" } },
-                new FilePickerFileType("All files") { Patterns = new[] { "*" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Video")) { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov" } },
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } }
             }
         });
         if (files.Count == 0) return;
@@ -1608,11 +1616,11 @@ public partial class MetadataViewModel : ViewModelBase
 
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Download Animated Artwork",
+            Title = Noctis.Localization.Loc.T("Picker.DownloadAnimatedArtwork"),
             SuggestedFileName = "animated-cover" + ext,
             DefaultExtension = ext.TrimStart('.'),
             ShowOverwritePrompt = true,
-            FileTypeChoices = new[] { new FilePickerFileType("Video") { Patterns = new[] { "*" + ext } } }
+            FileTypeChoices = new[] { new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Video")) { Patterns = new[] { "*" + ext } } }
         });
         if (file == null) return;
 
@@ -1632,18 +1640,23 @@ public partial class MetadataViewModel : ViewModelBase
     [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task SearchArtwork()
     {
-        if (_itunes == null) { ArtworkSearchStatus = "Search service unavailable."; return; }
+        if (_itunes == null) { ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearchUnavailable"); return; }
 
         var gen = ++_artworkSearchGeneration;
         IsSearchingArtwork = true;
-        ArtworkSearchStatus = "Searching…";
+        ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearching");
         ClearArtworkSearchResults();
         HasArtworkSearchResults = false;
         IsArtworkSearchOpen = true;
         try
         {
-            var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
-            var album = GetArtworkSearchAlbumTerm();
+            // The chooser's box (same as the animated one): a typed name replaces the tags and
+            // is read as the album, artist words included, so no artist filter applies.
+            var typed = (ArtworkSearchInput ?? string.Empty).Trim();
+            var artist = typed.Length > 0 ? string.Empty
+                : !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+            var album = typed.Length > 0 ? typed : GetArtworkSearchAlbumTerm();
+            ArtworkSearchQueryHint = typed.Length > 0 || string.IsNullOrWhiteSpace(artist) ? album : $"{album} — {artist}";
             var results = await _itunes.SearchAlbumsAsync(artist, album);
             if (gen != _artworkSearchGeneration) return;
 
@@ -1672,14 +1685,14 @@ public partial class MetadataViewModel : ViewModelBase
             }
 
             HasArtworkSearchResults = ArtworkSearchResults.Count > 0;
-            ArtworkSearchStatus = HasArtworkSearchResults
-                ? $"{ArtworkSearchResults.Count} result(s). Click one to apply."
-                : "No matches found.";
+            // As the animated chooser: no status once results show (the tiles speak for
+            // themselves); the line stays for errors.
+            ArtworkSearchStatus = HasArtworkSearchResults ? string.Empty : Localization.Loc.T("Metadata.ArtNoMatches");
         }
         catch (Exception ex)
         {
             if (gen == _artworkSearchGeneration)
-                ArtworkSearchStatus = $"Search failed: {ex.Message}";
+                ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearchFailed", ex.Message);
         }
         finally
         {
@@ -1696,13 +1709,19 @@ public partial class MetadataViewModel : ViewModelBase
     private async Task SelectHighestArtworkResult(ArtworkSearchResult? result)
         => await SelectArtworkResultAsync(result, useHighestResolution: true);
 
+    /// <summary>A Standard / Max pill on the chooser card.</summary>
+    [RelayCommand]
+    private async Task SelectArtworkChoice(ArtworkSearchChoice? choice)
+        => await SelectArtworkResultAsync(choice?.Owner, choice?.Highest == true);
+
     private async Task SelectArtworkResultAsync(ArtworkSearchResult? result, bool useHighestResolution)
     {
         var candidate = result?.Candidate;
         if (candidate == null || _itunes == null) return;
 
         IsDownloadingArtwork = true;
-        ArtworkSearchStatus = "Downloading…";
+        // The spinner row carries its own "Downloading…" label (as the animated chooser).
+        ArtworkSearchStatus = string.Empty;
         try
         {
             byte[]? data = null;
@@ -1714,7 +1733,7 @@ public partial class MetadataViewModel : ViewModelBase
             }
             if (data is null)
             {
-                ArtworkSearchStatus = "Download failed.";
+                ArtworkSearchStatus = Localization.Loc.T("Metadata.ArtDownloadFailed");
                 return;
             }
 
@@ -1728,12 +1747,12 @@ public partial class MetadataViewModel : ViewModelBase
             ArtworkPreview = new Bitmap(ms);
             DisposePreview(oldArt);
             HasArtwork = true;
-            ArtworkSearchStatus = "Applied. Click Save to keep.";
+            ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimApplied");
             IsArtworkSearchOpen = false;
         }
         catch (Exception ex)
         {
-            ArtworkSearchStatus = $"Failed: {ex.Message}";
+            ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimDownloadFailed", ex.Message);
         }
         finally
         {
@@ -1950,12 +1969,12 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import Lyrics",
+            Title = Noctis.Localization.Loc.T("Picker.ImportLyrics"),
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Lyrics") { Patterns = new[] { "*.lrc", "*.elrc", "*.ttml", "*.txt" } },
-                new FilePickerFileType("All files") { Patterns = new[] { "*" } }
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.Lyrics")) { Patterns = new[] { "*.lrc", "*.elrc", "*.ttml", "*.txt" } },
+                new FilePickerFileType(Noctis.Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } }
             }
         });
         if (files.Count == 0) return;
@@ -1971,7 +1990,7 @@ public partial class MetadataViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SyncedLyricsSearchStatus = $"Couldn't read file: {ex.Message}";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsReadFailed", ex.Message);
             return;
         }
 
@@ -1998,7 +2017,7 @@ public partial class MetadataViewModel : ViewModelBase
         var normalized = text.Replace("\r\n", "\n").Trim();
         if (normalized.Length == 0)
         {
-            SyncedLyricsSearchStatus = $"{fileName} is empty.";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsFileEmpty", fileName);
             return;
         }
 
@@ -2007,30 +2026,30 @@ public partial class MetadataViewModel : ViewModelBase
             SyncedLyrics = normalized;
             _importedTtml = ttml is null ? null : (ttml, normalized);
             HasCustomSyncedLyrics = true;
-            SyncedLyricsSearchStatus = $"Imported {fileName}";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsImported", fileName);
             RebuildSyncedLinesFromText();
         }
         else
         {
             Lyrics = normalized;
             HasCustomLyrics = true;
-            SyncedLyricsSearchStatus = $"Imported {fileName} as plain lyrics (no timestamps found).";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsImportedPlain", fileName);
         }
     }
 
     [RelayCommand]
     private async Task SearchSyncedLyrics()
     {
-        if (_lrcLib == null) { SyncedLyricsSearchStatus = "Search service unavailable."; return; }
+        if (_lrcLib == null) { SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsSearchUnavailable"); return; }
         if (IsSearchingSyncedLyrics) return;
         if (string.IsNullOrWhiteSpace(Title) || string.IsNullOrWhiteSpace(Artist))
         {
-            SyncedLyricsSearchStatus = "Title and artist required.";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsTitleArtistRequired");
             return;
         }
 
         IsSearchingSyncedLyrics = true;
-        SyncedLyricsSearchStatus = "Searching…";
+        SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.AnimSearching");
         try
         {
             // An error on /get (LRCLIB answers 503 "busy" there while /search works — live
@@ -2056,12 +2075,12 @@ public partial class MetadataViewModel : ViewModelBase
             {
                 SyncedLyrics = synced;
                 HasCustomSyncedLyrics = true;
-                SyncedLyricsSearchStatus = "Lyrics found";
+                SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsFound");
                 RebuildSyncedLinesFromText();
             }
             else
             {
-                SyncedLyricsSearchStatus = "No Lyrics found";
+                SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsNotFound");
             }
         }
         catch (LyricsProviderException)
@@ -2069,11 +2088,11 @@ public partial class MetadataViewModel : ViewModelBase
             // Network failure / timeout / provider outage — not "no lyrics", and the
             // raw exception text ("The request was canceled…") helps nobody. Not "check your
             // internet connection" either: a busy LRCLIB (503) on an online machine said that.
-            SyncedLyricsSearchStatus = "Search failed — LRCLIB didn't answer (busy or offline). Try again in a moment.";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.LyricsLrclibNoAnswer");
         }
         catch (Exception ex)
         {
-            SyncedLyricsSearchStatus = $"Search failed: {ex.Message}";
+            SyncedLyricsSearchStatus = Localization.Loc.T("Metadata.AnimSearchFailed", ex.Message);
         }
         finally
         {
@@ -2167,7 +2186,7 @@ public partial class MetadataViewModel : ViewModelBase
 
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Download Cover Art",
+            Title = Noctis.Localization.Loc.T("Picker.DownloadCoverArt"),
             SuggestedFileName = suggestedFileName,
             DefaultExtension = extension.TrimStart('.'),
             ShowOverwritePrompt = true,
@@ -2239,10 +2258,10 @@ public partial class MetadataViewModel : ViewModelBase
             data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
             data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A)
         {
-            return (".png", new FilePickerFileType("PNG Image") { Patterns = new[] { "*.png" } });
+            return (".png", new FilePickerFileType(Noctis.Localization.Loc.T("Picker.PngImage")) { Patterns = new[] { "*.png" } });
         }
 
-        return (".jpg", new FilePickerFileType("JPEG Image") { Patterns = new[] { "*.jpg", "*.jpeg" } });
+        return (".jpg", new FilePickerFileType(Noctis.Localization.Loc.T("Picker.JpegImage")) { Patterns = new[] { "*.jpg", "*.jpeg" } });
     }
 
     private bool CanSave() => !IsLoading;
@@ -2278,6 +2297,10 @@ public partial class MetadataViewModel : ViewModelBase
             // Apply Details changes to the track model
             _track.Title = Title;
             _track.Artist = Artist;
+            // An album artist typed here is the user's tag (GitHub #178): the album-grouping
+            // pass must not re-key it, even when the file write below fails.
+            if (!string.Equals(_track.AlbumArtist, AlbumArtist, StringComparison.Ordinal))
+                _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist);
             _track.AlbumArtist = AlbumArtist;
             _track.Album = Album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
@@ -2648,14 +2671,23 @@ public partial class MetadataViewModel : ViewModelBase
             AnimatedCoverChanging?.Invoke(this, EventArgs.Empty);
             await _animatedCovers.RemoveAsync(_track, animScope);
         }
-        else if (oldAlbumId != _track.AlbumId)
+        else if (oldAlbumId != _track.AlbumId && _track.AlbumId != Track.UnknownAlbumBucketId)
         {
+            // The album's loop follows the re-keyed songs. Moved only when the whole album was
+            // edited: one song moved to another album leaves the rest of its old album behind,
+            // and moving the loop took theirs away (copied instead, as the still cover is).
+            // Never onto the shared Unknown-Album bucket (see the still cover above).
             foreach (var ext in new[] { ".mp4", ".webm" })
             {
                 var oldP = _persistence.GetAnimatedCoverPath(oldAlbumId, null, ext);
                 if (File.Exists(oldP))
                 {
-                    try { File.Move(oldP, _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext), true); }
+                    var newP = _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext);
+                    try
+                    {
+                        if (_albumScoped) File.Move(oldP, newP, true);
+                        else File.Copy(oldP, newP, true);
+                    }
                     catch { }
                 }
             }
@@ -2751,11 +2783,13 @@ public partial class MetadataViewModel : ViewModelBase
         // open, or a file that cannot be written at all.
         if (failedWrites.Count > 0)
         {
-            SaveErrorMessage = failedWrites.Count == 1
-                ? $"Couldn't write tags to \"{failedWrites[0]}\". Another app may have the file open, " +
-                  "or it may be read-only — close it there or check the file, then try again."
-                : $"Couldn't write tags to {failedWrites.Count} files (e.g. \"{failedWrites[0]}\"). " +
-                  "Another app may have them open, or they may be read-only — close them there or check the files, then try again.";
+            // TagLib has no DSDIFF writer: say so instead of blaming another app or a
+            // read-only flag that isn't there.
+            SaveErrorMessage = failedWrites.All(f => Path.GetExtension(f).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+                ? Localization.Loc.T("Metadata.DffTagsReadOnly", failedWrites[0])
+                : failedWrites.Count == 1
+                ? Localization.Loc.T("Metadata.WriteFailedOne", failedWrites[0])
+                : Localization.Loc.T("Metadata.WriteFailedMany", failedWrites.Count, failedWrites[0]);
             return;
         }
 
@@ -2997,18 +3031,36 @@ public partial class CustomTagItem : ObservableObject
     [ObservableProperty] private string _value = string.Empty;
 }
 
-public sealed class ArtworkSearchResult : IDisposable
+public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
 {
     public ArtworkSearchResult(ITunesArtworkService.ArtworkCandidate candidate, Bitmap? thumbnail)
     {
         Candidate = candidate;
         Thumbnail = thumbnail;
+        Choices = new[]
+        {
+            new ArtworkSearchChoice(this, Highest: false, Localization.Loc.T("Metadata.Standard")),
+            new ArtworkSearchChoice(this, Highest: true, Localization.Loc.T("Metadata.Max")),
+        };
     }
 
     public ITunesArtworkService.ArtworkCandidate Candidate { get; }
     public Bitmap? Thumbnail { get; }
     public string CollectionName => Candidate.CollectionName;
     public string ArtistName => Candidate.ArtistName;
+
+    /// <summary>Standard, then Max (the accent pill).</summary>
+    public IReadOnlyList<ArtworkSearchChoice> Choices { get; }
+
+    Bitmap? IArtworkChooserItem.Poster => Thumbnail;
+    string IArtworkChooserItem.Detail => string.Empty;
+    bool IArtworkChooserItem.HasDetail => false;
+    bool IArtworkChooserItem.CanPreview => false;
+    string? IArtworkChooserItem.PosterTip => null;
+    string? IArtworkChooserItem.PreviewPath => null;
+    bool IArtworkChooserItem.IsPreviewing => false;
+    bool IArtworkChooserItem.IsPreviewLoading => false;
+    IReadOnlyList<IArtworkChooserChoice> IArtworkChooserItem.Choices => Choices;
 
     public void Dispose() => Thumbnail?.Dispose();
 }

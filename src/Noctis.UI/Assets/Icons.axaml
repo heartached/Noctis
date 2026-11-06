@@ -220,9 +220,13 @@
     <!-- Shuffle: two crossing arrows -->
     <StreamGeometry x:Key="MenuLineShuffle">M3.5 7h2.8c2 0 3.1.9 4.2 2.5l2.9 4.9c1 1.7 2.2 2.6 4.2 2.6h2.9M3.5 17h2.8c1.5 0 2.5-.5 3.4-1.5M14.1 8.5c.9-1 1.9-1.5 3.4-1.5h2.9M17.8 4.3L20.5 7l-2.7 2.7M17.8 14.3l2.7 2.7l-2.7 2.7</StreamGeometry>
     <!-- Play Next: play mark on the FIRST line of a list -->
-    <StreamGeometry x:Key="MenuLinePlayNext">M4.5 4.8v5.4l4.3-2.7ZM12 7.5h7.5M4.5 13.5h15M4.5 18.5h15</StreamGeometry>
+    <StreamGeometry x:Key="MenuLinePlayNext">M4.5 6L16 6M12.5 2.5L16 6M12.5 9.5L16 6M4.5 12L19.5 12M4.5 18L19.5 18</StreamGeometry>
     <!-- Add to Queue: play mark on the LAST line of a list -->
     <StreamGeometry x:Key="MenuLineQueue">M4.5 5.5h15M4.5 10.5h15M4.5 14v5.4l4.3-2.7ZM12 16.7h7.5</StreamGeometry>
+    <!-- Add to Queue (the action): a list with a down arrow at its end, "goes last". Distinct from
+         Play Next (an arrow on the top line, "goes first"); owner 11-04: the two read as one icon when
+         both were the same list with a play mark moved. MenuLineQueue stays the Queue panel button. -->
+    <StreamGeometry x:Key="MenuLineAddToQueue">M4.5 6L19.5 6M4.5 12L12.5 12M4.5 18L12.5 18M18 10.5L18 19.5M14.5 16L18 19.5M21.5 16L18 19.5</StreamGeometry>
     <!-- Add to Playlist: list with a plus -->
     <StreamGeometry x:Key="MenuLinePlaylistAdd">M4.5 6h11M4.5 11h11M4.5 16h6.5M17.5 13.5v7M14 17h7</StreamGeometry>
     <!-- Favorite (stroke it; stroke + fill it for the favorited state) -->
@@ -269,6 +273,9 @@
     <!-- Selected option (sort / filter / speed / timer) -->
     <StreamGeometry x:Key="MenuLineCheck">M5 12.5l4.5 4.5L19 7.5</StreamGeometry>
     <!-- Search (Add from YouTube, mini player Search, Find picture online): lens r 6.5 at 10.5,10.5 -->
+    <!-- Search Lyrics (lyrics-page island, song with no lyrics): a lyrics bubble whose
+         lower-right corner gives way to a magnifier -->
+    <StreamGeometry x:Key="MenuLineLyricsSearch">M12.5 15H9l-4 3v-3H4.5A1.5 1.5 0 0 1 3 13.5v-8A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5V11M6.5 8h7M6.5 11h4M16.8 18.8a3 3 0 1 0 0-6a3 3 0 0 0 0 6ZM18.95 17.95L21 20</StreamGeometry>
     <StreamGeometry x:Key="MenuLineSearch">M10.5 17a6.5 6.5 0 1 0 0-13a6.5 6.5 0 0 0 0 13ZM15.3 15.3l5.2 5.2</StreamGeometry>
     <!-- Import Playlist: arrow down onto a tray -->
     <StreamGeometry x:Key="MenuLineImport">M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14</StreamGeometry>

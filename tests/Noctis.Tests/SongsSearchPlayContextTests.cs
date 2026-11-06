@@ -137,6 +137,62 @@ public class SongsSearchPlayContextTests
         Assert.Equal(new[] { "Three", "Four" }, s.player.UpNext.Select(t => t.Title));
     }
 
+    /// <summary>Discord (DendyAly 11-04, seen live): searching "Cole" in a 50-song playlist
+    /// turned the header into "9 tracks · 30 min"; "Lucid" (no match) into "0 tracks · 0 KB".</summary>
+    [AvaloniaFact]
+    public async Task Playlist_Search_KeepsTheHeaderOnTheWholePlaylist()
+    {
+        var s = CreateVm();
+        var tracks = new[] { Trk("Fire One"), Trk("Fire Two"), Trk("Three"), Trk("Four") };
+        foreach (var t in tracks) t.FileSize = 1024 * 1024;
+        s.lib.TrackList.AddRange(tracks);
+        var sidebar = new SidebarViewModel(new TestPersistenceService(), s.lib);
+        var playlist = new Playlist { Name = "P", TrackIds = tracks.Select(t => t.Id).ToList() };
+        sidebar.Playlists.Add(playlist);
+        var vm = new PlaylistViewModel(playlist, s.player, s.lib, new TestPersistenceService(), sidebar);
+        await PumpUntil(() => vm.Tracks.Count == 4);
+
+        vm.ApplyFilter("fire");
+        await PumpUntil(() => vm.Tracks.Count == 2);
+        Assert.Equal(("4 tracks", "12 min", "4.0 MB"), (vm.TrackCountText, vm.TotalDuration, vm.TotalSize));
+
+        vm.ApplyFilter("nothing like this");
+        await PumpUntil(() => vm.Tracks.Count == 0);
+        Assert.Equal(("4 tracks", "12 min"), (vm.TrackCountText, vm.TotalDuration));
+
+        // Removing a row during a search still counts down from the whole playlist.
+        vm.ApplyFilter("fire");
+        await PumpUntil(() => vm.Tracks.Count == 2);
+        vm.RemoveTrackCommand.Execute(vm.Tracks[0]);
+        await PumpUntil(() => vm.TrackCountText == "3 tracks");
+        Assert.Equal("3 tracks", vm.TrackCountText);
+    }
+
+    /// <summary>The rail's Featured Artists describe the whole playlist, like the header: removing
+    /// a row during a search rebuilt them from the search results alone.</summary>
+    [AvaloniaFact]
+    public async Task Playlist_RemoveDuringASearch_KeepsTheFeaturedArtistsOnTheWholePlaylist()
+    {
+        var s = CreateVm();
+        var tracks = new[] { Trk("Fire One"), Trk("Fire Two"), Trk("Three"), Trk("Four") };
+        tracks[2].Artist = "Other";
+        tracks[3].Artist = "Other";
+        s.lib.TrackList.AddRange(tracks);
+        var sidebar = new SidebarViewModel(new TestPersistenceService(), s.lib);
+        var playlist = new Playlist { Name = "P", TrackIds = tracks.Select(t => t.Id).ToList() };
+        sidebar.Playlists.Add(playlist);
+        var vm = new PlaylistViewModel(playlist, s.player, s.lib, new TestPersistenceService(), sidebar);
+        await PumpUntil(() => vm.Tracks.Count == 4);
+        Assert.Equal(new[] { "Artist", "Other" }, vm.FeaturedArtists.Select(a => a.Name).OrderBy(n => n));
+
+        vm.ApplyFilter("fire");
+        await PumpUntil(() => vm.Tracks.Count == 2);
+        await vm.RemoveTrackCommand.ExecuteAsync(vm.Tracks.Single(t => t.Title == "Fire Two"));
+
+        Assert.Equal(new[] { "Artist", "Other" }, vm.FeaturedArtists.Select(a => a.Name).OrderBy(n => n));
+        Assert.Equal(2, vm.FeaturedArtists.Single(a => a.Name == "Other").TrackCount);
+    }
+
     [AvaloniaFact]
     public async Task Playlist_SongRemovedDuringASearch_IsNotQueuedByTheNextSearchPlay()
     {

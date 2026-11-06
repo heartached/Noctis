@@ -59,7 +59,7 @@ public class MobileDesktopIconParityTests
         { "PhoneIcons", "PhPlus", "AddIcon", 0 },
         // Song menu (the phone's long-press sheet)
         { "PhoneIcons", "PhPlayNext", "MenuLinePlayNext", 2.25 },
-        { "PhoneIcons", "PhAddToQueue", "MenuLineQueue", 2.25 },
+        { "PhoneIcons", "PhAddToQueue", "MenuLineAddToQueue", 2.25 },
         { "PhoneIcons", "PhAddToPlaylist", "MenuLinePlaylistAdd", 2.25 },
         { "PhoneIcons", "PhTrash", "MenuLineTrash", 2.25 },
         { "PhoneIcons", "PhPin", "MenuLinePin", 2.25 },

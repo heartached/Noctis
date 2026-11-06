@@ -228,6 +228,10 @@ public class TrueShufflePluginTests : IDisposable
         var manifest = PluginManifest.Parse(File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.TrueShuffle/plugin.json")));
         _box.Approve((manifest.Id, manifest.Permissions.ToArray()));
         var host = _box.NewHost(player, library, "1.6.6");
+        // The 1 s budget is wall-clock: a GC pause or a busy machine while the rest of the suite
+        // runs in parallel pushed a TrackChanged past it, the host stopped the plugin and the
+        // session silently got no more songs. The budget itself is tested in PluginHostApiTests.
+        host.CallbackBudget = TimeSpan.FromMinutes(1);
         var plugin = new TrueShufflePlugin();
         var dir = Path.Combine(_box.PluginsDir, manifest.Id);
         Directory.CreateDirectory(dir);

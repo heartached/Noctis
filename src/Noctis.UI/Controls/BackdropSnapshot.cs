@@ -133,7 +133,15 @@ public static class BackdropSnapshot
     /// <paramref name="visual"/> but leaves the blur to the caller. Null on the same failures
     /// (logged); it does not look at <see cref="IsBlurEnabled"/>.
     /// </summary>
-    public static async Task<Source?> CaptureSourceAsync(Visual visual, TopLevel baseFrom, string logTag)
+    public static Task<Source?> CaptureSourceAsync(Visual visual, TopLevel baseFrom, string logTag) =>
+        CaptureSourceAsync(visual, OpaqueBaseColor(baseFrom), logTag);
+
+    /// <summary>
+    /// <see cref="CaptureSourceAsync(Visual, TopLevel, string)"/> flattened over
+    /// <paramref name="baseColor"/> instead of a window's background (glass menus lay a
+    /// window's transparent parts over their own card colour, see GlassMenuBackdrop).
+    /// </summary>
+    public static async Task<Source?> CaptureSourceAsync(Visual visual, Color baseColor, string logTag)
     {
         try
         {
@@ -172,7 +180,6 @@ public static class BackdropSnapshot
             // the sharp app shows through it: crisp white icon and text fragments over the
             // blur. Laid over the window's own opaque background first, the blurred copy is
             // opaque everywhere (a blur of alpha-255 pixels stays 255).
-            var baseColor = OpaqueBaseColor(baseFrom);
             var rgba = format == PixelFormat.Rgba8888;
             var premultiplied = alpha != AlphaFormat.Unpremul;
             await Task.Run(() => FlattenOpaque(pixels, baseColor, rgba, premultiplied));

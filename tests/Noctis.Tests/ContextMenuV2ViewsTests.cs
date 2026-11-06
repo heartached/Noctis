@@ -425,7 +425,7 @@ public class ContextMenuV2ViewsTests
     }
 
     private static Button OptionsPill(Control view)
-        => view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout { Items.Count: 9 });
+        => view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout { Items.Count: 10 });
 
     private static Button SortPill(Control view)
         => view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout { Items.Count: 11 });
@@ -443,7 +443,7 @@ public class ContextMenuV2ViewsTests
         Assert.True(menu.IsOpen);
         var reachable = Reachable(menu.Items);
         // GitHub #121: Send to Folder for the whole playlist (its command was never bound before).
-        foreach (var command in new ICommand[] { vm.PlayNextAllCommand, vm.AddAllToQueueCommand, vm.AddSongsCommand, vm.EditPlaylistCommand, vm.SendPlaylistToFolderCommand, vm.ToggleSideRailCommand, vm.DeletePlaylistCommand })
+        foreach (var command in new ICommand[] { vm.PlayNextAllCommand, vm.AddAllToQueueCommand, vm.AddSongsCommand, vm.EditPlaylistCommand, vm.SendPlaylistToFolderCommand, vm.ExportPlaylistCommand, vm.ToggleSideRailCommand, vm.DeletePlaylistCommand })
             Assert.Contains(command, reachable);
         var last = menu.Items.OfType<MenuItem>().Last(i => i.IsVisible);
         Assert.Same(vm.DeletePlaylistCommand, last.Command);

@@ -11,6 +11,12 @@ public partial class SongRow : UserControl
     public static readonly StyledProperty<ICommand?> MenuCommandProperty =
         AvaloniaProperty.Register<SongRow, ICommand?>(nameof(MenuCommand));
 
+    /// <summary>Whether the row's ⋯ shows (not in its list's Select mode).</summary>
+    public static readonly StyledProperty<bool> IsMenuVisibleProperty =
+        AvaloniaProperty.Register<SongRow, bool>(nameof(IsMenuVisible), true);
+
+    public bool IsMenuVisible { get => GetValue(IsMenuVisibleProperty); set => SetValue(IsMenuVisibleProperty, value); }
+
     public SongRow()
     {
         InitializeComponent();

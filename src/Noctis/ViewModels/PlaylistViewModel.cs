@@ -37,7 +37,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private int _trackCount;
 
     /// <summary>Header stats: "1 track", "12 tracks" (the header read "1 tracks").</summary>
-    public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
+    public string TrackCountText => Noctis.Localization.Loc.Plural("Count.Tracks", TrackCount);
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
 
@@ -69,17 +69,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
     public string SortLabel => SortMode switch
     {
-        PlaylistSortMode.Title => "Title",
-        PlaylistSortMode.Artist => "Artist",
-        PlaylistSortMode.Album => "Album",
-        PlaylistSortMode.Duration => "Duration",
-        PlaylistSortMode.RecentlyAdded => "Recently Added",
-        PlaylistSortMode.ReleaseDateOldest => "Release Date (Oldest)",
-        PlaylistSortMode.ReleaseDateNewest => "Release Date (Newest)",
-        PlaylistSortMode.Badge => "Badge",
-        PlaylistSortMode.DateModifiedNewest => "Date Modified (Newest)",
-        PlaylistSortMode.DateModifiedOldest => "Date Modified (Oldest)",
-        _ => "Manual"
+        PlaylistSortMode.Title => Noctis.Localization.Loc.T("Playlist.Title"),
+        PlaylistSortMode.Artist => Noctis.Localization.Loc.T("Playlist.Artist"),
+        PlaylistSortMode.Album => Noctis.Localization.Loc.T("Playlist.Album"),
+        PlaylistSortMode.Duration => Noctis.Localization.Loc.T("Playlist.Duration"),
+        PlaylistSortMode.RecentlyAdded => Noctis.Localization.Loc.T("Playlist.RecentlyAdded"),
+        PlaylistSortMode.ReleaseDateOldest => Noctis.Localization.Loc.T("Playlist.ReleaseDateOldest"),
+        PlaylistSortMode.ReleaseDateNewest => Noctis.Localization.Loc.T("Playlist.ReleaseDateNewest"),
+        PlaylistSortMode.Badge => Noctis.Localization.Loc.T("Playlist.SortBadge"),
+        PlaylistSortMode.DateModifiedNewest => Noctis.Localization.Loc.T("Playlist.DateModifiedNewest"),
+        PlaylistSortMode.DateModifiedOldest => Noctis.Localization.Loc.T("Playlist.DateModifiedOldest"),
+        _ => Noctis.Localization.Loc.T("Playlist.SortManual")
     };
 
     partial void OnSortModeChanged(PlaylistSortMode value)
@@ -360,6 +360,29 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         : DateTime.MinValue;
 
 
+    /// <summary>Header count, length and size of the whole playlist (<paramref name="all"/>),
+    /// whatever the search box narrows the rows to.</summary>
+    private void UpdateHeaderStats(IReadOnlyList<Track> all)
+    {
+        TrackCount = all.Count;
+        var total = TimeSpan.FromTicks(all.Sum(t => t.Duration.Ticks));
+        TotalDuration = total.TotalHours >= 1
+            ? $"{(int)total.TotalHours}h {total.Minutes}m"
+            : $"{(int)total.TotalMinutes} min";
+
+        // From the size the library already indexed: LoadTracks runs on every debounced search
+        // keystroke, so no File.Exists / FileInfo per track here (NAS playlists blocked the UI).
+        long totalBytes = 0;
+        foreach (var t in all)
+            totalBytes += t.FileSize;
+        TotalSize = totalBytes switch
+        {
+            >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
+            >= 1_048_576 => $"{totalBytes / 1_048_576.0:F1} MB",
+            _ => $"{totalBytes / 1024.0:F0} KB"
+        };
+    }
+
     public void ApplyFilter(string query)
     {
         if (SearchText != query)
@@ -412,32 +435,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             _unfilteredTracks = unfiltered;
             Tracks.ReplaceAll(sorted);
 
-            TrackCount = Tracks.Count;
-            var total = TimeSpan.FromTicks(Tracks.Sum(t => t.Duration.Ticks));
-            TotalDuration = total.TotalHours >= 1
-                ? $"{(int)total.TotalHours}h {total.Minutes}m"
-                : $"{(int)total.TotalMinutes} min";
-
-            // Compute total file size from the size the library already indexed.
-            //
-            // This used to do File.Exists + new FileInfo(...).Length per track, synchronously
-            // on the UI thread — and LoadTracks runs on every debounced search keystroke, sort
-            // change, library update and membership change. For a 3,000-track playlist on a
-            // NAS/SMB share that was 6,000 blocking filesystem round-trips per keystroke.
-            // Track.FileSize is populated by MetadataService during scan and kept current by
-            // the watcher, so the number is the same without touching the disk.
-            long totalBytes = 0;
-            foreach (var t in Tracks)
-                totalBytes += t.FileSize;
-            TotalSize = totalBytes switch
-            {
-                >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
-                >= 1_048_576 => $"{totalBytes / 1_048_576.0:F1} MB",
-                _ => $"{totalBytes / 1024.0:F0} KB"
-            };
+            // The header describes the playlist, not the search: typing "Cole" in a 50-song
+            // playlist used to show "9 tracks · 30 min" (Discord, DendyAly 11-04).
+            UpdateHeaderStats(unfiltered ?? sorted);
 
             // Use first track's album artwork as playlist cover
-            PlaylistArtworkPath = Tracks.FirstOrDefault()?.AlbumArtworkPath;
+            PlaylistArtworkPath = (unfiltered ?? sorted).FirstOrDefault()?.AlbumArtworkPath;
 
             UpdateEmptyStateFlags(allResolvedTracks.Count);
 
@@ -762,6 +765,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
+    /// <summary>"…" › Export Playlist: the whole playlist in its saved order, whatever the
+    /// search box or the view's sort shows.</summary>
+    [RelayCommand]
+    private Task ExportPlaylist()
+        => PlaylistExporter.ExportAsync(_playlist.Name, PlaylistExporter.TracksOf(_playlist, _library));
+
     [RelayCommand]
     private async Task RemoveTrack(Track track)
     {
@@ -785,14 +794,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             _unfilteredTracks = unfiltered;
         }
         _playlist.ModifiedAt = DateTime.UtcNow;
-        TrackCount = Tracks.Count;
-
-        var total = TimeSpan.FromTicks(Tracks.Sum(t => t.Duration.Ticks));
-        TotalDuration = total.TotalHours >= 1
-            ? $"{(int)total.TotalHours}h {total.Minutes}m"
-            : $"{(int)total.TotalMinutes} min";
+        UpdateHeaderStats(_unfilteredTracks ?? Tracks);
         UpdateEmptyStateFlags(_playlist.TrackIds.Count);
-        RebuildFeaturedArtists(Tracks.ToList());
+        // The rail describes the whole playlist too, not the search results.
+        RebuildFeaturedArtists((_unfilteredTracks ?? Tracks).ToList());
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
         CtrlSelectedTracks.Clear();
@@ -1150,7 +1155,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task DeletePlaylist()
     {
-        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{_playlist.Name}\"? This cannot be undone.");
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(Localization.Loc.T("Playlist.DeleteConfirm", _playlist.Name));
         if (!confirmed) return;
         await _sidebar.DeletePlaylistAsync(_playlist.Id);
         BackRequested?.Invoke(this, EventArgs.Empty);

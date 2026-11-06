@@ -17,6 +17,7 @@ public interface IAnimatedCoverService
     ///   2. Album sidecar: cover.mp4 / cover.webm in the track's folder
     ///   3. Track-scoped managed cache
     ///   4. Album-scoped managed cache
+    ///   5. Automatically fetched (size-capped, evictable) cache — GitHub #167
     /// </summary>
     string? Resolve(Track track);
 
@@ -34,4 +35,11 @@ public interface IAnimatedCoverService
     /// Sidecar files are NEVER deleted.
     /// </summary>
     Task RemoveAsync(Track track, AnimatedCoverScope scope);
+
+    /// <summary>
+    /// True when the album has an animated cover Noctis stored itself (saved, per-song or
+    /// fetched automatically) — the kind "Remove Animated Artwork" can delete. A cover.mp4
+    /// beside the music is the user's own file and does not count.
+    /// </summary>
+    bool HasStoredCover(IReadOnlyList<Track> albumTracks) => false;
 }

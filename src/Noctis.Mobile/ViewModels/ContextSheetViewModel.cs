@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -25,20 +26,25 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     /// <summary>A song's menu; <paramref name="inPlaylist"/> is the playlist whose page it was opened
     /// on, for Remove from Playlist.</summary>
-    public static ContextSheetViewModel ForTrack(ShellViewModel shell, Track track, Playlist? inPlaylist = null) =>
-        new(shell, track.Title, track.Artist, track.AlbumArtworkPath, new[] { track }) { Track = track, InPlaylist = inPlaylist };
+    public static ContextSheetViewModel ForTrack(ShellViewModel shell, Track track, Playlist? inPlaylist = null, TrackSelection? selection = null) =>
+        new(shell, track.Title, track.Artist, track.AlbumArtworkPath, new[] { track }) { Track = track, InPlaylist = inPlaylist, SelectIn = selection };
 
-    public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album) =>
-        new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album };
+    /// <summary>Several songs (Select mode's Add to Playlist): "3 songs", the first one's cover.</summary>
+    public static ContextSheetViewModel ForTracks(ShellViewModel shell, IReadOnlyList<Track> tracks) =>
+        new(shell, Loc.Plural("Mobile.Count.Songs", tracks.Count), string.Empty,
+            tracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.AlbumArtworkPath))?.AlbumArtworkPath, tracks);
+
+    public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album, TrackSelection? selection = null) =>
+        new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album, SelectIn = selection };
 
     /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
     /// <paramref name="artworkPath"/> (the cover the row showed).</summary>
     public static ContextSheetViewModel ForArtist(ShellViewModel shell, Artist artist, string? artworkPath) =>
-        new(shell, artist.Name, "Artist", shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
+        new(shell, artist.Name, Loc.T("Mobile.Artist"), shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
             MobileLibrary.SongsBy(shell.Library.Service, artist.Name)) { Artist = artist };
 
     public static ContextSheetViewModel ForPlaylist(ShellViewModel shell, Playlist playlist) =>
-        new(shell, playlist.Name, playlist.TrackIds.Count == 1 ? "1 song" : $"{playlist.TrackIds.Count} songs",
+        new(shell, playlist.Name, Loc.Plural("Mobile.Count.Songs", playlist.TrackIds.Count),
             shell.Library.PlaylistArtwork(playlist), shell.ResolvePlaylist(playlist).ToList()) { Playlist = playlist };
 
     public string Title { get; }
@@ -55,6 +61,21 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     /// <summary>The playlist page a song's menu was opened on.</summary>
     public Playlist? InPlaylist { get; private init; }
+
+    /// <summary>The song list a song's menu was opened on, when it has Select mode: the menu's
+    /// Select enters it with this song ticked (Apple's long press › Select).</summary>
+    public TrackSelection? SelectIn { get; private init; }
+
+    public bool CanSelect => SelectIn != null && (Track != null || Album != null);
+
+    [RelayCommand]
+    private void Select()
+    {
+        var selection = SelectIn;
+        var track = Track;
+        _shell.CloseSheet();
+        selection?.Begin(track);
+    }
 
     // ── Playlist editing (desktop parity) ──
 
@@ -93,10 +114,10 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public bool IsArtist => Artist != null;
 
     public bool IsFavourite => Tracks.Count > 0 && Tracks.All(t => t.IsFavorite);
-    public string FavouriteLabel => IsFavourite ? "Remove from Favorites" : "Favorite";
+    public string FavouriteLabel => IsFavourite ? Loc.T("Mobile.RemoveFromFavorites") : Loc.T("Mobile.Favorite");
 
     /// <summary>The quick-action tile's short label: what the heart shows now.</summary>
-    public string FavouriteTileLabel => IsFavourite ? "Favorited" : "Favorite";
+    public string FavouriteTileLabel => IsFavourite ? Loc.T("Mobile.Favorited") : Loc.T("Mobile.Favorite");
 
     /// <summary>Anything can be pinned to Home → Pinned: albums, artists, playlists and songs.</summary>
     public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;
@@ -107,8 +128,8 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         : Track != null && _shell.Library.IsTrackPinned(Track.Id);
     // Pins show on Home (its Pinned rail) since Home became the start tab: "Pin to Library"
     // sent people looking for them in the Library tab.
-    public string PinLabel => IsPinned ? "Unpin" : "Pin to Home";
-    public string PinTileLabel => IsPinned ? "Pinned" : "Pin";
+    public string PinLabel => IsPinned ? Loc.T("Mobile.Unpin") : Loc.T("Mobile.PinToHome");
+    public string PinTileLabel => IsPinned ? Loc.T("Mobile.PinnedTile") : Loc.T("Mobile.Pin");
 
     // Not on that album's or artist's own page (it pushed the same page again), unless the
     // player covers it: then the row uncovers the page.
@@ -133,7 +154,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public bool CanDownload => _shell.Account is { IsSignedIn: true } && NotDownloaded.Any();
     public bool CanRemoveDownload => _shell.Account != null && Downloaded.Any();
 
-    public string DownloadLabel => Album != null ? "Download album" : Playlist != null ? "Download playlist" : "Download";
+    public string DownloadLabel => Album != null ? Loc.T("Mobile.DownloadAlbum") : Playlist != null ? Loc.T("Mobile.DownloadPlaylist") : Loc.T("Mobile.Download");
 
     /// <summary>Every desktop song here already has its offline copy: the tile shows a check.</summary>
     public bool IsAllDownloaded => _shell.Account != null && RemoteTracks.Count > 0 && !NotDownloaded.Any();
@@ -141,8 +162,8 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The Download tile shows for desktop songs only (a phone's own files are already offline).</summary>
     public bool ShowDownloadTile => CanDownload || IsAllDownloaded;
 
-    public string DownloadTileLabel => IsAllDownloaded ? "Downloaded" : "Download";
-    public string RemoveDownloadLabel => Track != null ? "Remove download" : "Remove downloads";
+    public string DownloadTileLabel => IsAllDownloaded ? Loc.T("Mobile.Downloaded") : Loc.T("Mobile.Download");
+    public string RemoveDownloadLabel => Track != null ? Loc.T("Mobile.RemoveDownload") : Loc.T("Mobile.Account.RemoveDownloads");
 
     /// <summary>The sheet's second page: pick a playlist or name a new one.</summary>
     [ObservableProperty] private bool _isPickingPlaylist;
@@ -172,6 +193,29 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         _shell.CloseSheet();
         await _shell.SetFavouriteAsync(Tracks, !IsFavourite);
     }
+
+    // ── Rating (a song's menu): five stars and Clear, synced as the heart is ──
+
+    /// <summary>A song's menu rates it; an album's or playlist's would rate every song at once.</summary>
+    public bool CanRate => Track != null;
+
+    public int Rating => Track?.Rating ?? 0;
+
+    public bool IsRated => Rating > 0;
+
+    /// <summary>The Rate row's five stars, filled up to the song's rating.</summary>
+    public IReadOnlyList<RateStar> Stars => Enumerable.Range(1, 5).Select(n => new RateStar(n, n <= Rating)).ToList();
+
+    /// <summary>A star (1-5) sets the rating, 0 clears it; the menu closes and the song's rows
+    /// follow (Track.Rating notifies). A desktop song's rating goes to the computer on the next sync.</summary>
+    [RelayCommand]
+    private async Task RateAsync(int stars)
+    {
+        _shell.CloseSheet();
+        await _shell.SetRatingAsync(Tracks, stars);
+    }
+
+    [RelayCommand] private Task ClearRatingAsync() => RateAsync(0);
 
     /// <summary>The menu's Add to Playlist: the menu closes and the bottom sheet opens on the
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
@@ -208,7 +252,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>The short glass banner after Add to Playlist (the player's notice banner), as
     /// Apple's "Added to …": says so too when every song was there already (nothing was added).</summary>
     private void Added(string name, bool already) =>
-        _shell.Player.Notice = already ? $"Already in {name}" : $"Added to {name}";
+        _shell.Player.Notice = already ? Loc.T("Mobile.AlreadyIn", name) : Loc.T("Mobile.AddedTo", name);
 
     [RelayCommand]
     private async Task CreatePlaylistAsync()
@@ -268,4 +312,10 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     }
 
     [RelayCommand] private void Close() => _shell.CloseSheet();
+}
+
+/// <summary>One star of the song menu's Rate row.</summary>
+public sealed record RateStar(int Value, bool IsOn)
+{
+    public string AccessibleName => Loc.T("Mobile.RateStars", Value);
 }

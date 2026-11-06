@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -97,55 +98,55 @@ public partial class CommandPaletteViewModel : ViewModelBase
         void Page(string title, string key, string icon) => items.Add(new PaletteItem
         {
             Title = title,
-            Category = "Page",
+            Category = Loc.T("Palette.CategoryPage"),
             Icon = Icon(icon),
             IsLineIcon = IsLine(icon),
             Execute = () => _main.NavigateCommand.Execute(key),
         });
 
-        Page("Go to Home", "home", "HomeIcon");
-        Page("Go to Songs", "songs", "SongsIcon");
-        Page("Go to Albums", "albums", "AlbumsIcon");
-        Page("Go to Artists", "artists", "ArtistsIcon");
-        Page("Go to Folders", "folders", "FolderIcon");
-        Page("Go to Playlists", "playlists", "PlaylistsIcon");
-        Page("Go to Favorites", "favorites", "FavoritesIcon");
-        Page("Go to Statistics", "statistics", "StatisticsIcon");
-        Page("Go to Queue", "queue", "MenuLineQueue");
-        Page("Go to Lyrics", "lyrics", "MenuLineLyrics");
-        Page("Go to Settings", "settings", "SettingsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Home")), "home", "HomeIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Songs")), "songs", "SongsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Albums")), "albums", "AlbumsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Artists")), "artists", "ArtistsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Folders")), "folders", "FolderIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Playlists")), "playlists", "PlaylistsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Favorites")), "favorites", "FavoritesIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Tab.Statistics")), "statistics", "StatisticsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Tab.Queue")), "queue", "MenuLineQueue");
+        Page(Loc.T("Palette.GoTo", Loc.T("Tab.Lyrics")), "lyrics", "MenuLineLyrics");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Settings")), "settings", "SettingsIcon");
 
         void Action(string title, string icon, Action run, string subtitle = "") =>
             items.Add(new PaletteItem
             {
                 Title = title,
                 Subtitle = subtitle,
-                Category = "Action",
+                Category = Loc.T("Palette.CategoryAction"),
                 Icon = Icon(icon),
                 IsLineIcon = IsLine(icon),
                 Execute = run,
             });
 
-        Action("Play / Pause", "PlayIcon", () => _main.Player.PlayPauseCommand.Execute(null));
-        Action("Next track", "NextIcon", () => _main.Player.NextCommand.Execute(null));
-        Action("Previous track", "PreviousIcon", () => _main.Player.PreviousCommand.Execute(null));
-        Action("Lyrics Studio…", "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLyricsStudioForLibrary(_main),
-            "Time or transcribe lyrics for songs without synced lyrics");
-        Action("Find lyrics for library…", "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLibraryLyricsDialog(),
-            "Look up lyrics for every song, word-synced first");
-        Action("Find animated artwork for library…", "SettingsIcon", () => _ = MetadataHelper.OpenLibraryAnimatedArtworkDialog(),
-            "Add moving covers to albums from Apple Music");
-        Action("Toggle shuffle", "ShuffleIcon", () => _main.Player.ToggleShuffleCommand.Execute(null));
-        Action("Cycle repeat mode", "RepeatAllIcon", () => _main.Player.CycleRepeatCommand.Execute(null));
-        Action("Toggle crossfade", "SettingsIcon",
+        Action(Loc.T("Shortcuts.Action.PlayPause"), "PlayIcon", () => _main.Player.PlayPauseCommand.Execute(null));
+        Action(Loc.T("Shortcuts.Action.NextTrack"), "NextIcon", () => _main.Player.NextCommand.Execute(null));
+        Action(Loc.T("Shortcuts.Action.PreviousTrack"), "PreviousIcon", () => _main.Player.PreviousCommand.Execute(null));
+        Action(Loc.T("Palette.LyricsStudio"), "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLyricsStudioForLibrary(_main),
+            Loc.T("Palette.LyricsStudioSub"));
+        Action(Loc.T("Palette.FindLyrics"), "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLibraryLyricsDialog(),
+            Loc.T("Palette.FindLyricsSub"));
+        Action(Loc.T("Palette.FindAnimatedArtwork"), "SettingsIcon", () => _ = MetadataHelper.OpenLibraryAnimatedArtworkDialog(),
+            Loc.T("Palette.FindAnimatedArtworkSub"));
+        Action(Loc.T("Palette.ToggleShuffle"), "ShuffleIcon", () => _main.Player.ToggleShuffleCommand.Execute(null));
+        Action(Loc.T("Palette.CycleRepeat"), "RepeatAllIcon", () => _main.Player.CycleRepeatCommand.Execute(null));
+        Action(Loc.T("Palette.ToggleCrossfade"), "SettingsIcon",
             () => _main.Settings.CrossfadeEnabled = !_main.Settings.CrossfadeEnabled,
-            "Audio setting");
-        Action("Toggle song transitions", "SettingsIcon",
+            Loc.T("Palette.AudioSetting"));
+        Action(Loc.T("Palette.ToggleTransitions"), "SettingsIcon",
             () => _main.Settings.SongTransitionsEnabled = !_main.Settings.SongTransitionsEnabled,
-            "Audio setting");
-        Action("Toggle animated covers", "SettingsIcon",
+            Loc.T("Palette.AudioSetting"));
+        Action(Loc.T("Palette.ToggleAnimatedCovers"), "SettingsIcon",
             () => _main.Settings.EnableAnimatedCovers = !_main.Settings.EnableAnimatedCovers,
-            "Appearance setting");
+            Loc.T("Palette.AppearanceSetting"));
 
         return items;
     }
@@ -231,24 +232,24 @@ public partial class CommandPaletteViewModel : ViewModelBase
                     Track t => new PaletteItem
                     {
                         Title = t.Title,
-                        Subtitle = $"{t.ArtistDisplay} · Song",
-                        Category = "Song",
+                        Subtitle = $"{t.ArtistDisplay} · {Loc.T("Palette.CategorySong")}",
+                        Category = Loc.T("Palette.CategorySong"),
                         Icon = songIcon,
                         Execute = () => _main.Player.ReplaceQueueAndPlay(new List<Track> { t }, 0),
                     },
                     Album a => new PaletteItem
                     {
                         Title = a.Name,
-                        Subtitle = $"{a.Artist} · Album",
-                        Category = "Album",
+                        Subtitle = $"{a.Artist} · {Loc.T("Palette.CategoryAlbum")}",
+                        Category = Loc.T("Palette.CategoryAlbum"),
                         Icon = albumIcon,
                         Execute = () => _main.OpenAlbumDetail(a),
                     },
                     Artist ar => new PaletteItem
                     {
                         Title = ar.Name,
-                        Subtitle = "Artist",
-                        Category = "Artist",
+                        Subtitle = Loc.T("Palette.CategoryArtist"),
+                        Category = Loc.T("Palette.CategoryArtist"),
                         Icon = artistIcon,
                         Execute = () => _main.OpenArtistByName(ar.Name),
                     },

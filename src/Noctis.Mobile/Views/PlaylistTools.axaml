@@ -1,20 +1,28 @@
 <controls:GlassPanel xmlns="https://github.com/avaloniaui"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
                      xmlns:vm="using:Noctis.Mobile.ViewModels"
                      xmlns:controls="using:Noctis.Controls"
                      x:Class="Noctis.Mobile.Views.PlaylistTools"
                      x:DataType="vm:PlaylistListPageViewModel"
-                     Classes="header-glass" Width="NaN" IsVisible="{Binding HasPlaylists}">
+                     Classes="header-glass" Width="NaN" IsVisible="{Binding HasTools}">
     <!-- The playlist list's tools, in the same glass pill as a song list's (ListTools): search in
          the list and sort it. Each lights up while it changes what is shown. -->
     <StackPanel Orientation="Horizontal" Margin="4,0">
-        <Button Name="PlaylistSearchButton" Classes="glass-round" Classes.on="{Binding IsSearchOpen}"
-                Command="{Binding ToggleSearchCommand}" AutomationProperties.Name="Search playlists">
+        <Button Name="PlaylistSearchButton" Classes="glass-round" Classes.on="{Binding IsSearchOpen}" IsVisible="{Binding HasPlaylists}"
+                Command="{Binding ToggleSearchCommand}" AutomationProperties.Name="{loc:T Mobile.Playlists.SearchName}">
             <PathIcon Data="{DynamicResource PhSearch}" />
         </Button>
         <Button Name="PlaylistSortButton" Classes="glass-round" Classes.on="{Binding IsSorted}" Command="{Binding ShowSortMenuCommand}"
-                AutomationProperties.Name="Sort playlists">
+                IsVisible="{Binding HasPlaylists}"
+                AutomationProperties.Name="{loc:T Mobile.Playlists.SortName}">
             <PathIcon Data="{DynamicResource PhSort}" />
+        </Button>
+        <!-- The list's ⋯ (Import Playlist), there with no playlists yet too: an Android-only
+             listener's way to bring playlists in. -->
+        <Button Name="PlaylistsMoreButton" Classes="glass-round" Command="{Binding Shell.ShowPlaylistsMenuCommand}"
+                IsVisible="{Binding Shell.CanImportPlaylists}" AutomationProperties.Name="{loc:T Mobile.More}">
+            <PathIcon Data="{DynamicResource PhMore}" />
         </Button>
     </StackPanel>
 </controls:GlassPanel>

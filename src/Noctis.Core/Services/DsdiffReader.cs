@@ -19,7 +19,17 @@ namespace Noctis.Services;
 /// </summary>
 internal static class DsdiffReader
 {
-    internal sealed record DsdiffInfo(int SampleRate, int Channels, TimeSpan Duration, string? Title, string? Artist);
+    /// <param name="DataOffset">File offset of the uncompressed "DSD " sound data, or -1 when
+    /// the file has none (DST-compressed or truncated). Playback reads the bits from here.</param>
+    /// <param name="DataBytes">Size of that sound data in bytes (all channels, byte-interleaved).</param>
+    /// <param name="ChannelIds">The CHNL chunk's channel ids in file order ("SLFT", "SRGT", "C   "…).</param>
+    /// <param name="Id3">The raw ID3v2 tag of a top-level "ID3 " chunk, or null. Not in the DSDIFF
+    /// spec, but where taggers (foobar2000, JRiver, dBpoweramp…) put a .dff's tags and cover.</param>
+    internal sealed record DsdiffInfo(int SampleRate, int Channels, TimeSpan Duration, string? Title, string? Artist,
+        long DataOffset = -1, long DataBytes = 0, IReadOnlyList<string>? ChannelIds = null, byte[]? Id3 = null);
+
+    // A cover can be large, but a corrupt size must not ask for gigabytes.
+    private const int MaxId3Bytes = 32 * 1024 * 1024;
 
     internal static DsdiffInfo? TryRead(Stream stream)
     {
@@ -33,9 +43,11 @@ internal static class DsdiffReader
                 return null;
 
             int sampleRate = 0, channels = 0;
-            long dsdDataBytes = -1;
+            long dsdDataBytes = -1, dsdDataOffset = -1;
+            var channelIds = new List<string>();
             var dstDuration = TimeSpan.Zero;
             string? title = null, artist = null;
+            byte[]? id3 = null;
 
             // Walk the top-level local chunks of the FRM8 form.
             while (TryReadChunkHeader(stream, out var id, out var size))
@@ -44,16 +56,25 @@ internal static class DsdiffReader
                 switch (id)
                 {
                     case "PROP":
-                        ReadProp(stream, dataStart + size, ref sampleRate, ref channels);
+                        ReadProp(stream, dataStart + size, ref sampleRate, ref channels, channelIds);
                         break;
                     case "DSD ":           // uncompressed sound data — size gives the duration
                         dsdDataBytes = size;
+                        dsdDataOffset = dataStart;
                         break;
                     case "DST ":           // compressed sound data — duration lives in its FRTE chunk
                         dstDuration = ReadDstDuration(stream, dataStart + size);
                         break;
                     case "DIIN":           // edited master info (title / artist)
                         ReadDiin(stream, dataStart + size, ref title, ref artist);
+                        break;
+                    case "ID3 ":           // ID3v2 tag (de-facto, see DsdiffInfo.Id3)
+                    case "id3 ":
+                        if (id3 == null && size is > 10 and <= MaxId3Bytes)
+                        {
+                            var buf = new byte[size];
+                            if (ReadExact(stream, buf, (int)size)) id3 = buf;
+                        }
                         break;
                 }
 
@@ -69,7 +90,12 @@ internal static class DsdiffReader
                 ? TimeSpan.FromSeconds(dsdDataBytes * 8.0 / ((double)sampleRate * channels))
                 : dstDuration;
 
-            return new DsdiffInfo(sampleRate, channels, duration, Clean(title), Clean(artist));
+            // A truncated download claims more sound data than the file holds: play what is there.
+            if (dsdDataBytes > 0)
+                dsdDataBytes = Math.Min(dsdDataBytes, Math.Max(0, stream.Length - dsdDataOffset));
+
+            return new DsdiffInfo(sampleRate, channels, duration, Clean(title), Clean(artist),
+                dsdDataOffset, Math.Max(0, dsdDataBytes), channelIds, id3);
         }
         catch
         {
@@ -77,7 +103,7 @@ internal static class DsdiffReader
         }
     }
 
-    private static void ReadProp(Stream stream, long end, ref int sampleRate, ref int channels)
+    private static void ReadProp(Stream stream, long end, ref int sampleRate, ref int channels, List<string> channelIds)
     {
         // PROP data starts with a property type ("SND ") then nested chunks.
         if (!TryReadId(stream, out var propType) || propType != "SND ")
@@ -92,7 +118,12 @@ internal static class DsdiffReader
                     if (TryReadU32(stream, out var fs)) sampleRate = (int)fs;
                     break;
                 case "CHNL":
-                    if (TryReadU16(stream, out var ch)) channels = ch;
+                    if (TryReadU16(stream, out var ch))
+                    {
+                        channels = ch;
+                        for (var i = 0; i < ch && stream.Position + 4 <= dataStart + size; i++)
+                            if (TryReadId(stream, out var chId)) channelIds.Add(chId);
+                    }
                     break;
             }
             if (!SeekTo(stream, dataStart + size + (size & 1)))

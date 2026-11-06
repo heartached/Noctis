@@ -4,8 +4,10 @@
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:controls="using:Noctis.Controls"
              xmlns:loc="using:Noctis.Localization"
+             xmlns:models="using:Noctis.Models"
              x:Class="Noctis.Mobile.Views.ShellView"
              x:DataType="vm:ShellViewModel"
+             views:RowMark.Mode="{Binding SongRowMark}"
              Background="{DynamicResource PhoneBackgroundBrush}">
 
     <UserControl.Styles>
@@ -122,7 +124,9 @@
                         <!-- Each tab's header as Apple's: the large title, the list's tools in a glass pill,
                              the profile circle (Settings). -->
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Classes="tab-header">
-                            <TextBlock Name="PlaylistsTitle" Classes="title" Text="{loc:T Nav.Playlists}" />
+                            <views:FitWidth Name="PlaylistsTitleFit" VerticalAlignment="Center">
+                                <TextBlock Name="PlaylistsTitle" Classes="title" Text="{loc:T Nav.Playlists}" TextTrimming="CharacterEllipsis" />
+                            </views:FitWidth>
                             <views:PlaylistTools Grid.Column="1" VerticalAlignment="Center" DataContext="{Binding PlaylistsRoot}" />
                             <views:ProfileButton Grid.Column="2" Name="PlaylistsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
@@ -132,7 +136,9 @@
                     </Grid>
                     <Grid Name="FavoritesRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsFavoritesSelected}">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Classes="tab-header">
-                            <TextBlock Name="FavoritesTitle" Classes="title" Text="{loc:T Nav.Favorites}" />
+                            <views:FitWidth Name="FavoritesTitleFit" VerticalAlignment="Center">
+                                <TextBlock Name="FavoritesTitle" Classes="title" Text="{loc:T Nav.Favorites}" TextTrimming="CharacterEllipsis" />
+                            </views:FitWidth>
                             <views:ListTools Grid.Column="1" VerticalAlignment="Center" DataContext="{Binding FavoritesRoot}" />
                             <views:ProfileButton Grid.Column="2" Name="FavoritesProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
@@ -183,35 +189,35 @@
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
                                         <StackPanel Spacing="2">
                                             <PathIcon Data="{DynamicResource TabHomeFilledIcon}" />
-                                            <TextBlock Text="{loc:T Nav.Home}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Home}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                     <Button Grid.Column="1" Name="FavoritesTab" Classes="tab" Classes.selected="{Binding IsFavoritesSelected}"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Favorites}">
                                         <StackPanel Spacing="2">
                                             <PathIcon Data="{DynamicResource TabFavoritesFilledIcon}" />
-                                            <TextBlock Text="{loc:T Nav.Favorites}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Favorites}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                     <Button Grid.Column="2" Name="PlaylistsTab" Classes="tab" Classes.selected="{Binding IsPlaylistsSelected}"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Playlists}">
                                         <StackPanel Spacing="2">
                                             <PathIcon Data="{DynamicResource TabPlaylistsFilledIcon}" />
-                                            <TextBlock Text="{loc:T Nav.Playlists}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Mobile.Tab.Playlists}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                     <Button Grid.Column="3" Name="LibraryTab" Classes="tab" Classes.selected="{Binding IsLibrarySelected}"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Library}">
                                         <StackPanel Spacing="2">
                                             <PathIcon Data="{DynamicResource TabLibraryFilledIcon}" />
-                                            <TextBlock Text="{loc:T Tab.Library}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Tab.Library}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                     <Button Grid.Column="4" Name="SearchTab" Classes="tab" Classes.selected="{Binding IsSearchSelected}"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
                                         <StackPanel Spacing="2">
                                             <PathIcon Data="{DynamicResource TabSearchFilledIcon}" />
-                                            <TextBlock Text="Search" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Mobile.Search}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                 </Grid>
@@ -219,7 +225,7 @@
 
                             <!-- Folded: the current tab's icon in the accent; a tap unfolds the bar. -->
                             <Button Name="CollapsedTabButton" Classes="tab selected bubble" HorizontalAlignment="Left"
-                                    Command="{Binding ExpandTabBarCommand}" AutomationProperties.Name="Show tabs">
+                                    Command="{Binding ExpandTabBarCommand}" AutomationProperties.Name="{loc:T Mobile.ShowTabs}">
                                 <Panel>
                                     <PathIcon Data="{DynamicResource TabHomeFilledIcon}" IsVisible="{Binding IsHomeSelected}" />
                                     <PathIcon Data="{DynamicResource TabLibraryFilledIcon}" IsVisible="{Binding IsLibrarySelected}" />
@@ -238,7 +244,7 @@
                         <!-- Fade covers only the glass itself; the sheen and button fade with this panel. -->
                         <Panel Name="SearchBubbleContent" Opacity="0">
                             <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="26" IsHitTestVisible="False" />
-                            <Button Name="MiniSearchButton" Classes="tab bubble" AutomationProperties.Name="Search"
+                            <Button Name="MiniSearchButton" Classes="tab bubble" AutomationProperties.Name="{loc:T Mobile.Search}"
                                     Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
                                 <PathIcon Data="{DynamicResource TabSearchFilledIcon}" />
                             </Button>
@@ -266,7 +272,11 @@
                             <Grid ColumnDefinitions="*,Auto,Auto" Margin="10,0,6,0">
                                 <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
                                      to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
-                                <Button Grid.Column="0" Classes="row" VerticalAlignment="Stretch"
+                                <!-- Swipe sideways for the next (left) or previous (right) song: the row
+                                     follows the finger and the neighbour's row slides in beside it
+                                     (TrackSwipeGesture). Clipped so neither runs under Play. -->
+                                <Panel Grid.Column="0" Name="MiniSwipe" ClipToBounds="True">
+                                <Button Name="MiniRow" Classes="row" VerticalAlignment="Stretch"
                                         Command="{Binding OpenNowPlayingCommand}">
                                     <Grid ColumnDefinitions="Auto,*">
                                         <!-- Round, so it sits in the capsule's round end like the end itself. -->
@@ -300,6 +310,25 @@
                                         </StackPanel>
                                     </Grid>
                                 </Button>
+                                <!-- The song a swipe brings in, as the row shows it; off to the side
+                                     and unseen until the finger moves. Its data is that Track. -->
+                                <Grid Name="MiniGhost" x:DataType="models:Track" ColumnDefinitions="Auto,*"
+                                      IsVisible="False" IsHitTestVisible="False" Margin="12,0,0,0">
+                                    <Border Classes="art" Width="38" Height="38" CornerRadius="19">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
+                                            <controls:CachedImage Name="MiniGhostArtwork" SourcePath="{Binding AlbumArtworkPath}"
+                                                                  DecodeWidth="128" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="11,0,4,0" VerticalAlignment="Center">
+                                        <TextBlock Name="MiniGhostTitle" Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Name="MiniGhostArtist" Text="{Binding Artist}" FontSize="12"
+                                                   Foreground="{DynamicResource PhoneSecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                                </Panel>
                                 <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini tx" Command="{Binding Player.TogglePlayPauseCommand}">
                                     <controls:TransportGlyph Name="MiniPlayGlyph" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
                                 </Button>
@@ -310,6 +339,16 @@
                                     <controls:TransportGlyph Name="MiniNextGlyph" Classes="forward" Kind="Next" />
                                 </Button>
                             </Grid>
+                        </Panel>
+                    </controls:GlassPanel>
+
+                    <!-- A song list's Select mode: its actions in the mini player's capsule, same
+                         glass, same place (ShellView.ApplyChromeLayout); the mini player steps aside. -->
+                    <controls:GlassPanel Name="SelectionBar" Classes="liquid" CornerRadius="26" VerticalAlignment="Bottom"
+                                         IsVisible="{Binding IsSelecting}">
+                        <Panel>
+                            <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="26" IsHitTestVisible="False" />
+                            <views:SelectionActions Name="SelectionActions" DataContext="{Binding ActiveSelection}" />
                         </Panel>
                     </controls:GlassPanel>
                 </Panel>

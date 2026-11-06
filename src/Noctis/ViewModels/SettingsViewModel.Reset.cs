@@ -23,7 +23,8 @@ namespace Noctis.ViewModels;
 ///   favorite_artists.json, phone_handoff.json
 ///   artwork/ (artists/, similar/), animated_covers/, playlist_covers/, artist_info/ (incl.
 ///     pinned MusicBrainz ids), artist_bios/ (legacy), cache/ (artwork_thumbs/, waveforms/,
-///     lastfm_album_descriptions.json with the user's description overrides)
+///     lastfm_album_descriptions.json with the user's description overrides,
+///     lastfm_taste.json, the Last.fm mixes' account charts)
 ///   lyrics_cache/, lyrics_store/ (lyrics read from tags; a rescan reads them again),
 ///     lyrics_studio_drafts/, lyrics_background/ (its settings reset with the rest)
 ///   profile/ (avatar; its setting resets), app-icons/ (after the classic icon is back)
@@ -126,6 +127,7 @@ public partial class SettingsViewModel
         // A table in library.db, so emptied whether or not the analysis service ever started.
         await Step("audio analysis", () => (services?.GetService<IAudioAnalysisStore>() ?? new AudioAnalysisStore(_persistence)).ClearAsync());
         await Step("album descriptions", () => _lastFm?.ClearAlbumDescriptionsAsync() ?? Task.CompletedTask);
+        await Step("Last.fm mixes", () => services?.GetService<LastFmTasteService>()?.ClearAsync() ?? Task.CompletedTask);
         await StepSync("MP3 decoder list", () => (_audioPlayer as VlcAudioPlayer)?.ForgetDecoderFallbacks());
         await StepSync("lyrics store", () => _persistence.ClearLyricsStore());
         await StepSync("TIDAL sign-in", () => { _tidal?.Disconnect(); IsTidalConnected = false; });

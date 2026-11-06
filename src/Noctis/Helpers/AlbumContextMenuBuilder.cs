@@ -29,6 +29,8 @@ public sealed class AlbumContextMenuBuilder
     /// <summary>Snooze every track of the album for a month (optional; hidden unless Bind gets a command).</summary>
     public MenuItem SnoozeForMonth { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
+    /// <summary>GitHub #178: the album (or the Ctrl-selection) → one album. Bound by <see cref="BindGroupAlbums"/>.</summary>
+    public MenuItem GroupAlbums { get; private set; } = null!;
     public MenuItem EditDescription { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
@@ -112,6 +114,10 @@ public sealed class AlbumContextMenuBuilder
         Metadata.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
+        GroupAlbums = new MenuItem { Header = Loc.T("GroupAlbums.Menu"), IsVisible = false };
+        GroupAlbums.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
+        items.Add(GroupAlbums);
+
         EditDescription = new MenuItem { Header = "Update Description", IsVisible = false };
         EditDescription.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(EditDescription);
@@ -182,7 +188,7 @@ public sealed class AlbumContextMenuBuilder
         QuickPlay = MenuV2.Tile(host, Menu, "MenuLinePlay", Loc.T("LibraryAlbums.Play"));
         QuickShuffle = MenuV2.Tile(host, Menu, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
         QuickPlayNext = MenuV2.Tile(host, Menu, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
-        QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+        QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineAddToQueue", Loc.T("LibraryAlbums.AddQueue"));
         items.Add(MenuV2.TileRow(QuickPlay, QuickShuffle, QuickPlayNext, QuickAddToQueue));
 
         items.Add(new Separator());
@@ -200,6 +206,8 @@ public sealed class AlbumContextMenuBuilder
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
         items.Add(Metadata);
+        GroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Menu"), "MenuLineAlbum", visible: false);
+        items.Add(GroupAlbums);
         EditDescription = MenuV2.Row(host, Loc.T("AlbumDetail.EditDescription"), null, visible: false);
         items.Add(EditDescription);
         SearchLyrics = MenuV2.Row(host, Loc.T("Lyrics.SearchLyrics"), "MenuLineLyrics", visible: false);
@@ -321,6 +329,16 @@ public sealed class AlbumContextMenuBuilder
     public void BindSendToFolder(Album album, ICommand? sendToFolderCommand)
     {
         BindOptional(SendToFolder, sendToFolderCommand, album);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    /// <summary>
+    /// GitHub #178: "Group into One Album" for the album or the Ctrl-selection it is in (hidden
+    /// when null). Separate from <see cref="Bind"/> like <see cref="BindSendToFolder"/>.
+    /// </summary>
+    public void BindGroupAlbums(Album album, ICommand? groupCommand)
+    {
+        BindOptional(GroupAlbums, groupCommand, album);
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 

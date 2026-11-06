@@ -141,6 +141,10 @@ public class PersistenceService : IPersistenceService
         settings.ListenBrainzToken = UnprotectSecret(settings.ListenBrainzToken);
         foreach (var conn in settings.SourceConnections)
             conn.TokenOrPassword = UnprotectSecret(conn.TokenOrPassword);
+        // Full paths into the data folder: after a data folder move (GitHub #165), or with the
+        // folder copied from another computer, they still name the old place.
+        settings.ProfileAvatarPath = Helpers.DataLocation.Rebase(settings.ProfileAvatarPath, DataDirectory, "profile") ?? "";
+        settings.LyricsBackgroundMediaPath = Helpers.DataLocation.Rebase(settings.LyricsBackgroundMediaPath, DataDirectory, "lyrics_background") ?? "";
         return settings;
     }
 
@@ -411,7 +415,11 @@ public class PersistenceService : IPersistenceService
 
     public async Task<List<Playlist>> LoadPlaylistsAsync()
     {
-        return await LoadJsonAsync<List<Playlist>>(PlaylistsPath) ?? new List<Playlist>();
+        var playlists = await LoadJsonAsync<List<Playlist>>(PlaylistsPath) ?? new List<Playlist>();
+        // Custom covers are saved as full paths into the data folder (see LoadSettingsAsync).
+        foreach (var p in playlists)
+            if (p is not null) p.CoverArtPath = Helpers.DataLocation.Rebase(p.CoverArtPath, DataDirectory, "playlist_covers");
+        return playlists;
     }
 
     public async Task SavePlaylistsAsync(List<Playlist> playlists)
@@ -515,6 +523,9 @@ public class PersistenceService : IPersistenceService
             : $"{albumId}{ext}";
         return Path.Combine(AnimatedCoverDirectory, fileName);
     }
+
+    public string GetCachedAnimatedCoverPath(Guid albumId)
+        => Path.Combine(AnimatedCoverDirectory, "cache", $"{albumId}.mp4");
 
     public void EnsureAnimatedCoverDir()
     {

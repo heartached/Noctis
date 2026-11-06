@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.LibraryNotices"
              x:DataType="vm:ShellViewModel">
 
@@ -11,17 +13,36 @@
     <StackPanel Name="NoticeCards" Margin="20,0" Spacing="14">
         <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
             <StackPanel Spacing="10">
-                <TextBlock Classes="section" Text="Add your music" />
+                <TextBlock Classes="section" Text="{loc:T Mobile.Notice.AddMusicTitle}" />
                 <TextBlock Classes="subtle" TextWrapping="Wrap"
-                           Text="Pick the folder your music lives in. Noctis reads it in place and never uploads anything." />
-                <Button Classes="pill-accent" Content="Choose folder" Command="{Binding Library.AddFolderCommand}" />
+                           Text="{Binding Library.ConnectCardText}" />
+                <!-- Find All Music (Android's media index, asks for the audio permission) first where
+                     the host offers it; picking a folder stays for an SD card or a chosen folder. -->
+                <Button Name="FindAllMusicButton" Classes="pill-accent" Content="{loc:T Mobile.Notice.FindAllMusic}"
+                        Command="{Binding Library.FindAllMusicCommand}" IsVisible="{Binding Library.CanFindAllMusic}" />
+                <TextBlock Name="ConnectAllMusicHelp" Classes="subtle" TextWrapping="Wrap"
+                           Text="{Binding Library.AllMusicHelpText}" IsVisible="{Binding Library.AllMusicDenied}" />
+                <Button Classes="pill" Content="{loc:T Mobile.Folders.OpenSettings}"
+                        Command="{Binding Library.OpenAppSettingsCommand}" IsVisible="{Binding Library.AllMusicDenied}" />
+                <Button Name="ChooseFolderButton" Classes="pill-accent" Content="{loc:T Mobile.Notice.ChooseFolder}"
+                        Command="{Binding Library.AddFolderCommand}" IsVisible="{Binding !Library.CanFindAllMusic}" />
+                <Button Classes="pill" Content="{loc:T Mobile.Notice.ChooseFolder}"
+                        Command="{Binding Library.AddFolderCommand}" IsVisible="{Binding Library.CanFindAllMusic}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Find All Music is on but the audio permission was taken away in the system settings. -->
+        <Border Name="AllMusicLostCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowAllMusicLost}">
+            <StackPanel Spacing="10">
+                <TextBlock Text="{loc:T Mobile.Folders.AllMusicLost}" TextWrapping="Wrap" />
+                <Button Classes="pill" Content="{loc:T Mobile.Folders.OpenSettings}" Command="{Binding Library.OpenAppSettingsCommand}" />
             </StackPanel>
         </Border>
 
         <Border Name="ReconnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.NeedsReconnect}">
             <StackPanel Spacing="10">
                 <TextBlock Text="{Binding Library.StatusText}" TextWrapping="Wrap" />
-                <Button Classes="pill" Content="Reconnect folder" Command="{Binding Library.AddFolderCommand}" />
+                <Button Classes="pill" Content="{loc:T Mobile.Notice.ReconnectFolder}" Command="{Binding Library.AddFolderCommand}" />
             </StackPanel>
         </Border>
 
@@ -30,7 +51,7 @@
              rendering a frame every 16 ms on an idle screen (one bar each on Home and Library). -->
         <StackPanel Spacing="4" IsVisible="{Binding Library.IsScanning}">
             <ProgressBar IsIndeterminate="{Binding Library.IsScanning}" />
-            <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, StringFormat='Scanning… {0} files'}" />
+            <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, Converter={x:Static views:LocFormat.Count}, ConverterParameter=Mobile.Notice.ScanningFiles}" />
         </StackPanel>
     </StackPanel>
 </UserControl>

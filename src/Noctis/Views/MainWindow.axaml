@@ -227,7 +227,7 @@
                         </Panel.IsVisible>
                         <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                             <ToolTip.Tip>
-                                <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
+                                <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterDisplay}"/></TextBlock>
                             </ToolTip.Tip>
                             <PathIcon Data="{StaticResource FilterIcon}"/>
                             <Button.Flyout>
@@ -272,7 +272,7 @@
                         <Panel VerticalAlignment="Center">
                             <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
                                 <ToolTip.Tip>
-                                    <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
+                                    <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterDisplay}"/><Run Text=" · "/><Run Text="{Binding QualityFilterDisplay}"/></TextBlock>
                                 </ToolTip.Tip>
                                 <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
@@ -386,16 +386,27 @@
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumCarouselView}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <Separator/>
-                                    <MenuItem Header="{loc:T Main.CarouselCover}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cover">
+                                    <!-- GitHub #176: the case style only shows in the carousel, so its four
+                                         items are greyed (IsEnabled, not just opacity) while the grid is up;
+                                         the tooltip, shown on the disabled items only, says why. -->
+                                    <MenuItem Header="{loc:T Main.CarouselCover}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cover"
+                                              IsEnabled="{Binding IsAlbumCarouselView}" ToolTip.Tip="{loc:T Main.CarouselStyleCarouselOnly}"
+                                              ToolTip.ShowOnDisabled="True" ToolTip.ServiceEnabled="{Binding !IsAlbumCarouselView}">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cover}"/></MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="{loc:T Main.CarouselJewelCase}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="JewelCase">
+                                    <MenuItem Header="{loc:T Main.CarouselJewelCase}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="JewelCase"
+                                              IsEnabled="{Binding IsAlbumCarouselView}" ToolTip.Tip="{loc:T Main.CarouselStyleCarouselOnly}"
+                                              ToolTip.ShowOnDisabled="True" ToolTip.ServiceEnabled="{Binding !IsAlbumCarouselView}">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=JewelCase}"/></MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="{loc:T Main.CarouselVinyl}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Vinyl">
+                                    <MenuItem Header="{loc:T Main.CarouselVinyl}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Vinyl"
+                                              IsEnabled="{Binding IsAlbumCarouselView}" ToolTip.Tip="{loc:T Main.CarouselStyleCarouselOnly}"
+                                              ToolTip.ShowOnDisabled="True" ToolTip.ServiceEnabled="{Binding !IsAlbumCarouselView}">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Vinyl}"/></MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="{loc:T Main.CarouselCassette}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cassette">
+                                    <MenuItem Header="{loc:T Main.CarouselCassette}" Command="{Binding AlbumCarouselStyleCommand}" CommandParameter="Cassette"
+                                              IsEnabled="{Binding IsAlbumCarouselView}" ToolTip.Tip="{loc:T Main.CarouselStyleCarouselOnly}"
+                                              ToolTip.ShowOnDisabled="True" ToolTip.ServiceEnabled="{Binding !IsAlbumCarouselView}">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumCarouselStyle, Converter={StaticResource StringEquals}, ConverterParameter=Cassette}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <!-- GitHub #164: the top-right icon is the album carousel here, so the
@@ -1140,7 +1151,7 @@
                                     Classes="accent-pill queue-action"
                                     Content="{loc:T Main.Clear}"
                                     Click="OnQueueClearClick"
-                                    IsEnabled="{Binding !!Player.UpNext.Count}"
+                                    IsEnabled="{Binding Player.CanClearQueue}"
                                     Padding="0,9"
                                     FontSize="13"
                                     FontWeight="Bold"
@@ -1158,7 +1169,7 @@
                              list instead, in place between the played songs and Up Next. -->
                         <Panel DockPanel.Dock="Top" IsVisible="{Binding !Player.KeepPlayedInQueue}">
                         <StackPanel x:Name="QueueNowPlaying"
-                                    IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    IsVisible="{Binding Player.ShowQueueCurrentTrack}">
                             <TextBlock Text="{loc:T Queue.NowPlaying}"
                                        FontSize="11"
                                        FontWeight="SemiBold"
@@ -1843,6 +1854,16 @@
             </StackPanel>
         </controls:GlassPanel>
     </Border>
+
+    <!-- GitHub #171: while the sidebar is hidden (fullscreen lyrics) this strip at the left
+         edge slides it back in on hover (SidebarEdgePeek). As wide as the rail's margin. -->
+    <Border x:Name="SidebarRevealEdge"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Width="8"
+            Background="Transparent"
+            IsVisible="False"
+            ZIndex="10" />
 
     <!-- Sidebar: overlaid so hover-expand doesn't reflow content -->
     <Border x:Name="SidebarWrapper"

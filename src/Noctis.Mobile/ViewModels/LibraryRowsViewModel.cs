@@ -32,8 +32,11 @@ public sealed partial class LibraryRowItem : ObservableObject
         LibraryRowKind.Albums => Loc.T("Nav.Albums"),
         LibraryRowKind.Songs => Loc.T("Nav.Songs"),
         LibraryRowKind.Favorites => Loc.T("Nav.Favorites"),
-        _ => "Downloaded",
+        _ => Loc.T("Mobile.Downloaded"),
     };
+
+    /// <summary>The UI language changed: the row's name re-reads.</summary>
+    public void Relabel() => OnPropertyChanged(nameof(Title));
 
     /// <summary>Switched on under Edit: listed on the Library tab.</summary>
     [ObservableProperty]
@@ -165,7 +168,7 @@ public sealed partial class LibraryRowsViewModel : ObservableObject
             case LibraryRowKind.Favorites: Shell.OpenFavouritesCommand.Execute(null); break;
             case LibraryRowKind.Downloaded:
                 if (Shell.Account is { } account)
-                    Shell.Navigate(new SongListPageViewModel(Shell, "Downloaded", () => Shell.Library.Songs.Where(account.IsDownloaded)) { OffersDownloadedFilter = false });
+                    Shell.Navigate(new SongListPageViewModel(Shell, "Mobile.Downloaded", () => Shell.Library.Songs.Where(account.IsDownloaded)) { OffersDownloadedFilter = false });
                 break;
         }
     }

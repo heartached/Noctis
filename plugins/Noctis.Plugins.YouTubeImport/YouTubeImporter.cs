@@ -137,9 +137,17 @@ public sealed class YouTubeImporter : IYouTubeImporter
         }
 
         progress?.Report(new YouTubeImportProgress("Downloading", 0.05));
-        var downloadProgress = new Progress<double>(f => progress?.Report(new YouTubeImportProgress("Downloading", 0.05 + 0.75 * f)));
-        var produced = await Tool.DownloadAsync(info.Url, folder, ffmpeg, downloadProgress, ct,
-            status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format).ConfigureAwait(false);
+        // One report per (throttled) yt-dlp line, forwarded in order: percent and speed together,
+        // so the row's text doesn't flip between "Downloading" and "Downloading · 4.2 MB/s".
+        var downloadDetail = new InlineProgress<DownloadDetail>(d =>
+        {
+            var stage = d.BytesPerSec is { } speed
+                ? $"Downloading · {DownloadFormat.Format(speed, d.Eta)}"
+                : "Downloading";
+            progress?.Report(new YouTubeImportProgress(stage, 0.05 + 0.75 * d.Percent / 100.0));
+        });
+        var produced = await Tool.DownloadAsync(info.Url, folder, ffmpeg, null, ct,
+            status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format, downloadDetail).ConfigureAwait(false);
 
         try
         {

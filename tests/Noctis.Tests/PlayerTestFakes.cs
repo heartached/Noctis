@@ -230,6 +230,16 @@ internal sealed class FakeLibraryService : ILibraryService
     }
     public int MetadataChangedCount { get; private set; }
     public void NotifyMetadataChanged() => MetadataChangedCount++;
+
+    /// <summary>What GroupIntoAlbumAsync was asked for (GitHub #178).</summary>
+    public List<(IReadOnlyList<Track> Tracks, string Album, string AlbumArtist)> GroupCalls { get; } = new();
+    public AlbumGroupResult GroupResult { get; set; } = new(Guid.Empty, 0, Array.Empty<string>());
+    public Task<AlbumGroupResult> GroupIntoAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default)
+    {
+        GroupCalls.Add((tracks, album, albumArtist));
+        return Task.FromResult(GroupResult);
+    }
     public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
@@ -270,6 +280,11 @@ internal sealed class FakeHistoryLog : IPlayHistoryService
     public Task PreloadAsync() => Task.CompletedTask;
     public void RecordPlay(Track track) => Seed(track, DateTime.UtcNow);
     public void RecordSkip(Track track) { }
+    public void SetListened(Track track, TimeSpan listened)
+    {
+        var e = EventList.LastOrDefault(x => x.TrackId == track.Id);
+        if (e != null) e.ListenedMs = (long)listened.TotalMilliseconds;
+    }
     public Task FlushAsync() => Task.CompletedTask;
     public int PruneOlderThan(DateTime cutoffUtc) => EventList.RemoveAll(e => e.PlayedAtUtc < cutoffUtc);
     public Task ClearAsync() { EventList.Clear(); return Task.CompletedTask; }

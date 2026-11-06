@@ -237,6 +237,8 @@
                             <ProgressBar Value="{Binding Listing.Progress, FallbackValue=0}" Minimum="0" Maximum="1" Height="3" CornerRadius="2"
                                          MaxWidth="260" HorizontalAlignment="Left" Width="260" Margin="0,8,0,0"
                                          IsVisible="{Binding Listing.IsBusy, FallbackValue=False}"/>
+                            <TextBlock Text="{Binding Listing.ProgressDetail, FallbackValue={x:Null}}" FontSize="11" Opacity="0.6"
+                                       Margin="0,4,0,0" IsVisible="{Binding Listing.HasProgressDetail, FallbackValue=False}"/>
                         </StackPanel>
                         <!-- Top-right (owner 10-29): Install / Replace / Cancel while the plugin is not
                              installed; once it is, the plugin's own views ("Open Album Town") and "..." with
@@ -2103,6 +2105,17 @@
         <Style Selector="Button.pair-disclosure:pointerover /template/ ContentPresenter, Button.pair-disclosure:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+        <!-- No press dip on a full-width row: Button:pressed's scale(0.97) pulled the right edge
+             in ~10 px, so a click on the chevron was released outside the button and did nothing
+             (owner 11-04). The chevron's turn is the feedback. -->
+        <Style Selector="Button.pair-disclosure:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.pair-disclosure:focus-visible /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1.5"/>
+        </Style>
         <Style Selector="Path.pair-chevron">
             <Setter Property="RenderTransform" Value="rotate(0deg)"/>
             <Setter Property="Transitions">
@@ -3144,6 +3157,65 @@
                                           IsChecked="{Binding EnableAnimatedCovers}"
                                           VerticalAlignment="Center"/>
                 </Grid>
+            </Border>
+            <!-- GitHub #167: fetch on opening an album into a size-capped cache (oldest loops go
+                 first). Only while animated artwork is on; its cache options fold under it. -->
+            <Border Classes="setting-row" IsVisible="{Binding EnableAnimatedCovers}">
+                <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.AnimArtAutoFetch}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AnimArtAutoFetchDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AnimArtAutoFetch}"
+                                          IsChecked="{Binding AnimatedArtworkAutoFetch}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+                <controls:CollapsibleContent IsOpen="{Binding AnimatedArtworkAutoFetch}" Lift="10" Motion="Glide">
+                <StackPanel Classes="sub-setting" Spacing="10" Margin="2,10,0,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AnimArtCacheSize}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AnimArtCacheSizeDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.AnimArtCacheSize}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding AnimatedArtworkCacheSizeOptions}"
+                                  SelectedItem="{Binding SelectedAnimatedArtworkCacheSizeOption}"
+                                  MinWidth="96"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                    <!-- How full the cache is: a thin bar plus "312 MB of 1 GB used", Clear on the right. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <ProgressBar Minimum="0" Maximum="100"
+                                         Value="{Binding AnimatedArtworkCacheUsedPercent}"
+                                         Height="4" CornerRadius="2"/>
+                            <TextBlock Text="{Binding AnimatedArtworkCacheUsage}"
+                                       FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                IsEnabled="{Binding HasAnimatedArtworkCache}"
+                                AutomationProperties.Name="{loc:T Settings.ClearCache}"
+                                Command="{Binding ClearAnimatedArtworkCacheCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.ClearCache}" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+                </controls:CollapsibleContent>
+                </StackPanel>
             </Border>
             <Border Classes="setting-row">
                 <!-- Toggle + its Tint strength slider share a spacing-free panel so the gap folds
@@ -4211,6 +4283,21 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.LyricsGlowAndLift}"
                                           IsChecked="{Binding LyricsGlowAndLift}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord request: songs with no lyrics (or instrumentals) centre the player
+                 on the lyrics page instead of leaving the lyrics side empty. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsCenterWhenNoLyrics}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsCenterWhenNoLyricsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsCenterWhenNoLyrics}"
+                                          IsChecked="{Binding LyricsCenterWhenNoLyrics}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -6020,6 +6107,107 @@
 
                 </StackPanel>
             </Border>
+            <!-- Data Folder (GitHub #165): where the library, artwork and caches live. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.DataFolder}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.DataFolderHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center"
+                                    IsEnabled="{Binding !IsDataFolderCopying}">
+                            <Button AutomationProperties.Name="{loc:T Settings.DataFolderUseDefault}"
+                                    Command="{Binding UseDefaultDataFolderCommand}"
+                                    IsVisible="{Binding IsDataFolderCustom}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.DataFolderUseDefault}" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                            <Button AutomationProperties.Name="{loc:T Settings.DataFolderChange}"
+                                    Command="{Binding ChangeDataFolderCommand}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.DataFolderChange}" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                    <SelectableTextBlock Text="{Binding DataFolderPath}"
+                                         FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+
+                    <!-- Copying -->
+                    <StackPanel Spacing="6" IsVisible="{Binding IsDataFolderCopying}">
+                        <TextBlock Text="{Binding DataFolderCopyText}" FontSize="12" Opacity="0.7"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <ProgressBar Grid.Column="0" Minimum="0" Maximum="100"
+                                         Value="{Binding DataFolderCopyPercent}"
+                                         Height="4" CornerRadius="2"
+                                         VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="pill-action" Margin="12,0,0,0"
+                                    AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                    Command="{Binding CancelDataFolderCopyCommand}">
+                                <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- The picked folder already holds Noctis data -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderUseExistingVisible}" Lift="6">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{loc:T Settings.DataFolderExistingTitle}"
+                                       FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding DataFolderUseExistingDetail}"
+                                       FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="pill-action"
+                                        AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                        Command="{Binding CancelUseExistingDataFolderCommand}"
+                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                    <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
+                                </Button>
+                                <Button Classes="pill-action"
+                                        AutomationProperties.Name="{loc:T Settings.DataFolderUseThis}"
+                                        Command="{Binding ConfirmUseExistingDataFolderCommand}"
+                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                    <TextBlock Text="{loc:T Settings.DataFolderUseThis}" FontSize="13" FontWeight="SemiBold"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:CollapsibleContent>
+
+                    <TextBlock Text="{Binding DataFolderStatus}"
+                               IsVisible="{Binding IsDataFolderInfoVisible}"
+                               FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding DataFolderStatus}"
+                               IsVisible="{Binding IsDataFolderErrorVisible}"
+                               FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+
+                    <!-- A change waits for a restart -->
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding IsDataFolderRestartNeeded}">
+                        <Button Classes="pill-action"
+                                AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                Command="{Binding CancelDataFolderChangeCommand}"
+                                Padding="14,8" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
+                        </Button>
+                        <Button Classes="pill-action"
+                                AutomationProperties.Name="{loc:T Settings.DataFolderRestartNow}"
+                                Command="{Binding RestartForDataFolderCommand}"
+                                Padding="14,8" CornerRadius="999" Cursor="Hand">
+                            <TextBlock Text="{loc:T Settings.DataFolderRestartNow}" FontSize="13" FontWeight="SemiBold"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="14">
 
@@ -7196,6 +7384,19 @@
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.EnableScrobbling}"
                                               IsChecked="{Binding LastFmScrobblingEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- GitHub #177: Home's "From your Last.fm" mixes and Discover (read-only). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.LastFmTaste.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.LastFmTaste.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LastFmTaste.Title}"
+                                              IsChecked="{Binding LastFmTasteEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <!-- GitHub #160: one-way play count import from LastFm (SettingsViewModel.PlayCountImport.cs). -->

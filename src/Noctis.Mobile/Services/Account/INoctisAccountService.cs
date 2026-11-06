@@ -212,6 +212,11 @@ public interface INoctisAccountService
 
     // ── Downloads ──
     bool IsRemote(Track track);
+
+    /// <summary>The desktop song id a track stands for: a desktop song itself, or one of the phone's
+    /// own files the sync paired with a desktop song (shown once, plays the file, syncs under the
+    /// desktop's id). Null for a song only the phone has.</summary>
+    Guid? DesktopIdOf(Track track) => IsRemote(track) ? track.Id : null;
     bool IsDownloaded(Track track);
     long DownloadedBytes { get; }
     int DownloadedCount { get; }

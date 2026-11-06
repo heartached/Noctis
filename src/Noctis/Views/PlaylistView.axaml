@@ -585,7 +585,7 @@
                                     <MenuItem Header="{loc:T Playlist.AddQueue}"
                                               Command="{Binding AddAllToQueueCommand}">
                                         <MenuItem.Icon>
-                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineQueue}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineAddToQueue}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
@@ -607,6 +607,13 @@
                                               Command="{Binding SendPlaylistToFolderCommand}">
                                         <MenuItem.Icon>
                                             <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- Discord (DendyAly 11-04): export to .m3u8 / .m3u was only on the Playlists grid. -->
+                                    <MenuItem Header="{loc:T LibraryPlaylists.ExportPlaylist}"
+                                              Command="{Binding ExportPlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineExport}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <!-- Discord (DendyAly 11-02): hide or show the Featured Artists / Suggested
@@ -641,8 +648,10 @@
                                 Cursor="Hand"
                                 ToolTip.Tip="{loc:T Playlist.ChangeDisplayedOrderManualTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="{Binding SortLabel, StringFormat='Sort: {0}'}"
-                                           FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock
+                                           FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center">
+                                <TextBlock.Text><MultiBinding StringFormat="{}{0} {1}"><Binding Source="{x:Static loc:Loc.Instance}" Path="[Main.Sort]" /><Binding Path="SortLabel" /></MultiBinding></TextBlock.Text>
+                            </TextBlock>
                                 <!-- Vector chevron: the Segoe Fluent glyph it replaces only exists on Windows. -->
                                 <PathIcon Data="{StaticResource ChevronDownThinIcon}"
                                           Width="8" Height="8" Opacity="0.6" VerticalAlignment="Center" />

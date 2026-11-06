@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Models;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -37,14 +38,68 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         Photos = new ArtistPhotoRequests(() => shell.ArtistPhotos);
         SortChoices = new[]
         {
-            new SortChoice("Most Relevant", SearchSort.Relevance) { IsSelected = true },
-            new SortChoice("Recently Added", SearchSort.RecentlyAdded),
-            new SortChoice("Release Year", SearchSort.ReleaseYear),
-            new SortChoice("Recently Played", SearchSort.RecentlyPlayed),
-            new SortChoice("Most Played", SearchSort.MostPlayed),
-            new SortChoice("Title", SearchSort.Title),
+            new SortChoice("Mobile.Sort.MostRelevant", SearchSort.Relevance) { IsSelected = true },
+            new SortChoice("Mobile.RecentlyAdded", SearchSort.RecentlyAdded),
+            new SortChoice("Mobile.Sort.ReleaseYear", SearchSort.ReleaseYear),
+            new SortChoice("Mobile.RecentlyPlayed", SearchSort.RecentlyPlayed),
+            new SortChoice("Mobile.Sort.MostPlayed", SearchSort.MostPlayed),
+            new SortChoice("Mobile.Sort.Title", SearchSort.Title),
         };
-        shell.Library.Refreshed += (_, _) => Run();
+        shell.Library.Refreshed += (_, _) =>
+        {
+            _artistArtwork = null;
+            Run();
+        };
+    }
+
+    // The artist → cover map the artist results read, built once per library state (it walks
+    // every song) instead of at every keystroke.
+    private IReadOnlyDictionary<string, string?>? _artistArtwork;
+
+    private IReadOnlyDictionary<string, string?> ArtistArtwork() =>
+        _artistArtwork ??= MobileLibrary.ArtistArtwork(Shell.Library.Service);
+
+    /// <summary>
+    /// Typing: a keystroke within this long of the one before waits until the typing pauses
+    /// for it, so a fast word is one search and one re-realised result list, not one per letter
+    /// (the first letter and a cleared field still answer at once). Zero (the default, tests)
+    /// searches every keystroke; the phone sets it.
+    /// </summary>
+    public TimeSpan TypingDebounce { get; set; }
+
+    private long _lastKeystrokeTicks = long.MinValue / 2;
+    private Avalonia.Threading.DispatcherTimer? _typingTimer;
+
+    /// <summary>Searches run so far (tests count them).</summary>
+    internal int RunCount { get; private set; }
+
+    /// <summary>A search is waiting for the typing to pause (tests read it).</summary>
+    internal bool HasPendingSearch => _typingTimer?.IsEnabled == true;
+
+    private void OnTyped()
+    {
+        var debounce = TypingDebounce;
+        // Since the previous keystroke: the first letter after a pause answers at once.
+        var sinceLast = System.Diagnostics.Stopwatch.GetElapsedTime(_lastKeystrokeTicks);
+        _lastKeystrokeTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (debounce <= TimeSpan.Zero || !HasQuery || (sinceLast >= debounce && _typingTimer?.IsEnabled != true))
+        {
+            _typingTimer?.Stop();
+            Run();
+            return;
+        }
+        if (_typingTimer == null)
+        {
+            _typingTimer = new Avalonia.Threading.DispatcherTimer();
+            _typingTimer.Tick += (_, _) =>
+            {
+                _typingTimer!.Stop();
+                Run();
+            };
+        }
+        _typingTimer.Stop();
+        _typingTimer.Interval = debounce;
+        _typingTimer.Start();
     }
 
     public ShellViewModel Shell { get; }
@@ -109,17 +164,19 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     public bool ShowAlbumRow => HasAlbums && IsAllScope;
     public bool ShowAlbumGrid => HasAlbums && IsAlbumsScope;
 
-    partial void OnQueryChanged(string value) => Run();
+    partial void OnQueryChanged(string value) => OnTyped();
     partial void OnScopeChanged(SearchScope value) => Run();
     partial void OnSortChanged(SearchSort value) => Run();
 
     internal void Run()
     {
+        _typingTimer?.Stop();
+        RunCount++;
         bool Shows(SearchScope kind) => Scope == SearchScope.All || Scope == kind;
         int Cap(int allCap) => Scope == SearchScope.All ? allCap : ScopedCap;
 
         var results = MobileSearch.Find(Shell.Library.Service, Query, Cap(SongCap), Cap(AlbumCap), Cap(ArtistCap), Sort,
-            Shell.Library.Playlists, Cap(PlaylistCap));
+            Shell.Library.Playlists, Cap(PlaylistCap), ArtistArtwork);
 
         // Each list is replaced only when its results differ: a keystroke that narrows nothing
         // (and every library refresh) used to Reset all of them, re-realising every row and
@@ -195,7 +252,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         if (track == null) return;
         var list = Songs.ToList();
         var index = list.IndexOf(track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index, "Search");
+        if (index >= 0) Shell.Player.PlayTracks(list, index, Loc.T("Mobile.Search"));
     }
 
     /// <summary>A song under the featured artist plays that artist's top songs from it.</summary>
@@ -236,5 +293,5 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
 public sealed record PlaylistResult(Playlist Playlist, string? ArtworkPath)
 {
     public string Name => Playlist.Name;
-    public string Subtitle => Playlist.TrackIds.Count == 1 ? "Playlist · 1 song" : $"Playlist · {Playlist.TrackIds.Count} songs";
+    public string Subtitle => Loc.T("Mobile.Search.PlaylistSubtitle", Loc.Plural("Mobile.Count.Songs", Playlist.TrackIds.Count));
 }

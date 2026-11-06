@@ -57,6 +57,8 @@ public partial class TopBarViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CurrentTabTitle));
         OnPropertyChanged(nameof(PageTitleDisplay));
+        OnPropertyChanged(nameof(ReleaseTypeFilterDisplay));
+        OnPropertyChanged(nameof(QualityFilterDisplay));
     }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
@@ -568,6 +570,7 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReleaseTypeFiltered))]
     [NotifyPropertyChangedFor(nameof(IsAlbumFilterActive))]
+    [NotifyPropertyChangedFor(nameof(ReleaseTypeFilterDisplay))]
     private string _releaseTypeFilterLabel = "All";
     [ObservableProperty] private ICommand? _qualityFilterCommand;
     [ObservableProperty]
@@ -575,7 +578,21 @@ public partial class TopBarViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(AlbumQualityLossless))]
     [NotifyPropertyChangedFor(nameof(AlbumQualityHiRes))]
     [NotifyPropertyChangedFor(nameof(IsAlbumFilterActive))]
+    [NotifyPropertyChangedFor(nameof(QualityFilterDisplay))]
     private string _qualityFilterLabel = "All";
+
+    /// <summary>The filter tooltips' localized text. The labels above stay the raw English
+    /// keys the albums VM reports because the checks below compare them (seen English in German, 11-04).</summary>
+    public string ReleaseTypeFilterDisplay => Loc.T(AlbumFilterLabelKey(ReleaseTypeFilterLabel));
+    public string QualityFilterDisplay => Loc.T(AlbumFilterLabelKey(QualityFilterLabel));
+
+    public static string AlbumFilterLabelKey(string label) => label switch
+    {
+        "All" => "Main.All", "Albums" => "Main.Albums", "Singles" => "Main.Singles", "EPs" => "Main.EPs",
+        "Live Albums" => "Main.LiveAlbums", "Compilations" => "Main.Compilations", "Other" => "Main.Other",
+        "Lossless" => "Main.Lossless", "Hi-Res" => "Main.HiRes",
+        _ => label,
+    };
 
     // Albums quality pill segments (mirrors the Songs pill; label is what the albums VM reports).
     public bool AlbumQualityAll => QualityFilterLabel == "All";

@@ -172,6 +172,8 @@ public partial class LyricsView : UserControl
             {
                 _isJumpingOnAttach = false;
             }
+            // The state may have moved while this view was cached off screen: open on it.
+            ApplyNoLyricsCentered(animate: false);
             JumpToActiveLineWhenReady(vm.ScrollLineIndex);
 
             // Start the artwork flow if the artwork background mode is active.
@@ -306,6 +308,10 @@ public partial class LyricsView : UserControl
                 TrackInfoStack.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
                 SetHeaderAlignment(Avalonia.Layout.HorizontalAlignment.Center);
             }
+
+            // The block above put LeftPanel back in its column: centre it again (or drop
+            // the centring in narrow mode) without a slide.
+            ApplyNoLyricsCentered(animate: false);
         }
 
         // Continuous sizing: derive the cover and lyric sizes from the actual
@@ -371,6 +377,83 @@ public partial class LyricsView : UserControl
         MetadataRow.HorizontalAlignment = alignment;
     }
 
+    // ── Centred layout for songs with no lyrics (Discord request) ──
+    // Wide mode only: the left panel spans both columns, so its stack sits in the middle
+    // of the page, and the lyrics column fades out (its Search Lyrics moves into the player
+    // island: PlaybackBarView.ShowLyricsSearch, its states in that button's tooltip). Narrow
+    // mode already runs the header full width with the lyrics below it, so it keeps the
+    // lyrics column as is.
+
+    private const int NoLyricsCenterSlideMs = 560;
+    private static readonly Avalonia.Animation.Easings.Easing NoLyricsCenterEase = new CubicBezierEase(0.22, 1, 0.36, 1);
+    /// <summary>Whether the centred layout is what is applied right now.</summary>
+    private bool _noLyricsCenterApplied;
+
+    /// <summary>Applies <see cref="LyricsViewModel.IsNoLyricsCentered"/>. Animated: the left
+    /// panel is moved to its new grid slot at once and offset back to where it was drawn,
+    /// then that offset glides to zero (so a resize mid-slide still ends in the right place),
+    /// while the lyrics column fades and the island's Search Lyrics grows in. Not animated
+    /// (attach, resize across the breakpoint): everything snaps.</summary>
+    private void ApplyNoLyricsCentered(bool animate)
+    {
+        if (LeftPanel is null || RightPanel is null || LyricsPlaybackBar is null) return;
+        var lyricsVm = DataContext as LyricsViewModel;
+        var want = !_isNarrowMode && lyricsVm is { IsNoLyricsCentered: true };
+        if (animate && want == _noLyricsCenterApplied) return;
+        var changed = want != _noLyricsCenterApplied;
+        _noLyricsCenterApplied = want;
+
+        if (!_isNarrowMode)
+            Grid.SetColumnSpan(LeftPanel, want ? 2 : 1);
+
+        var gridWidth = MainLayoutGrid.Bounds.Width;
+        var slide = animate && changed && gridWidth > 0 && VisualRoot != null && !_isNarrowMode;
+        var duration = TimeSpan.FromMilliseconds(NoLyricsCenterSlideMs);
+
+        LeftPanel.Transitions = null;
+        if (slide)
+        {
+            // The panel's centre moves by a quarter of the page: half a column.
+            var from = want ? -gridWidth / 4 : gridWidth / 4;
+            LeftPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(
+                FormattableString.Invariant($"translate({from:F1}px, 0px)"));
+            LeftPanel.Transitions = new Transitions
+            {
+                new TransformOperationsTransition
+                {
+                    Property = RenderTransformProperty,
+                    Duration = duration,
+                    Easing = NoLyricsCenterEase,
+                },
+            };
+            LeftPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translate(0px, 0px)");
+        }
+        else
+        {
+            LeftPanel.RenderTransform = null;
+        }
+
+        FadeTo(RightPanel, want ? 0.0 : 1.0, slide ? duration : TimeSpan.Zero);
+        RightPanel.IsHitTestVisible = !want;
+        LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, want, slide, duration);
+    }
+
+    private static void FadeTo(Control control, double opacity, TimeSpan duration)
+    {
+        control.Transitions = duration > TimeSpan.Zero
+            ? new Transitions
+            {
+                new DoubleTransition
+                {
+                    Property = OpacityProperty,
+                    Duration = duration,
+                    Easing = NoLyricsCenterEase,
+                },
+            }
+            : null;
+        control.Opacity = opacity;
+    }
+
     /// <summary>Debounced jump back to the active lyric line after a resize settles.</summary>
     private void ScheduleActiveLineRecenter()
     {
@@ -407,6 +490,7 @@ public partial class LyricsView : UserControl
 
         if (DataContext is LyricsViewModel vm)
             SubscribeVm(vm);
+        ApplyNoLyricsCentered(animate: false);
     }
 
     /// <summary>
@@ -527,6 +611,13 @@ public partial class LyricsView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(LyricsViewModel.IsNoLyricsCentered))
+        {
+            // Off screen (cached view): snap, the next visit shows the settled layout.
+            ApplyNoLyricsCentered(animate: VisualRoot != null && !_isJumpingOnAttach);
+            return;
+        }
+
         if (e.PropertyName == nameof(LyricsViewModel.ScrollLineIndex))
         {
             if (sender is LyricsViewModel vm)

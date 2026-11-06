@@ -112,6 +112,13 @@ internal sealed class DownloadMeter
         return Math.Max(1, bytesPerSecond / 1024).ToString("0", c) + " KB/s";
     }
 
+    /// <summary>"4.2 MB/s · about 30 s left", "4.2 MB/s", or empty until the speed has settled.</summary>
+    internal static string SpeedText(DownloadReading d)
+    {
+        if (d.BytesPerSecond is not { } speed) return string.Empty;
+        return d.Remaining is { } left ? RateText(speed) + " · " + RemainingText(left) : RateText(speed);
+    }
+
     /// <summary>Whole percent, rounded down so it only says 100% once the work is done.</summary>
     internal static string PercentText(double fraction) =>
         ((int)Math.Floor(Math.Clamp(fraction, 0, 1) * 100)).ToString(System.Globalization.CultureInfo.CurrentCulture) + "%";

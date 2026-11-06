@@ -46,7 +46,7 @@ public sealed class Loc : INotifyPropertyChanged
     /// Strings.*.resx files by LocalizationTests.KnownCultures_ListsEveryShippedTranslation.
     /// </summary>
     public static IReadOnlyList<string> KnownCultures { get; } =
-        new[] { "ar", "es", "fr", "ja", "ko", "ru", "tr", "zh-Hans", "zh-Hant" };
+        new[] { "ar", "de", "es", "fr", "ja", "ko", "ru", "tr", "zh-Hans", "zh-Hant" };
 
     private static IReadOnlyList<string> DiscoverSupported()
     {
@@ -108,6 +108,75 @@ public sealed class Loc : INotifyPropertyChanged
     /// <summary><see cref="T"/> with <see cref="string.Format(IFormatProvider, string, object[])"/> in the current culture.</summary>
     public static string T(string key, params object[] args)
         => string.Format(Instance._culture, Instance.Get(key), args);
+
+    /// <summary>
+    /// A count in words ("1 song", "5 песен"). The key's value holds the language's plural forms
+    /// separated by '|', in CLDR order: English, Spanish, French, Turkish one|other; Russian
+    /// one|few|many (1 песня, 2 песни, 5 песен); Arabic zero|one|two|few|many|other; Japanese,
+    /// Korean and Chinese a single form. {0} is the count; <paramref name="args"/> are {1} on.
+    /// A value with fewer forms than its language has uses its last one.
+    /// </summary>
+    public static string Plural(string key, long count, params object[] args)
+    {
+        var forms = Instance.Get(key).Split('|');
+        var form = forms[Math.Min(PluralForm(PluralLanguage(), count), forms.Length - 1)];
+        var values = new object[args.Length + 1];
+        // The count with the language's digit grouping ("14,208", "14 208"), whether the form
+        // writes {0} or {0:N0}: the phone's forms wrote {0}, which printed "14208 scrobbles".
+        values[0] = count.ToString("N0", Instance._culture);
+        args.CopyTo(values, 1);
+        return string.Format(Instance._culture, form, values);
+    }
+
+    /// <summary>The language whose plural rules apply: the translation the strings come from
+    /// (a Dutch phone reads the English fallback, so English rules).</summary>
+    private static string PluralLanguage()
+    {
+        try { return CultureInfo.GetCultureInfo(Resolve(Instance._culture.Name)).TwoLetterISOLanguageName; }
+        catch (CultureNotFoundException) { return "en"; }
+    }
+
+    /// <summary>The index of the CLDR plural form <paramref name="n"/> takes in <paramref name="language"/>
+    /// (integers only; the order the '|'-separated forms are written in).</summary>
+    public static int PluralForm(string language, long n)
+    {
+        n = Math.Abs(n);
+        long mod10 = n % 10, mod100 = n % 100;
+        switch (language)
+        {
+            case "ja" or "ko" or "zh" or "vi" or "th" or "id" or "ms":
+                return 0;
+            case "ru" or "uk" or "be":
+                if (mod10 == 1 && mod100 != 11) return 0;
+                if (mod10 is >= 2 and <= 4 && mod100 is < 12 or > 14) return 1;
+                return 2;
+            case "pl":
+                if (n == 1) return 0;
+                if (mod10 is >= 2 and <= 4 && mod100 is < 12 or > 14) return 1;
+                return 2;
+            case "ar":
+                if (n == 0) return 0;
+                if (n == 1) return 1;
+                if (n == 2) return 2;
+                if (mod100 is >= 3 and <= 10) return 3;
+                if (mod100 is >= 11 and <= 99) return 4;
+                return 5;
+            case "fr" or "pt":
+                return n <= 1 ? 0 : 1;
+            default:
+                return n == 1 ? 0 : 1;
+        }
+    }
+
+    /// <summary>"Español (Spanish)", "中文（简体） (Chinese, Simplified)"; just "English" when both names agree.
+    /// How the Language pickers (desktop and phone) name a shipped translation.</summary>
+    public static string DescribeCulture(string code)
+    {
+        var culture = CultureInfo.GetCultureInfo(code);
+        var native = char.ToUpperInvariant(culture.NativeName[0]) + culture.NativeName[1..];
+        var english = culture.EnglishName.Replace(" (", ", ").TrimEnd(')');
+        return string.Equals(native, english, StringComparison.OrdinalIgnoreCase) ? native : $"{native} ({english})";
+    }
 
     private string Get(string key)
     {

@@ -74,21 +74,27 @@ public static class DropDownFlyoutMotion
             state.Body = body;
             body.PropertyChanged += (s, args) =>
             {
-                if (args.Property != Visual.OpacityProperty || !state.Held) return;
-                if (s is not Control c || c.Opacity > 0.001) return;
+                if (!state.Held || s is not Control c) return;
+                var fade = MenuOpenAnimation.FadePropertyOf(c);
+                if (args.Property != fade || c.GetValue(fade) > 0.001) return;
                 flyout.Hide();
             };
         }
 
+        // A Liquid Glass presenter (GlassMenus) fades MenuOpenAnimation.Fade, which its frosted
+        // card follows: the blur ignores Opacity, so an Opacity fade showed the frost at full
+        // strength while the rest faded.
+        var fadeProperty = MenuOpenAnimation.FadePropertyOf(body);
         var above = OpensAbove(flyout);
         body.Transitions = null;
         body.RenderTransformOrigin = new RelativePoint(0.5, above ? 1 : 0, RelativeUnit.Relative);
-        body.Opacity = 0;
+        if (fadeProperty != Visual.OpacityProperty) body.Opacity = 1;
+        body.SetValue(fadeProperty, 0.0);
         body.RenderTransform = above ? StartAbove : StartBelow;
-        body.Transitions = ComboBoxDropDownAnimator.BuildOpen();
+        body.Transitions = ComboBoxDropDownAnimator.BuildOpen(fadeProperty);
         Dispatcher.UIThread.Post(() =>
         {
-            body.Opacity = 1;
+            body.SetValue(fadeProperty, 1.0);
             body.RenderTransform = Rest;
         }, DispatcherPriority.Render);
     }
@@ -107,10 +113,11 @@ public static class DropDownFlyoutMotion
         e.Cancel = true;
         state.Held = true;
         var end = OpensAbove(flyout) ? EndAbove : EndBelow;
-        body.Transitions = ComboBoxDropDownAnimator.BuildClose();
+        var fadeProperty = MenuOpenAnimation.FadePropertyOf(body);
+        body.Transitions = ComboBoxDropDownAnimator.BuildClose(fadeProperty);
         Dispatcher.UIThread.Post(() =>
         {
-            body.Opacity = 0;
+            body.SetValue(fadeProperty, 0.0);
             body.RenderTransform = end;
         }, DispatcherPriority.Render);
     }

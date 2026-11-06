@@ -6,11 +6,29 @@ namespace Noctis.Helpers;
 /// different folder than the installed copy and avoid clobbering each
 /// other's library/settings/playlists. Debug builds additionally default to
 /// a separate "Noctis-dev" profile (seeded once from the installed profile).
+/// That folder is the HOME root; the user can move the data elsewhere (Settings ›
+/// Advanced › Data Folder, GitHub #165), recorded in a pointer file in the home root
+/// (<see cref="DataLocation"/>).
 /// </summary>
 public static class AppPaths
 {
     private static readonly object _rootLock = new();
     private static string? _dataRoot;
+    private static string? _homeRoot;
+
+    /// <summary>
+    /// The profile's own folder: NOCTIS_DATA_DIR when set, else the default (%APPDATA%/Noctis,
+    /// Debug: Noctis-dev). It holds the data unless the user moved it, and always holds the
+    /// pointer to where it went. The single-instance guard keys on it, so a moved profile is
+    /// still the same app.
+    /// </summary>
+    public static string HomeRoot
+    {
+        get { lock (_rootLock) return _homeRoot ??= ResolveHomeRoot(); }
+    }
+
+    /// <summary>True when the data lives in <see cref="HomeRoot"/> (not moved, or not overridden).</summary>
+    public static bool IsDataInHomeRoot => DataLocation.SamePath(DataRoot, HomeRoot);
 
     /// <summary>Resolved lazily so a host can <see cref="OverrideDataRoot"/> first.</summary>
     public static string DataRoot
@@ -36,7 +54,14 @@ public static class AppPaths
         }
     }
 
-    private static string ResolveDataRoot()
+    /// <summary>
+    /// The home root, or the folder its pointer names. A test copy pointed at by
+    /// NOCTIS_DATA_DIR has no pointer of its own, so the variable still decides. The desktop
+    /// app runs <see cref="DataLocation.PrepareAtStartup"/> before anything reads this.
+    /// </summary>
+    private static string ResolveDataRoot() => DataLocation.ConfiguredRoot(HomeRoot);
+
+    private static string ResolveHomeRoot()
     {
         var env = Environment.GetEnvironmentVariable("NOCTIS_DATA_DIR");
         if (!string.IsNullOrWhiteSpace(env))
@@ -48,7 +73,8 @@ public static class AppPaths
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 #if DEBUG
         var devRoot = Path.Combine(appData, "Noctis-dev");
-        SeedDevProfileIfMissing(Path.Combine(appData, "Noctis"), devRoot);
+        // From wherever the installed profile keeps its data (it may have been moved, #165).
+        SeedDevProfileIfMissing(DataLocation.ConfiguredRoot(Path.Combine(appData, "Noctis")), devRoot);
         return devRoot;
 #else
         return Path.Combine(appData, "Noctis");

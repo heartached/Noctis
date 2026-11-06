@@ -109,8 +109,21 @@ public sealed class AlbumCarousel : Panel
     private double _lastMovePosition;
     private double _wheelAccum;
 
+    /// <summary>Right-click / menu key on a card (GitHub #178: the album menu, with Group into One
+    /// Album, works in the carousel too). Sender is the card; the album is the argument.</summary>
+    public event EventHandler<Album>? AlbumContextRequested;
+
     public AlbumCarousel()
     {
+        AddHandler(ContextRequestedEvent, (_, e) =>
+        {
+            // The pressed card, else the centred one (menu key on the focused strip).
+            var card = CardFrom(e.Source);
+            var album = card?.Album ?? CenterAlbum;
+            if (album == null || AlbumContextRequested == null) return;
+            AlbumContextRequested.Invoke((object?)card ?? this, album);
+            e.Handled = true;
+        });
         Focusable = true;
         ClipToBounds = true;
         Background = Brushes.Transparent; // wheel / drag anywhere on the strip

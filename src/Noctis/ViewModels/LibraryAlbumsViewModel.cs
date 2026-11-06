@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -98,8 +99,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Audio-quality filter chips (Lossless / Hi-Res), toggleable.</summary>
     public ObservableCollection<QualityChip> QualityChips { get; } = new()
     {
-        new QualityChip { Key = "lossless", Label = "Lossless" },
-        new QualityChip { Key = "hires", Label = "Hi-Res" },
+        new QualityChip { Key = "lossless", Label = Loc.T("Main.Lossless") },
+        new QualityChip { Key = "hires", Label = Loc.T("Main.HiRes") },
     };
 
     /// <summary>Active quality filter: "" (off), "lossless", or "hires".</summary>
@@ -131,14 +132,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Label for the sort dropdown button.</summary>
     public string AlbumSortLabel => AlbumSortMode switch
     {
-        "title" => "Title",
-        "dateadded" => "Recently added",
-        "datemodified" => "Date Modified",
-        "mostplayed" => "Most played",
-        "albumartist" => "Album Artist",
-        "year" => "Year",
-        "random" => "Random",
-        _ => "Default",
+        "title" => Loc.T("Main.Title"),
+        "dateadded" => Loc.T("Main.RecentlyAdded"),
+        "datemodified" => Loc.T("Main.DateModified"),
+        "mostplayed" => Loc.T("Main.MostPlayed"),
+        "albumartist" => Loc.T("Main.AlbumArtist"),
+        "year" => Loc.T("Main.Year"),
+        "random" => Loc.T("Main.Random"),
+        _ => Loc.T("Main.Default"),
     };
 
     /// <summary>Whether the direction controls apply to the current mode.
@@ -404,7 +405,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
 
     /// <summary>Dynamic header: artist name when filtered, "Albums" otherwise.</summary>
-    public string HeaderText => IsArtistFiltered ? ArtistFilterName : "Albums";
+    public string HeaderText => IsArtistFiltered ? ArtistFilterName : Loc.T("Nav.Albums");
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
@@ -414,6 +415,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
+
+    /// <summary>A command used the Ctrl-selection up. The view clears its own set on this:
+    /// it pushes a copy on every menu open, so clearing only the copy left the old albums
+    /// selected there, out of sight once the library rebuilt them, and the next command
+    /// acted on them too (GitHub #178).</summary>
+    public event EventHandler? CtrlSelectionConsumed;
+
+    private void ConsumeCtrlSelection()
+    {
+        CtrlSelectedAlbums.Clear();
+        CtrlSelectionConsumed?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>The Ctrl-selection when the acted-on album is part of it (or none was given), else just that album.</summary>
     private List<Album> SelectionOr(Album? album) =>
@@ -484,13 +497,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         ReleaseTypeChips = new ObservableCollection<ReleaseTypeChip>
         {
-            new() { Filter = null, Label = "All", IsActive = true },
-            new() { Filter = ReleaseType.Album, Label = "Albums" },
-            new() { Filter = ReleaseType.Single, Label = "Singles" },
-            new() { Filter = ReleaseType.EP, Label = "EPs" },
-            new() { Filter = ReleaseType.Live, Label = "Live Albums" },
-            new() { Filter = ReleaseType.Compilation, Label = "Compilations" },
-            new() { Filter = ReleaseType.Other, Label = "Other" },
+            new() { Filter = null, Label = Loc.T("Main.All"), IsActive = true },
+            new() { Filter = ReleaseType.Album, Label = Loc.T("Main.Albums") },
+            new() { Filter = ReleaseType.Single, Label = Loc.T("Main.Singles") },
+            new() { Filter = ReleaseType.EP, Label = Loc.T("Main.EPs") },
+            new() { Filter = ReleaseType.Live, Label = Loc.T("Main.LiveAlbums") },
+            new() { Filter = ReleaseType.Compilation, Label = Loc.T("Main.Compilations") },
+            new() { Filter = ReleaseType.Other, Label = Loc.T("Main.Other") },
         };
 
         // Mark dirty when library changes — actual reload deferred to next Refresh() call.
@@ -975,7 +988,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         var rows = new List<object>
         {
-            new ArtistSectionHeader { Title = capped ? "Top Songs" : "Songs" },
+            new ArtistSectionHeader { Title = capped ? Loc.T("ArtistDetail.Popular") : Loc.T("ArtistDetail.Songs") },
         };
 
         for (var i = 0; i < orderedSongs.Count; i += SongsPerRow)
@@ -990,7 +1003,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
 
         if (albumRows.Count > 0)
-            rows.Add(new ArtistSectionHeader { Title = "Albums" });
+            rows.Add(new ArtistSectionHeader { Title = Loc.T("ArtistDetail.Albums") });
         rows.AddRange(albumRows);
         return rows;
     }
@@ -1209,7 +1222,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private Task SnoozeAlbumForMonth(Album album)
     {
         var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
         return _player.SnoozeTracksForMonthAsync(tracks);
     }
 
@@ -1289,7 +1302,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
     }
 
     [RelayCommand]
@@ -1312,7 +1325,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
         await _library.SaveTrackUserStateAsync(changed);
         _library.NotifyFavoritesChanged(changed);
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
     }
 
     [RelayCommand]
@@ -1324,7 +1337,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (selection.Count > 1)
         {
             var tracks = selection.SelectMany(a => a.Tracks ?? new()).ToList();
-            CtrlSelectedAlbums.Clear();
+            ConsumeCtrlSelection();
             await MetadataHelper.OpenBatchMetadataWindow(tracks);
             return;
         }
@@ -1361,8 +1374,52 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private async Task SendAlbumToFolder(Album album)
     {
         var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
         await MetadataHelper.OpenSendToFolderDialog(tracks);
+    }
+
+    /// <summary>Asks for the grouped album's name and album artist (test seam; the two-field prompt).</summary>
+    internal Func<string, string, string?, string, string?, string?, string?, Task<(string First, string Second)?>> PromptGroupTarget { get; set; }
+        = Views.TextPromptDialog.ShowTwoAsync;
+
+    /// <summary>Shows a Group into One Album notice (test seam).</summary>
+    internal Func<Views.ConfirmationRequest, Task<Views.ConfirmationResult>> ShowGroupNotice { get; set; }
+        = Views.ConfirmationDialog.ShowAsync;
+
+    /// <summary>
+    /// GitHub #178 "Group into One Album": the Ctrl-selected albums (or, with only the clicked
+    /// album, every album of the same name) become one album under the name and album artist
+    /// the user confirms; written to the files' Album / Album Artist tags.
+    /// </summary>
+    [RelayCommand]
+    private async Task GroupIntoOneAlbum(Album album)
+    {
+        var albums = SelectionOr(album).Where(a => a?.Tracks is { Count: > 0 }).Distinct().ToList();
+        ConsumeCtrlSelection();
+        if (albums.Count == 1)
+            albums = AlbumGrouping.SameNameAlbums(_library.Albums, albums[0])
+                .Where(a => a.Tracks is { Count: > 0 }).ToList();
+        if (albums.Count < 2)
+        {
+            await ShowGroupNotice(new Views.ConfirmationRequest(Loc.T("GroupAlbums.SelectHint"), Loc.T("GroupAlbums.Title"), InfoOnly: true));
+            return;
+        }
+
+        var tracks = albums.SelectMany(a => a.Tracks).ToList();
+        var (name, artist) = AlbumGrouping.SuggestGroupTarget(tracks);
+        var answer = await PromptGroupTarget(Loc.T("GroupAlbums.Title"),
+            Loc.T("GroupAlbums.AlbumName"), name,
+            Loc.T("GroupAlbums.AlbumArtist"), artist,
+            Loc.T("GroupAlbums.Hint", albums.Count, tracks.Count),
+            Loc.T("GroupAlbums.Confirm"));
+        if (answer is not { } target || !Track.IsRealAlbumName(target.First) || string.IsNullOrWhiteSpace(target.Second))
+            return;
+
+        var result = await _library.GroupIntoAlbumAsync(tracks, target.First, target.Second);
+        if (result.UnwrittenFiles.Count > 0)
+            await ShowGroupNotice(new Views.ConfirmationRequest(
+                Loc.T("GroupAlbums.NotWritten", result.UnwrittenFiles.Count), Loc.T("GroupAlbums.Title"),
+                Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
     }
 
     private Action<string>? _viewArtistAction;
@@ -1392,7 +1449,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        CtrlSelectedAlbums.Clear();
+        ConsumeCtrlSelection();
     }
 
     // sourceKey is the cached SearchText.Normalize key (Album.SearchNameKey,

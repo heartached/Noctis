@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              x:Class="Noctis.Mobile.Views.ScrobblingPane"
              x:DataType="vm:ScrobblingSettingsViewModel">
@@ -113,7 +114,7 @@
                                 <Border Width="12" Height="20" CornerRadius="3" BorderThickness="1.6"
                                         BorderBrush="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Classes="route-label" Text="This phone" />
+                            <TextBlock Classes="route-label" Text="{loc:T Mobile.Scrobbling.ThisPhone}" />
                         </StackPanel>
                         <Border Grid.Column="1" Classes="route-line" />
                         <StackPanel Grid.Column="2">
@@ -121,7 +122,7 @@
                                 <Border Width="22" Height="15" CornerRadius="3" BorderThickness="1.6"
                                         BorderBrush="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <TextBlock Classes="route-label" Text="Computer" />
+                            <TextBlock Classes="route-label" Text="{loc:T Mobile.Scrobbling.Computer}" />
                         </StackPanel>
                         <Border Grid.Column="3" Classes="route-line" />
                         <StackPanel Grid.Column="4">
@@ -132,18 +133,18 @@
                                     <Border Width="3" Height="13" CornerRadius="1.5" Background="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Bottom" />
                                 </StackPanel>
                             </Border>
-                            <TextBlock Classes="route-label" Text="Services" />
+                            <TextBlock Classes="route-label" Text="{loc:T Mobile.Scrobbling.Services}" />
                         </StackPanel>
                     </Grid>
                     <Border CornerRadius="14" Background="{DynamicResource PhoneSeparatorBrush}" Padding="3">
                         <Grid ColumnDefinitions="*,*">
                             <Button Name="ThroughComputerButton" Classes="seg" Classes.on="{Binding IsThroughComputer}"
-                                    Command="{Binding SelectThroughComputerCommand}" AutomationProperties.Name="Through Computer">
-                                <TextBlock Text="Through Computer" />
+                                    Command="{Binding SelectThroughComputerCommand}" AutomationProperties.Name="{loc:T Mobile.Scrobbling.ThroughComputer}">
+                                <TextBlock Text="{loc:T Mobile.Scrobbling.ThroughComputer}" />
                             </Button>
                             <Button Name="FromPhoneButton" Grid.Column="1" Classes="seg" Classes.on="{Binding IsFromPhone}"
-                                    Command="{Binding SelectFromPhoneCommand}" AutomationProperties.Name="From This Phone">
-                                <TextBlock Text="From This Phone" />
+                                    Command="{Binding SelectFromPhoneCommand}" AutomationProperties.Name="{loc:T Mobile.Scrobbling.FromPhone}">
+                                <TextBlock Text="{loc:T Mobile.Scrobbling.FromPhone}" />
                             </Button>
                         </Grid>
                     </Border>
@@ -153,7 +154,7 @@
         </StackPanel>
 
         <StackPanel>
-            <TextBlock Classes="group-caption" Text="Services" />
+            <TextBlock Classes="group-caption" Text="{loc:T Mobile.Scrobbling.Services}" />
             <Border Name="ServicesCard" Classes="group-card">
                 <StackPanel>
                     <Button Name="LastFmRow" Classes="row" Command="{Binding LastFmTapCommand}" AutomationProperties.Name="Last.fm">
@@ -186,26 +187,38 @@
             <TextBlock Name="StatusMessageLabel" Classes="group-footnote" Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" />
         </StackPanel>
 
+        <!-- Home's From Your Last.fm and Discover on Last.fm (GitHub #177): read from the account
+             connected here, so the switch shows only while one is. -->
+        <StackPanel Name="TasteGroup" IsVisible="{Binding ShowTasteSwitch}">
+            <Border Name="TasteCard" Classes="group-card">
+                <ToggleButton Name="TasteSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Scrobbling.Taste}"
+                              IsChecked="{Binding LastFmTaste}">
+                    <TextBlock Classes="row-label" Text="{loc:T Mobile.Scrobbling.Taste}" />
+                </ToggleButton>
+            </Border>
+            <TextBlock Name="TasteFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Scrobbling.TasteFootnote}" />
+        </StackPanel>
+
         <StackPanel>
-            <TextBlock Classes="group-caption" Text="While Listening" />
+            <TextBlock Classes="group-caption" Text="{loc:T Mobile.Scrobbling.WhileListening}" />
             <Border Name="ListeningCard" Classes="group-card">
                 <StackPanel>
                     <!-- The phone's own sending: only From This Phone has any (Through Computer, the
                          computer sends and the phone has nothing for these to stop). -->
                     <StackPanel Name="PhoneControls" IsVisible="{Binding PhoneControlsEnabled}">
-                        <ToggleButton Name="SendPlaysSwitch" Classes="switch-row" AutomationProperties.Name="Send Plays"
+                        <ToggleButton Name="SendPlaysSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Scrobbling.SendPlays}"
                                       IsChecked="{Binding SendPlays}">
-                            <TextBlock Classes="row-label" Text="Send Plays" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Scrobbling.SendPlays}" />
                         </ToggleButton>
                         <Border Classes="row-separator plain" />
-                        <ToggleButton Name="NowPlayingSwitch" Classes="switch-row" AutomationProperties.Name="Show Now Playing"
+                        <ToggleButton Name="NowPlayingSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Scrobbling.ShowNowPlaying}"
                                       IsChecked="{Binding ShowNowPlaying}">
-                            <TextBlock Classes="row-label" Text="Show Now Playing" />
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Scrobbling.ShowNowPlaying}" />
                         </ToggleButton>
                         <Border Classes="row-separator plain" />
                     </StackPanel>
                     <Grid Classes="setting-row" ColumnDefinitions="*,Auto">
-                        <TextBlock Classes="row-label" Text="Waiting to Send" />
+                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Scrobbling.Waiting}" />
                         <TextBlock Name="WaitingLabel" Grid.Column="1" Classes="row-value" Text="{Binding WaitingText}" />
                     </Grid>
                 </StackPanel>

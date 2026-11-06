@@ -74,6 +74,33 @@ release for its download buttons, so a stable plugin release published after an 
 would take over both. (The in-app updater ignores `plugin-*` tags, but it only reads the 10
 newest releases, so keep plugin releases few between app releases.)
 
+#### Release notes for updates
+
+The first release of a plugin uses the one-line description as its notes. **Every later version
+also gets a "What's Changed" list**, in the same style as the app releases: past-tense bullets
+grouped under `### Added` / `### Improved` / `### Fixed`, one plain sentence each, only what
+changed since the previous plugin release (`git log plugin-<name>-v<prev>..HEAD -- plugins/<Plugin>`),
+and a Full Changelog link. Write it to a file and pass `--notes-file`:
+
+```markdown
+Your albums come to life in a little town.
+
+## What's Changed
+
+### Added
+
+- Added full screen (F11, Esc to leave)
+
+### Fixed
+
+- Fixed long room names running out of the room
+
+**Full Changelog**: https://github.com/heartached/Noctis/compare/plugin-albumtown-v1.0.1...plugin-albumtown-v1.0.2
+```
+
+When an app release also ships updated plugins, each of those plugin releases gets its own list
+like this. Mention a needed Noctis version on the bullet it applies to.
+
 Then check what GitHub serves is the file you hashed:
 
 ```powershell
@@ -91,7 +118,8 @@ page opens; GitHub's cache can take about 5 minutes to serve the new file.
 
 1. Bump `<Version>` in the plugin's csproj and `version` in its `plugin.json` (keep them equal;
    raise `minAppVersion` if it needs a newer Noctis).
-2. Build, hash, and release under the new tag (`plugin-mixxx-v1.0.1`).
+2. Build, hash, and release under the new tag (`plugin-mixxx-v1.0.1`), with a "What's Changed"
+   list in the notes (see "Release notes for updates" above).
 3. In `index.json` update that entry's `version`, `minAppVersion`, `download`, `sha256` and `size`.
    `dotnet test tests/Noctis.Tests/Noctis.Tests.csproj --filter PluginCatalogTests` checks the entry
    still matches the plugin.json.

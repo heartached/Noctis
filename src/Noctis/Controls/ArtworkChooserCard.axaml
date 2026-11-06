@@ -1,0 +1,268 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:loc="using:Noctis.Localization"
+             x:Class="Noctis.Controls.ArtworkChooserCard"
+             x:Name="Root">
+
+    <!-- One card for both Edit Info search pop-ups (Artwork and Animated Artwork, owner 11-04).
+         Shown in the window's search-pop flyout, which only leaves room for the shadow. -->
+    <Border Classes="pill-popover" Padding="22,18,22,20" Width="600">
+        <Border.Styles>
+            <!-- No hover/press zoom anywhere in the card: a zoomed tile grew past the grid's
+                 clip (its top edge slid under the scroller, owner 11-04 "it goes inside of the
+                 back"), and a zoomed pill past the card. Hover reads through colour instead. -->
+            <Style Selector="Button.chooser-poster:pointerover, Button.chooser-poster:pressed, Button.chooser-pill:pointerover, Button.chooser-pill:pressed">
+                <Setter Property="RenderTransform" Value="scale(1)" />
+            </Style>
+            <!-- The poster is a button (click = preview) but should look like a tile. -->
+            <Style Selector="Button.chooser-poster">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            </Style>
+            <Style Selector="Button.chooser-poster.previews">
+                <Setter Property="Cursor" Value="Hand" />
+            </Style>
+            <Style Selector="Button.chooser-poster:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="Button.chooser-poster:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="Button.chooser-poster Border.play-badge">
+                <Setter Property="Opacity" Value="0.85" />
+            </Style>
+            <Style Selector="Button.chooser-poster:pointerover Border.play-badge">
+                <Setter Property="Opacity" Value="1" />
+            </Style>
+        </Border.Styles>
+        <StackPanel Spacing="12">
+            <StackPanel Spacing="1">
+                <TextBlock Text="{Binding #Root.Title}" FontSize="14" FontWeight="Bold"/>
+                <TextBlock Text="{Binding #Root.Subtitle}" FontSize="11" Opacity="0.5"/>
+            </StackPanel>
+
+            <!-- Refine and search again in place. Empty = the track's tags, which the
+                 watermark shows. -->
+            <Grid ColumnDefinitions="*,8,Auto">
+                <TextBox x:Name="ChooserSearchBox"
+                         Grid.Column="0"
+                         Classes="pill-field"
+                         AutomationProperties.Name="{Binding #Root.SearchBoxHint}"
+                         ToolTip.Tip="{Binding #Root.SearchBoxHint}"
+                         Text="{Binding #Root.Query, Mode=TwoWay}"
+                         Watermark="{Binding #Root.QueryHint}"
+                         FontSize="12">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding #Root.SearchCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+                <Button x:Name="ChooserSearchButton"
+                        Grid.Column="2"
+                        Classes="pill-primary chooser-pill"
+                        MinHeight="0"
+                        Padding="16,7"
+                        FontSize="12"
+                        Command="{Binding #Root.SearchCommand}"
+                        AutomationProperties.Name="{loc:T Metadata.AnimSearchButton}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="11" Height="11"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Metadata.AnimSearchButton}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Searching / nothing found / error (before any result exists) -->
+            <StackPanel Spacing="8"
+                        Margin="0,14"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding !#Root.HasResults}">
+                <Ellipse Classes="loading-spinner"
+                         Width="18" Height="18"
+                         HorizontalAlignment="Center"
+                         IsVisible="{Binding #Root.IsSearching}" />
+                <TextBlock Text="{Binding #Root.Status}"
+                           FontSize="12.5"
+                           Opacity="0.85"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           MaxWidth="420"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding #Root.StatusDetail}"
+                           FontSize="11"
+                           Opacity="0.55"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           MaxWidth="420"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding #Root.StatusDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <!-- Results grid, best match first (four tiles a row) -->
+            <ScrollViewer MaxHeight="372"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="{Binding #Root.HasResults}">
+                <ItemsControl x:Name="ChooserResults"
+                              ItemsSource="{Binding #Root.Items}"
+                              Margin="0,0,-14,-14">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:IArtworkChooserItem">
+                            <StackPanel Spacing="7" Width="124" Margin="0,0,14,14">
+                                <!-- Poster: the cover (the loop's still); where it previews, a
+                                     click plays the loop in place. -->
+                                <Button Classes="chooser-poster"
+                                        Classes.previews="{Binding CanPreview}"
+                                        Width="124" Height="124"
+                                        IsHitTestVisible="{Binding CanPreview}"
+                                        ToolTip.Tip="{Binding PosterTip}"
+                                        AutomationProperties.Name="{Binding CollectionName}"
+                                        Command="{Binding $parent[controls:ArtworkChooserCard].PreviewCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Border CornerRadius="10" ClipToBounds="True"
+                                            Background="#1AFFFFFF">
+                                        <Panel>
+                                            <Image Source="{Binding Poster}"
+                                                   Stretch="UniformToFill"
+                                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                            <controls:AnimatedCoverImage
+                                                Source="{Binding PreviewPath}"
+                                                IsActive="{Binding IsPreviewing}"
+                                                IsVisible="{Binding IsPreviewing}"/>
+                                            <Ellipse Classes="loading-spinner"
+                                                     Width="16" Height="16"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     IsVisible="{Binding IsPreviewLoading}"/>
+                                            <Border Classes="play-badge"
+                                                    Width="26" Height="26"
+                                                    CornerRadius="13"
+                                                    Background="#99000000"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Bottom"
+                                                    Margin="7">
+                                                <Border.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                                        <Binding Path="CanPreview" />
+                                                        <Binding Path="!IsPreviewing" />
+                                                        <Binding Path="!IsPreviewLoading" />
+                                                    </MultiBinding>
+                                                </Border.IsVisible>
+                                                <Viewbox Width="10" Height="10" Margin="1,0,0,0"
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource PlayIcon}" Fill="White" />
+                                                </Viewbox>
+                                            </Border>
+                                        </Panel>
+                                    </Border>
+                                </Button>
+                                <!-- The full title on the text only (not the whole tile: over a
+                                     pill it hung off the card). -->
+                                <StackPanel Spacing="1" ToolTip.Tip="{Binding CollectionName}">
+                                    <TextBlock Text="{Binding CollectionName}"
+                                               FontSize="11.5" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1"/>
+                                    <TextBlock Text="{Binding ArtistName}"
+                                               FontSize="10.5" Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1"/>
+                                    <TextBlock Text="{Binding Detail}"
+                                               FontSize="10" Opacity="0.45"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1"
+                                               IsVisible="{Binding HasDetail}"/>
+                                </StackPanel>
+                                <!-- One pill per quality; the largest is the accent one. -->
+                                <ItemsControl ItemsSource="{Binding Choices}" Margin="-3,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Rows="1" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:IArtworkChooserChoice">
+                                            <Button Classes="chooser-pill"
+                                                    Classes.pill-primary="{Binding IsPrimary}"
+                                                    Classes.pill-secondary="{Binding IsSecondary}"
+                                                    Content="{Binding Label}"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    Margin="3,0"
+                                                    MinHeight="0"
+                                                    Padding="0,5"
+                                                    FontSize="10.5"
+                                                    Command="{Binding $parent[controls:ArtworkChooserCard].PickCommand}"
+                                                    CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- More albums still being opened while some results already show -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="8">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                        <Binding ElementName="Root" Path="HasResults" />
+                        <Binding ElementName="Root" Path="IsCheckingMore" />
+                    </MultiBinding>
+                </StackPanel.IsVisible>
+                <Ellipse Classes="loading-spinner"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding #Root.IsCheckingMore}"/>
+                <TextBlock Text="{loc:T Metadata.AnimCheckingMore}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Downloading indicator (shown after a quality is clicked) -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="8"
+                        IsVisible="{Binding #Root.IsDownloading}">
+                <!-- Own IsVisible mirrors the parent's so the [IsVisible=True] animation gate
+                     can see it. -->
+                <Ellipse Classes="loading-spinner"
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding #Root.IsDownloading}"/>
+                <TextBlock Text="{loc:T Metadata.Downloading}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Errors once results are showing (a failed download), so a failed pick is never
+                 a silent no-op. Hidden while empty. -->
+            <TextBlock Text="{Binding #Root.Status}"
+                       FontSize="11"
+                       Opacity="0.75"
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       MaxWidth="420"
+                       TextAlignment="Center">
+                <TextBlock.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                        <Binding ElementName="Root" Path="HasResults" />
+                        <Binding ElementName="Root" Path="Status" Converter="{x:Static StringConverters.IsNotNullOrEmpty}" />
+                    </MultiBinding>
+                </TextBlock.IsVisible>
+            </TextBlock>
+        </StackPanel>
+    </Border>
+</UserControl>

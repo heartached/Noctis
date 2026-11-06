@@ -1,5 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="using:System"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.PromptSheet"
@@ -90,6 +92,20 @@
                                        TextAlignment="Center" TextWrapping="Wrap" Margin="8,0" />
                             <TextBlock Name="PromptMessage" Classes="prompt-message" Text="{Binding Message}" FontSize="14"
                                        TextAlignment="Center" TextWrapping="Wrap" Margin="8,-6,8,0" IsVisible="{Binding HasMessage}" />
+                            <!-- An import's lines that matched nothing: a short list that scrolls. -->
+                            <Border Name="PromptDetailsBox" Classes="prompt-details" IsVisible="{Binding HasDetails}" Margin="0,2,0,0"
+                                    CornerRadius="14" Background="{DynamicResource MenuGlassFieldFill}">
+                                <ScrollViewer Name="PromptDetailsScroll" MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl Name="PromptDetails" ItemsSource="{Binding Details}" Margin="14,10">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <TextBlock Classes="prompt-message" Text="{Binding}" FontSize="13" Margin="0,3"
+                                                           TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
                             <TextBox Name="PromptField" Classes="prompt-field" Text="{Binding FieldText}" Margin="0,6,0,0"
                                      PlaceholderText="{Binding FieldPlaceholder}" IsVisible="{Binding HasField}"
                                      AutomationProperties.Name="{Binding FieldPlaceholder}" KeyDown="OnFieldKeyDown" />
@@ -111,8 +127,8 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Button Name="PromptCancel" Classes="pill prompt-button cancel" Command="{Binding CancelCommand}"
-                                    AutomationProperties.Name="Cancel">
-                                <TextBlock Text="Cancel" />
+                                    AutomationProperties.Name="{Binding CancelLabel}">
+                                <TextBlock Text="{Binding CancelLabel}" />
                             </Button>
                         </StackPanel>
                     </views:MenuGlass>

@@ -47,9 +47,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
     public string SortLabel => SortMode switch
     {
-        "modified-newest" => "Date Modified (Newest)",
-        "modified-oldest" => "Date Modified (Oldest)",
-        _ => "Folder Order",
+        "modified-newest" => Noctis.Localization.Loc.T("Main.FoldersSortModifiedNewest"),
+        "modified-oldest" => Noctis.Localization.Loc.T("Main.FoldersSortModifiedOldest"),
+        _ => Noctis.Localization.Loc.T("Main.FoldersSortDefault"),
     };
 
     partial void OnSortModeChanged(string value)
@@ -267,7 +267,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         foreach (var t in SelectedFolderTracks)
             bytes += t.FileSize;
 
-        var items = count == 1 ? "1 item" : $"{count:N0} items";
+        var items = Noctis.Localization.Loc.Plural("Count.Items", count);
         var gb = bytes / (1024.0 * 1024.0 * 1024.0);
         var size = gb >= 1 ? $"{gb:0.#} GB" : $"{bytes / (1024.0 * 1024.0):0} MB";
         FolderSummaryText = $"{items} · {size}";

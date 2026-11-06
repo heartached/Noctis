@@ -63,28 +63,33 @@ public static class FuzzyTrackMatcher
             .Select(t => Index(t, t.Title, t.Artist))
             .ToList();
 
-        var exact = new Dictionary<string, Track>();
+        // Every song under a title+artist key, in library order: the first is the match unless
+        // the entry's length (an m3u's #EXTINF) picks a closer one.
+        var exact = new Dictionary<string, List<Track>>();
         foreach (var n in norm)
         {
             var key = n.Title + "" + MatchText.Fold(n.Track.PrimaryArtist);
-            if (!exact.ContainsKey(key)) exact[key] = n.Track;
+            if (exact.TryGetValue(key, out var same)) same.Add(n.Track);
+            else exact[key] = new List<Track> { n.Track };
         }
 
         // Path/filename indexes, built only when some entry carries a file path (m3u).
         Dictionary<string, Track>? byPath = null;
-        Dictionary<string, Track?>? byFileName = null; // null value = ambiguous name
+        Dictionary<string, List<(Track Track, string[] Tail)>>? byFileName = null;
         if (entries.Any(e => e.FilePath.Length > 0))
         {
             byPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
-            byFileName = new Dictionary<string, Track?>(StringComparer.OrdinalIgnoreCase);
+            byFileName = new Dictionary<string, List<(Track, string[])>>(StringComparer.OrdinalIgnoreCase);
             foreach (var t in library)
             {
                 if (string.IsNullOrWhiteSpace(t.FilePath)) continue;
                 var p = NormalizePath(t.FilePath);
                 if (!byPath.ContainsKey(p)) byPath[p] = t;
-                var name = Path.GetFileName(p);
-                if (name.Length == 0) continue;
-                byFileName[name] = byFileName.TryGetValue(name, out _) ? null : t;
+                var tail = PathTail(t.FilePath);
+                if (tail.Length == 0) continue;
+                var name = tail[^1];
+                if (byFileName.TryGetValue(name, out var named)) named.Add((t, tail));
+                else byFileName[name] = new List<(Track, string[])> { (t, tail) };
             }
         }
 
@@ -103,10 +108,9 @@ public static class FuzzyTrackMatcher
                     results.Add(new MatchResult(e, pathHit, 1.0));
                     continue;
                 }
-                var name = Path.GetFileName(p);
-                if (name.Length > 0 && byFileName!.TryGetValue(name, out var nameHit) && nameHit != null)
+                if (ByPathTail(PathTail(e.FilePath), byFileName!) is { } tailHit)
                 {
-                    results.Add(new MatchResult(e, nameHit, 0.95));
+                    results.Add(new MatchResult(e, tailHit.Track, tailHit.Score));
                     continue;
                 }
             }
@@ -114,10 +118,10 @@ public static class FuzzyTrackMatcher
             var entry = Index(null!, e.Title, e.Artist);
             if (entry.Title.Length == 0) { results.Add(new MatchResult(e, null, 0)); continue; }
 
-            if (exact.TryGetValue(entry.Title + "" + entry.Artist, out var hit)
-                || (entry.Artists.Count > 0 && exact.TryGetValue(entry.Title + "" + entry.Artists[0], out hit)))
+            if (exact.TryGetValue(entry.Title + "" + entry.Artist, out var hits)
+                || (entry.Artists.Count > 0 && exact.TryGetValue(entry.Title + "" + entry.Artists[0], out hits)))
             {
-                results.Add(new MatchResult(e, hit, 1.0));
+                results.Add(new MatchResult(e, Closest(hits, e.Duration), 1.0));
                 continue;
             }
 
@@ -128,6 +132,10 @@ public static class FuzzyTrackMatcher
             {
                 var score = Score(entry, n);
                 if (score <= 0) continue;
+                // A length that is far off (an m3u's #EXTINF) makes another recording likelier.
+                if (e.Duration is { } length && n.Track.Duration > TimeSpan.Zero
+                    && Math.Abs((length - n.Track.Duration).TotalSeconds) > FarDurationSeconds)
+                    score *= FarDurationFactor;
                 if (score > bestScore) { bestScore = score; best = n.Track; }
                 if (score >= CandidateFloor) Keep(candidates, new MatchCandidate(n.Track, score));
             }
@@ -228,6 +236,94 @@ public static class FuzzyTrackMatcher
     // Forward slashes + trim so Windows- and Unix-written paths compare equal.
     private static string NormalizePath(string p) => p.Replace('\\', '/').Trim();
 
+    // An #EXTINF length this many seconds off a candidate's costs it this share of its score.
+    private const double FarDurationSeconds = 20;
+    private const double FarDurationFactor = 0.85;
+
+    /// <summary>Of songs that match equally by name, the one closest to <paramref name="length"/>
+    /// (the first when the entry has no length).</summary>
+    private static Track Closest(List<Track> tracks, TimeSpan? length)
+    {
+        if (tracks.Count == 1 || length is not { } want) return tracks[0];
+        var best = tracks[0];
+        var bestGap = double.MaxValue;
+        foreach (var t in tracks)
+        {
+            if (t.Duration <= TimeSpan.Zero) continue;
+            var gap = Math.Abs((t.Duration - want).TotalSeconds);
+            if (gap < bestGap) { bestGap = gap; best = t; }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// The library song an entry's path points at when the folders differ (a playlist written
+    /// on a computer, imported on a phone): the one song with that file name, else the one whose
+    /// folders agree with the entry's furthest up from the file (at least the file's own folder,
+    /// and no tie). Null when the name is not there or stays ambiguous.
+    /// </summary>
+    private static (Track Track, double Score)? ByPathTail(string[] tail, Dictionary<string, List<(Track Track, string[] Tail)>> byFileName)
+    {
+        if (tail.Length == 0 || !byFileName.TryGetValue(tail[^1], out var named)) return null;
+        if (named.Count == 1) return (named[0].Track, 0.95);
+        Track? best = null;
+        var bestShared = 0;
+        var tie = false;
+        foreach (var (track, other) in named)
+        {
+            var shared = SharedTail(tail, other);
+            if (shared > bestShared) { bestShared = shared; best = track; tie = false; }
+            else if (shared == bestShared) tie = true;
+        }
+        return best != null && bestShared >= 2 && !tie ? (best, 0.9) : null;
+    }
+
+    private static int SharedTail(string[] a, string[] b)
+    {
+        var n = 0;
+        while (n < a.Length && n < b.Length
+               && string.Equals(a[a.Length - 1 - n], b[b.Length - 1 - n], StringComparison.OrdinalIgnoreCase))
+            n++;
+        return n;
+    }
+
+    /// <summary>
+    /// A path's folders and file name, in order, whatever wrote it: Windows ("C:\Music\a.mp3")
+    /// or Unix paths, relative ones ("../a.mp3", the dots dropped), file:// and percent-encoded
+    /// entries, and Android document URIs ("content://…/document/primary%3AMusic%2Fa.mp3" →
+    /// Music, a.mp3: the storage volume before the colon is not a folder).
+    /// </summary>
+    internal static string[] PathTail(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return Array.Empty<string>();
+        var p = path.Trim();
+        if (p.StartsWith("content://", StringComparison.OrdinalIgnoreCase))
+        {
+            var doc = p.LastIndexOf("/document/", StringComparison.Ordinal);
+            var tree = p.IndexOf("/tree/", StringComparison.Ordinal);
+            var at = doc >= 0 ? doc + "/document/".Length : tree >= 0 ? tree + "/tree/".Length : -1;
+            if (at < 0) return Array.Empty<string>();
+            p = SafeUnescape(p[at..]);
+            var colon = p.IndexOf(':');
+            if (colon >= 0) p = p[(colon + 1)..];
+        }
+        else
+        {
+            p = PlaylistImportParser.DecodeM3uEntry(p);
+        }
+        p = p.Replace('\\', '/');
+        if (p.Length >= 2 && char.IsAsciiLetter(p[0]) && p[1] == ':') p = p[2..];
+        return p.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => s != "." && s != "..")
+            .ToArray();
+    }
+
+    private static string SafeUnescape(string s)
+    {
+        try { return Uri.UnescapeDataString(s); }
+        catch (UriFormatException) { return s; }
+    }
+
     private static string Normalize(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return string.Empty;
@@ -251,27 +347,5 @@ public static class FuzzyTrackMatcher
         return 1.0 - (double)dist / maxLen;
     }
 
-    internal static int Levenshtein(string a, string b)
-    {
-        var n = a.Length;
-        var m = b.Length;
-        if (n == 0) return m;
-        if (m == 0) return n;
-
-        var prev = new int[m + 1];
-        var curr = new int[m + 1];
-        for (var j = 0; j <= m; j++) prev[j] = j;
-
-        for (var i = 1; i <= n; i++)
-        {
-            curr[0] = i;
-            for (var j = 1; j <= m; j++)
-            {
-                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
-                curr[j] = Math.Min(Math.Min(prev[j] + 1, curr[j - 1] + 1), prev[j - 1] + cost);
-            }
-            (prev, curr) = (curr, prev);
-        }
-        return prev[m];
-    }
+    internal static int Levenshtein(string a, string b) => MatchText.Levenshtein(a, b);
 }

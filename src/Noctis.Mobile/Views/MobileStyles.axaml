@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:Noctis.Controls">
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:views="using:Noctis.Mobile.Views">
     <!-- Phone-wide styles, included once by ShellView so every page, overlay and test mount
          gets them. Colours are DynamicResources from Noctis.UI's theme dictionaries: they
          resolve on the device (AndroidApp.axaml merges Styles.axaml and the overlays) and
@@ -55,6 +56,12 @@
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- A song row's rating stars in the artist line's grey, a favourite's heart in the accent. -->
+    <Style Selector="views|RowMark">
+        <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        <Setter Property="HeartBrush" Value="{DynamicResource AccentTextExactBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- A list row's hairline, from the text to the edge (Apple's inset separator), and its
@@ -380,6 +387,32 @@
         <Setter Property="Width" Value="24" />
         <Setter Property="Height" Value="24" />
     </Style>
+    <!-- A word in a header glass pill (Select mode's Select All and Done); Done in the accent. -->
+    <Style Selector="Button.glass-text">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="MinWidth" Value="44" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.glass-text.accent">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.glass-text.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    </Style>
+
+    <!-- Select mode's check circle on a song row: a grey ring, the accent disc once ticked. -->
+    <Style Selector="views|SelectCheck">
+        <Setter Property="RingBrush" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+        <Setter Property="FillBrush" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
 
     <!-- A rail or grid cover (RailTile): rounded square; artists override to a circle below. -->
     <Style Selector="Border.art.rail">
@@ -447,6 +480,9 @@
         <Setter Property="FontSize" Value="10.5" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="HorizontalAlignment" Value="Center" />
+        <!-- A long translated label shrinks first (FitWidth in ShellView), then trims. -->
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="MaxLines" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
     </Style>
     <Style Selector="Button.tab.selected PathIcon">

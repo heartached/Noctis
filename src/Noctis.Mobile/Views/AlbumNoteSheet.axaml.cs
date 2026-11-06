@@ -96,19 +96,12 @@ public partial class AlbumNoteSheet : UserControl
         FitHeight();
         UpdateLayout();
 
-        Scrim.Transitions = null;
-        Scrim.Opacity = 0;
-        PopMenu.PopFrom(NotePop, NoteGlass, NoteBody, new RelativePoint(0.5, 1, RelativeUnit.Relative));
-        Dispatcher.UIThread.Post(() =>
+        PopMenu.PopFrom(NotePop, NoteGlass, NoteBody, new RelativePoint(0.5, 1, RelativeUnit.Relative), PopMenu.SheetPose, Scrim);
+        PopMenu.AfterFirstFrame(this, () =>
         {
             if (run != _run) return;
-            Scrim.Transitions = new Transitions
-            {
-                new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs * 2), Easing = new CubicEaseOut() },
-            };
-            Scrim.Opacity = 1;
-            PopMenu.PopIn(NotePop, NoteGlass, NoteBody);
-        }, DispatcherPriority.Render);
+            PopMenu.PopIn(NotePop, NoteGlass, NoteBody, Scrim);
+        });
     }
 
     /// <summary>The pop reversed (or, after a swipe, the card carried on down): inert at once, a
@@ -120,12 +113,7 @@ public partial class AlbumNoteSheet : UserControl
         var swiped = _dragOffset > 0;
         EndDrag();
         IsHitTestVisible = false;
-        Scrim.Transitions = new Transitions
-        {
-            new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs), Easing = new CubicEaseIn() },
-        };
-        Scrim.Opacity = 0;
-        PopMenu.PopOut(NotePop, NoteGlass, NoteBody);
+        PopMenu.PopOut(NotePop, NoteGlass, NoteBody, PopMenu.SheetPose, Scrim);
         if (swiped)
         {
             // Down from where the finger left it, not shrinking back to the bottom edge.
@@ -136,8 +124,7 @@ public partial class AlbumNoteSheet : UserControl
             if (run != _run) return;
             IsVisible = false;
             NoteBody.DataContext = null;
-            Scrim.Transitions = null;
-            PopMenu.PopDone(NotePop, NoteGlass, NoteBody);
+            PopMenu.PopDone(NotePop, NoteGlass, NoteBody, Scrim);
             NotePop.RenderTransform = null;
         }, TimeSpan.FromMilliseconds(PopMenu.PopCloseMs));
     }
@@ -230,7 +217,7 @@ public partial class AlbumNoteSheet : UserControl
             return;
         }
         _dragOffset = 0;
-        var settle = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs * 2);
+        var settle = TimeSpan.FromMilliseconds(300);
         NotePop.Transitions = new Transitions
         {
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = settle, Easing = new CubicEaseOut() },

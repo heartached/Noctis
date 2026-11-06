@@ -5,6 +5,7 @@ using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
 using Noctis.Services;
 using Noctis.Services.Server;
+using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -50,7 +51,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     }
 
     public ShellViewModel Shell { get; }
-    public override string Title => "Account";
+    public override string Title => Loc.T("Mobile.Account.Title");
 
     // ── Signed out: the form ──
 
@@ -163,7 +164,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     private string _computerName = string.Empty;
 
     /// <summary>The sign-out card's question: "Sign out of Studio PC?".</summary>
-    public string SignOutQuestion => $"Sign out of {ComputerName}?";
+    public string SignOutQuestion => Loc.T("Mobile.Account.SignOutQuestion", ComputerName);
 
     /// <summary>The desktop's profile picture (a local file the service cached), or null.</summary>
     [ObservableProperty]
@@ -220,10 +221,10 @@ public sealed partial class AccountPageViewModel : MobilePage
     [ObservableProperty] private string _uploadText = string.Empty;
 
     /// <summary>The send row's label: a second tap while sending stops it (what was sent stays sent).</summary>
-    public string UploadLabel => IsUploading ? "Stop sending" : "Send phone songs to computer";
+    public string UploadLabel => IsUploading ? Loc.T("Mobile.Account.StopSending") : Loc.T("Mobile.Account.SendSongs");
 
     /// <summary>The send tile's short label (its spoken name stays <see cref="UploadLabel"/>).</summary>
-    public string UploadTileLabel => IsUploading ? "Stop sending" : "Send to computer";
+    public string UploadTileLabel => IsUploading ? Loc.T("Mobile.Account.StopSending") : Loc.T("Mobile.Account.SendTile");
 
     /// <summary>Not while signing in or out, nor once the computer's certificate changed.</summary>
     public bool CanUpload => IsIdle && CanUseServer;
@@ -260,11 +261,11 @@ public sealed partial class AccountPageViewModel : MobilePage
         }
         if (UserName.Trim().Length == 0 || Password.Length == 0)
         {
-            SetError("Enter your email or username and your password.", AccountField.Credentials);
+            SetError(Loc.T("Mobile.Account.EnterCredentials"), AccountField.Credentials);
             return;
         }
         ServerAddress = url;
-        await RunAsync("Connecting to your computer…", async () =>
+        await RunAsync(Loc.T("Mobile.Account.Connecting"), async () =>
         {
             var fingerprint = await _account.ProbeFingerprintAsync(url);
             _probedUrl = url;
@@ -312,7 +313,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         bool signedIn;
         try
         {
-            signedIn = await RunAsync("Signing in…", () => _account.SignInWithPairingAsync(pairing));
+            signedIn = await RunAsync(Loc.T("Mobile.Account.SigningIn"), () => _account.SignInWithPairingAsync(pairing));
         }
         finally { IsSigningInByQr = false; }
         if (!signedIn) return;
@@ -324,11 +325,9 @@ public sealed partial class AccountPageViewModel : MobilePage
         await SyncCoreAsync();
     }
 
-    internal const string ScannerUnavailableText =
-        "The scanner isn't ready on this phone. Try again in a minute, or sign in with your computer's address below.";
+    internal static string ScannerUnavailableText => Loc.T("Mobile.Account.ScannerUnavailable");
 
-    internal const string NotAPairingCodeText =
-        "That isn't a Noctis sign-in code. Scan the code under Connect a phone on your computer.";
+    internal static string NotAPairingCodeText => Loc.T("Mobile.Account.NotAPairingCode");
 
     /// <summary>Step two: the user says the fingerprints match. Sign in with that fingerprint,
     /// then sync straight away so the desktop's library appears.</summary>
@@ -336,7 +335,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     private async Task TrustAndSignInAsync()
     {
         if (PendingFingerprint is not { } fingerprint || _probedUrl is not { } url) return;
-        var signedIn = await RunAsync("Signing in…",
+        var signedIn = await RunAsync(Loc.T("Mobile.Account.SigningIn"),
             () => _account.SignInAsync(url, UserName.Trim(), Password, fingerprint));
         PendingFingerprint = null;
         _probedUrl = null;
@@ -391,17 +390,17 @@ public sealed partial class AccountPageViewModel : MobilePage
         _syncRunning = true;
         _ownSyncEndPending = true;
         IsSyncing = true;
-        SyncText = "Syncing…";
+        SyncText = Loc.T("Mobile.Account.Syncing");
         try
         {
             var result = await _account.SyncNowAsync();
-            SyncText = $"Synced {Count(result.Songs, "song")} and {Count(result.Playlists, "playlist")}";
+            SyncText = Loc.T("Mobile.Account.SyncedCounts", Loc.Plural("Mobile.Count.Songs", result.Songs), Loc.Plural("Mobile.Count.Playlists", result.Playlists));
         }
         catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.SyncDisabled)
         {
             // The owner switched sync off on the computer: a choice, not a failure. The songs
             // still came over (the catalog and plays go through either way).
-            SyncText = "Songs updated. Sync is off on your computer.";
+            SyncText = Loc.T("Mobile.Account.SongsUpdatedSyncOff");
         }
         catch (Exception ex)
         {
@@ -422,7 +421,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         SetError(string.Empty);
         _downloadRunning = true;
         IsDownloading = true;
-        DownloadText = "Starting downloads…";
+        DownloadText = Loc.T("Mobile.Account.StartingDownloads");
         var finished = false;
         try
         {
@@ -437,7 +436,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         {
             _downloadRunning = false;
             // Nothing to fetch raises no progress: the counts would never replace "Starting…".
-            if (_lastDownload == null) DownloadText = finished ? "Downloads finished" : string.Empty;
+            if (_lastDownload == null) DownloadText = finished ? Loc.T("Mobile.Account.DownloadsFinished", string.Empty) : string.Empty;
             RefreshDownloads();
         }
     }
@@ -461,14 +460,14 @@ public sealed partial class AccountPageViewModel : MobilePage
         if (_account.IsUploading) cts.Cancel();
         _uploadCts = cts;
         IsUploading = true;
-        UploadText = "Checking what your computer has…";
+        UploadText = Loc.T("Mobile.Account.Checking");
         try
         {
             UploadText = DescribeUpload(await _account.SendLocalSongsAsync(cts.Token));
         }
         catch (OperationCanceledException)
         {
-            UploadText = "Stopped. Tap again to send the rest.";
+            UploadText = Loc.T("Mobile.Account.SendStopped");
         }
         catch (Exception ex)
         {
@@ -505,9 +504,9 @@ public sealed partial class AccountPageViewModel : MobilePage
         DropQuestion();   // the one before is cancelled first, so its reset cannot undo this one
         IsConfirmingSignOut = false;
         IsConfirmingRemoveDownloads = true;
-        Ask(new PromptViewModel(Shell, "Remove all downloads?",
-            $"{StorageValue} leave this phone. They stay on your computer and still stream.",
-            new[] { new PromptAction("Remove Downloads", _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) },
+        Ask(new PromptViewModel(Shell, Loc.T("Mobile.Downloads.RemoveQuestion"),
+            Loc.T("Mobile.Downloads.RemoveDetail", StorageValue),
+            new[] { new PromptAction(Loc.T("Mobile.Downloads.RemoveAction"), _ => ConfirmRemoveDownloadsCommand.ExecuteAsync(null), isDestructive: true) },
             cancelled: () => IsConfirmingRemoveDownloads = false));
     }
 
@@ -523,7 +522,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     {
         IsConfirmingRemoveDownloads = false;
         DropQuestion();
-        await RunAsync("Removing downloads…", () => _account.RemoveAllDownloadsAsync());
+        await RunAsync(Loc.T("Mobile.Account.RemovingDownloads"), () => _account.RemoveAllDownloadsAsync());
         // The last download's report goes too: it put "Downloads finished" back under the
         // Download everything card over a phone that had just removed them all.
         if (!IsDownloading) _lastDownload = null;
@@ -540,14 +539,14 @@ public sealed partial class AccountPageViewModel : MobilePage
         IsConfirmingSignOut = true;
         // Apple's way to ask "and the downloads too?": a second red action, only with something
         // downloaded to remove (the switch row asked it with nothing on the phone).
-        var actions = new List<PromptAction> { new("Sign Out", _ => ConfirmSignOutCommand.ExecuteAsync(null), isDestructive: true) };
+        var actions = new List<PromptAction> { new(Loc.T("Mobile.Account.SignOutAction"), _ => ConfirmSignOutCommand.ExecuteAsync(null), isDestructive: true) };
         if (HasDownloads)
-            actions.Add(new PromptAction("Sign Out and Remove Downloads", _ =>
+            actions.Add(new PromptAction(Loc.T("Mobile.Account.SignOutAndRemove"), _ =>
             {
                 AlsoRemoveDownloads = true;
                 return ConfirmSignOutCommand.ExecuteAsync(null);
             }, isDestructive: true));
-        Ask(new PromptViewModel(Shell, SignOutQuestion, "Its songs leave this phone's library. You can sign in again any time.",
+        Ask(new PromptViewModel(Shell, SignOutQuestion, Loc.T("Mobile.Account.SignOutDetail"),
             actions, cancelled: () => IsConfirmingSignOut = false));
     }
 
@@ -564,7 +563,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         IsConfirmingSignOut = false;
         DropQuestion();
         var removeDownloads = AlsoRemoveDownloads;
-        await RunAsync("Signing out…", () => _account.SignOutAsync(removeDownloads));
+        await RunAsync(Loc.T("Mobile.Account.SigningOut"), () => _account.SignOutAsync(removeDownloads));
         SyncText = string.Empty;
         DownloadText = string.Empty;
         Refresh();
@@ -604,7 +603,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         if (kind == NoctisErrorKind.CertificateChanged && signedIn) IsCertificateChanged = true;
         // Signing in, an error about the address or the password goes under that field; a QR
         // sign-in typed neither, so its errors are the page's.
-        SetError(kind is { } k ? (IsSigningInByQr ? DescribeQr(k) : Describe(k, signedIn)) : "Something went wrong. Try again.",
+        SetError(kind is { } k ? (IsSigningInByQr ? DescribeQr(k) : Describe(k, signedIn)) : Loc.T("Mobile.Account.SomethingWrong"),
             kind is { } f && !signedIn && !IsSigningInByQr ? FieldFor(f) : AccountField.None);
         Refresh();
     }
@@ -623,10 +622,10 @@ public sealed partial class AccountPageViewModel : MobilePage
             SyncFraction = 0;
             IsSyncCounted = false;
             if (_ownSyncEndPending && progress.Stage != NoctisSyncStage.Idle) _ownSyncEndPending = false;
-            else if (!_syncRunning && progress.Stage == NoctisSyncStage.Done) SyncText = "Sync finished";
+            else if (!_syncRunning && progress.Stage == NoctisSyncStage.Done) SyncText = Loc.T("Mobile.Account.SyncFinished");
             // A background sync (the one at app start) that failed left its last stage up
             // ("Getting covers… 812 of 1332") with no error; this page's own syncs show theirs.
-            else if (!_syncRunning && progress.Stage == NoctisSyncStage.Failed) SyncText = "The last sync didn't finish. Tap Sync now to try again.";
+            else if (!_syncRunning && progress.Stage == NoctisSyncStage.Failed) SyncText = Loc.T("Mobile.Account.LastSyncFailed");
             IsSyncing = _syncRunning || _account.IsSyncing;
             return;
         }
@@ -662,11 +661,11 @@ public sealed partial class AccountPageViewModel : MobilePage
         if (wasSignedIn && !IsSignedIn && _account.WasSignedOutByComputer)
             SetError(Describe(NoctisErrorKind.SignedOut, signedIn: false));
         var shownName = account == null ? string.Empty : ShownName(account);
-        AccountText = account == null ? string.Empty : $"{shownName} on {ServerLabel(account)}";
+        AccountText = account == null ? string.Empty : Loc.T("Mobile.Account.NameOnServer", shownName, ServerLabel(account));
         DisplayName = shownName;
         EmailText = account != null && !string.Equals(shownName, account.UserName, StringComparison.OrdinalIgnoreCase)
             ? account.UserName : string.Empty;
-        ServerText = account == null ? string.Empty : $"on {ServerLabel(account)}";
+        ServerText = account == null ? string.Empty : Loc.T("Mobile.Account.OnServer", ServerLabel(account));
         ComputerName = account == null ? string.Empty : ServerLabel(account);
         Initials = InitialsOf(shownName);
         AvatarPath = IsSignedIn ? _account.AvatarPath : null;
@@ -690,8 +689,8 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     private void RefreshDownloads()
     {
-        StorageValue = $"{Count(_account.DownloadedCount, "song")} · {FormatBytes(_account.DownloadedBytes)}";
-        StorageText = $"Downloaded: {StorageValue}";
+        StorageValue = $"{Loc.Plural("Mobile.Count.Songs", _account.DownloadedCount)} · {FormatBytes(_account.DownloadedBytes)}";
+        StorageText = Loc.T("Mobile.Account.DownloadedStorage", StorageValue);
         HasDownloads = _account.DownloadedCount > 0;
         var pending = _lastDownload is { Pending: > 0 };
         IsDownloading = _downloadRunning || pending;
@@ -700,11 +699,11 @@ public sealed partial class AccountPageViewModel : MobilePage
         if (_lastDownload is not { } p) return;
         // Songs whose file is gone from the computer are told apart: a retry cannot fetch them.
         var otherFailures = p.Failed - p.Missing;
-        var failed = (p.Missing > 0 ? $" · {p.Missing} missing on your computer" : string.Empty)
-                     + (otherFailures > 0 ? $" · {otherFailures} failed" : string.Empty);
+        var failed = (p.Missing > 0 ? " · " + Loc.T("Mobile.Account.MissingOnComputer", p.Missing) : string.Empty)
+                     + (otherFailures > 0 ? " · " + Loc.T("Mobile.Account.Failed", otherFailures) : string.Empty);
         DownloadText = pending
-            ? $"Downloading {p.Completed} of {p.Completed + p.Pending}{failed}"
-            : _downloadRunning ? DownloadText : $"Downloads finished{failed}";
+            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Completed + p.Pending, failed)
+            : _downloadRunning ? DownloadText : Loc.T("Mobile.Account.DownloadsFinished", failed);
     }
 
     public override void OnClosed()
@@ -727,38 +726,30 @@ public sealed partial class AccountPageViewModel : MobilePage
     /// certificate that changed (sign out to trust a new one) from one that changed mid-sign-in.</summary>
     internal static string Describe(NoctisErrorKind kind, bool signedIn) => kind switch
     {
-        NoctisErrorKind.Unreachable =>
-            "Can't reach your computer. Check that Noctis is open on it, Noctis on your phone is turned on, and both are on the same Wi-Fi.",
+        NoctisErrorKind.Unreachable => Loc.T("Mobile.Account.Error.Unreachable"),
         NoctisErrorKind.CertificateChanged => signedIn
-            ? "Your computer's security code changed. Sign out and sign in again to trust the new one."
-            : "Your computer's security code changed while signing in. Try again and check the code.",
-        NoctisErrorKind.BadCredentials => "Wrong email, username or password.",
-        NoctisErrorKind.LockedOut => "Too many failed sign-ins. Wait a few minutes, then try again.",
-        NoctisErrorKind.SyncDisabled => "Sync is off on your computer. Turn on Sync with your phone in Settings, Account & Devices.",
-        NoctisErrorKind.SignedOut => "Your computer signed this phone out. Sign in again.",
-        NoctisErrorKind.InvalidAddress =>
-            "Enter your computer's address as shown under Connect a phone, like 192.168.1.20 or https://192.168.1.20:4747.",
-        NoctisErrorKind.StorageFull =>
-            "Your phone is almost full, so downloads stopped (1.5 GB is always left free). Remove some downloads or free up space.",
-        NoctisErrorKind.FileMissing => "This song's file is missing on your computer.",
-        NoctisErrorKind.NotNoctis =>
-            "Something answered at that address, but it isn't Noctis. Check the address and port shown under Connect a phone.",
-        NoctisErrorKind.UnknownHost =>
-            "No computer answers to that name. Type the address shown under Connect a phone, like 192.168.1.20.",
-        NoctisErrorKind.Outdated => "Noctis on your computer is too old to connect a phone. Update it, then try again.",
-        NoctisErrorKind.WifiRequired => "Downloads are set to Wi-Fi only. Connect to Wi-Fi, or change this in Settings, Downloads.",
-        _ => "Your computer couldn't finish that. Try again in a moment.",
+            ? Loc.T("Mobile.Account.Error.CertificateChanged")
+            : Loc.T("Mobile.Account.Error.CertificateChangedSigningIn"),
+        NoctisErrorKind.BadCredentials => Loc.T("Mobile.Account.Error.BadCredentials"),
+        NoctisErrorKind.LockedOut => Loc.T("Mobile.Account.Error.LockedOut"),
+        NoctisErrorKind.SyncDisabled => Loc.T("Mobile.Account.Error.SyncDisabled"),
+        NoctisErrorKind.SignedOut => Loc.T("Mobile.Account.Error.SignedOut"),
+        NoctisErrorKind.InvalidAddress => Loc.T("Mobile.Account.Error.InvalidAddress"),
+        NoctisErrorKind.StorageFull => Loc.T("Mobile.Account.Error.StorageFull"),
+        NoctisErrorKind.FileMissing => Loc.T("Mobile.Account.Error.FileMissing"),
+        NoctisErrorKind.NotNoctis => Loc.T("Mobile.Account.Error.NotNoctis"),
+        NoctisErrorKind.UnknownHost => Loc.T("Mobile.Account.Error.UnknownHost"),
+        NoctisErrorKind.Outdated => Loc.T("Mobile.Account.Error.Outdated"),
+        NoctisErrorKind.WifiRequired => Loc.T("Mobile.Account.Error.WifiRequired"),
+        _ => Loc.T("Mobile.Account.Error.Other"),
     };
 
     /// <summary>A failed QR sign-in: the code's own failures, else the usual wording.</summary>
     internal static string DescribeQr(NoctisErrorKind kind) => kind switch
     {
-        NoctisErrorKind.PairingExpired =>
-            "This code has expired or was already used. Scan the new code your computer shows now.",
-        NoctisErrorKind.CertificateChanged =>
-            "The computer at that address isn't the one showing the code, so nothing was sent. Check that your phone is on the same Wi-Fi, then scan again.",
-        NoctisErrorKind.Unreachable or NoctisErrorKind.NotNoctis or NoctisErrorKind.UnknownHost =>
-            "Can't reach your computer. Check that your phone is on the same Wi-Fi as your computer, then scan again.",
+        NoctisErrorKind.PairingExpired => Loc.T("Mobile.Account.Error.PairingExpired"),
+        NoctisErrorKind.CertificateChanged => Loc.T("Mobile.Account.Error.QrWrongComputer"),
+        NoctisErrorKind.Unreachable or NoctisErrorKind.NotNoctis or NoctisErrorKind.UnknownHost => Loc.T("Mobile.Account.Error.QrUnreachable"),
         _ => Describe(kind, signedIn: false),
     };
 
@@ -774,15 +765,15 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     internal static string DescribeStage(NoctisSyncProgress progress)
     {
-        var counts = progress.Total > 0 ? $" {progress.Done} of {progress.Total}" : string.Empty;
+        var counts = progress.Total > 0 ? " " + Loc.T("Mobile.Account.CountOf", progress.Done, progress.Total) : string.Empty;
         return progress.Stage switch
         {
-            NoctisSyncStage.Catalog => $"Getting your library…{counts}",
-            NoctisSyncStage.Covers => $"Getting covers…{counts}",
-            NoctisSyncStage.State => "Syncing favorites and ratings…",
-            NoctisSyncStage.Playlists => "Syncing playlists…",
-            NoctisSyncStage.Plays => "Sending plays…",
-            _ => "Syncing…",
+            NoctisSyncStage.Catalog => Loc.T("Mobile.Account.GettingLibrary") + counts,
+            NoctisSyncStage.Covers => Loc.T("Mobile.Account.GettingCovers") + counts,
+            NoctisSyncStage.State => Loc.T("Mobile.Account.SyncingFavorites"),
+            NoctisSyncStage.Playlists => Loc.T("Mobile.Account.SyncingPlaylists"),
+            NoctisSyncStage.Plays => Loc.T("Mobile.Account.SendingPlays"),
+            _ => Loc.T("Mobile.Account.Syncing"),
         };
     }
 
@@ -815,18 +806,18 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     /// <summary>"Sending 3 of 40" (the song going out now); "Checking what your computer has…" before.</summary>
     internal static string DescribeUploadProgress(NoctisUploadProgress progress) =>
-        progress.Total <= 0 ? "Checking what your computer has…"
-        : progress.Done >= progress.Total ? $"Sent {progress.Total} of {progress.Total}"
-        : $"Sending {progress.Done + 1} of {progress.Total}";
+        progress.Total <= 0 ? Loc.T("Mobile.Account.Checking")
+        : progress.Done >= progress.Total ? Loc.T("Mobile.Account.SentOf", progress.Total, progress.Total)
+        : Loc.T("Mobile.Account.SendingOf", progress.Done + 1, progress.Total);
 
     /// <summary>"Sent 40 · 2 already on your computer · 1 failed"; a send with nothing to do says why.</summary>
     internal static string DescribeUpload(NoctisUploadResult result)
     {
         if (result.Sent + result.AlreadyThere + result.Failed == 0)
-            return result.Previously > 0 ? "Everything is already on your computer" : "No songs on this phone to send";
-        var text = new StringBuilder($"Sent {result.Sent}");
-        if (result.AlreadyThere > 0) text.Append($" · {result.AlreadyThere} already on your computer");
-        if (result.Failed > 0) text.Append($" · {result.Failed} failed");
+            return result.Previously > 0 ? Loc.T("Mobile.Account.AllOnComputer") : Loc.T("Mobile.Account.NothingToSend");
+        var text = new StringBuilder(Loc.T("Mobile.Account.Sent", result.Sent));
+        if (result.AlreadyThere > 0) text.Append(" · ").Append(Loc.T("Mobile.Account.AlreadyOnComputer", result.AlreadyThere));
+        if (result.Failed > 0) text.Append(" · ").Append(Loc.T("Mobile.Account.Failed", result.Failed));
         return text.ToString();
     }
 
@@ -859,26 +850,26 @@ public sealed partial class AccountPageViewModel : MobilePage
     }
 
     internal static string FormatBytes(long bytes) =>
-        bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.0} GB" : $"{bytes / (double)(1L << 20):0} MB";
+        bytes >= 1L << 30
+            ? Loc.T("Mobile.Size.GB", (bytes / (double)(1L << 30)).ToString("0.0", Loc.Instance.Culture))
+            : Loc.T("Mobile.Size.MB", (bytes / (double)(1L << 20)).ToString("0", Loc.Instance.Culture));
 
     /// <summary>The phone's one wording for the last sync, on this page and Settings' profile
     /// card alike: "Synced just now", "Synced 5 min ago", "Synced 3 hr ago", "Synced yesterday",
     /// "Synced 4 days ago", "Synced 2 Oct"; "Not synced yet" before the first sync.</summary>
     internal static string SyncedText(DateTime? syncedUtc, DateTime nowUtc)
     {
-        if (syncedUtc is not { } synced) return "Not synced yet";
+        if (syncedUtc is not { } synced) return Loc.T("Mobile.Account.NotSynced");
         var ago = nowUtc - synced;
-        if (ago < TimeSpan.FromMinutes(1)) return "Synced just now";
-        if (ago < TimeSpan.FromHours(1)) return $"Synced {(int)ago.TotalMinutes} min ago";
+        if (ago < TimeSpan.FromMinutes(1)) return Loc.T("Mobile.Account.SyncedNow");
+        if (ago < TimeSpan.FromHours(1)) return Loc.T("Mobile.Account.SyncedMinutes", (int)ago.TotalMinutes);
         var day = synced.ToLocalTime().Date;
         var today = nowUtc.ToLocalTime().Date;
-        if (day == today) return $"Synced {(int)ago.TotalHours} hr ago";
-        if (day == today.AddDays(-1)) return "Synced yesterday";
-        if (day > today.AddDays(-7)) return $"Synced {(today - day).Days} days ago";
-        return $"Synced {day:d MMM}";
+        if (day == today) return Loc.T("Mobile.Account.SyncedHours", (int)ago.TotalHours);
+        if (day == today.AddDays(-1)) return Loc.T("Mobile.Account.SyncedYesterday");
+        if (day > today.AddDays(-7)) return Loc.Plural("Mobile.Account.SyncedDays", (today - day).Days);
+        return Loc.T("Mobile.Account.SyncedOn", day.ToString(SettingsPageViewModel.MonthDay(Loc.Instance.Culture), Loc.Instance.Culture));
     }
-
-    private static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";
 }
 
 /// <summary>The sign-in field an error is shown under (<see cref="AccountPageViewModel.ErrorField"/>).</summary>
