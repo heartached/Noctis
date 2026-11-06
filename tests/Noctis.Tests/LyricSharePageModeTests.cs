@@ -598,4 +598,76 @@ public class LyricSharePageModeTests
             try { System.IO.Directory.Delete(dir, true); } catch { /* best effort */ }
         }
     }
+
+    /// <summary>Lines 2 s apart; the song's last line ends at <paramref name="lastEnd"/> and its
+    /// adlib (background vocal) at <paramref name="adlibEnd"/>.</summary>
+    private static LyricShareViewModel EndingWithAdlib(int count, double lastEnd, double adlibEnd)
+    {
+        var lines = Enumerable.Range(0, count).Select(i => $"line {i}").ToList();
+        var stamps = Enumerable.Range(0, count).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+        var ends = Enumerable.Range(0, count)
+            .Select(i => i == count - 1 ? (TimeSpan?)TimeSpan.FromSeconds(lastEnd) : null).ToList();
+        var sources = Enumerable.Range(0, count).Select(i => i < count - 1
+            ? new LyricLine { Text = lines[i], Timestamp = stamps[i] }
+            : new LyricLine
+            {
+                Text = lines[i], Timestamp = stamps[i], EndTimestamp = ends[i],
+                BackgroundEndTimestamp = TimeSpan.FromSeconds(adlibEnd),
+                BackgroundWords = new[] { new WordTiming { Text = "yeah", Start = TimeSpan.FromSeconds(lastEnd - 1) } },
+            }).ToList();
+        return new LyricShareViewModel(Song(), lines, stamps, null, endTimestamps: ends, sources: sources);
+    }
+
+    /// <summary>A background vocal that runs past the song's last line holds the clip open.</summary>
+    [AvaloniaFact]
+    public void An_adlib_past_the_last_line_extends_the_clip()
+    {
+        var vm = EndingWithAdlib(10, lastEnd: 23, adlibEnd: 27);   // line 9 sings 18-23 s, its adlib to 27 s
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.ToggleLine(vm.Lines[9]);
+            vm.LayoutIndex = 2;
+            Assert.Equal(Span(5, 9), Picked(vm));
+            Assert.Equal(17, vm.GetClipTiming().DurationSeconds);
+        }
+        finally { vm.Detach(); }
+
+        // Line 25, the last, starts at 50 s and ends at 55 s, but its adlib runs to 62 s.
+        var tooLong = EndingWithAdlib(26, lastEnd: 55, adlibEnd: 62);
+        try
+        {
+            tooLong.ClearSelectionCommand.Execute(null);
+            tooLong.ToggleLine(tooLong.Lines[0]);
+            tooLong.LayoutIndex = 2;
+            tooLong.ToggleLine(tooLong.Lines[25]);
+            Assert.Equal(Span(0, 0), Picked(tooLong));
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageMaxLength", 60), tooLong.StatusText);
+        }
+        finally { tooLong.Detach(); }
+    }
+
+    /// <summary>An open last word (no end, no line end) sweeps 2 s, as on the lyrics page.</summary>
+    [AvaloniaFact]
+    public void An_open_last_word_ends_the_clip_two_seconds_after_it_starts()
+    {
+        var lines = Enumerable.Range(0, 10).Select(i => $"line {i}").ToList();
+        var stamps = Enumerable.Range(0, 10).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+        var words = Enumerable.Range(0, 10).Select(i => i < 9 ? null : (IReadOnlyList<WordTiming>?)new[]
+        {
+            new WordTiming { Text = "long ", Start = TimeSpan.FromSeconds(18) },
+            new WordTiming { Text = "note", Start = TimeSpan.FromSeconds(21.5) },   // open: sweeps to 23.5 s
+        }).ToList();
+        var vm = new LyricShareViewModel(Song(), lines, stamps, null, words);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.ToggleLine(vm.Lines[9]);
+            vm.LayoutIndex = 2;
+            Assert.Equal(new ShareClipTiming(10, 13.5), vm.GetClipTiming());
+        }
+        finally { vm.Detach(); }
+    }
 }

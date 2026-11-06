@@ -1020,8 +1020,8 @@ public partial class LyricShareViewModel : ViewModelBase
     /// The Lyrics Page clip of lines <paramref name="first"/>..<paramref name="last"/>, in track
     /// seconds, its end not yet capped: from the range's earliest timestamp to the next timed
     /// line's start. When no timed line follows (the range ends on the song's last timed line),
-    /// to where that line is sung out: its end tag, else its last word's end, but at least 4 s
-    /// after it starts, not the card's flat 15 s. Null when no line in the range is timed.
+    /// to where that line is sung out: its end tag, else its last word's end, or its adlib's end
+    /// when that is later, but at least 4 s after it starts, not the card's flat 15 s. Null when no line in the range is timed.
     /// One function for the 60 s check, the clip and the page spec, so the three agree.
     /// </summary>
     private (double Start, double End)? PageClipWindow(int first, int last)
@@ -1042,9 +1042,15 @@ public partial class LyricShareViewModel : ViewModelBase
             if (Lines[i].Timestamp is { } next) return (startSeconds, next.TotalSeconds);
 
         double lineStart = lastStart.TotalSeconds;
+        // No line follows, so an open last word gets the lyrics page's 2 s sweep.
         double? sungEnd = lastTimed.EndTimestamp?.TotalSeconds
-            ?? (lastTimed.Words is { Count: > 0 } words ? (words[^1].End ?? words[^1].Start).TotalSeconds : null);
-        return (startSeconds, Math.Max(sungEnd ?? lineStart, lineStart + PageLastLineMinSeconds));
+            ?? (lastTimed.Words is { Count: > 0 } words
+                ? (words[^1].End ?? KaraokeSweep.ResolveOpenLastWordEnd(words[^1].Start, null)).TotalSeconds
+                : null);
+        // An adlib can run on past the main line: the clip waits for it too.
+        double? adlibEnd = lastTimed.BackgroundEndTimestamp?.TotalSeconds;
+        return (startSeconds, Math.Max(Math.Max(sungEnd ?? lineStart, adlibEnd ?? lineStart),
+            lineStart + PageLastLineMinSeconds));
     }
 
     /// <summary>The first and last picked line, or null when none is picked.</summary>
