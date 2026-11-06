@@ -51,9 +51,6 @@ public sealed class PlayCountSync
     /// <summary>How far back an incremental read reaches before the last sync (late scrobbles).</summary>
     public static readonly TimeSpan Overlap = TimeSpan.FromDays(14);
 
-    /// <summary>The background sync runs at most this often (startup checks it).</summary>
-    public static readonly TimeSpan Interval = TimeSpan.FromHours(24);
-
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
     private readonly PlayCountHistoryFetcher _fetcher;
@@ -159,10 +156,6 @@ public sealed class PlayCountSync
             await JsonSerializer.SerializeAsync(fs, state, JsonOptions);
         File.Move(tmp, path, overwrite: true);
     }
-
-    /// <summary>Whether a background sync is due (never ran, or ran <see cref="Interval"/> ago or more).</summary>
-    public static bool IsDue(DateTime? lastSyncUtc, DateTime nowUtc)
-        => lastSyncUtc is not { } last || last > nowUtc || nowUtc - last >= Interval;
 
     private sealed class KeyComparer : IEqualityComparer<(string, string, string)>
     {

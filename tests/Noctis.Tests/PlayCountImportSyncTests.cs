@@ -200,16 +200,6 @@ public class PlayCountImportSyncTests : IDisposable
         Assert.Null(await PlayCountSync.LoadStateAsync(Path.Combine(_root, "missing.json")));
     }
 
-    [Fact]
-    public void Sync_is_due_once_a_day()
-    {
-        var now = new DateTime(2026, 11, 6, 12, 0, 0, DateTimeKind.Utc);
-        Assert.True(PlayCountSync.IsDue(null, now));
-        Assert.False(PlayCountSync.IsDue(now.AddHours(-23), now));
-        Assert.True(PlayCountSync.IsDue(now.AddHours(-24), now));
-        Assert.True(PlayCountSync.IsDue(now.AddHours(5), now)); // clock moved back: run
-    }
-
     // ── Settings › Integrations end to end ──
 
     private sealed class NoOpPlayHistoryService : IPlayHistoryService
@@ -272,31 +262,64 @@ public class PlayCountImportSyncTests : IDisposable
         await UntilSaved(persistence, s => s is { LastFmPlayCountSync: true, LastFmPlayCountSyncedUtc: not null },
             "toggle and sync time saved");
 
-        // Startup an hour later: not due (once a day), nothing is read.
-        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup", ignoreInterval: false);
-        Assert.Single(requests);
+        // The next startup, even minutes later (GitHub #182: every startup): an incremental read
+        // that finds nothing new and changes nothing.
+        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup");
+        Assert.Equal(2, requests.Count);
+        Assert.Contains("from=", requests[1].Query);
+        Assert.Equal(3, a.PlayCount);
+        Assert.Equal(Loc.T("Settings.PlayCountImport.Synced", "0", "0"), vm.LastFmImportStatus);
 
         // A new scrobble (sent late, so dated before the first sync), then a sync as on
         // connecting: only the new play is read and added.
         scrobbles.Add(new(now - 10, "Art", "Song A", "Al"));
-        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected", ignoreInterval: true);
-        Assert.Equal(2, requests.Count);
-        Assert.Contains("from=", requests[1].Query);
+        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected");
+        Assert.Equal(3, requests.Count);
+        Assert.Contains("from=", requests[2].Query);
         Assert.Equal(4, a.PlayCount);
         Assert.Equal(10, b.PlayCount);
         Assert.Equal(Loc.T("Settings.PlayCountImport.Synced", "1", "1"), vm.LastFmImportStatus);
 
         // "Use the imported count" is the one mode that may lower a count, and it is saved.
         vm.PlayCountImportMode = PlayCountImportMode.Replace;
-        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected", ignoreInterval: true);
+        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup");
         Assert.Equal(2, b.PlayCount);
         Assert.Equal(4, a.PlayCount);
         await UntilSaved(persistence, s => s.PlayCountImportMode == "Replace", "mode saved");
 
         // Off, or not connected: the background sync does nothing.
         vm.IsLastFmConnected = false;
-        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup", ignoreInterval: true);
-        Assert.Equal(3, requests.Count); // the three syncs above, nothing since
+        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup");
+        Assert.Equal(4, requests.Count); // the four syncs above, nothing since
+    }
+
+    [AvaloniaFact]
+    public async Task Background_sync_is_skipped_while_another_sync_or_import_runs()
+    {
+        var requests = new List<Uri>();
+        var release = new TaskCompletionSource();
+        var lib = new FakeLibraryService();
+        var persistence = new PersistenceService(Path.Combine(_root, "data"));
+        var vm = new SettingsViewModel(persistence, lib, new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        vm.PlayCountSyncDataRoot = Path.Combine(_root, "data");
+        vm.PlayCountImportHttp = new HttpClient(new AnimatedArtworkChooserTests.StubHandler(async r =>
+        {
+            lock (requests) requests.Add(r.RequestUri!);
+            await release.Task; // the first read hangs until released
+            return LastFmReply(r, Array.Empty<Scrobble>());
+        }));
+        vm.LastFmUsername = "tester";
+        vm.IsLastFmConnected = true;
+        vm.LastFmPlayCountSync = true; // starts sync #1, which hangs on its read
+        await Until(() => vm.IsLastFmImportRunning && requests.Count == 1, "first sync reading");
+
+        await vm.SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup");
+        Assert.Single(requests); // skipped, not queued and not overlapping
+
+        release.SetResult();
+        await Until(() => !vm.IsPlayCountImportRunning, "first sync finished");
+        Assert.Single(requests);
     }
 
     [Fact]

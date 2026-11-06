@@ -6378,7 +6378,7 @@ public partial class SettingsViewModel : ViewModelBase
                     _settings.LastFmSessionKey = _lastFm.GetSessionKey() ?? "";
                     await SaveAsync();
                     // GitHub #160: "Keep play counts in sync" left on from an earlier sign-in.
-                    _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected", ignoreInterval: true);
+                    _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected");
                     return;
                 }
 
@@ -6483,7 +6483,7 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", username);
             await SaveAsync();
             // GitHub #160: "Keep play counts in sync" left on from an earlier connection.
-            _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "connected", ignoreInterval: true);
+            _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "connected");
         }
         else
         {

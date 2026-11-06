@@ -13,10 +13,11 @@ namespace Noctis.ViewModels;
 /// One-way: the service's listening history is read and Noctis's play counts are raised to it
 /// (or set to it). See <see cref="PlayCountHistoryFetcher"/> / <see cref="PlayCountImportMatcher"/>.
 /// The counts are written as user state only — no play-history event, no scrobble.
-/// <para>"Keep play counts in sync" (off by default) runs the same import in the background at
-/// startup (at most once a day, <see cref="PlayCountSync.Interval"/>), when it is turned on and
-/// when the account is connected, reading only what was scrobbled since the last run
-/// (<see cref="PlayCountSync"/>). Import always reads the whole history again.</para>
+/// <para>"Keep play counts in sync" (off by default) runs the same import in the background on
+/// every startup (GitHub #182), when it is turned on and when the account is connected, reading
+/// only what was scrobbled since the last run (<see cref="PlayCountSync"/>); the whole history is
+/// read only the first time, for another account, or when the saved state is unreadable. Import
+/// always reads the whole history again.</para>
 /// </summary>
 public partial class SettingsViewModel
 {
@@ -136,14 +137,14 @@ public partial class SettingsViewModel
     {
         if (!_settingsLoaded) return;
         _ = SaveAsync();
-        if (value) _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "turned on", ignoreInterval: true);
+        if (value) _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "turned on");
     }
 
     partial void OnListenBrainzPlayCountSyncChanged(bool value)
     {
         if (!_settingsLoaded) return;
         _ = SaveAsync();
-        if (value) _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "turned on", ignoreInterval: true);
+        if (value) _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "turned on");
     }
 
     // ── Commands ──
@@ -173,8 +174,8 @@ public partial class SettingsViewModel
 
     /// <summary>
     /// Startup (MainWindowViewModel.InitializeAsync, after the library has loaded): after a short
-    /// delay, syncs each service whose "Keep play counts in sync" is on and whose last sync is a
-    /// day old or more. One service after the other; UI thread.
+    /// delay, syncs each service whose "Keep play counts in sync" is on, every startup (GitHub
+    /// #182: an incremental read is cheap). One service after the other; UI thread.
     /// </summary>
     public async Task SyncPlayCountsOnStartupAsync()
     {
@@ -182,8 +183,8 @@ public partial class SettingsViewModel
         {
             if (!LastFmPlayCountSync && !ListenBrainzPlayCountSync) return;
             await Task.Delay(PlayCountStartupSyncDelay);
-            await SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup", ignoreInterval: false);
-            await SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "startup", ignoreInterval: false);
+            await SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "startup");
+            await SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "startup");
         }
         catch (Exception ex)
         {
@@ -191,17 +192,11 @@ public partial class SettingsViewModel
         }
     }
 
-    /// <summary>The background sync for one service, when it is on (and due, unless
-    /// <paramref name="ignoreInterval"/>: turning it on and connecting run it straight away).</summary>
-    internal async Task SyncPlayCountsInBackgroundAsync(PlayCountImportSource source, string reason, bool ignoreInterval)
+    /// <summary>The background sync for one service, when it is on and connected. Never
+    /// overlaps another sync or Import: if one is running, this one is skipped.</summary>
+    internal async Task SyncPlayCountsInBackgroundAsync(PlayCountImportSource source, string reason)
     {
         if (!IsPlayCountSyncOn(source)) return;
-        var last = source == PlayCountImportSource.LastFm ? _lastFmPlayCountSyncedUtc : _listenBrainzPlayCountSyncedUtc;
-        if (!ignoreInterval && !PlayCountSync.IsDue(last, DateTime.UtcNow))
-        {
-            DebugLog.Write("PlayCountImport", $"{source} sync ({reason}) skipped: last sync {last:u}, due once a day");
-            return;
-        }
         if (PlayCountImportActive != null)
         {
             DebugLog.Write("PlayCountImport", $"{source} sync ({reason}) skipped: an import is already running");

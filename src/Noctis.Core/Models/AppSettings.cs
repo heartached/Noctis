@@ -1027,8 +1027,8 @@ public class AppSettings : IJsonOnDeserializing
     public string PlayCountImportMode { get; set; } = "KeepHigher";
 
     /// <summary>GitHub #160: "Keep play counts in sync" under Last.fm. Off by default: when on,
-    /// the play count import runs in the background at startup (at most once a day) and on
-    /// connecting, reading only what was scrobbled since the last sync.</summary>
+    /// the play count import runs in the background on every startup, when turned on and on
+    /// connecting, reading only what was scrobbled since the last sync (GitHub #182).</summary>
     public bool LastFmPlayCountSync { get; set; }
 
     /// <summary>When the last Last.fm play count sync (or Import) finished; null = never.</summary>
