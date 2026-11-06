@@ -130,8 +130,15 @@ public sealed class KaraokeFlow
     public double FocusAt(int line, double tSeconds)
     {
         var x = Math.Clamp((tSeconds - _focusStart[line]) / FocusFadeSeconds, 0, 1);
-        var eased = x < 0.5 ? 4 * x * x * x : 1 - Math.Pow(-2 * x + 2, 3) / 2;
-        return _focusFrom[line] + (_focusTo[line] - _focusFrom[line]) * eased;
+        return _focusFrom[line] + (_focusTo[line] - _focusFrom[line]) * EaseCubicInOut(x);
+    }
+
+    /// <summary>The page's line transition curve (cubic in-out) at progress <paramref name="x"/>,
+    /// clamped to 0..1.</summary>
+    public static double EaseCubicInOut(double x)
+    {
+        x = Math.Clamp(x, 0, 1);
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.Pow(-2 * x + 2, 3) / 2;
     }
 
     /// <summary>Line opacity at <paramref name="tSeconds"/> (after <see cref="Advance"/>).</summary>

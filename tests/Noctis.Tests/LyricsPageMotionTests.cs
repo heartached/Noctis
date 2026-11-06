@@ -165,4 +165,165 @@ public class LyricsPageMotionTests
             Assert.Equal(end.TargetOffset(last), end.ScrollOffset(t));
         }
     }
+
+    [Fact]
+    public void Neighbours_dim_and_blur_by_distance_on_a_half_second_ease()
+    {
+        var (motion, lines, _) = Build();
+        int active = IndexAt(lines, 10), next = IndexAt(lines, 14);
+        var timing = new ShareClipTiming(10, 10);
+        for (int n = 0; Frame(n, timing) < 12.0; n++) motion.Advance(Frame(n, timing));
+
+        // Mid-line, settled.
+        motion.Advance(12.0);
+        Assert.Equal(1.0, motion.Opacity(active, 12.0));
+        Assert.Equal(0.55, motion.Opacity(active - 1, 12.0));
+        Assert.Equal(0.55, motion.Opacity(active + 1, 12.0));
+        Assert.Equal(0.32, motion.Opacity(active + 2, 12.0));
+        Assert.Equal(0.0, motion.Opacity(active + 10, 12.0));
+        Assert.Equal(0.0, motion.BlurRadius(active, 12.0));
+        Assert.Equal(4.0 * G.Scale, motion.BlurRadius(active - 1, 12.0), 9);
+        Assert.Equal(4.0 * G.Scale, motion.BlurRadius(active + 1, 12.0), 9);
+        Assert.Equal(10.0 * G.Scale, motion.BlurRadius(active + 4, 12.0), 9);
+        Assert.Equal(10.0 * G.Scale, motion.BlurRadius(active + 5, 12.0), 9);
+
+        // The list leads into the next line: the old line eases out over 0.5 s, blur with it.
+        for (int n = 0; Frame(n, timing) < 13.3; n++)
+            if (Frame(n, timing) > 12.0) motion.Advance(Frame(n, timing));
+        motion.Advance(13.3);
+        Assert.Equal(next, motion.ScrollIndex);
+        motion.Advance(13.55);
+        double mid = motion.Opacity(active, 13.55);
+        Assert.True(mid > 0.55 && mid < 1.0, $"opacity {mid}");
+        double blurMid = motion.BlurRadius(active, 13.55);
+        Assert.True(blurMid > 0 && blurMid < 4.0 * G.Scale, $"blur {blurMid}");
+        motion.Advance(13.8);
+        Assert.Equal(0.55, motion.Opacity(active, 13.8));
+        Assert.Equal(1.0, motion.Opacity(next, 13.8));
+        Assert.Equal(4.0 * G.Scale, motion.BlurRadius(active, 13.8), 9);
+        Assert.Equal(0.0, motion.BlurRadius(next, 13.8));
+    }
+
+    [Fact]
+    public void The_lead_line_takes_the_karaoke_look_and_the_sung_line_leaves_it()
+    {
+        var (motion, lines, _) = Build();
+        int first = IndexAt(lines, 10), second = IndexAt(lines, 14);
+        motion.Advance(13.0);
+        Assert.Equal(1.0, motion.SweepFocus(first, 13.0));
+        Assert.Equal(0.0, motion.SweepFocus(second, 13.0));
+        motion.Advance(13.3);                                   // the list leads into the next line
+        motion.Advance(13.8);
+        Assert.Equal(1.0, motion.SweepFocus(second, 13.8));
+        Assert.Equal(1.0, motion.SweepFocus(first, 13.8));      // still active until 14 s
+        motion.Advance(14.0);                                   // the next line activates
+        motion.Advance(14.25);
+        double mid = motion.SweepFocus(first, 14.25);
+        Assert.True(mid > 0 && mid < 1, $"sweep focus {mid}");
+        motion.Advance(14.5);
+        Assert.Equal(0.0, motion.SweepFocus(first, 14.5));
+    }
+
+    [Fact]
+    public void Interlude_dots_fill_and_breathe_through_the_gap()
+    {
+        var (motion, lines, _) = Build();
+        int dots = lines.FindIndex(l => l.IsInterlude);
+        const int intro = 0;
+        double dotsStart = lines[dots].Timestamp!.Value.TotalSeconds;
+        double next = lines[dots + 1].Timestamp!.Value.TotalSeconds;
+
+        // Walk into the gap frame by frame; the breathing starts when the dots become the active line.
+        var timing = new ShareClipTiming(38, 20);
+        double activation = double.NaN;
+        for (int n = 0; double.IsNaN(activation) && Frame(n, timing) < 45; n++)
+        {
+            double t = Frame(n, timing);
+            motion.Advance(t);
+            Assert.Equal(1.0, motion.DotsScale(intro, t));           // inactive dots never breathe
+            Assert.Equal(1.0, motion.DotsScale(dots, t));            // not breathing yet, or at phase 0
+            if (motion.Timeline.ActiveIndex == dots) activation = t;
+        }
+        Assert.False(double.IsNaN(activation));
+        motion.Advance(activation + 2.1);
+        Assert.Equal(0.88, motion.DotsScale(dots, activation + 2.1), 9);
+        motion.Advance(activation + 3.0);
+        Assert.InRange(motion.DotsScale(dots, activation + 3.0), 0.88, 1.0);
+        motion.Advance(activation + 4.2);
+        Assert.Equal(1.0, motion.DotsScale(dots, activation + 4.2), 9);
+
+        // Mid-gap: the dots are the focus and fill with the gap.
+        double midGap = (dotsStart + next) / 2;
+        motion.Advance(midGap);
+        Assert.True(motion.Timeline.ActiveLine!.IsInterlude);
+        Assert.Equal(1.0, motion.Opacity(dots, midGap));
+        Assert.Equal((midGap - dotsStart) / (next - dotsStart), lines[dots].InterludeProgress, 6);
+        Assert.InRange(motion.DotsScale(dots, midGap), 0.88, 1.0);
+
+        // A seek into the gap breathes from the dots' own activation time, not from the seek.
+        var (seeked, _, _) = Build();
+        double t0 = dotsStart - Noctis.Helpers.LineMotion.HalfTravelMs / 1000.0;
+        seeked.Advance(t0 + 2.1);
+        Assert.Equal(dots, seeked.Timeline.ActiveIndex);
+        Assert.Equal(0.88, seeked.DotsScale(dots, t0 + 2.1), 9);
+    }
+
+    [Fact]
+    public void Overlapping_duet_lines_are_both_in_focus_and_the_list_holds_on_the_first()   // Review Focus 3
+    {
+        static KaraokeWord[] Words(double start, double end, params string[] tokens)
+        {
+            double step = (end - start) / tokens.Length;
+            return tokens.Select((t, i) => new KaraokeWord(t, start + i * step, start + (i + 1) * step)).ToArray();
+        }
+        var (motion, lines, _) = Build(new[]
+        {
+            new LyricsPageLine { Text = "one two three four five", StartSeconds = 10,
+                Words = Words(10, 15, "one", "two", "three", "four", "five") },
+            new LyricsPageLine { Text = "six seven", StartSeconds = 12, Voice = LyricVoice.Voice2,
+                Words = Words(12, 14, "six", "seven") },
+        });
+        int a = IndexAt(lines, 10), b = IndexAt(lines, 12);
+        var timing = new ShareClipTiming(10, 4);
+        for (int n = 0; Frame(n, timing) < 13; n++) motion.Advance(Frame(n, timing));
+        motion.Advance(13);
+        Assert.Equal(b, motion.Timeline.ActiveIndex);
+        Assert.Equal(a, motion.ScrollIndex);
+        Assert.Equal(1.0, motion.Opacity(a, 13));
+        Assert.Equal(1.0, motion.Opacity(b, 13));
+        Assert.Equal(0.0, motion.BlurRadius(a, 13));
+        Assert.Equal(0.0, motion.BlurRadius(b, 13));
+        Assert.Equal(motion.TargetOffset(a), motion.ScrollOffset(13));
+    }
+
+    [Fact]
+    public void An_adlib_only_line_without_an_end_still_bounds_the_interlude()   // Unit C carry
+    {
+        var (motion, lines, _) = Build(new[]
+        {
+            LyricsPageTestData.Words(10, "hold me closer"),
+            new LyricsPageLine { Text = "ooh yeah", StartSeconds = 14, IsBackgroundOnly = true,
+                BackgroundWords = new[] { new KaraokeWord("ooh", 14, 15), new KaraokeWord("yeah", 15, 16) } },
+            LyricsPageTestData.Words(30, "tiny dancer"),
+        });
+        // LyricsTimeline.SungEnd reads BackgroundEndTimestamp: the gap counts from the adlib's end.
+        int dots = lines.FindIndex(l => l.IsInterlude);
+        Assert.True(dots > 0, "no interlude after the adlib-only line");
+        Assert.Equal(16 + 0.35, lines[dots].Timestamp!.Value.TotalSeconds, 3);
+        motion.Advance(20);
+        Assert.Equal(dots, motion.Timeline.ActiveIndex);
+        Assert.Equal(dots, motion.ScrollIndex);
+        Assert.Equal(1.0, motion.Opacity(dots, 20));
+    }
+
+    [Fact]
+    public void The_focus_ease_is_the_pages_cubic_in_out()
+    {
+        Assert.Equal(0.0, KaraokeFlow.EaseCubicInOut(0));
+        Assert.Equal(0.5, KaraokeFlow.EaseCubicInOut(0.5));
+        Assert.Equal(1.0, KaraokeFlow.EaseCubicInOut(1));
+        Assert.Equal(4 * 0.25 * 0.25 * 0.25, KaraokeFlow.EaseCubicInOut(0.25), 12);
+        Assert.Equal(0.0, KaraokeFlow.EaseCubicInOut(-1));
+        Assert.Equal(1.0, KaraokeFlow.EaseCubicInOut(2));
+    }
 }
