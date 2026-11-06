@@ -137,9 +137,17 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private bool _isSquare = true;
     [ObservableProperty] private bool _isStory;
 
-    // ── Layout: Card (panel header) or Poster (big centered artwork) ────
+    // ── Layout: Card (panel header), Poster (big centered artwork) or Lyrics Page (the
+    // moving lyrics page as a video). The three are exclusive. ────
     [ObservableProperty] private bool _isPanelLayout = true;
     [ObservableProperty] private bool _isPosterLayout;
+    [ObservableProperty] private bool _isPageLayout;
+
+    /// <summary>The Lyrics Page plays the song's timing, so it needs a line with a timestamp.</summary>
+    public bool PageLayoutAvailable { get; }
+
+    /// <summary>The Lyrics Page choice's tooltip: what it is, or why it is off.</summary>
+    public string PageLayoutTip => PageLayoutAvailable ? L("LyricShare.LyricsPageTip") : L("ShareLyrics.PageNeedsSync");
 
     [ObservableProperty] private Bitmap? _preview;
     [ObservableProperty] private string _statusText = string.Empty;
@@ -224,11 +232,20 @@ public partial class LyricShareViewModel : ViewModelBase
         if (!_backgroundUpdating) OnPropertyChanged(nameof(SelectedBackground));
     }
 
-    /// <summary>0 = Card (panel header), 1 = Poster.</summary>
+    /// <summary>0 = Card (panel header), 1 = Poster, 2 = Lyrics Page (ignored for unsynced lyrics).</summary>
     public int LayoutIndex
     {
-        get => IsPosterLayout ? 1 : 0;
-        set { if (value == 1) IsPosterLayout = true; else if (value == 0) IsPanelLayout = true; }
+        get => IsPageLayout ? 2 : IsPosterLayout ? 1 : 0;
+        set
+        {
+            if (value == 2)
+            {
+                if (PageLayoutAvailable) IsPageLayout = true;
+                else OnPropertyChanged(nameof(LayoutIndex));   // the drop-down snaps back
+            }
+            else if (value == 1) IsPosterLayout = true;
+            else if (value == 0) IsPanelLayout = true;
+        }
     }
 
     /// <summary>0 = 1:1, 1 = 9:16.</summary>
@@ -390,7 +407,7 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         get
         {
-            var layout = IsPosterLayout ? "Poster" : "Card";
+            var layout = IsPageLayout ? L("LyricShare.LyricsPage") : IsPosterLayout ? "Poster" : "Card";
             var aspect = IsStory ? "9:16" : "1:1";
             var text = TextColor switch
             {
@@ -517,6 +534,7 @@ public partial class LyricShareViewModel : ViewModelBase
         }
 
         SyncAvailable = player != null && Lines.Any(l => l.Timestamp.HasValue);
+        PageLayoutAvailable = Lines.Any(l => l.Timestamp.HasValue);
 
         // Pre-select the active line and the next few, like Spotify does.
         if (Lines.Count > 0)
@@ -555,7 +573,8 @@ public partial class LyricShareViewModel : ViewModelBase
             if (SyncEnabled)
                 SyncEnabled = false;
 
-            if (line.IsSelected && Lines.Count(l => l.IsSelected) > MaxLines)
+            // The 8-line cap is the card's; the Lyrics Page is limited by its 60 s clip instead.
+            if (!IsPageLayout && line.IsSelected && Lines.Count(l => l.IsSelected) > MaxLines)
             {
                 // Revert the toggle that exceeded the cap.
                 line.IsSelected = false;
@@ -724,14 +743,119 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(LayoutIndex));
-        if (value) { IsPosterLayout = false; RefreshPreview(); }
+        if (value) { IsPosterLayout = false; IsPageLayout = false; }
+        RaiseSelectionChanged();   // the selection summary reads differently per layout
+        if (value) RefreshPreview();
     }
 
     partial void OnIsPosterLayoutChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(LayoutIndex));
-        if (value) { IsPanelLayout = false; RefreshPreview(); }
+        if (value) { IsPanelLayout = false; IsPageLayout = false; }
+        RaiseSelectionChanged();
+        if (value) RefreshPreview();
+    }
+
+    partial void OnIsPageLayoutChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(LayoutIndex));
+        if (value)
+        {
+            IsPanelLayout = false;
+            IsPosterLayout = false;
+            FillPageRange();
+        }
+        else
+        {
+            KeepFirstCardLines();
+        }
+        RaiseSelectionChanged();
+        if (value) RefreshPreview();
+    }
+
+    /// <summary>
+    /// Entering the Lyrics Page: the video plays one stretch of the song, so the picks become
+    /// every line from the first pick to the last, cut where the 60 s clip would end.
+    /// </summary>
+    private void FillPageRange()
+    {
+        int first = -1, last = -1;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            if (!Lines[i].IsSelected) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+        if (first < 0) return;
+
+        int end = last;
+        while (end > first && !PageRangeFits(first, end)) end--;
+        ApplyRange(first, end);
+        if (end < last)
+            StatusText = L("ShareLyrics.PageMaxLength", (int)ShareClipTiming.MaxSeconds);
+    }
+
+    /// <summary>Leaving the Lyrics Page for a card: the card holds 8 lines, so the first 8 picks stay.</summary>
+    private void KeepFirstCardLines()
+    {
+        int kept = 0;
+        bool changed = false;
+        _syncUpdatingSelection = true;
+        foreach (var line in Lines)
+        {
+            if (!line.IsSelected || ++kept <= MaxLines) continue;
+            line.IsSelected = false;
+            changed = true;
+        }
+        _syncUpdatingSelection = false;
+        if (!changed) return;
+        RaiseSelectionChanged();
+        OnPropertyChanged(nameof(KaraokeAvailable));
+        OnPropertyChanged(nameof(CardOptionsSummary));
+    }
+
+    /// <summary>
+    /// Whether lines <paramref name="first"/>..<paramref name="last"/> fit one Lyrics Page clip:
+    /// from the range's first timestamp to where its last line really ends (the next line's
+    /// start, or the last timed line in the range plus the 15 s fallback when no line follows)
+    /// is at most 60 s. The clip clamps to 60 s, so a longer range would cut its last line.
+    /// </summary>
+    private bool PageRangeFits(int first, int last)
+    {
+        double? start = null, lastStart = null;
+        for (int i = first; i <= last; i++)
+        {
+            if (Lines[i].Timestamp is not { } ts) continue;
+            start = start is { } s ? Math.Min(s, ts.TotalSeconds) : ts.TotalSeconds;
+            lastStart = ts.TotalSeconds;
+        }
+        if (start is not { } startSeconds || lastStart is not { } lastSeconds)
+            return true;   // nothing timed in the range: the clip uses its fallback length
+
+        double end = lastSeconds + ShareClipTiming.FallbackSeconds;
+        for (int i = last + 1; i < Lines.Count; i++)
+            if (Lines[i].Timestamp is { } ts) { end = ts.TotalSeconds; break; }
+        return end - Math.Max(0, startSeconds) <= ShareClipTiming.MaxSeconds;
+    }
+
+    /// <summary>Picks exactly lines <paramref name="first"/>..<paramref name="last"/> in one go
+    /// (an empty range, last &lt; first, picks none), then refreshes like a sync step does.</summary>
+    private void ApplyRange(int first, int last)
+    {
+        _syncUpdatingSelection = true;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            bool sel = i >= first && i <= last;
+            if (Lines[i].IsSelected != sel)
+                Lines[i].IsSelected = sel;
+        }
+        _syncUpdatingSelection = false;
+        RaiseSelectionChanged();
+        OnPropertyChanged(nameof(KaraokeAvailable));
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        RefreshPreview();
     }
 
     [RelayCommand]
@@ -745,6 +869,12 @@ public partial class LyricShareViewModel : ViewModelBase
 
     [RelayCommand]
     private void SelectPosterLayout() => IsPosterLayout = true;
+
+    [RelayCommand]
+    private void SelectPageLayout()
+    {
+        if (PageLayoutAvailable) IsPageLayout = true;
+    }
 
     [RelayCommand]
     private void ToggleSync() => SyncEnabled = !SyncEnabled;

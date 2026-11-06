@@ -53,4 +53,87 @@ public class LyricSharePageModeTests
         }
         finally { vm.Detach(); }
     }
+
+    /// <summary>Synced lines <paramref name="gapSeconds"/> apart, the first at 0 s.</summary>
+    private static LyricShareViewModel Synced(int count, double gapSeconds = 2)
+    {
+        var lines = Enumerable.Range(0, count).Select(i => $"line {i}").ToList();
+        var stamps = Enumerable.Range(0, count).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * gapSeconds)).ToList();
+        return new LyricShareViewModel(Song(), lines, stamps, null);
+    }
+
+    private static int[] Picked(LyricShareViewModel vm) =>
+        Enumerable.Range(0, vm.Lines.Count).Where(i => vm.Lines[i].IsSelected).ToArray();
+
+    private static int[] Span(int first, int last) => Enumerable.Range(first, last - first + 1).ToArray();
+
+    [AvaloniaFact]
+    public void Unsynced_lyrics_cannot_pick_the_Lyrics_Page_and_say_why()
+    {
+        var vm = new LyricShareViewModel(Song(), new[] { "plain one", "plain two" });
+        try
+        {
+            Assert.False(vm.PageLayoutAvailable);
+            vm.LayoutIndex = 2;
+            Assert.Equal(0, vm.LayoutIndex);
+            Assert.False(vm.IsPageLayout);
+            vm.SelectPageLayoutCommand.Execute(null);
+            Assert.False(vm.IsPageLayout);
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageNeedsSync"), vm.PageLayoutTip);
+        }
+        finally { vm.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void Entering_the_page_fills_the_gaps_and_leaving_keeps_the_first_eight()
+    {
+        var vm = Synced(20);
+        try
+        {
+            Assert.True(vm.PageLayoutAvailable);
+            Assert.Equal(Localization.Loc.T("LyricShare.LyricsPageTip"), vm.PageLayoutTip);
+            vm.ClearSelectionCommand.Execute(null);   // the dialog preselects lines 0-3
+            vm.ToggleLine(vm.Lines[1]);
+            vm.ToggleLine(vm.Lines[3]);
+            vm.ToggleLine(vm.Lines[6]);
+
+            vm.LayoutIndex = 2;
+            Assert.True(vm.IsPageLayout);
+            Assert.False(vm.IsPanelLayout);
+            Assert.False(vm.IsPosterLayout);
+            Assert.Equal(2, vm.LayoutIndex);
+            Assert.Equal(Span(1, 6), Picked(vm));
+            Assert.StartsWith(Localization.Loc.T("LyricShare.LyricsPage"), vm.CardOptionsSummary);
+
+            for (int i = 7; i <= 12; i++)
+                vm.Lines[i].IsSelected = true;   // no 8-line cap in the page
+            Assert.Equal(Span(1, 12), Picked(vm));
+
+            vm.LayoutIndex = 0;
+            Assert.True(vm.IsPanelLayout);
+            Assert.False(vm.IsPageLayout);
+            Assert.Equal(Span(1, 8), Picked(vm));
+            Assert.Equal(Localization.Loc.T("ShareLyrics.SelectedCount", 8, LyricShareViewModel.MaxLines), vm.SelectionSummary);
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>Card picks may lie far apart; the page's range stops where the 60 s clip does.</summary>
+    [AvaloniaFact]
+    public void Entering_the_page_trims_the_range_to_sixty_seconds()
+    {
+        var vm = Synced(60);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[0]);
+            vm.ToggleLine(vm.Lines[50]);
+
+            vm.LayoutIndex = 2;
+            // Line 29 ends where line 30 starts, at 60 s: the last line the clip holds whole.
+            Assert.Equal(Span(0, 29), Picked(vm));
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageMaxLength", 60), vm.StatusText);
+        }
+        finally { vm.Detach(); }
+    }
 }
