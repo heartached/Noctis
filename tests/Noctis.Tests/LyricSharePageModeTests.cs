@@ -798,4 +798,73 @@ public class LyricSharePageModeTests
         }
         finally { vm.Detach(); }
     }
+
+    private static T Named<T>(Avalonia.Controls.Window w, string name) where T : Avalonia.Controls.Control =>
+        Avalonia.Controls.ControlExtensions.FindControl<T>(w, name)!;
+
+    [AvaloniaFact]
+    public void Picking_the_Lyrics_Page_swaps_the_option_row()
+    {
+        LyricShareDialogTests.EnsureAppStyles();
+        var vm = WordTimed(12);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1280, Height = 860 };
+        win.Show();
+        try
+        {
+            var layout = Named<Avalonia.Controls.ComboBox>(win, "LayoutBox");
+            Assert.Equal(3, layout.ItemCount);
+            Assert.True(Named<Avalonia.Controls.ComboBoxItem>(win, "PageLayoutItem").IsEnabled);
+            Assert.True(Named<Avalonia.Controls.ComboBox>(win, "TextColorBox").IsEffectivelyVisible);
+            Assert.False(Named<Avalonia.Controls.ComboBox>(win, "PageBackgroundBox").IsEffectivelyVisible);
+            Assert.True(Named<Avalonia.Controls.CheckBox>(win, "KaraokeBox").IsEffectivelyVisible);
+
+            vm.LayoutIndex = 2;
+            PumpUntil(() => false, 100);
+            Assert.False(Named<Avalonia.Controls.ComboBox>(win, "TextColorBox").IsEffectivelyVisible);
+            Assert.False(Named<Avalonia.Controls.ComboBox>(win, "BackgroundBox").IsEffectivelyVisible);
+            Assert.False(Named<Avalonia.Controls.CheckBox>(win, "KaraokeBox").IsEffectivelyVisible);
+            var background = Named<Avalonia.Controls.ComboBox>(win, "PageBackgroundBox");
+            var readability = Named<Avalonia.Controls.Slider>(win, "ReadabilitySlider");
+            var zones = Named<Avalonia.Controls.CheckBox>(win, "SafeZonesBox");
+            Assert.True(background.IsEffectivelyVisible);
+            Assert.True(readability.IsEffectivelyVisible);
+            Assert.True(zones.IsEffectivelyVisible);
+            Assert.True(Named<Avalonia.Controls.Button>(win, "ChooseBackgroundButton").IsEffectivelyVisible);
+            Assert.False(Named<Avalonia.Controls.Button>(win, "RemoveBackgroundButton").IsEffectivelyVisible);
+            Assert.Equal(3, background.ItemCount);
+            Assert.Equal(Localization.Loc.T("LyricShare.Background"), Avalonia.Automation.AutomationProperties.GetName(background));
+            Assert.Equal(Localization.Loc.T("LyricShare.Readability"), Avalonia.Automation.AutomationProperties.GetName(readability));
+
+            // The controls drive the view-model.
+            readability.Value = 30;
+            Assert.Equal(30, vm.PageBackgroundStrength);
+            Assert.False(zones.IsChecked);
+            vm.FormatIndex = 1;
+            PumpUntil(() => false, 50);
+            Assert.True(zones.IsChecked == true);
+
+            vm.LayoutIndex = 0;
+            PumpUntil(() => false, 50);
+            Assert.True(Named<Avalonia.Controls.ComboBox>(win, "TextColorBox").IsEffectivelyVisible);
+            Assert.False(background.IsEffectivelyVisible);
+        }
+        finally
+        {
+            if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
+        }
+
+        var plain = new LyricShareViewModel(Song(), new[] { "plain one", "plain two" });
+        var plainWin = new Noctis.Views.LyricShareDialog(plain) { Width = 1280, Height = 860 };
+        plainWin.Show();
+        try
+        {
+            Assert.False(Named<Avalonia.Controls.ComboBoxItem>(plainWin, "PageLayoutItem").IsEnabled);
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageNeedsSync"),
+                Avalonia.Controls.ToolTip.GetTip(Named<Avalonia.Controls.ComboBoxItem>(plainWin, "PageLayoutItem")));
+        }
+        finally
+        {
+            if (plainWin.IsVisible) { plainWin.Close(); PumpUntil(() => !plainWin.IsVisible); }
+        }
+    }
 }
