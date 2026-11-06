@@ -285,8 +285,10 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>The karaoke timing the preview and the clip use for the card's lines (tests).</summary>
     internal IReadOnlyList<KaraokeLine> CardKaraoke => BuildKaraokeLines(CardSelection());
 
-    /// <summary>"3 of 8" next to Clear.</summary>
-    public string SelectionSummary => L("ShareLyrics.SelectedCount", SelectedCount, MaxLines);
+    /// <summary>"3 of 8" next to Clear; in the Lyrics Page, "12 lines · 34 s" (the clip's length).</summary>
+    public string SelectionSummary => IsPageLayout
+        ? L("ShareLyrics.PageRangeSummary", SelectedCount, (int)Math.Round(GetClipTiming().DurationSeconds))
+        : L("ShareLyrics.SelectedCount", SelectedCount, MaxLines);
 
     private void RaiseSelectionChanged()
     {
@@ -309,8 +311,52 @@ public partial class LyricShareViewModel : ViewModelBase
         }
     }
 
-    /// <summary>A tap on a row: picks or drops the line (the 8-line cap still applies).</summary>
-    public void ToggleLine(SelectableLyricLine line) => line.IsSelected = !line.IsSelected;
+    /// <summary>
+    /// A tap on a row. On a card it picks or drops the line (the 8-line cap still applies).
+    /// In the Lyrics Page the picks are one unbroken range: a tap outside it extends it to the
+    /// line, a tap inside ends it there, and tapping the only picked line clears it. A range
+    /// longer than the 60 s clip is refused with a status.
+    /// </summary>
+    public void ToggleLine(SelectableLyricLine line)
+    {
+        if (!IsPageLayout)
+        {
+            line.IsSelected = !line.IsSelected;
+            return;
+        }
+
+        int index = Lines.IndexOf(line);
+        if (index < 0) return;
+        int first = -1, last = -1;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            if (!Lines[i].IsSelected) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+
+        if (first < 0) { SetRange(index, index); return; }
+        if (first == last && index == first) { SetRange(0, -1); return; }
+
+        int newFirst = Math.Min(first, index);
+        int newLast = index < first ? last : index;
+        if (!PageRangeFits(newFirst, newLast))
+        {
+            StatusText = L("ShareLyrics.PageMaxLength", (int)ShareClipTiming.MaxSeconds);
+            return;
+        }
+        SetRange(newFirst, newLast);
+    }
+
+    /// <summary>A manual range change in the Lyrics Page: takes over from playback, as a tap
+    /// on a card does, then picks lines <paramref name="first"/>..<paramref name="last"/>
+    /// (none when last &lt; first).</summary>
+    private void SetRange(int first, int last)
+    {
+        if (SyncEnabled) SyncEnabled = false;
+        StatusText = string.Empty;
+        ApplyRange(first, last);
+    }
 
     /// <summary>Starts editing one line (any other open edit is kept first).</summary>
     public void BeginEdit(SelectableLyricLine line)
@@ -318,8 +364,13 @@ public partial class LyricShareViewModel : ViewModelBase
         foreach (var other in Lines)
             if (!ReferenceEquals(other, line)) other.EndEdit(keep: true);
         // An edited line is one meant for the card. When the 8-line cap refuses it, no edit
-        // box: the typing would change a line the card does not show.
-        if (!line.IsSelected) line.IsSelected = true;
+        // box: the typing would change a line the card does not show. In the Lyrics Page the
+        // range first grows to the line (or, past 60 s, refuses it the same way).
+        if (!line.IsSelected)
+        {
+            if (IsPageLayout) ToggleLine(line);
+            else line.IsSelected = true;
+        }
         if (!line.IsSelected) return;
         line.BeginEdit();
     }

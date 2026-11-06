@@ -136,4 +136,95 @@ public class LyricSharePageModeTests
         }
         finally { vm.Detach(); }
     }
+
+    /// <summary>A page-mode view-model whose range is lines <paramref name="first"/>..<paramref name="last"/>.</summary>
+    private static LyricShareViewModel PageRange(int count, int first, int last)
+    {
+        var vm = Synced(count);
+        vm.ClearSelectionCommand.Execute(null);   // the dialog preselects lines 0-3
+        vm.ToggleLine(vm.Lines[first]);
+        if (last != first) vm.ToggleLine(vm.Lines[last]);
+        vm.LayoutIndex = 2;
+        Assert.Equal(Span(first, last), Picked(vm));
+        return vm;
+    }
+
+    [AvaloniaFact]
+    public void In_the_page_a_tap_extends_or_trims_the_range()
+    {
+        var vm = PageRange(30, 4, 6);
+        try
+        {
+            vm.ToggleLine(vm.Lines[10]);
+            Assert.Equal(Span(4, 10), Picked(vm));
+            vm.ToggleLine(vm.Lines[2]);
+            Assert.Equal(Span(2, 10), Picked(vm));
+            vm.ToggleLine(vm.Lines[5]);
+            Assert.Equal(Span(2, 5), Picked(vm));
+            // Lines 2-5 start at 4 s; line 6 starts at 12 s.
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageRangeSummary", 4, 8), vm.SelectionSummary);
+
+            vm.ToggleLine(vm.Lines[2]);
+            Assert.Equal(Span(2, 2), Picked(vm));
+            vm.ToggleLine(vm.Lines[2]);
+            Assert.Empty(Picked(vm));
+            Assert.False(vm.HasSelection);
+
+            vm.ToggleLine(vm.Lines[7]);   // nothing picked: the tap starts a new range
+            Assert.Equal(Span(7, 7), Picked(vm));
+        }
+        finally { vm.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void The_range_stops_at_sixty_seconds_with_a_status()
+    {
+        var vm = PageRange(40, 0, 0);
+        try
+        {
+            // Line 30 starts at 60 s and ends at 62 s, where line 31 starts: past the clip.
+            vm.ToggleLine(vm.Lines[30]);
+            Assert.Equal(Span(0, 0), Picked(vm));
+            Assert.Equal(Localization.Loc.T("ShareLyrics.PageMaxLength", 60), vm.StatusText);
+
+            vm.ToggleLine(vm.Lines[29]);
+            Assert.Equal(Span(0, 29), Picked(vm));
+            Assert.Equal(string.Empty, vm.StatusText);
+        }
+        finally { vm.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void Editing_a_line_outside_the_range_extends_it_first()
+    {
+        var vm = PageRange(30, 4, 6);
+        try
+        {
+            vm.BeginEdit(vm.Lines[8]);
+            Assert.Equal(Span(4, 8), Picked(vm));
+            Assert.True(vm.Lines[8].IsEditing);
+
+            vm.Lines[8].EndEdit(keep: true);
+            vm.BeginEdit(vm.Lines[5]);   // inside: the range stays as it is
+            Assert.Equal(Span(4, 8), Picked(vm));
+            Assert.True(vm.Lines[5].IsEditing);
+        }
+        finally { vm.Detach(); }
+    }
+
+    /// <summary>The card keeps its free picking: taps toggle single lines, no range.</summary>
+    [AvaloniaFact]
+    public void Card_taps_still_toggle_single_lines()
+    {
+        var vm = Synced(20);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[2]);
+            vm.ToggleLine(vm.Lines[9]);
+            Assert.Equal(new[] { 2, 9 }, Picked(vm));
+            Assert.Equal(Localization.Loc.T("ShareLyrics.SelectedCount", 2, LyricShareViewModel.MaxLines), vm.SelectionSummary);
+        }
+        finally { vm.Detach(); }
+    }
 }
