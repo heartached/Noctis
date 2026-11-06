@@ -7445,6 +7445,19 @@
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
+                    <!-- GitHub #160: background play count sync (SettingsViewModel.PlayCountImport.cs). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.PlayCountImport.Sync.Title}"
+                                              IsChecked="{Binding LastFmPlayCountSync}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
                 </StackPanel>
@@ -7620,6 +7633,19 @@
                                 VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
+                    </Grid>
+                    <!-- GitHub #160: background play count sync (SettingsViewModel.PlayCountImport.cs). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.PlayCountImport.Sync.Title}"
+                                              IsChecked="{Binding ListenBrainzPlayCountSync}"
+                                              VerticalAlignment="Center"/>
                     </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>

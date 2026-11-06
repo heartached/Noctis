@@ -965,6 +965,9 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         });
 
+        // GitHub #160: "Keep play counts in sync" — at most once a day, after a short delay.
+        _ = Settings.SyncPlayCountsOnStartupAsync();
+
         // What an auto-update did at launch ("Updated to X.") and a queued install's Ready state.
         Settings.RestoreAutoUpdateState();
 
