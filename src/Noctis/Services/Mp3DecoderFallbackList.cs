@@ -4,7 +4,8 @@ using System.IO;
 namespace Noctis.Services;
 
 /// <summary>
-/// MP3 files that wedged LibVLC's mpg123 decoder on damaged data (see DecoderWedgeDetector),
+/// MP3 files that wedged LibVLC's mpg123 decoder on damaged data (see DecoderWedgeDetector)
+/// or in which damaged data was found ahead of time (see Mp3FrameScan.FindDamage),
 /// remembered across restarts so the next play opens them on FFmpeg's decoder from the
 /// start and never reaches the damage on mpg123 again (Discord 11-03: the recovery worked,
 /// but every play of the file still dropped out at the damaged spot). One line per file:

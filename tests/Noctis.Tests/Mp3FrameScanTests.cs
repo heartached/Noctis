@@ -235,6 +235,25 @@ public class Mp3FrameScanTests : IDisposable
         Assert.Empty(Mp3FrameScan.FindDamage(joined, minMinutes: 0));
     }
 
+    // Tangent's file at 31:14, rebuilt on an encoded file (see MakeDamagedMp3): junk, two frames
+    // whose audio data is noise, more junk: one run, from the frame before the first junk to
+    // the frame after the second.
+    [Fact]
+    public void FindDamage_OnAnEncodedFile_ReportsTangentsKindOfDamage()
+    {
+        var ffmpeg = FindFfmpeg();
+        Assert.SkipWhen(ffmpeg == null, "no ffmpeg on PATH");
+        var path = Mp3DamageCrunchHarnessTests.MakeDamagedMp3(ffmpeg!, _root, seconds: 60, damageAtS: 30, out var n);
+        using var stream = File.OpenRead(path);
+        var run = Assert.Single(Mp3FrameScan.FindDamage(stream, minMinutes: 0));
+        var frameMs = 576 * 1000.0 / 22050;
+        Assert.InRange(run.CutMs, (long)(n * frameMs) - 1, (long)(n * frameMs) + 1);
+        Assert.InRange(run.ResumeMs, (long)((n + 3) * frameMs), (long)((n + 3) * frameMs) + 2);
+        // The clean encode has none.
+        using var clean = File.OpenRead(Path.Combine(_root, "clean.mp3"));
+        Assert.Empty(Mp3FrameScan.FindDamage(clean, minMinutes: 0));
+    }
+
     [Fact]
     public void FindDamage_MergesJunkScatteredBetweenFrames_IntoOneRun()
     {
