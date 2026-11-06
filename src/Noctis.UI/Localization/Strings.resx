@@ -3121,7 +3121,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 minute</value><comment>Songs page top bar summary</comment></data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} minutes</value><comment>Songs page top bar summary</comment></data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Import Play Counts</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
-  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Copy your play counts into Noctis. Nothing is sent back.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
+  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Press Import to bring the plays in your listening history into Noctis's play counts. Nothing is sent back.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
   <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Import</value><comment>Settings › Integrations: starts the play count import</comment></data>
   <data name="Settings.PlayCountImport.Cancel" xml:space="preserve"><value>Cancel</value><comment>Settings › Integrations: stops a running play count import</comment></data>
   <data name="Settings.PlayCountImport.ModeName" xml:space="preserve"><value>When the counts differ</value><comment>Screen-reader name of the play count import mode list</comment></data>
@@ -3138,6 +3138,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>This {0} listening history is private.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Couldn't reach {0}. Try again later.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} sent an unexpected reply. Try again later.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Sync.Title" xml:space="preserve"><value>Keep Play Counts in Sync</value><comment>Settings › Integrations, under Last.fm / ListenBrainz: background play count sync toggle (GitHub #160)</comment></data>
+  <data name="Settings.PlayCountImport.Sync.Line" xml:space="preserve"><value>Brings in new plays in the background when Noctis starts.</value><comment>Settings › Integrations: what Keep Play Counts in Sync does</comment></data>
+  <data name="Settings.PlayCountImport.Synced" xml:space="preserve"><value>Synced. {0} new plays · {1} songs updated</value><comment>Background play count sync summary; {0} = new plays read since the last sync, {1} = songs changed</comment></data>
   <data name="Features.Section" xml:space="preserve"><value>Built-in Features</value><comment>Plugins page: section title above the switches for features that ship with Noctis</comment></data>
   <data name="Features.SectionLine" xml:space="preserve"><value>Part of Noctis and on from the start, like plugins you can switch off. Turned back on, each comes back as you left it.</value><comment>Plugins page: line under the Built-in Features title</comment></data>
   <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Mini Player</value><comment>Settings › Plugins › Built-in Features</comment></data>

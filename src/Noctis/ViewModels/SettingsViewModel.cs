@@ -3585,6 +3585,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = _settings.LastFmScrobblingEnabled;
             LastFmUsername = _settings.LastFmUsername;
             LastFmTasteEnabled = _settings.LastFmTasteEnabled;
+            LoadPlayCountImportSettings(_settings);
 
             if (_lastFm != null && !string.IsNullOrEmpty(_settings.LastFmSessionKey))
             {
@@ -4059,6 +4060,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
         _settings.LastFmTasteEnabled = LastFmTasteEnabled;
+        SavePlayCountImportSettings(_settings);
         if (_lastFm is LastFmService lfm)
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
 
@@ -6395,6 +6397,8 @@ public partial class SettingsViewModel : ViewModelBase
                     LastFmStatusText = Loc.T("Settings.ConnectedAs", LastFmUsername);
                     _settings.LastFmSessionKey = _lastFm.GetSessionKey() ?? "";
                     await SaveAsync();
+                    // GitHub #160: "Keep play counts in sync" left on from an earlier sign-in.
+                    _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected");
                     return;
                 }
 
@@ -6498,6 +6502,8 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzScrobblingEnabled = true;
             ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", username);
             await SaveAsync();
+            // GitHub #160: "Keep play counts in sync" left on from an earlier connection.
+            _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "connected");
         }
         else
         {
@@ -8029,6 +8035,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             LastFmTasteEnabled = defaultSettings.LastFmTasteEnabled;
+            ResetPlayCountImportSettings(defaultSettings);
             IsLastFmConnected = false;
             LastFmStatusText = Loc.T("Settings.NotConnected");
             // Without this the session key survived in the service and SyncToSettings

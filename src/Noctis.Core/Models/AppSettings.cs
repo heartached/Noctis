@@ -1032,6 +1032,24 @@ public class AppSettings : IJsonOnDeserializing
     /// connecting is the opt-in; this lets a connected user turn them off.</summary>
     public bool LastFmTasteEnabled { get; set; } = true;
 
+    /// <summary>GitHub #160: how an imported play count combines with Noctis's count:
+    /// "KeepHigher" (default, never lowers a count) or "Replace" (PlayCountImportMode).</summary>
+    public string PlayCountImportMode { get; set; } = "KeepHigher";
+
+    /// <summary>GitHub #160: "Keep play counts in sync" under Last.fm. Off by default: when on,
+    /// the play count import runs in the background on every startup, when turned on and on
+    /// connecting, reading only what was scrobbled since the last sync (GitHub #182).</summary>
+    public bool LastFmPlayCountSync { get; set; }
+
+    /// <summary>When the last Last.fm play count sync (or Import) finished; null = never.</summary>
+    public DateTime? LastFmPlayCountSyncedUtc { get; set; }
+
+    /// <summary>GitHub #160: "Keep play counts in sync" under ListenBrainz; see <see cref="LastFmPlayCountSync"/>.</summary>
+    public bool ListenBrainzPlayCountSync { get; set; }
+
+    /// <summary>When the last ListenBrainz play count sync (or Import) finished; null = never.</summary>
+    public DateTime? ListenBrainzPlayCountSyncedUtc { get; set; }
+
     /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).
     /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>
     public bool ListenBrainzScrobblingEnabled { get; set; } = false;
