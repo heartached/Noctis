@@ -1804,6 +1804,7 @@
     <views:PlaybackBarView DataContext="{Binding Player}"
                            ClipToBounds="False"
                            CompactWhenLyricsPageActive="False"
+                           BackdropColor="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IslandBackdropColor, FallbackValue={x:Null}}"
                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarMounted, FallbackValue=False}"
                            IsHitTestVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarHitTestVisible, FallbackValue=False}"
                            Opacity="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaybackBarOpacity, FallbackValue=0}"

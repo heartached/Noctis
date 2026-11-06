@@ -33,6 +33,24 @@ public partial class PlaybackBarView : UserControl
         set => SetValue(CompactWhenLyricsPageActiveProperty, value);
     }
 
+    /// <summary>
+    /// The plain colour under the island (MainWindow: a tinted album page or the whole-window
+    /// tint), or null for the theme's own page, which the island's colours are made for. The
+    /// fill is translucent, so a light colour here turns the pill light; its text and icons
+    /// then follow a contrast-checked family (<see cref="IslandContrast"/>).
+    /// </summary>
+    public static readonly StyledProperty<Color?> BackdropColorProperty =
+        AvaloniaProperty.Register<PlaybackBarView, Color?>(nameof(BackdropColor));
+
+    public Color? BackdropColor
+    {
+        get => GetValue(BackdropColorProperty);
+        set => SetValue(BackdropColorProperty, value);
+    }
+
+    /// <summary>True while the island wears the dark family (a light surface). Internal for tests.</summary>
+    internal bool IsOnLightSurface { get; private set; }
+
     private const double TrackTitleOverflowThreshold = 1.0;
     private const double TrackTitleScrollSpeed = 30.0;
     private const double TrackTitleBadgeSpacing = 6.0;
@@ -197,6 +215,9 @@ public partial class PlaybackBarView : UserControl
             UpdateIslandWidth();
         }
 
+        if (e.Property == BackdropColorProperty)
+            UpdateSurfaceContrast();
+
         // The main-window bar stays mounted and IsVisible while the fullscreen lyrics page
         // is up — only its Opacity goes to 0 — so the 16 ms marquee timer went on mutating
         // TranslateTransform.X 60 times a second on a fully transparent control, for the
@@ -226,10 +247,77 @@ public partial class PlaybackBarView : UserControl
         }
 
         UpdateIslandWidth();
+
+        AppGlass.Changed += OnSurfaceInputsChanged;
+        ActualThemeVariantChanged += OnSurfaceInputsChanged;
+        ResourcesChanged += OnSurfaceResourcesChanged;
+        UpdateSurfaceContrast();
+    }
+
+    private bool _surfaceContrastPosted;
+
+    /// <summary>Glass toggled, theme or accent resources swapped: re-check once the resource
+    /// bindings (the fill's IslandBackgroundColor) have taken the new values.</summary>
+    private void OnSurfaceInputsChanged(object? sender, EventArgs e)
+    {
+        if (_surfaceContrastPosted) return;
+        _surfaceContrastPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _surfaceContrastPosted = false;
+            UpdateSurfaceContrast();
+        });
+    }
+
+    private void OnSurfaceResourcesChanged(object? sender, ResourcesChangedEventArgs e) =>
+        OnSurfaceInputsChanged(sender, EventArgs.Empty);
+
+    /// <summary>The island's resources as they stand above it (theme, accent), not the
+    /// overrides this view writes on its own fill.</summary>
+    private IBrush? InheritedIslandBrush(string key) =>
+        this.TryFindResource(key, ActualThemeVariant, out var value) ? value as IBrush : null;
+
+    /// <summary>
+    /// Light album page under a translucent island (live 11-06, Lavender Haze / Lover): the
+    /// pill turned light grey under white text and icons. Works out the colour the fill shows
+    /// over <see cref="BackdropColor"/> and, where the theme's island text would read under
+    /// 4.5:1, writes a contrast-checked family onto the fill (so everything inside it, the
+    /// volume pop-up too, picks it up). The volume pop-up has its own fill (near-opaque with
+    /// Liquid Glass off), so it is checked on its own surface and keeps the theme colours there.
+    /// </summary>
+    internal void UpdateSurfaceContrast()
+    {
+        var backdrop = BackdropColor;
+        Dictionary<string, IBrush>? island = null, volume = null;
+        if (backdrop is { } under)
+        {
+            island = IslandContrast.OverridesFor(IslandContrast.SurfaceOf(IslandGlass, under), InheritedIslandBrush);
+            volume = IslandContrast.OverridesFor(IslandContrast.SurfaceOf(VolumeFlyoutContent, under), InheritedIslandBrush);
+            // The pop-up sits inside the island's resource scope: where it needs the theme's
+            // own colours while the island wears overrides, it re-states them.
+            if (island != null && volume == null)
+            {
+                volume = new Dictionary<string, IBrush>();
+                foreach (var key in island.Keys)
+                    if (InheritedIslandBrush(key) is { } brush) volume[key] = brush;
+            }
+        }
+
+        IslandContrast.Apply(IslandGlass.Resources, island);
+        IslandContrast.Apply(VolumeFlyoutContent.Resources, volume);
+        IsOnLightSurface = island != null
+            && island.TryGetValue("IslandForeground", out var fg) && fg is ISolidColorBrush s
+            && s.Color == IslandContrast.DarkForeground;
+        IslandBorder.Classes.Set("on-light", IsOnLightSurface);
+        _artistNameBoxPainted = null; // the next pointer move repaints the hover box in the new fill
     }
 
     private void OnPlaybackBarDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        AppGlass.Changed -= OnSurfaceInputsChanged;
+        ActualThemeVariantChanged -= OnSurfaceInputsChanged;
+        ResourcesChanged -= OnSurfaceResourcesChanged;
+
         // Safety: ensure seek drag state is fully cleared on detach
         if (_isSeekDragging)
         {
@@ -275,6 +363,9 @@ public partial class PlaybackBarView : UserControl
     {
         if (e.PropertyName == nameof(PlayerViewModel.IsMuted))
             UpdateVolumeMuteLook();
+
+        if (e.PropertyName == nameof(PlayerViewModel.IslandBackgroundOpacity))
+            OnSurfaceInputsChanged(this, EventArgs.Empty);
 
         if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) ||
             e.PropertyName == nameof(PlayerViewModel.TrackTitleMarqueeEnabled))
@@ -638,6 +729,10 @@ public partial class PlaybackBarView : UserControl
     // #33FFFFFF pressed, PlaybackBarView.axaml Button.artist-link-btn rules).
     private static readonly IBrush ArtistNameHoverFill = new ImmutableSolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
     private static readonly IBrush ArtistNamePressedFill = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
+    // On a light surface (IsOnLightSurface) the box darkens instead, as the title's does
+    // (Border#IslandBorder.on-light rules in PlaybackBarView.axaml).
+    private static readonly IBrush ArtistNameHoverFillOnLight = new ImmutableSolidColorBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
+    private static readonly IBrush ArtistNamePressedFillOnLight = new ImmutableSolidColorBrush(Color.FromArgb(0x29, 0x00, 0x00, 0x00));
     private const double ArtistNameBoxRadius = 2;
 
     /// <summary>Last pointer position over the artist link, in ArtistNameButton coordinates
@@ -723,7 +818,9 @@ public partial class PlaybackBarView : UserControl
             var size = run.Bounds.Size;
             run.Background = ArtistCreditLink.NameBoxBrush(size,
                 new Rect(box.Left, 0, box.Right - box.Left, size.Height),
-                ArtistNameButton.IsPressed ? ArtistNamePressedFill : ArtistNameHoverFill,
+                ArtistNameButton.IsPressed
+                    ? (IsOnLightSurface ? ArtistNamePressedFillOnLight : ArtistNamePressedFill)
+                    : (IsOnLightSurface ? ArtistNameHoverFillOnLight : ArtistNameHoverFill),
                 ArtistNameBoxRadius);
         }
     }
