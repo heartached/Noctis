@@ -80,11 +80,32 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
         _backgroundGlow = SKMaskFilter.CreateBlur(SKBlurStyle.Normal,
             Geometry.BackgroundVocalSize * ShareCardRenderer.KaraokeGlowRadiusEm * 0.5f);
 
-        var vp = Geometry.Viewport;
-        float fade = Math.Clamp(Geometry.EdgeFade / Math.Max(1f, vp.Height), 0f, 0.5f);
-        _edgeFade = SKShader.CreateLinearGradient(new SKPoint(0, vp.Top), new SKPoint(0, vp.Bottom),
-            new[] { SKColors.Transparent, SKColors.Black, SKColors.Black, SKColors.Transparent },
-            new[] { 0f, fade, 1f - fade, 1f }, SKShaderTileMode.Clamp);
+        _edgeFade = EdgeFadeShader(Geometry.Viewport, Geometry.EdgeFade);
+    }
+
+    /// <summary>
+    /// The list's top and bottom fade: over <paramref name="fadeHeight"/> at each edge the lyrics
+    /// ease in from transparent on a smoothstep (eased stops, not a linear ramp, so a line passing
+    /// the edge dissolves instead of reading as sliced).
+    /// </summary>
+    private static SKShader EdgeFadeShader(SKRect viewport, float fadeHeight)
+    {
+        float fade = Math.Clamp(fadeHeight / Math.Max(1f, viewport.Height), 0f, 0.5f);
+        float[] steps = { 0f, 0.25f, 0.5f, 0.75f, 1f };
+        var colors = new List<SKColor>();
+        var positions = new List<float>();
+        foreach (var x in steps)
+        {
+            colors.Add(SKColors.Black.WithAlpha((byte)Math.Round(255 * x * x * (3 - 2 * x))));
+            positions.Add(x * fade);
+        }
+        foreach (var x in steps.Reverse())
+        {
+            colors.Add(SKColors.Black.WithAlpha((byte)Math.Round(255 * x * x * (3 - 2 * x))));
+            positions.Add(1f - x * fade);
+        }
+        return SKShader.CreateLinearGradient(new SKPoint(0, viewport.Top), new SKPoint(0, viewport.Bottom),
+            colors.ToArray(), positions.ToArray(), SKShaderTileMode.Clamp);
     }
 
     /// <summary>Paints the social apps' covered areas over the frame (preview only, never exported).</summary>
@@ -142,9 +163,12 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
         // ReSharper disable once CompareOfFloatsByEqualityOperator
         bool listAtRest = offset == Motion.TargetOffset(Motion.ScrollIndex);
         float margin = g.LyricSize;   // blur and glow reach past a line's band
+        // Clipped top and bottom only: blur and glow run on into the side margins (a soft halo is
+        // not text in a safe zone), where a side clip would cut them off hard.
+        var band = new SKRect(0, vp.Top, g.Width, vp.Bottom);
 
-        canvas.SaveLayer(vp, null);
-        canvas.ClipRect(vp);
+        canvas.SaveLayer(band, null);
+        canvas.ClipRect(band);
         for (int i = 0; i < _lines.Count; i++)
         {
             var opacity = Motion.Opacity(i, t);
@@ -163,7 +187,7 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
                 Color = SKColors.White.WithAlpha(KaraokeTokenPainter.ToAlpha(SKColors.White, (float)opacity)),
                 ImageFilter = filter,
             };
-            canvas.SaveLayer(new SKRect(vp.Left - margin, y - margin, vp.Right + margin, y + layout.Height + margin), layerPaint);
+            canvas.SaveLayer(new SKRect(band.Left, y - margin, band.Right, y + layout.Height + margin), layerPaint);
 
             var line = _lines[i];
             if (layout.IsDots)
@@ -180,8 +204,9 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
             canvas.Restore();
         }
 
+        // Full width, so halos in the side margins fade with their lines too.
         using (var fadePaint = new SKPaint { Shader = _edgeFade, BlendMode = SKBlendMode.DstIn })
-            canvas.DrawRect(vp, fadePaint);
+            canvas.DrawRect(band, fadePaint);
         canvas.Restore();
     }
 

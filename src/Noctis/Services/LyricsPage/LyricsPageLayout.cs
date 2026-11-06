@@ -29,7 +29,8 @@ public static class LyricsPageLayout
         float titleSize = story ? 44f : 38f;
         float artistSize = story ? 32f : 28f;
         float headerGap = story ? 56f : 40f;
-        float edgeFade = story ? 72f : 56f;
+        // About 1.6 lyric rows (RowHeight 86.4 / 69.6): one glyph height read as a slice, not a fade.
+        float edgeFade = story ? 140f : 112f;
         float lyricSize = story ? 72f : 58f;
 
         var insets = SocialSafeZones.For(format, safeZones);

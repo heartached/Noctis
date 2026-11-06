@@ -71,6 +71,45 @@ public class LyricsPageRenderTests
     private static double LineTop(LyricsPageAnimator a, IReadOnlyList<PageLineLayout> layout, int index, double t) =>
         a.Geometry.Viewport.Top + layout[index].Top - a.Motion.ScrollOffset(t) + a.Motion.LineLags(t)[index];
 
+    /// <summary>
+    /// A side-zone pixel this much brighter (max channel) than the background is glyph ink: a
+    /// full-opacity stroke lifts a pixel by 170-245 (a line moved into the right zone), the blur halo
+    /// of the test song's lines by at most 10. Blur running into the side margins is allowed; text is not.
+    /// </summary>
+    private const int GlyphInkDelta = 128;
+
+    /// <summary>
+    /// What of <paramref name="frame"/> lands in the safe zones, against the background-only
+    /// <paramref name="reference"/>: top/bottom zones (full canvas width) must equal the background
+    /// exactly; side zones may carry halo but no pixel <see cref="GlyphInkDelta"/> brighter.
+    /// Returns the violations and the largest side-zone lift seen.
+    /// </summary>
+    private static (List<string> Violations, int MaxSideLift) ZoneCheck(ShareCardFormat format, byte[] frame, byte[] reference, int w, int h)
+    {
+        var violations = new List<string>();
+        int maxSideLift = 0;
+        foreach (var zone in SocialSafeZones.Zones(format, true))
+        {
+            bool side = zone.Width < 1080;
+            foreach (var (x, y) in PixelsIn(zone, PreviewScale, w, h))
+            {
+                int i = (y * w + x) * 4;
+                int lift = Math.Max(frame[i] - reference[i], Math.Max(frame[i + 1] - reference[i + 1], frame[i + 2] - reference[i + 2]));
+                bool same = frame[i] == reference[i] && frame[i + 1] == reference[i + 1] && frame[i + 2] == reference[i + 2];
+                if (side)
+                {
+                    maxSideLift = Math.Max(maxSideLift, lift);
+                    if (lift >= GlyphInkDelta) violations.Add($"side ({x},{y}) +{lift}");
+                }
+                else if (!same)
+                {
+                    violations.Add($"edge ({x},{y}) {frame[i]}/{reference[i]}");
+                }
+            }
+        }
+        return (violations, maxSideLift);
+    }
+
     [Theory]
     [InlineData(ShareCardFormat.Story)]
     [InlineData(ShareCardFormat.Square)]
@@ -80,28 +119,13 @@ public class LyricsPageRenderTests
         using var animator = new LyricsPageAnimator(spec, PreviewScale);
         int w = animator.PixelWidth, h = animator.PixelHeight;
         var reference = BackgroundOnly(spec, w, h);
-        var zones = SocialSafeZones.Zones(format, true);
-        Assert.NotEmpty(zones);
+        Assert.NotEmpty(SocialSafeZones.Zones(format, true));
 
         foreach (var t in new[] { 10.1, 12.0, 13.4, 14.2, 25.0, 31.0 })
         {
-            var frame = Frame(animator, t);
-            foreach (var zone in zones)
-                foreach (var (x, y) in PixelsIn(zone, PreviewScale, w, h))
-                {
-                    int i = (y * w + x) * 4;
-                    if (frame[i] != reference[i] || frame[i + 1] != reference[i + 1] || frame[i + 2] != reference[i + 2])
-                    {
-                        var diffs = new List<string>();
-                        foreach (var (xx, yy) in PixelsIn(zone, PreviewScale, w, h))
-                        {
-                            int j = (yy * w + xx) * 4;
-                            if (frame[j] != reference[j] || frame[j + 1] != reference[j + 1] || frame[j + 2] != reference[j + 2])
-                                diffs.Add($"({xx},{yy}):{frame[j]}/{reference[j]}");
-                        }
-                        Assert.Fail($"{format} t={t}: pixel ({x},{y}) in zone {zone} differs from the background: {diffs.Count} {string.Join(" ", diffs.Take(40))}");
-                    }
-                }
+            var (violations, maxSideLift) = ZoneCheck(format, Frame(animator, t), reference, w, h);
+            Assert.True(violations.Count == 0,
+                $"{format} t={t}: {violations.Count} zone pixels carry text (max side lift {maxSideLift}): {string.Join(" ", violations.Take(30))}");
         }
 
         // The check is not vacuous: outside the zones the frame does carry header and lyrics.
@@ -120,19 +144,23 @@ public class LyricsPageRenderTests
         var withOverlay = Frame(shown, 12.0);
         var without = Frame(hidden, 12.0);
 
+        // The overlay tints every zone pixel...
         int changed = 0, total = 0;
         foreach (var zone in SocialSafeZones.Zones(ShareCardFormat.Story, true))
             foreach (var (x, y) in PixelsIn(zone, PreviewScale, w, h))
             {
                 int i = (y * w + x) * 4;
                 total++;
-                if (withOverlay[i] != reference[i] || withOverlay[i + 1] != reference[i + 1] || withOverlay[i + 2] != reference[i + 2])
+                if (withOverlay[i] != without[i] || withOverlay[i + 1] != without[i + 1] || withOverlay[i + 2] != without[i + 2])
                     changed++;
-                Assert.Equal(reference[i], without[i]);
-                Assert.Equal(reference[i + 1], without[i + 1]);
-                Assert.Equal(reference[i + 2], without[i + 2]);
             }
         Assert.Equal(total, changed);
+        // ...and without it the zones hold only the background (and side-margin halo).
+        Assert.Empty(ZoneCheck(ShareCardFormat.Story, without, reference, w, h).Violations);
+        // Outside the zones the two frames are the same picture.
+        var g = shown.Geometry;
+        int mid = (int)((g.Viewport.Top + g.AnchorY) * PreviewScale) * w * 4 + (int)(540 * PreviewScale) * 4;
+        Assert.Equal(without[mid], withOverlay[mid]);
     }
 
     [Fact]
