@@ -42,22 +42,39 @@ public static class ShareClipRenderer
         };
     }
 
+    /// <summary>Audio fade at each end of the Lyrics Page video, in seconds. Card clips cut clean.</summary>
+    public const double PageFadeSeconds = 0.3;
+
     /// <summary>
     /// Builds the ffmpeg argument list for the karaoke path: a numbered PNG frame
     /// sequence at <paramref name="fps"/> instead of a looped still. Same audio trim
-    /// and output clamp semantics as <see cref="BuildFfmpegArgs"/>. Pure — unit-tested.
+    /// and output clamp semantics as <see cref="BuildFfmpegArgs"/>. A positive
+    /// <paramref name="fadeSeconds"/> fades the audio in from the clip start and out to its
+    /// end (the Lyrics Page video); 0 adds no audio filter. Pure — unit-tested.
     /// </summary>
-    public static List<string> BuildFfmpegFrameArgs(string framesPattern, int fps, string audioPath, string outputPath, ShareClipTiming timing)
+    public static List<string> BuildFfmpegFrameArgs(string framesPattern, int fps, string audioPath, string outputPath,
+        ShareClipTiming timing, double fadeSeconds = 0)
     {
         string start = timing.StartSeconds.ToString(CultureInfo.InvariantCulture);
         string dur = timing.DurationSeconds.ToString(CultureInfo.InvariantCulture);
 
-        return new List<string>
+        var args = new List<string>
         {
             "-y",
             "-framerate", fps.ToString(CultureInfo.InvariantCulture), "-i", framesPattern,
             "-ss", start, "-t", dur, "-i", audioPath,
             "-map", "0:v:0", "-map", "1:a:0",
+        };
+        if (fadeSeconds > 0)
+        {
+            string d = fadeSeconds.ToString(CultureInfo.InvariantCulture);
+            // Rounded so float noise in the subtraction never reaches the filter string.
+            string outStart = Math.Round(Math.Max(0, timing.DurationSeconds - fadeSeconds), 6).ToString(CultureInfo.InvariantCulture);
+            args.Add("-af");
+            args.Add($"afade=t=in:st=0:d={d},afade=t=out:st={outStart}:d={d}");
+        }
+        args.AddRange(new[]
+        {
             // Same CRF 18 as the still path: keeps lyric text crisp through the encode.
             "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
@@ -67,7 +84,8 @@ public static class ShareClipRenderer
             "-t", dur,
             "-shortest",
             outputPath,
-        };
+        });
+        return args;
     }
 
     /// <summary>
@@ -90,13 +108,14 @@ public static class ShareClipRenderer
     }
 
     /// <summary>
-    /// Runs ffmpeg over an already-rendered PNG frame sequence (the karaoke clip path).
-    /// Same process handling and result contract as <see cref="RenderAsync"/>.
+    /// Runs ffmpeg over an already-rendered frame sequence (the karaoke and Lyrics Page clip
+    /// paths), with the audio fade of <see cref="BuildFfmpegFrameArgs"/>. Same process handling
+    /// and result contract as <see cref="RenderAsync"/>.
     /// </summary>
     public static Task<(bool ok, string error)> RenderFramesAsync(
         string ffmpegPath, string framesPattern, int fps, string audioPath, string outputPath,
-        ShareClipTiming timing, CancellationToken ct = default)
-        => RunFfmpegAsync(ffmpegPath, BuildFfmpegFrameArgs(framesPattern, fps, audioPath, outputPath, timing), ct);
+        ShareClipTiming timing, CancellationToken ct = default, double fadeSeconds = 0)
+        => RunFfmpegAsync(ffmpegPath, BuildFfmpegFrameArgs(framesPattern, fps, audioPath, outputPath, timing, fadeSeconds), ct);
 
     /// <summary>
     /// Runs ffmpeg with <paramref name="args"/>: (true, "") on exit 0 or

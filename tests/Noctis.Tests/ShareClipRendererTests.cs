@@ -69,4 +69,13 @@ public class ShareClipRendererTests
         Assert.Contains("-shortest", args);
         Assert.DoesNotContain("-af", args);
     }
+
+    [Fact]
+    public void BuildFfmpegFrameArgs_WithFade_FadesTheClipEdges()
+    {
+        var args = ShareClipRenderer.BuildFfmpegFrameArgs("f-%05d.jpg", 60, "a.flac", "o.mp4", new ShareClipTiming(30, 20), 0.3);
+        Assert.Equal("afade=t=in:st=0:d=0.3,afade=t=out:st=19.7:d=0.3", args[args.IndexOf("-af") + 1]);
+        Assert.True(args.IndexOf("-af") > args.IndexOf("-map"));
+        Assert.Equal("o.mp4", args[^1]);
+    }
 }
