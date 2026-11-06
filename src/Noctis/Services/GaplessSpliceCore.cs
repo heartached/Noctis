@@ -106,6 +106,40 @@ public sealed class GaplessTrackSegment
     /// </summary>
     internal volatile Mp3FrameScan.Damage[]? DamageAhead;
 
+    /// <summary>
+    /// The input is on FFmpeg's MP3 decoder, which plays through damaged data instead of
+    /// failing on it: the play callback drops what it decodes from the damage rather than
+    /// ending the input before it. Set before the first write.
+    /// </summary>
+    internal bool DecodesThroughDamage;
+
+    /// <summary>Recent level and block peak (full scale = 1) of the audio written, for telling decoded junk from music. Decoder thread only.</summary>
+    internal float RecentRms, RecentPeak;
+
+    /// <summary>
+    /// Drops a decoded block instead of writing it (decoded from damaged data): the newest
+    /// <paramref name="fadeFrames"/> fade out, unless a block dropped just before already did,
+    /// and what is written next fades in. The dropped block is not counted as played.
+    /// </summary>
+    public void DropBlock(int fadeFrames)
+    {
+        lock (_gate)
+        {
+            if (_endOfStream || _abandoned) return;
+            // Faded out and nothing written since: the tail is already silent.
+            if (_writeFadeTotal > 0 && _writeFadeDone == 0) return;
+            var fade = Math.Min(_count / Channels, Math.Max(0, fadeFrames));
+            for (var f = 0; f < fade; f++)
+            {
+                var gain = (float)f / fade;
+                for (var c = 1; c <= Channels; c++)
+                    _ring[(_writeIdx - f * Channels - c + 2 * _ring.Length) % _ring.Length] *= gain;
+            }
+            _writeFadeTotal = Math.Max(1, fadeFrames) * Channels;
+            _writeFadeDone = 0;
+        }
+    }
+
     /// <summary>Media position (ms) of the newest sample written: where the next block starts.</summary>
     public long WriteEndMs
     {

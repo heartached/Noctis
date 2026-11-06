@@ -32,27 +32,141 @@ public class Mp3DamageCrunchHarnessTests
         Assert.SkipUnless(NullWavePlayer.SilentMode, "needs NOCTIS_AOUT=dummy for the test run");
         var atSec = int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_MP3DMG_AT_S"), out var a) ? a : 40;
 
+        var (results, _) = PlayTwice(path!, atSec);
+        Assert.All(results, r => Assert.Equal(0, r.rough));
+    }
+
+    /// <summary>
+    /// A file made here with Tangent's kind of damage (see MakeDamagedMp3) 20:30 into a
+    /// 21-minute tone. The first play finds the damage while playing and switches decoders
+    /// before it; the second opens on FFmpeg's decoder from the start and plays through it:
+    /// no switch, no junk or hard edge, no gap. (The first play's switch leaves a click where
+    /// the reopened input's fade-in starts on the decoder's near-silent priming instead of on
+    /// the tone: 4 samples at 0.09-0.11 A, the same on 1.6.8; reported, not asserted.)
+    /// </summary>
+    [Fact]
+    public void SyntheticDamagedMp3_SecondPlayOpensOnFfmpeg_AndPlaysThroughWithoutASwitch()
+    {
+        Assert.SkipUnless(NullWavePlayer.SilentMode, "needs NOCTIS_AOUT=dummy for the test run");
+        var ffmpeg = FindFfmpeg();
+        Assert.SkipWhen(ffmpeg == null, "no ffmpeg on PATH");
+        var dir = Path.Combine(Path.GetTempPath(), "noctis-mp3dmg-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var path = MakeDamagedMp3(ffmpeg!, dir, seconds: 1260, damageAtS: 1230, out _);
+            var (results, lines) = PlayTwice(path, 1230);
+            Assert.All(results, r => Assert.InRange(r.silentMs, 0, 30));
+            Assert.Equal(0, results[1].rough);
+            // One switch, on the first play; the reopen there and the second play's open are on FFmpeg's decoder.
+            Assert.Single(lines, l => l.Contains("Decoder.DamageAhead", StringComparison.Ordinal));
+            Assert.Equal(2, lines.Count(l => l.Contains("Mp3.DecoderFallback", StringComparison.Ordinal)));
+            Assert.DoesNotContain(lines, l => l.Contains("Decoder.Wedged", StringComparison.Ordinal));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    private (List<(int rough, float maxD2, double silentMs)> Results, List<string> Lines) PlayTwice(string path, int atSec)
+    {
         var appLines = new List<string>();
-        DebugLogger.IsEnabled = true;
-        DebugLogger.EntryAdded += en =>
+        void OnEntry(DebugLogger.LogEntry en)
         {
             if (en.Category != DebugLogger.Category.Playback) return;
             if (!en.Action.StartsWith("Decoder.", StringComparison.Ordinal) && !en.Action.StartsWith("Mp3.", StringComparison.Ordinal)
                 && !en.Action.StartsWith("GaplessEngine.Underrun", StringComparison.Ordinal)) return;
             lock (appLines) appLines.Add($"{DateTime.Now:HH:mm:ss.fff} {en.Action} | {en.Metadata}");
-        };
+        }
+        DebugLogger.IsEnabled = true;
+        DebugLogger.EntryAdded += OnEntry;
 
         var results = new List<(int rough, float maxD2, double silentMs)>();
         try
         {
             using var player = new VlcAudioPlayer();
             for (var run = 1; run <= 2; run++)
-                results.Add(PlayAcross(player, path!, atSec, run));
+                results.Add(PlayAcross(player, path, atSec, run));
             player.Stop();
         }
-        finally { NullWavePlayer.Tap = null; }
-        lock (appLines) foreach (var l in appLines) _o.WriteLine("  app " + l);
-        Assert.All(results, r => Assert.Equal(0, r.rough));
+        finally
+        {
+            NullWavePlayer.Tap = null;
+            DebugLogger.EntryAdded -= OnEntry;
+        }
+        lock (appLines)
+        {
+            foreach (var l in appLines) _o.WriteLine("  app " + l);
+            return (results, appLines.ToList());
+        }
+    }
+
+    internal static string? FindFfmpeg()
+    {
+        var exe = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            try { var c = Path.Combine(dir.Trim(), exe); if (File.Exists(c)) return c; } catch { }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// A CBR tone encoded like Tangent's recording (MPEG-2 Layer III, 22.05 kHz, 64 kbps,
+    /// joint stereo, no Xing frame), damaged the way it is at 31:14: junk bytes after one frame,
+    /// the next two frames' audio data overwritten (headers and side info kept), more junk after
+    /// those. The ffmpeg tool decodes it to ~40 ms of full-scale noise; LibVLC drops those frames
+    /// (a dip, no junk). Returns the path; <paramref name="frameIndex"/> is the frame the damage
+    /// follows (0-based from the first frame).
+    /// </summary>
+    internal static string MakeDamagedMp3(string ffmpeg, string dir, int seconds, double damageAtS, out int frameIndex)
+    {
+        var clean = Path.Combine(dir, "clean.mp3");
+        var psi = new ProcessStartInfo(ffmpeg) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+        foreach (var arg in new[] { "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi",
+                     "-i", $"aevalsrc=0.5*sin(2*PI*440*t):s=22050:d={seconds}", "-ac", "2",
+                     "-c:a", "libmp3lame", "-b:a", "64k", "-write_xing", "0", clean })
+            psi.ArgumentList.Add(arg);
+        using (var p = Process.Start(psi)!)
+        {
+            p.StandardError.ReadToEnd();
+            p.WaitForExit(120000);
+        }
+        Assert.True(File.Exists(clean), "ffmpeg made no test file");
+        var d = File.ReadAllBytes(clean);
+
+        static int FrameLength(byte[] b, int i)
+        {
+            if (i + 4 > b.Length || b[i] != 0xFF || (b[i + 1] & 0xE0) != 0xE0) return 0;
+            int[] kbps = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+            return 72000 * kbps[(b[i + 2] >> 4) & 0xF] / 22050 + ((b[i + 2] >> 1) & 1);
+        }
+        var at = 0;
+        while (FrameLength(d, at) == 0) at++;
+        frameIndex = (int)(damageAtS * 22050 / 576);
+        for (var n = 0; n < frameIndex; n++) at += FrameLength(d, at);
+        var a = at + FrameLength(d, at); // after the frame the damage follows
+        var b = a + FrameLength(d, a);
+        var c = b + FrameLength(d, b);
+        var rnd = new Random(7);
+        // 4 header bytes + 17 side-info bytes (MPEG-2 stereo) kept; the audio data is noise.
+        for (var j = a + 21; j < b; j++) d[j] = (byte)rnd.Next(256);
+        for (var j = b + 21; j < c; j++) d[j] = (byte)rnd.Next(256);
+        var junk1 = new byte[52];
+        var junk2 = new byte[157];
+        rnd.NextBytes(junk1);
+        rnd.NextBytes(junk2);
+        var path = Path.Combine(dir, "damaged.mp3");
+        using (var f = File.Create(path))
+        {
+            f.Write(d, 0, a);
+            f.Write(junk1);
+            f.Write(d, a, c - a);
+            f.Write(junk2);
+            f.Write(d, c, d.Length - c);
+        }
+        return path;
     }
 
     private (int rough, float maxD2, double silentMs) PlayAcross(VlcAudioPlayer player, string path, int atSec, int run)
