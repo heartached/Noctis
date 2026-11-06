@@ -1131,6 +1131,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Freeze the lyrics background video while playback is paused (off = keep looping).</summary>
     public bool LyricsBackgroundPausesWithPlayback { get; set; }
 
+    /// <summary>Share Lyrics › Lyrics Page: the user's own background image/clip (empty = none).</summary>
+    public string ShareLyricsPageBackgroundPath { get; set; } = "";
+
+    /// <summary>Share Lyrics › Lyrics Page: readability tint strength, 0–100.</summary>
+    public int ShareLyricsPageBackgroundStrength { get; set; } = 70;
+
     /// <summary>Show a music video found next to the song (same name, or a videos folder) in place of the cover on the lyrics page.</summary>
     public bool MusicVideosEnabled { get; set; } = true;
 

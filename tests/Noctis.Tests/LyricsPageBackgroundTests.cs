@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
+using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.LyricsPage;
 using SkiaSharp;
@@ -374,5 +376,17 @@ public sealed class LyricsPageBackgroundTests : IDisposable
             Assert.IsType<ClipBackground>(withFfmpeg);
         using (var without = PageBackgrounds.Create(Custom(clipPath!), 64, 64, 10, true, null))
             Assert.IsType<WashBackground>(without);
+    }
+
+    [Fact]
+    public void Page_background_settings_default_and_round_trip()
+    {
+        var s = new AppSettings();
+        Assert.Equal("", s.ShareLyricsPageBackgroundPath);
+        Assert.Equal(PageBackgroundTint.DefaultStrength, s.ShareLyricsPageBackgroundStrength);
+        var back = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(
+            new AppSettings { ShareLyricsPageBackgroundPath = "x.mp4", ShareLyricsPageBackgroundStrength = 40 }))!;
+        Assert.Equal("x.mp4", back.ShareLyricsPageBackgroundPath);
+        Assert.Equal(40, back.ShareLyricsPageBackgroundStrength);
     }
 }
