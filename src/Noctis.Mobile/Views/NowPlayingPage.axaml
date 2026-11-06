@@ -33,7 +33,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style Selector="Button.transport">
-            <Setter Property="Width" Value="96" />
+            <Setter Property="Width" Value="80" />
             <Setter Property="Height" Value="72" />
             <Setter Property="CornerRadius" Value="36" />
         </Style>
@@ -52,6 +52,40 @@
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="9,3,10,3" />
             <Setter Property="Height" Value="23" />
+        </Style>
+        <!-- Shuffle and Repeat at the transport's ends (beta 2: testers could not find them in
+             the Queue). Plain glyphs, dimmed while off; on, full white over a faint white square
+             (the Queue pill's on state, in Now Playing's always-white ink). 36 wide so the row
+             still fits a 360 dp phone: 3 x 80 + 2 x 36 = 312, the column between the margins. -->
+        <Style Selector="Button.icon.np-mode">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.icon.np-mode PathIcon">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Foreground" Value="#8CFFFFFF" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.icon.np-mode Border.np-mode-wash">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="#2EFFFFFF" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.icon.np-mode.on Border.np-mode-wash">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="Button.icon.np-mode.on PathIcon">
+            <Setter Property="Foreground" Value="White" />
         </Style>
         <!-- The bottom row = the desktop player bar's Lyrics, Volume and Queue buttons, their
              glyphs and proportions: Lyrics and Queue in one box, the speaker at 16 of their 18. -->
@@ -262,8 +296,16 @@
 
                 <!-- Filled glyphs, no circle, Play/Pause a little larger than the skips: the desktop
                      player bar's 18 and 20, here 44 and 48 (the Queue pill: 30 and 33).
-                     Shuffle and Repeat are on the Queue page (Apple's). -->
+                     Shuffle and Repeat at the row's ends (np-mode), as on the Queue pill too. -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
+                    <Button Grid.Column="0" Name="ShuffleButton" Classes="icon np-mode" HorizontalAlignment="Left"
+                            Classes.on="{Binding Player.IsShuffleEnabled}"
+                            Command="{Binding Player.ToggleShuffleCommand}" AutomationProperties.Name="{loc:T Mobile.Shuffle}">
+                        <Panel>
+                            <Border Classes="np-mode-wash" />
+                            <PathIcon Data="{DynamicResource PhShuffle}" />
+                        </Panel>
+                    </Button>
                     <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
                             Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
                         <controls:TransportGlyph Kind="Previous" Width="44" Height="44" />
@@ -275,6 +317,15 @@
                     <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
                             Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
                         <controls:TransportGlyph Kind="Next" Width="44" Height="44" />
+                    </Button>
+                    <Button Grid.Column="4" Name="RepeatButton" Classes="icon np-mode" HorizontalAlignment="Right"
+                            Classes.on="{Binding Player.IsRepeatOn}"
+                            Command="{Binding Player.CycleRepeatCommand}" AutomationProperties.Name="{loc:T Mobile.Repeat}">
+                        <Panel>
+                            <Border Classes="np-mode-wash" />
+                            <PathIcon Data="{DynamicResource PhRepeat}" IsVisible="{Binding !Player.IsRepeatOne}" />
+                            <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" IsVisible="{Binding Player.IsRepeatOne}" />
+                        </Panel>
                     </Button>
                 </Grid>
 
