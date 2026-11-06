@@ -768,6 +768,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
 
   <!-- ArtworkViewerDialog.axaml -->
   <data name="ArtworkViewer.Title" xml:space="preserve"><value>Обложка альбома</value><comment>Title of ArtworkViewerDialog.axaml (the full-size album cover)</comment></data>
+  <data name="ArtworkViewer.PauseAnimated" xml:space="preserve"><value>Pause animated cover</value><comment>ArtworkViewerDialog.axaml: button that shows the still cover instead of the animated one</comment></data>
+  <data name="ArtworkViewer.PlayAnimated" xml:space="preserve"><value>Play animated cover</value><comment>ArtworkViewerDialog.axaml: button that plays the album's animated cover</comment></data>
 
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve"><value>Слушать</value><comment>Header in ArtistDetailView.axaml</comment></data>

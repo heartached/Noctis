@@ -1076,6 +1076,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+    /// <summary>The full-size cover viewer plays the animated cover (its play/pause button).</summary>
+    [ObservableProperty] private bool _artworkViewerAnimated = true;
     /// <summary>Album pages tinted by the cover's edge colour (Appearance tab). Album
     /// detail view-models watch this and rebuild their background live.</summary>
     [ObservableProperty] private bool _albumPageTintEnabled = true;
@@ -3338,6 +3340,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            ArtworkViewerAnimated = _settings.ArtworkViewerAnimated;
             AlbumPageTintEnabled = _settings.AlbumPageTintEnabled;
             AlbumPageTintStrength = Math.Clamp(_settings.AlbumPageTintStrength, 0, 100);
             AlbumPageTintWholePage = _settings.AlbumPageTintWholePage;
@@ -3871,6 +3874,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.ArtworkViewerAnimated = ArtworkViewerAnimated;
         _settings.AlbumPageTintEnabled = AlbumPageTintEnabled;
         _settings.AlbumPageTintStrength = AlbumPageTintStrength;
         _settings.AlbumPageTintWholePage = AlbumPageTintWholePage;
@@ -5437,6 +5441,11 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnEnableAnimatedCoversChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnArtworkViewerAnimatedChanged(bool value)
     {
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -7793,6 +7802,7 @@ public partial class SettingsViewModel : ViewModelBase
             IgnoreLeadingWordsInArtistSort = defaultSettings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(defaultSettings.ArtistSortIgnoredWords);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
+            ArtworkViewerAnimated = defaultSettings.ArtworkViewerAnimated;
             AlbumPageTintEnabled = defaultSettings.AlbumPageTintEnabled;
             AlbumPageTintStrength = defaultSettings.AlbumPageTintStrength;
             AlbumPageTintWholePage = defaultSettings.AlbumPageTintWholePage;

@@ -385,6 +385,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
+    /// <summary>The full-size cover (album page cover click) plays the album's animated cover
+    /// when it has one and <see cref="EnableAnimatedCovers"/> is on. The viewer's own
+    /// play/pause button flips it, and the choice sticks for the next album (Discord ask).</summary>
+    public bool ArtworkViewerAnimated { get; set; } = true;
+
     /// <summary>GitHub #167: look up an album's animated cover (clear matches only) when its
     /// page opens, and keep it in a size-capped cache. Off by default: it asks Apple about
     /// every album opened.</summary>

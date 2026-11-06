@@ -40,6 +40,19 @@ public partial class AnimatedCoverImage : UserControl
         set => SetValue(IsActiveProperty, value);
     }
 
+    public static readonly DirectProperty<AnimatedCoverImage, bool> HasFrameProperty =
+        AvaloniaProperty.RegisterDirect<AnimatedCoverImage, bool>(nameof(HasFrame), o => o.HasFrame);
+
+    private bool _hasFrame;
+
+    /// <summary>True while a frame is on show (the still underneath is covered). A host can
+    /// fade the control in on it instead of cutting from the still to the first frame.</summary>
+    public bool HasFrame
+    {
+        get => _hasFrame;
+        private set => SetAndRaise(HasFrameProperty, ref _hasFrame, value);
+    }
+
     private readonly Image _image;
     private AnimatedCoverFeed? _feed;
     private readonly HostWindowWatch _hostWindow;
@@ -131,6 +144,7 @@ public partial class AnimatedCoverImage : UserControl
             // Let go of the shared frame: once the feed ends it belongs to the frame
             // cache, which may dispose it.
             _image.Source = null;
+            HasFrame = false;
             feed.Release(this, linger);
         }
 
@@ -146,6 +160,7 @@ public partial class AnimatedCoverImage : UserControl
     {
         if (!ReferenceEquals(_image.Source, frame))
             _image.Source = frame;
+        HasFrame = frame != null;
         _image.InvalidateVisual();
     }
 
