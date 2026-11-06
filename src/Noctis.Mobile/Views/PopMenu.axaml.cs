@@ -151,6 +151,13 @@ public partial class PopMenu : UserControl
 
     private void Open(object menu)
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { OpenCore(menu); }
+        finally { Services.FrameStallMonitor.AddTime("menu open", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
+
+    private void OpenCore(object menu)
+    {
         var run = ++_run;
         Anchor = _pending is { } pending && pending.IsAttachedToVisualTree() && pending.IsEffectivelyVisible ? pending : null;
         _pending = null;
@@ -212,7 +219,9 @@ public partial class PopMenu : UserControl
         {
             if (run != _run) return;
             IsVisible = false;
-            MenuContent.Content = null;
+            // The menu keeps its content: the next menu of the same kind (every song's ⋯ is
+            // one) recycles the built view and only rebinds it. Cleared, every open built the
+            // card's rows again: ~200 ms of the tap's frame on the emulator (11-06).
             Anchor = null;
             PopDone(Card, Glass, Body, Dim);
         }, TimeSpan.FromMilliseconds(PopCloseMs));
