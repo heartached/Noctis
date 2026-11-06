@@ -236,3 +236,12 @@ public class ArtworkCacheLifetimeTests : IDisposable
         catch (NullReferenceException) { return true; }
     }
 }
+
+/// <summary>
+/// The classes in this collection change ArtworkCache's process-wide state (DisposeGrace,
+/// MaxCacheBytes, ClearForTests, which disposes every cached bitmap even while shown). Run
+/// in parallel, that disposed bitmaps other UI tests still had on screen (UiScaleTests:
+/// ObjectDisposedException from Bitmap.Size in CachedImage.ArrangeOverride on CI).
+/// </summary>
+[CollectionDefinition("ArtworkCache", DisableParallelization = true)]
+public class ArtworkCacheCollection { }
