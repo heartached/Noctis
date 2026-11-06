@@ -23,6 +23,7 @@ public partial class ArtistListPage : UserControl
     public ArtistListPage()
     {
         InitializeComponent();
+        ArtistGrid.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("artist rows prepared");
         ArtistGrid.ContainerPrepared += (_, e) => ShowRow(e.Container);
         ArtistGrid.ContainerClearing += (_, e) => HideRow(e.Container);
         DataContextChanged += (_, _) =>
