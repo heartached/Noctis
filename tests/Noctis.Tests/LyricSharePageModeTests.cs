@@ -670,4 +670,52 @@ public class LyricSharePageModeTests
         }
         finally { vm.Detach(); }
     }
+
+    [Fact]
+    public void Preview_clock_follows_playback_or_loops_the_clip()
+    {
+        var t = new ShareClipTiming(30, 12);
+        Assert.Equal(41.08, Noctis.Services.LyricsPage.PagePreviewClock.TrackTime(true, 41, 999, t), 9);
+        Assert.Equal(35.08, Noctis.Services.LyricsPage.PagePreviewClock.TrackTime(false, 0, 5, t), 9);
+        Assert.Equal(31.08, Noctis.Services.LyricsPage.PagePreviewClock.TrackTime(false, 0, 25, t), 9);
+    }
+
+    /// <summary>One animation timer tick, as EqBarRepaintTests drives its timer: headless
+    /// DispatcherTimers barely fire under RunJobs.</summary>
+    private static void Tick(LyricShareViewModel vm) =>
+        typeof(LyricShareViewModel).GetMethod("OnAnimTick",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(vm, null);
+
+    [AvaloniaFact]
+    public void Page_preview_animates_without_a_player()
+    {
+        var vm = WordTimed(12);
+        try
+        {
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[3]);
+            vm.ToggleLine(vm.Lines[5]);
+            vm.LayoutIndex = 2;
+            int frames = 0;
+            vm.AnimatedFrameRendered += () => frames++;
+
+            Assert.True(PumpUntil(() => vm.AnimatedPreview != null && frames > 0, 5000), "page preview never appeared");
+            Assert.Null(vm.Preview);
+            byte[]? before = null;
+            Assert.True(PumpUntil(() => (before = vm.PageFrameSnapshot()) != null, 2000));
+
+            Thread.Sleep(600);
+            int seen = frames;
+            Tick(vm);
+            Assert.True(PumpUntil(() => frames > seen, 2000), "no frame after a tick");
+            byte[]? after = null;
+            Assert.True(PumpUntil(() => (after = vm.PageFrameSnapshot()) != null, 2000));
+            Assert.False(before.AsSpan().SequenceEqual(after), "the page preview did not move");
+
+            vm.LayoutIndex = 0;
+            Assert.True(PumpUntil(() => vm.Preview != null && vm.IsPreviewCurrent, 5000), "card preview did not come back");
+            Assert.Null(vm.AnimatedPreview);
+        }
+        finally { vm.Detach(); }
+    }
 }

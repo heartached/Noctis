@@ -566,8 +566,21 @@ public partial class LyricShareViewModel : ViewModelBase
     /// (in-place WriteableBitmap updates don't notify the binding).</summary>
     public event Action? AnimatedFrameRendered;
 
-    private ShareCardRenderer.KaraokeCardAnimator? _animator;
+    private IShareFrameAnimator? _animator;
     private WriteableBitmap? _animBitmap;
+
+    // The Lyrics Page preview: its frames are drawn on a worker (a clip background can block
+    // a draw), one at a time into _pageFrame, then copied into _animBitmap on the UI thread.
+    // An animator is disposed only once the draw in flight (_pageDraw) has finished.
+    private readonly System.Diagnostics.Stopwatch _pagePreviewClock = new();
+    private ShareClipTiming _pagePreviewTiming;
+    private Task _pageDraw = Task.CompletedTask;
+    private bool _pageDrawBusy;
+    private byte[]? _pageFrame;
+
+    /// <summary>A copy of the last page frame drawn (tests: the headless WriteableBitmap is a
+    /// stub that reads back blank). Null while none was drawn or one is drawing.</summary>
+    internal byte[]? PageFrameSnapshot() => _pageDrawBusy ? null : (byte[]?)_pageFrame?.Clone();
     private DispatcherTimer? _animTimer;
     private double _animLastT = double.NaN;
 
@@ -1188,13 +1201,19 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         var selectedLines = CardSelection();
         var selected = selectedLines.Select(l => l.Text).ToList();
-        if (selected.Count == 0)
+        if (IsPageLayout ? PickedSpan() == null : selected.Count == 0)
         {
             var old = Preview;
             Preview = null;
             // Deferred, as below: the last frame may still reference it.
             if (old != null) Dispatcher.UIThread.Post(old.Dispose);
             TeardownAnimator();
+            return;
+        }
+
+        if (IsPageLayout)
+        {
+            RefreshPagePreview();
             return;
         }
 
@@ -1210,14 +1229,10 @@ public partial class LyricShareViewModel : ViewModelBase
         Task.Run(() =>
         {
             Bitmap? bitmap = null;
-            ShareCardRenderer.KaraokeCardAnimator? animator = null;
+            IShareFrameAnimator? animator = null;
             try
             {
-                if (!_previewArtLoaded)
-                {
-                    _previewArt = ShareCardRenderer.LoadCardArtwork(spec.ArtworkPath);
-                    _previewArtLoaded = true;
-                }
+                LoadPreviewArt(spec.ArtworkPath);
                 // Preview size only: it fills a ~310 px box. Save/Copy render at full
                 // scale on demand (RenderExportPngAsync).
                 using (var card = ShareCardRenderer.RenderLyricCardBitmap(spec, PreviewRenderScale, _previewArt))
@@ -1241,14 +1256,57 @@ public partial class LyricShareViewModel : ViewModelBase
         });
     }
 
-    /// <summary>Shows a finished render (UI thread), then draws again when the card changed meanwhile.</summary>
-    private void OnPreviewRendered(Bitmap? bitmap, ShareCardRenderer.KaraokeCardAnimator? animator)
+    /// <summary>Decodes the cover on the first render's worker; later renders reuse it.</summary>
+    private void LoadPreviewArt(string? artworkPath)
+    {
+        if (_previewArtLoaded) return;
+        _previewArt = ShareCardRenderer.LoadCardArtwork(artworkPath);
+        _previewArtLoaded = true;
+    }
+
+    /// <summary>
+    /// The Lyrics Page preview: the page animator at preview scale, built on a worker (a clip
+    /// background starts ffmpeg) from a spec built here once, with no still card under it:
+    /// the animated frame fills the well.
+    /// </summary>
+    private void RefreshPagePreview()
+    {
+        var spec = BuildPageSpec();   // once per refresh: it walks the range with IndexOf
+        var timing = GetClipTiming();
+        bool showZones = SafeZonesEnabled;
+        _previewRendering = true;
+        var dispatcher = Dispatcher.UIThread;   // captured here, as in the card path
+        Task.Run(() =>
+        {
+            IShareFrameAnimator? animator = null;
+            try
+            {
+                LoadPreviewArt(spec.ArtworkPath);
+                animator = new LyricsPageAnimator(spec, PreviewAnimatorScale, _previewArt,
+                    blockingBackground: false, backgroundFps: 30) { ShowSafeZones = showZones };
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                    "Lyrics Page preview failed", ex.Message);
+            }
+            dispatcher.Post(() =>
+            {
+                if (animator != null) _pagePreviewTiming = timing;
+                OnPreviewRendered(null, animator);
+            });
+        });
+    }
+
+    /// <summary>Shows a finished render (UI thread), then draws again when the card changed meanwhile.
+    /// A page render brings an animator and no still: that is a success too.</summary>
+    private void OnPreviewRendered(Bitmap? bitmap, IShareFrameAnimator? animator)
     {
         _previewRendering = false;
-        if (_detached || bitmap == null)
+        if (_detached || (bitmap == null && animator == null))
         {
             bitmap?.Dispose();
-            animator?.Dispose();
+            DisposeAnimator(animator);
             if (_detached) { _previewArt?.Dispose(); _previewArt = null; return; }
         }
         else
@@ -1267,7 +1325,7 @@ public partial class LyricShareViewModel : ViewModelBase
 
     /// <summary>Installs the freshly built animator (or tears everything down when null),
     /// reusing the WriteableBitmap when the pixel size is unchanged. UI thread only.</summary>
-    private void SwapAnimator(ShareCardRenderer.KaraokeCardAnimator? animator)
+    private void SwapAnimator(IShareFrameAnimator? animator)
     {
         if (animator == null)
         {
@@ -1275,9 +1333,11 @@ public partial class LyricShareViewModel : ViewModelBase
             return;
         }
 
-        _animator?.Dispose();
+        DisposeAnimator(_animator);
         _animator = animator;
         _animLastT = double.NaN;
+        if (animator is LyricsPageAnimator) _pagePreviewClock.Restart();
+        else _pagePreviewClock.Reset();
 
         if (_animBitmap == null
             || _animBitmap.PixelSize.Width != animator.PixelWidth
@@ -1312,14 +1372,32 @@ public partial class LyricShareViewModel : ViewModelBase
     private void TeardownAnimator()
     {
         _animTimer?.Stop();
-        _animator?.Dispose();
+        DisposeAnimator(_animator);
         _animator = null;
+        _pagePreviewClock.Reset();
         var old = AnimatedPreview;
         AnimatedPreview = null;
         old?.Dispose();
         _animBitmap = null;
         _animLastT = double.NaN;
     }
+
+    /// <summary>Disposes an animator no longer shown. A page animator may still be drawing on a
+    /// worker (its clip background must not be torn down mid-draw), so it goes once that draw ends.</summary>
+    private void DisposeAnimator(IShareFrameAnimator? animator)
+    {
+        if (animator is LyricsPageAnimator)
+            _pageDraw.ContinueWith(_ => animator.Dispose(), TaskScheduler.Default);
+        else
+            animator?.Dispose();
+    }
+
+    /// <summary>The track time the animated preview shows now: the page follows playback while
+    /// this song plays and otherwise loops its clip; the card follows playback.</summary>
+    private double AnimatedPreviewTime() => _animator is LyricsPageAnimator
+        ? PagePreviewClock.TrackTime(IsOurTrackPlaying && _player?.State == PlaybackState.Playing,
+            GetSmoothedPositionSeconds(), _pagePreviewClock.Elapsed.TotalSeconds, _pagePreviewTiming)
+        : GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
 
     private void OnAnimTick()
     {
@@ -1328,22 +1406,76 @@ public partial class LyricShareViewModel : ViewModelBase
             _animTimer?.Stop();
             return;
         }
-        double t = GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+        double t = AnimatedPreviewTime();
         // Paused (or between coarse position updates while paused) → nothing moved.
         if (!double.IsNaN(_animLastT) && Math.Abs(t - _animLastT) < 0.0005)
             return;
         RenderAnimatedFrameAt(t);
     }
 
-    private void RenderAnimatedFrame()
-        => RenderAnimatedFrameAt(GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds);
+    private void RenderAnimatedFrame() => RenderAnimatedFrameAt(AnimatedPreviewTime());
 
     private void RenderAnimatedFrameAt(double t)
     {
         if (_animator == null || _animBitmap == null) return;
+        if (_animator is LyricsPageAnimator page)
+        {
+            RequestPageFrame(page, t);
+            return;
+        }
         _animLastT = t;
         using (var fb = _animBitmap.Lock())
             _animator.RenderFrame(t, fb.Address, fb.RowBytes);
+        AnimatedFrameRendered?.Invoke();
+    }
+
+    /// <summary>Draws the page frame at <paramref name="t"/> on a worker, unless one is still
+    /// drawing (the next tick asks again). UI thread.</summary>
+    private void RequestPageFrame(LyricsPageAnimator page, double t)
+    {
+        if (_pageDrawBusy) return;
+        _pageDrawBusy = true;
+        _animLastT = t;
+        int rowBytes = page.PixelWidth * 4;
+        int length = rowBytes * page.PixelHeight;
+        if (_pageFrame?.Length != length) _pageFrame = new byte[length];
+        var frame = _pageFrame;
+        var dispatcher = Dispatcher.UIThread;
+        _pageDraw = Task.Run(() =>
+        {
+            bool drawn = false;
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(frame, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                page.RenderFrame(t, handle.AddrOfPinnedObject(), rowBytes);
+                drawn = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                    "Lyrics Page preview frame failed", ex.Message);
+            }
+            finally { handle.Free(); }
+            dispatcher.Post(() => OnPageFrameDrawn(page, frame, rowBytes, drawn));
+        });
+    }
+
+    /// <summary>Shows a page frame drawn on the worker while its animator is still the one shown. UI thread.</summary>
+    private void OnPageFrameDrawn(LyricsPageAnimator page, byte[] frame, int rowBytes, bool drawn)
+    {
+        _pageDrawBusy = false;
+        if (_animator != page || _animBitmap == null)
+        {
+            // Swapped meanwhile: the new animator's first frame was skipped while this one drew.
+            if (_animator is LyricsPageAnimator next) RequestPageFrame(next, AnimatedPreviewTime());
+            return;
+        }
+        if (!drawn) return;
+        using (var fb = _animBitmap.Lock())
+        {
+            for (int y = 0; y < page.PixelHeight; y++)
+                System.Runtime.InteropServices.Marshal.Copy(frame, y * rowBytes, fb.Address + y * fb.RowBytes, rowBytes);
+        }
         AnimatedFrameRendered?.Invoke();
     }
 
