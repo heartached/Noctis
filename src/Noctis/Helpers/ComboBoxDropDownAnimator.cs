@@ -11,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using Noctis.Services;
 
 namespace Noctis.Helpers;
 
@@ -135,6 +136,7 @@ public static class ComboBoxDropDownAnimator
                 if (popup.Child is Visual body && (source == body || body.IsVisualAncestorOf(source))) return;
             }
             e.Handled = true; // light dismiss swallows the press too
+            Trace(box, $"press outside on {e.Source?.GetType().Name}");
             box.SetCurrentValue(ComboBox.IsDropDownOpenProperty, false);
         };
         owner.AddHandler(InputElement.PointerPressedEvent, state.PressHandler, RoutingStrategies.Tunnel, handledEventsToo: true);
@@ -151,6 +153,7 @@ public static class ComboBoxDropDownAnimator
             if (box.TranslatePoint(default, owner) is not { } now) return;
             if (Math.Abs(now.X - state.Anchor.X) < 0.5 && Math.Abs(now.Y - state.Anchor.Y) < 0.5) return;
             if (!state.ClosingHeld) state.Plain = true;
+            Trace(box, $"box moved {state.Anchor} -> {now}");
             box.SetCurrentValue(ComboBox.IsDropDownOpenProperty, false);
         };
         owner.LayoutUpdated += state.LayoutHandler;
@@ -161,11 +164,18 @@ public static class ComboBoxDropDownAnimator
             {
                 if (!box.IsDropDownOpen) return;
                 state.Plain = true;
+                Trace(box, "window deactivated");
                 box.SetCurrentValue(ComboBox.IsDropDownOpenProperty, false);
             };
             window.Deactivated += state.DeactivatedHandler;
         }
     }
+
+    /// <summary>Session log line for each close this class starts itself (not the box's own
+    /// item click / Escape), so a "the list closed but kept its value" report shows which
+    /// dismiss fired, if any (11-06, Share Lyrics: no headless repro).</summary>
+    private static void Trace(ComboBox box, string why)
+        => DebugLog.Write("UI", $"ComboBox list dismissed ({box.Name ?? box.GetType().Name}): {why}");
 
     private static void RemoveDismiss(State state)
     {
