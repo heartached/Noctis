@@ -165,6 +165,131 @@ public partial class LyricShareViewModel : ViewModelBase
 
     [ObservableProperty] private ShareTextColor _textColor = ShareTextColor.Auto;
 
+    // ── Lyrics Page background, readability and safe zones ──
+    // What fills the video behind the lyrics, how dark the readability layer over it is, and
+    // whether the lyrics keep clear of the apps' buttons. The picked file and the strength
+    // are remembered for the next share (AppSettings.ShareLyricsPageBackground*).
+
+    /// <summary>0 = artwork wash, 1 = the track's animated cover, 2 = the user's own file.
+    /// A choice that has nothing to show (no animated cover, no file) snaps back to 0.</summary>
+    [ObservableProperty] private int _pageBackgroundIndex;          // 0 artwork wash, 1 animated cover, 2 custom
+
+    /// <summary>Readability layer strength, 0-100.</summary>
+    [ObservableProperty] private int _pageBackgroundStrength = PageBackgroundTint.DefaultStrength;
+
+    /// <summary>The user's own background (image or video), "" when none.</summary>
+    [ObservableProperty] private string _pageBackgroundPath = "";
+
+    /// <summary>Keeps the lyrics out of the social apps' button areas.</summary>
+    [ObservableProperty] private bool _safeZonesEnabled;            // follows the format: on for Story, off for Square
+
+    /// <summary>The track's animated cover, when it has one.</summary>
+    public string? AnimatedCoverPath { get; }
+
+    public bool AnimatedCoverAvailable => !string.IsNullOrEmpty(AnimatedCoverPath);
+
+    /// <summary>A background file is chosen and still on disk.</summary>
+    public bool CustomBackgroundAvailable =>
+        !string.IsNullOrEmpty(PageBackgroundPath) && File.Exists(PageBackgroundPath);
+
+    /// <summary>The strength as last read from (or written to) the settings; Detach saves a change.</summary>
+    private int _savedPageStrength = PageBackgroundTint.DefaultStrength;
+
+    partial void OnPageBackgroundIndexChanged(int value)
+    {
+        bool usable = value switch
+        {
+            0 => true,
+            1 => AnimatedCoverAvailable,
+            2 => CustomBackgroundAvailable,
+            _ => false,
+        };
+        if (!usable) { PageBackgroundIndex = 0; return; }
+        if (IsPageLayout) RefreshPreview();
+    }
+
+    partial void OnPageBackgroundStrengthChanged(int value)
+    {
+        if (value is < 0 or > 100) { PageBackgroundStrength = Math.Clamp(value, 0, 100); return; }
+        if (IsPageLayout) RefreshPreview();
+    }
+
+    partial void OnPageBackgroundPathChanged(string value)
+    {
+        OnPropertyChanged(nameof(CustomBackgroundAvailable));
+        if (PageBackgroundIndex == 2 && !CustomBackgroundAvailable) PageBackgroundIndex = 0;
+        else if (IsPageLayout) RefreshPreview();
+    }
+
+    partial void OnSafeZonesEnabledChanged(bool value)
+    {
+        if (IsPageLayout) RefreshPreview();
+    }
+
+    /// <summary>Uses <paramref name="path"/> as the Lyrics Page background and remembers it.</summary>
+    public async Task SetPageBackgroundFileAsync(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        PageBackgroundPath = path;
+        PageBackgroundIndex = 2;
+        await SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundPath = path);
+    }
+
+    /// <summary>Forgets the chosen background file; the artwork takes its place when it was showing.</summary>
+    [RelayCommand]
+    private Task RemovePageBackground()
+    {
+        PageBackgroundPath = "";
+        return SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundPath = "");
+    }
+
+    /// <summary>
+    /// The remembered background and strength, as the settings hold them: a file that still
+    /// exists is the pick again (index 2), a gone one is dropped; the strength is clamped,
+    /// settings.json may hold anything.
+    /// </summary>
+    internal void ApplyPageSettings(string path, int strength)
+    {
+        PageBackgroundStrength = Math.Clamp(strength, 0, 100);
+        _savedPageStrength = PageBackgroundStrength;
+        bool exists = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+        PageBackgroundPath = exists ? path : "";
+        if (exists) PageBackgroundIndex = 2;
+    }
+
+    /// <summary>Reads the remembered page settings off the UI thread and applies them on it.
+    /// Without the app's services (tests, design time) the defaults stay.</summary>
+    private async Task LoadPageSettingsAsync(Dispatcher dispatcher)
+    {
+        if (App.Services?.GetService<IPersistenceService>() is not { } persistence) return;
+        try
+        {
+            var settings = await persistence.LoadSettingsAsync().ConfigureAwait(false);
+            var path = settings.ShareLyricsPageBackgroundPath ?? "";
+            var strength = settings.ShareLyricsPageBackgroundStrength;
+            dispatcher.Post(() => { if (!_detached) ApplyPageSettings(path, strength); });
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn,
+                "Share lyrics page settings load failed", ex.Message);
+        }
+    }
+
+    private static async Task SavePageSettingsAsync(Action<AppSettings> change)
+    {
+        if (App.Services?.GetService<IPersistenceService>() is not { } persistence) return;
+        try
+        {
+            await persistence.UpdateSettingsAsync(change);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn,
+                "Share lyrics page settings save failed", ex.Message);
+        }
+    }
+
     // ── Background color ────────────────────────────────────────────────
     // Default to the Spotify-style full-bleed solid (the artwork-derived "Auto" color).
     [ObservableProperty] private bool _isArtworkBg;
@@ -594,6 +719,9 @@ public partial class LyricShareViewModel : ViewModelBase
 
         SyncAvailable = player != null && Lines.Any(l => l.Timestamp.HasValue);
         PageLayoutAvailable = Lines.Any(l => l.Timestamp.HasValue);
+        AnimatedCoverPath = App.Services?.GetService<IAnimatedCoverService>()?.Resolve(track);
+        _safeZonesEnabled = IsStory;
+        _ = LoadPageSettingsAsync(Dispatcher.UIThread);
 
         // Pre-select the active line and the next few, like Spotify does.
         if (Lines.Count > 0)
@@ -788,14 +916,14 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(FormatIndex));
-        if (value) { IsStory = false; RefreshPreview(); }
+        if (value) { IsStory = false; SafeZonesEnabled = false; RefreshPreview(); }
     }
 
     partial void OnIsStoryChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(FormatIndex));
-        if (value) { IsSquare = false; RefreshPreview(); }
+        if (value) { IsSquare = false; SafeZonesEnabled = true; RefreshPreview(); }
     }
 
     partial void OnIsPanelLayoutChanged(bool value)
@@ -1357,6 +1485,13 @@ public partial class LyricShareViewModel : ViewModelBase
             }
         }
 
+        var (kind, media) = PageBackgroundIndex switch
+        {
+            1 when AnimatedCoverAvailable => (LyricsPageBackgroundKind.AnimatedCover, AnimatedCoverPath),
+            2 when CustomBackgroundAvailable => (LyricsPageBackgroundKind.Custom, PageBackgroundPath),
+            _ => (LyricsPageBackgroundKind.ArtworkWash, (string?)null),
+        };
+
         return new LyricsPageSpec
         {
             Title = _track.Title,
@@ -1365,9 +1500,10 @@ public partial class LyricShareViewModel : ViewModelBase
             IsExplicit = _track.IsExplicit,
             Format = IsStory ? ShareCardFormat.Story : ShareCardFormat.Square,
             Lines = lines,
-            SafeZones = IsStory,
-            BackgroundKind = LyricsPageBackgroundKind.ArtworkWash,
-            BackgroundStrength = PageBackgroundTint.DefaultStrength,
+            SafeZones = SafeZonesEnabled,
+            BackgroundKind = kind,
+            BackgroundMediaPath = media,
+            BackgroundStrength = PageBackgroundStrength,
             FfmpegPath = App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath(),
             ClipStartSeconds = GetClipTiming().StartSeconds,
         };
@@ -1581,5 +1717,13 @@ public partial class LyricShareViewModel : ViewModelBase
         TeardownAnimator();
         if (_player != null)
             _player.PropertyChanged -= OnPlayerPropertyChanged;
+
+        // The readability slider is saved once, on close, not at every step of a drag.
+        if (PageBackgroundStrength != _savedPageStrength)
+        {
+            int strength = PageBackgroundStrength;
+            _savedPageStrength = strength;
+            _ = SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundStrength = strength);
+        }
     }
 }

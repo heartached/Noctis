@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -402,5 +403,199 @@ public class LyricSharePageModeTests
             Assert.Equal("Copied", vm.StatusText);
         }
         finally { vm.Detach(); }
+    }
+
+    [AvaloniaFact]
+    public void Safe_zones_default_on_for_story_and_off_for_square()
+    {
+        var vm = Synced(10);
+        try
+        {
+            Assert.False(vm.SafeZonesEnabled);   // the dialog opens on 1:1
+            vm.FormatIndex = 1;
+            Assert.True(vm.SafeZonesEnabled);
+            vm.FormatIndex = 0;
+            Assert.False(vm.SafeZonesEnabled);
+
+            vm.SafeZonesEnabled = true;          // the user's choice holds...
+            vm.LayoutIndex = 2;
+            vm.TextColorIndex = 1;
+            vm.FormatIndex = 0;                  // (already 1:1: no format change)
+            Assert.True(vm.SafeZonesEnabled);
+            Assert.True(vm.PageSpec.SafeZones);
+
+            vm.FormatIndex = 1;                  // ...until the format changes
+            vm.SafeZonesEnabled = false;
+            Assert.False(vm.PageSpec.SafeZones);
+            vm.FormatIndex = 0;
+            vm.FormatIndex = 1;
+            Assert.True(vm.SafeZonesEnabled);
+        }
+        finally { vm.Detach(); }
+    }
+
+    private static string WritePng(string dir)
+    {
+        var path = System.IO.Path.Combine(dir, "bg.png");
+        using var bmp = new SkiaSharp.SKBitmap(8, 8);
+        bmp.Erase(SkiaSharp.SKColors.SteelBlue);
+        using var data = bmp.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        System.IO.File.WriteAllBytes(path, data.ToArray());
+        return path;
+    }
+
+    [AvaloniaFact]
+    public async Task Choosing_and_removing_a_background_updates_the_spec()
+    {
+        var dir = System.IO.Directory.CreateTempSubdirectory("noctis-page-bg-").FullName;
+        var vm = PageRange(10, 2, 4);
+        try
+        {
+            Assert.Equal(0, vm.PageBackgroundIndex);
+            Assert.Equal(Noctis.Services.LyricsPage.PageBackgroundTint.DefaultStrength, vm.PageBackgroundStrength);
+            Assert.False(vm.CustomBackgroundAvailable);
+            Assert.Equal(Noctis.Services.LyricsPage.LyricsPageBackgroundKind.ArtworkWash, vm.PageSpec.BackgroundKind);
+
+            vm.PageBackgroundIndex = 2;   // nothing chosen yet: stays on the artwork
+            Assert.Equal(0, vm.PageBackgroundIndex);
+
+            var png = WritePng(dir);
+            await vm.SetPageBackgroundFileAsync(png);
+            Assert.Equal(2, vm.PageBackgroundIndex);
+            Assert.True(vm.CustomBackgroundAvailable);
+            Assert.Equal(png, vm.PageBackgroundPath);
+            var spec = vm.PageSpec;
+            Assert.Equal(Noctis.Services.LyricsPage.LyricsPageBackgroundKind.Custom, spec.BackgroundKind);
+            Assert.Equal(png, spec.BackgroundMediaPath);
+
+            vm.PageBackgroundIndex = 0;   // back to the artwork, the file stays offered
+            Assert.True(vm.CustomBackgroundAvailable);
+            Assert.Null(vm.PageSpec.BackgroundMediaPath);
+            vm.PageBackgroundIndex = 2;
+
+            await vm.RemovePageBackgroundCommand.ExecuteAsync(null);
+            Assert.Equal(0, vm.PageBackgroundIndex);
+            Assert.Equal("", vm.PageBackgroundPath);
+            Assert.False(vm.CustomBackgroundAvailable);
+            Assert.Equal(Noctis.Services.LyricsPage.LyricsPageBackgroundKind.ArtworkWash, vm.PageSpec.BackgroundKind);
+
+            // A remembered file that still exists is the pick again; a gone one is dropped.
+            vm.ApplyPageSettings(png, 55);
+            Assert.Equal(2, vm.PageBackgroundIndex);
+            Assert.Equal(png, vm.PageBackgroundPath);
+            Assert.Equal(55, vm.PageSpec.BackgroundStrength);
+
+            vm.ApplyPageSettings(System.IO.Path.Combine(dir, "gone.png"), 40);
+            Assert.False(vm.CustomBackgroundAvailable);
+            Assert.Equal(0, vm.PageBackgroundIndex);
+            Assert.Equal(40, vm.PageSpec.BackgroundStrength);
+
+            vm.ApplyPageSettings("", 250);   // settings.json is not clamped
+            Assert.Equal(100, vm.PageBackgroundStrength);
+            vm.ApplyPageSettings("", -5);
+            Assert.Equal(0, vm.PageBackgroundStrength);
+        }
+        finally
+        {
+            vm.Detach();
+            try { System.IO.Directory.Delete(dir, true); } catch { /* best effort */ }
+        }
+    }
+
+    [AvaloniaFact]
+    public void Index_one_is_ignored_without_an_animated_cover()
+    {
+        var vm = PageRange(10, 2, 4);
+        try
+        {
+            Assert.Null(vm.AnimatedCoverPath);
+            Assert.False(vm.AnimatedCoverAvailable);
+            vm.PageBackgroundIndex = 1;
+            Assert.Equal(0, vm.PageBackgroundIndex);
+            Assert.Equal(Noctis.Services.LyricsPage.LyricsPageBackgroundKind.ArtworkWash, vm.PageSpec.BackgroundKind);
+        }
+        finally { vm.Detach(); }
+    }
+
+    private sealed class FixedCover(string? path) : IAnimatedCoverService
+    {
+        public string? Resolve(Track track) => path;
+        public Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope) => Task.FromResult(sourcePath);
+        public Task RemoveAsync(Track track, AnimatedCoverScope scope) => Task.CompletedTask;
+    }
+
+    /// <summary>Settings kept in memory; counts saves.</summary>
+    private sealed class MemorySettings : TestPersistenceService
+    {
+        public AppSettings Settings { get; } = new();
+        public int Saves;
+        public override Task<AppSettings> LoadSettingsAsync() => Task.FromResult(Settings);
+        public override Task SaveSettingsAsync(AppSettings settings) { Interlocked.Increment(ref Saves); return Task.CompletedTask; }
+    }
+
+    private sealed class PageServices(IAnimatedCoverService cover, IPersistenceService persistence) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) =>
+            serviceType == typeof(IAnimatedCoverService) ? cover
+            : serviceType == typeof(IPersistenceService) ? persistence : null;
+    }
+
+    /// <summary>The dialog reads the remembered background and readability on open, offers the
+    /// track's animated cover, and writes the choices back.</summary>
+    [AvaloniaFact]
+    public async Task Background_choices_are_remembered_for_the_next_share()
+    {
+        var dir = System.IO.Directory.CreateTempSubdirectory("noctis-page-bg-").FullName;
+        var previous = App.Services;
+        using var settings = new MemorySettings();
+        try
+        {
+            var png = WritePng(dir);
+            var clip = System.IO.Path.Combine(dir, "cover.mp4");
+            settings.Settings.ShareLyricsPageBackgroundPath = png;
+            settings.Settings.ShareLyricsPageBackgroundStrength = 140;
+            App.Services = new PageServices(new FixedCover(clip), settings);
+
+            var vm = Synced(10);
+            try
+            {
+                Assert.True(PumpUntil(() => vm.PageBackgroundIndex == 2));
+                Assert.Equal(png, vm.PageBackgroundPath);
+                Assert.Equal(100, vm.PageBackgroundStrength);
+
+                Assert.Equal(clip, vm.AnimatedCoverPath);
+                Assert.True(vm.AnimatedCoverAvailable);
+                vm.PageBackgroundIndex = 1;
+                Assert.Equal(1, vm.PageBackgroundIndex);
+                Assert.Equal(Noctis.Services.LyricsPage.LyricsPageBackgroundKind.AnimatedCover, vm.PageSpec.BackgroundKind);
+                Assert.Equal(clip, vm.PageSpec.BackgroundMediaPath);
+
+                await vm.RemovePageBackgroundCommand.ExecuteAsync(null);
+                Assert.Equal("", settings.Settings.ShareLyricsPageBackgroundPath);
+                Assert.Equal(1, vm.PageBackgroundIndex);   // the animated cover stays picked
+
+                await vm.SetPageBackgroundFileAsync(png);
+                Assert.Equal(png, settings.Settings.ShareLyricsPageBackgroundPath);
+                int saves = settings.Saves;
+
+                vm.PageBackgroundStrength = 30;
+                Assert.Equal(saves, settings.Saves);   // the slider saves once, on close
+            }
+            finally { vm.Detach(); }
+            Assert.True(PumpUntil(() => settings.Settings.ShareLyricsPageBackgroundStrength == 30));
+
+            // Closing without moving the slider writes nothing.
+            var again = Synced(10);
+            Assert.True(PumpUntil(() => again.PageBackgroundStrength == 30));
+            int before = settings.Saves;
+            again.Detach();
+            PumpUntil(() => false, 100);
+            Assert.Equal(before, settings.Saves);
+        }
+        finally
+        {
+            App.Services = previous;
+            try { System.IO.Directory.Delete(dir, true); } catch { /* best effort */ }
+        }
     }
 }
