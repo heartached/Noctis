@@ -156,8 +156,11 @@
                             HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
 
-                <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen. -->
-                <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8">
+                <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen.
+                     Not clipped: the box is exactly the cover's size, and a Viewbox clips by default, which cut
+                     the cover's shadow off at its square bounds - only the slivers round the corners showed,
+                     square-cornered (beta 2, "the corners on the cover have a sharp edge shadow"). -->
+                <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8" ClipToBounds="False">
                   <Panel Width="320" Height="320">
                     <Border Name="ArtworkFrame" Width="320" Height="320" CornerRadius="10"
                             BoxShadow="0 10 28 0 #66000000" Classes.paused="{Binding !Player.IsPlaying}"
