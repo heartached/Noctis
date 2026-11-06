@@ -114,6 +114,17 @@ public static class GlassMenus
             if (e.GetNewValue<bool>()) FrostSubmenu(card);
             else UnfrostSubmenu(card);
         });
+
+        // A popup's content never scrolls the page behind it (#179). ComboBox.PopupOpened
+        // brings the selected row into view; the request bubbles through the popup to the
+        // page's ScrollViewers. From a native popup they can't place the row (another visual
+        // root) and ignore it, but from the overlay layer (glass on, main window) the page's
+        // ScrollViewer scrolled to the row, and ComboBoxDropDownAnimator closes a list whose
+        // box moved. The popup's own ScrollViewers sit below it and still handle it first.
+        Control.RequestBringIntoViewEvent.AddClassHandler<Popup>((popup, e) =>
+        {
+            if (e.Source != popup) e.Handled = true;
+        });
     }
 
     private static void OnCardAttached(object? sender, LogicalTreeAttachmentEventArgs e)
