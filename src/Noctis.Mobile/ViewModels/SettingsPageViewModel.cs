@@ -1244,6 +1244,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
         });
     }
 
+    /// <summary>Settings' view is the biggest page there is (every pane, the Background,
+    /// Scrobbling and History panes included): built on every open it froze the sheet's rise for
+    /// 0.7-0.9 s on the emulator (frame stall monitor, 11-06).</summary>
+    public override bool KeepsView => true;
+
     public override void OnClosed()
     {
         // A Remove Folder question does not outlive the sheet (DismissSheet does not close prompts).
