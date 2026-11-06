@@ -1401,7 +1401,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .Where(a => a.Tracks is { Count: > 0 }).ToList();
         if (albums.Count < 2)
         {
-            await ShowGroupNotice(new Views.ConfirmationRequest(Loc.T("GroupAlbums.SelectHint"), Loc.T("GroupAlbums.Title")));
+            await ShowGroupNotice(new Views.ConfirmationRequest(Loc.T("GroupAlbums.SelectHint"), Loc.T("GroupAlbums.Title"), InfoOnly: true));
             return;
         }
 
@@ -1419,7 +1419,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (result.UnwrittenFiles.Count > 0)
             await ShowGroupNotice(new Views.ConfirmationRequest(
                 Loc.T("GroupAlbums.NotWritten", result.UnwrittenFiles.Count), Loc.T("GroupAlbums.Title"),
-                Details: result.UnwrittenFiles.Take(8).ToList()));
+                Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
     }
 
     private Action<string>? _viewArtistAction;

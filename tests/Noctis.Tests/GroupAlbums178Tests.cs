@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -618,7 +620,8 @@ public class GroupAlbums178Tests : IDisposable
         ((List<Album>)lib.Albums).AddRange(new[] { a1, a2, a3 });
         vm.PromptGroupTarget = (_, _, name, _, artist, _, _) => Task.FromResult<(string, string)?>((name!, artist!));
         var notices = 0;
-        vm.ShowGroupNotice = _ => { notices++; return Task.FromResult(new Views.ConfirmationResult(true, false)); };
+        Views.ConfirmationRequest? notice = null;
+        vm.ShowGroupNotice = r => { notices++; notice = r; return Task.FromResult(new Views.ConfirmationResult(true, false)); };
 
         await vm.GroupIntoOneAlbumCommand.ExecuteAsync(a1);
         Assert.Equal(new[] { t1, t2 }, Assert.Single(lib.GroupCalls).Tracks);
@@ -626,6 +629,18 @@ public class GroupAlbums178Tests : IDisposable
         await vm.GroupIntoOneAlbumCommand.ExecuteAsync(a3);
         Assert.Single(lib.GroupCalls); // nothing to group with
         Assert.Equal(1, notices);
+        Assert.True(notice!.InfoOnly); // a message, not a question: OK only (owner 11-05)
+    }
+
+    [AvaloniaFact]
+    public void ConfirmationDialog_InfoOnly_ShowsOnlyOk()
+    {
+        var info = new Views.ConfirmationDialog(new Views.ConfirmationRequest("Done.", InfoOnly: true));
+        Assert.False(info.FindControl<Button>("CancelButton")!.IsVisible);
+        Assert.Equal(Loc.T("Mobile.OK"), info.FindControl<Button>("ConfirmButton")!.Content);
+
+        var ask = new Views.ConfirmationDialog(new Views.ConfirmationRequest("Sure?"));
+        Assert.True(ask.FindControl<Button>("CancelButton")!.IsVisible);
     }
 
     private sealed class NoOpPlayHistoryService : IPlayHistoryService

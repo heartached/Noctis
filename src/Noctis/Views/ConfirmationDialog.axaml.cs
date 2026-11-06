@@ -13,7 +13,8 @@ public sealed record ConfirmationRequest(
     string? ConfirmText = null,
     string? OptionText = null,
     bool OptionChecked = false,
-    double Width = 380);
+    double Width = 380,
+    bool InfoOnly = false);
 
 /// <summary>What the user chose; <see cref="OptionChecked"/> is the option switch's state.</summary>
 public readonly record struct ConfirmationResult(bool Confirmed, bool OptionChecked);
@@ -40,6 +41,12 @@ public partial class ConfirmationDialog : Window
         if (request.Details is { Count: > 0 } details) { DetailsList.ItemsSource = details; DetailsList.IsVisible = true; }
         if (!string.IsNullOrWhiteSpace(request.Note)) { NoteText.Text = request.Note; NoteText.IsVisible = true; }
         if (!string.IsNullOrWhiteSpace(request.ConfirmText)) ConfirmButton.Content = request.ConfirmText;
+        // A message that only informs: one OK, no Cancel (owner 11-05, Group into One Album notices).
+        if (request.InfoOnly)
+        {
+            CancelButton.IsVisible = false;
+            if (string.IsNullOrWhiteSpace(request.ConfirmText)) ConfirmButton.Content = Noctis.Localization.Loc.T("Mobile.OK");
+        }
         if (!string.IsNullOrWhiteSpace(request.OptionText))
         {
             OptionLabel.Text = request.OptionText;
