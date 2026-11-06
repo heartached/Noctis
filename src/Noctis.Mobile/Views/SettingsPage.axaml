@@ -574,6 +574,23 @@
                             <TextBlock Name="SmoothMotionFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Settings.SmoothMotionFootnote}" />
                         </StackPanel>
 
+                        <!-- Now Playing Background: the wash darker or brighter, live (beta 2 request). -->
+                        <StackPanel>
+                            <Border Name="NowPlayingBrightnessCard" Classes="group-card">
+                                <StackPanel>
+                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBrightness}" />
+                                        <TextBlock Grid.Column="1" Name="NowPlayingBrightnessLabel" Classes="row-value"
+                                                   Text="{Binding Shell.NowPlayingBrightnessLabel}" />
+                                    </views:SettingRow>
+                                    <controls:SmoothSlider Name="NowPlayingBrightnessSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                           Minimum="-50" Maximum="50" Step="5" SteppedValue="{Binding Shell.NowPlayingBrightness}"
+                                                           AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingBrightnessName}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.NowPlayingBrightnessHint}" />
+                        </StackPanel>
+
                         <!-- Library: Music Folders and Downloads are pages; Rescan is an action, its state under it. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Tab.Library}" />

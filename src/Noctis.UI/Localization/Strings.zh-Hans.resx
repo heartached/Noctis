@@ -7037,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>封面</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>黑胶</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>正在播放背景</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>正在播放背景亮度</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>让正在播放界面背后的颜色更暗或更亮。0 为标准效果。</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音乐文件夹</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>下载</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>收听</value></data>

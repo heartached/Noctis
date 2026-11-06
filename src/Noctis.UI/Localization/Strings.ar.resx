@@ -7037,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>الغلاف</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>أسطوانة</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>قرص CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>يجعل الألوان خلف شاشة قيد التشغيل أغمق أو أفتح. 0 هو المظهر القياسي.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>مجلدات الموسيقى</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>التنزيلات</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>الاستماع</value></data>

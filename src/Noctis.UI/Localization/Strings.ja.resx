@@ -7037,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>ジャケット</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>レコード</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>再生中の背景</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>再生中の背景の明るさ</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生中画面の背景色を暗く、または明るくします。0 が標準です。</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音楽フォルダ</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>ダウンロード</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>リスニング</value></data>

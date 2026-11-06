@@ -7037,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>커버</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>LP</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>재생 중 배경</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>재생 중 배경 밝기</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>재생 중 화면 뒤의 색을 더 어둡게 또는 밝게 합니다. 0이 기본 모양입니다.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>음악 폴더</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>다운로드</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>감상</value></data>
