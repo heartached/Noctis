@@ -263,6 +263,45 @@ public class LyricsBackgroundBehindSidebarTests : IDisposable
         finally { page.Window.Close(); }
     }
 
+    /// <summary>The live report (#184): laid out at x=0 but never drawn there, because the
+    /// page's hosts (LyricsView, the page ContentControl) are templated controls that clip to
+    /// their bounds. The clips come off only while the stretch is on, and come back after.</summary>
+    [AvaloniaFact]
+    public void ClippingHosts_AreUnclippedWhileOn_AndRestoredOffAndOnLeave()
+    {
+        var page = Mount(on: false);
+        try
+        {
+            var host = page.View.GetVisualAncestors().OfType<ContentControl>().First();
+            // Templated controls clip by default; whatever they start at is what must come back.
+            var viewClip = page.View.ClipToBounds;
+            var hostClip = host.ClipToBounds;
+
+            page.Player.LyricsBackgroundBehindSidebar = true;
+            Pump();
+            // Up to the window's scaled content (Interface Size host, which spans the window).
+            var clipping = page.View.FindControl<Border>("LyricsBackdropFill")!.GetVisualAncestors()
+                .TakeWhile(a => a is not TopLevel and not LayoutTransformControl)
+                .Where(a => a.ClipToBounds).Select(a => a.GetType().Name).ToList();
+            Assert.True(clipping.Count == 0, "still clipping: " + string.Join(", ", clipping));
+
+            page.Player.LyricsBackgroundBehindSidebar = false;
+            Pump();
+            Assert.Equal(viewClip, page.View.ClipToBounds);
+            Assert.Equal(hostClip, host.ClipToBounds);
+
+            // Leaving the page (another page swapped into the host) restores them too.
+            page.Player.LyricsBackgroundBehindSidebar = true;
+            Pump();
+            Assert.False(host.ClipToBounds);
+            host.Content = "another page";
+            Pump();
+            Assert.Equal(hostClip, host.ClipToBounds);
+            Assert.Equal(viewClip, page.View.ClipToBounds);
+        }
+        finally { page.Window.Close(); }
+    }
+
     [AvaloniaFact]
     public void InterfaceSize_StretchIsInPageUnits_AndStillReachesTheEdge()
     {
@@ -274,6 +313,10 @@ public class LyricsBackgroundBehindSidebarTests : IDisposable
             Assert.Equal(-76, Backdrop(page.View).Margin.Left);
             // ... and on screen that lands on the window's edge.
             Assert.Equal(0, LeftIn(Backdrop(page.View), page.Window), 1);
+            // Nothing between the layers and the scaled content clips them (the scale host
+            // itself spans the window, so its own clip is the window's edge).
+            Assert.DoesNotContain(Backdrop(page.View).GetVisualAncestors()
+                .TakeWhile(a => a is not LayoutTransformControl), a => a.ClipToBounds);
         }
         finally { page.Window.Close(); }
     }
