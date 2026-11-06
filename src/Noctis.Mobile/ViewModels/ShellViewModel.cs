@@ -596,6 +596,25 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Now Playing draws a disc in place of the square cover.</summary>
     public bool ShowsDiscArtwork => NowPlayingArtwork != NowPlayingArtworkStyle.Cover;
 
+    /// <summary>Beta 2 request: Settings › Appearance › Now Playing Background, -50 (darker) to
+    /// 50 (brighter), 0 the stock look. Saved with the player bar's settings and applied live:
+    /// brighter thins Now Playing's shade (to 40% of it at 50), darker lays black over it (60%
+    /// at -50).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingShadeOpacity), nameof(NowPlayingDimOpacity), nameof(NowPlayingBrightnessLabel))]
+    private int _nowPlayingBrightness;
+
+    public const int NowPlayingBrightnessLimit = 50;
+
+    /// <summary>The opacity of Now Playing's shade (WashShade): 1 at 0 and darker.</summary>
+    public double NowPlayingShadeOpacity => 1 - 0.6 * Math.Max(0, NowPlayingBrightness) / NowPlayingBrightnessLimit;
+
+    /// <summary>The opacity of the black over the shade (WashDim): 0 at 0 and brighter.</summary>
+    public double NowPlayingDimOpacity => 0.6 * Math.Max(0, -NowPlayingBrightness) / NowPlayingBrightnessLimit;
+
+    /// <summary>The row's value: "0", "+20", "-35".</summary>
+    public string NowPlayingBrightnessLabel => NowPlayingBrightness.ToString("+0;-0;0", System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
     /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
     [ObservableProperty] private bool _isSuspended;
@@ -615,6 +634,7 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
     partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
     partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
+    partial void OnNowPlayingBrightnessChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBrightness));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
@@ -633,6 +653,8 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
+                    NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
             }
             finally
             {
@@ -658,6 +680,7 @@ public sealed partial class ShellViewModel : ObservableObject
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
+        var brightness = NowPlayingBrightness;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -670,6 +693,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileArtworkPageColors = pages;
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
+                    settings.MobileNowPlayingBrightness = brightness;
                 });
             }
             catch (Exception ex)

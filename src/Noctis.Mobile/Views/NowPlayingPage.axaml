@@ -130,7 +130,7 @@
                 long otherwise lands in visible bands; a hair of noise breaks them up. -->
         <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
                Stretch="Fill" IsHitTestVisible="False" />
-        <Border Name="WashShade" IsHitTestVisible="False">
+        <Border Name="WashShade" IsHitTestVisible="False" Opacity="{Binding NowPlayingShadeOpacity}">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
                     <GradientStop Offset="0" Color="#4D000000" />
@@ -144,6 +144,9 @@
             </Border.Background>
         </Border>
         <Border Name="WashDither" IsHitTestVisible="False" />
+        <!-- Settings › Appearance › Now Playing Background: darker lays black over the wash
+             (ShellViewModel.NowPlayingDimOpacity), brighter thins the shade itself. -->
+        <Border Name="WashDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingDimOpacity}" />
 
         <Border Padding="{Binding SafeArea}">
             <!-- Portrait: one column. Landscape (the code-behind, on resize): the cover on the

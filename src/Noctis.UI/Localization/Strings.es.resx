@@ -7035,6 +7035,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Portada</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinilo</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fondo de Reproduciendo</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Brillo del fondo de Reproduciendo</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Oscurece o aclara los colores detrás de Reproduciendo. 0 es el aspecto estándar.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Carpetas de música</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Descargas</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Escucha</value></data>

@@ -2119,6 +2119,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Kapak</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Plak</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Çalan Ekran Arka Planı</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Çalan ekran arka plan parlaklığı</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Çalan ekranın arkasındaki renkleri koyulaştırır veya açar. 0 standart görünümdür.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Müzik Klasörleri</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>İndirilenler</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Dinleme</value></data>

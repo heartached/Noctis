@@ -181,6 +181,10 @@ public class AppSettings : IJsonOnDeserializing
     /// unknown reads as Cover.</summary>
     public string MobileNowPlayingArtwork { get; set; } = "Cover";
 
+    /// <summary>Phone, Settings › Appearance › Now Playing Background: how dark the wash behind
+    /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
+    public int MobileNowPlayingBrightness { get; set; }
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;
