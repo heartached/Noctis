@@ -1023,7 +1023,7 @@
                         <StackPanel Name="LanguagePane" Classes="grouped-content" IsVisible="{Binding ShowsLanguagePane}">
                             <StackPanel>
                                 <Border Name="LanguageCard" Classes="group-card">
-                                    <ItemsControl Name="LanguageList" ItemsSource="{Binding LanguageChoices}">
+                                    <ItemsControl Name="LanguageList" ItemsSource="{Binding LanguageListSource}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:LanguageChoice">
                                                 <StackPanel>

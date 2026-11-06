@@ -178,7 +178,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
         nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
-        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane), nameof(ShowsThemePane))]
+        nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane), nameof(ShowsThemePane),
+        nameof(LanguageListSource))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
@@ -947,6 +948,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>System language first, then every translation the app ships (Loc.Supported).</summary>
     public IReadOnlyList<LanguageChoice> LanguageChoices => _languageChoices ??= BuildLanguageChoices();
     private IReadOnlyList<LanguageChoice>? _languageChoices;
+
+    /// <summary>The Language page's list, built only once that page is shown. Building it reads
+    /// every shipped culture's names (ICU data, about 470 ms cold), and bound to the hidden page
+    /// it ran on the frame that first opened Settings, so the sheet rose ~0.5 s late.</summary>
+    public IReadOnlyList<LanguageChoice>? LanguageListSource => ShowsLanguagePane ? LanguageChoices : null;
 
     private IReadOnlyList<LanguageChoice> BuildLanguageChoices()
     {
