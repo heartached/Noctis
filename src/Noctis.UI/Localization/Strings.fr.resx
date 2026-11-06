@@ -6343,4 +6343,5 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Plus</value>
     <comment>Settings rail</comment>
   </data>
+  <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
 </root>
