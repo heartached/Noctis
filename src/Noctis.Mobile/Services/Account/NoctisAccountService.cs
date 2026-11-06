@@ -248,7 +248,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     result = await Task.Run(() => client.PairSignInAsync(pairing.Secret, _deviceId, DeviceName, ct), ct).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(result.User))
                     throw new NoctisServerException(NoctisErrorKind.Server, "The server did not say which account signed in.");
-                CompleteSignIn(url, fingerprint, result, result.User!);
+                CompleteSignIn(url, fingerprint, result, result.User!,
+                    pairing.ServerUrls.Where(u => !string.Equals(u, url, StringComparison.OrdinalIgnoreCase)).ToList());
                 return;
             }
             // Nothing reached a server that holds the pin there: the next address may.
@@ -268,11 +269,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     }
 
     /// <summary>A sign-in the server accepted (password or QR): the account is stored, with its pin.</summary>
-    private void CompleteSignIn(string url, string fingerprint, SignInResult result, string user)
+    private void CompleteSignIn(string url, string fingerprint, SignInResult result, string user,
+        IReadOnlyList<string>? otherUrls = null)
     {
         var account = new NoctisAccount
         {
             ServerUrl = url,
+            OtherServerUrls = otherUrls ?? Array.Empty<string>(),
             UserName = string.IsNullOrWhiteSpace(result.User) ? user : result.User!,
             DeviceKey = result.ApiKey,
             Fingerprint = fingerprint,
@@ -448,7 +451,16 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         RaiseStateChanged();
         try
         {
-            var result = await SyncCoreAsync(ct).ConfigureAwait(false);
+            NoctisSyncResult result;
+            try
+            {
+                result = await SyncCoreAsync(ct).ConfigureAwait(false);
+            }
+            catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.Unreachable or NoctisErrorKind.CertificateChanged)
+            {
+                if (!await TryOtherAddressAsync(ct).ConfigureAwait(false)) throw;
+                result = await SyncCoreAsync(ct).ConfigureAwait(false);
+            }
             RaiseSyncProgress(NoctisSyncStage.Done, 1, 1);
             DebugLog.Write("Account", $"sync done: {result.Songs} songs, {result.Playlists} playlists, " +
                 $"{result.StateChangesPulled} pulled, {result.StateChangesPushed} pushed, {result.PlaysSent} plays");
@@ -469,6 +481,58 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             RaiseStateChanged();
         }
     }
+
+    /// <summary>
+    /// The address the phone signed in through stopped answering, or something else answers
+    /// there now (another network, the computer's other adapter, an address handed to another
+    /// device): the computer's other addresses from its QR code are tried, and the first where
+    /// the same pinned computer answers becomes the account's address (the old one joins the
+    /// others). Before, the only way back was to sign out and in again. True when it moved.
+    /// </summary>
+    private async Task<bool> TryOtherAddressAsync(CancellationToken ct)
+    {
+        NoctisAccount? account;
+        lock (_gate) account = _account;
+        if (account is null || account.OtherServerUrls.Count == 0) return false;
+        foreach (var url in account.OtherServerUrls)
+        {
+            string seen;
+            try
+            {
+                seen = await NoctisServerClient.ProbeFingerprintAsync(_handlerFactory, url, ct).ConfigureAwait(false);
+            }
+            catch (NoctisServerException)
+            {
+                continue;
+            }
+            if (PinHex(seen) != PinHex(account.Fingerprint)) continue;
+            lock (_gate)
+            {
+                if (!ReferenceEquals(_account, account)) return false;   // signed out or in meanwhile
+                var moved = account with
+                {
+                    ServerUrl = url,
+                    OtherServerUrls = account.OtherServerUrls.Where(u => u != url).Prepend(account.ServerUrl).ToList(),
+                };
+                // The checkpoint and the unsent edits belong to the same computer: they follow it.
+                if (SameIdentity(_sync.ServerUrl, _sync.UserName, account)) _sync.ServerUrl = url;
+                if (SameIdentity(_pending.ServerUrl, _pending.UserName, account)) _pending.ServerUrl = url;
+                _store.SaveSyncState(_sync);
+                _store.SavePending(_pending);
+                _store.SaveAccount(moved);
+                _client?.Dispose();
+                _client = null;
+                _account = moved;
+            }
+            DebugLog.Write("Account", "the desktop answers at another of its addresses now; moved there");
+            RaiseStateChanged();
+            return true;
+        }
+        return false;
+    }
+
+    private static string PinHex(string? fingerprint) =>
+        new((fingerprint ?? string.Empty).Where(char.IsAsciiHexDigit).Select(char.ToUpperInvariant).ToArray());
 
     private async Task<NoctisSyncResult> SyncCoreAsync(CancellationToken ct)
     {
