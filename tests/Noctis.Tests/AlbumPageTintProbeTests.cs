@@ -140,6 +140,74 @@ public class AlbumPageTintProbeTests
         Assert.Equal(dark, ((ISolidColorBrush)credit.Foreground!).Color);
     }
 
+    /// <summary>GitHub #180: on a light cover the per-track artist line ("GRiZ, Big Gigantic")
+    /// stayed near-white. It sits in a Button (per-name artist links), whose theme resets the
+    /// foreground to the theme text, so the tinted page colour never reached it; hover and
+    /// press swap the presenter's foreground again. The now-playing row keeps its own colour.</summary>
+    [AvaloniaFact]
+    public void LightTint_TrackArtistSubtitle_TakesPageText_AtRestHoverAndPress()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var album = new Album { Id = Guid.NewGuid(), Name = "A", Artist = "B", Tracks = new List<Track>() };
+        for (var i = 1; i <= 2; i++)
+            album.Tracks.Add(new Track
+            {
+                Id = Guid.NewGuid(),
+                FilePath = TestPaths.Primary("tint-feat", "A", $"{i:00} Song {i}.flac"),
+                Title = $"Song {i}", Artist = $"B, C{i}", AlbumArtist = "B", Album = "A", TrackNumber = i,
+            });
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new AlbumDetailViewModel(album, player, persistence, lib, new SidebarViewModel(persistence, lib), new FakeLastFm(), settings);
+        var view = new AlbumDetailView { DataContext = vm };
+        // Dark theme like the report: the Button theme's text is then near-white.
+        var win = new Window { Width = 1280, Height = 900, Content = view, RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark };
+        var rowForeground = Color.FromRgb(0x12, 0x34, 0x56);
+        win.Resources["NowPlayingRowForegroundBrush"] = new SolidColorBrush(rowForeground);
+        win.Show();
+        vm.ApplyTint(Color.FromRgb(0xD9, 0xDE, 0xE0)); // the issue's pale grey page
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+
+        var dark = Color.FromRgb(0x11, 0x11, 0x11);
+        Assert.Equal(dark, ((ISolidColorBrush)vm.PageForegroundBrush).Color);
+        var links = view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("track-artist-link")).ToList();
+        Assert.Equal(2, links.Count);
+        TextBlock Subtitle(Button b) => b.GetVisualDescendants().OfType<TextBlock>().First();
+        Color Fg(Button b) => ((ISolidColorBrush)Subtitle(b).Foreground!).Color;
+        var link = links[0];
+        _out.WriteLine($"rest fg={Fg(link)} button fg={link.Foreground}");
+        Assert.Equal(dark, Fg(link));
+
+        var pseudo = (IPseudoClasses)link.Classes;
+        pseudo.Set(":pointerover", true);
+        Dispatcher.UIThread.RunJobs();
+        _out.WriteLine($"hover fg={Fg(link)}");
+        Assert.Equal(dark, Fg(link));
+        pseudo.Set(":pressed", true);
+        Dispatcher.UIThread.RunJobs();
+        _out.WriteLine($"pressed fg={Fg(link)}");
+        Assert.Equal(dark, Fg(link));
+        pseudo.Set(":pressed", false);
+        pseudo.Set(":pointerover", false);
+
+        // Dark cover: the line follows the page back to white.
+        vm.ApplyTint(Color.FromRgb(0x2A, 0x1B, 0x14));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(Colors.White, Fg(link));
+
+        // The now-playing row's accent box keeps the row foreground, not the page colour.
+        vm.ApplyTint(Color.FromRgb(0xD9, 0xDE, 0xE0));
+        album.Tracks[1].IsNowPlaying = true;
+        Dispatcher.UIThread.RunJobs();
+        _out.WriteLine($"now-playing fg={Fg(links[1])} other={Fg(links[0])}");
+        Assert.Equal(rowForeground, Fg(links[1]));
+        Assert.Equal(dark, Fg(links[0]));
+        win.Close();
+    }
+
     /// <summary>Discord "Album Page Redesign" (Jafezy mockup): with More By below a short
     /// album, the tint runs under the related rows (Tint whole page, on by default) and they
     /// follow the tracks directly — no viewport-tall stretch of empty colour first. Turning
