@@ -7079,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>流畅动效</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最高 120 Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>在支持的手机上，屏幕每秒最多刷新 120 次，滚动和动画更流畅。关闭后屏幕保持 60 Hz，更省电。</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>液态玻璃标签</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>所选标签保持透明玻璃效果</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>已用存储空间</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>移除所有下载</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>移除的下载内容仍保留在你的电脑上，并可继续串流播放。</value></data>

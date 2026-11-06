@@ -7079,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Mouvement fluide</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Jusqu’à 120 Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permet à l’écran de se rafraîchir jusqu’à 120 fois par seconde sur les téléphones compatibles, pour un défilement et des animations plus fluides. Désactivez-le pour garder l’écran à 60 Hz et économiser la batterie.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Onglet en Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>L’onglet choisi reste en verre clair</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Stockage utilisé</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Supprimer tous les téléchargements</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Les téléchargements supprimés restent sur votre ordinateur et peuvent toujours être diffusés.</value></data>

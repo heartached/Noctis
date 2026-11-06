@@ -2163,6 +2163,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Akıcı Hareket</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>120 Hz’e kadar</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Destekleyen telefonlarda ekranın saniyede 120 kereye kadar yenilenmesini sağlar; kaydırma ve animasyonlar daha akıcı olur. Ekranı 60 Hz’de tutup pil tasarrufu yapmak için kapatın.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass sekme kapsülü</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Seçili sekme şeffaf cam kalır</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Kullanılan Alan</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Tüm İndirilenleri Kaldır</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Kaldırılan indirmeler bilgisayarında kalır ve yine akışla dinlenebilir.</value></data>

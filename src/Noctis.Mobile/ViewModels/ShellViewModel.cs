@@ -637,6 +637,12 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
     partial void OnNowPlayingBrightnessChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBrightness));
 
+    /// <summary>Settings › Appearance › Liquid Glass Tab Pill (testers 11-06): the selected tab's
+    /// pill stays clear liquid glass at rest instead of settling into the dark tinted pill.
+    /// Off by default (the glass reads the bar's backdrop every frame it is shown).</summary>
+    [ObservableProperty] private bool _glassTabPill;
+    partial void OnGlassTabPillChanged(bool value) => SavePlayerBarSettings(nameof(GlassTabPill));
+
     private async Task LoadPlayerBarSettingsAsync()
     {
         try
@@ -654,6 +660,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
             }
@@ -682,6 +689,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
         var brightness = NowPlayingBrightness;
+        var glassPill = GlassTabPill;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -695,6 +703,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
                     settings.MobileNowPlayingBrightness = brightness;
+                    settings.MobileGlassTabPill = glassPill;
                 });
             }
             catch (Exception ex)

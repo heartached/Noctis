@@ -3355,6 +3355,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Flüssige Bewegung</value><comment>Setting switch (screen refresh rate)</comment></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Bis zu 120 Hz</value><comment>Switch subtitle</comment></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Lässt den Bildschirm auf Smartphones, die das unterstützen, bis zu 120-mal pro Sekunde aktualisieren, für flüssigeres Scrollen und Animationen. Schalte es aus, um bei 60 Hz zu bleiben und Akku zu sparen.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Tab-Auswahl aus Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Der gewählte Tab bleibt klares Glas</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Belegter Speicher</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Alle Downloads entfernen</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Entfernte Downloads bleiben auf deinem Computer und lassen sich weiter streamen.</value><comment>Footnote</comment></data>

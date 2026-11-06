@@ -558,6 +558,18 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06). -->
+                                    <ToggleButton Name="GlassTabPillSwitch" Classes="switch-row" IsChecked="{Binding Shell.GlassTabPill}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.GlassTabPill}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.GlassTabPill}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.GlassTabPillHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Smooth Motion: up to 120 Hz on, 60 Hz off (AndroidFrameRate). -->
                                     <ToggleButton Name="SmoothMotionSwitch" Classes="switch-row" IsChecked="{Binding SmoothMotion}"
                                                   AutomationProperties.Name="{loc:T Mobile.Settings.SmoothMotion}">

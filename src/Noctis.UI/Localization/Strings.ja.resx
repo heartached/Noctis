@@ -7079,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>スムーズモーション</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最大120Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>対応する端末では画面を毎秒最大120回更新し、スクロールやアニメーションをより滑らかにします。オフにすると画面は60Hzになり、バッテリーを節約できます。</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass タブ</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>選択中のタブを透明なガラスのままにします</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>使用済みストレージ</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>削除したダウンロードはコンピュータに残り、引き続きストリーミング再生できます。</value></data>

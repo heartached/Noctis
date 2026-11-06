@@ -190,6 +190,10 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
     public int MobileNowPlayingBrightness { get; set; }
 
+    /// <summary>Phone, Settings › Appearance › Liquid Glass Tab Pill: the selected tab's pill stays
+    /// clear glass instead of the dark tinted pill. Off by default.</summary>
+    public bool MobileGlassTabPill { get; set; }
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;

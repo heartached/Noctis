@@ -179,7 +179,7 @@
                                 <!-- The selected tab's inner capsule: the host slides between tabs, the
                                      droplet lifts while it travels (ShellView.LiftSelectionPill). -->
                                 <Panel Name="SelectionPillHost" HorizontalAlignment="Left" Margin="0,4" IsHitTestVisible="False">
-                                    <views:GlassDroplet Name="SelectionPill" Background="{DynamicResource PhoneChromeSelectedBrush}" CornerRadius="27"
+                                    <views:GlassDroplet Name="SelectionPill" Background="{DynamicResource PhoneChromeSelectedBrush}" CornerRadius="27" StaysGlass="{Binding GlassTabPill}"
                                                         UseAppGlass="False" IsGlassActive="True" BlurRadius="0" EdgeThickness="0" />
                                 </Panel>
                                 <!-- Filled glyphs on every tab, as Apple's: the selected one takes the accent. -->
