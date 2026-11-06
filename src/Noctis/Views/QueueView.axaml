@@ -199,7 +199,7 @@
                         BorderThickness="0"
                         Padding="6,3"
                         Cursor="Hand"
-                        IsVisible="{Binding !!UpNext.Count}">
+                        IsVisible="{Binding Player.CanClearQueue}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
                         <!-- Vector line icon (was the 512px Clear Queue ICON.png mask). Dynamic:
                              IconsPages.axaml is merged at the app level. -->

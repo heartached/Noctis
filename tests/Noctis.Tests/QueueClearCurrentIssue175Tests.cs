@@ -107,6 +107,35 @@ public class QueueClearCurrentIssue175Tests
         Assert.False(vm.CanClearQueue);
     }
 
+    /// <summary>The Queue page's Clear followed Up Next's count, so with the last song alone
+    /// playing it was hidden there while the queue popup's Clear could clear it.</summary>
+    [AvaloniaFact]
+    public void QueuePage_ClearButton_ShowsForTheLastSongAlone()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var (vm, _) = CreateVm();
+        vm.ReplaceQueueAndPlay(Album("a"), 0);
+        var page = new Noctis.Views.QueueView { DataContext = new QueueViewModel(vm) };
+        var window = new Avalonia.Controls.Window { Width = 1280, Height = 900, Content = page };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var clear = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(page)
+                .OfType<Avalonia.Controls.Button>()
+                .Single(b => b.Command == ((QueueViewModel)page.DataContext!).ClearQueueCommand);
+
+            Assert.Empty(vm.UpNext);
+            Assert.True(clear.IsVisible);
+
+            clear.Command!.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(clear.IsVisible);
+        }
+        finally { window.Close(); }
+    }
+
     // ── The song ending ──
 
     [AvaloniaFact]
