@@ -127,8 +127,101 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     private static Bitmap CreateWash(Bitmap source)
     {
         var pixels = ReadDownscaled(source, out var w, out var h);
+        Vivify(pixels);
         Blur(pixels, w, h, WashSigma);
         return ToBitmap(pixels, w, h);
+    }
+
+    // A pixel counts as vivid from this much chroma (max - min channel, 0..255) and brightness
+    // (max channel) up; the share of a cover's pixels that must be vivid for it to have a colour
+    // worth showing; and how far a dull pixel goes toward that colour.
+    private const int VividChroma = 64;
+    private const int VividValue = 90;
+    private const double VividMinShare = 0.04;
+    private const double VividFill = 0.85;
+    private const int HueBins = 24;
+
+    /// <summary>
+    /// Phone beta 2 ("the background almost always prefers a very dark colour"): blurred as it
+    /// was, a cover of 60% black and 40% bright red averaged to a dark maroon, and the page's
+    /// shade then took it near black. Here, before the blur, the cover's dull pixels (near
+    /// black, grey, washed out) are pulled toward its strongest vivid colour (<see
+    /// cref="VividAccent"/>), each by how dull it is; vivid pixels keep their own colour, so a
+    /// cover's colours still sit where they are. A cover with no meaningful colour (fewer than
+    /// <see cref="VividMinShare"/> of its pixels vivid) is left as it is: dark stays dark.
+    /// Premultiplied BGRA, opaque or not (the mix keeps each pixel's alpha).
+    /// </summary>
+    internal static void Vivify(byte[] pixels)
+    {
+        if (VividAccent(pixels) is not var (ab, ag, ar)) return;
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            int b = pixels[i], g = pixels[i + 1], r = pixels[i + 2], a = pixels[i + 3];
+            if (a == 0) continue;
+            var max = Math.Max(r, Math.Max(g, b));
+            var chroma = max - Math.Min(r, Math.Min(g, b));
+            // 0 = fully vivid (keeps its colour), 1 = fully dull (takes the accent at VividFill).
+            var vivid = Math.Min(1.0, chroma / (double)VividChroma) * Math.Min(1.0, max / (double)VividValue);
+            var t = VividFill * (1 - vivid);
+            if (t <= 0) continue;
+            var scale = a / 255.0;   // the accent, premultiplied by this pixel's alpha
+            pixels[i] = (byte)Math.Round(b + (ab * scale - b) * t);
+            pixels[i + 1] = (byte)Math.Round(g + (ag * scale - g) * t);
+            pixels[i + 2] = (byte)Math.Round(r + (ar * scale - r) * t);
+        }
+    }
+
+    /// <summary>
+    /// The cover's strongest vivid colour (B, G, R), or null when it has none worth showing.
+    /// Vivid pixels are binned by hue, each weighted by its chroma (a bright red outweighs a
+    /// dusty one); the heaviest hue (with half its neighbours' weight, so a hue split across a
+    /// bin edge is not halved) wins, and its pixels' chroma-weighted average is the colour.
+    /// Near-black and grey pixels never vote, however many there are.
+    /// </summary>
+    internal static (byte B, byte G, byte R)? VividAccent(byte[] pixels)
+    {
+        var weight = new double[HueBins];
+        var sumB = new double[HueBins];
+        var sumG = new double[HueBins];
+        var sumR = new double[HueBins];
+        int vividCount = 0, total = 0;
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            int a = pixels[i + 3];
+            if (a < 128) continue;
+            total++;
+            // Un-premultiply, so a half-transparent edge reads as its own colour.
+            double b = pixels[i] * 255.0 / a, g = pixels[i + 1] * 255.0 / a, r = pixels[i + 2] * 255.0 / a;
+            var max = Math.Max(r, Math.Max(g, b));
+            var min = Math.Min(r, Math.Min(g, b));
+            var chroma = max - min;
+            if (chroma < VividChroma || max < VividValue) continue;
+            vividCount++;
+            double hue;
+            if (max == r) hue = (g - b) / chroma;
+            else if (max == g) hue = 2 + (b - r) / chroma;
+            else hue = 4 + (r - g) / chroma;
+            var bin = (int)((hue + 6) % 6 / 6 * HueBins) % HueBins;
+            weight[bin] += chroma;
+            sumB[bin] += b * chroma;
+            sumG[bin] += g * chroma;
+            sumR[bin] += r * chroma;
+        }
+        if (total == 0 || vividCount < total * VividMinShare) return null;
+
+        var best = 0;
+        var bestScore = -1.0;
+        for (var k = 0; k < HueBins; k++)
+        {
+            var score = weight[k] + 0.5 * (weight[(k + HueBins - 1) % HueBins] + weight[(k + 1) % HueBins]);
+            if (score > bestScore) { bestScore = score; best = k; }
+        }
+        double wSum = 0, bSum = 0, gSum = 0, rSum = 0;
+        foreach (var k in new[] { (best + HueBins - 1) % HueBins, best, (best + 1) % HueBins })
+        {
+            wSum += weight[k]; bSum += sumB[k]; gSum += sumG[k]; rSum += sumR[k];
+        }
+        return ((byte)Math.Round(bSum / wSum), (byte)Math.Round(gSum / wSum), (byte)Math.Round(rSum / wSum));
     }
 
     /// <summary>
