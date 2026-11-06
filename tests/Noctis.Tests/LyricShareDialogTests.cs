@@ -27,7 +27,7 @@ namespace Noctis.Tests;
 /// </summary>
 public class LyricShareDialogTests
 {
-    private static void EnsureAppStyles()
+    internal static void EnsureAppStyles()
     {
         var app = Application.Current!;
         if (app.Resources.TryGetResource("HeartFillIcon", null, out _)) return;
@@ -222,7 +222,7 @@ public class LyricShareDialogTests
     // ── Clip export ──
 
     /// <summary>Fakes the converter service so ExportClipAsync finds "ffmpeg" (our script).</summary>
-    private sealed class FfmpegOnly(string path) : IAudioConverterService, IServiceProvider
+    internal sealed class FfmpegOnly(string path) : IAudioConverterService, IServiceProvider
     {
         public string? GetFfmpegPath() => path;
         public Task<string?> ValidateFfmpegAsync(string? p = null, CancellationToken ct = default) => Task.FromResult<string?>("ffmpeg");
@@ -714,11 +714,12 @@ public class LyricShareDialogTests
                 Assert.DoesNotContain(all.OfType<Button>(), b => b.Classes.Contains("share-pill"));
                 Assert.DoesNotContain(all.OfType<CheckBox>(), c => c.DataContext is SelectableLyricLine);
 
-                // Options: four filled pill drop-downs carrying every choice.
+                // Options: filled pill drop-downs carrying every choice (four for the card, plus
+                // the Lyrics Page background, shown only in that layout).
                 var combos = all.OfType<ComboBox>().ToList();
-                Assert.Equal(4, combos.Count);
+                Assert.Equal(5, combos.Count);
                 Assert.All(combos, c => Assert.Contains("pill-field", c.Classes));
-                Assert.Equal(2, Named<ComboBox>(win, "LayoutBox").ItemCount);
+                Assert.Equal(3, Named<ComboBox>(win, "LayoutBox").ItemCount);
                 Assert.Equal(2, Named<ComboBox>(win, "FormatBox").ItemCount);
                 Assert.Equal(3, Named<ComboBox>(win, "TextColorBox").ItemCount);
                 Assert.Equal(vm.SolidSwatches.Count + 1, Named<ComboBox>(win, "BackgroundBox").ItemCount);
