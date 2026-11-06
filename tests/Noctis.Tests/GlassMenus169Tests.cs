@@ -99,7 +99,8 @@ public class GlassMenus169Tests
             AppGlass.Clear();
             menu.Open(owner);
             Dispatcher.UIThread.RunJobs();
-            Assert.False(PopupOf(menu).ShouldUseOverlayLayer);
+            // Still in the main window's overlay layer: a card stays inside the window (11-06).
+            Assert.True(PopupOf(menu).ShouldUseOverlayLayer);
             Assert.DoesNotContain(GlassMenus.GlassClass, menu.Classes);
             Assert.False(MenuOpenAnimation.GetUseFade(menu));
             Assert.Empty(menu.GetVisualDescendants().OfType<GlassPanel>());
@@ -139,8 +140,11 @@ public class GlassMenus169Tests
         }
     }
 
+    /// <summary>Glass off, a main-window menu is the plain card, still hosted in the window's
+    /// overlay layer so it can't run past the window's edge (11-06: a native popup is only kept
+    /// on its monitor).</summary>
     [AvaloniaFact]
-    public void ContextMenu_GlassOff_NeverTouchesThePopup()
+    public void ContextMenu_GlassOff_IsThePlainCard_InTheWindowsOverlay()
     {
         var (menu, _, owner) = Menu();
         var win = HostWindow(owner);
@@ -149,7 +153,9 @@ public class GlassMenus169Tests
             AppGlass.Clear();
             menu.Open(owner);
             Dispatcher.UIThread.RunJobs();
-            Assert.False(PopupOf(menu).IsSet(Popup.ShouldUseOverlayLayerProperty));
+            Assert.True(PopupOf(menu).ShouldUseOverlayLayer);
+            Assert.Contains(GlassMenus.OverlayClass, menu.Classes);
+            Assert.Same(win, TopLevel.GetTopLevel(menu));
             Assert.DoesNotContain(GlassMenus.GlassClass, menu.Classes);
             menu.Close();
         }
@@ -220,7 +226,7 @@ public class GlassMenus169Tests
             menu.Open(owner);
             Dispatcher.UIThread.RunJobs();
             card = OpenSubmenu(sub);
-            Assert.False(SubmenuPopup(sub).ShouldUseOverlayLayer);
+            Assert.True(SubmenuPopup(sub).ShouldUseOverlayLayer); // inside the window, glass or not
             Assert.IsNotType<GlassPanel>(card.Child);
             Assert.Same(tint, card.Background);
             Assert.Equal(new Thickness(6), card.Padding);
@@ -262,8 +268,9 @@ public class GlassMenus169Tests
             AppGlass.Clear();
             ToolTip.SetIsOpen(button, true);
             Dispatcher.UIThread.RunJobs();
-            Assert.False(button.IsSet(ToolTip.ShouldUseOverlayLayerProperty));
-            Assert.False(PopupOf(tip).ShouldUseOverlayLayer);
+            // The stock tip, still in the main window's overlay layer (11-06).
+            Assert.True(ToolTip.GetShouldUseOverlayLayer(button));
+            Assert.True(PopupOf(tip).ShouldUseOverlayLayer);
             Assert.DoesNotContain(GlassMenus.GlassClass, tip.Classes);
             Assert.Empty(tip.GetVisualDescendants().OfType<GlassPanel>());
             ToolTip.SetIsOpen(button, false);

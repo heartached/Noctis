@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
+using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Noctis.Controls;
@@ -18,14 +19,20 @@ namespace Noctis.Helpers;
 /// <see cref="ToolTip"/> is tagged with <see cref="GlassClass"/>, and Styles.axaml gives the card
 /// a GlassPanel chrome (its submenus, and the card Border of a drop-down list or a custom popup,
 /// through <see cref="SubmenuGlassProperty"/> / <see cref="ApplyCardPopup"/>). While glass is
-/// off none of it happens, so every menu opens exactly as before.
+/// off the cards keep their plain look.
 ///
-/// Where the card opens: the <see cref="GlassPanel"/> blur only sees the surface it renders
-/// into. In a <see cref="HostProperty"/> window (the main window) the card is hosted in the
-/// window's overlay layer (and tagged <see cref="OverlayClass"/>), so the glass frosts the live
-/// app. Every other window (mini player, dialogs, plugin windows) keeps the native popup, which
-/// may reach past a small window, and the card's <see cref="GlassMenuBackdrop"/> paints a
-/// snapshot of the window behind it into the popup for the glass to frost.
+/// Where the card opens: in a <see cref="HostProperty"/> window (the main window) every menu,
+/// submenu, flyout, list and tooltip is hosted in the window's overlay layer (and tagged
+/// <see cref="OverlayClass"/>), glass on or off. The glass needs it (the <see cref="GlassPanel"/>
+/// blur only sees the surface it renders into), and it keeps every card inside the window: a
+/// native popup is only kept on its monitor (Avalonia 12.1.3 ManagedPopupPositioner bounds = the
+/// screen's working area), so in a window that does not fill the screen a tall menu opened low
+/// ran past the window's bottom edge (11-06, glass off). An overlay card is measured within the
+/// window (a taller menu scrolls) and <see cref="KeepInLayer"/> holds it inside the window
+/// whatever constraint flags its popup has. Every other window (mini player, dialogs, plugin
+/// windows) keeps the native popup, which may reach past a small window, and the card's
+/// <see cref="GlassMenuBackdrop"/> paints a snapshot of the window behind it into the popup for
+/// the glass to frost.
 ///
 /// Decided per open, before the popup opens, so a Liquid Glass switch applies to the next
 /// open: the global menu style sets <see cref="TrackProperty"/>; flyouts and tooltips detach
@@ -42,14 +49,14 @@ public static class GlassMenus
     /// <summary>Card class while the menu or tooltip is frosted.</summary>
     public const string GlassClass = "glass-menu";
 
-    /// <summary>Card class while a frosted card is hosted in its window's overlay layer (its
-    /// submenus then open there too).</summary>
+    /// <summary>Card class while a card is hosted in its window's overlay layer (its submenus
+    /// then open there too).</summary>
     public const string OverlayClass = "glass-overlay";
 
     /// <summary>Blur of every glass menu card (the island menus' value since #104).</summary>
     public const double BlurRadius = 14;
 
-    /// <summary>A window whose menus and tooltips frost in its overlay layer (the main window).
+    /// <summary>A window whose menus and tooltips open in its overlay layer (the main window).
     /// Others (mini player, dialogs) keep native popups, frosted over a snapshot of the window
     /// (<see cref="GlassMenuBackdrop"/>): an overlay-layer menu can't leave its window, which
     /// would cramp or clip menus in a small window.</summary>
@@ -125,6 +132,57 @@ public static class GlassMenus
         {
             if (e.Source != popup) e.Handled = true;
         });
+
+        Canvas.LeftProperty.Changed.AddClassHandler<OverlayPopupHost>((host, _) => KeepInLayer(host));
+        Canvas.TopProperty.Changed.AddClassHandler<OverlayPopupHost>((host, _) => KeepInLayer(host));
+        Visual.BoundsProperty.Changed.AddClassHandler<OverlayPopupHost>((host, _) => KeepInLayer(host));
+    }
+
+    private static bool _keeping;
+
+    /// <summary>
+    /// Holds an overlay-layer popup inside its layer (the window). The positioner only slides a
+    /// card back in when its popup allows it, and several menus turn that off
+    /// (PlacementConstraintAdjustment None / FlipY: the Songs filter and sort menus, the album "..."
+    /// menu, the island's menus); a native popup still had its monitor to spill onto, an overlay
+    /// card is cut off at the window's edge. Avalonia 12.1.3 OverlayPopupHost.MoveAndResize places
+    /// the host with Canvas.Left/Top (on the next render) and ignores the size, so the placed
+    /// position is clamped here: the card (the host less its content's Margin, as the positioner
+    /// counts it) moves just far enough to fit. The card itself is never taller or wider than the
+    /// layer: the layer measures its popups within its own size, and a menu scrolls.
+    /// </summary>
+    internal static void KeepInLayer(OverlayPopupHost host)
+    {
+        // The layer is the visual parent (the logical one is the Popup).
+        if (_keeping || host.GetVisualParent() is not { } layer) return;
+        var size = host.Bounds.Size;
+        var room = layer.Bounds.Size;
+        if (size.Width <= 0 || size.Height <= 0 || room.Width <= 0 || room.Height <= 0) return;
+        var left = Canvas.GetLeft(host);
+        var top = Canvas.GetTop(host);
+        if (double.IsNaN(left) || double.IsNaN(top)) return; // not placed yet
+        var margin = (host.Content as Layoutable)?.Margin ?? default;
+        var x = Fit(left, margin.Left, size.Width - margin.Left - margin.Right, room.Width);
+        var y = Fit(top, margin.Top, size.Height - margin.Top - margin.Bottom, room.Height);
+        if (x == left && y == top) return;
+        _keeping = true;
+        try
+        {
+            Canvas.SetLeft(host, x);
+            Canvas.SetTop(host, y);
+        }
+        finally { _keeping = false; }
+    }
+
+    /// <summary>The host position that keeps a card <paramref name="extent"/> long, starting
+    /// <paramref name="inset"/> into the host, inside 0..<paramref name="room"/>; its leading
+    /// edge wins when it can't fit.</summary>
+    private static double Fit(double pos, double inset, double extent, double room)
+    {
+        var start = pos + inset;
+        if (start + extent > room) start = room - extent;
+        if (start < 0) start = 0;
+        return start - inset;
     }
 
     private static void OnCardAttached(object? sender, LogicalTreeAttachmentEventArgs e)
@@ -142,7 +200,6 @@ public static class GlassMenus
         var on = ShouldFrost(popup);
         if (card.Classes.Contains(GlassClass) == on) return;
         card.Classes.Set(GlassClass, on);
-        if (!on) card.Classes.Remove(OverlayClass);
     }
 
     /// <summary>The window <paramref name="popup"/> opens for: its own visual tree's, else its
@@ -159,23 +216,23 @@ public static class GlassMenus
         ?? (popup.Parent is Visual owner ? TopLevel.GetTopLevel(owner) : null)
         ?? (popup.PlacementTarget is { } target ? TopLevel.GetTopLevel(target) : null);
 
-    /// <summary>The frosted popup opens in its window's overlay layer: a host window's, and only
-    /// when it opens from the window itself. Opened from inside a native popup (a tooltip or list
+    /// <summary>The popup opens in its window's overlay layer (glass on or off): a host window's,
+    /// and only when it opens from the window itself. Opened from inside a native popup (a tooltip or list
     /// in a plain Flyout) it keeps its own popup: the window's overlay layer lies under that popup
     /// window, and a PopupRoot has no overlay layer at all (Avalonia 12.1.3
     /// OverlayPopupHost.CreatePopupHost then throws "no overlay layer is found").</summary>
     internal static bool ShouldUseOverlay(Popup popup) =>
-        AppGlass.IsActive && OpenerTopLevel(popup) is Window window && GetHost(window);
+        OpenerTopLevel(popup) is Window window && GetHost(window);
 
     /// <summary>Sets up one open of <paramref name="card"/> (a ContextMenu, MenuFlyoutPresenter,
-    /// FlyoutPresenter or ToolTip): <see cref="GlassClass"/> while it should frost, plus the
-    /// overlay layer in a host window; the stock popup and plain card otherwise. Cards not hosted
+    /// FlyoutPresenter or ToolTip): <see cref="GlassClass"/> while it should frost, and the
+    /// overlay layer in a host window (glass on or off); the stock popup elsewhere. Cards not hosted
     /// by a Popup (the tray menu's own window, see TrayMenuFrost) are left alone.</summary>
     public static void Apply(Control card)
     {
         if (card.Parent is not Popup popup) return;
         var on = ShouldFrost(popup);
-        var overlay = on && ShouldUseOverlay(popup);
+        var overlay = ShouldUseOverlay(popup);
         card.Classes.Set(GlassClass, on);
         card.Classes.Set(OverlayClass, overlay);
 
@@ -220,14 +277,14 @@ public static class GlassMenus
     /// the popup opens. While glass is on the card frosts like a submenu card
     /// (<see cref="SubmenuGlassProperty"/>; its open/close motion then fades
     /// <see cref="MenuOpenAnimation.FadeProperty"/>, see <see cref="MenuOpenAnimation.UseFadeProperty"/>)
-    /// and, in a host window, opens in the overlay layer. Off, the card and popup are left as
-    /// the template made them.
+    /// and in a host window it opens in the overlay layer (glass on or off). Glass off, the card
+    /// is left as the template made it.
     /// </summary>
     public static void ApplyCardPopup(Popup popup)
     {
         if (popup.Child is not Border card) return;
         var on = ShouldFrost(popup);
-        var overlay = on && ShouldUseOverlay(popup);
+        var overlay = ShouldUseOverlay(popup);
         card.Classes.Set(GlassClass, on);
         card.Classes.Set(OverlayClass, overlay);
         SetForcedOverlay(popup, Popup.ShouldUseOverlayLayerProperty, overlay);

@@ -722,8 +722,9 @@
         <!-- Lay rows out at the card width (no sideways scrolling), so a long translated label
              trims inside MaxWidth instead of widening the content past the card. -->
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-        <!-- Liquid Glass decides on every open (GlassMenus): frosted card while glass is on (in
-             the main window's overlay layer, elsewhere in its own popup), the stock card otherwise. -->
+        <!-- Decided on every open (GlassMenus): frosted card while Liquid Glass is on, the stock
+             card otherwise; in the main window's overlay layer either way (so it stays inside the
+             window), elsewhere in its own popup. -->
         <Setter Property="(helpers:GlassMenus.Track)" Value="True" />
     </Style>
     <!-- NOTE: the Fluent templates write several of these parts from resources, and a
@@ -842,8 +843,8 @@
             </ControlTemplate>
         </Setter>
     </Style>
-    <!-- Submenus of a glass menu open where it did (the overlay layer of the main window, else
-         their own popup), and their card (a plain Border in the Fluent MenuItem template) hands
+    <!-- Submenus open where their menu did (the overlay layer of the main window, glass on or
+         off, else their own popup), and a glass menu's submenu card (a plain Border in the Fluent MenuItem template) hands
          its rows to a GlassPanel (GlassMenus.SubmenuGlass). UseFade is in place before the open
          motion runs (it runs when the popup opens). -->
     <Style Selector=".glass-overlay MenuItem /template/ Popup#PART_Popup">
