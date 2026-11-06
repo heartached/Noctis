@@ -285,4 +285,98 @@ public class LyricsPageRenderTests
             Px(row.X + row.TokenX[k] + row.TokenWidth[k]), y0, y1);
         return (left, right);
     }
+
+    private static string TempDir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-page-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    [Fact]
+    public void Export_writes_one_jpeg_per_frame_named_like_the_card_path()
+    {
+        var dir = TempDir();
+        try
+        {
+            var progress = new List<(int Done, int Total)>();
+            LyricsPageRenderer.RenderFrames(Spec(ShareCardFormat.Square), new ShareClipTiming(10, 0.5), 60, dir,
+                (done, total) => progress.Add((done, total)));
+
+            var files = Directory.GetFiles(dir).Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).ToList();
+            Assert.Equal(Enumerable.Range(0, 30).Select(n => $"frame-{n:D5}.jpg"), files);
+            foreach (var file in files)
+            {
+                using var bitmap = SKBitmap.Decode(Path.Combine(dir, file!));
+                Assert.NotNull(bitmap);
+                Assert.Equal(1080, bitmap.Width);
+                Assert.Equal(1080, bitmap.Height);
+            }
+            Assert.Equal((30, 30), progress[^1]);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Export_frames_carry_the_cover_and_its_colours()
+    {
+        var dir = TempDir();
+        try
+        {
+            var cover = Path.Combine(dir, "cover.png");
+            using (var bitmap = new SKBitmap(300, 300))
+            {
+                bitmap.Erase(new SKColor(0xE0, 0x20, 0x20));
+                using var data = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                File.WriteAllBytes(cover, data.ToArray());
+            }
+            var frames = Path.Combine(dir, "frames");
+            Directory.CreateDirectory(frames);
+            var spec = Spec(ShareCardFormat.Square) with { ArtworkPath = cover };
+            LyricsPageRenderer.RenderFrames(spec, new ShareClipTiming(10, 1.0 / 60), 60, frames);
+
+            using var frame = SKBitmap.Decode(Path.Combine(frames, "frame-00000.jpg"));
+            var g = LyricsPageLayout.Measure(ShareCardFormat.Square, true);
+            // Header tile: the cover itself.
+            var tile = frame.GetPixel((int)(g.Header.Left + g.ArtSize / 2), (int)(g.Header.Top + g.ArtSize / 2));
+            Assert.True(tile.Red > 180 && tile.Green < 80 && tile.Blue < 80, $"tile {tile}");
+            // Background (a corner in the side safe zone, no text): the cover's red under the scrim,
+            // not the no-artwork #1A1A2E wash.
+            var wash = frame.GetPixel(20, 1060);
+            Assert.True(wash.Red > wash.Green + 40 && wash.Red > wash.Blue + 40, $"background {wash}");
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Cancelling_stops_the_frame_loop()
+    {
+        var dir = TempDir();
+        try
+        {
+            using var cts = new CancellationTokenSource();
+            Assert.Throws<OperationCanceledException>(() =>
+                LyricsPageRenderer.RenderFrames(Spec(ShareCardFormat.Square), new ShareClipTiming(10, 60), 60, dir,
+                    (done, _) => { if (done >= 12) cts.Cancel(); }, cts.Token));
+            Assert.True(Directory.GetFiles(dir).Length < 3600);
+            Assert.True(Directory.GetFiles(dir).Length <= 13);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Still_is_mid_first_line()
+    {
+        Assert.Equal(10 + 2 + 0.08, LyricsPageRenderer.StillTime(new ShareClipTiming(10, 20), 14), 9);
+        Assert.Equal(10 + 3 + 0.08, LyricsPageRenderer.StillTime(new ShareClipTiming(10, 6), null), 9);
+    }
+
+    [Fact]
+    public void Still_png_is_the_frame_at_its_time()
+    {
+        var png = LyricsPageRenderer.RenderStillPng(Spec(ShareCardFormat.Story), 12.08, 0.5f);
+        using var bitmap = SKBitmap.Decode(png);
+        Assert.Equal(540, bitmap.Width);
+        Assert.Equal(960, bitmap.Height);
+    }
 }
