@@ -159,7 +159,10 @@ internal static class PageBackgrounds
                 return new StillBackground(image, pixelWidth, pixelHeight, tint, strength);
         }
 
-        // Clips need ffmpeg (Task 9 decodes them); until then, the wash.
-        return new WashBackground(art, pixelWidth, pixelHeight, strength);
+        var wash = new WashBackground(art, pixelWidth, pixelHeight, strength);
+        if (string.IsNullOrEmpty(spec.FfmpegPath))
+            return wash;
+        return new ClipBackground(spec.FfmpegPath, path, pixelWidth, pixelHeight, fps,
+            tint.WithAlpha(PageBackgroundTint.OverlayAlpha(strength)), blocking, wash);
     }
 }

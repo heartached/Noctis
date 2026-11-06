@@ -1,3 +1,7 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using Noctis.Services;
 using Noctis.Services.LyricsPage;
 using SkiaSharp;
 using Xunit;
@@ -138,5 +142,237 @@ public sealed class LyricsPageBackgroundTests : IDisposable
         using var background = PageBackgrounds.Create(LyricsPageTestData.Spec() with
             { BackgroundKind = LyricsPageBackgroundKind.ArtworkWash, BackgroundMediaPath = png }, 108, 192, 60, true, null);
         Assert.IsType<WashBackground>(background);
+    }
+
+    // ---- Clip backgrounds (ffmpeg) ----
+
+    private static string? Ffmpeg() =>
+        new AudioConverterService(() => string.Empty, new MetadataService()).GetFfmpegPath();
+
+    private static readonly SKColor FallbackColour = new(0x1A, 0x1A, 0x2E);
+
+    private static WashBackground Fallback(int w, int h) => new(null, w, h, 0);
+
+    /// <summary>6 frames at 10 fps, 64×64: 3 red then 3 blue (F6: lavfi sources at r=10, not the default 25).</summary>
+    private string? WriteRedBlueClip(string ffmpeg)
+    {
+        var clip = Path.Combine(_dir, "clip.mp4");
+        var psi = new ProcessStartInfo(ffmpeg) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+        foreach (var a in new[]
+        {
+            "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "color=red:s=64x64:d=0.3:r=10",
+            "-f", "lavfi", "-i", "color=blue:s=64x64:d=0.3:r=10",
+            "-filter_complex", "concat=n=2:v=1", "-r", "10", "-pix_fmt", "yuv420p", clip,
+        }) psi.ArgumentList.Add(a);
+        using var p = Process.Start(psi)!;
+        p.StandardError.ReadToEnd();
+        p.WaitForExit(30000);
+        return p.ExitCode == 0 && File.Exists(clip) ? clip : null;
+    }
+
+    private static SKColor Centre(SKImage image)
+    {
+        using var bitmap = SKBitmap.FromImage(image);
+        return bitmap.GetPixel(bitmap.Width / 2, bitmap.Height / 2);
+    }
+
+    private static bool IsRed(SKColor c) => c.Red > 150 && c.Green < 80 && c.Blue < 80;
+    private static bool IsBlue(SKColor c) => c.Blue > 150 && c.Red < 80 && c.Green < 80;
+
+    private static bool PumpUntil(Func<bool> condition, int budgetMs = 5000)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < budgetMs)
+        {
+            if (condition()) return true;
+            Thread.Sleep(10);
+        }
+        return condition();
+    }
+
+    private static void AssertNoChildLeft(ClipBackground clip, int? pid)
+    {
+        Assert.True(clip.ProcessExited);
+        if (pid is not { } id) return;
+        try
+        {
+            using var p = Process.GetProcessById(id);
+            Assert.True(p.HasExited || !p.ProcessName.Contains("ffmpeg", StringComparison.OrdinalIgnoreCase),
+                $"ffmpeg {id} still running");
+        }
+        catch (ArgumentException) { } // gone
+        catch (InvalidOperationException) { } // exited between the lookup and the check
+    }
+
+    [Fact]
+    public void Clip_args_loop_scale_to_fill_and_pipe_raw_bgra()
+    {
+        var a = ClipBackground.BuildArgs("bg.mp4", 1080, 1920, 60);
+        Assert.Equal("-1", a[a.IndexOf("-stream_loop") + 1]);
+        Assert.True(a.IndexOf("-stream_loop") < a.IndexOf("-i"));
+        Assert.Equal("bg.mp4", a[a.IndexOf("-i") + 1]);
+        Assert.Equal("scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=60,format=bgra",
+            a[a.IndexOf("-vf") + 1]);
+        Assert.Contains("-an", a); Assert.Equal("rawvideo", a[a.IndexOf("-f") + 1]); Assert.Equal("-", a[^1]);
+        Assert.Equal("bgra", a[a.IndexOf("-pix_fmt") + 1]);
+    }
+
+    [Fact]
+    public void A_short_clip_loops_frame_exactly_in_blocking_mode()
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var clipPath = WriteRedBlueClip(ffmpeg);
+        Assert.NotNull(clipPath);
+
+        using var clip = new ClipBackground(ffmpeg, clipPath!, 64, 64, 10, SKColors.Transparent, blocking: true, Fallback(64, 64));
+        Assert.True(IsRed(Centre(clip.FrameAt(0.0)!)));
+        Assert.True(IsRed(Centre(clip.FrameAt(0.2)!)));
+        Assert.True(IsBlue(Centre(clip.FrameAt(0.3)!)));
+        Assert.True(IsBlue(Centre(clip.FrameAt(0.5)!)));
+        Assert.True(IsRed(Centre(clip.FrameAt(0.6)!)));
+        Assert.True(IsBlue(Centre(clip.FrameAt(1.5)!)));
+        // Going back restarts the decode and still lands on the exact frame.
+        Assert.True(IsBlue(Centre(clip.FrameAt(0.4)!)));
+        Assert.False(clip.Failed);
+    }
+
+    [Fact]
+    public void Preview_mode_never_waits_for_a_frame()
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var clipPath = WriteRedBlueClip(ffmpeg);
+        Assert.NotNull(clipPath);
+
+        using var clip = new ClipBackground(ffmpeg, clipPath!, 64, 64, 10, SKColors.Transparent, blocking: false, Fallback(64, 64));
+        var sw = Stopwatch.StartNew();
+        clip.FrameAt(0);
+        Assert.True(sw.ElapsedMilliseconds < 50, $"FrameAt took {sw.ElapsedMilliseconds} ms");
+        Assert.True(PumpUntil(() => clip.FrameAt(0) != null));
+        Assert.True(IsRed(Centre(clip.FrameAt(0)!)));
+        Assert.False(clip.Failed);
+    }
+
+    [Fact]
+    public void Corrupt_clip_falls_back_to_the_wash_within_the_timeout()
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var bad = Path.Combine(_dir, "clip.mp4");
+        File.WriteAllText(bad, "this is not a video, just some text bytes");
+
+        var clip = new ClipBackground(ffmpeg, bad, 64, 64, 10, SKColors.Transparent, blocking: true, Fallback(64, 64));
+        var pid = clip.ProcessId;
+        var sw = Stopwatch.StartNew();
+        using (var frame = Render(clip, 64, 64))
+        {
+            Assert.True(sw.ElapsedMilliseconds < ClipBackground.FirstFrameTimeoutMs + 1000, $"{sw.ElapsedMilliseconds} ms");
+            Assert.True(clip.Failed);
+            Assert.Equal(FallbackColour, frame.GetPixel(32, 32));
+        }
+        clip.Dispose();
+        AssertNoChildLeft(clip, pid);
+    }
+
+    [Fact]
+    public void Ffmpeg_dying_mid_export_ends_the_wait_and_falls_back()   // F5
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var clipPath = WriteRedBlueClip(ffmpeg);
+        Assert.NotNull(clipPath);
+
+        var clip = new ClipBackground(ffmpeg, clipPath!, 64, 64, 10, SKColors.Transparent, blocking: true, Fallback(64, 64));
+        Assert.NotNull(clip.FrameAt(0));
+        var pid = clip.ProcessId;
+        Assert.NotNull(pid);
+        using (var child = Process.GetProcessById(pid!.Value))
+        {
+            child.Kill();
+            child.WaitForExit(5000);
+        }
+
+        // Far enough ahead that no frame still sitting in the pipe can answer it.
+        var sw = Stopwatch.StartNew();
+        using (var frame = Render(clip, 64, 64, 30.0))
+        {
+            Assert.True(sw.ElapsedMilliseconds < ClipBackground.FirstFrameTimeoutMs + 1000, $"{sw.ElapsedMilliseconds} ms");
+            Assert.True(clip.Failed);
+            Assert.Equal(FallbackColour, frame.GetPixel(32, 32));
+        }
+        // Failed is final: later frames keep the fallback.
+        using (var later = Render(clip, 64, 64, 31.0))
+            Assert.Equal(FallbackColour, later.GetPixel(32, 32));
+        clip.Dispose();
+        AssertNoChildLeft(clip, pid);
+    }
+
+    [Fact]
+    public void A_stalled_ffmpeg_times_out_to_the_wash()   // F5: a source that never delivers a byte
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var clip = new ClipBackground(ffmpeg, $"tcp://127.0.0.1:{port}", 64, 64, 10, SKColors.Transparent,
+                blocking: true, Fallback(64, 64));
+            var pid = clip.ProcessId;
+            var sw = Stopwatch.StartNew();
+            using (var frame = Render(clip, 64, 64))
+            {
+                Assert.True(sw.ElapsedMilliseconds < ClipBackground.FirstFrameTimeoutMs + 1000, $"{sw.ElapsedMilliseconds} ms");
+                Assert.True(clip.Failed);
+                Assert.Equal(FallbackColour, frame.GetPixel(32, 32));
+            }
+            clip.Dispose();
+            AssertNoChildLeft(clip, pid);
+        }
+        finally { listener.Stop(); }
+    }
+
+    [Fact]
+    public void Dispose_ends_a_blocked_wait()   // F5
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var clip = new ClipBackground(ffmpeg, $"tcp://127.0.0.1:{port}", 64, 64, 10, SKColors.Transparent,
+                blocking: true, Fallback(64, 64));
+            var pid = clip.ProcessId;
+            SKImage? result = null;
+            bool returned = false;
+            var waiter = new Thread(() => { result = clip.FrameAt(0); returned = true; }) { IsBackground = true };
+            waiter.Start();
+            Thread.Sleep(300);
+            Assert.True(waiter.IsAlive, "FrameAt should still be waiting on the stalled source");
+            clip.Dispose();
+            Assert.True(waiter.Join(2000), "FrameAt still blocked after Dispose");
+            Assert.True(returned);
+            Assert.Null(result);
+            AssertNoChildLeft(clip, pid);
+        }
+        finally { listener.Stop(); }
+    }
+
+    [Fact]
+    public void A_custom_video_with_ffmpeg_becomes_a_clip_background()
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var clipPath = WriteRedBlueClip(ffmpeg);
+        Assert.NotNull(clipPath);
+        using (var withFfmpeg = PageBackgrounds.Create(Custom(clipPath!, ffmpeg), 64, 64, 10, true, null))
+            Assert.IsType<ClipBackground>(withFfmpeg);
+        using (var without = PageBackgrounds.Create(Custom(clipPath!), 64, 64, 10, true, null))
+            Assert.IsType<WashBackground>(without);
     }
 }
