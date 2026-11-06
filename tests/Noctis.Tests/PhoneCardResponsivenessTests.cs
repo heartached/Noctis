@@ -16,6 +16,7 @@ namespace Noctis.Tests;
 /// Owner 11-04, Settings › Account &amp; Devices › Phone app: "when I toggle on and off it lags,
 /// stutters, there is latency", and the Advanced row's chevron did nothing when clicked.
 /// </summary>
+[Collection("Phone card timing")]
 public class PhoneCardResponsivenessTests : IDisposable
 {
     private readonly string _root =
@@ -278,3 +279,11 @@ public class PhoneCardResponsivenessTests : IDisposable
         return port;
     }
 }
+
+/// <summary>
+/// The phone card tests time the longest UI-thread job. Headless UI tests share one UI thread,
+/// so run beside other classes they timed those classes' work too (a 1.1 s job on CI while the
+/// switches themselves took 16 ms). This collection runs alone.
+/// </summary>
+[CollectionDefinition("Phone card timing", DisableParallelization = true)]
+public class PhoneCardTimingCollection { }
