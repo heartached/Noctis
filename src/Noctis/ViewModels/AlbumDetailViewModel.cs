@@ -97,6 +97,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// Versions / More By; true without a settings VM.</summary>
     public bool TintWholePage => _settings?.AlbumPageTintWholePage ?? AppSettings.AlbumPageTintWholePageDefault;
     [ObservableProperty] private bool _isLightTint;
+
+    /// <summary>Whether the tint runs under the floating player island right now (set by the
+    /// view as the page scrolls): with Tint whole page off, the related sections below the
+    /// album block sit on the theme's page instead. MainWindow hands the island the tint as
+    /// its backdrop only while this holds (PlaybackBarView.BackdropColor).</summary>
+    [ObservableProperty] private bool _tintUnderPlayerBar = true;
     [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
     [ObservableProperty] private IBrush _pageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
     [ObservableProperty] private IBrush _pageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));

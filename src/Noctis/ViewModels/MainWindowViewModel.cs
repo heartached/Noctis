@@ -184,6 +184,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool IsWindowTinted => WindowTintBrush != null;
 
+    partial void OnWindowTintBrushChanged(IBrush? value) => UpdateIslandBackdrop();
+
+    /// <summary>
+    /// The plain colour under the player island (PlaybackBarView.BackdropColor): a tinted
+    /// album page while its tint reaches the island, else the whole-window tint; null on the
+    /// theme's own page. The island's fill is translucent, so a light colour here turns the
+    /// pill light and its text and icons go dark (live 11-06, Lavender Haze / Lover).
+    /// </summary>
+    [ObservableProperty] private Color? _islandBackdropColor;
+
+    /// <summary>The island's backdrop for <paramref name="view"/> under <paramref name="windowTint"/>.
+    /// The lyrics page hides this island, bringing it back only over a full-size music video.
+    /// Internal for tests.</summary>
+    internal static Color? IslandBackdropFor(IBrush? windowTint, ViewModelBase? view) => view switch
+    {
+        LyricsViewModel => null,
+        AlbumDetailViewModel { HasTint: true, TintUnderPlayerBar: true, BackgroundBrush: ISolidColorBrush page } => page.Color,
+        _ => (windowTint as ISolidColorBrush)?.Color,
+    };
+
+    private void UpdateIslandBackdrop() => IslandBackdropColor = IslandBackdropFor(WindowTintBrush, CurrentView);
+
     private ViewModelBase? _tintSourcePage;
 
     /// <summary>The window tint for <paramref name="view"/>: its page colour when it is a
@@ -211,13 +233,19 @@ public partial class MainWindowViewModel : ViewModelBase
             if (page != null) page.PropertyChanged += OnTintSourcePageChanged;
         }
         WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
+        UpdateIslandBackdrop();
     }
 
     private void OnTintSourcePageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(AlbumDetailViewModel.BackgroundBrush) or nameof(AlbumDetailViewModel.HasTint)
             or nameof(LyricsViewModel.PageTintBrush))
+        {
             WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
+            UpdateIslandBackdrop();
+        }
+        else if (e.PropertyName == nameof(AlbumDetailViewModel.TintUnderPlayerBar))
+            UpdateIslandBackdrop();
     }
 
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics

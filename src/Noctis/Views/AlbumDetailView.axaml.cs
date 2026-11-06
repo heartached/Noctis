@@ -48,6 +48,11 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         {
             if (e.Property == ScrollViewer.ViewportProperty) UpdateAlbumBlockLayout();
         };
+        TrackScrollViewer.ScrollChanged += (_, _) => UpdateTintUnderPlayerBar();
+        AlbumTintBg.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BoundsProperty) UpdateTintUnderPlayerBar();
+        };
 
         OtherVersionsScroll.ScrollChanged += (_, _) => UpdateHScrollArrows(OtherVersionsScroll, OtherVersionsLeft, OtherVersionsRight);
         OtherVersionsScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(OtherVersionsScroll, OtherVersionsLeft, OtherVersionsRight);
@@ -86,6 +91,22 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         AlbumBlock.MinHeight = vm.HasTint && !wholePage ? viewport : 0;
         AlbumBlockContent.Margin = new Thickness(0, 0, 0,
             (vm.HasTint && !wholePage) || !hasRelated ? PlayerBarClearance - FooterBottomMargin : 0);
+        UpdateTintUnderPlayerBar();
+    }
+
+    /// <summary>The floating player island's mid line, up from the bottom of the page
+    /// (MainWindow: 16 px margin + half its 50 px height).</summary>
+    private const double PlayerBarMidFromBottom = 41;
+
+    /// <summary>Whether the tint layer still reaches the island's mid line: always with Tint
+    /// whole page (or a page with nothing below the album), else until the related sections
+    /// scroll up under it.</summary>
+    private void UpdateTintUnderPlayerBar()
+    {
+        if (DataContext is not AlbumDetailViewModel vm) return;
+        var viewport = TrackScrollViewer.Viewport.Height;
+        vm.TintUnderPlayerBar = viewport <= 0
+            || AlbumTintBg.Bounds.Bottom - TrackScrollViewer.Offset.Y >= viewport - PlayerBarMidFromBottom;
     }
 
     /// <summary>Ctrl+Click toggles a track row's selection; a plain click clears it.</summary>

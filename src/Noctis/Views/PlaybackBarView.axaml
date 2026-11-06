@@ -230,6 +230,14 @@
         <Style Selector="Button.artist-link-btn:pressed Border.artist-text-hover">
             <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
+        <!-- Light surface under the island (a light album page through the translucent fill,
+             PlaybackBarView.UpdateSurfaceContrast): the hover box darkens instead. -->
+        <Style Selector="Border#IslandBorder.on-light Button.artist-link-btn:pointerover Border.artist-text-hover">
+            <Setter Property="Background" Value="#1A000000" />
+        </Style>
+        <Style Selector="Border#IslandBorder.on-light Button.artist-link-btn:pressed Border.artist-text-hover">
+            <Setter Property="Background" Value="#29000000" />
+        </Style>
         <!-- Artist name in the track box: accent, or the bar's secondary text colour when
              Settings → "Accent colour on artist and album names" is off (GitHub #125;
              MainWindow's plain-track-links class). Style setters, not local values. -->
@@ -539,7 +547,7 @@
                  With Liquid Glass on the same brush becomes the tint over a live frost of the
                  content scrolling under the pill. Negative margin reaches back across the
                  Border's 12px padding so the fill covers the whole pill as before. -->
-            <controls:GlassPanel CornerRadius="999" Margin="-12,0" Padding="12,0" BlurRadius="14">
+            <controls:GlassPanel x:Name="IslandGlass" CornerRadius="999" Margin="-12,0" Padding="12,0" BlurRadius="14">
               <controls:GlassPanel.Background>
                 <SolidColorBrush Color="{DynamicResource IslandBackgroundColor}" Opacity="{Binding IslandBackgroundOpacity}"/>
               </controls:GlassPanel.Background>
