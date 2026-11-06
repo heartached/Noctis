@@ -270,8 +270,13 @@ public partial class LyricShareDialog : Window
                     new FilePickerFileType(Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } },
                 },
             });
+            if (files.Count == 0) return;
             // A pick that is not a local file (a cloud entry with no path) cannot be read by ffmpeg.
-            if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path) return;
+            if (files[0].TryGetLocalPath() is not { } path)
+            {
+                vm.ReportStatus(Localization.Loc.T("ShareLyrics.BackgroundNotLocal"));
+                return;
+            }
             await vm.SetPageBackgroundFileAsync(path);
         }
         catch (Exception ex)
