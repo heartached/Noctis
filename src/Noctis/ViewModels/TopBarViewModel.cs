@@ -73,6 +73,16 @@ public partial class TopBarViewModel : ViewModelBase
     // to a page without search).
     [ObservableProperty] private bool _isSearchOpen;
 
+    /// <summary>
+    /// True when the open search pill should push the page below it (MainWindow's search
+    /// inset). Only under a top bar: there the pill covers real content (the Songs column
+    /// headers, Discord HypnoTized 10-24). Pages without a bar (Artist, Album and Playlist
+    /// detail) start with a full-bleed hero, so the pill floats over the hero instead of
+    /// pushing it down and leaving an empty strip above it (Discord, v1.6.8 artist page).
+    /// Re-read on <see cref="IsSearchOpen"/> and <see cref="HasBarContent"/> changes.
+    /// </summary>
+    public bool ReservesSearchBand => IsSearchOpen && HasBarContent;
+
     // Back button (shown in detail views like Album Detail, Genre Detail, etc.)
     [ObservableProperty] private bool _isBackButtonVisible;
     [ObservableProperty] private bool _isGenericBackButtonVisible;
