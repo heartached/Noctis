@@ -491,8 +491,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         // handler of either change reads a settled pair.
         var scroll = Math.Min(_timeline.ScrollIndex(TimeSpan.FromMilliseconds(Math.Max(0, audible)), TimeSpan.Zero), step.ActiveIndex);
         ScrollLineIndex = scroll;
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         ActiveLineIndex = step.ActiveIndex;
         ApplyOpacities(step.ActiveIndex);
+        Services.FrameStallMonitor.AddTime("lyric line restyle", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
     }
 
     /// <summary>Before the first line (<paramref name="active"/> &lt; 0) every line is at full

@@ -153,6 +153,13 @@ public sealed partial class ArtistListPageViewModel : MobilePage
     /// substring of the name, or a raw substring for a query of punctuation only.</summary>
     private void ApplyFilter()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { ApplyFilterCore(); }
+        finally { Services.FrameStallMonitor.AddTime("find filter", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
+
+    private void ApplyFilterCore()
+    {
         var raw = Query.Trim();
         if (raw.Length == 0)
         {

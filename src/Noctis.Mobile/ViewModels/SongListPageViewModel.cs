@@ -243,6 +243,13 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     private void Apply()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { ApplyCore(); }
+        finally { Services.FrameStallMonitor.AddTime("find filter", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
+
+    private void ApplyCore()
+    {
         IEnumerable<Track> rows = _all;
         if (OnlyFavourites) rows = rows.Where(t => t.IsFavorite);
         if (OnlyDownloaded && Shell.Account is { } account) rows = rows.Where(account.IsDownloaded);

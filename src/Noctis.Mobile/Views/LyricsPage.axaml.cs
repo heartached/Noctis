@@ -55,6 +55,7 @@ public partial class LyricsPage : UserControl
     public LyricsPage()
     {
         InitializeComponent();
+        LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
         WashDither.Background = NowPlayingPage.Dither;
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
         LyricsScroll.PropertyChanged += OnScrollPropertyChanged;
@@ -137,7 +138,11 @@ public partial class LyricsPage : UserControl
         if (e.PropertyName == nameof(LyricsPageViewModel.WantsFrames))
             EnsureFrameLoop();
         else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible)
+        {
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
             ScrollToLine(_lyrics!.ScrollLineIndex, animate: true);
+            Services.FrameStallMonitor.AddTime("lyric scroll start", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        }
         else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && IsVisible)
             ShowControls();   // (re)starts the hide timer once there is something to read
     }
