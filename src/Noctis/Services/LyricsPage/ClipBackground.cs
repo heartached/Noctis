@@ -29,7 +29,9 @@ internal sealed class ClipBackground : IPageBackground
     private readonly SKImageInfo _info;
     private readonly bool _blocking;
     private readonly IPageBackground _fallback;
-    private readonly SKPaint? _overlayPaint;
+    private readonly SKPaint _overlayPaint = new() { BlendMode = SKBlendMode.SrcOver };
+    private readonly SKColor _tint;
+    private volatile int _strength;
     private readonly object _gate = new();
 
     private Decode? _run;
@@ -74,10 +76,11 @@ internal sealed class ClipBackground : IPageBackground
         };
     }
 
-    /// <param name="overlay">The readability tint drawn over each frame (alpha included).</param>
+    /// <param name="tint">The readability layer's colour, drawn over each frame at
+    /// <see cref="PageBackgroundTint.OverlayAlpha"/> of <paramref name="strength"/>.</param>
     /// <param name="fallback">Drawn while no frame can be shown and after a failure; owned and disposed by this background.</param>
     internal ClipBackground(string ffmpegPath, string path, int width, int height, int fps,
-        SKColor overlay, bool blocking, IPageBackground fallback)
+        SKColor tint, int strength, bool blocking, IPageBackground fallback)
     {
         _ffmpegPath = ffmpegPath;
         _path = path;
@@ -88,14 +91,23 @@ internal sealed class ClipBackground : IPageBackground
         _info = new SKImageInfo(_width, _height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
         _blocking = blocking;
         _fallback = fallback;
-        if (overlay.Alpha > 0)
-            _overlayPaint = new SKPaint { Color = overlay, BlendMode = SKBlendMode.SrcOver };
+        _tint = tint;
+        _strength = strength;
 
         // Start right away so the first frame is (usually) ready when the first draw asks.
         lock (_gate)
         {
             if (!StartRun(0))
                 _failed = true;
+        }
+    }
+
+    public int Strength
+    {
+        set
+        {
+            _strength = value;
+            _fallback.Strength = value;
         }
     }
 
@@ -219,8 +231,12 @@ internal sealed class ClipBackground : IPageBackground
         }
 
         canvas.DrawImage(image, 0, 0);
-        if (_overlayPaint != null)
+        var alpha = PageBackgroundTint.OverlayAlpha(_strength);
+        if (alpha > 0)
+        {
+            _overlayPaint.Color = _tint.WithAlpha(alpha);
             canvas.DrawRect(0, 0, _width, _height, _overlayPaint);
+        }
     }
 
     public void Dispose()
@@ -241,7 +257,7 @@ internal sealed class ClipBackground : IPageBackground
             _image?.Dispose();
             _image = null;
         }
-        _overlayPaint?.Dispose();
+        _overlayPaint.Dispose();
         _fallback.Dispose();
     }
 

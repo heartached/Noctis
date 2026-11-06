@@ -111,6 +111,10 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
     /// <summary>Paints the social apps' covered areas over the frame (preview only, never exported).</summary>
     public bool ShowSafeZones { get; set; }
 
+    /// <summary>The readability strength (0-100) over the background from the next frame on, without
+    /// rebuilding the background (a clip's ffmpeg keeps running). Any thread.</summary>
+    public int BackgroundStrength { set => _background.Strength = value; }
+
     public int PixelWidth { get; }
     public int PixelHeight { get; }
 
