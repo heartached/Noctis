@@ -11,8 +11,8 @@ namespace Noctis.Tests;
 /// <summary>Which desktop songs the phone already has as its own files (one song, not two).</summary>
 public class NoctisLocalMatcherTests
 {
-    private static RemoteSong Desk(string title, string artist, int seconds, string album = "Album") => new(
-        Guid.NewGuid(), null, title, album, artist, seconds, 0, "flac", 1, 1, 2020, "", 0, 0, 0, false, 0, null);
+    private static RemoteSong Desk(string title, string artist, int seconds, string album = "Album", long size = 0) => new(
+        Guid.NewGuid(), null, title, album, artist, seconds, size, "mp3", 1, 1, 2020, "", 0, 0, 0, false, 0, null);
 
     private static Track Local(string title, string artist, double seconds, string album = "Album") => new()
     {
@@ -71,6 +71,60 @@ public class NoctisLocalMatcherTests
         var d = Desk("Song", "Artist", 200);
         Assert.Empty(Match(new[] { d }, Local("Song", "Artist", 206)));
         Assert.NotEmpty(Match(new[] { d }, Local("Song", "Artist", 202.4)));
+    }
+
+    // Beta 2 feedback: "2 Sugar (feat. Ayra Starr)" and "20 Min" still showed twice. The phone reads
+    // a song through its content stream, where MetadataService skips the desktop's MP3 frame count
+    // (ApplyCountedMp3Length needs a local path) and ffprobe: a headerless VBR MP3 gets TagLib's
+    // first-frame guess on the phone (often a minute off) and its counted length on the computer,
+    // and a file TagLib cannot time reads as 0 there. The same file has the same size on both.
+    [Fact]
+    public void TheSameFile_MatchesEvenWhenThePhoneMisreadsItsLength()
+    {
+        var d = Desk("2 Sugar (feat. Ayra Starr)", "Wizkid, Ayra Starr", 201, size: 6_543_210);
+        var guessed = Local("2 Sugar (feat. Ayra Starr)", "Wizkid, Ayra Starr", 143.2);
+        guessed.FileSize = 6_543_210;
+        Assert.Equal(guessed.Id, Match(new[] { d }, guessed)[d.Id]);
+
+        var untimed = Local("20 Min", "Lil Uzi Vert", 0);
+        untimed.FileSize = 4_000_001;
+        var d2 = Desk("20 Min", "Lil Uzi Vert", 220, size: 4_000_001);
+        Assert.Equal(untimed.Id, Match(new[] { d2 }, untimed)[d2.Id]);
+    }
+
+    [Fact]
+    public void TheSameSize_NeverJoinsADifferentVersionOrArtist_AndADifferentSizeStillNeedsTheLength()
+    {
+        var live = Local("Song (Live)", "Artist", 150);
+        live.FileSize = 5_000_000;
+        Assert.Empty(Match(new[] { Desk("Song", "Artist", 200, size: 5_000_000) }, live));
+        var other = Local("Song", "Someone Else", 150);
+        other.FileSize = 5_000_000;
+        Assert.Empty(Match(new[] { Desk("Song", "Artist", 200, size: 5_000_000) }, other));
+        var copy = Local("Song", "Artist", 150);
+        copy.FileSize = 5_000_001;
+        Assert.Empty(Match(new[] { Desk("Song", "Artist", 200, size: 5_000_000) }, copy));
+    }
+
+    // The desktop sends (int)Duration.TotalSeconds (NoctisServer.SongJson): 203.9 s arrives as 203,
+    // so a copy 2.4 s longer than the computer's file read as 3.3 s apart.
+    [Fact]
+    public void TheDesktopsCutSeconds_CountAsTheWholeSecond()
+    {
+        var d = Desk("Song", "Artist", 203);
+        Assert.NotEmpty(Match(new[] { d }, Local("Song", "Artist", 206.3)));
+        Assert.NotEmpty(Match(new[] { d }, Local("Song", "Artist", 200.6)));
+        Assert.Empty(Match(new[] { d }, Local("Song", "Artist", 207)));
+    }
+
+    [Fact]
+    public void FeaturedArtistsWrittenDifferently_StillMatch()
+    {
+        var d = Desk("2 Sugar (feat. Ayra Starr)", "Wizkid, Ayra Starr", 201);
+        Assert.NotEmpty(Match(new[] { d }, Local("2 Sugar", "WizKid", 201.4)));
+        Assert.NotEmpty(Match(new[] { d }, Local("2 Sugar feat. Ayra Starr", "Wizkid feat. Ayra Starr", 201.4)));
+        Assert.NotEmpty(Match(new[] { d }, Local("2 Sugar (Ft Ayra Starr)", "Wizkid; Ayra Starr", 201.4)));
+        Assert.NotEmpty(Match(new[] { d }, Local("2 SUGAR", "Ayra Starr & Wizkid", 201.4)));
     }
 
     [Fact]
