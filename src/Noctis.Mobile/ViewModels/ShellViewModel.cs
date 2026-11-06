@@ -958,6 +958,24 @@ public sealed partial class ShellViewModel : ObservableObject
         });
     }
 
+    /// <summary>The Playlists page's New Playlist (+): the Rename prompt's name field, empty; the
+    /// playlist is made as a song's "Add to Playlist › New playlist" makes one, with no songs yet.</summary>
+    [RelayCommand]
+    private void AskNewPlaylist() =>
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.Playlists.New"), string.Empty,
+            new[] { new PromptAction(Loc.T("Mobile.Create"), p => CreatePlaylistAsync(p.Entered)) })
+        {
+            HasField = true,
+            FieldPlaceholder = Loc.T("Mobile.PlaylistName"),
+        });
+
+    public async Task CreatePlaylistAsync(string name)
+    {
+        name = name.Trim();
+        if (name.Length == 0) return;
+        await Library.CreatePlaylistAsync(name);
+    }
+
     public async Task RenamePlaylistAsync(Playlist playlist, string name)
     {
         name = name.Trim();

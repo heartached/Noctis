@@ -3249,6 +3249,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Keine passenden Playlists</value><comment>Playlists search found nothing</comment></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Playlists durchsuchen</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Playlists sortieren</value><comment>Screen reader name</comment></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Neue Playlist</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Erstellen</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Als Nächstes abspielen</value><comment>Menu action</comment></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Zur Warteschlange hinzufügen</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Zum Album</value><comment>Menu action</comment></data>

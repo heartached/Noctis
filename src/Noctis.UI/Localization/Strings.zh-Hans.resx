@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>没有匹配的播放列表</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>搜索播放列表</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>排序播放列表</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>新建播放列表</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>创建</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>下一首播放</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>添加到队列</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>前往专辑</value></data>
