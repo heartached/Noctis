@@ -257,6 +257,7 @@ public static class MenuOpenAnimation
         // transitions animate the change instead of snapping straight to the end state.
         var fade = FadePropertyOf(control);
         var offsetX = GetOffsetX(control);
+        ShowOpacityUnderFade(control, fade);
         control.SetValue(fade, 0.0);
         control.RenderTransform = TransformOperations.Parse(offsetX != 0
             ? $"translateX({offsetX.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)"
@@ -279,6 +280,7 @@ public static class MenuOpenAnimation
         var fade = FadePropertyOf(card);
         card.Transitions = null;
         card.IsHitTestVisible = true;
+        ShowOpacityUnderFade(card, fade);
         card.SetValue(fade, 0.0);
         card.RenderTransform = TransformOperations.Parse(
             $"scale({PopScale.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
@@ -654,6 +656,14 @@ public static class MenuOpenAnimation
         if (GetUseFade(control)) SetFade(control, 1);
         control.IsHitTestVisible = true;
         control.RenderTransform = TransformOperations.Parse(GetPop(control) ? "scale(1)" : "translateY(0px)");
+    }
+
+    /// <summary>An open that fades <see cref="FadeProperty"/> (Liquid Glass) leaves Opacity alone,
+    /// and a plain close leaves the card at Opacity 0: a card closed plain and opened again with
+    /// glass on stayed invisible. Opacity goes back to 1 for such an open.</summary>
+    private static void ShowOpacityUnderFade(Control card, StyledProperty<double> fade)
+    {
+        if (fade != Visual.OpacityProperty) card.Opacity = 1;
     }
 
     /// <summary>The property the open/close fade drives: <see cref="FadeProperty"/> on a glass

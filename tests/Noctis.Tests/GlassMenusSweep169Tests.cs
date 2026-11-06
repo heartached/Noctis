@@ -582,6 +582,39 @@ public class GlassMenusSweep169Tests
         finally { AppGlass.Clear(); window.Close(); }
     }
 
+    /// <summary>The other way round: a plain list's close fades its card's Opacity to 0 and
+    /// leaves it there (the next plain open fades it back in). A glass open fades only
+    /// MenuOpenAnimation.Fade, so a list opened plain once and then with Liquid Glass turned on
+    /// stayed at Opacity 0: an invisible drop-down.</summary>
+    [AvaloniaFact]
+    public void PlainDropDown_ThenGlassOn_ReopensVisible()
+    {
+        EnsureStyles();
+        var box = new ComboBox { ItemsSource = new[] { "1 GB", "2 GB", "4 GB" }, SelectedIndex = 0, Width = 160 };
+        var window = Show(new StackPanel { Children = { box } }, host: true, width: 600, height: 500);
+        try
+        {
+            AppGlass.Clear();
+            box.IsDropDownOpen = true;
+            Pump();
+            var popup = GlassMenus.DropDownPopup(box)!;
+            var card = Assert.IsType<Border>(popup.Child);
+            Assert.True(PumpUntil(() => card.Opacity == 1));
+            box.IsDropDownOpen = false;
+            Assert.True(PumpUntil(() => !box.IsDropDownOpen && !popup.IsOpen), "the plain list never closed");
+
+            AppGlass.Set(true, Colors.Black, Colors.Black);
+            box.IsDropDownOpen = true;
+            Pump();
+            Assert.NotNull(GlassMenus.FrostOf(card));
+            Assert.True(PumpUntil(() => MenuOpenAnimation.GetFade(card) == 1));
+            Assert.True(PumpUntil(() => card.Opacity == 1), $"the glass list stayed at Opacity {card.Opacity}");
+            box.IsDropDownOpen = false;
+            Assert.True(PumpUntil(() => !box.IsDropDownOpen && !popup.IsOpen), "the glass list never closed");
+        }
+        finally { AppGlass.Clear(); window.Close(); }
+    }
+
     /// <summary>The glass tint follows Glass Opacity in every window: an application resource.</summary>
     [AvaloniaFact]
     public void GlassTint_IsAnApplicationResource()
