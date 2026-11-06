@@ -41,6 +41,8 @@ public sealed class LyricsPageMotion
     private readonly float _anchorY;
     private readonly float _viewportHeight;
     private readonly float _scale;
+    private readonly float _listTop;
+    private readonly float _pixelScale;
     private readonly double[] _lags;
 
     private readonly Fade _opacity, _blur, _sweep;
@@ -51,9 +53,17 @@ public sealed class LyricsPageMotion
     private int _dotsIndex = -1;
     private double _dotsStart;
 
+    /// <param name="listTop">Where the list's viewport starts on the canvas (lines draw at
+    /// listTop + top − offset).</param>
+    /// <param name="pixelScale">Device pixels per canvas px. When set, each target offset is
+    /// rounded so its line rests on a whole device pixel: the glide itself lands there, with no
+    /// sub-pixel tick after it. 0 leaves the offsets unrounded.</param>
     public LyricsPageMotion(IReadOnlyList<LyricLine> lines, IReadOnlyList<float> lineTops,
-        IReadOnlyList<float> lineHeights, float anchorY, float viewportHeight, float scale)
+        IReadOnlyList<float> lineHeights, float anchorY, float viewportHeight, float scale,
+        float listTop = 0, float pixelScale = 0)
     {
+        _listTop = listTop;
+        _pixelScale = pixelScale;
         _lines = lines;
         _tops = lineTops;
         _heights = lineHeights;
@@ -175,7 +185,10 @@ public sealed class LyricsPageMotion
     {
         if (_tops.Count == 0) return -_anchorY;
         index = Math.Clamp(index, 0, _tops.Count - 1);
-        return _tops[index] + _heights[index] / 2.0 - _anchorY;
+        double offset = _tops[index] + _heights[index] / 2.0 - _anchorY;
+        if (_pixelScale <= 0) return offset;
+        double y = _listTop + _tops[index] - offset;
+        return _listTop + _tops[index] - Math.Round(y * _pixelScale) / _pixelScale;
     }
 
     /// <summary>The list's scroll offset at <paramref name="tSeconds"/> (after <see cref="Advance"/>):

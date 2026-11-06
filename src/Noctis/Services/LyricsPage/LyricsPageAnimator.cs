@@ -68,7 +68,7 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
         _lines = LyricsPageEngine.BuildLines(spec.Lines);
         _layout = LyricsPageLineLayout.Build(_lines, Geometry, _boldFace);
         Motion = new LyricsPageMotion(_lines, _layout.Select(l => l.Top).ToList(), _layout.Select(l => l.Height).ToList(),
-            Geometry.AnchorY, Geometry.Viewport.Height, Geometry.Scale);
+            Geometry.AnchorY, Geometry.Viewport.Height, Geometry.Scale, Geometry.Viewport.Top, scale);
 
         _background = PageBackgrounds.Create(spec, PixelWidth, PixelHeight, backgroundFps, blockingBackground, cover);
         _header = RecordHeader(spec, Geometry, cover, _boldFace);
@@ -164,8 +164,6 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
         var vp = g.Viewport;
         double offset = Motion.ScrollOffset(t);
         var lags = Motion.LineLags(t);
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        bool listAtRest = offset == Motion.TargetOffset(Motion.ScrollIndex);
         float margin = g.LyricSize;   // blur and glow reach past a line's band
         // Clipped top and bottom only: blur and glow run on into the side margins (a soft halo is
         // not text in a safe zone), where a side clip would cut them off hard.
@@ -178,10 +176,9 @@ public sealed class LyricsPageAnimator : IShareFrameAnimator
             var opacity = Motion.Opacity(i, t);
             if (opacity <= 0.004) continue;
             var layout = _layout[i];
+            // At rest the target line sits on a whole device pixel: Motion rounds its target
+            // offsets, so the glide lands there with no extra snap after it.
             float y = (float)(vp.Top + layout.Top - offset + lags[i]);
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (listAtRest && lags[i] == 0)
-                y = MathF.Round(y * _scale) / _scale;   // still lines sit on whole pixels: no shimmer
             if (y + layout.Height + margin < vp.Top || y - margin > vp.Bottom) continue;
 
             var blur = Motion.BlurRadius(i, t);

@@ -69,6 +69,44 @@ public class LyricsPageMotionTests
 
     private const double LineMotionLeadSeconds = Noctis.Helpers.LineMotion.ScrollLeadMs / 1000.0;
 
+    /// <summary>
+    /// Bug: the glide landed on an unrounded offset and the renderer then rounded the resting
+    /// line onto a whole pixel, a visible up-to-0.5 px tick right after every glide. The target
+    /// offsets are rounded instead, so the glide itself ends with the line on a device pixel.
+    /// </summary>
+    [Theory]
+    [InlineData(0.5f)]
+    [InlineData(1f)]
+    [InlineData(2f)]
+    public void The_glide_lands_its_line_on_a_whole_device_pixel(float pixelScale)
+    {
+        var lines = LyricsPageEngine.BuildLines(LyricsPageTestData.Song());
+        using var face = ShareCardRenderer.ResolveTypeface(SKFontStyleWeight.Bold);
+        var layout = LyricsPageLineLayout.Build(lines, G, face);
+        var motion = new LyricsPageMotion(lines, layout.Select(l => l.Top).ToList(),
+            layout.Select(l => l.Height).ToList(), G.AnchorY, G.Viewport.Height, G.Scale, G.Viewport.Top, pixelScale);
+
+        foreach (var index in Enumerable.Range(0, lines.Count))
+        {
+            double y = (G.Viewport.Top + layout[index].Top - motion.TargetOffset(index)) * pixelScale;
+            Assert.Equal(Math.Round(y), y, 3);
+            // Within half a device pixel of the unrounded centre-on-anchor offset.
+            double exact = layout[index].Top + layout[index].Height / 2.0 - G.AnchorY;
+            Assert.InRange(motion.TargetOffset(index), exact - 0.5 / pixelScale - 1e-6, exact + 0.5 / pixelScale + 1e-6);
+        }
+
+        int second = IndexAt(lines, 14);
+        var timing = new ShareClipTiming(10, 10);
+        for (int n = 0; n < LyricsPageFrames.Count(timing, LyricsPageFrames.Fps); n++)
+        {
+            double t = Frame(n, timing);
+            if (t > 15.5) break;
+            motion.Advance(t);
+        }
+        Assert.Equal(second, motion.ScrollIndex);
+        Assert.Equal(motion.TargetOffset(second), motion.ScrollOffset(15.5));
+    }
+
     [Fact]
     public void Lines_below_the_target_cascade_behind_the_list_while_it_glides()
     {
