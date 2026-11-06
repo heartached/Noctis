@@ -1130,6 +1130,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playbackBarShowTime;
     /// <summary>GitHub #93: waveform in the island / mini player seek bars (off by default).</summary>
     [ObservableProperty] private bool _waveformSeekBarEnabled;
+    /// <summary>GitHub #181: waveform in the lyrics page's progress bar (off by default).</summary>
+    [ObservableProperty] private bool _lyricsWaveformSeekBarEnabled;
 
     public bool IsSkipSeconds10 { get => PlaybackBarSkipSeconds == 10; set { if (value) PlaybackBarSkipSeconds = 10; } }
     public bool IsSkipSeconds15 { get => PlaybackBarSkipSeconds == 15; set { if (value) PlaybackBarSkipSeconds = 15; } }
@@ -3361,6 +3363,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
             WaveformSeekBarEnabled = _settings.WaveformSeekBarEnabled;
+            LyricsWaveformSeekBarEnabled = _settings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
             LyricsFlowingStyle = FlowingStyles.Normalize(_settings.LyricsFlowingStyle);
@@ -3894,6 +3897,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
         _settings.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
+        _settings.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.LyricsFlowingStyle = LyricsFlowingStyle;
         _settings.LyricsKawarpWarp = LyricsKawarpWarp;
@@ -4251,6 +4255,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
+        _player.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _player.IslandTrackBoxOpacity = Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1);
         // Already clamped by AppSettings.ClampToValidRanges on load; a live
@@ -5629,6 +5634,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnWaveformSeekBarEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsWaveformSeekBarEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -7826,6 +7837,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
             WaveformSeekBarEnabled = defaultSettings.WaveformSeekBarEnabled;
+            LyricsWaveformSeekBarEnabled = defaultSettings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             LyricsFlowingStyle = defaultSettings.LyricsFlowingStyle;

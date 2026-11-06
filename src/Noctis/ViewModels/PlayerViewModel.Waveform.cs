@@ -7,14 +7,22 @@ namespace Noctis.ViewModels;
 
 /// <summary>
 /// Waveform seek bar (GitHub #93): the island and mini player seek bars draw the current
-/// track's waveform when Settings → Player → Waveform seek bar is on. This part only
-/// feeds the <see cref="WaveformService"/> its plan (current + next queued tracks) and
-/// publishes the current track's result; the views bind <see cref="CurrentWaveform"/>.
+/// track's waveform when Settings → Player → Waveform seek bar is on, and the lyrics page's
+/// progress bar when Settings → Lyrics → Waveform progress bar is on (GitHub #181). This
+/// part only feeds the <see cref="WaveformService"/> its plan (current + next queued tracks)
+/// while either is on and publishes the current track's result; the views bind
+/// <see cref="CurrentWaveform"/> and show it per their own setting.
 /// </summary>
 public partial class PlayerViewModel
 {
     /// <summary>Settings → Player → Waveform seek bar (off by default).</summary>
     [ObservableProperty] private bool _waveformSeekBarEnabled;
+
+    /// <summary>Settings → Lyrics → Waveform progress bar (GitHub #181, off by default).</summary>
+    [ObservableProperty] private bool _lyricsWaveformSeekBarEnabled;
+
+    /// <summary>Some surface shows the waveform, so it is worth decoding.</summary>
+    private bool AnyWaveformSeekBarEnabled => WaveformSeekBarEnabled || LyricsWaveformSeekBarEnabled;
 
     /// <summary>The current track's waveform, or null while it is not ready (the seek bars
     /// then draw their plain line) — never another track's.</summary>
@@ -42,6 +50,8 @@ public partial class PlayerViewModel
 
     partial void OnWaveformSeekBarEnabledChanged(bool value) => UpdateWaveformPlan();
 
+    partial void OnLyricsWaveformSeekBarEnabledChanged(bool value) => UpdateWaveformPlan();
+
     private void UpdateWaveformPlan()
     {
         var current = CurrentTrack;
@@ -56,7 +66,7 @@ public partial class PlayerViewModel
         }
 
         if (_waveforms == null) return;
-        if (!WaveformSeekBarEnabled)
+        if (!AnyWaveformSeekBarEnabled)
         {
             _currentWaveformPath = null;
             _currentWaveformData = null;
@@ -71,7 +81,7 @@ public partial class PlayerViewModel
     {
         Dispatcher.UIThread.Post(() =>
         {
-            if (!WaveformSeekBarEnabled) return;
+            if (!AnyWaveformSeekBarEnabled) return;
             var current = CurrentTrack;
             if (current == null || !string.Equals(current.FilePath, path, PathComparison.Comparison)) return;
             if (ReferenceEquals(CurrentWaveform, data)) return;

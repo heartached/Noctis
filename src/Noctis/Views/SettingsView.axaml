@@ -4301,6 +4301,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #181: the lyrics page's progress bar draws the song's waveform (off by default). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsWaveformSeekBar}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsWaveformSeekBarHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsWaveformSeekBar}"
+                                          IsChecked="{Binding LyricsWaveformSeekBarEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Lyric layers (issue #78): display-only, the lyrics are not reloaded. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

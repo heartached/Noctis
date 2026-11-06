@@ -869,6 +869,11 @@ public class AppSettings : IJsonOnDeserializing
     /// default — when off nothing is decoded and the plain seek line stays.</summary>
     public bool WaveformSeekBarEnabled { get; set; }
 
+    /// <summary>GitHub #181: the lyrics page's progress bar draws the same waveform (same
+    /// background decode and cache as <see cref="WaveformSeekBarEnabled"/>). Off by default
+    /// — when off the lyrics page keeps its plain bar.</summary>
+    public bool LyricsWaveformSeekBarEnabled { get; set; }
+
     /// <summary>Whether tracks marked explicit (ITUNESADVISORY=1) may play automatically.
     /// On by default. When off they are skipped on queue advance, excluded from shuffle,
     /// Autoplay and Radio, and pruned from the queue — but a track the user plays
