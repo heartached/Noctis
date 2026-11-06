@@ -1126,6 +1126,42 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playbackBarShowRepeat;
     [ObservableProperty] private bool _playbackBarShowFavorite;
     [ObservableProperty] private bool _playbackBarShowMiniPlayer = true;
+    /// <summary>GitHub #183: the island's lyrics button (on by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowLyrics = true;
+    /// <summary>GitHub #183: what a click on the island's artwork opens (<see cref="IslandArtworkClicks"/>).</summary>
+    [ObservableProperty] private string _playbackBarArtworkClick = IslandArtworkClicks.DefaultSetting;
+
+    public IReadOnlyList<LyricsChoiceOption> ArtworkClickOptions
+    {
+        get => _artworkClickOptions;
+        private set => SetProperty(ref _artworkClickOptions, value);
+    }
+    private IReadOnlyList<LyricsChoiceOption> _artworkClickOptions = BuildArtworkClickOptions();
+
+    private static IReadOnlyList<LyricsChoiceOption> BuildArtworkClickOptions() =>
+        Enum.GetValues<IslandArtworkClick>()
+            .Select(a => new LyricsChoiceOption(a.ToString(), Loc.T($"Settings.ArtworkClick.{a}")))
+            .ToList();
+
+    public LyricsChoiceOption? SelectedArtworkClickOption
+    {
+        get
+        {
+            var current = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+            return ArtworkClickOptions.FirstOrDefault(o => o.Value == current);
+        }
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            PlaybackBarArtworkClick = value.Value;
+        }
+    }
+
+    /// <summary>The lyrics button is hidden and the artwork doesn't open lyrics either: the
+    /// Settings row says where the lyrics page still opens from.</summary>
+    public bool ShowArtworkLyricsHint =>
+        !PlaybackBarShowLyrics && !IslandArtworkClicks.Parse(PlaybackBarArtworkClick).OpensLyrics();
     [ObservableProperty] private bool _playbackBarShowIdlePill;
     [ObservableProperty] private bool _playbackBarShowTime;
     /// <summary>GitHub #93: waveform in the island / mini player seek bars (off by default).</summary>
@@ -1239,6 +1275,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedUiScaleOption));
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
+        ArtworkClickOptions = BuildArtworkClickOptions();
+        OnPropertyChanged(nameof(SelectedArtworkClickOption));
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
         DiscordStatusDisplayOptions = BuildDiscordStatusDisplayOptions();
@@ -3360,6 +3398,8 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowRepeat = _settings.PlaybackBarShowRepeat;
             PlaybackBarShowFavorite = _settings.PlaybackBarShowFavorite;
             PlaybackBarShowMiniPlayer = _settings.PlaybackBarShowMiniPlayer;
+            PlaybackBarShowLyrics = _settings.PlaybackBarShowLyrics;
+            PlaybackBarArtworkClick = IslandArtworkClicks.Parse(_settings.PlaybackBarArtworkClick).ToString();
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
             WaveformSeekBarEnabled = _settings.WaveformSeekBarEnabled;
@@ -3895,6 +3935,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowRepeat = PlaybackBarShowRepeat;
         _settings.PlaybackBarShowFavorite = PlaybackBarShowFavorite;
         _settings.PlaybackBarShowMiniPlayer = PlaybackBarShowMiniPlayer;
+        _settings.PlaybackBarShowLyrics = PlaybackBarShowLyrics;
+        _settings.PlaybackBarArtworkClick = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
         _settings.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
@@ -4255,6 +4297,8 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowRepeat = PlaybackBarShowRepeat;
         _player.IslandShowFavorite = PlaybackBarShowFavorite;
         _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
+        _player.IslandShowLyricsButton = PlaybackBarShowLyrics;
+        _player.IslandArtworkClick = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
@@ -5661,6 +5705,21 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnPlaybackBarShowMiniPlayerChanged(bool value)
     {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowLyricsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowArtworkLyricsHint));
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarArtworkClickChanged(string value)
+    {
+        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        OnPropertyChanged(nameof(ShowArtworkLyricsHint));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -7840,6 +7899,8 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowRepeat = defaultSettings.PlaybackBarShowRepeat;
             PlaybackBarShowFavorite = defaultSettings.PlaybackBarShowFavorite;
             PlaybackBarShowMiniPlayer = defaultSettings.PlaybackBarShowMiniPlayer;
+            PlaybackBarShowLyrics = defaultSettings.PlaybackBarShowLyrics;
+            PlaybackBarArtworkClick = defaultSettings.PlaybackBarArtworkClick;
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
             WaveformSeekBarEnabled = defaultSettings.WaveformSeekBarEnabled;

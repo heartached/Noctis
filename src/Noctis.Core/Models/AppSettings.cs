@@ -855,6 +855,16 @@ public class AppSettings : IJsonOnDeserializing
     /// default so the mini player is discoverable; like the heart it adds 36px when shown.</summary>
     public bool PlaybackBarShowMiniPlayer { get; set; } = true;
 
+    /// <summary>GitHub #183: the lyrics button in the island's right cluster. On by default;
+    /// off hides it on the main bar (the lyrics page's own bar keeps it as its way out) and
+    /// the lyrics page stays reachable from the shortcut or a click on the artwork.</summary>
+    public bool PlaybackBarShowLyrics { get; set; } = true;
+
+    /// <summary>GitHub #183: what a click on the island's artwork opens — "MiniPlayer"
+    /// (default, the behaviour before), "LyricsPage" or "FullScreenLyrics". See
+    /// <see cref="IslandArtworkClicks.Parse"/>.</summary>
+    public string PlaybackBarArtworkClick { get; set; } = IslandArtworkClicks.DefaultSetting;
+
     /// <summary>GitHub #92: the "Nothing playing · Queue" pill that stands in for the island
     /// while nothing is loaded. Off by default (owner, 2026-09-24).</summary>
     public bool PlaybackBarShowIdlePill { get; set; }

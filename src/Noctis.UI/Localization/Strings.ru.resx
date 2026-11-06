@@ -298,6 +298,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve"><value>Сердечко справа, чтобы добавить текущую песню в избранное одним щелчком.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>Мини-плеер</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>Кнопка справа для переключения на мини-плеер.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButton" xml:space="preserve"><value>Кнопка текста</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButtonHint" xml:space="preserve"><value>Кнопка справа, открывающая страницу текста. Если её скрыть, страница по-прежнему открывается сочетанием клавиш или щелчком по обложке (см. «Щелчок по обложке»).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick" xml:space="preserve"><value>Щелчок по обложке</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>Что открывает щелчок по обложке песни в плеере-острове.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Мини-плеер</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.LyricsPage" xml:space="preserve"><value>Страница текста</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.FullScreenLyrics" xml:space="preserve"><value>Текст на весь экран</value><comment>Clicking the artwork choice: lyrics page with the window in full screen (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClickLyricsHiddenHint" xml:space="preserve"><value>Кнопка текста скрыта. Выберите «Страница текста» или «Текст на весь экран», чтобы открывать текст из острова, или используйте сочетание клавиш.</value><comment>Shown when the lyrics button is off and the artwork opens the mini player (SettingsView.axaml)</comment></data>
   <data name="Settings.IdleQueuePill" xml:space="preserve"><value>Капсула очереди в простое</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Когда ничего не играет, вместо плеера показывать небольшую капсулу «Ничего не играет · Очередь».</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Ширина островка плеера</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1817,6 +1825,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.ShuffleTip" xml:space="preserve"><value>Перемешать</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.EqualizerTip" xml:space="preserve"><value>Эквалайзер вкл./выкл.</value><comment>ToolTip.Tip of the island EQ button (GitHub #94)</comment></data>
   <data name="PlaybackBar.MiniPlayerTip" xml:space="preserve"><value>Мини-плеер</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.FullScreenLyricsTip" xml:space="preserve"><value>Текст на весь экран</value><comment>Island artwork tooltip when it opens full-screen lyrics (PlayerViewModel.IslandArtworkTip)</comment></data>
   <data name="PlaybackBar.ViewAlbumTip" xml:space="preserve"><value>Перейти к альбому</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve"><value>Ненормативная лексика</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve"><value>Перейти к исполнителю</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>

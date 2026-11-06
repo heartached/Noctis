@@ -932,7 +932,9 @@
                        radius left a bright sliver of card fill inside the card's corner. -->
                   <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="3,0,3,0">
 
-                    <!-- Album art thumbnail (a click opens the Mini Player). 32px, not 34: the
+                    <!-- Album art thumbnail (a click opens the Mini Player by default, or the lyrics
+                         page / full-screen lyrics: Settings → Player → Clicking the artwork, GitHub
+                         #183; the tooltip and accessible name say which). 32px, not 34: the
                          2px it gives up is a gap above the seek line, and the seek hit strip
                          below reaches up over the art's bottom edge. Flush against the line,
                          a seek aimed a pixel high opened the Mini Player (Discord Luwi
@@ -950,7 +952,8 @@
                             Margin="1,1,8,0"
                             VerticalAlignment="Top"
                             Cursor="Hand"
-                            ToolTip.Tip="{loc:T PlaybackBar.MiniPlayerTip}"
+                            ToolTip.Tip="{Binding IslandArtworkTip}"
+                            AutomationProperties.Name="{Binding IslandArtworkTip}"
                             ToolTip.Placement="Top"
                             ToolTip.VerticalOffset="-6"
                             PointerPressed="OnAlbumArtPressed"
@@ -1673,10 +1676,15 @@
 
                     <!-- Lyrics and Queue: while their page / panel is open, the same faint accent
                          square and accent glyph as Repeat and Shuffle (Discord, Luwi 2026-10-10:
-                         "Show icons in Accent Color when corresponding panels are opened"). -->
-                    <Button Classes="secondary-btn"
+                         "Show icons in Accent Color when corresponding panels are opened").
+                         Settings → Player can hide Lyrics on the main bar (GitHub #183); the
+                         lyrics page keeps it as the button that closes the page. -->
+                    <Button x:Name="LyricsButton"
+                            Classes="secondary-btn"
+                            IsVisible="{Binding IslandLyricsButtonVisible}"
                             Click="OnLyricsButtonClick"
                             ToolTip.Tip="{loc:T PlaybackBar.LyricsTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.LyricsTip}"
                             Width="34" Height="34">
                         <Panel Width="34" Height="34">
                             <Border Width="28" Height="28"

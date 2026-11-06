@@ -389,6 +389,7 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowRepeat) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowFavorite) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowMiniPlayer) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowLyricsButton) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTime))
         {
             UpdateIslandWidth();
@@ -1092,7 +1093,9 @@ public partial class PlaybackBarView : UserControl
 
         if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
         {
-            mainWindow.ToggleMiniPlayer();
+            // Settings → Player → Clicking the artwork (GitHub #183); mini player by default.
+            var action = (DataContext as PlayerViewModel)?.IslandArtworkClickAction ?? IslandArtworkClick.MiniPlayer;
+            mainWindow.HandleIslandArtworkClick(action);
             e.Handled = true;
         }
     }
@@ -1715,7 +1718,9 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowEqualizer ? 1 : 0)
                         + (vm.IslandShowRepeat ? 1 : 0)
                         + (vm.IslandShowFavorite ? 1 : 0)
-                        + (vm.IslandShowMiniPlayer ? 1 : 0);
+                        + (vm.IslandShowMiniPlayer ? 1 : 0)
+                        // GitHub #183: Lyrics is a stock button; hidden, it hands its 36px back.
+                        - (vm.IslandLyricsButtonVisible ? 0 : 1);
             return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);
         }
     }
