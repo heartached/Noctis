@@ -29,6 +29,7 @@ public partial class ShellView : UserControl
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         TabContent.AddHandler(ScrollViewer.ScrollChangedEvent, OnContentScrollChanged);
         ChromeHost.SizeChanged += (_, _) => ApplyChromeLayout();
+        AttachTabDrag();
         // The tab bar stays up under the Queue sheet (the owner's mockup): the sheet slides it
         // with itself, and the bar sits over the overlays while the page is on screen.
         QueueSheet.TabBar = BottomChrome;
