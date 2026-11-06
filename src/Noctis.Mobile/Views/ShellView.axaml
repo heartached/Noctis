@@ -127,7 +127,7 @@
                             <views:FitWidth Name="PlaylistsTitleFit" VerticalAlignment="Center">
                                 <TextBlock Name="PlaylistsTitle" Classes="title" Text="{loc:T Nav.Playlists}" TextTrimming="CharacterEllipsis" />
                             </views:FitWidth>
-                            <views:PlaylistTools Grid.Column="1" VerticalAlignment="Center" DataContext="{Binding PlaylistsRoot}" />
+                            <views:PlaylistTools Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" DataContext="{Binding PlaylistsRoot}" />
                             <views:ProfileButton Grid.Column="2" Name="PlaylistsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
                         </Grid>
@@ -139,7 +139,7 @@
                             <views:FitWidth Name="FavoritesTitleFit" VerticalAlignment="Center">
                                 <TextBlock Name="FavoritesTitle" Classes="title" Text="{loc:T Nav.Favorites}" TextTrimming="CharacterEllipsis" />
                             </views:FitWidth>
-                            <views:ListTools Grid.Column="1" VerticalAlignment="Center" DataContext="{Binding FavoritesRoot}" />
+                            <views:ListTools Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" DataContext="{Binding FavoritesRoot}" />
                             <views:ProfileButton Grid.Column="2" Name="FavoritesProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
                         </Grid>

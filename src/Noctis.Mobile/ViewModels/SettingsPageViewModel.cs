@@ -720,9 +720,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     private void RefreshStats()
     {
-        SongsStat = Shell.Library.IsLoaded ? Shell.Library.SongCount.ToString("N0") : "—";
-        AlbumsStat = Shell.Library.IsLoaded ? Shell.Library.AlbumCount.ToString("N0") : "—";
-        ArtistsStat = Shell.Library.IsLoaded ? Shell.Library.ArtistCount.ToString("N0") : "—";
+        SongsStat = Shell.Library.IsLoaded ? Shell.Library.SongCount.ToString("N0", Loc.Instance.Culture) : "—";
+        AlbumsStat = Shell.Library.IsLoaded ? Shell.Library.AlbumCount.ToString("N0", Loc.Instance.Culture) : "—";
+        ArtistsStat = Shell.Library.IsLoaded ? Shell.Library.ArtistCount.ToString("N0", Loc.Instance.Culture) : "—";
         if (Shell.Account is not { } account)
         {
             ShowDownloadStats(0, 0);
@@ -1012,6 +1012,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Background.Relabel();
         Scrobbling.Relabel();
         History.Relabel();
+        // The account card's numbers carry the language too ("48 МБ", "5 201" stayed Russian
+        // after picking English).
+        RefreshStats();
     }
     partial void OnDarkThemeChanged(string value) => ThemeChanged(SavedFields.DarkTheme);
 

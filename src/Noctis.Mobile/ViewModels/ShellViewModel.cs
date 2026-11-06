@@ -386,6 +386,7 @@ public sealed partial class ShellViewModel : ObservableObject
         _playlistsRoot?.Relabel();
         _favoritesRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
+        OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
