@@ -112,4 +112,49 @@ public class TopBarPageActionsTests
         _out.WriteLine($"HasPageActions={bar.HasPageActions} IsCoverFlowMode={bar.IsCoverFlowMode} PageActionsVisible={bar.PageActionsVisible}");
         Assert.True(bar.PageActionsVisible);
     }
+
+    /// <summary>Discord (v1.6.8, artist page): opening search pushed the whole Artist page,
+    /// hero included, ~56 px down and left an empty strip above it. The search pill's page
+    /// inset (MainWindow.InitializeSearchCapsuleInset) only applies under a top bar; pages
+    /// without one start with a full-bleed hero that the pill floats over.</summary>
+    [Fact]
+    public void OpenSearch_OnPagesWithoutATopBar_DoesNotReserveTheBand()
+    {
+        var bar = new TopBarViewModel { CurrentTabName = "Artists", IsSearchVisible = true };
+
+        // MainWindowViewModel.OpenArtistDiscography: ClearAllTopBarActions + RefreshBackButton.
+        ClearAll(bar);
+        bar.ShowBackButton("Back", Noop);
+        bar.IsSearchOpen = true;
+        Assert.False(bar.HasBarContent);
+        Assert.False(bar.ReservesSearchBand);
+
+        // MainWindowViewModel.OpenAlbumDetail.
+        ClearAll(bar);
+        bar.ShowAlbumDetailBackButton("Back", Noop);
+        Assert.True(bar.IsSearchOpen);
+        Assert.False(bar.ReservesSearchBand);
+    }
+
+    /// <summary>The 10-24 inset itself stays: under a bar the pill covers the Songs column
+    /// headers, and More By (titled bar) keeps it too.</summary>
+    [Fact]
+    public void OpenSearch_UnderATopBar_StillReservesTheBand()
+    {
+        var bar = new TopBarViewModel { CurrentTabName = "Songs", IsSearchVisible = true };
+        ClearAll(bar);
+        SetupViewMode(bar, coverFlow: false);
+        SetupSongs(bar);
+        bar.IsSearchOpen = true;
+        Assert.True(bar.ReservesSearchBand);
+
+        // MainWindowViewModel.OpenMoreByArtistPage.
+        ClearAll(bar);
+        bar.ShowArtistActions(Noop, Noop);
+        bar.ShowBackButton("Back", Noop, "More By Artist");
+        Assert.True(bar.ReservesSearchBand);
+
+        bar.IsSearchOpen = false;
+        Assert.False(bar.ReservesSearchBand);
+    }
 }

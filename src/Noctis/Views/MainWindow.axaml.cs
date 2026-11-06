@@ -1584,7 +1584,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// height: just under the top bar, over the Songs column headers and first row (Discord,
     /// HypnoTized 10-24; the same spot on every page). While it is open the page host starts
     /// below the pill instead. Measured per open, and again when the top bar's height changes
-    /// under an open pill (a page without a bar), so the band is only what the pill needs.
+    /// under an open pill, so the band is only what the pill needs. Pages without a bar keep
+    /// their hero at the top: the pill floats over it (see TopBarViewModel.ReservesSearchBand).
     /// </summary>
     private void InitializeSearchCapsuleInset(MainWindowViewModel vm)
     {
@@ -1594,7 +1595,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         void Apply()
         {
             var top = 0.0;
-            if (vm.TopBar.IsSearchOpen && SidebarPane?.SearchCapsuleBottom(_contentDockPanel) is { } bottom)
+            if (vm.TopBar.ReservesSearchBand && SidebarPane?.SearchCapsuleBottom(_contentDockPanel) is { } bottom)
                 top = Math.Max(0, Math.Ceiling(bottom));
             if (host.Margin.Top != top)
                 host.Margin = new Thickness(0, top, 0, 0);
@@ -1602,7 +1603,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         _searchInsetHandler = (_, e) =>
         {
-            if (e.PropertyName == nameof(TopBarViewModel.IsSearchOpen)) Apply();
+            if (e.PropertyName is nameof(TopBarViewModel.IsSearchOpen)
+                or nameof(TopBarViewModel.HasBarContent)) Apply();
         };
         vm.TopBar.PropertyChanged += _searchInsetHandler;
         _contentDockPanel.PropertyChanged += (_, e) =>
