@@ -351,7 +351,7 @@
 
         <!-- Card options: every choice the two outlined summary pills held, as labelled
              pill drop-downs. -->
-        <Grid Grid.Row="2" Margin="28,16,28,18" ColumnDefinitions="*,12,*,12,*,12,*,Auto">
+        <Grid Grid.Row="2" Margin="28,16,28,18" ColumnDefinitions="*,12,*,12,*,12,*,Auto" RowDefinitions="Auto,Auto">
             <StackPanel Grid.Column="0" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Layout}" />
                 <ComboBox x:Name="LayoutBox" Classes="pill-field"
@@ -449,28 +449,34 @@
                         ToolTip.Tip="{loc:T LyricShare.ReadabilityTip}"
                         VerticalAlignment="Center" />
             </StackPanel>
-            <StackPanel Grid.Column="7" Spacing="6" Margin="18,0,0,0" IsVisible="{Binding IsPageLayout}">
-                <TextBlock Classes="sl-label" Text="{loc:T ShareLyrics.Video}" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="ChooseBackgroundButton"
-                            Classes="pill-secondary"
-                            MinHeight="40"
-                            Content="{loc:T LyricShare.ChooseBackground}"
-                            Click="OnChooseBackgroundClick" />
-                    <Button x:Name="RemoveBackgroundButton"
-                            Classes="pill-secondary"
-                            MinHeight="40"
-                            Content="{loc:T LyricShare.RemoveBackground}"
-                            Command="{Binding RemovePageBackgroundCommand}"
-                            IsVisible="{Binding CustomBackgroundAvailable}" />
-                    <CheckBox x:Name="SafeZonesBox"
-                              Classes="metadata-pill-checkbox"
-                              MinHeight="40"
-                              FontSize="13"
-                              IsChecked="{Binding SafeZonesEnabled, Mode=TwoWay}"
-                              Content="{loc:T LyricShare.SafeZones}"
-                              ToolTip.Tip="{loc:T LyricShare.SafeZonesTip}" />
-                </StackPanel>
+            <!-- The page-only controls get a row of their own: squeezed into the Auto column
+                 beside the four drop-downs they narrowed them until the labels truncated
+                 ("Lyrics Pa", "1:1 · Squa"). Collapsed in the card layouts, so that row stays
+                 as it was. -->
+            <StackPanel x:Name="PageOptionsRow"
+                        Grid.Row="1" Grid.ColumnSpan="8"
+                        Orientation="Horizontal" Spacing="8" Margin="0,10,0,0"
+                        IsVisible="{Binding IsPageLayout}">
+                <TextBlock Classes="sl-label" Text="{loc:T ShareLyrics.Video}"
+                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                <Button x:Name="ChooseBackgroundButton"
+                        Classes="pill-secondary"
+                        MinHeight="40"
+                        Content="{loc:T LyricShare.ChooseBackground}"
+                        Click="OnChooseBackgroundClick" />
+                <Button x:Name="RemoveBackgroundButton"
+                        Classes="pill-secondary"
+                        MinHeight="40"
+                        Content="{loc:T LyricShare.RemoveBackground}"
+                        Command="{Binding RemovePageBackgroundCommand}"
+                        IsVisible="{Binding CustomBackgroundAvailable}" />
+                <CheckBox x:Name="SafeZonesBox"
+                          Classes="metadata-pill-checkbox"
+                          MinHeight="40"
+                          FontSize="13"
+                          IsChecked="{Binding SafeZonesEnabled, Mode=TwoWay}"
+                          Content="{loc:T LyricShare.SafeZones}"
+                          ToolTip.Tip="{loc:T LyricShare.SafeZonesTip}" />
             </StackPanel>
         </Grid>
 
