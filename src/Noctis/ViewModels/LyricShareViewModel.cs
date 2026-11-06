@@ -24,14 +24,37 @@ public record ShareBackgroundChoice(string Name, IBrush Preview, bool IsArtwork 
 /// <summary>A lyric line the user can include on (and edit for) the share card.</summary>
 public partial class SelectableLyricLine : ObservableObject
 {
-    public SelectableLyricLine(string text, TimeSpan? timestamp = null,
-        IReadOnlyList<WordTiming>? words = null, TimeSpan? endTimestamp = null)
+    public SelectableLyricLine(string text, TimeSpan? timestamp = null, IReadOnlyList<WordTiming>? words = null,
+        TimeSpan? endTimestamp = null, LyricLine? source = null)
     {
         _text = text;
+        OriginalText = text;
         Timestamp = timestamp;
         Words = words;
         EndTimestamp = endTimestamp;
+        if (source != null)
+        {
+            Voice = source.Voice;
+            BackgroundWords = source.BackgroundWords;
+            BackgroundEndTimestamp = source.BackgroundEndTimestamp;
+            IsBackgroundOnly = source.IsBackgroundOnly;
+        }
     }
+
+    /// <summary>The line as the lyrics page has it, whatever the user typed over it.</summary>
+    public string OriginalText { get; }
+
+    /// <summary>Duet voice of the source line (the Lyrics Page video aligns by it).</summary>
+    public LyricVoice Voice { get; }
+
+    /// <summary>The source line's adlib (background vocal) words, when it has any.</summary>
+    public IReadOnlyList<WordTiming>? BackgroundWords { get; }
+
+    /// <summary>End of the source line's adlib; bounds its last word's sweep.</summary>
+    public TimeSpan? BackgroundEndTimestamp { get; }
+
+    /// <summary>The source line is only an adlib: the main row stays empty, only the small row shows.</summary>
+    public bool IsBackgroundOnly { get; }
 
     /// <summary>Editable line text — changes re-render the card preview.</summary>
     [ObservableProperty]
@@ -461,7 +484,8 @@ public partial class LyricShareViewModel : ViewModelBase
         PlayerViewModel? player,
         IReadOnlyList<IReadOnlyList<WordTiming>?>? wordTimings = null,
         IReadOnlyList<TimeSpan?>? endTimestamps = null,
-        int preselectIndex = 0)
+        int preselectIndex = 0,
+        IReadOnlyList<LyricLine>? sources = null)
     {
         _track = track;
         _player = player;
@@ -488,7 +512,8 @@ public partial class LyricShareViewModel : ViewModelBase
             var ts = timestamps != null && i < timestamps.Count ? timestamps[i] : null;
             var words = wordTimings != null && i < wordTimings.Count ? wordTimings[i] : null;
             var end = endTimestamps != null && i < endTimestamps.Count ? endTimestamps[i] : null;
-            Lines.Add(new SelectableLyricLine(OneLine(lines[i]), ts, words, end));
+            var source = sources != null && i < sources.Count ? sources[i] : null;
+            Lines.Add(new SelectableLyricLine(OneLine(lines[i]), ts, words, end, source));
         }
 
         SyncAvailable = player != null && Lines.Any(l => l.Timestamp.HasValue);
