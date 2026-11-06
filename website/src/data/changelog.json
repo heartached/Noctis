@@ -1,6 +1,91 @@
 {
   "releases": [
     {
+      "tag": "v1.6.7",
+      "version": "1.6.7",
+      "name": "v1.6.7",
+      "label": "1.6.7",
+      "publishedAt": "2026-11-04T04:38:55Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.7",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added New in Library section on Home",
+            "Added adjustable album counts from 6 to 100 for Home album rows",
+            "Added choice of which Home section comes first",
+            "Added Import Play Counts from Last.fm or ListenBrainz",
+            "Added Mark as No Lyrics in the Lyrics menu and Search Lyrics window",
+            "Added Undo for Mark as No Lyrics",
+            "Added album carousel for the Albums page",
+            "Added Built-in Features switches in Settings for plugins",
+            "Added option to hide the Featured Artists and Suggestions panel",
+            "Added uninstall for any plugin",
+            "Added Plugins section in the sidebar",
+            "Added full screen mode for Album Town",
+            "Added top and side menus with a fold arrow for Album Town",
+            "Added room resizing with hover handles for Album Town",
+            "Added building size sliders up to 18 by 9 for Album Town",
+            "Added Clear building for Album Town",
+            "Added ladders and stairs for Album Town",
+            "Added new games when albums meet in Album Town",
+            "Added lyric quotes for Album Town"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved idle memory use by about 45 MB",
+            "Improved audio engine startup speed",
+            "Improved startup memory clean-up",
+            "Improved stall logs to say whether a stall was audible",
+            "Improved ReplayGain scan so only songs without a value start ticked",
+            "Improved Songs list column dragging, sorting and preview",
+            "Improved Reset Everything to clear listening history, ratings, favorites, caches, lyrics, progress files and sign-in data",
+            "Improved Reset Everything to stop background work before clearing",
+            "Improved Home, Stats, Favorites and Inbox to empty immediately after a reset",
+            "Improved column padding and divider visibility",
+            "Improved Animated Artwork search pop-up background",
+            "Improved Import Play Counts description",
+            "Improved session log by removing style lines"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed pinned Noctis taskbar shortcut not showing the chosen app icon",
+            "Fixed Animated Artwork search finding nothing for artist names",
+            "Fixed ReplayGain column showing blank for older songs",
+            "Fixed placeholder \"instrumental\" text being saved as lyrics",
+            "Fixed crackling at damaged spots in long MP3s",
+            "Fixed blurry sidebar and Settings icons at 90% and 110% interface size",
+            "Fixed some Settings labels staying in the old language after a switch",
+            "Fixed Settings warnings filling the log on every open",
+            "Fixed Avg Track Length not matching the Statistics page",
+            "Fixed Reset Everything missing page sorts and folded sections",
+            "Fixed \"Since\" dates in Settings always showing English",
+            "Fixed Last.fm card hiding the account name",
+            "Fixed Album Town queuing snoozed songs",
+            "Fixed Album Town keeping the same albums on a new crowd",
+            "Fixed Album Town albums getting stuck on each other",
+            "Fixed Album Town showing too many names for multi-artist albums",
+            "Fixed Album Town room text spilling out",
+            "Fixed Album Town top bar overlapping at normal window sizes",
+            "Fixed Songs list column drop indicator not showing",
+            "Fixed Songs list column dividers sitting behind labels",
+            "Fixed moved Songs list column labels appearing too bright",
+            "Fixed Songs list sort arrow sitting on the divider",
+            "Fixed Home Albums row growing to seven tiles after some plays",
+            "Fixed ListenBrainz showing as on briefly at startup",
+            "Fixed a merge clash in the Reset Everything code",
+            "Fixed two translation file conflicts"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "plugin-albumtown-v1.0.2",
       "version": "plugin-albumtown-v1.0.2",
       "name": "Album Town 1.0.2",
@@ -8,8 +93,36 @@
       "publishedAt": "2026-11-04T04:24:24Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.2",
       "prerelease": true,
-      "sections": [],
-      "summary": "Your albums come to life in a little town."
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added room resizing to any shape with edge and corner handles",
+            "Added building size setting, from 4 to 18 wide and 2 to 9 high",
+            "Added Clear building",
+            "Added ladders and stairs between rooms, so small rooms are no longer dead ends",
+            "Added menu bar along the top or down the side, and it folds away",
+            "Added full screen (F11, Esc to leave)",
+            "Added a hello when an album you call walks into town",
+            "Added rock paper scissors, scuffles, high fives and teasing between residents",
+            "Added residents quoting lines from their songs' lyrics (needs Noctis 1.6.7 or newer)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playing from the town adding snoozed songs to the queue",
+            "Fixed the New crowd keeping recent and most played residents",
+            "Fixed two pets in a narrow room pushing each other back forever",
+            "Fixed songs from albums with many artists showing every guest artist",
+            "Fixed long room names running out of the room",
+            "Fixed pets being pulled into a chat halfway through a doorway or up a ladder",
+            "Fixed Esc in an empty search box not going back inside Settings",
+            "Fixed the title, tabs and tools overlapping on narrower windows"
+          ]
+        }
+      ],
+      "summary": null
     },
     {
       "tag": "v1.6.6",
@@ -3954,6 +4067,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-04T04:24:41.343Z",
+  "updatedAt": "2026-11-04T15:25:25.267Z",
   "degraded": false
 }
