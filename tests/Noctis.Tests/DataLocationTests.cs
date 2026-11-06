@@ -272,6 +272,32 @@ public class DataLocationTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_home, DataLocation.PointerFileName)));
     }
 
+    /// <summary>Default → D → default → E, then Use Default again: the default folder holds
+    /// nothing, so it must take the data, not be offered as "Noctis data already here" (the
+    /// marker the previous landing left there named an emptied folder).</summary>
+    [Fact]
+    public void Move_AwayFromTheDefaultFolderAgain_DoesNotLeaveItLookingLikeData()
+    {
+        var custom = Path.Combine(_root, "D", "NoctisData");
+        SeedData(custom);
+        DataLocation.UseExisting(_home, custom);
+        DataLocation.CopyForMove(_home, custom, _home, null, CancellationToken.None);
+        DataLocation.PrepareAtStartup(_home);
+        DataLocation.CleanupOldData(_home, _home);
+        Assert.True(File.Exists(Path.Combine(_home, DataLocation.MarkerFileName))); // landed home
+
+        var other = Path.Combine(_root, "E", "NoctisData");
+        Assert.Equal(DataLocation.PlanKind.Move, DataLocation.PlanChange(_home, other, _home).Kind);
+        DataLocation.CopyForMove(_home, _home, other, null, CancellationToken.None);
+        var start = DataLocation.PrepareAtStartup(_home);
+        Assert.Null(start.MoveError);
+        DataLocation.CleanupOldData(_home, other);
+        Assert.True(DataLocation.SamePath(other, DataLocation.ConfiguredRoot(_home)));
+
+        Assert.Equal(DataLocation.FolderKind.Empty, DataLocation.Classify(_home));
+        Assert.Equal(DataLocation.PlanKind.Move, DataLocation.PlanChange(other, _home, _home).Kind);
+    }
+
     [Fact]
     public void Move_TargetGoneAtLaunch_StaysOnTheOldFolder_AndSaysWhy()
     {

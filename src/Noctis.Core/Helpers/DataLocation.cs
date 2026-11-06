@@ -445,10 +445,9 @@ public static class DataLocation
             var aside = MoveAside(from);
             pointer.OldDataToDelete = aside;
             pointer.OldRootToRemove = SamePath(from, homeRoot) ? null : from;
-            if (!SamePath(from, homeRoot))
-            {
-                try { File.Delete(Path.Combine(from, MarkerFileName)); } catch { }
-            }
+            // The home root too: a marker left there (from an earlier move back to it) made the
+            // emptied folder read as Noctis data, so Use Default offered it as-is.
+            try { File.Delete(Path.Combine(from, MarkerFileName)); } catch { }
             WritePointer(homeRoot, pointer);
         }
         catch (Exception ex)
