@@ -388,6 +388,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Sung words float up and long held notes glow, like Apple Music. Off keeps word-synced lyrics still.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Center the Player When a Song Has No Lyrics</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>When a song has no lyrics or is instrumental, the lyrics page moves the artwork, song info and controls to the middle.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Waveform Progress Bar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Show the song's waveform in the lyrics page's progress bar; click or drag it to seek. It is worked out in the background for the current and next songs, then remembered.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>Show Translations</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Show the translation a TTML lyrics file carries under each line.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>Show Romanization</value><comment>Text in SettingsView.axaml</comment></data>

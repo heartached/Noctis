@@ -49,6 +49,12 @@ public sealed class WaveformSeekBar : Control
     public static readonly StyledProperty<double> LineThicknessProperty =
         AvaloniaProperty.Register<WaveformSeekBar, double>(nameof(LineThickness), 3);
 
+    /// <summary>Opacity of the plain line's unplayed part only (the lyrics page draws its
+    /// track at 0.55 over the artwork, GitHub #181); the bars keep <see cref="UnplayedBrush"/>
+    /// as is.</summary>
+    public static readonly StyledProperty<double> UnplayedLineOpacityProperty =
+        AvaloniaProperty.Register<WaveformSeekBar, double>(nameof(UnplayedLineOpacity), 1.0);
+
     public static readonly StyledProperty<double> BarWidthProperty =
         AvaloniaProperty.Register<WaveformSeekBar, double>(nameof(BarWidth), 2);
 
@@ -70,6 +76,7 @@ public sealed class WaveformSeekBar : Control
     public double TrackInset { get => GetValue(TrackInsetProperty); set => SetValue(TrackInsetProperty, value); }
     public double LineInset { get => GetValue(LineInsetProperty); set => SetValue(LineInsetProperty, value); }
     public double LineThickness { get => GetValue(LineThicknessProperty); set => SetValue(LineThicknessProperty, value); }
+    public double UnplayedLineOpacity { get => GetValue(UnplayedLineOpacityProperty); set => SetValue(UnplayedLineOpacityProperty, value); }
     public double BarWidth { get => GetValue(BarWidthProperty); set => SetValue(BarWidthProperty, value); }
     public double BarGap { get => GetValue(BarGapProperty); set => SetValue(BarGapProperty, value); }
     public double MinBarHeight { get => GetValue(MinBarHeightProperty); set => SetValue(MinBarHeightProperty, value); }
@@ -82,7 +89,7 @@ public sealed class WaveformSeekBar : Control
     {
         IsHitTestVisibleProperty.OverrideDefaultValue<WaveformSeekBar>(false);
         AffectsRender<WaveformSeekBar>(ValueProperty, PlayedBrushProperty, UnplayedBrushProperty,
-            TrackInsetProperty, LineInsetProperty, LineThicknessProperty, BarWidthProperty, BarGapProperty,
+            TrackInsetProperty, LineInsetProperty, LineThicknessProperty, UnplayedLineOpacityProperty, BarWidthProperty, BarGapProperty,
             MinBarHeightProperty, MaxBarHeightProperty);
         WaveformProperty.Changed.AddClassHandler<WaveformSeekBar>((c, e) => c.OnWaveformChanged(e.NewValue as WaveformData));
     }
@@ -235,7 +242,10 @@ public sealed class WaveformSeekBar : Control
             using (context.PushOpacity(1 - reveal))
             {
                 if (right > left)
-                    context.DrawRectangle(unplayed, null, new RoundedRect(new Rect(left, cy - th / 2, right - left, th), radius));
+                {
+                    using (context.PushOpacity(Math.Clamp(UnplayedLineOpacity, 0, 1)))
+                        context.DrawRectangle(unplayed, null, new RoundedRect(new Rect(left, cy - th / 2, right - left, th), radius));
+                }
                 if (split > left)
                     context.DrawRectangle(played, null, new RoundedRect(new Rect(left, cy - th / 2, split - left, th), radius));
             }

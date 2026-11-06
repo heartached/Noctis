@@ -387,6 +387,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Gesungene Wörter schweben hoch und lange Töne glühen, wie bei Apple Music. Aus lässt Wortsync-Songtexte still stehen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Player zentrieren, wenn ein Song keinen Songtext hat</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Hat ein Song keinen Songtext oder ist er instrumental, rückt die Songtextseite Cover, Songinfos und Steuerung in die Mitte.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Wellenform-Fortschrittsleiste</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Zeigt die Wellenform des Songs in der Fortschrittsleiste der Songtextseite; zum Spulen klicken oder ziehen. Wird im Hintergrund für aktuelle und nächste Songs berechnet und dann gemerkt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>Übersetzungen anzeigen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Die Übersetzung aus einer TTML-Songtextdatei unter jeder Zeile zeigen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>Umschrift anzeigen</value><comment>Text in SettingsView.axaml</comment></data>
