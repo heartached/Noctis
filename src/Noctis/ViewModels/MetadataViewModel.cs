@@ -1290,7 +1290,11 @@ public partial class MetadataViewModel : ViewModelBase
                 t.AlbumArtist = AlbumArtist;
                 t.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist); // the user's tag (GitHub #178)
             }
-            if (albumChg) t.Album = Album;
+            if (albumChg)
+            {
+                t.Album = Album;
+                t.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
+            }
             if (composerChg) t.Composer = Composer;
             if (groupingChg) t.Grouping = Grouping;
             if (genreChg) t.Genre = genre;
@@ -2320,6 +2324,8 @@ public partial class MetadataViewModel : ViewModelBase
             if (!string.Equals(_track.AlbumArtist, AlbumArtist, StringComparison.Ordinal))
                 _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist);
             _track.AlbumArtist = AlbumArtist;
+            if (!string.Equals(_track.Album, Album, StringComparison.Ordinal))
+                _track.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
             _track.Album = Album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
             _track.Composer = Composer;

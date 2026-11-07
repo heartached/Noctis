@@ -20,7 +20,13 @@ namespace Noctis.Services;
 ///      credited on every song: "Sushin Shyam, Anwar Ali" and "Sushin Shyam" → Sushin Shyam);
 ///   3. otherwise "Various Artists", as for compilations.
 /// A real album-artist tag is never overridden, and the same album name in two folders stays
-/// two albums ("Greatest Hits" by two artists).
+/// two albums ("Greatest Hits" by two artists). An album name Noctis took from the folder
+/// (<see cref="Track.AlbumFromFolder"/>, a file without an album tag) is no album evidence: a
+/// folder of loose singles is not one album (GitHub #193).
+///
+/// The rule can be switched off (Settings › Library, GitHub #193): <see cref="Restore"/> puts
+/// every re-keyed song back on the album artist and album name it had before
+/// (<see cref="Track.UngroupedAlbumArtist"/>, kept by <see cref="Apply"/>).
 ///
 /// Stable by construction: a folder's untagged songs that already share one album key are left
 /// alone, so a pass over an unchanged library changes nothing; a new or re-read song (which
@@ -32,13 +38,14 @@ public static class AlbumGrouping
     /// <summary>One song re-keyed from album <paramref name="From"/> to <paramref name="To"/>.</summary>
     public readonly record struct Move(Guid TrackId, Guid From, Guid To);
 
-    /// <summary>A song the rule may re-key: album artist filled in by Noctis, a real album name,
-    /// not a compilation (those are "Various Artists" already).</summary>
+    /// <summary>A song the rule may re-key: album artist filled in by Noctis, a real album name
+    /// from the file's own tag (not its folder's name, GitHub #193), not a compilation (those are
+    /// "Various Artists" already).</summary>
     public static bool IsCandidate(Track t) =>
-        t.AlbumArtistFromTag == false && !t.IsCompilation && Track.IsRealAlbumName(t.Album);
+        t.AlbumArtistFromTag == false && !t.IsCompilation && !t.AlbumFromFolder && Track.IsRealAlbumName(t.Album);
 
     private static bool IsTaggedPeer(Track t) =>
-        t.AlbumArtistFromTag == true && !t.IsCompilation && Track.IsRealAlbumName(t.Album)
+        t.AlbumArtistFromTag == true && !t.IsCompilation && !t.AlbumFromFolder && Track.IsRealAlbumName(t.Album)
         && !string.IsNullOrWhiteSpace(t.AlbumArtist);
 
     /// <summary>Album name as the rule compares it: trimmed, inner runs of spaces collapsed.
@@ -160,6 +167,99 @@ public static class AlbumGrouping
         return moves;
     }
 
+    /// <summary>
+    /// GitHub #193: puts the songs the rule re-keyed back on their own album artist and album
+    /// name (<see cref="Track.UngroupedAlbumArtist"/>) once the rule no longer applies to them:
+    /// the grouping is switched off (<paramref name="groupingEnabled"/> false), or the song is no
+    /// candidate any more (its album name turned out to be its folder's). A song whose album
+    /// artist is a real tag by now, or whose album was renamed since, keeps its album and drops
+    /// the old values. Returns the songs moved, for the same carrying as <see cref="Apply"/>.
+    /// </summary>
+    public static List<Move> Restore(IReadOnlyList<Track> tracks, bool groupingEnabled)
+    {
+        var moves = new List<Move>();
+        foreach (var t in tracks)
+        {
+            if (t.UngroupedAlbumArtist is not { } artist) continue;
+            var album = t.UngroupedAlbum ?? t.Album;
+            if (t.AlbumArtistFromTag == true || string.IsNullOrWhiteSpace(artist)
+                || !string.Equals(AlbumKey(t.Album), AlbumKey(album), StringComparison.OrdinalIgnoreCase))
+            {
+                ForgetUngrouped(t);
+                continue;
+            }
+            if (groupingEnabled && IsCandidate(t)) continue;
+
+            var id = Track.ComputeAlbumId(artist, album);
+            if (id != t.AlbumId) moves.Add(new Move(t.Id, t.AlbumId, id));
+            t.AlbumArtist = artist;
+            t.Album = album;
+            t.AlbumId = id;
+            ForgetUngrouped(t);
+        }
+        return moves;
+    }
+
+    private static void ForgetUngrouped(Track t)
+    {
+        t.UngroupedAlbumArtist = null;
+        t.UngroupedAlbum = null;
+    }
+
+    /// <summary>
+    /// GitHub #190: the songs the rule has re-keyed into a grouped album that their files do not
+    /// name yet: candidates whose own album key (<see cref="Track.UngroupedAlbumArtist"/>) differs
+    /// from the grouped one. Writing the album artist to these files makes other players show
+    /// the album as Noctis does.
+    /// </summary>
+    public static List<Track> RegroupedSongs(IReadOnlyList<Track> tracks)
+    {
+        var result = new List<Track>();
+        foreach (var t in tracks)
+            if (t.UngroupedAlbumArtist is { } artist && IsCandidate(t)
+                && Track.ComputeAlbumId(artist, t.UngroupedAlbum ?? t.Album) != t.AlbumId)
+                result.Add(t);
+        return result;
+    }
+
+    /// <summary>
+    /// GitHub #193, libraries grouped by 1.6.8: the rule re-keyed songs before it kept their own
+    /// values (<see cref="Track.UngroupedAlbumArtist"/>) and before an album name taken from the
+    /// folder was told apart (<see cref="Track.AlbumFromFolder"/>). Returns the songs that may
+    /// have been re-keyed, so only their files are re-read: the untagged songs of one album name
+    /// in one folder that share one album key although their credits differ, or although a
+    /// credit does not start with the album artist ("Various Artists", a tagged song's album
+    /// artist). A plain one-artist album is not among them.
+    /// </summary>
+    public static List<Track> UnrecordedRegroupedSongs(IReadOnlyList<Track> tracks)
+    {
+        var result = new List<Track>();
+        Dictionary<(string Name, string Folder), List<Track>>? groups = null;
+        foreach (var t in tracks)
+        {
+            if (t.UngroupedAlbumArtist != null || !IsCandidate(t)) continue;
+            if (FolderKey(t.FilePath) is not { } folder) continue;
+            groups ??= new Dictionary<(string, string), List<Track>>(NameFolderComparer.Instance);
+            var key = (AlbumKey(t.Album), folder);
+            if (!groups.TryGetValue(key, out var list)) groups[key] = list = new List<Track>();
+            list.Add(t);
+        }
+        if (groups == null) return result;
+
+        foreach (var list in groups.Values)
+        {
+            if (!AllSameAlbum(list)) continue;
+            var creditsDiffer = list
+                .Select(t => (t.Artist ?? string.Empty).Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Skip(1).Any();
+            if (creditsDiffer || list.Any(t => !(t.Artist ?? string.Empty).TrimStart()
+                    .StartsWith((t.AlbumArtist ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase)))
+                result.AddRange(list);
+        }
+        return result;
+    }
+
     private static void GroupFolder(List<Track> candidates, List<Track> tagged, List<Move> moves)
     {
         candidates.Sort(AlbumOrder);
@@ -188,6 +288,13 @@ public static class AlbumGrouping
         {
             if (c.AlbumId == target) continue;
             moves.Add(new Move(c.Id, c.AlbumId, target));
+            // The file's own values, kept so switching the grouping off puts the song back
+            // (GitHub #193). The first re-key's: a later one starts from a grouped value.
+            if (c.UngroupedAlbumArtist == null)
+            {
+                c.UngroupedAlbumArtist = c.AlbumArtist;
+                c.UngroupedAlbum = c.Album;
+            }
             c.AlbumArtist = artist;
             c.Album = album;
             c.AlbumId = target;

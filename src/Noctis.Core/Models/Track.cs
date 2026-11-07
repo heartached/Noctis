@@ -150,6 +150,28 @@ public partial class Track : ObservableObject
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? AlbumArtistFromTag { get; set; }
 
+    /// <summary>
+    /// GitHub #193: <see cref="Album"/> is the file's folder name, filled in by
+    /// <see cref="Helpers.FolderMetadata"/> because the file has no album tag. Such a name says
+    /// where the file sits, not which album it belongs to, so <see cref="Services.AlbumGrouping"/>
+    /// never groups by it (a folder of loose singles became one album).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AlbumFromFolder { get; set; }
+
+    /// <summary>
+    /// GitHub #193: the album artist <see cref="Services.AlbumGrouping"/> replaced when it
+    /// re-keyed this song into a grouped album (the file's own value), so switching the grouping
+    /// off can put the song back. Null when the song was never re-keyed.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UngroupedAlbumArtist { get; set; }
+
+    /// <summary>GitHub #193: the album name spelling the song had before the grouping re-keyed it
+    /// (see <see cref="UngroupedAlbumArtist"/>).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UngroupedAlbum { get; set; }
+
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
 

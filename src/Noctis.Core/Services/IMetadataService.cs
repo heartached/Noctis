@@ -105,6 +105,16 @@ public interface IMetadataService
     bool ClearYear(string filePath) => false;
 
     /// <summary>
+    /// GitHub #190: writes only the Album Artist and Album tags (ID3v2 TPE2/TALB, Vorbis
+    /// ALBUMARTIST/ALBUM, MP4 aART/©alb), so other players group the file the way Noctis's
+    /// album grouping does. Every other tag stays as the file has it. A background write: the
+    /// player never lets go of the playing file for it, so such a file may fail and is retried
+    /// later. Returns false when the file could not be written. The default writes nothing, so
+    /// test stubs keep compiling.
+    /// </summary>
+    bool WriteAlbumGrouping(string filePath, string album, string albumArtist) => false;
+
+    /// <summary>
     /// Writes only the lyrics fields of an audio file (GitHub #135): the text field gets the
     /// synced text when there is any, else <paramref name="plain"/>; ID3v2 also gets a SYLT
     /// frame. Both empty clears them. When <paramref name="onlyIf"/> is given, the file's

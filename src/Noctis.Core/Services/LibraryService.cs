@@ -39,6 +39,13 @@ public class LibraryService : ILibraryService
     // AppSettings.InboxEnabled as LoadAsync read it: off releases any marked songs on load.
     private bool _inboxEnabledAtLoad;
 
+    // GitHub #193 / #190: AppSettings.AlbumGroupingEnabled / AlbumGroupingWriteTags, read with
+    // the hidden folders before the first index build and switched by SetAlbumGrouping*Async.
+    private volatile bool _albumGroupingEnabled = true;
+    private volatile bool _albumGroupingWriteTags;
+    private readonly SemaphoreSlim _ungroupedResolveGate = new(1, 1);
+    private readonly SemaphoreSlim _groupingWriteGate = new(1, 1);
+
     // Last VisibleTracks result, keyed by the exact _tracks list and hidden array it came
     // from (both are swapped, never edited in place), so Tracks costs one filter per change.
     // The Inbox split rides along: every change to a track's IsInInbox swaps _tracks too.
@@ -2125,6 +2132,11 @@ public class LibraryService : ILibraryService
                     // knows which album artists are real tags.
                     await ResolveAlbumArtistSourcesAsync();
 
+                    // GitHub #193: songs a 1.6.8 grouping re-keyed are read once for the album
+                    // they had, and whether their album name is only their folder's.
+                    if (await ResolveUngroupedAlbumsAsync() > 0)
+                        await RebuildAndPersistAlbumKeysAsync(forceSave: true);
+
                     // Heal albums whose cover was never cached. Scans only extract
                     // art for new/changed files plus a one-shot post-scan pass, so
                     // any interruption or unreadable file left an album artless for
@@ -2179,6 +2191,8 @@ public class LibraryService : ILibraryService
                 .Where(f => !string.IsNullOrWhiteSpace(f))
                 .ToArray();
             _inboxEnabledAtLoad = settings.InboxEnabled;
+            _albumGroupingEnabled = settings.AlbumGroupingEnabled;
+            _albumGroupingWriteTags = settings.AlbumGroupingWriteTags;
         }
         catch (Exception ex)
         {
@@ -2505,14 +2519,24 @@ public class LibraryService : ILibraryService
         var allTracks = _tracks;
         var tracks = VisibleTracks(allTracks);
         var persistence = _persistence;
+        var grouping = _albumGroupingEnabled;
         List<AlbumGrouping.Move>? albumMoves = null;
+        var groupedCount = 0;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
         {
             // GitHub #178: untagged songs of one album in one folder become one album before
             // anything groups by AlbumId. Over every track, hidden ones too, so a song's key
             // does not depend on what is shown. A no-op once the library is grouped.
-            albumMoves = AlbumGrouping.Apply(allTracks);
+            // GitHub #193: switched off (or no longer a candidate), a grouped song goes back to
+            // the album it had before; a no-op once nothing is grouped.
+            albumMoves = AlbumGrouping.Restore(allTracks, grouping);
+            if (grouping)
+            {
+                var grouped = AlbumGrouping.Apply(allTracks);
+                groupedCount = grouped.Count;
+                albumMoves.AddRange(grouped);
+            }
             if (albumMoves.Count > 0)
                 CarryAlbumKeyedFiles(persistence, albumMoves);
 
@@ -2648,8 +2672,220 @@ public class LibraryService : ILibraryService
         if (albumMoves is { Count: > 0 })
         {
             DebugLog.Write("Library", $"Album grouping (#178): {albumMoves.Count} song(s) re-keyed into " +
-                $"{albumMoves.Select(m => m.To).Distinct().Count()} album(s)");
+                $"{albumMoves.Select(m => m.To).Distinct().Count()} album(s)" +
+                (grouping ? "" : " (grouping off, #193)"));
             await RepointPinnedAlbumsAsync(albumMoves, allTracks).ConfigureAwait(false);
+        }
+
+        // GitHub #190: newly grouped songs get the album artist written to their files too.
+        // Not awaited: the write takes its own gate and never rebuilds, and a rebuild must not
+        // wait on file I/O.
+        if (groupedCount > 0 && grouping && _albumGroupingWriteTags)
+            _ = WriteAlbumGroupingInBackgroundAsync();
+    }
+
+    /// <inheritdoc />
+    public bool AlbumGroupingEnabled => _albumGroupingEnabled;
+
+    /// <inheritdoc />
+    public async Task<int> SetAlbumGroupingAsync(bool enabled, CancellationToken ct = default)
+    {
+        _albumGroupingEnabled = enabled;
+        // Songs a 1.6.8 grouping re-keyed carry no record of their own album yet: read once.
+        var read = await ResolveUngroupedAlbumsAsync(ct);
+        return await RebuildAndPersistAlbumKeysAsync(forceSave: read > 0);
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
+    {
+        _albumGroupingWriteTags = enabled;
+        if (!enabled || !_albumGroupingEnabled)
+            return new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+        if (await ResolveUngroupedAlbumsAsync(ct) > 0)
+            await RebuildAndPersistAlbumKeysAsync(forceSave: true);
+        return await WriteAlbumGroupingToFilesAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<AlbumGroupResult>? AlbumGroupingWritten;
+
+    /// <summary>
+    /// Rebuilds the indexes, then saves and republishes when a song's album key changed (or
+    /// <paramref name="forceSave"/>: fields only the save keeps were recorded). Returns how
+    /// many songs changed album.
+    /// </summary>
+    private async Task<int> RebuildAndPersistAlbumKeysAsync(bool forceSave)
+    {
+        var snapshot = _tracks;
+        var before = await Task.Run(() =>
+        {
+            var keys = new Dictionary<Guid, Guid>(snapshot.Count);
+            foreach (var t in snapshot) keys[t.Id] = t.AlbumId;
+            return keys;
+        }, CancellationToken.None);
+        await RebuildIndexesAsync();
+        var changed = await Task.Run(() => snapshot
+            .Where(t => before.TryGetValue(t.Id, out var id) && id != t.AlbumId)
+            .ToList(), CancellationToken.None);
+        if (changed.Count == 0 && !forceSave) return 0;
+
+        await SaveAsync();
+        if (changed.Count == 0) return 0;
+        foreach (var t in changed) t.NotifyMetadataUpdated();
+        try { await _sqliteIndex.UpsertTracksAsync(changed, CancellationToken.None); }
+        catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: index update failed: {ex.Message}"); }
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return changed.Count;
+    }
+
+    /// <summary>
+    /// GitHub #193, libraries grouped by 1.6.8: that grouping re-keyed songs without keeping
+    /// the album artist they had (<see cref="Track.UngroupedAlbumArtist"/>), and filed folders
+    /// of loose singles as one album because an album name taken from the folder was not told
+    /// apart (<see cref="Track.AlbumFromFolder"/>). The songs that may have been re-keyed
+    /// (<see cref="AlbumGrouping.UnrecordedRegroupedSongs"/>) are re-read once for both facts;
+    /// nothing else about them changes here (the next rebuild acts on them). Runs once per
+    /// library (AppSettings.AlbumGroupingOriginalsRead). Returns how many songs were read.
+    /// </summary>
+    public async Task<int> ResolveUngroupedAlbumsAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        try { await _ungroupedResolveGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return 0; }
+        try
+        {
+            AppSettings settings;
+            try { settings = await _persistence.LoadSettingsAsync(); }
+            catch { return 0; }
+            if (settings.AlbumGroupingOriginalsRead) return 0;
+
+            var snapshot = _tracks;
+            var read = 0;
+            await Task.Run(() =>
+            {
+                foreach (var track in AlbumGrouping.UnrecordedRegroupedSongs(snapshot))
+                {
+                    if (token.IsCancellationRequested) break;
+                    // Phone documents and server streams cannot be opened here; they keep their album.
+                    if (!track.HasFilesystemPath || track.IsRemoteStream
+                        || track.SourceType is not (SourceType.Local or SourceType.Smb)) continue;
+                    try
+                    {
+                        if (!File.Exists(track.FilePath)) continue;
+                        var own = _metadata.ReadTrackMetadata(track.FilePath);
+                        // Tagged since (another app): the next scan reads the new tag.
+                        if (own == null || own.AlbumArtistFromTag != false) continue;
+                        track.AlbumFromFolder = own.AlbumFromFolder;
+                        if (own.AlbumId != track.AlbumId)
+                        {
+                            track.UngroupedAlbumArtist = own.AlbumArtist;
+                            track.UngroupedAlbum = own.Album;
+                        }
+                        read++;
+                    }
+                    catch
+                    {
+                        // Unreadable now: the song stays where it is.
+                    }
+                }
+            }, CancellationToken.None);
+
+            // Cut short: not recorded as done, so the next launch reads the rest.
+            if (token.IsCancellationRequested) return read;
+            try { await _persistence.UpdateSettingsAsync(s => s.AlbumGroupingOriginalsRead = true); }
+            catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: done flag not saved: {ex.Message}"); }
+            if (read > 0)
+                DebugLog.Write("Library", $"Album grouping (#193): own album artist read for {read} song(s) grouped by an older build");
+            return read;
+        }
+        finally
+        {
+            _ungroupedResolveGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// GitHub #190: writes the grouped album's Album Artist and album name into the files of the
+    /// songs the grouping re-keyed (<see cref="AlbumGrouping.RegroupedSongs"/>), through
+    /// <see cref="IMetadataService.WriteAlbumGrouping"/> only, so no other tag changes. A song
+    /// whose file is written has a real album-artist tag from then on. Files that are missing,
+    /// read-only, not on a local or network drive, or held open are listed in the result and
+    /// tried again on the next pass. Off the UI thread; one pass at a time.
+    /// </summary>
+    public async Task<AlbumGroupResult> WriteAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    {
+        var none = new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        try { await _groupingWriteGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return none; }
+        try
+        {
+            if (!_albumGroupingEnabled) return none;
+            var snapshot = _tracks;
+            var written = new List<Track>();
+            var unwritten = new List<string>();
+            await Task.Run(() =>
+            {
+                foreach (var t in AlbumGrouping.RegroupedSongs(snapshot))
+                {
+                    if (token.IsCancellationRequested) break;
+                    var ok = false;
+                    if (t.HasFilesystemPath && !t.IsRemoteStream && t.SourceType is SourceType.Local or SourceType.Smb)
+                    {
+                        try
+                        {
+                            if (File.Exists(t.FilePath) && !File.GetAttributes(t.FilePath).HasFlag(FileAttributes.ReadOnly))
+                                ok = _metadata.WriteAlbumGrouping(t.FilePath, t.Album, t.AlbumArtist);
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugLog.Write("Library", $"Album grouping write failed for '{t.FilePath}': {ex.Message}");
+                        }
+                    }
+                    if (!ok)
+                    {
+                        unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                        continue;
+                    }
+                    // The file names the album now: a real tag, never put back by Restore.
+                    t.AlbumArtistFromTag = true;
+                    t.UngroupedAlbumArtist = null;
+                    t.UngroupedAlbum = null;
+                    written.Add(t);
+                }
+            }, CancellationToken.None);
+
+            if (written.Count > 0)
+            {
+                await SaveAsync();
+                try { await _sqliteIndex.UpsertTracksAsync(written, CancellationToken.None); }
+                catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: index update failed: {ex.Message}"); }
+            }
+            if (written.Count > 0 || unwritten.Count > 0)
+                DebugLog.Write("Library", $"Album grouping (#190): album artist written to {written.Count} file(s)" +
+                    (unwritten.Count > 0 ? $", {unwritten.Count} not written" : ""));
+            return new AlbumGroupResult(Guid.Empty, written.Count, unwritten);
+        }
+        finally
+        {
+            _groupingWriteGate.Release();
+        }
+    }
+
+    private async Task WriteAlbumGroupingInBackgroundAsync()
+    {
+        try
+        {
+            var result = await WriteAlbumGroupingToFilesAsync().ConfigureAwait(false);
+            if (result.Grouped > 0 || result.UnwrittenFiles.Count > 0)
+                AlbumGroupingWritten?.Invoke(this, result);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Album grouping write pass failed: {ex.Message}");
         }
     }
 
@@ -2755,9 +2991,10 @@ public class LibraryService : ILibraryService
                 try
                 {
                     if (!File.Exists(track.FilePath)) continue;
-                    if (_metadata.ReadTrackMetadata(track.FilePath)?.AlbumArtistFromTag is bool fromTag)
+                    if (_metadata.ReadTrackMetadata(track.FilePath) is { AlbumArtistFromTag: bool fromTag } own)
                     {
                         track.AlbumArtistFromTag = fromTag;
+                        track.AlbumFromFolder = own.AlbumFromFolder; // GitHub #193
                         resolved.Add(track);
                     }
                 }
