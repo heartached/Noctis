@@ -1347,11 +1347,13 @@ public class MetadataService : IMetadataService
         return estimated > 0 ? estimated : 0;
     }
 
-    // A VBR MP3 with no Xing/VBRI header: TagLib's length is a first-frame bitrate guess
-    // (a 65-minute file read as 14:37), so count the frames instead (see Mp3FrameScan).
+    // TagLib's MP3 length is a first-frame bitrate guess unless the file has a "Xing" header:
+    // a VBR file with no header (a 65-minute file read as 14:37) is counted instead, and a file
+    // with an "Info" or VBRI header uses the length that header states (ffmpeg's 128 kbps MP3s
+    // read as twice their length at 64 kbps). See Mp3FrameScan.TryMeasureLength.
     private static void ApplyCountedMp3Length(string path, string ext, ref int bitrate, ref TimeSpan duration)
     {
-        if (ext == ".mp3" && Mp3FrameScan.TryMeasureHeaderlessVbr(path, out var counted, out var countedKbps))
+        if (ext == ".mp3" && Mp3FrameScan.TryMeasureLength(path, out var counted, out var countedKbps))
         {
             duration = counted;
             bitrate = countedKbps;
