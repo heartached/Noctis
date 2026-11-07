@@ -240,6 +240,24 @@ internal sealed class FakeLibraryService : ILibraryService
         GroupCalls.Add((tracks, album, albumArtist));
         return Task.FromResult(GroupResult);
     }
+
+    /// <summary>What Settings asked of the album grouping (GitHub #193 / #190).</summary>
+    public List<bool> AlbumGroupingCalls { get; } = new();
+    public List<bool> AlbumGroupingWriteTagsCalls { get; } = new();
+    public int AlbumGroupingMoved { get; set; }
+    public AlbumGroupResult AlbumGroupingWriteResult { get; set; } = new(Guid.Empty, 0, Array.Empty<string>());
+    public Task<int> SetAlbumGroupingAsync(bool enabled, CancellationToken ct = default)
+    {
+        AlbumGroupingCalls.Add(enabled);
+        return Task.FromResult(AlbumGroupingMoved);
+    }
+    public Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
+    {
+        AlbumGroupingWriteTagsCalls.Add(enabled);
+        return Task.FromResult(AlbumGroupingWriteResult);
+    }
+    public event EventHandler<AlbumGroupResult>? AlbumGroupingWritten;
+    public void RaiseAlbumGroupingWritten(AlbumGroupResult result) => AlbumGroupingWritten?.Invoke(this, result);
     public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);

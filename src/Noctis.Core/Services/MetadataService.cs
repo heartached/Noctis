@@ -732,6 +732,10 @@ public class MetadataService : IMetadataService
         if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
             track.AlbumArtistFromTag = true;
+        // Likewise the album name: a folder name written above is the file's album tag now.
+        if (ok && Track.IsRealAlbumName(track.Album)
+            && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.AlbumFromFolder = false;
         return ok;
     }
 
@@ -986,6 +990,25 @@ public class MetadataService : IMetadataService
     public bool ClearYear(string filePath)
     {
         return SaveTagsAtomically(filePath, file => file.Tag.Year = 0);
+    }
+
+    /// <inheritdoc />
+    public bool WriteAlbumGrouping(string filePath, string album, string albumArtist)
+    {
+        try
+        {
+            SaveTagsAtomicallyOrThrow(filePath, file =>
+            {
+                file.Tag.AlbumArtists = SplitArtistList(albumArtist);
+                file.Tag.Album = album;
+            }, releaseOpenFile: false); // a background pass must not put a gap in the playing track
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Metadata", $"Album grouping write failed for '{filePath}': {ex.Message}");
+            return false;
+        }
     }
 
     public bool WriteRating(string filePath, int rating, bool isDisliked)

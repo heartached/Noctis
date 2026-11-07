@@ -105,6 +105,7 @@ public static partial class FolderMetadata
             if (albumMissing && album != null)
             {
                 track.Album = album;
+                track.AlbumFromFolder = true; // not album evidence for AlbumGrouping (GitHub #193)
                 changed = true;
             }
             if (changed)

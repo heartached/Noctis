@@ -935,6 +935,20 @@ public class AppSettings : IJsonOnDeserializing
     /// editions remain reachable via the album page's "Other Versions" section. Default off.</summary>
     public bool CollapseAlbumEditions { get; set; } = false;
 
+    /// <summary>GitHub #193: songs without an Album Artist tag that share an album name in one
+    /// folder are one album (GitHub #178, AlbumGrouping). On by default; off puts every grouped
+    /// song back on its own album on the next index rebuild (LibraryService.SetAlbumGroupingAsync).</summary>
+    public bool AlbumGroupingEnabled { get; set; } = true;
+
+    /// <summary>GitHub #190: also write the grouped album's Album Artist (and album name) into the
+    /// files the grouping re-keyed, so other players show the same album. Off by default; only
+    /// acts while <see cref="AlbumGroupingEnabled"/> is on.</summary>
+    public bool AlbumGroupingWriteTags { get; set; }
+
+    /// <summary>GitHub #193: the one-time re-read of songs a 1.6.8 grouping re-keyed without
+    /// keeping their own album artist (LibraryService.ResolveUngroupedAlbumsAsync) has run.</summary>
+    public bool AlbumGroupingOriginalsRead { get; set; }
+
     /// <summary>Windows only (GitHub #53): paint the current song's progress on the app's
     /// taskbar button. Off by default — it is a visible change to the taskbar the user
     /// should opt into.</summary>

@@ -5637,6 +5637,34 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #193: the automatic grouping of #178 can be switched off (on by default);
+                 #190: and written into the files, only while it is on. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.AlbumGrouping}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.AlbumGrouping}"
+                                              IsChecked="{Binding AlbumGroupingEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding AlbumGroupingEnabled}">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingWriteTags}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingWriteTagsHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.AlbumGroupingWriteTags}"
+                                              IsChecked="{Binding AlbumGroupingWriteTags}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
