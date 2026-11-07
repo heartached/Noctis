@@ -2021,14 +2021,8 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "AddNext", $"track={track.Title}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        MirrorIntoRepeatCycle(-1, new[] { track });
         UpNext.Insert(0, track);
-        if (_repeatCycleTracks.Count > 0)
-        {
-            // In the cycle it follows the playing track, as it does in this pass.
-            var current = CurrentTrack;
-            var at = current == null ? -1 : _repeatCycleTracks.FindIndex(t => t.Id == current.Id);
-            _repeatCycleTracks.Insert(at < 0 ? _repeatCycleTracks.Count : at + 1, track);
-        }
     }
 
     /// <summary>Appends a track to the end of the UpNext queue ("Add to Queue").</summary>
@@ -2037,8 +2031,8 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "AddToQueue", $"track={track.Title}, newLen={UpNext.Count + 1}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        MirrorIntoRepeatCycle(UpNext.Count, new[] { track });
         UpNext.Add(track);
-        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.Add(track);
         if (announce) AnnounceQueued(new[] { track }, null, playNext: false);
     }
 
@@ -2051,6 +2045,7 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "AddRangeToQueue", $"count={tracks.Count}, newLen={UpNext.Count + tracks.Count}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        MirrorIntoRepeatCycle(UpNext.Count, tracks.ToList());
         _suppressHasContentNotify = true;
         try { UpNext.AddRange(tracks); }
         finally
@@ -2058,8 +2053,79 @@ public partial class PlayerViewModel : ViewModelBase
             _suppressHasContentNotify = false;
             OnPropertyChanged(nameof(HasContent));
         }
-        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.AddRange(tracks);
         if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
+    }
+
+    /// <summary>
+    /// GitHub #189: inserts <paramref name="tracks"/> into Up Next at <paramref name="index"/>,
+    /// keeping their order, with ONE <see cref="TracksQueued"/> for the lot: where files dropped
+    /// onto the queue list land. 0 (or less) is Play Next, <see cref="UpNext"/>.Count (or more)
+    /// the end; the Repeat All cycle takes them at the same place.
+    /// </summary>
+    public void InsertIntoQueue(int index, IList<Track> tracks, string? sourceName = null, bool announce = true)
+    {
+        if (tracks.Count == 0) return;
+        if (index <= 0)
+        {
+            AddNextRange(tracks, sourceName, announce);
+            return;
+        }
+        if (index >= UpNext.Count)
+        {
+            AddRangeToQueue(tracks, sourceName, announce);
+            return;
+        }
+        DebugLogger.Info(DebugLogger.Category.Queue, "InsertIntoQueue", $"count={tracks.Count}, at={index}, newLen={UpNext.Count + tracks.Count}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
+        MirrorIntoRepeatCycle(index, tracks.ToList());
+        _suppressHasContentNotify = true;
+        try { UpNext.InsertRange(index, tracks); }
+        finally
+        {
+            _suppressHasContentNotify = false;
+            OnPropertyChanged(nameof(HasContent));
+        }
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
+    }
+
+    /// <summary>
+    /// Mirrors <paramref name="tracks"/>, about to go into Up Next at <paramref name="upNextIndex"/>,
+    /// into the Repeat All cycle at the same place, so a wrap replays the queue as edited:
+    /// -1 is Play Next (after the playing song), <see cref="UpNext"/>.Count the end, anything
+    /// between right after the song they follow. No cycle, nothing to mirror (the wrap falls
+    /// back to what played). GitHub #188: while Clear Queue keeps the playing song off the
+    /// queue (#175), the cycle is what was queued since: the first song queued replaces the
+    /// cleared song in it, and Play Next lands at its front.
+    /// </summary>
+    private void MirrorIntoRepeatCycle(int upNextIndex, IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        if (_currentClearedFromQueue && UpNext.Count == 0)
+            _repeatCycleTracks = new List<Track>();
+        else if (_repeatCycleTracks.Count == 0 && !_currentClearedFromQueue)
+            return;
+
+        int at;
+        if (upNextIndex < 0 || (upNextIndex == 0 && UpNext.Count > 0))
+        {
+            // In the cycle it follows the playing track, as it does in this pass.
+            var current = _currentClearedFromQueue ? null : CurrentTrack;
+            var i = current == null ? -1 : _repeatCycleTracks.FindIndex(t => t.Id == current.Id);
+            at = _currentClearedFromQueue ? 0 : i < 0 ? _repeatCycleTracks.Count : i + 1;
+        }
+        else if (upNextIndex >= UpNext.Count)
+        {
+            at = _repeatCycleTracks.Count;
+        }
+        else
+        {
+            // The last copy: a pending song sits after any copy of it that already played.
+            var before = UpNext[upNextIndex - 1];
+            var i = _repeatCycleTracks.FindLastIndex(t => t.Id == before.Id);
+            at = i < 0 ? _repeatCycleTracks.Count : i + 1;
+        }
+        _repeatCycleTracks.InsertRange(at, tracks);
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>
@@ -2079,8 +2145,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// Clears the queue: every upcoming track, and the playing song's place in it (GitHub
     /// #175). The song plays on uninterrupted but the panel shows the queue empty. Unless
     /// something is queued after it, it is then the whole queue: Repeat replays it, Next with
-    /// Repeat on and Previous restart it, and with Repeat off the queue ends after it. Played
-    /// songs (Keep Played Songs) stay; they have their own Clear Played.
+    /// Repeat on and Previous restart it, and with Repeat off the queue ends after it. Songs
+    /// queued while it plays do not bring it back (GitHub #188): it stays off the panel, the
+    /// first of them follows it, and Repeat All cycles only them. Played songs (Keep Played
+    /// Songs) stay; they have their own Clear Played.
     /// </summary>
     public void ClearQueue()
     {
@@ -2120,7 +2188,8 @@ public partial class PlayerViewModel : ViewModelBase
         _parkedExplicit.Clear();
         IsShuffleEnabled = false;
         _repeatCycleTracks = new List<Track>(tracks.Count + 1);
-        if (CurrentTrack is { } playing) _repeatCycleTracks.Add(playing);
+        // Not a song Clear Queue took out of the queue (GitHub #188).
+        if (CurrentTrack is { } playing && !_currentClearedFromQueue) _repeatCycleTracks.Add(playing);
         _repeatCycleTracks.AddRange(tracks);
         _suppressHasContentNotify = true;
         try
@@ -2412,7 +2481,8 @@ public partial class PlayerViewModel : ViewModelBase
             IsMuted = IsMuted,
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
             OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
-            ExternalTrackPaths = BuildExternalTrackPaths()
+            ExternalTrackPaths = BuildExternalTrackPaths(),
+            CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
         };
         await _persistence.SaveQueueStateAsync(state);
     }
@@ -2471,7 +2541,8 @@ public partial class PlayerViewModel : ViewModelBase
                 IsMuted = IsMuted,
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
                 OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
-                ExternalTrackPaths = BuildExternalTrackPaths()
+                ExternalTrackPaths = BuildExternalTrackPaths(),
+                CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
             };
         }
         catch
@@ -2613,6 +2684,11 @@ public partial class PlayerViewModel : ViewModelBase
                 // left off (consumed one-shot inside PlayTrack's seek chain).
                 _resumePositionMs = (long)(positionSeconds * 1000);
                 _resumeTrackId = track.Id;
+
+                // Still off the queue after Clear Queue (GitHub #188): set after CurrentTrack,
+                // whose change resets it. Not for the Up Next song that stood in for a lost one.
+                if (state.CurrentClearedFromQueue && !usedUpNextFallback)
+                    SetCurrentClearedFromQueue(true);
 
                 // Ensure UI updates on UI thread
                 Dispatcher.UIThread.Post(() =>
@@ -3460,6 +3536,19 @@ public partial class PlayerViewModel : ViewModelBase
         if (RepeatMode == RepeatMode.One && CurrentTrack != null &&
             (reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix ||
              (reason == QueueAdvanceReason.UserSkip && _currentClearedFromQueue && UpNext.Count == 0)))
+        {
+            PlayTrack(CurrentTrack);
+            return;
+        }
+
+        // GitHub #175: Repeat All with only the song Clear Queue took out left (nothing queued
+        // since) replays it. #188: once songs are queued after it they are the queue, and the
+        // advance below moves on to them; the cycle never held the cleared song by then. Like
+        // Repeat One this is a replay, not a new History entry: each pass pushed the song onto
+        // History, so with Keep Played Songs on the "empty" queue filled with played copies.
+        if (RepeatMode == RepeatMode.All && _currentClearedFromQueue && CurrentTrack != null &&
+            UpNext.Count == 0 && !IsBlockedExplicit(CurrentTrack) &&
+            reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix or QueueAdvanceReason.UserSkip)
         {
             PlayTrack(CurrentTrack);
             return;

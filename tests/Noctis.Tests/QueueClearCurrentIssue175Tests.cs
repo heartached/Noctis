@@ -277,7 +277,7 @@ public class QueueClearCurrentIssue175Tests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AddToQueue_AfterClear_PlayingSongIsBackAboveIt_AndPlaysNext(bool keepPlayed)
+    public void AddToQueue_AfterClear_PlayingSongStaysOff_TheNewSongsPlayNext(bool keepPlayed)
     {
         var (vm, player) = CreateVm(keepPlayed);
         var album = Album("a", "b", "c");
@@ -288,9 +288,10 @@ public class QueueClearCurrentIssue175Tests
         vm.AddToQueue(x, announce: false);
         vm.AddNext(y, announce: false);
 
-        Assert.True(vm.ShowQueueCurrentTrack);
-        Assert.Equal(keepPlayed ? "a,y,x" : "y,x", Titles(vm.QueueRows));
-        if (keepPlayed) Assert.Equal(0, vm.QueueCurrentRow);
+        // GitHub #188: queueing songs no longer brings the cleared song back above them.
+        Assert.False(vm.ShowQueueCurrentTrack);
+        Assert.Equal("y,x", Titles(vm.QueueRows));
+        Assert.Equal(-1, vm.QueueCurrentRow);
 
         End(player);
         Assert.Same(y, vm.CurrentTrack);
@@ -306,7 +307,7 @@ public class QueueClearCurrentIssue175Tests
     }
 
     [AvaloniaFact]
-    public void RepeatAll_RefilledAfterClear_CyclesThePlayingSongAndTheNewOnes()
+    public void RepeatAll_RefilledAfterClear_CyclesOnlyTheNewOnes()
     {
         var (vm, player) = CreateVm();
         var album = Album("a", "b", "c");
@@ -323,7 +324,8 @@ public class QueueClearCurrentIssue175Tests
             seen.Add(vm.CurrentTrack!.Title);
         }
 
-        Assert.Equal("x,b,x,b", string.Join(",", seen));
+        // GitHub #188: the cleared song (b) is not replayed once songs are queued after it.
+        Assert.Equal("x,x,x,x", string.Join(",", seen));
     }
 
     [AvaloniaFact]
