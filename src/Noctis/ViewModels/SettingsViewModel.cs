@@ -2410,6 +2410,10 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _taskbarMediaControlsEnabled = true;
     [ObservableProperty] private bool _liquidGlassEnabled;
     [ObservableProperty] private bool _collapseAlbumEditions;
+    /// <summary>GitHub #193: the automatic album grouping of untagged songs (#178), on by default.</summary>
+    [ObservableProperty] private bool _albumGroupingEnabled = true;
+    /// <summary>GitHub #190: also write the grouping into the files (off by default).</summary>
+    [ObservableProperty] private bool _albumGroupingWriteTags;
     [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
 
     // ── Artist grouping (GitHub #51) ──
@@ -3105,6 +3109,10 @@ public partial class SettingsViewModel : ViewModelBase
         // RunScanCoreAsync turns them into the status line once ScanAsync returns.
         _library.ScanAborted += (_, roots) => _scanAbortedRoots = roots;
 
+        // GitHub #190: songs grouped after a later scan are written in the background; the
+        // status line says so, and how many files could not be saved.
+        _library.AlbumGroupingWritten += (_, result) => Dispatcher.UIThread.Post(() => ReportAlbumGroupingWrite(result));
+
         // Hiding/showing a folder (Folders view) republishes the library; the list is in
         // memory, so this is a cheap compare on every other LibraryUpdated.
         SyncHiddenLibraryFolders();
@@ -3526,6 +3534,8 @@ public partial class SettingsViewModel : ViewModelBase
             TaskbarMediaControlsEnabled = _settings.TaskbarMediaControlsEnabled;
             RefreshFileAssociationState();
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
+            AlbumGroupingEnabled = _settings.AlbumGroupingEnabled;
+            AlbumGroupingWriteTags = _settings.AlbumGroupingWriteTags;
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
@@ -4050,6 +4060,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
         _settings.TaskbarMediaControlsEnabled = TaskbarMediaControlsEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
+        _settings.AlbumGroupingEnabled = AlbumGroupingEnabled;
+        _settings.AlbumGroupingWriteTags = AlbumGroupingWriteTags;
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
@@ -5202,6 +5214,81 @@ public partial class SettingsViewModel : ViewModelBase
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
+
+    // The library reads both album-grouping settings itself at load (before its first index
+    // build), so only a real flip after load reaches it.
+    partial void OnAlbumGroupingEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        _ = ApplyAlbumGroupingAsync(value);
+    }
+
+    partial void OnAlbumGroupingWriteTagsChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        _ = ApplyAlbumGroupingWriteTagsAsync(value);
+    }
+
+    // Guards the status line against a superseded flip finishing after a newer one.
+    private int _albumGroupingApplyGeneration;
+
+    /// <summary>GitHub #193: regroups or splits the indexed library right away (a rescan reuses
+    /// unchanged files, so it never would) and says how many songs moved.</summary>
+    private async Task ApplyAlbumGroupingAsync(bool value)
+    {
+        var generation = ++_albumGroupingApplyGeneration;
+        SetScanStatus(Loc.T(value ? "Settings.AlbumGroupingGrouping" : "Settings.AlbumGroupingSplitting"));
+        int changed;
+        try
+        {
+            changed = await _library.SetAlbumGroupingAsync(value);
+        }
+        catch (Exception)
+        {
+            if (generation == _albumGroupingApplyGeneration)
+                SetScanStatus(Loc.T("Settings.AlbumGroupingFailed"), autoClear: true);
+            return;
+        }
+        if (generation != _albumGroupingApplyGeneration) return;
+        SetScanStatus(changed == 0
+            ? Loc.T("Settings.AlbumGroupingUpToDate")
+            : Loc.T("Settings.AlbumGroupingMoved", changed), autoClear: true);
+    }
+
+    /// <summary>Shows the album-grouping file notice (test seam).</summary>
+    internal Func<Views.ConfirmationRequest, Task<Views.ConfirmationResult>> ShowAlbumGroupingNotice { get; set; }
+        = Views.ConfirmationDialog.ShowAsync;
+
+    /// <summary>GitHub #190: switched on, writes the grouping into the files now and lists the
+    /// files that could not be saved.</summary>
+    private async Task ApplyAlbumGroupingWriteTagsAsync(bool value)
+    {
+        if (value) SetScanStatus(Loc.T("Settings.AlbumGroupingWriting"));
+        AlbumGroupResult result;
+        try
+        {
+            result = await _library.SetAlbumGroupingWriteTagsAsync(value);
+        }
+        catch (Exception)
+        {
+            if (value) SetScanStatus(Loc.T("Settings.AlbumGroupingFailed"), autoClear: true);
+            return;
+        }
+        if (!value) return;
+        ReportAlbumGroupingWrite(result);
+        if (result.UnwrittenFiles.Count > 0)
+            await ShowAlbumGroupingNotice(new Views.ConfirmationRequest(
+                Loc.T("Settings.AlbumGroupingNotWritten", result.UnwrittenFiles.Count),
+                Loc.T("Settings.AlbumGroupingWriteTags"),
+                Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
+    }
+
+    private void ReportAlbumGroupingWrite(AlbumGroupResult result) =>
+        SetScanStatus(result.UnwrittenFiles.Count > 0
+            ? Loc.T("Settings.AlbumGroupingWrittenSome", result.Grouped, result.UnwrittenFiles.Count)
+            : Loc.T("Settings.AlbumGroupingWritten", result.Grouped), autoClear: true);
 
     partial void OnAlbumTileSizeAutoChanged(bool value)
     {
@@ -7823,6 +7910,8 @@ public partial class SettingsViewModel : ViewModelBase
     internal void ResetSettingsToDefaults(AppSettings defaultSettings)
     {
         // Update ViewModel with defaults (suspend persistence during update)
+        var albumGroupingBefore = AlbumGroupingEnabled;
+        var albumGroupingWriteTagsBefore = AlbumGroupingWriteTags;
         _suspendSettingPersistence = true;
         try
         {
@@ -7881,6 +7970,8 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerEnabled = defaultSettings.NoctisServerEnabled;
             NoctisServerPort = defaultSettings.NoctisServerPort;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
+            AlbumGroupingEnabled = defaultSettings.AlbumGroupingEnabled;
+            AlbumGroupingWriteTags = defaultSettings.AlbumGroupingWriteTags;
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
@@ -8149,6 +8240,13 @@ public partial class SettingsViewModel : ViewModelBase
             // Push the defaulted playback UI settings (incl. the bar width, which has
             // no OnChanged partial to fire) onto the player.
             ApplyPlayerSettings();
+
+            // GitHub #193 / #190: the change handlers are suspended here, and the library only
+            // hears of a grouping flip from them, so a reset that flips one applies it itself.
+            if (AlbumGroupingEnabled != albumGroupingBefore)
+                _ = ApplyAlbumGroupingAsync(AlbumGroupingEnabled);
+            if (AlbumGroupingWriteTags != albumGroupingWriteTagsBefore)
+                _ = ApplyAlbumGroupingWriteTagsAsync(AlbumGroupingWriteTags);
 
             // Apply theme
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());

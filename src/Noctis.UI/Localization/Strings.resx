@@ -144,6 +144,19 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.SlideSidebarOpenHover" xml:space="preserve"><value>Slide the sidebar open on hover.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Collapse Album Editions</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve"><value>One tile per release. Other editions appear under &quot;Other Versions&quot;.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumGrouping" xml:space="preserve"><value>Group Untagged Albums</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
+  <data name="Settings.AlbumGroupingHint" xml:space="preserve"><value>Songs without an Album Artist tag that share an album name in one folder show as one album, like a soundtrack with a different singer on every song. Off, each song stays on its own artist's album.</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
+  <data name="Settings.AlbumGroupingWriteTags" xml:space="preserve"><value>Save Grouping to Files</value><comment>Text in SettingsView.axaml (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingWriteTagsHint" xml:space="preserve"><value>Writes the album artist into the grouped songs' files, so other players and devices show the same album. This changes the files: they stay one album even if grouping is turned off later.</value><comment>Text in SettingsView.axaml (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingGrouping" xml:space="preserve"><value>Grouping albums…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingSplitting" xml:space="preserve"><value>Splitting grouped albums…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingMoved" xml:space="preserve"><value>{0:N0} songs moved to another album.</value><comment>Settings status line (GitHub #193/#190); {0} song count</comment></data>
+  <data name="Settings.AlbumGroupingUpToDate" xml:space="preserve"><value>Albums already up to date.</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingFailed" xml:space="preserve"><value>Albums could not be updated.</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingWriting" xml:space="preserve"><value>Saving album artists to files…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingWritten" xml:space="preserve"><value>Album artist saved to {0:N0} file(s).</value><comment>Settings status line (GitHub #193/#190); {0} file count</comment></data>
+  <data name="Settings.AlbumGroupingWrittenSome" xml:space="preserve"><value>Album artist saved to {0:N0} file(s); {1:N0} could not be saved.</value><comment>Settings status line (GitHub #193/#190); {0} files written, {1} files not written</comment></data>
+  <data name="Settings.AlbumGroupingNotWritten" xml:space="preserve"><value>{0} file(s) could not be saved (missing, read-only or open in another app). They stay grouped in Noctis; turn Save Grouping to Files off and on to try again.</value><comment>{0} file count; list of file names follows (GitHub #190)</comment></data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve"><value>Merge Featured Artists From Titles</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TurnFeatXTrack" xml:space="preserve"><value>Turn &quot;(feat. X)&quot; in titles into artist credits.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.GroupArtistsBy" xml:space="preserve"><value>Group Artists By</value><comment>Text in SettingsView.axaml</comment></data>

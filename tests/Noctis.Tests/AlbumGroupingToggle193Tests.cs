@@ -391,3 +391,123 @@ public class AlbumGroupingToggle193Tests : IDisposable
             Assert.Equal("Prem Poojari", f.Tag.Album);
     }
 }
+
+/// <summary>GitHub #193 / #190: Settings › Library › Group Untagged Albums and Save Grouping to Files.</summary>
+[Collection("MetadataServiceStatics")]
+public class AlbumGroupingSettings193Tests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_root, true); } catch { }
+    }
+
+    private sealed class NoOpPlayHistoryService : IPlayHistoryService
+    {
+        public IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
+    private (Noctis.ViewModels.SettingsViewModel Vm, FakeLibraryService Library) CreateSettings()
+    {
+        var library = new FakeLibraryService();
+        return (new Noctis.ViewModels.SettingsViewModel(new PersistenceService(_root), library, new NoOpPlayHistoryService()), library);
+    }
+
+    private static async Task SettleAsync()
+    {
+        for (var i = 0; i < 5; i++)
+        {
+            await Task.Delay(20);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+    }
+
+    [Fact]
+    public void Defaults_GroupingOn_WritingOff()
+    {
+        var s = new AppSettings();
+        Assert.True(s.AlbumGroupingEnabled);
+        Assert.False(s.AlbumGroupingWriteTags);
+        Assert.False(s.AlbumGroupingOriginalsRead);
+    }
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task TurningGroupingOff_AppliesToTheLibrary_IsSaved_AndLoadsWithoutReapplying()
+    {
+        var (vm, library) = CreateSettings();
+        await vm.LoadAsync();
+        Assert.True(vm.AlbumGroupingEnabled);
+        Assert.False(vm.AlbumGroupingWriteTags);
+        Assert.Empty(library.AlbumGroupingCalls); // the library reads the setting itself at load
+        library.AlbumGroupingMoved = 3;
+
+        vm.AlbumGroupingEnabled = false;
+        await SettleAsync();
+
+        Assert.Equal(new[] { false }, library.AlbumGroupingCalls);
+        Assert.Equal(Noctis.Localization.Loc.T("Settings.AlbumGroupingMoved", 3), vm.ScanStatusText);
+        await vm.SaveAsync();
+
+        var (reloaded, reloadedLibrary) = CreateSettings();
+        await reloaded.LoadAsync();
+        Assert.False(reloaded.AlbumGroupingEnabled);
+        Assert.False(reloaded.GetSettings().AlbumGroupingEnabled);
+        Assert.Empty(reloadedLibrary.AlbumGroupingCalls);
+
+        reloaded.ResetSettingsToDefaults(new AppSettings());
+        await SettleAsync();
+        Assert.True(reloaded.AlbumGroupingEnabled);
+        Assert.Equal(new[] { true }, reloadedLibrary.AlbumGroupingCalls);
+    }
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task TurningWriteTagsOn_WritesNow_AndListsTheFilesNotSaved()
+    {
+        var (vm, library) = CreateSettings();
+        await vm.LoadAsync();
+        library.AlbumGroupingWriteResult = new AlbumGroupResult(Guid.Empty, 2, new[] { "03.mp3" });
+        var notices = new List<Noctis.Views.ConfirmationRequest>();
+        vm.ShowAlbumGroupingNotice = r =>
+        {
+            notices.Add(r);
+            return Task.FromResult(new Noctis.Views.ConfirmationResult(true, false));
+        };
+
+        vm.AlbumGroupingWriteTags = true;
+        await SettleAsync();
+
+        Assert.Equal(new[] { true }, library.AlbumGroupingWriteTagsCalls);
+        var notice = Assert.Single(notices);
+        Assert.Equal(new[] { "03.mp3" }, notice.Details);
+        Assert.Equal(Noctis.Localization.Loc.T("Settings.AlbumGroupingWrittenSome", 2, 1), vm.ScanStatusText);
+
+        // A later background pass reports on the status line only.
+        library.RaiseAlbumGroupingWritten(new AlbumGroupResult(Guid.Empty, 1, Array.Empty<string>()));
+        await SettleAsync();
+        Assert.Equal(Noctis.Localization.Loc.T("Settings.AlbumGroupingWritten", 1), vm.ScanStatusText);
+        Assert.Single(notices);
+
+        vm.AlbumGroupingWriteTags = false;
+        await SettleAsync();
+        Assert.Equal(new[] { true, false }, library.AlbumGroupingWriteTagsCalls);
+    }
+
+    [Fact]
+    public void SettingsView_HasBothToggles_AndSaveToFilesFollowsGrouping()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !File.Exists(Path.Combine(dir, "Noctis.sln")) && !Directory.Exists(Path.Combine(dir, "src", "Noctis")))
+            dir = Path.GetDirectoryName(dir);
+        Assert.NotNull(dir);
+        var xaml = File.ReadAllText(Path.Combine(dir!, "src", "Noctis", "Views", "SettingsView.axaml"));
+
+        Assert.Contains("IsChecked=\"{Binding AlbumGroupingEnabled}\"", xaml);
+        Assert.Contains("IsChecked=\"{Binding AlbumGroupingWriteTags}\"", xaml);
+        Assert.Contains("<Grid ColumnDefinitions=\"*,Auto\" IsEnabled=\"{Binding AlbumGroupingEnabled}\">", xaml);
+    }
+}
