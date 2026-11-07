@@ -82,6 +82,6 @@ public class MetadataSchemaStampTests : IDisposable
 
         var onDisk = await persistence.LoadSettingsAsync();
         Assert.Contains(removed, onDisk.ExcludedFilePaths);
-        Assert.Equal(12, onDisk.MetadataSchemaVersion);
+        Assert.Equal(13, onDisk.MetadataSchemaVersion);
     }
 }

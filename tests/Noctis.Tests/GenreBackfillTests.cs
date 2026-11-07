@@ -104,7 +104,7 @@ public class GenreBackfillTests : IDisposable
         Assert.Equal("Jazz", edited.Genre);
         // Only rows holding exactly one genre are read.
         Assert.Equal(new[] { "a.flac", "b.mp3", "c.flac", "f.flac" }, first.GenreReads.OrderBy(n => n, StringComparer.Ordinal));
-        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(13, _persistence.Settings.MetadataSchemaVersion); // then the MP3 length pass (v13)
         Assert.False(System.IO.File.Exists(Path.Combine(_persistence.DataDirectory, "genre-backfill.progress")));
 
         var second = await LaunchAsync();
@@ -121,7 +121,7 @@ public class GenreBackfillTests : IDisposable
         await LaunchAsync();
 
         Assert.Equal("Rock; Pop", flac.Genre);
-        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(13, _persistence.Settings.MetadataSchemaVersion); // then the MP3 length pass (v13)
     }
 
     [Fact]

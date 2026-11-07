@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 12;
+    private const int CurrentMetadataSchemaVersion = 13;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
     // Throttle scan progress so a large library (tens of thousands of files)
@@ -2152,7 +2152,7 @@ public class LibraryService : ILibraryService
 
                     // Last and on its own task: the v11 label and v12 genre passes can take many minutes on a
                     // hard disk and nothing above should wait for it.
-                    if (_labelBackfillPending || _genreBackfillPending || _tracks.Any(NeedsReplayGainRead))
+                    if (_labelBackfillPending || _genreBackfillPending || _mp3LengthBackfillPending || _tracks.Any(NeedsReplayGainRead))
                         LabelBackfill = Task.Run(RunTagBackfillsAsync);
                 }
                 catch (Exception ex)
@@ -3249,6 +3249,8 @@ public class LibraryService : ILibraryService
         _labelBackfillPending = settings.MetadataSchemaVersion < LabelSchemaVersion;
         // v12 (every genre of multi-genre files) runs after it, the same way.
         _genreBackfillPending = settings.MetadataSchemaVersion < GenreSchemaVersion;
+        // v13 (MP3 lengths an Info/VBRI header states) runs after that.
+        _mp3LengthBackfillPending = settings.MetadataSchemaVersion < Mp3LengthSchemaVersion;
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -3260,6 +3262,7 @@ public class LibraryService : ILibraryService
         // the genre pass v12.
         var stamp = _labelBackfillPending ? LabelSchemaVersion - 1
             : _genreBackfillPending ? GenreSchemaVersion - 1
+            : _mp3LengthBackfillPending ? Mp3LengthSchemaVersion - 1
             : CurrentMetadataSchemaVersion;
         if (settings.MetadataSchemaVersion < stamp)
         {
@@ -3574,9 +3577,12 @@ public class LibraryService : ILibraryService
     private const int LabelSchemaVersion = 11;
     // The schema version the genre pass stamps (GitHub #123 follow-up, 2026-10-10).
     private const int GenreSchemaVersion = 12;
+    // The schema version the MP3 length pass stamps (11-07: ffmpeg's "Info" header).
+    private const int Mp3LengthSchemaVersion = 13;
     // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the passes last.
     private bool _labelBackfillPending;
     private bool _genreBackfillPending;
+    private bool _mp3LengthBackfillPending;
     // A progress line in the session log every this many files.
     private const int LabelBackfillLogInterval = 250;
 
@@ -3642,8 +3648,44 @@ public class LibraryService : ILibraryService
                 // Only over the stale row it was read for: a genre typed meanwhile wins.
                 (t, v) => { if (Track.SplitGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
                 MarkPhoneTracks: false, Reindex: true);
-            await RunTagBackfillAsync(genre);
+            if (!await RunTagBackfillAsync(genre)) return;
         }
+
+        // 11-07: TagLib reads only a "Xing" header, so MP3s with an "Info" (or VBRI) header whose
+        // frame bitrate differs from the audio's (ffmpeg's: a 64 kbps frame before 128 kbps
+        // audio) were indexed at twice their length and half their bitrate, and a rescan skips
+        // unchanged files. Each local MP3's first frame is read once (a few KB) for the length
+        // its header states; only rows more than a second off change.
+        if (_mp3LengthBackfillPending)
+        {
+            var mp3 = new TagBackfill("mp3length", Mp3LengthSchemaVersion, "mp3length-backfill.progress",
+                NeedsMp3LengthCheck, ReadStatedMp3Length, ApplyStatedMp3Length,
+                MarkPhoneTracks: false, Reindex: true);
+            await RunTagBackfillAsync(mp3);
+        }
+    }
+
+    private static bool NeedsMp3LengthCheck(Track t) =>
+        Track.IsFilesystemPath(t.FilePath) && t.FilePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase);
+
+    // The MP3 length pass's progress-log value: "ticks|kbps" (invariant); empty = no header.
+    internal static string ReadStatedMp3Length(string path) =>
+        Mp3FrameScan.TryReadStatedLength(path, out var duration, out var kbps)
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{duration.Ticks}|{kbps}")
+            : string.Empty;
+
+    internal static void ApplyStatedMp3Length(Track track, string value)
+    {
+        var parts = value.Split('|');
+        if (parts.Length != 2
+            || !long.TryParse(parts[0], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var ticks)
+            || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var kbps)
+            || ticks <= 0 || kbps <= 0)
+            return;
+        var stated = TimeSpan.FromTicks(ticks);
+        if (Math.Abs((stated - track.Duration).TotalSeconds) <= 1.0) return;
+        track.Duration = stated;
+        track.Bitrate = kbps;
     }
 
     /// <summary>A local file whose ReplayGain tags were never read (indexed before #151's column).</summary>

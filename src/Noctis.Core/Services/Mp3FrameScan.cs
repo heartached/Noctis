@@ -69,6 +69,24 @@ internal static class Mp3FrameScan
         }
     }
 
+    /// <summary>The length a local MP3's first-frame header states (see the stream overload);
+    /// false for any other file or on error. Reads only the start of the file.</summary>
+    public static bool TryReadStatedLength(string path, out TimeSpan duration, out int averageKbps)
+    {
+        duration = TimeSpan.Zero;
+        averageKbps = 0;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 1, FileOptions.SequentialScan);
+            return TryReadStatedLength(stream, out duration, out averageKbps);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// The length the first frame's Xing/Info or VBRI header states (frame count x samples per
     /// frame), with the average bitrate of the audio bytes. TagLib reads only a "Xing" header:
