@@ -480,7 +480,7 @@
                                         DecodeWidth="256"
                                         ArtworkPath="{Binding Row[0].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[0].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[0].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[0].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[0].Track.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding Row[0].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         IsPlaying="{Binding Row[0].IsMarked}" />
@@ -490,7 +490,7 @@
                                         DecodeWidth="256"
                                         ArtworkPath="{Binding Row[1].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[1].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[1].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[1].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[1].Track.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding Row[1].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         IsPlaying="{Binding Row[1].IsMarked}" />
@@ -500,7 +500,7 @@
                                         DecodeWidth="256"
                                         ArtworkPath="{Binding Row[2].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[2].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[2].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[2].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[2].Track.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding Row[2].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         IsPlaying="{Binding Row[2].IsMarked}" />
@@ -556,7 +556,7 @@
                                         DecodeWidth="768"
                                         ArtworkPath="{Binding Row[7].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[7].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[7].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[7].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[7].Track.IsExplicit, FallbackValue=False}"
                                         TitleToolTip="{loc:T PlaybackBar.ViewAlbumTip}"
                                         ArtistCommand="{Binding GoToFocusedArtistCommand}">
@@ -626,7 +626,7 @@
                                         DecodeWidth="256"
                                         ArtworkPath="{Binding Row[12].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[12].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[12].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[12].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[12].Track.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding Row[12].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         IsPlaying="{Binding Row[12].IsMarked}" />
@@ -636,7 +636,7 @@
                                         DecodeWidth="256"
                                         ArtworkPath="{Binding Row[13].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[13].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[13].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[13].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[13].Track.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding Row[13].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         IsPlaying="{Binding Row[13].IsMarked}" />
@@ -646,7 +646,7 @@
                                         DecodeWidth="256"
                                         ArtworkPath="{Binding Row[14].Track.AlbumArtworkPath, FallbackValue={x:Null}}"
                                         Title="{Binding Row[14].Track.Title, FallbackValue=''}"
-                                        Artist="{Binding Row[14].Track.Artist, FallbackValue=''}"
+                                        Artist="{Binding Row[14].Track.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding Row[14].Track.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding Row[14].Track, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         IsPlaying="{Binding Row[14].IsMarked}" />
