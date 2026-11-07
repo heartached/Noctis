@@ -2826,9 +2826,22 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Playback, "Mute", "muted=False, source=adjust");
     }
 
+    /// <summary>
+    /// The island's artist line: the playing track's credit as every artist line shows it
+    /// (<see cref="Track.ArtistCreditDisplay"/>). A property of its own rather than a path through
+    /// CurrentTrack, which broke mid-chain while nothing played and logged a warning at every
+    /// startup; raised on a track change and when the display form flips (GitHub #187).
+    /// </summary>
+    public string CurrentArtistLine => CurrentTrack?.ArtistCreditDisplay ?? string.Empty;
+
+    /// <summary>Re-reads <see cref="CurrentArtistLine"/> after "Show artists as written in the
+    /// tags" flips (GitHub #187).</summary>
+    public void NotifyArtistLineChanged() => OnPropertyChanged(nameof(CurrentArtistLine));
+
     partial void OnCurrentTrackChanged(Track? value)
     {
         OnPropertyChanged(nameof(HasContent));
+        OnPropertyChanged(nameof(CurrentArtistLine));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
         OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();

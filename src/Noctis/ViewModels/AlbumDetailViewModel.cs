@@ -248,10 +248,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _settings = settings;
         _album = album;
 
-        // Parse individual artist names from the album artist field
-        var tokens = Track.ParseArtistTokens(album.Artist);
-        if (tokens.Length == 0) tokens = new[] { album.Artist };
-        ArtistTokens = tokens.Select((name, i) => new ArtistTokenItem(name, IsLast: i == tokens.Length - 1)).ToArray();
+        // One link per credited name, separators as the album artist line shows them
+        ArtistTokens = ArtistTokenItem.FromCredit(album.ArtistDisplay);
 
         // Load tracks (single Reset event instead of N Add events)
         Tracks.ReplaceAll(album.Tracks);
@@ -344,9 +342,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     partial void OnAlbumChanged(Album value)
     {
-        var tokens = Track.ParseArtistTokens(value.Artist);
-        if (tokens.Length == 0) tokens = new[] { value.Artist };
-        ArtistTokens = tokens.Select((name, i) => new ArtistTokenItem(name, IsLast: i == tokens.Length - 1)).ToArray();
+        ArtistTokens = ArtistTokenItem.FromCredit(value.ArtistDisplay);
         OnPropertyChanged(nameof(ArtistTokens));
         OnPropertyChanged(nameof(HasMultipleArtists));
         OnPropertyChanged(nameof(MoreByArtistTitle));
@@ -1285,8 +1281,36 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 }
 
-/// <summary>Display item for an individual artist name in a multi-artist album header.</summary>
-public record ArtistTokenItem(string Name, bool IsLast);
+/// <summary>
+/// Display item for an individual artist name in a multi-artist header (album page, lyrics
+/// page): the name as a link, then <see cref="Separator"/> as plain text up to the next name.
+/// </summary>
+public record ArtistTokenItem(string Name, bool IsLast, string Separator = ", ")
+{
+    /// <summary>
+    /// One item per credited name of <paramref name="shown"/> — the credit exactly as the
+    /// other artist lines show it — with the text between two names kept as the separator.
+    /// GitHub #187: these headers joined the names with a hard-coded ", ", so "A feat. B"
+    /// read "A feat. B" in Songs but "A, B" on the lyrics page, and "as tagged" was lost.
+    /// A credit with no name the splitter finds is one item holding the whole text.
+    /// </summary>
+    public static ArtistTokenItem[] FromCredit(string? shown)
+    {
+        if (string.IsNullOrWhiteSpace(shown)) return Array.Empty<ArtistTokenItem>();
+        var spans = ArtistCreditSpans.Locate(shown);
+        if (spans.Count == 0) return new[] { new ArtistTokenItem(shown.Trim(), IsLast: true, Separator: string.Empty) };
+
+        var items = new ArtistTokenItem[spans.Count];
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var last = i == spans.Count - 1;
+            var end = spans[i].Start + spans[i].Length;
+            var separator = last ? string.Empty : shown[end..spans[i + 1].Start];
+            items[i] = new ArtistTokenItem(spans[i].Name, last, separator);
+        }
+        return items;
+    }
+}
 
 /// <summary>A group of tracks belonging to a single disc within an album.
 /// Observable so large albums can stream rows in after first paint.</summary>

@@ -9,6 +9,8 @@ namespace Noctis.Helpers;
 /// <see cref="Track"/> and the player's <see cref="QueueRowLayout"/>, so a Settings change
 /// re-renders the realized rows without rebuilding the list. Before the layout binding
 /// resolves (a row not yet in the window) the default layout applies: title / artist.
+/// A third binding to the track's ArtistDisplay is not read; it only re-renders the row when
+/// "Show artists as written in the tags" flips (GitHub #187, Track.NotifyArtistDisplayChanged).
 /// </summary>
 public static class QueueRowConverters
 {

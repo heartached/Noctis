@@ -980,6 +980,12 @@ public class AppSettings : IJsonOnDeserializing
     /// (LibraryService.ApplyMergeFeaturedFromTitlesAsync).</summary>
     public bool MergeFeaturedFromTitles { get; set; } = true;
 
+    /// <summary>GitHub #187: show every artist line (rows, tiles, queue, player island, lyrics
+    /// page, mini player, media controls, Discord) exactly as the artist tag writes it ("Kraak
+    /// &amp; Smaak", "A feat. B", "A x B") instead of with separators read as commas. Display
+    /// only: the Artists section and artist links split credits as before. Off by default.</summary>
+    public bool ShowArtistsAsTagged { get; set; }
+
     /// <summary>Which tag the Artists section groups by (GitHub #51): "Artist" (default, the
     /// first credited track artist) or "AlbumArtist". Parsed by name via ArtistGroupModes.Parse.</summary>
     public string ArtistGroupMode { get; set; } = ArtistGroupModes.DefaultSetting;

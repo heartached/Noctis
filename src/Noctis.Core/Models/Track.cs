@@ -32,6 +32,29 @@ public partial class Track : ObservableObject
     }
     private string _artist = "Unknown Artist";
 
+    /// <summary>
+    /// GitHub #187: the artist tag's own credit, kept for "Show artists as written in the
+    /// tags" because <see cref="Artist"/> may carry names merged in from a "(feat. X)" title.
+    /// The scan stores it whenever the title names featured artists (the only case where the
+    /// two can differ); null means <see cref="Artist"/> is the tag's credit — or, for songs
+    /// indexed before this existed, not known yet (LibraryService.ResolveArtistTagTextAsync
+    /// re-reads those). Not written to the library file while null, so old files load as is.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ArtistAsTagged { get; set; }
+
+    /// <summary>
+    /// The artist tag's credit as written: <see cref="ArtistAsTagged"/> while
+    /// <see cref="Artist"/> still starts with it (title merging only appends names), else
+    /// <see cref="Artist"/> — so an edit of the credit that missed clearing the stored value
+    /// never shows a stale one.
+    /// </summary>
+    [JsonIgnore]
+    public string ArtistTagText =>
+        ArtistAsTagged is { Length: > 0 } tagged && _artist.StartsWith(tagged, StringComparison.Ordinal)
+            ? tagged
+            : _artist;
+
     /// <summary>Album artist (TPE2), used to group "Various Artists" compilations.</summary>
     public string AlbumArtist
     {
@@ -1087,13 +1110,30 @@ public partial class Track : ObservableObject
 
     /// <summary>
     /// Artist text to show in list views. When ShowComposerInAllViews is set and a Composer exists,
-    /// returns "Artist — Composer". Separators read as commas (<see cref="ArtistCredit.Display"/>).
+    /// returns "Artist — Composer". The credit part is <see cref="ArtistCreditDisplay"/>.
     /// </summary>
     [JsonIgnore]
     public string ArtistDisplay =>
         ShowComposerInAllViews && !string.IsNullOrWhiteSpace(Composer)
-            ? $"{ArtistCredit.Display(Artist)} \u2014 {Composer}"
-            : ArtistCredit.Display(Artist);
+            ? $"{ArtistCreditDisplay} \u2014 {Composer}"
+            : ArtistCreditDisplay;
+
+    /// <summary>
+    /// The artist credit as every surface shows it (rows, island, lyrics page, mini player,
+    /// media controls, Discord): separators read as commas (<see cref="ArtistCredit.Display(string?)"/>),
+    /// or the tag's text exactly as written while <see cref="ArtistCredit.ShowAsTagged"/> is on
+    /// (GitHub #187). Never the composer.
+    /// </summary>
+    [JsonIgnore]
+    public string ArtistCreditDisplay => ArtistCredit.Display(Artist, ArtistTagText);
+
+    /// <summary>Re-reads the computed artist lines in bindings after the display mode flips
+    /// (<see cref="ArtistCredit.ShowAsTagged"/>), which no property of this track notices.</summary>
+    public void NotifyArtistDisplayChanged()
+    {
+        OnPropertyChanged(nameof(ArtistCreditDisplay));
+        OnPropertyChanged(nameof(ArtistDisplay));
+    }
 
     /// <summary>
     /// Title text to show in list views. When UseWorkAndMovement is set and a Work/Movement exists,

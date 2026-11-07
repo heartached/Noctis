@@ -234,6 +234,7 @@
                                             <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                 <Binding />
                                                 <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                                <Binding Path="ArtistDisplay" />
                                             </MultiBinding>
                                         </TextBlock.Text>
                                     </TextBlock>
@@ -257,6 +258,7 @@
                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                             <Binding />
                                             <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                            <Binding Path="ArtistDisplay" />
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>
@@ -311,6 +313,7 @@
                                             <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                 <Binding />
                                                 <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                                <Binding Path="ArtistDisplay" />
                                             </MultiBinding>
                                         </TextBlock.Text>
                                     </TextBlock>
@@ -334,6 +337,7 @@
                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                             <Binding />
                                             <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                            <Binding Path="ArtistDisplay" />
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>

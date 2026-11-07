@@ -12,7 +12,6 @@
 
     <UserControl.Resources>
         <conv:TrackDisplayTitleConverter x:Key="DisplayTitle" />
-        <conv:TrackArtistConverter x:Key="DisplayArtist" />
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity" />
         <conv:VolumeToIconConverter x:Key="VolumeToIcon" />
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
@@ -1123,13 +1122,13 @@
                                         <Border CornerRadius="2"
                                                 Padding="1,0,2,0"
                                                 Margin="0,0,0,-2">
-                                            <!-- Converter form (same shape as the title above): binding through
-                                                 CurrentTrack.Artist broke mid-chain while no track was playing
-                                                 and logged a warning at every startup. Artist raises no INPC, so
-                                                 re-evaluating on CurrentTrack change is exactly equivalent. -->
+                                            <!-- Not a path through CurrentTrack.Artist: that broke mid-chain while
+                                                 no track was playing and logged a warning at every startup.
+                                                 CurrentArtistLine is raised on a track change and when the
+                                                 artist display form flips (GitHub #187). -->
                                             <TextBlock x:Name="ArtistNameTextBlock"
                                                        Classes="bar-artist"
-                                                       Text="{Binding CurrentTrack, Converter={StaticResource DisplayArtist}, FallbackValue=''}"
+                                                       Text="{Binding CurrentArtistLine}"
                                                        FontSize="10"
                                                        MaxLines="1"
                                                        Margin="0,1,0,0">
@@ -1143,7 +1142,7 @@
                                              the text; it rides the same offset as the text. -->
                                         <TextBlock x:Name="ArtistNameLoopCopy"
                                                    Classes="bar-artist"
-                                                   Text="{Binding CurrentTrack, Converter={StaticResource DisplayArtist}, FallbackValue=''}"
+                                                   Text="{Binding CurrentArtistLine}"
                                                    FontSize="10"
                                                    MaxLines="1"
                                                    Margin="45,1,0,0"

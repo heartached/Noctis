@@ -446,7 +446,7 @@
                                                VerticalAlignment="Center" />
                                 </Button>
                                 <TextBlock Classes="artist-credit-text"
-                                           Text=", "
+                                           Text="{Binding Separator}"
                                            FontSize="20"
                                            LineHeight="24"
                                            VerticalAlignment="Center"

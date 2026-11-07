@@ -135,7 +135,9 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
         string songId = song.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? Guid.NewGuid().ToString("N") : Guid.NewGuid().ToString("N");
         string title = song.TryGetProperty("title", out var tEl) ? tEl.GetString() ?? "Unknown Title" : "Unknown Title";
         string artist = ResolveTrackArtist(song, albumArtist);
-        // Merge featured artists from title (e.g. "200 MPH (feat. Diplo)") into the artist field
+        // Merge featured artists from title (e.g. "200 MPH (feat. Diplo)") into the artist field,
+        // keeping the server's own credit for "Show artists as written" (GitHub #187)
+        string? artistAsTagged = MetadataService.ArtistAsTaggedFor(artist, title);
         artist = MetadataService.EnrichArtistFromTitle(artist, title);
         string genre = song.TryGetProperty("genre", out var gEl) ? gEl.GetString() ?? string.Empty : string.Empty;
         int trackNo = song.TryGetProperty("track", out var trEl) && trEl.TryGetInt32(out var trVal) ? trVal : 0;
@@ -150,6 +152,7 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
             FilePath = $"navidrome://{connection.Id:N}/{songId}",
             Title = title,
             Artist = artist,
+            ArtistAsTagged = artistAsTagged,
             AlbumArtist = string.IsNullOrWhiteSpace(albumArtist) ? artist : albumArtist,
             Album = string.IsNullOrWhiteSpace(albumName) ? "Unknown Album" : albumName,
             Genre = genre ?? string.Empty,

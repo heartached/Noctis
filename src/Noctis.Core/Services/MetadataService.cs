@@ -332,7 +332,9 @@ public class MetadataService : IMetadataService
             ? Path.GetFileNameWithoutExtension(fileName)
             : tag.Title;
 
-        // Merge featured artists from title into artist field when Performers tag is incomplete
+        // Merge featured artists from title into artist field when Performers tag is incomplete.
+        // The tag's own credit is kept beside it for "Show artists as written" (GitHub #187).
+        var artistAsTagged = ArtistAsTaggedFor(artist, title);
         artist = EnrichArtistFromTitle(artist, title);
 
         var embeddedLyrics = EmbeddedLyrics.Read(file);
@@ -341,6 +343,7 @@ public class MetadataService : IMetadataService
             FilePath = filePath,
             Title = title,
             Artist = artist,
+            ArtistAsTagged = artistAsTagged,
             AlbumArtist = albumArtist,
             AlbumArtistFromTag = albumArtistFromTag,
             Album = album,
@@ -736,6 +739,10 @@ public class MetadataService : IMetadataService
         if (ok && Track.IsRealAlbumName(track.Album)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
             track.AlbumFromFolder = false;
+        // The file's artist tag now holds the credit as indexed (merged names included), so
+        // that is the credit "Show artists as written" shows from here on (GitHub #187).
+        if (ok && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.ArtistAsTagged = ArtistAsTaggedFor(track.Artist, track.Title);
         return ok;
     }
 
@@ -1588,6 +1595,15 @@ public class MetadataService : IMetadataService
         var join = ArtistCredit.JoinText;
         return artist + join + string.Join(join, missing);
     }
+
+    /// <summary>
+    /// GitHub #187: the value for <see cref="Track.ArtistAsTagged"/> — the tag's credit when the
+    /// title names featured artists (the only case <see cref="EnrichArtistFromTitle"/> can add
+    /// to it), else null. Stored even when nothing was merged, so the old-library pass
+    /// (LibraryService.ResolveArtistTagTextAsync) knows the song is resolved.
+    /// </summary>
+    internal static string? ArtistAsTaggedFor(string tagArtist, string title)
+        => ExtractFeaturedNamesFromTitle(title).Length > 0 ? tagArtist : null;
 
     /// <summary>
     /// Rewrites featured names that an older build merged in with a hard-coded " &amp; "

@@ -720,7 +720,7 @@
                                                    FontSize="17"
                                                    Foreground="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"/>
                                     </Button>
-                                    <TextBlock Text=", "
+                                    <TextBlock Text="{Binding Separator}"
                                                FontSize="17"
                                                Opacity="0.7"
                                                Foreground="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"

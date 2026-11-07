@@ -305,6 +305,7 @@ public sealed class JellyfinClient : IMediaServerClient
         var albumName = GetString(item, "Album") ?? album?.Name ?? "Unknown Album";
         var albumArtist = GetString(item, "AlbumArtist") ?? album?.Artist ?? string.Empty;
         var artist = ResolveArtists(item, albumArtist);
+        var artistAsTagged = MetadataService.ArtistAsTaggedFor(artist, title); // GitHub #187
         artist = MetadataService.EnrichArtistFromTitle(artist, title);
         if (string.IsNullOrWhiteSpace(albumArtist)) albumArtist = artist;
 
@@ -314,6 +315,7 @@ public sealed class JellyfinClient : IMediaServerClient
             FilePath = BuildStreamUrl(connection, itemId) ?? string.Empty,
             Title = title,
             Artist = artist,
+            ArtistAsTagged = artistAsTagged,
             AlbumArtist = albumArtist,
             Album = albumName,
             Genre = FirstOfArray(item, "Genres") ?? string.Empty,
