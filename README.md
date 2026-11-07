@@ -6,8 +6,6 @@
 
 **A music player that respects what's yours. Zero tracking, total control.**
 
-[noctisapp.cc](https://noctisapp.cc)
-
 [![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=E74856&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases) &nbsp; [![Support](https://img.shields.io/badge/SUPPORT-BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black&labelColor=4F4F4F)](https://buymeacoffee.com/heartached)
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
@@ -151,7 +149,6 @@ Options and client notes are in [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 ### Languages
 
 - [x] English, Arabic, French, German, Japanese, Korean, Russian, Spanish, Turkish, Simplified Chinese and Traditional Chinese
-- [x] Switch language from Settings without a restart
 
 <p align="center">
   <img src="docs/images/discord.png" width="380" alt="Discord Rich Presence" />
