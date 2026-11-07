@@ -18,6 +18,9 @@ public sealed class NoctisStateRecorder : ITrackStateRecorder
 
     internal void Attach(ITrackStateRecorder target) => _target = target;
 
+    /// <summary>Whether <paramref name="target"/> is the service attached last (the live one).</summary>
+    internal bool IsAttached(object target) => ReferenceEquals(_target, target);
+
     public void RecordTrackStates(IEnumerable<Track> tracks) => _target?.RecordTrackStates(tracks);
 }
 
@@ -184,7 +187,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         IndexDownloads();
         LoadCachedAvatar();
         stateRecorder?.Attach(this);
+        _recorder = stateRecorder;
+        _library.TracksAdded += OnLibraryTracksAdded;
     }
+
+    private readonly NoctisStateRecorder? _recorder;
 
     /// <summary>Tests: unpushed favorite/rating edits and queued plays.</summary>
     internal int PendingTrackCount { get { lock (_gate) return _pending.Tracks.Count; } }
@@ -443,6 +450,45 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             _isSyncing = true;
             _syncTask = Task.Run(() => RunSyncAsync(token), CancellationToken.None);
             return _syncTask;
+        }
+    }
+
+    /// <summary>1 while a follow-up sync for newly found phone files is queued.</summary>
+    private int _pairingSyncQueued;
+
+    /// <summary>
+    /// The phone's scan found files it did not have. A desktop song is paired with the phone's
+    /// own copy only while a sync imports the catalog (<see cref="UpdateLinks"/>), and that sync
+    /// reads the library as it is then: signed in while the first scan of a big library was still
+    /// reading files (or a folder added later), every song the scan reached afterwards stayed
+    /// twice, the desktop row and the phone's file, until some later sync (Discord #mobile-beta:
+    /// fixed only by signing out and in). So a sync follows, after the one running if any.
+    /// Only the service attached last answers (an older instance over the same library is dead).
+    /// </summary>
+    private void OnLibraryTracksAdded(object? sender, IReadOnlyList<Track> added)
+    {
+        if (!IsSignedIn || (_recorder is not null && !_recorder.IsAttached(this))) return;
+        if (!added.Any(t => t.SourceType == SourceType.Local)) return;
+        if (Interlocked.Exchange(ref _pairingSyncQueued, 1) == 1) return;
+        Task running;
+        lock (_gate) running = _syncTask ?? Task.CompletedTask;
+        // After the running sync: it may have read the library before these files were in it.
+        _ = running.ContinueWith(_ => PairingSyncAsync(), CancellationToken.None,
+            TaskContinuationOptions.None, TaskScheduler.Default).Unwrap();
+    }
+
+    private async Task PairingSyncAsync()
+    {
+        Interlocked.Exchange(ref _pairingSyncQueued, 0);
+        if (!IsSignedIn) return;
+        try
+        {
+            var result = await SyncNowAsync().ConfigureAwait(false);
+            DebugLog.Write("Account", $"sync after new phone files: {result.Songs} songs");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"sync after new phone files failed: {(ex as NoctisServerException)?.Kind.ToString() ?? ex.GetType().Name}");
         }
     }
 

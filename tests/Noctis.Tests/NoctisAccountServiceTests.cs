@@ -1495,6 +1495,32 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ASongTheScanFindsAfterASync_IsPairedWithoutAnotherManualSync()
+    {
+        // Discord #mobile-beta (Android beta 2): signed in while the phone's own scan was still
+        // running, the library showed the desktop song and the phone's file side by side until
+        // a sign-out and sign-in (a new sync) paired them.
+        var ct = TestContext.Current.CancellationToken;
+        _t3.Title = "Phone song";
+        _t3.Artist = "Tester";
+        _t3.Duration = TimeSpan.FromSeconds(1);
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        Assert.NotNull(_phoneLibrary.GetTrackById(_t3.Id));
+
+        Directory.CreateDirectory(PhoneMusic);
+        NoctisAccountLibraryTests.WriteMp3(Path.Combine(PhoneMusic, "local.mp3"), "Phone song");
+        await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
+        await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, ct);
+        var local = _phoneLibrary.Tracks.Single(t => t.SourceType == SourceType.Local);
+
+        await Until(() => svc.DesktopIdOf(local) == _t3.Id && _phoneLibrary.GetTrackById(_t3.Id) is null && !svc.IsSyncing);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);                     // the file + Alpha + Beta, not 4
+        var mix = Assert.Single(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.Equal(new[] { _t1.Id, local.Id }, mix.TrackIds);
+    }
+
+    [Fact]
     public async Task APairedSongDownload_IsDropped_TheFilePlaysInstead()
     {
         var ct = TestContext.Current.CancellationToken;
