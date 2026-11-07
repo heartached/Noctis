@@ -8247,7 +8247,10 @@
                             <TextBlock Text="{loc:T Settings.TotalPlays}" FontSize="12" Opacity="0.55"/>
                         </StackPanel>
                         <StackPanel Spacing="2">
-                            <TextBlock Text="{Binding TimeListened}" FontSize="28" FontWeight="Bold" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" Foreground="{DynamicResource AccentTextBrush}"/>
+                            <!-- Shrinks to fit instead of "4d 9h 2..." (seen in Discord screenshots 11-06). -->
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,0,16,0">
+                                <TextBlock Text="{Binding TimeListened}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+                            </Viewbox>
                             <TextBlock Text="{loc:T Settings.TimeListened}" FontSize="12" Opacity="0.55"/>
                         </StackPanel>
                         <StackPanel Spacing="2">
