@@ -2125,6 +2125,11 @@ public class LibraryService : ILibraryService
                     // knows which album artists are real tags.
                     await ResolveAlbumArtistSourcesAsync();
 
+                    // GitHub #187: with "Show artists as written in the tags" on, songs indexed
+                    // before the tag's own credit was kept get it re-read once.
+                    if (ArtistCredit.ShowAsTagged)
+                        await ResolveArtistTagTextAsync();
+
                     // Heal albums whose cover was never cached. Scans only extract
                     // art for new/changed files plus a one-shot post-scan pass, so
                     // any interruption or unreadable file left an album artless for
@@ -2945,6 +2950,9 @@ public class LibraryService : ILibraryService
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         ArtistCredit.Configure(ArtistGroupModes.Parse(settings.ArtistGroupMode), settings.ArtistTagSeparators,
             settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+        // Only ever switched on here (SettingsViewModel owns the flag and loads first): a
+        // default-settings library must not switch off what the settings page turned on.
+        if (settings.ShowArtistsAsTagged) ArtistCredit.ShowAsTagged = true;
         MetadataService.MusicRootFolders = settings.MusicFolders
             .Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
 
@@ -3752,6 +3760,7 @@ public class LibraryService : ILibraryService
             var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
             if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
             {
+                track.ArtistAsTagged ??= track.Artist; // the tag's credit, before merging (#187)
                 track.Artist = enriched;
                 changedCount++;
             }
@@ -3789,6 +3798,7 @@ public class LibraryService : ILibraryService
                         var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
                         if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
                         {
+                            track.ArtistAsTagged ??= track.Artist; // the tag's credit, before merging (#187)
                             track.Artist = enriched;
                             changed.Add(track);
                         }
@@ -3832,6 +3842,7 @@ public class LibraryService : ILibraryService
                                     if (!string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal))
                                     {
                                         track.Artist = refreshed.Artist;
+                                        track.ArtistAsTagged = refreshed.ArtistAsTagged;
                                         lock (changed) changed.Add(track);
                                     }
                                 }
@@ -3938,7 +3949,10 @@ public class LibraryService : ILibraryService
                                 lock (changed)
                                 {
                                     if (artistChanged)
+                                    {
                                         track.Artist = refreshed.Artist;
+                                        track.ArtistAsTagged = refreshed.ArtistAsTagged;
+                                    }
                                     if (albumArtistChanged)
                                     {
                                         var oldAlbumId = track.AlbumId;
@@ -4018,6 +4032,73 @@ public class LibraryService : ILibraryService
                 // Non-fatal: the missing-artwork heal re-extracts the cover.
             }
         }
+    }
+
+    /// <summary>GitHub #187: a song indexed before <see cref="Track.ArtistAsTagged"/> existed
+    /// whose artist may carry names merged in from its title, in a file that can be re-read.</summary>
+    internal static bool NeedsArtistTagText(Track track) =>
+        track.ArtistAsTagged == null
+        && track.SourceType is SourceType.Local or SourceType.Smb
+        && track.HasFilesystemPath
+        && MetadataService.MayHaveMergedFeaturedCredit(track.Artist, track.Title);
+
+    /// <inheritdoc />
+    public async Task<int> ResolveArtistTagTextAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        var snapshot = _tracks;
+        var pending = await Task.Run(() => snapshot.Where(NeedsArtistTagText).ToList(), CancellationToken.None);
+        if (pending.Count == 0) return 0;
+
+        // Serialized with the artist-join pass, which re-reads the same tags.
+        try { await _artistJoinGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return 0; }
+
+        var resolved = 0;
+        try
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    Parallel.ForEach(
+                        pending,
+                        new ParallelOptions
+                        {
+                            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                            CancellationToken = token
+                        },
+                        track =>
+                        {
+                            try
+                            {
+                                if (!File.Exists(track.FilePath)) return;
+                                var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                if (refreshed == null) return;
+                                // Only the tag's credit is taken; Artist and everything else stay.
+                                track.ArtistAsTagged = refreshed.ArtistAsTagged ?? refreshed.Artist;
+                                Interlocked.Increment(ref resolved);
+                            }
+                            catch
+                            {
+                                // Unreadable now: stays unknown (the indexed credit shows) and is tried next time.
+                            }
+                        });
+                }
+                catch (OperationCanceledException) { }
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            _artistJoinGate.Release();
+        }
+
+        if (resolved == 0 || token.IsCancellationRequested) return resolved;
+        DebugLog.Write("Library", $"Artist credits as tagged (#187): read for {resolved} song(s)");
+        await SaveAsync();
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return resolved;
     }
 
     private static int EstimateBitrateKbps(long fileSizeBytes, TimeSpan duration)

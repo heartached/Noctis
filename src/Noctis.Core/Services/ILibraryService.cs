@@ -245,6 +245,14 @@ public interface ILibraryService
     Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// GitHub #187: songs indexed before <see cref="Track.ArtistAsTagged"/> existed whose
+    /// artist may hold names merged in from the title get the tag's own credit re-read, so
+    /// "Show artists as written in the tags" shows it. Bounded to those songs, local files
+    /// only; nothing else about a song changes. Returns how many songs were resolved.
+    /// </summary>
+    Task<int> ResolveArtistTagTextAsync(CancellationToken ct = default) => Task.FromResult(0);
+
+    /// <summary>
     /// Extracts and caches covers for indexed albums that have none (embedded tag art
     /// when enabled, else a cover image beside the tracks), then republishes and
     /// persists the indexes if anything was healed. Albums that already have cached

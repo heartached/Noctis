@@ -3442,7 +3442,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
             var dto = new DiscordPresenceTrack(
                 track.Title ?? "Unknown",
-                track.Artist ?? "Unknown Artist",
+                // As every artist line shows it, not the stored credit ("A; B"; GitHub #187).
+                track.ArtistCreditDisplay,
                 track.Album,
                 artworkUrl,
                 ShowAlbum: Settings.DiscordShowAlbum,

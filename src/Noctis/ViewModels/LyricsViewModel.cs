@@ -1246,13 +1246,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private void RefreshHeaderCredits()
     {
         var track = _player.CurrentTrack;
-        var tokens = BuildArtistTokens(ArtistCredit.Display(track?.Artist));
+        var tokens = BuildArtistTokens(track?.ArtistCreditDisplay);
         ArtistTokens = tokens;
         HasMultipleArtists = tokens.Length > 1;
         AlbumTrackCount = track is null ? 0 : ResolveAlbumTrackCount(track, _library.GetAlbumById(track.AlbumId));
     }
 
-    /// <summary>Splits the shown credit (<see cref="ArtistCredit.Display(string?)"/>) with the library's
+    /// <summary>Splits the shown credit (<see cref="Track.ArtistCreditDisplay"/>) with the library's
     /// configured separators (Settings → Library), keeping its separators as written.</summary>
     internal static ArtistTokenItem[] BuildArtistTokens(string? shown) => ArtistTokenItem.FromCredit(shown);
 

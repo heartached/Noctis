@@ -1205,6 +1205,7 @@
                                                     <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                         <Binding />
                                                         <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
@@ -1242,6 +1243,7 @@
                                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                             <Binding />
                                                             <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                            <Binding Path="ArtistDisplay" />
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
@@ -1259,6 +1261,7 @@
                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                     <Binding />
                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    <Binding Path="ArtistDisplay" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -1441,6 +1444,7 @@
                                                             <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                                 <Binding />
                                                                 <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
                                                             </MultiBinding>
                                                         </TextBlock.Text>
                                                     </TextBlock>
@@ -1478,6 +1482,7 @@
                                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                                     <Binding />
                                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                    <Binding Path="ArtistDisplay" />
                                                                 </MultiBinding>
                                                             </TextBlock.Text>
                                                         </TextBlock>
@@ -1495,6 +1500,7 @@
                                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                             <Binding />
                                                             <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                            <Binding Path="ArtistDisplay" />
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
@@ -1648,6 +1654,7 @@
                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                     <Binding />
                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    <Binding Path="ArtistDisplay" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -1663,6 +1670,7 @@
                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                     <Binding />
                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    <Binding Path="ArtistDisplay" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>

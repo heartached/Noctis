@@ -2411,6 +2411,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _liquidGlassEnabled;
     [ObservableProperty] private bool _collapseAlbumEditions;
     [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
+    [ObservableProperty] private bool _showArtistsAsTagged;
 
     // ── Artist grouping (GitHub #51) ──
 
@@ -3527,6 +3528,7 @@ public partial class SettingsViewModel : ViewModelBase
             RefreshFileAssociationState();
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
+            ShowArtistsAsTagged = _settings.ShowArtistsAsTagged;
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(_settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
@@ -4051,6 +4053,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.TaskbarMediaControlsEnabled = TaskbarMediaControlsEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
+        _settings.ShowArtistsAsTagged = ShowArtistsAsTagged;
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
         _settings.ArtistProtectedNames = ArtistProtectedNames.ToList();
@@ -5234,6 +5237,59 @@ public partial class SettingsViewModel : ViewModelBase
         _ = ApplyMergeFeaturedToLibraryAsync(value);
     }
 
+    partial void OnShowArtistsAsTaggedChanged(bool value)
+    {
+        // Mirrored even during settings load, so the first frame already shows the chosen form.
+        ArtistCredit.ShowAsTagged = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        RefreshArtistLines();
+        // Songs indexed before the tag's own credit was kept get it read once (GitHub #187).
+        if (value) _ = ResolveArtistTagTextAsync();
+    }
+
+    /// <summary>
+    /// Re-renders every artist line after the display form flips: the rows and now-playing
+    /// lines bound to a track's ArtistDisplay (one change notification per track; only realized
+    /// rows listen), and the album tiles, which the index rebuild re-creates.
+    /// </summary>
+    private void RefreshArtistLines()
+    {
+        NotifyArtistLines();
+        _library.NotifyMetadataChanged();
+    }
+
+    private void NotifyArtistLines()
+    {
+        var seen = new HashSet<Track>(ReferenceEqualityComparer.Instance);
+        foreach (var track in _library.AllTracks)
+            if (seen.Add(track)) track.NotifyArtistDisplayChanged();
+        if (_player != null)
+        {
+            // Queue entries can be files outside the library (opened from Explorer).
+            if (_player.CurrentTrack is { } current && seen.Add(current)) current.NotifyArtistDisplayChanged();
+            _player.NotifyArtistLineChanged();
+            foreach (var track in _player.UpNext)
+                if (seen.Add(track)) track.NotifyArtistDisplayChanged();
+            foreach (var track in _player.History)
+                if (seen.Add(track)) track.NotifyArtistDisplayChanged();
+        }
+    }
+
+    private async Task ResolveArtistTagTextAsync()
+    {
+        try
+        {
+            // Album tiles show the album artist, which this pass does not touch.
+            if (await _library.ResolveArtistTagTextAsync() > 0)
+                Dispatcher.UIThread.Post(NotifyArtistLines);
+        }
+        catch (Exception)
+        {
+            // Non-fatal: the indexed credit shows until the next start repeats the pass.
+        }
+    }
+
     partial void OnArtistGroupModeChanged(string value)
     {
         OnPropertyChanged(nameof(IsArtistGroupByArtist));
@@ -6378,7 +6434,7 @@ public partial class SettingsViewModel : ViewModelBase
         var artworkUrl = _loon?.GetArtworkUrl(track.AlbumArtworkPath);
         var dto = new DiscordPresenceTrack(
             Title: track.Title ?? "Unknown",
-            Artist: track.Artist ?? "Unknown Artist",
+            Artist: track.ArtistCreditDisplay,
             Album: track.Album,
             ArtworkUrl: artworkUrl,
             ShowAlbum: DiscordShowAlbum,
@@ -7882,6 +7938,7 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerPort = defaultSettings.NoctisServerPort;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
+            ShowArtistsAsTagged = defaultSettings.ShowArtistsAsTagged;
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(defaultSettings.ArtistProtectedNames);
