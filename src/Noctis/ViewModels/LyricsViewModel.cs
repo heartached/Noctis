@@ -1246,20 +1246,15 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private void RefreshHeaderCredits()
     {
         var track = _player.CurrentTrack;
-        var tokens = BuildArtistTokens(track?.Artist);
+        var tokens = BuildArtistTokens(ArtistCredit.Display(track?.Artist));
         ArtistTokens = tokens;
         HasMultipleArtists = tokens.Length > 1;
         AlbumTrackCount = track is null ? 0 : ResolveAlbumTrackCount(track, _library.GetAlbumById(track.AlbumId));
     }
 
-    /// <summary>Splits a credit with the library's configured separators (Settings → Library).</summary>
-    internal static ArtistTokenItem[] BuildArtistTokens(string? artist)
-    {
-        if (string.IsNullOrWhiteSpace(artist)) return Array.Empty<ArtistTokenItem>();
-        var names = Track.ParseArtistTokens(artist);
-        if (names.Length == 0) names = new[] { artist.Trim() };
-        return names.Select((n, i) => new ArtistTokenItem(n, IsLast: i == names.Length - 1)).ToArray();
-    }
+    /// <summary>Splits the shown credit (<see cref="ArtistCredit.Display(string?)"/>) with the library's
+    /// configured separators (Settings → Library), keeping its separators as written.</summary>
+    internal static ArtistTokenItem[] BuildArtistTokens(string? shown) => ArtistTokenItem.FromCredit(shown);
 
     /// <summary>The album's grouped count (every disc) when the library knows it, else the tag's per-disc total.</summary>
     internal static int ResolveAlbumTrackCount(Track track, Album? album)
