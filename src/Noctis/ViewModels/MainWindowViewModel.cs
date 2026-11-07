@@ -411,6 +411,12 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
         Player.SetSettingsViewModel(Settings);
+        // GitHub #186: the island's quick playlist pop-up with none set leads to their pickers.
+        Player.QuickPlaylistSettingsRequested += (_, _) =>
+        {
+            Settings.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+            OpenSettings();
+        };
         Player.SetPlayHistory(playHistory);
         if (App.Services?.GetService<Services.Waveform.WaveformService>() is { } waveforms)
             Player.SetWaveformService(waveforms);

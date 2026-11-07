@@ -189,7 +189,13 @@ internal sealed class FakeLibraryService : ILibraryService
     public List<Album> ArtistAlbums { get; } = new();
     public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) =>
         ArtistAlbums.Where(a => string.Equals(a.Artist, artistName, StringComparison.OrdinalIgnoreCase)).ToList();
-    public Task RemoveTrackAsync(Guid id) => Task.CompletedTask;
+    /// <summary>Every RemoveTrackAsync id, in order.</summary>
+    public List<Guid> RemovedTrackIds { get; } = new();
+    public Task RemoveTrackAsync(Guid id)
+    {
+        RemovedTrackIds.Add(id);
+        return Task.CompletedTask;
+    }
     public Task RemoveTracksAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
     /// <summary>Old id → new id that RelocateTracksAsync reports (empty by default).</summary>
     public Dictionary<Guid, Guid> RelocateRemap { get; } = new();

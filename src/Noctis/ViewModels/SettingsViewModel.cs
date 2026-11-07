@@ -529,6 +529,12 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _ = RefreshAnimatedArtworkCacheUsageAsync();
         }
+        // GitHub #186: playlists are renamed, made and deleted while Settings is closed.
+        else if (tab == TabPlayer)
+        {
+            RefreshQuickPlaylistOptions();
+            OnPropertyChanged(nameof(ShowTrashFolderMissingHint));
+        }
     }
 
     // ── Profile ──
@@ -1162,6 +1168,123 @@ public partial class SettingsViewModel : ViewModelBase
     /// Settings row says where the lyrics page still opens from.</summary>
     public bool ShowArtworkLyricsHint =>
         !PlaybackBarShowLyrics && !IslandArtworkClicks.Parse(PlaybackBarArtworkClick).OpensLyrics();
+
+    /// <summary>GitHub #186: the island's Move to Trash button (off by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowTrash;
+    /// <summary>GitHub #186: where Move to Trash puts the song; empty = the Recycle Bin / Trash.</summary>
+    [ObservableProperty] private string _playbackBarTrashFolder = string.Empty;
+    /// <summary>GitHub #186: the island's Quick Add to Playlist button (off by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowQuickPlaylist;
+
+    /// <summary>The Trash folder row's status: a set folder that's gone falls back to the bin.</summary>
+    public bool ShowTrashFolderMissingHint =>
+        !string.IsNullOrWhiteSpace(PlaybackBarTrashFolder) && !TrashFolderMover.IsUsable(PlaybackBarTrashFolder);
+
+    /// <summary>GitHub #186: the three quick playlist slots (<see cref="Guid.Empty"/> = None).</summary>
+    private Guid[] _quickPlaylistSlots = new Guid[QuickPlaylists.MaxSlots];
+
+    /// <summary>The quick playlist pickers' rows: None, then every manual playlist by its
+    /// current name. Rebuilt when the Player tab is shown (<see cref="RefreshQuickPlaylistOptions"/>).</summary>
+    public IReadOnlyList<LyricsChoiceOption> QuickPlaylistOptions
+    {
+        get => _quickPlaylistOptions;
+        private set => SetProperty(ref _quickPlaylistOptions, value);
+    }
+    private IReadOnlyList<LyricsChoiceOption> _quickPlaylistOptions = new[] { NoQuickPlaylistOption() };
+
+    private static LyricsChoiceOption NoQuickPlaylistOption() => new(string.Empty, Loc.T("Settings.QuickPlaylistNone"));
+
+    /// <summary>Re-reads the playlists (renamed, added, deleted since the last look) into the
+    /// pickers; a slot whose playlist is gone shows None.</summary>
+    public void RefreshQuickPlaylistOptions()
+    {
+        var options = new List<LyricsChoiceOption> { NoQuickPlaylistOption() };
+        if (_player?.Playlists is { } playlists)
+            options.AddRange(playlists
+                .Where(p => !p.IsSmartPlaylist)
+                .Select(p => new LyricsChoiceOption(p.Id.ToString(), p.Name)));
+        QuickPlaylistOptions = options;
+        RaiseQuickPlaylistSelections();
+    }
+
+    public LyricsChoiceOption? SelectedQuickPlaylist1 { get => QuickPlaylistOption(0); set => SetQuickPlaylistSlot(0, value); }
+    public LyricsChoiceOption? SelectedQuickPlaylist2 { get => QuickPlaylistOption(1); set => SetQuickPlaylistSlot(1, value); }
+    public LyricsChoiceOption? SelectedQuickPlaylist3 { get => QuickPlaylistOption(2); set => SetQuickPlaylistSlot(2, value); }
+
+    /// <summary>The slots as stored (and as the player reads them).</summary>
+    public IReadOnlyList<Guid> QuickPlaylistSlots => _quickPlaylistSlots;
+
+    private LyricsChoiceOption QuickPlaylistOption(int slot)
+    {
+        var id = _quickPlaylistSlots[slot];
+        var value = id == Guid.Empty ? string.Empty : id.ToString();
+        return QuickPlaylistOptions.FirstOrDefault(o => o.Value == value) ?? QuickPlaylistOptions[0];
+    }
+
+    private void SetQuickPlaylistSlot(int slot, LyricsChoiceOption? option)
+    {
+        // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+        if (option is null) return;
+        var id = Guid.TryParse(option.Value, out var parsed) ? parsed : Guid.Empty;
+        if (_quickPlaylistSlots[slot] == id) return;
+        var slots = (Guid[])_quickPlaylistSlots.Clone();
+        slots[slot] = id;
+        SetQuickPlaylistSlots(slots);
+    }
+
+    /// <summary>Loads, resets and the pickers all land here. A fresh array each time, so the
+    /// player sees a new list (its own change notification) rather than an edit in place.</summary>
+    private void SetQuickPlaylistSlots(IEnumerable<Guid>? stored)
+    {
+        _quickPlaylistSlots = QuickPlaylists.Slots(stored);
+        RaiseQuickPlaylistSelections();
+        ApplyPlayerSettings();
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    private void RaiseQuickPlaylistSelections()
+    {
+        OnPropertyChanged(nameof(SelectedQuickPlaylist1));
+        OnPropertyChanged(nameof(SelectedQuickPlaylist2));
+        OnPropertyChanged(nameof(SelectedQuickPlaylist3));
+        OnPropertyChanged(nameof(QuickPlaylistSlots));
+    }
+
+    /// <summary>Settings → Player → Trash folder → Browse.</summary>
+    [RelayCommand]
+    private async Task BrowseTrashFolderAsync()
+    {
+        try
+        {
+            var path = await PickTrashFolder();
+            if (!string.IsNullOrWhiteSpace(path))
+                PlaybackBarTrashFolder = path;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Settings", $"trash folder picker failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Trash folder → Clear: back to the Recycle Bin / Trash.</summary>
+    [RelayCommand]
+    private void ClearTrashFolder() => PlaybackBarTrashFolder = string.Empty;
+
+    /// <summary>The folder picker behind <see cref="BrowseTrashFolderCommand"/>; internal for tests.</summary>
+    internal Func<Task<string?>> PickTrashFolder { get; set; } = PickTrashFolderFromMainWindowAsync;
+
+    private static async Task<string?> PickTrashFolderFromMainWindowAsync()
+    {
+        var owner = (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        var top = owner is null ? null : Avalonia.Controls.TopLevel.GetTopLevel(owner);
+        if (top is null) return null;
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+        {
+            Title = Loc.T("Settings.TrashFolder"),
+            AllowMultiple = false
+        });
+        return folders.Count > 0 ? folders[0].Path.LocalPath : null;
+    }
     [ObservableProperty] private bool _playbackBarShowIdlePill;
     [ObservableProperty] private bool _playbackBarShowTime;
     /// <summary>GitHub #93: waveform in the island / mini player seek bars (off by default).</summary>
@@ -3409,6 +3532,10 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowMiniPlayer = _settings.PlaybackBarShowMiniPlayer;
             PlaybackBarShowLyrics = _settings.PlaybackBarShowLyrics;
             PlaybackBarArtworkClick = IslandArtworkClicks.Parse(_settings.PlaybackBarArtworkClick).ToString();
+            PlaybackBarShowTrash = _settings.PlaybackBarShowTrash;
+            PlaybackBarTrashFolder = _settings.PlaybackBarTrashFolder ?? string.Empty;
+            PlaybackBarShowQuickPlaylist = _settings.PlaybackBarShowQuickPlaylist;
+            SetQuickPlaylistSlots(_settings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
             WaveformSeekBarEnabled = _settings.WaveformSeekBarEnabled;
@@ -3949,6 +4076,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowMiniPlayer = PlaybackBarShowMiniPlayer;
         _settings.PlaybackBarShowLyrics = PlaybackBarShowLyrics;
         _settings.PlaybackBarArtworkClick = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+        _settings.PlaybackBarShowTrash = PlaybackBarShowTrash;
+        _settings.PlaybackBarTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
+        _settings.PlaybackBarShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
+        _settings.PlaybackBarQuickPlaylistIds = _quickPlaylistSlots.ToList();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
         _settings.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
@@ -4314,6 +4445,10 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
         _player.IslandShowLyricsButton = PlaybackBarShowLyrics;
         _player.IslandArtworkClick = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+        _player.IslandShowTrash = PlaybackBarShowTrash;
+        _player.IslandTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
+        _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
+        _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
@@ -5796,6 +5931,26 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnPlaybackBarShowMiniPlayerChanged(bool value)
     {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowTrashChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarTrashFolderChanged(string value)
+    {
+        OnPropertyChanged(nameof(ShowTrashFolderMissingHint));
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowQuickPlaylistChanged(bool value)
+    {
+        if (value) RefreshQuickPlaylistOptions();
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -8002,6 +8157,10 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowMiniPlayer = defaultSettings.PlaybackBarShowMiniPlayer;
             PlaybackBarShowLyrics = defaultSettings.PlaybackBarShowLyrics;
             PlaybackBarArtworkClick = defaultSettings.PlaybackBarArtworkClick;
+            PlaybackBarShowTrash = defaultSettings.PlaybackBarShowTrash;
+            PlaybackBarTrashFolder = defaultSettings.PlaybackBarTrashFolder;
+            PlaybackBarShowQuickPlaylist = defaultSettings.PlaybackBarShowQuickPlaylist;
+            SetQuickPlaylistSlots(defaultSettings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
             WaveformSeekBarEnabled = defaultSettings.WaveformSeekBarEnabled;

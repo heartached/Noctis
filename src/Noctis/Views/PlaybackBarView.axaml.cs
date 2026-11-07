@@ -127,6 +127,8 @@ public partial class PlaybackBarView : UserControl
             // Opening and two separators met on the main bar. Settle again once open.
             optionsMenu.Opened += (_, _) => MenuV2.RefreshLayout(optionsMenu.Items);
         }
+        if (QuickPlaylistButton.Flyout is MenuFlyout quickPlaylistMenu)
+            quickPlaylistMenu.Opening += OnQuickPlaylistMenuOpening;
 
         // Seek slider: use Tunnel routing so our handlers fire BEFORE the
         // Slider's internal Thumb/Track handlers.  When we mark Handled the
@@ -390,6 +392,8 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowFavorite) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowMiniPlayer) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowLyricsButton) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowQuickPlaylist) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowTrash) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTime))
         {
             UpdateIslandWidth();
@@ -1719,6 +1723,8 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowRepeat ? 1 : 0)
                         + (vm.IslandShowFavorite ? 1 : 0)
                         + (vm.IslandShowMiniPlayer ? 1 : 0)
+                        + (vm.IslandShowQuickPlaylist ? 1 : 0) // GitHub #186
+                        + (vm.IslandShowTrash ? 1 : 0)
                         // GitHub #183: Lyrics is a stock button; hidden, it hands its 36px back.
                         - (vm.IslandLyricsButtonVisible ? 0 : 1);
             return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);
@@ -1934,6 +1940,45 @@ public partial class PlaybackBarView : UserControl
         OpenWithMenuItem.Command ??= new CommunityToolkit.Mvvm.Input.RelayCommand<Noctis.Models.Track>(ExternalOpenApp.Open);
 
         MenuV2.RefreshLayout(menu.Items);
+    }
+
+    /// <summary>
+    /// GitHub #186: the quick playlist menu, rebuilt per open from Settings → Player's picks so a
+    /// renamed playlist shows its new name and a deleted one is gone. With none picked it offers
+    /// the full Add to Playlist dialog (search, every playlist, New Playlist) and a way to the
+    /// pickers, instead of listing every playlist in a pop-up that has no search.
+    /// </summary>
+    private void OnQuickPlaylistMenuOpening(object? sender, EventArgs e)
+    {
+        if (sender is not MenuFlyout menu || DataContext is not PlayerViewModel vm) return;
+        // Index 0 is the hidden placeholder from the XAML; see there.
+        for (var i = menu.Items.Count - 1; i >= 1; i--) menu.Items.RemoveAt(i);
+        foreach (var item in BuildQuickPlaylistItems(this, vm))
+            menu.Items.Add(item);
+    }
+
+    /// <summary>The quick playlist menu's rows; internal for tests.</summary>
+    internal static List<Control> BuildQuickPlaylistItems(Control host, PlayerViewModel vm)
+    {
+        var items = new List<Control>();
+        var playlists = vm.ResolvedQuickPlaylists;
+        foreach (var playlist in playlists)
+        {
+            var row = MenuV2.Row(host, playlist.Name, "MenuLinePlaylist");
+            row.Command = vm.AddCurrentTrackToQuickPlaylistCommand;
+            row.CommandParameter = playlist;
+            items.Add(row);
+        }
+        if (playlists.Count > 0) return items;
+
+        var addRow = MenuV2.Row(host, Loc.T("PlaybackBar.AddPlaylist"), "MenuLinePlaylistAdd");
+        addRow.Command = vm.AddCurrentTrackToNewPlaylistCommand;
+        items.Add(addRow);
+        items.Add(new Separator());
+        var chooseRow = MenuV2.Row(host, Loc.T("PlaybackBar.ChooseQuickPlaylists"), null);
+        chooseRow.Command = vm.ChooseQuickPlaylistsCommand;
+        items.Add(chooseRow);
+        return items;
     }
 
     private void BindViewArtist(PlayerViewModel vm, Noctis.Models.Track? track)

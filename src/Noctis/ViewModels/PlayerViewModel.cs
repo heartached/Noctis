@@ -1834,7 +1834,19 @@ public partial class PlayerViewModel : ViewModelBase
         if (choice == Views.RemoveFromLibraryChoice.Cancel)
             return;
 
-        // Advance to next track or stop playback
+        ReleaseCurrentTrackForRemoval();
+
+        if (choice == Views.RemoveFromLibraryChoice.Trash)
+            await Helpers.LibraryRemovalHelper.TrashLocalFilesAsync(new[] { trackToRemove });
+        await _library.RemoveTrackAsync(trackToRemove.Id);
+    }
+
+    /// <summary>Moves off the playing song before its file is trashed or moved (Remove from
+    /// Library, the island's Move to Trash, GitHub #186): the next song plays, or playback
+    /// stops when nothing is queued. The engine lets go of the old file asynchronously, so
+    /// the file operation after this retries while it is still held.</summary>
+    private void ReleaseCurrentTrackForRemoval()
+    {
         if (UpNext.Count > 0)
             AdvanceQueue(QueueAdvanceReason.UserSkip);
         else
@@ -1846,10 +1858,6 @@ public partial class PlayerViewModel : ViewModelBase
             AlbumArt = null;
             CurrentAnimatedCoverPath = null;
         }
-
-        if (choice == Views.RemoveFromLibraryChoice.Trash)
-            await Helpers.LibraryRemovalHelper.TrashLocalFilesAsync(new[] { trackToRemove });
-        await _library.RemoveTrackAsync(trackToRemove.Id);
     }
 
     // ── Public methods for queue management ───────────────────
@@ -2822,6 +2830,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasContent));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+        OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();
         ResolveMusicVideo();
         ResolveChapters();
