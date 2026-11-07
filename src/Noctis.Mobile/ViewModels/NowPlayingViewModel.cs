@@ -147,6 +147,16 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     public bool HasUpNext => UpNext.Count > 0;
 
+    /// <summary>
+    /// The queue's played songs for the Queue page's History (Settings › Played Songs in Queue),
+    /// oldest first, so the newest sits right above the current track; rebuilt with Up Next.
+    /// A queue that ran out keeps its last song loaded and in History: that one shows as the
+    /// current track, not here as well.
+    /// </summary>
+    public BulkObservableCollection<QueueHistoryItem> PlayedSongs { get; } = new();
+
+    public bool HasPlayedSongs => PlayedSongs.Count > 0;
+
     public bool HasTrack => CurrentTrack != null;
 
     /// <summary>What the queue was started from (an album, playlist or artist name, "Songs",
@@ -495,6 +505,23 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         QueueChanged();
     }
 
+    /// <summary>
+    /// A History row tapped: that song plays again from its place (<see cref="PlaybackQueue.JumpBack"/>),
+    /// the songs played after it, the current one included, back at the front of Up Next. A
+    /// row whose song is no longer at its place (the list changed under the finger) does nothing.
+    /// </summary>
+    [RelayCommand]
+    private void PlayFromHistory(QueueHistoryItem? item)
+    {
+        if (item == null || item.HistoryIndex >= _queue.History.Count
+            || !ReferenceEquals(_queue.History[item.HistoryIndex], item.Track)) return;
+        var track = _queue.JumpBack(item.HistoryIndex);
+        if (track == null) return;
+        _consecutiveErrors = 0;
+        _computerUnreachable = false;
+        StartTrack(track, fromPosition: null);
+    }
+
     public void PlayNext(Track track) { _queue.AddNext(track); QueueChanged(); }
     public void AddToQueue(Track track) { _queue.Add(track); QueueChanged(); }
     public void RemoveFromQueue(int upNextIndex) { _queue.RemoveAt(upNextIndex); QueueChanged(); }
@@ -533,6 +560,18 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         StopPlayback();
     }
     public void MoveInQueue(int fromUpNextIndex, int toUpNextIndex) { _queue.Move(fromUpNextIndex, toUpNextIndex); QueueChanged(); }
+
+    /// <summary>
+    /// A drag in the Queue page's one list (its History on): <see cref="PlayedSongs"/>, then the
+    /// current track, then <see cref="UpNext"/>; the song at <paramref name="from"/> ends at
+    /// <paramref name="to"/> (<see cref="PlaybackQueue.MoveInTimeline"/>). A song dragged above
+    /// the current one goes in before it, one dragged below it plays after it; the current one
+    /// keeps playing. Does nothing once the queue ran out (no current place to move around).
+    /// </summary>
+    public void MoveInQueueList(int from, int to)
+    {
+        if (_queue.MoveInTimeline(from, to)) QueueChanged();
+    }
 
     /// <summary>The Queue page's Clear: Up Next empties, the current track keeps playing.</summary>
     [RelayCommand]
@@ -629,12 +668,24 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         UpNext.ReplaceAll(_queue.UpNext);
         OnPropertyChanged(nameof(HasUpNext));
+        SyncPlayedSongs();
         OnPropertyChanged(nameof(HasNext));   // the mini player greys its Next with nothing to skip to
         // _queue.Current, not CurrentTrack: a queue that ran out keeps its last track loaded
         // for the mini bar, but has no place left to number.
         QueuePositionText = _queue.Current != null && _queue.PlayedInQueue is { } played
             ? Loc.T("Mobile.Player.TrackOf", played + 1, played + 1 + _queue.UpNext.Count)
             : string.Empty;
+    }
+
+    private void SyncPlayedSongs()
+    {
+        var history = _queue.History;
+        // A queue that ran out: its last song is History[0] and still shows as the current track.
+        var first = _queue.Current == null && history.Count > 0 && ReferenceEquals(history[0], CurrentTrack) ? 1 : 0;
+        var items = new List<QueueHistoryItem>(Math.Max(0, history.Count - first));
+        for (var i = history.Count - 1; i >= first; i--) items.Add(new QueueHistoryItem(history[i], i));
+        PlayedSongs.ReplaceAll(items);
+        OnPropertyChanged(nameof(HasPlayedSongs));
     }
 
     private void OnPlayerPosition(object? sender, TimeSpan position) => _marshal(() =>
@@ -879,3 +930,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         if (_volume != null) _volume.Changed -= OnVolumeChanged;
     }
 }
+
+/// <summary>A row of the Queue page's History: a played song and its place in
+/// <see cref="PlaybackQueue.History"/> (0 = the one played last), which a tap jumps back to.</summary>
+public sealed record QueueHistoryItem(Track Track, int HistoryIndex);

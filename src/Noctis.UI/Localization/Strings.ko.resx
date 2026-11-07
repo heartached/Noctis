@@ -6989,6 +6989,9 @@
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>다음 재생</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>지우기</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>다음에 재생할 항목 없음</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>기록</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>숨기기</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>보기</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>반복</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>아직 아무것도 없음</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>검색</value></data>
@@ -7081,6 +7084,8 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>지원되는 휴대폰에서 화면을 초당 최대 120번 새로 고쳐 스크롤과 애니메이션을 더 부드럽게 합니다. 끄면 화면이 60Hz로 유지되어 배터리를 아낄 수 있습니다.</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass 탭 표시</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>선택한 탭이 투명한 유리로 유지됩니다</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>재생한 곡을 대기열에 표시</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>재생한 곡이 현재 곡 위에 남습니다</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>사용 중인 저장 공간</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>모든 다운로드 제거</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>제거한 다운로드는 컴퓨터에 남아 있으며 계속 스트리밍할 수 있습니다.</value></data>
