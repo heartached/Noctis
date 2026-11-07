@@ -170,6 +170,13 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
 
     internal void Run()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { RunCore(); }
+        finally { Services.FrameStallMonitor.AddTime("search run", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
+
+    private void RunCore()
+    {
         _typingTimer?.Stop();
         RunCount++;
         bool Shows(SearchScope kind) => Scope == SearchScope.All || Scope == kind;

@@ -34,13 +34,20 @@ public class GlassDroplet : GlassPanel
         RenderTransformOrigin = RelativePoint.Center;
     }
 
+    public static readonly StyledProperty<bool> StaysGlassProperty =
+        AvaloniaProperty.Register<GlassDroplet, bool>(nameof(StaysGlass));
+
+    /// <summary>At rest the droplet keeps its clear-glass look (lens, colour split, rim light,
+    /// cleared tint) instead of the grey tinted pill; only the lift's growth and shadow come and go.</summary>
+    public bool StaysGlass { get => GetValue(StaysGlassProperty); set => SetValue(StaysGlassProperty, value); }
+
     /// <summary>0 at rest, 1 fully lifted.</summary>
     public double Lift { get => GetValue(LiftProperty); set => SetValue(LiftProperty, value); }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == LiftProperty) ApplyLift(Lift);
+        if (change.Property == LiftProperty || change.Property == StaysGlassProperty) ApplyLift(Lift);
     }
 
     /// <summary>Maps the lift onto the glass. At exactly 0 every setting is back at its
@@ -50,13 +57,15 @@ public class GlassDroplet : GlassPanel
         var l = Math.Clamp(lift, 0, 1);
         // Smoothstep: the lens and the colour split ease in and out of the transition's ends.
         var s = l * l * (3 - 2 * l);
-        Refraction = LiftedBand * s;
-        RefractionAmount = LiftedBend * s;
-        Magnification = 1 + (LiftedZoom - 1) * s;
-        Dispersion = s;
-        Specular = s;
+        // The glass look: the lift's, or always full when the pill stays glass.
+        var g = StaysGlass ? 1 : s;
+        Refraction = LiftedBand * g;
+        RefractionAmount = LiftedBend * g;
+        Magnification = 1 + (LiftedZoom - 1) * g;
+        Dispersion = g;
+        Specular = g;
         // Lifted, the droplet is clear glass: its grey tint fades out.
-        GlassTintOpacity = l <= 0 ? null : RestTintOpacity() * (1 - 0.85 * s);
+        GlassTintOpacity = g <= 0 ? null : RestTintOpacity() * (1 - 0.85 * g);
         // Lifted off the bar, it casts a soft shadow onto it.
         BoxShadow = s <= 0 ? default : new BoxShadows(new BoxShadow
         {

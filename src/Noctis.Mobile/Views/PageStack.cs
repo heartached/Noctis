@@ -44,6 +44,9 @@ public sealed class PageStack : Panel
     public bool IsDismissing { get; private set; }
 
     private readonly Dictionary<MobilePage, ContentControl> _views = new();
+    /// <summary>The view of a closed page that keeps its view (<see cref="MobilePage.KeepsView"/>),
+    /// hidden in the tree, so it keeps its styles; the next page of its kind gets it.</summary>
+    private ContentControl? _spare;
     private readonly Border _shade = new() { Background = Brushes.Black, Opacity = 0, IsHitTestVisible = false, IsVisible = false };
     private int _z;
 
@@ -199,6 +202,15 @@ public sealed class PageStack : Panel
     {
         Motion.Stop(view);
         if (view.Content is MobilePage page && _views.TryGetValue(page, out var v) && v == view) _views.Remove(page);
+        if (view.Content is MobilePage { KeepsView: true } && (_spare == null || _spare == view))
+        {
+            // Out of sight and out of reach, but still in the tree: no restyle when it comes back.
+            Rest(view);
+            view.IsVisible = false;
+            view.IsHitTestVisible = false;
+            _spare = view;
+            return;
+        }
         Children.Remove(view);
         view.Content = null;
     }
@@ -208,6 +220,17 @@ public sealed class PageStack : Panel
     private ContentControl ViewFor(MobilePage page, int? z = null)
     {
         if (_views.TryGetValue(page, out var view)) return view;
+        if (_spare is { Content: { } kept } spare && kept.GetType() == page.GetType())
+        {
+            // Same DataTemplate, so the presenter recycles the view: it only gets the new page.
+            _spare = null;
+            spare.Content = page;
+            spare.ZIndex = z ?? (_z += 2);
+            spare.IsVisible = true;
+            spare.IsHitTestVisible = true;
+            _views[page] = spare;
+            return spare;
+        }
         view = new ContentControl
         {
             Content = page,

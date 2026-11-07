@@ -215,6 +215,21 @@
         </Border>
         <Border Name="WashDither" IsHitTestVisible="False" />
 
+        <!-- Portrait: one column. Landscape (the code-behind, on resize): Now Playing's big cover
+             on the left half (SideArtBox, where Now Playing's landscape cover stands), the lyrics,
+             their header and the transport on the right. -->
+        <Grid Name="Split" ColumnDefinitions="*">
+        <Viewbox Name="SideArtBox" Stretch="Uniform" ClipToBounds="False" IsVisible="False">
+            <Button Name="SideArtButton" Classes="row" Padding="0" Command="{Binding ToggleLyricsCommand}"
+                    AutomationProperties.Name="{loc:T Mobile.Lyrics.Close}">
+                <Border Width="320" Height="320" CornerRadius="10" BoxShadow="0 10 28 0 #66000000">
+                    <Border CornerRadius="10" ClipToBounds="True" Background="#26FFFFFF">
+                        <Image Source="{Binding #HeaderArt.Source}" Stretch="UniformToFill" />
+                    </Border>
+                </Border>
+            </Button>
+        </Viewbox>
+        <Panel Name="LyricsSide">
         <!-- Top inset only: the lines run on under the gesture bar to the screen's edge. -->
         <Grid Name="Layout" Margin="{Binding TopSafePadding}" RowDefinitions="Auto,Auto,Auto,*">
             <!-- Apple's grabber: a tap goes back to Now Playing (Back does too). -->
@@ -438,5 +453,7 @@
                 </StackPanel>
             </StackPanel>
         </Panel>
+        </Panel>
+        </Grid>
     </Panel>
 </UserControl>

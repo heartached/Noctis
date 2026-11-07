@@ -117,7 +117,7 @@ public partial class AlbumNoteSheet : UserControl
         if (swiped)
         {
             // Down from where the finger left it, not shrinking back to the bottom edge.
-            NotePop.RenderTransform = TransformOperations.Parse($"translateY({NotePop.Bounds.Height + 40}px)");
+            NotePop.RenderTransform = Motion.TranslateY(NotePop.Bounds.Height + 40);
         }
         DispatcherTimer.RunOnce(() =>
         {
@@ -180,7 +180,7 @@ public partial class AlbumNoteSheet : UserControl
     private void Follow(double offset)
     {
         _dragOffset = offset;
-        NotePop.RenderTransform = TransformOperations.Parse($"translateY({offset}px)");
+        NotePop.RenderTransform = Motion.TranslateY(offset);
         var height = Math.Max(1, NotePop.Bounds.Height);
         Scrim.Transitions = null;
         Scrim.Opacity = Math.Clamp(1 - offset / height, 0, 1);

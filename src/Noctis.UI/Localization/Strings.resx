@@ -3280,6 +3280,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>No playlists match</value><comment>Playlists search found nothing</comment></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Search playlists</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Sort playlists</value><comment>Screen reader name</comment></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>New Playlist</value><comment>Playlists page: the + button's name and the prompt's title</comment></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Create</value><comment>Button: makes the new playlist</comment></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Play Next</value><comment>Menu action</comment></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Add to Queue</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Go to Album</value><comment>Menu action</comment></data>
@@ -3342,6 +3344,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Cover</value><comment>Now Playing Artwork choice: the plain square cover</comment></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Now Playing Artwork choice: the cover as a spinning record's label</comment></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value><comment>Now Playing Artwork choice: the cover printed on a spinning compact disc</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Now Playing Background</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Now Playing background brightness</value><comment>Screen reader name of the slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Makes the colours behind Now Playing darker or brighter. 0 is the standard look.</value><comment>Footnote under the slider</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Music Folders</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Downloads</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Listening</value><comment>Settings group</comment></data>
@@ -3381,6 +3386,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Smooth Motion</value><comment>Setting switch (screen refresh rate)</comment></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Up to 120 Hz</value><comment>Switch subtitle</comment></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Lets the screen refresh up to 120 times a second on phones that support it, for smoother scrolling and animation. Turn it off to keep the screen at 60 Hz and save battery.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass Tab Pill</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>The selected tab stays clear glass</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Storage Used</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Remove All Downloads</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Removed downloads stay on your computer and still stream.</value><comment>Footnote</comment></data>

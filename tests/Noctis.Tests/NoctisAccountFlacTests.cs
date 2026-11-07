@@ -100,6 +100,43 @@ public class NoctisAccountFlacTests : IAsyncLifetime
     private string Stream(Track t, bool flac) =>
         $"{_url}/rest/stream?id=tr-{t.Id:N}&c=NoctisAndroid&v=1.16.1" + (flac ? "&format=flac" : "");
 
+    /// <summary>Beta 2 feedback: "syncing problems which force me to sign out and in". The account
+    /// kept only the one address the phone signed in through (the QR code carries up to four of the
+    /// computer's), so once that address stopped answering (another network, a docked laptop's
+    /// other adapter) every sync failed until a new sign-in. Now a sync that cannot reach it tries
+    /// the computer's other addresses, takes one only where the same pinned computer answers, and
+    /// stays there.</summary>
+    [Fact]
+    public async Task ASyncThatCannotReachTheAddress_MovesToTheComputersOtherAddress()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = await SignedInAsync(preferFlac: false);
+        var dead = "http://127.0.0.1:1";
+        new NoctisAccountStore(AccountDir).SaveAccount(first.Account! with { ServerUrl = dead, OtherServerUrls = new[] { "http://127.0.0.1:2", _url } });
+
+        var svc = Phone(preferFlac: false);
+        Assert.Equal(dead, svc.Account!.ServerUrl);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_url, svc.Account!.ServerUrl);
+        Assert.Contains(dead, svc.Account.OtherServerUrls);
+        Assert.Equal(_url, new NoctisAccountStore(AccountDir).LoadAccount()!.ServerUrl);   // kept for the next start
+        Assert.StartsWith(_url + "/rest/stream", svc.ResolvePlaybackUri(Remote(_flacTrack)));
+    }
+
+    [Fact]
+    public async Task AnotherComputerAtTheOtherAddress_IsNeverTaken()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = await SignedInAsync(preferFlac: false);
+        var dead = "http://127.0.0.1:1";
+        // A different pin: whatever answers there is not the computer this phone signed in to.
+        new NoctisAccountStore(AccountDir).SaveAccount(first.Account! with { ServerUrl = dead, OtherServerUrls = new[] { _url }, Fingerprint = new string('A', 64) });
+        var svc = Phone(preferFlac: false);
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.SyncNowAsync(ct));
+        Assert.Equal(NoctisErrorKind.Unreachable, ex.Kind);
+        Assert.Equal(dead, svc.Account!.ServerUrl);
+    }
+
     [Fact]
     public async Task NoAlacDecoder_StreamsMp4SongsWithFormatFlac_AndTheDesktopSendsFlac()
     {

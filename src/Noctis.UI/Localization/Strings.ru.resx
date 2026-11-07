@@ -3280,6 +3280,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Плейлисты не найдены</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Поиск плейлистов</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Сортировка плейлистов</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Новый плейлист</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Создать</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Воспроизвести далее</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Добавить в очередь</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Перейти к альбому</value></data>
@@ -3342,6 +3344,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Обложка</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Винил</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Фон плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Яркость фона плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Делает цвета за экраном «Сейчас играет» темнее или светлее. 0 — стандартный вид.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Папки с музыкой</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Загрузки</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Прослушивание</value></data>
@@ -3381,6 +3386,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Плавное движение</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>До 120 Гц</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Экран обновляется до 120 раз в секунду на телефонах, которые это поддерживают, — прокрутка и анимация становятся плавнее. Выключите, чтобы оставить 60 Гц и сэкономить заряд.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Вкладка Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Выбранная вкладка остаётся прозрачным стеклом</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Удалённые загрузки остаются на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>

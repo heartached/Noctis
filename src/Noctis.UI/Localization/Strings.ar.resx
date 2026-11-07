@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>لا توجد قوائم تشغيل مطابقة</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>البحث في قوائم التشغيل</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>فرز قوائم التشغيل</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>قائمة تشغيل جديدة</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>إنشاء</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>التشغيل تاليًا</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>إضافة إلى قائمة الانتظار</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>الانتقال إلى الألبوم</value></data>
@@ -7035,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>الغلاف</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>أسطوانة</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>قرص CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>يجعل الألوان خلف شاشة قيد التشغيل أغمق أو أفتح. 0 هو المظهر القياسي.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>مجلدات الموسيقى</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>التنزيلات</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>الاستماع</value></data>
@@ -7074,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>حركة سلسة</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>حتى 120 هرتز</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>تتيح للشاشة التحديث حتى 120 مرة في الثانية على الهواتف التي تدعم ذلك، لتمرير ورسوم متحركة أكثر سلاسة. أوقفها لإبقاء الشاشة على 60 هرتز وتوفير البطارية.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>علامة تبويب Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>تبقى علامة التبويب المحددة زجاجًا شفافًا</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>مساحة التخزين المستخدمة</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>إزالة كل التنزيلات</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>تبقى التنزيلات المزالة على الكمبيوتر ويمكن بثها كالمعتاد.</value></data>

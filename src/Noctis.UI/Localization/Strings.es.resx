@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Ninguna playlist coincide</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Buscar playlists</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Ordenar playlists</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Nueva playlist</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Crear</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Reproducir a continuación</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Añadir a la cola</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Ir al álbum</value></data>
@@ -7035,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Portada</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinilo</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fondo de Reproduciendo</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Brillo del fondo de Reproduciendo</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Oscurece o aclara los colores detrás de Reproduciendo. 0 es el aspecto estándar.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Carpetas de música</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Descargas</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Escucha</value></data>
@@ -7074,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Movimiento fluido</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Hasta 120 Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permite que la pantalla se actualice hasta 120 veces por segundo en los teléfonos compatibles, para un desplazamiento y unas animaciones más fluidos. Desactívalo para mantener la pantalla a 60 Hz y ahorrar batería.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Pestaña de Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>La pestaña elegida queda en cristal claro</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Almacenamiento usado</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Eliminar todas las descargas</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Las descargas eliminadas siguen en tu equipo y se pueden seguir escuchando en streaming.</value></data>

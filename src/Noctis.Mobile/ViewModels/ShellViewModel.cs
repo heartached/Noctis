@@ -386,6 +386,7 @@ public sealed partial class ShellViewModel : ObservableObject
         _playlistsRoot?.Relabel();
         _favoritesRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
+        OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
@@ -411,7 +412,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
+        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -596,6 +597,25 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Now Playing draws a disc in place of the square cover.</summary>
     public bool ShowsDiscArtwork => NowPlayingArtwork != NowPlayingArtworkStyle.Cover;
 
+    /// <summary>Beta 2 request: Settings › Appearance › Now Playing Background, -50 (darker) to
+    /// 50 (brighter), 0 the stock look. Saved with the player bar's settings and applied live:
+    /// brighter thins Now Playing's shade (to 40% of it at 50), darker lays black over it (60%
+    /// at -50).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingShadeOpacity), nameof(NowPlayingDimOpacity), nameof(NowPlayingBrightnessLabel))]
+    private int _nowPlayingBrightness;
+
+    public const int NowPlayingBrightnessLimit = 50;
+
+    /// <summary>The opacity of Now Playing's shade (WashShade): 1 at 0 and darker.</summary>
+    public double NowPlayingShadeOpacity => 1 - 0.6 * Math.Max(0, NowPlayingBrightness) / NowPlayingBrightnessLimit;
+
+    /// <summary>The opacity of the black over the shade (WashDim): 0 at 0 and brighter.</summary>
+    public double NowPlayingDimOpacity => 0.6 * Math.Max(0, -NowPlayingBrightness) / NowPlayingBrightnessLimit;
+
+    /// <summary>The row's value: "0", "+20", "-35".</summary>
+    public string NowPlayingBrightnessLabel => NowPlayingBrightness.ToString("+0;-0;0", System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
     /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
     [ObservableProperty] private bool _isSuspended;
@@ -615,6 +635,13 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
     partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
     partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
+    partial void OnNowPlayingBrightnessChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBrightness));
+
+    /// <summary>Settings › Appearance › Liquid Glass Tab Pill (testers 11-06): the selected tab's
+    /// pill stays clear liquid glass at rest instead of settling into the dark tinted pill.
+    /// Off by default (the glass reads the bar's backdrop every frame it is shown).</summary>
+    [ObservableProperty] private bool _glassTabPill;
+    partial void OnGlassTabPillChanged(bool value) => SavePlayerBarSettings(nameof(GlassTabPill));
 
     private async Task LoadPlayerBarSettingsAsync()
     {
@@ -633,6 +660,9 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
+                    NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
             }
             finally
             {
@@ -658,6 +688,8 @@ public sealed partial class ShellViewModel : ObservableObject
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
+        var brightness = NowPlayingBrightness;
+        var glassPill = GlassTabPill;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -670,6 +702,8 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileArtworkPageColors = pages;
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
+                    settings.MobileNowPlayingBrightness = brightness;
+                    settings.MobileGlassTabPill = glassPill;
                 });
             }
             catch (Exception ex)
@@ -868,11 +902,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
-    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs));
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs"));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { OffersFavouritesFilter = false });
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { OffersFavouritesFilter = false });
 
-    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Mobile.RecentlyAdded", Library.RecentlyAdded));
+    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Mobile.RecentlyAdded", Library.RecentlyAdded, sortKey: "Mobile.RecentlyAdded"));
 
     [RelayCommand] private void OpenAlbums() => Navigate(new AlbumGridPageViewModel(this));
 
@@ -883,7 +917,7 @@ public sealed partial class ShellViewModel : ObservableObject
     // Library sections' › headers.
     [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Mobile.Pinned", () => Library.PinnedRail));
 
-    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks));
+    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks, sortKey: "Mobile.OnRepeat"));
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
@@ -956,6 +990,24 @@ public sealed partial class ShellViewModel : ObservableObject
             FieldPlaceholder = Loc.T("Mobile.PlaylistName"),
             FieldText = current.Name,
         });
+    }
+
+    /// <summary>The Playlists page's New Playlist (+): the Rename prompt's name field, empty; the
+    /// playlist is made as a song's "Add to Playlist › New playlist" makes one, with no songs yet.</summary>
+    [RelayCommand]
+    private void AskNewPlaylist() =>
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.Playlists.New"), string.Empty,
+            new[] { new PromptAction(Loc.T("Mobile.Create"), p => CreatePlaylistAsync(p.Entered)) })
+        {
+            HasField = true,
+            FieldPlaceholder = Loc.T("Mobile.PlaylistName"),
+        });
+
+    public async Task CreatePlaylistAsync(string name)
+    {
+        name = name.Trim();
+        if (name.Length == 0) return;
+        await Library.CreatePlaylistAsync(name);
     }
 
     public async Task RenamePlaylistAsync(Playlist playlist, string name)
@@ -1269,6 +1321,7 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
+        await LoadListSortsAsync();
         await Background.LoadAsync();
         await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads

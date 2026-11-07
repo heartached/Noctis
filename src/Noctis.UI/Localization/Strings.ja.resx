@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>一致するプレイリストはありません</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>プレイリストを検索</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>プレイリストを並べ替え</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>新規プレイリスト</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>作成</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>次に再生</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>キューに追加</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>アルバムへ移動</value></data>
@@ -7035,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>ジャケット</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>レコード</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>再生中の背景</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>再生中の背景の明るさ</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生中画面の背景色を暗く、または明るくします。0 が標準です。</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音楽フォルダ</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>ダウンロード</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>リスニング</value></data>
@@ -7074,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>スムーズモーション</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最大120Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>対応する端末では画面を毎秒最大120回更新し、スクロールやアニメーションをより滑らかにします。オフにすると画面は60Hzになり、バッテリーを節約できます。</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass タブ</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>選択中のタブを透明なガラスのままにします</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>使用済みストレージ</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>削除したダウンロードはコンピュータに残り、引き続きストリーミング再生できます。</value></data>

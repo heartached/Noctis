@@ -558,6 +558,18 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06). -->
+                                    <ToggleButton Name="GlassTabPillSwitch" Classes="switch-row" IsChecked="{Binding Shell.GlassTabPill}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.GlassTabPill}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.GlassTabPill}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.GlassTabPillHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Smooth Motion: up to 120 Hz on, 60 Hz off (AndroidFrameRate). -->
                                     <ToggleButton Name="SmoothMotionSwitch" Classes="switch-row" IsChecked="{Binding SmoothMotion}"
                                                   AutomationProperties.Name="{loc:T Mobile.Settings.SmoothMotion}">
@@ -572,6 +584,23 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock Name="SmoothMotionFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Settings.SmoothMotionFootnote}" />
+                        </StackPanel>
+
+                        <!-- Now Playing Background: the wash darker or brighter, live (beta 2 request). -->
+                        <StackPanel>
+                            <Border Name="NowPlayingBrightnessCard" Classes="group-card">
+                                <StackPanel>
+                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBrightness}" />
+                                        <TextBlock Grid.Column="1" Name="NowPlayingBrightnessLabel" Classes="row-value"
+                                                   Text="{Binding Shell.NowPlayingBrightnessLabel}" />
+                                    </views:SettingRow>
+                                    <controls:SmoothSlider Name="NowPlayingBrightnessSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                           Minimum="-50" Maximum="50" Step="5" SteppedValue="{Binding Shell.NowPlayingBrightness}"
+                                                           AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingBrightnessName}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.NowPlayingBrightnessHint}" />
                         </StackPanel>
 
                         <!-- Library: Music Folders and Downloads are pages; Rescan is an action, its state under it. -->

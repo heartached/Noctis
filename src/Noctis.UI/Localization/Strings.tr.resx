@@ -2057,6 +2057,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Eşleşen çalma listesi yok</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Çalma listelerini ara</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Çalma listelerini sırala</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Yeni Çalma Listesi</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Oluştur</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Sonra Çal</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Kuyruğa Ekle</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Albüme Git</value></data>
@@ -2119,6 +2121,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Kapak</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Plak</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Çalan Ekran Arka Planı</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Çalan ekran arka plan parlaklığı</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Çalan ekranın arkasındaki renkleri koyulaştırır veya açar. 0 standart görünümdür.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Müzik Klasörleri</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>İndirilenler</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Dinleme</value></data>
@@ -2158,6 +2163,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Akıcı Hareket</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>120 Hz’e kadar</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Destekleyen telefonlarda ekranın saniyede 120 kereye kadar yenilenmesini sağlar; kaydırma ve animasyonlar daha akıcı olur. Ekranı 60 Hz’de tutup pil tasarrufu yapmak için kapatın.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass sekme kapsülü</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Seçili sekme şeffaf cam kalır</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Kullanılan Alan</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Tüm İndirilenleri Kaldır</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Kaldırılan indirmeler bilgisayarında kalır ve yine akışla dinlenebilir.</value></data>

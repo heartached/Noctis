@@ -14,6 +14,7 @@ Outputs (paths relative to the repo root, or to --out-root when given):
   src/Noctis.Android/Resources/mipmap-anydpi-v26/ic_launcher.xml        adaptive icon
   src/Noctis.Android/Resources/mipmap-anydpi-v26/ic_launcher_round.xml  adaptive round icon
   src/Noctis.Android/Resources/values/ic_launcher_background.xml        #E74856
+  src/Noctis.Android/Resources/drawable-nodpi/splash_icon.png            Android 12+ splash icon
   store/android/icon-512.png                                            Play hi-res icon
   store/android/feature-graphic.png                                     Play feature graphic 1024x500
 
@@ -66,6 +67,17 @@ def adaptive_foreground(mask, px):
     canvas = Image.new("RGBA", (px, px), (255, 255, 255, 0))
     off = (px - circle_px) // 2
     canvas.alpha_composite(glyph, (off, off))
+    return canvas
+
+
+def splash_icon(logo, px=1152):
+    """Android 12+ splash icon. The system draws it on a 288 dp canvas and masks it to the
+    centre 192 dp circle (2/3), so the full-bleed logo was cut: note head and beam clipped
+    (beta 2). The logo circle sits just inside that 2/3 mask instead."""
+    circle_px = round(px * 0.66)
+    canvas = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+    off = (px - circle_px) // 2
+    canvas.alpha_composite(scaled(logo, circle_px), (off, off))
     return canvas
 
 
@@ -175,6 +187,7 @@ def main():
     write_text(ADAPTIVE_XML, root, *res, "mipmap-anydpi-v26", "ic_launcher.xml")
     write_text(ADAPTIVE_XML, root, *res, "mipmap-anydpi-v26", "ic_launcher_round.xml")
     write_text(BACKGROUND_XML, root, *res, "values", "ic_launcher_background.xml")
+    write(splash_icon(logo), root, *res, "drawable-nodpi", "splash_icon.png")
     write(play_icon(mask), root, "store", "android", "icon-512.png")
     write(feature_graphic(logo), root, "store", "android", "feature-graphic.png")
 

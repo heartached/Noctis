@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>沒有相符的播放清單</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>搜尋播放清單</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>排序播放清單</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>新增播放清單</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>建立</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>下一首播放</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>加入佇列</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>前往專輯</value></data>
@@ -7035,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>封面</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>黑膠</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>播放中背景</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>播放中背景亮度</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>讓播放中畫面背後的顏色更暗或更亮。0 為標準效果。</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音樂資料夾</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>下載</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>聆聽</value></data>
@@ -7074,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>流暢動態</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最高 120 Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>在支援的手機上，螢幕每秒最多更新 120 次，捲動和動畫更流暢。關閉後螢幕維持 60 Hz，更省電。</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>液態玻璃標籤</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>所選標籤保持透明玻璃效果</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>已使用的儲存空間</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>移除所有下載項目</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>移除的下載項目仍會保留在你的電腦上，並可繼續串流播放。</value></data>

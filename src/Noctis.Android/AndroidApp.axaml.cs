@@ -171,6 +171,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _shell = shell;
         // A fast word is one search, not one per letter (SearchPageViewModel.TypingDebounce).
         shell.Search.TypingDebounce = TimeSpan.FromMilliseconds(150);
+        // The same for the list pages' Find fields (Songs, Albums, Artists).
+        Noctis.Mobile.Views.FindField.TypingDebounce = TimeSpan.FromMilliseconds(150);
 
         if (account != null)
         {

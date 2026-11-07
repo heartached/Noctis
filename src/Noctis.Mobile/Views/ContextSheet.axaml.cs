@@ -79,7 +79,7 @@ public partial class ContextSheet : UserControl
         {
             if (run != _run) return;
             IsVisible = false;
-            SheetContent.Content = null;
+            // Kept, as the pop menu's: the next sheet of the same kind recycles the built view.
             PopMenu.PopDone(SheetPop, SheetGlass, SheetBody, Scrim);
         }, TimeSpan.FromMilliseconds(PopMenu.PopCloseMs));
     }

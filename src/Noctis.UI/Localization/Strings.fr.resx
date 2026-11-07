@@ -6973,6 +6973,8 @@
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Aucune playlist trouvée</value></data>
   <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Rechercher des playlists</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Trier les playlists</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Nouvelle playlist</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Créer</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Lire ensuite</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Ajouter à la file d’attente</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Afficher l’album</value></data>
@@ -7035,6 +7037,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Pochette</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinyle</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fond de la lecture en cours</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Luminosité du fond de la lecture en cours</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Assombrit ou éclaircit les couleurs derrière la lecture en cours. 0 correspond à l’aspect standard.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Dossiers de musique</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Téléchargements</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Écoute</value></data>
@@ -7074,6 +7079,8 @@
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Mouvement fluide</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Jusqu’à 120 Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permet à l’écran de se rafraîchir jusqu’à 120 fois par seconde sur les téléphones compatibles, pour un défilement et des animations plus fluides. Désactivez-le pour garder l’écran à 60 Hz et économiser la batterie.</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Onglet en Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>L’onglet choisi reste en verre clair</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Stockage utilisé</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Supprimer tous les téléchargements</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Les téléchargements supprimés restent sur votre ordinateur et peuvent toujours être diffusés.</value></data>

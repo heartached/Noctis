@@ -45,6 +45,11 @@ public abstract partial class MobilePage : ObservableObject
     /// (Settings' Music Folders, Appearance, Lyrics) returns to its top level and says so.</summary>
     public virtual bool TryGoBackWithin() => false;
 
+    /// <summary>The page's view is kept, hidden, when the page closes, and handed the next page
+    /// of the same kind (<see cref="Views.PageStack"/>): for a page whose view is costly to build
+    /// and that is opened again and again (Settings).</summary>
+    public virtual bool KeepsView => false;
+
     public override string ToString() => Title;
 
     /// <summary>The UI language changed: every binding on the page re-reads (titles, counts,
