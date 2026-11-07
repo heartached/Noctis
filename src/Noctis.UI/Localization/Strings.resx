@@ -460,10 +460,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.SoundCheck" xml:space="preserve"><value>Sound Check</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepSongVolumeAt" xml:space="preserve"><value>Keep song volume at a consistent level.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayPauseFade" xml:space="preserve"><value>Fade on play and pause</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlayPauseFadeHint" xml:space="preserve"><value>Fade the sound out when pausing and back in when resuming instead of stopping dead.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayPauseFadeHint" xml:space="preserve"><value>Fades out when you pause and back in when you play.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FadeDuration" xml:space="preserve"><value>Fade duration</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayCountAfter" xml:space="preserve"><value>Count a play after</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlayCountAfterHint" xml:space="preserve"><value>How much of a song you need to hear before it counts as played.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayCountAfterHint" xml:space="preserve"><value>How much of a song has to play before it counts.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayCountAfterImmediately" xml:space="preserve"><value>Immediately</value><comment>"Count a play after" choice: counted as soon as the song starts (SettingsViewModel)</comment></data>
   <data name="Settings.PlayCountAfterPercent" xml:space="preserve"><value>{0}%</value><comment>"Count a play after" choice; {0} = percent of the song (SettingsViewModel)</comment></data>
   <data name="Settings.GaplessPlayback" xml:space="preserve"><value>Gapless Playback</value><comment>Text in SettingsView.axaml</comment></data>
@@ -471,9 +471,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Autoplay</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue list, above the playing song, and the last song stays loaded when the queue ends.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue above the one playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>When a queued song's file was moved or deleted, playback skips to the next song that can play. Choose what happens to the missing song.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>If a queued song's file is gone, Noctis skips it. Choose what happens to it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
   <data name="Settings.MissingSongsRemove" xml:space="preserve"><value>Remove from Queue</value><comment>Missing Songs picker option: take the song off the queue</comment></data>
   <data name="Queue.MissingBadge" xml:space="preserve"><value>Missing</value><comment>Badge on a queue row whose file can't be found</comment></data>
@@ -488,18 +488,18 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Off skips explicit songs unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OutputDevice" xml:space="preserve"><value>Output Device</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Where Noctis plays. Exclusive Mode opens the selected device directly, so bit-perfect output follows this setting instead of the Windows default.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Where Noctis plays your music.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>System Default</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
   <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>default</value><comment>Suffix marking the current Windows default endpoint</comment></data>
   <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Selected device</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
   <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>not connected</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
-  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>The selected device is not connected right now. Playback uses the system default until it returns.</value><comment>Shown under Output Device when the pin is missing</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>This device isn't connected. Noctis uses the system default until it's back.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect output that bypasses the Windows mixer. Other apps go silent and transitions are off.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect sound straight to your device. Other apps go silent and transitions are off.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Analyze Tempo &amp; Key</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DetectBPMKeyAutoMix" xml:space="preserve"><value>Detect BPM and key for AutoMix and Track Radio.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve"><value>Save analysis to file tags</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve"><value>Write BPM and key into the file's tags. This modifies your files.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WriteBPMKeyInto" xml:space="preserve"><value>Saves BPM and key into the tags. This changes your files.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Equalizer" xml:space="preserve"><value>Equalizer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ParametricEQTuneEach" xml:space="preserve"><value>Tune each band's frequency, gain and width.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Preamp" xml:space="preserve"><value>Preamp</value><comment>Text in SettingsView.axaml</comment></data>
@@ -534,11 +534,11 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve"><value>Right-click a song to open its file in this program. Blank asks each time.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NotSet" xml:space="preserve"><value>(not set)</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Adjust volume from ReplayGain tags. Scan tracks via right-click.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Evens out loudness with ReplayGain tags.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Mode</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Pre-amp (dB)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Scan new files automatically</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Writes ReplayGain tags into new songs once their album has finished copying.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Adds ReplayGain tags to new songs once their album finishes copying.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>REMOTE CONTROL</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Web Remote</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Control what's playing from your phone's browser. No app needed. Only use it on Wi-Fi you trust.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2595,7 +2595,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Upmix.SurroundHint" xml:space="preserve"><value>Ambience to the rears, wide stage in front</value><comment>Upmix mode hint</comment></data>
   <data name="Upmix.Note" xml:space="preserve"><value>Built-in output engine only. Exclusive Mode keeps the file's own layout.</value><comment>Upmix footnote</comment></data>
   <data name="Settings.HeadphoneSurround" xml:space="preserve"><value>Headphone Surround</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Turns 5.1 and 7.1 files into spatial headphone sound instead of a flat stereo mix. Stereo songs are not changed.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Makes 5.1 and 7.1 files sound like surround in headphones. Stereo songs stay the same.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Accounts and device sync are managed in Account &amp; Sync.</value><comment>Integrations → Noctis Server card footer</comment></data>
@@ -3102,9 +3102,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Midnight</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Ruby</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.MonoAudio" xml:space="preserve"><value>Mono Audio</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Plays the left and right channels together in both ears. For hearing in one ear or listening with a single earbud.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Plays both channels in both ears. Handy with one earbud.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Balance" xml:space="preserve"><value>Balance</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Moves the sound toward the left or right ear. Snaps to the center.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Shifts the sound to the left or right.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BalanceCenter" xml:space="preserve"><value>Center</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BalanceLeftFormat" xml:space="preserve"><value>L {0}</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BalanceRightFormat" xml:space="preserve"><value>R {0}</value><comment>Text in SettingsView.axaml</comment></data>
