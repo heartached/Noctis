@@ -3309,6 +3309,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Create" xml:space="preserve"><value>Erstellen</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Als Nächstes abspielen</value><comment>Menu action</comment></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Zur Warteschlange hinzufügen</value><comment>Menu action</comment></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Vor aktuellem Titel einfügen</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Vor dem aktuellen Titel eingefügt</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Zum Album</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Zum Künstler</value><comment>Menu action</comment></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Umbenennen</value><comment>Menu action</comment></data>
@@ -3321,6 +3323,9 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Als Nächstes</value><comment>Queue section (Apple Music: Up Next)</comment></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Leeren</value><comment>Clears Up Next</comment></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Nichts als Nächstes</value><comment>Empty Up Next</comment></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>Verlauf</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Ausblenden</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Einblenden</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Wiederholen</value><comment>Screen reader name</comment></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Noch nichts hier</value><comment>Empty grid page</comment></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Suchen</value><comment>Search tab label and title</comment></data>
@@ -3413,6 +3418,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Lässt den Bildschirm auf Smartphones, die das unterstützen, bis zu 120-mal pro Sekunde aktualisieren, für flüssigeres Scrollen und Animationen. Schalte es aus, um bei 60 Hz zu bleiben und Akku zu sparen.</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Tab-Auswahl aus Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Der gewählte Tab bleibt klares Glas</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Gespielte Titel in der Warteschlange</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Gespielte Titel bleiben über dem aktuellen</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Belegter Speicher</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Alle Downloads entfernen</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Entfernte Downloads bleiben auf deinem Computer und lassen sich weiter streamen.</value><comment>Footnote</comment></data>

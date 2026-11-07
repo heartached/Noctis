@@ -3318,6 +3318,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Создать</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Воспроизвести далее</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Добавить в очередь</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Добавить перед текущей песней</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Добавлено перед текущей песней</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Перейти к альбому</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Перейти к исполнителю</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Переименовать</value></data>
@@ -3330,6 +3332,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Далее</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Очистить</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Дальше ничего нет</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>История</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Скрыть</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Показать</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Повтор</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Здесь пока пусто</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Поиск</value></data>
@@ -3422,6 +3427,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Экран обновляется до 120 раз в секунду на телефонах, которые это поддерживают, — прокрутка и анимация становятся плавнее. Выключите, чтобы оставить 60 Гц и сэкономить заряд.</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Вкладка Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Выбранная вкладка остаётся прозрачным стеклом</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Прослушанные песни в очереди</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Прослушанные песни остаются над текущей</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Удалённые загрузки остаются на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>

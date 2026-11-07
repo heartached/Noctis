@@ -663,7 +663,7 @@
                             <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
                         </StackPanel>
 
-                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Pick Up on Computer a switch. -->
+                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Played Songs in Queue and Pick Up on Computer switches. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Listening}" />
                             <Border Name="ListeningCard" Classes="group-card">
@@ -697,6 +697,18 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Played Songs in Queue: the Queue page keeps a History above the current track (Discord 11-07). -->
+                                    <ToggleButton Name="QueueHistorySwitch" Classes="switch-row" IsChecked="{Binding Shell.ShowQueueHistory}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.QueueHistory}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconQueueHistory}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.QueueHistory}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.QueueHistoryHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
                                     <StackPanel Name="PickUpGroup" IsVisible="{Binding ShowPickUp}">
                                         <Border Classes="row-separator chipped" />
                                         <ToggleButton Name="PickUpSwitch" Classes="switch-row" IsChecked="{Binding History.PickUpOnComputer}"

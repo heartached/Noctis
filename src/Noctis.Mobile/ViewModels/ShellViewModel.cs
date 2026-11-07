@@ -387,6 +387,7 @@ public sealed partial class ShellViewModel : ObservableObject
         _favoritesRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
         OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
+        OnPropertyChanged(nameof(QueueHistoryToggleText));
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
@@ -643,6 +644,27 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private bool _glassTabPill;
     partial void OnGlassTabPillChanged(bool value) => SavePlayerBarSettings(nameof(GlassTabPill));
 
+    /// <summary>Settings › Listening › Played Songs in Queue (Discord request 11-07): the Queue page
+    /// shows the songs already played above the current track (NowPlayingViewModel.PlayedSongs).
+    /// Off by default, the Queue page as it was.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows))]
+    private bool _showQueueHistory;
+    partial void OnShowQueueHistoryChanged(bool value) => SavePlayerBarSettings(nameof(ShowQueueHistory));
+
+    /// <summary>The Queue page's History is folded to its title (its Hide); for this run of the app only.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows), nameof(QueueHistoryToggleText))]
+    private bool _isQueueHistoryCollapsed;
+
+    /// <summary>The History's rows are on screen: the setting is on and the section is not folded.</summary>
+    public bool ShowsQueueHistoryRows => ShowQueueHistory && !IsQueueHistoryCollapsed;
+
+    /// <summary>The History title's button: Hide while its rows show, Show once folded.</summary>
+    public string QueueHistoryToggleText => IsQueueHistoryCollapsed ? Loc.T("Mobile.Queue.ShowHistory") : Loc.T("Mobile.Queue.HideHistory");
+
+    [RelayCommand] private void ToggleQueueHistoryCollapsed() => IsQueueHistoryCollapsed = !IsQueueHistoryCollapsed;
+
     private async Task LoadPlayerBarSettingsAsync()
     {
         try
@@ -661,6 +683,7 @@ public sealed partial class ShellViewModel : ObservableObject
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
             }
@@ -690,6 +713,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var artwork = NowPlayingArtwork.ToString();
         var brightness = NowPlayingBrightness;
         var glassPill = GlassTabPill;
+        var queueHistory = ShowQueueHistory;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -704,6 +728,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileNowPlayingArtwork = artwork;
                     settings.MobileNowPlayingBrightness = brightness;
                     settings.MobileGlassTabPill = glassPill;
+                    settings.MobileQueueShowHistory = queueHistory;
                 });
             }
             catch (Exception ex)

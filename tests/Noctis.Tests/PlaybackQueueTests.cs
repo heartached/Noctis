@@ -372,4 +372,199 @@ public class PlaybackQueueTests
             Array.Empty<Guid>(), RepeatMode.Off, false, Array.Empty<Guid>());
         Assert.Null(PlaybackQueue.Restore(legacy, id => byId.GetValueOrDefault(id)).PlayedInQueue);
     }
+
+    // ── Add Before Current Song / History jump (Discord 11-07) ──
+
+    [Fact]
+    public void AddBeforeCurrent_puts_the_tracks_just_before_current_in_order_and_previous_plays_the_last()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(3); var add = Tracks(2);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.UserSkip);                       // t1 plays, t0 played
+
+        Assert.True(q.AddBeforeCurrent(add));
+
+        Assert.Same(t[1], q.Current);                           // keeps playing
+        Assert.Equal(new[] { add[1], add[0], t[0] }, q.History);
+        Assert.Equal(new[] { t[2] }, q.UpNext);
+        Assert.Equal(3, q.PlayedInQueue);                       // Track 4 of 5
+        Assert.Same(add[1], q.Back());
+        Assert.Same(add[0], q.Back());
+        Assert.Same(t[0], q.Back());
+        Assert.Equal(new[] { add[0], add[1], t[1], t[2] }, q.UpNext);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_does_nothing_without_a_current_track()
+    {
+        var q = new PlaybackQueue(); var add = Tracks(1);
+
+        Assert.False(q.AddBeforeCurrent(add));
+        Assert.Empty(q.History);
+        Assert.Null(q.Current);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_keeps_the_history_cap()
+    {
+        var q = new PlaybackQueue(historyCap: 3); var t = Tracks(2); var add = Tracks(5);
+        q.ReplaceAll(t, 0);
+
+        q.AddBeforeCurrent(add);
+
+        Assert.Equal(new[] { add[4], add[3], add[2] }, q.History);
+    }
+
+    [Fact]
+    public void JumpBack_makes_the_played_track_current_and_returns_the_later_ones_to_upnext_without_copies()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(5);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);                        // t3 plays; history t2 t1 t0
+
+        Assert.Same(t[1], q.JumpBack(1));
+
+        Assert.Equal(new[] { t[0] }, q.History);
+        Assert.Equal(new[] { t[2], t[3], t[4] }, q.UpNext);
+        Assert.Equal(1, q.PlayedInQueue);
+        Assert.Equal(5, q.History.Count + 1 + q.UpNext.Count); // nothing duplicated or lost
+    }
+
+    [Fact]
+    public void JumpBack_out_of_range_changes_nothing()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(3);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);
+
+        Assert.Null(q.JumpBack(1));
+        Assert.Null(q.JumpBack(-1));
+        Assert.Same(t[1], q.Current);
+        Assert.Equal(new[] { t[0] }, q.History);
+    }
+
+    [Fact]
+    public void JumpBack_after_the_queue_ran_out_plays_the_track_then_the_rest_again()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(3);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);                        // ran out: history t2 t1 t0, no current
+        Assert.Null(q.Current);
+
+        Assert.Same(t[1], q.JumpBack(1));
+
+        Assert.Equal(new[] { t[2] }, q.UpNext);
+        Assert.Equal(new[] { t[0] }, q.History);
+    }
+
+    // ── One-list moves across Current (Queue page with History on) ──
+
+    private static PlaybackQueue Playing(List<Track> t, int played)
+    {
+        var q = new PlaybackQueue();
+        q.ReplaceAll(t, 0);
+        for (int i = 0; i < played; i++) q.Advance(QueueAdvance.Natural);
+        return q;
+    }
+
+    [Fact]
+    public void MoveInTimeline_upnext_song_above_current_goes_just_before_it()
+    {
+        var t = Tracks(5); var q = Playing(t, 1);              // [t0] t1 [t2 t3 t4]
+
+        Assert.True(q.MoveInTimeline(3, 1));                  // t3 to where t1 is
+
+        Assert.Same(t[1], q.Current);
+        Assert.Equal(new[] { t[3], t[0] }, q.History);         // newest first
+        Assert.Equal(new[] { t[2], t[4] }, q.UpNext);
+        Assert.Equal(2, q.PlayedInQueue);
+        Assert.Same(t[3], q.Back());
+    }
+
+    [Fact]
+    public void MoveInTimeline_upnext_song_deep_into_history()
+    {
+        var t = Tracks(5); var q = Playing(t, 2);              // [t0 t1] t2 [t3 t4]
+
+        q.MoveInTimeline(4, 0);                                // t4 before t0
+
+        Assert.Equal(new[] { t[1], t[0], t[4] }, q.History);
+        Assert.Equal(new[] { t[3] }, q.UpNext);
+        Assert.Equal(3, q.PlayedInQueue);
+    }
+
+    [Fact]
+    public void MoveInTimeline_played_song_below_current_plays_again_after_it()
+    {
+        var t = Tracks(5); var q = Playing(t, 2);              // [t0 t1] t2 [t3 t4]
+
+        Assert.True(q.MoveInTimeline(0, 2));                   // t0 just after t2
+
+        Assert.Same(t[2], q.Current);
+        Assert.Equal(new[] { t[1] }, q.History);
+        Assert.Equal(new[] { t[0], t[3], t[4] }, q.UpNext);
+        Assert.Equal(1, q.PlayedInQueue);
+        Assert.Same(t[0], q.Advance(QueueAdvance.UserSkip));
+    }
+
+    [Fact]
+    public void MoveInTimeline_within_history_and_within_upnext()
+    {
+        var t = Tracks(6); var q = Playing(t, 2);              // [t0 t1] t2 [t3 t4 t5]
+
+        q.MoveInTimeline(0, 1);                                // [t1 t0]
+        Assert.Equal(new[] { t[0], t[1] }, q.History);
+        q.MoveInTimeline(3, 5);                                // [t4 t5 t3]
+        Assert.Equal(new[] { t[4], t[5], t[3] }, q.UpNext);
+        Assert.Same(t[2], q.Current);
+        Assert.Equal(2, q.PlayedInQueue);
+    }
+
+    [Fact]
+    public void MoveInTimeline_refuses_current_itself_out_of_range_and_a_stopped_queue()
+    {
+        var t = Tracks(3); var q = Playing(t, 1);              // [t0] t1 [t2]
+
+        Assert.False(q.MoveInTimeline(1, 0));                  // Current does not move itself
+        Assert.False(q.MoveInTimeline(0, 3));
+        Assert.False(q.MoveInTimeline(-1, 0));
+        Assert.Equal(new[] { t[0] }, q.History);
+        Assert.Equal(new[] { t[2] }, q.UpNext);
+
+        q.Advance(QueueAdvance.Natural); q.Advance(QueueAdvance.Natural);   // ran out
+        Assert.False(q.MoveInTimeline(0, 1));
+    }
+
+    [Fact]
+    public void MoveInTimeline_keeps_a_duplicate_of_current_where_it_was()
+    {
+        var a = new Track { Title = "a" }; var b = new Track { Title = "b" };
+        var q = new PlaybackQueue();
+        q.ReplaceAll(new[] { a, b, a }, 0);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);                       // [a b] a []  (the same a played and current)
+
+        q.MoveInTimeline(1, 0);                                // b before the played a
+
+        Assert.Same(a, q.Current);
+        Assert.Equal(new[] { a, b }, q.History);
+        Assert.Empty(q.UpNext);
+    }
+
+    [Fact]
+    public void MoveInTimeline_played_song_back_in_upnext_survives_shuffle_off()
+    {
+        var t = Tracks(4); var q = Playing(t, 1);              // [t0] t1 [t2 t3]
+        q.SetShuffle(true, new Random(1));
+
+        q.MoveInTimeline(0, 1);                                // t0 after t1
+        q.SetShuffle(false);
+
+        Assert.Contains(t[0], q.UpNext);
+        Assert.Equal(3, q.UpNext.Count);
+    }
 }

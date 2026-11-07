@@ -6977,6 +6977,8 @@
   <data name="Mobile.Create" xml:space="preserve"><value>Crear</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Reproducir a continuación</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Añadir a la cola</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Añadir antes de la canción actual</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Añadida antes de la canción actual</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Ir al álbum</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Ir al artista</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Renombrar</value></data>
@@ -6989,6 +6991,9 @@
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>A continuación</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Borrar</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>No hay nada a continuación</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>Historial</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Ocultar</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Mostrar</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Repetir</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Aún no hay nada aquí</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Buscar</value></data>
@@ -7081,6 +7086,8 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permite que la pantalla se actualice hasta 120 veces por segundo en los teléfonos compatibles, para un desplazamiento y unas animaciones más fluidos. Desactívalo para mantener la pantalla a 60 Hz y ahorrar batería.</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Pestaña de Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>La pestaña elegida queda en cristal claro</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Canciones reproducidas en la cola</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Las canciones que ya sonaron quedan encima de la actual</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Almacenamiento usado</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Eliminar todas las descargas</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Las descargas eliminadas siguen en tu equipo y se pueden seguir escuchando en streaming.</value></data>

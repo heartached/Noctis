@@ -3318,6 +3318,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Create" xml:space="preserve"><value>Create</value><comment>Button: makes the new playlist</comment></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Play Next</value><comment>Menu action</comment></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Add to Queue</value><comment>Menu action</comment></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Add Before Current</value><comment>Menu action: the song goes just before the playing one (Previous plays it)</comment></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Added before the current song</value><comment>Banner after Add Before Current Song</comment></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Go to Album</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Go to Artist</value><comment>Menu action</comment></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Rename</value><comment>Menu action</comment></data>
@@ -3330,6 +3332,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Up Next</value><comment>Queue section (Apple Music: Up Next)</comment></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Clear</value><comment>Clears Up Next</comment></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Nothing up next</value><comment>Empty Up Next</comment></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>History</value><comment>Queue section above the current track: songs already played</comment></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Hide</value><comment>Folds the Queue History section</comment></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Show</value><comment>Unfolds the Queue History section</comment></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Repeat</value><comment>Screen reader name</comment></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Nothing here yet</value><comment>Empty grid page</comment></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Search</value><comment>Search tab label and title</comment></data>
@@ -3422,6 +3427,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Lets the screen refresh up to 120 times a second on phones that support it, for smoother scrolling and animation. Turn it off to keep the screen at 60 Hz and save battery.</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass Tab Pill</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>The selected tab stays clear glass</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Played Songs in Queue</value><comment>Setting switch: Queue page shows played songs</comment></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Songs you've played stay above the current one</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Storage Used</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Remove All Downloads</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Removed downloads stay on your computer and still stream.</value><comment>Footnote</comment></data>

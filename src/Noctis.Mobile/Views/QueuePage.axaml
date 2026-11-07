@@ -5,6 +5,7 @@
              xmlns:models="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
+             xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.QueuePage"
              x:DataType="vm:ShellViewModel"
              Foreground="{DynamicResource QueueText}">
@@ -213,7 +214,8 @@
             <Border Name="Sheet" Margin="0,10,0,0" CornerRadius="14,14,0,0" ClipToBounds="True"
                     Background="{DynamicResource QueueSheetBase}">
                 <Panel>
-                    <!-- Blurred once per cover (PreBlurredArtworkConverter) from the header cover's own bitmap. -->
+                    <!-- Blurred once per cover (PreBlurredArtworkConverter) from the header cover's own bitmap
+                         (the list's current row's while the header's is hidden: the code-behind). -->
                     <Image Name="Backdrop" Source="{Binding #NowArtwork.Source, Converter={StaticResource PreBlur}}"
                            Stretch="UniformToFill" IsHitTestVisible="False" />
                     <Border Name="Scrim" Background="{DynamicResource QueueSheetScrim}" IsHitTestVisible="False" />
@@ -236,7 +238,8 @@
                              title over the artist, the playing bars at its end), then the list's title,
                              Up Next with Clear at its end, and under it where the queue plays from and
                              the track's place in it. Unknown lines hide. -->
-                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*,Auto" Margin="20,4,20,0" IsVisible="{Binding Player.HasTrack}">
+                        <!-- Shown while a track is loaded (the code-behind: with the History on, the list's own row takes its place in portrait). -->
+                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*,Auto" Margin="20,4,20,0" IsVisible="False">
                             <!-- The shadow on an outer border: the cover itself clips to its corners. -->
                             <Border Width="64" Height="64" CornerRadius="8" VerticalAlignment="Top"
                                     BoxShadow="0 3 10 0 #33000000">
@@ -293,14 +296,85 @@
                             </Grid>
                         </Grid>
 
-                        <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="{loc:T Mobile.Queue.Empty}" HorizontalAlignment="Center"
-                                   Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
-
                         <!-- Runs to the bottom of the sheet: in portrait the rows scroll under the control
                              pill, and the bottom padding (code-behind, it follows the safe area) lets the
                              last one clear it. -->
                         <ScrollViewer Grid.Row="3" Name="QueueScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
-                            <ItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}">
+                          <!-- With Settings › Played Songs in Queue on, the queue is one list (Discord 11-07):
+                               the songs already played (dimmed, oldest first, a tap plays one again), the
+                               current track as a highlighted row, then Up Next under its title, which the
+                               code-behind moves in here. Every row but the current one has a drag handle,
+                               and a row dragged past the current one goes in before or after it. -->
+                          <StackPanel Name="QueueContent">
+                            <StackPanel Name="HistorySection">
+                                <StackPanel.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="ShowQueueHistory" />
+                                        <Binding Path="Player.HasPlayedSongs" />
+                                    </MultiBinding>
+                                </StackPanel.IsVisible>
+                                <!-- Hide folds the played songs to this title for the rest of the run. -->
+                                <Grid Name="HistoryHeader" ColumnDefinitions="*,Auto" Margin="20,8,20,2" MinHeight="32">
+                                    <TextBlock Name="HistoryLabel" Classes="section" Text="{loc:T Mobile.Queue.History}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Name="HistoryToggleButton" Classes="pill clear" Content="{Binding QueueHistoryToggleText}"
+                                            VerticalAlignment="Center" Command="{Binding ToggleQueueHistoryCollapsedCommand}" />
+                                </Grid>
+                                <!-- A plain StackPanel: History holds at most 50 songs, and a drop needs every row laid out. -->
+                                <ItemsControl Name="HistoryList" ItemsSource="{Binding Player.PlayedSongs}" IsVisible="{Binding !IsQueueHistoryCollapsed}"
+                                              ClipToBounds="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:QueueHistoryItem">
+                                            <Button Classes="row history-row" Height="56"
+                                                    Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Player.PlayFromHistoryCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Track.Title}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,0,6,0">
+                                                    <Border Classes="art" Width="44" Height="44" CornerRadius="6" Opacity="0.55">
+                                                        <Panel>
+                                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
+                                                            <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                                        </Panel>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Opacity="0.55">
+                                                        <TextBlock Classes="row-title" Text="{Binding Track.Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Classes="row-sub" Text="{Binding Track.Artist}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Name="DragHandle" Width="44" Background="Transparent"
+                                                            PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
+                                                            PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
+                                                        <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
+                                                                  Foreground="{DynamicResource QueueSubtleText}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <!-- The current track in the list: a highlighted row between the two, no handle. -->
+                            <Border Name="NowInline" Height="64" Margin="8,4,8,0" CornerRadius="12" IsVisible="False">
+                                <Panel>
+                                    <Border Background="{DynamicResource AccentColorBrush}" Opacity="{DynamicResource QueueAccentWash}" CornerRadius="12" />
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,0,16,0">
+                                        <Border Classes="art" Width="48" Height="48" CornerRadius="6">
+                                            <Panel>
+                                                <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
+                                                <controls:CachedImage Name="NowInlineArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                                      DecodeWidth="384" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Name="NowInlineTitle" Classes="row-title" FontWeight="SemiBold" Text="{Binding Player.CurrentTrack.Title}"
+                                                       MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Classes="row-sub" Text="{Binding Player.CurrentTrack.Artist}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <views:PlayingBars Grid.Column="2" Name="NowInlineBars" VerticalAlignment="Center"
+                                                           Fill="{DynamicResource AccentTextBrush}" IsPlaying="{Binding Player.IsPlaying}" />
+                                    </Grid>
+                                </Panel>
+                            </Border>
+                            <!-- Unclipped (the theme clips an ItemsControl): a row dragged above the current
+                                 row was cut off at the list's top edge and vanished (emulator, 11-07). -->
+                            <ItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}" ClipToBounds="False">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <VirtualizingStackPanel />
@@ -342,6 +416,9 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <TextBlock Name="EmptyQueue" Classes="subtle" Text="{loc:T Mobile.Queue.Empty}" HorizontalAlignment="Center"
+                                       Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
+                          </StackPanel>
                         </ScrollViewer>
 
                         <!-- The floating Liquid Glass control pill above the navigation bar: over the end of

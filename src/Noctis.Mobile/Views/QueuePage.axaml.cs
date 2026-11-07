@@ -19,6 +19,11 @@ namespace Noctis.Mobile.Views;
 /// over its blurred cover, and floats the transport in a glass pill above the tab bar, which
 /// stays up under the sheet (<see cref="TabBar"/>). Up Next rows: drag one by its handle to
 /// reorder, swipe it left to remove (spec §5 item 6).
+/// With Settings › Played Songs in Queue on (Discord 11-07) the queue is one list: the played
+/// songs, the current track as a highlighted row (<c>NowInline</c>, in place of the header's in
+/// portrait), then Up Next under its title, moved into the list. A handle drag then works across
+/// the whole list: a song dragged above the current row goes in before it, a played one dragged
+/// below it plays again after it (NowPlayingViewModel.MoveInQueueList).
 /// Rows are resolved by container index, never by Track: "Add to Queue" of a queued song puts
 /// the same Track in the list twice, and IndexOf would act on the first copy. The row's Track
 /// is captured too: Up Next can be rebuilt mid-gesture (the track ends, a lock-screen Next), and
@@ -27,6 +32,11 @@ namespace Noctis.Mobile.Views;
 public partial class QueuePage : UserControl
 {
     private enum Gesture { None, Pending, Swipe, Drag }
+
+    private bool _dragFromHistory;      // the handle pressed is a History row's
+    private QueueHistoryItem? _dragItem; // PlayedSongs[_index] at press, for a History row
+    private Control? _raised;           // the list part drawn over the rest while its row is dragged
+    private ContentPresenter? _lifted;  // the dragged row, given the sheet's colour so the rows it passes do not show through
 
     private Gesture _gesture;
     private Control? _moving;   // the row (swipe) or its container (drag) being translated
@@ -37,6 +47,8 @@ public partial class QueuePage : UserControl
     /// <summary>The sheet's slide up and down: every sheet's (Motion).</summary>
     private static readonly TimeSpan Slide = Motion.Sheet;
     private const double PillHeight = 56, PillGap = 12, ListEndGap = 16;
+    // How much of the History shows above the current row when the list opens on it: a row and a half.
+    private const double HistoryPeek = 84;
 
     private ShellViewModel? _vm;
     private bool _shown;        // the sheet is up, or on its way up
@@ -139,6 +151,7 @@ public partial class QueuePage : UserControl
             Dim.Opacity = 0;
         }
         UpdateBars();
+        AnchorOnCurrent();
         if (TopLevel.GetTopLevel(Sheet) == null) _slidePending = true;
         else SlideUp();
     }
@@ -276,6 +289,7 @@ public partial class QueuePage : UserControl
             _vm.PropertyChanged += OnShellChanged;
             _vm.Player.PropertyChanged += OnPlayerChanged;
         }
+        ApplyHistoryMode();
         ApplySafeArea();
         UpdateBars();
     }
@@ -283,6 +297,8 @@ public partial class QueuePage : UserControl
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ShellViewModel.SafeArea)) ApplySafeArea();
+        else if (e.PropertyName == nameof(ShellViewModel.ShowQueueHistory)) ApplyHistoryMode();
+        else if (e.PropertyName == nameof(ShellViewModel.IsQueueHistoryCollapsed)) AnchorOnCurrent();
         // Closed onto a tab page (CloseNowPlaying drops the Queue first, so BeginClose saw the
         // player still open): the tab bar stays where it is over that page.
         else if (e.PropertyName == nameof(ShellViewModel.IsNowPlayingOpen) && _closing && _vm?.IsNowPlayingOpen == false)
@@ -292,6 +308,76 @@ public partial class QueuePage : UserControl
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) UpdateBars();
+        else if (e.PropertyName == nameof(NowPlayingViewModel.HasTrack)) UpdateNowRows();
+        else if (e.PropertyName == nameof(NowPlayingViewModel.CurrentTrack)) AnchorOnCurrent();
+    }
+
+    private bool HistoryMode => _vm?.ShowQueueHistory == true;
+
+    /// <summary>The History on or off: Up Next's title moves into the list under the current row
+    /// (and back to its place in the header), and the current track's row follows.</summary>
+    private void ApplyHistoryMode()
+    {
+        var inList = ReferenceEquals(UpNextHeader.Parent, QueueContent);
+        if (HistoryMode && !inList)
+        {
+            Layout.Children.Remove(UpNextHeader);
+            QueueContent.Children.Insert(QueueContent.Children.IndexOf(QueueList), UpNextHeader);
+        }
+        else if (!HistoryMode && inList)
+        {
+            QueueContent.Children.Remove(UpNextHeader);
+            Layout.Children.Insert(Layout.Children.IndexOf(QueueScroll), UpNextHeader);
+        }
+        if (_landscape is { } landscape) ApplyOrientation(landscape, force: true);
+        UpdateNowRows();
+        AnchorOnCurrent();
+    }
+
+    /// <summary>The header's current track shows while one is loaded, except in portrait with
+    /// the History on, where the list's highlighted row is the current track.</summary>
+    private void UpdateNowRows()
+    {
+        var hasTrack = _vm?.Player.HasTrack == true;
+        NowInline.IsVisible = hasTrack && HistoryMode;
+        NowRow.IsVisible = hasTrack && !(HistoryMode && _landscape != true);
+        // A hidden image loads nothing: the blurred backdrop went black with the header's cover
+        // hidden (emulator, 11-07). It follows whichever current-track cover is on screen.
+        var cover = NowRow.IsVisible || !NowInline.IsVisible ? NowArtwork : NowInlineArtwork;
+        if (!ReferenceEquals(_backdropCover, cover))
+        {
+            _backdropCover = cover;
+            Backdrop.Bind(Image.SourceProperty, new Avalonia.Data.Binding(nameof(Image.Source))
+            {
+                Source = cover,
+                Converter = (Avalonia.Data.Converters.IValueConverter)Resources["PreBlur"]!,
+            });
+        }
+    }
+
+    private Image? _backdropCover;
+
+    /// <summary>
+    /// With the History on, the list opens on the current row with the song played last just
+    /// above it (scroll up for the rest), and comes back there when the song changes. After the
+    /// layout pass that places the rows.
+    /// </summary>
+    private void AnchorOnCurrent()
+    {
+        if (!HistoryMode) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!HistoryMode || !NowInline.IsVisible) return;
+            // Folded (or empty), only the History's title is above the current row: from the top,
+            // so its Show stays in sight (anchored on the row, Hide scrolled it away: emulator, 11-07).
+            if (_vm?.ShowsQueueHistoryRows != true || !_vm.Player.HasPlayedSongs)
+            {
+                QueueScroll.Offset = default;
+                return;
+            }
+            var top = NowInline.TranslatePoint(default, QueueContent)?.Y ?? 0;
+            QueueScroll.Offset = new Vector(0, Math.Max(0, top - HistoryPeek));
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>The pill sits above the tab bar (and the navigation bar under it). Rows scroll
@@ -323,9 +409,9 @@ public partial class QueuePage : UserControl
         ApplyOrientation(e.NewSize.Width > e.NewSize.Height);
     }
 
-    private void ApplyOrientation(bool landscape)
+    private void ApplyOrientation(bool landscape, bool force = false)
     {
-        if (_landscape == landscape) return;
+        if (_landscape == landscape && !force) return;
         _landscape = landscape;
         Layout.ColumnDefinitions = landscape ? new ColumnDefinitions("*,*") : new ColumnDefinitions("*");
         Grid.SetColumnSpan(TopBar, landscape ? 2 : 1);
@@ -336,12 +422,11 @@ public partial class QueuePage : UserControl
         Grid.SetColumn(UpNextHeader, landscape ? 1 : 0);
         Grid.SetRow(UpNextHeader, landscape ? 1 : 2);
         UpNextHeader.Margin = landscape ? new Thickness(20, 0, 20, 4) : new Thickness(20, 20, 20, 6);
-        foreach (var list in new Control[] { EmptyQueue, QueueScroll })
-        {
-            Grid.SetColumn(list, landscape ? 1 : 0);
-            Grid.SetRow(list, landscape ? 2 : 3);
-            Grid.SetRowSpan(list, landscape ? 2 : 1);
-        }
+        // With the History on, Up Next's title is inside the list, which then starts under the top bar.
+        Grid.SetColumn(QueueScroll, landscape ? 1 : 0);
+        Grid.SetRow(QueueScroll, landscape ? (HistoryMode ? 1 : 2) : 3);
+        Grid.SetRowSpan(QueueScroll, landscape ? (HistoryMode ? 3 : 2) : 1);
+        UpdateNowRows();
         ApplySafeArea();
     }
 
@@ -367,9 +452,15 @@ public partial class QueuePage : UserControl
             _moving.RenderTransform = null;
             _moving.ZIndex = 0;
         }
+        if (_raised != null) _raised.ZIndex = 0;
+        _raised = null;
+        if (_lifted != null) _lifted.Background = null;
+        _lifted = null;
         _moving = null;
         _index = -1;
         _track = null;
+        _dragFromHistory = false;
+        _dragItem = null;
         _gesture = Gesture.None;
     }
 
@@ -436,19 +527,48 @@ public partial class QueuePage : UserControl
 
     private void OnHandlePressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Control handle || handle.FindAncestorOfType<ContentPresenter>() is not { } container) return;
+        // The row's item container, not the nearest ContentPresenter: a History row is a Button,
+        // whose template has a presenter of its own between the handle and the container.
+        if (sender is not Control handle || RowOf(handle) is not ({ } list, { } container, var index)) return;
         ResetGesture();
         _gesture = Gesture.Drag;
         _moving = container;
-        _index = QueueList.IndexFromContainer(container);
-        _track = TrackAt(_index);
+        _index = index;
+        _dragFromHistory = ReferenceEquals(list, HistoryList);
+        if (_dragFromHistory)
+            _dragItem = _vm is { } vm && index < vm.Player.PlayedSongs.Count ? vm.Player.PlayedSongs[index] : null;
+        else
+            _track = TrackAt(index);
         _start = e.GetPosition(this);
         container.ZIndex = 1;               // drawn above the rows it passes
+        // ...and its part of the list above the other parts (History over Up Next, or back).
+        _raised = _dragFromHistory ? HistorySection : QueueList;
+        _raised.ZIndex = 1;
+        // Rows are see-through (the sheet's blurred cover shows behind them): a dragged one laid
+        // its text over the row under it (emulator, 11-07). It is lifted on the sheet's colour.
+        if (container is ContentPresenter lifted && this.TryFindResource("QueueSheetBase", ActualThemeVariant, out var sheet) && sheet is IBrush brush)
+        {
+            _lifted = lifted;
+            lifted.Background = brush;
+            lifted.CornerRadius = new CornerRadius(10);
+        }
         e.Pointer.Capture(handle);
         // The ScrollViewer's touch ScrollGestureRecognizer sees handled events too: once Up Next
         // outgrows the viewport it would take this vertical drag (capture and all) and scroll.
         e.PreventGestureRecognition();
         e.Handled = true;                   // not the start of a swipe on the row
+    }
+
+    /// <summary>The list row (Up Next or History) <paramref name="element"/> is in: its list, its
+    /// item container and its index; nulls and -1 outside both.</summary>
+    private (ItemsControl? List, Control? Container, int Index) RowOf(Control element)
+    {
+        foreach (var v in element.GetVisualAncestors().OfType<Control>())
+        {
+            if (QueueList.IndexFromContainer(v) is var up and >= 0) return (QueueList, v, up);
+            if (HistoryList.IndexFromContainer(v) is var played and >= 0) return (HistoryList, v, played);
+        }
+        return (null, null, -1);
     }
 
     private void OnHandleMoved(object? sender, PointerEventArgs e)
@@ -464,9 +584,10 @@ public partial class QueuePage : UserControl
         if (_gesture != Gesture.Drag || _moving == null) return;
         var dy = e.GetPosition(this).Y - _start.Y;
         var rowHeight = _moving.Bounds.Height;
-        var (from, track) = (_index, _track);
+        var (from, track, row, fromHistory, item) = (_index, _track, _moving, _dragFromHistory, _dragItem);
         ResetGesture();
-        CommitDrag(from, track, dy, rowHeight);
+        if (HistoryMode) CommitListDrag(row, fromHistory, from, track, item, dy);
+        else CommitDrag(from, track, dy, rowHeight);
         e.Handled = true;
     }
 
@@ -482,5 +603,44 @@ public partial class QueuePage : UserControl
         if (DataContext is not ShellViewModel vm || !StillAt(from, pressed)) return;
         var to = QueueGesture.TargetIndex(from, dy, rowHeight, vm.Player.UpNext.Count);
         if (to != from) vm.Player.MoveInQueue(from, to);
+    }
+
+    /// <summary>
+    /// The release half of a handle drag in the one list (History on): the row lands where its
+    /// centre passed the other rows' centres, the current row's included, so it can go in on
+    /// either side of the current track. A no-op if the row's song is no longer where it was
+    /// pressed. Internal for tests.
+    /// </summary>
+    internal void CommitListDrag(Control row, bool fromHistory, int index, Track? pressed, QueueHistoryItem? item, double dy)
+    {
+        if (DataContext is not ShellViewModel vm) return;
+        var played = vm.Player.PlayedSongs;
+        if (fromHistory ? index < 0 || index >= played.Count || !ReferenceEquals(played[index], item) : !StillAt(index, pressed)) return;
+        var from = fromHistory ? index : played.Count + 1 + index;
+        var to = QueueGesture.DropIndex(ListMidpoints(row, out var unrealizedAbove), MidY(row) + dy, unrealizedAbove);
+        if (to != from) vm.Player.MoveInQueueList(from, to);
+    }
+
+    private double MidY(Control c) => c.TranslatePoint(new Point(0, c.Bounds.Height / 2), QueueContent)?.Y ?? 0;
+
+    /// <summary>The centres of every row of the one list but <paramref name="dragged"/>, top to
+    /// bottom: History (all of them above when folded), the current row, then the Up Next rows on
+    /// screen; <paramref name="unrealizedAbove"/> counts the Up Next rows scrolled away above those.</summary>
+    private List<double> ListMidpoints(Control dragged, out int unrealizedAbove)
+    {
+        var mids = new List<double>();
+        var history = _vm?.Player.PlayedSongs.Count ?? 0;
+        for (var i = 0; i < history; i++)
+        {
+            if (!HistoryList.IsEffectivelyVisible) { mids.Add(double.NegativeInfinity); continue; }
+            if (HistoryList.ContainerFromIndex(i) is { } c && !ReferenceEquals(c, dragged)) mids.Add(MidY(c));
+        }
+        mids.Add(MidY(NowInline));
+        var realized = QueueList.GetRealizedContainers().OfType<Control>()
+            .Select(c => (Index: QueueList.IndexFromContainer(c), Row: c)).Where(r => r.Index >= 0).OrderBy(r => r.Index).ToList();
+        unrealizedAbove = realized.Count > 0 ? realized[0].Index : 0;
+        foreach (var (_, c) in realized)
+            if (!ReferenceEquals(c, dragged)) mids.Add(MidY(c));
+        return mids;
     }
 }
