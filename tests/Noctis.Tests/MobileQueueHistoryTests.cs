@@ -17,8 +17,8 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// Discord request 11-07 (f7uh): the played songs stay in the Queue page (Settings › Played Songs in
-/// Queue, off by default) above the current track, a tap plays one again from its place, and a
-/// drag can take a song across the current one.
+/// Queue, off by default) above the current track, a tap plays one again from its place; and a
+/// song's menu can put it just before the playing song (Add Before Current Song).
 /// </summary>
 public class MobileQueueHistoryTests
 {
@@ -317,5 +317,63 @@ public class MobileQueueHistoryTests
         {
             window.Close();
         }
+    }
+
+    // ── Add Before Current Song ──
+
+    [AvaloniaFact]
+    public void AddBeforeCurrent_OnAnotherSongsMenu_PutsItJustBeforeThePlayingSong()
+    {
+        var songs = Songs(3);
+        var extra = MobileFixtures.Song("Extra");
+        using var rig = MobileFixtures.MakeRig(songs.Append(extra).ToArray());
+        rig.Shell.Player.PlayTracks(songs, 0, "Alpha");
+
+        var menu = ContextSheetViewModel.ForTrack(rig.Shell, extra);
+        Assert.True(menu.CanAddBeforeCurrent);
+        menu.AddBeforeCurrentCommand.Execute(null);
+
+        Assert.Same(songs[0], rig.Shell.Player.CurrentTrack);
+        Assert.Equal(new[] { extra }, rig.Shell.Player.PlayedSongs.Select(p => p.Track));
+        Assert.Equal(new[] { "S1", "S2" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+        Assert.Equal("Added before the current song", rig.Shell.Player.Notice);
+        Assert.False(rig.Shell.IsSheetOpen);
+
+        rig.Shell.Player.PreviousCommand.Execute(null);
+        Assert.Same(extra, rig.Shell.Player.CurrentTrack);
+    }
+
+    [AvaloniaFact]
+    public void AddBeforeCurrent_IsNotOffered_WithNothingPlaying_OrOnThePlayingSongsOwnMenu()
+    {
+        var songs = Songs(2);
+        using var rig = MobileFixtures.MakeRig(songs);
+        Assert.False(ContextSheetViewModel.ForTrack(rig.Shell, songs[1]).CanAddBeforeCurrent);
+
+        rig.Shell.Player.PlayTracks(songs, 0);
+        Assert.False(ContextSheetViewModel.ForTrack(rig.Shell, songs[0]).CanAddBeforeCurrent);
+        Assert.True(ContextSheetViewModel.ForTrack(rig.Shell, songs[1]).CanAddBeforeCurrent);
+        Assert.True(ContextSheetViewModel.ForAlbum(rig.Shell, MobileFixtures.MakeAlbum("Record", "Band", songs)).CanAddBeforeCurrent);
+    }
+
+    [AvaloniaFact]
+    public void TheMenuRow_ShowsUnderAddToQueue_WhileASongPlays()
+    {
+        var songs = Songs(2);
+        using var rig = MobileFixtures.MakeRig(songs);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(songs, 0);
+        rig.Shell.OpenTrackSheetCommand.Execute(songs[1]);
+        window.UpdateLayout();
+
+        var row = MobileFixtures.Named<Button>(view, "MenuAddBeforeCurrent");
+        Assert.True(row.IsEffectivelyVisible);
+        Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Add Before Current");
+        var queueRow = MobileFixtures.Named<Button>(view, "MenuAddToQueue");
+        Assert.True(row.TranslatePoint(default, view)!.Value.Y > queueRow.TranslatePoint(default, view)!.Value.Y);
+
+        row.Command!.Execute(row.CommandParameter);
+        Assert.Equal(new[] { songs[1] }, rig.Shell.Player.PlayedSongs.Select(p => p.Track));
+        window.Close();
     }
 }

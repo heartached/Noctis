@@ -2061,6 +2061,8 @@
   <data name="Mobile.Create" xml:space="preserve"><value>Oluştur</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Sonra Çal</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Kuyruğa Ekle</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Çalan şarkıdan önce ekle</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Çalan şarkıdan önce eklendi</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Albüme Git</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Sanatçıya Git</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Yeniden Adlandır</value></data>

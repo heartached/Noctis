@@ -6977,6 +6977,8 @@
   <data name="Mobile.Create" xml:space="preserve"><value>إنشاء</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>التشغيل تاليًا</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>إضافة إلى قائمة الانتظار</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>إضافة قبل الأغنية الحالية</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>أُضيفت قبل الأغنية الحالية</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>الانتقال إلى الألبوم</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>الانتقال إلى الفنان</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>إعادة التسمية</value></data>

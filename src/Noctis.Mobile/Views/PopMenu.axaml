@@ -148,6 +148,17 @@
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddToQueue}" VerticalAlignment="Center" />
                                                 </Grid>
                                             </Button>
+                                            <!-- Just before the playing song (Previous plays it): Add to Queue's glyph upside down. -->
+                                            <Button Name="MenuAddBeforeCurrent" Classes="row np-row" Command="{Binding AddBeforeCurrentCommand}"
+                                                    IsVisible="{Binding CanAddBeforeCurrent}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhAddToQueue}" RenderTransform="scale(1,-1)" />
+                                                    <!-- Two lines rather than trimmed: the longer translations do not fit the card in one. -->
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddBeforeCurrent}" VerticalAlignment="Center"
+                                                               TextWrapping="Wrap" MaxLines="2" Margin="0,8,12,8" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A song list's Select mode, this song ticked first (an album's: none yet). -->
                                             <Button Name="MenuSelect" Classes="row np-row" Command="{Binding SelectCommand}" IsVisible="{Binding CanSelect}">
                                                 <Grid ColumnDefinitions="56,*">

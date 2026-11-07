@@ -522,6 +522,21 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         StartTrack(track, fromPosition: null);
     }
 
+    /// <summary>
+    /// "Add Before Current Song": <paramref name="tracks"/> go in just before the playing song
+    /// (<see cref="PlaybackQueue.AddBeforeCurrent"/>), which keeps playing; Previous then plays
+    /// the last of them. With nothing loaded they simply play, as Play Next does. A queue that
+    /// ran out takes its last song back first (as Play does), so they go before that one.
+    /// </summary>
+    public void AddBeforeCurrent(IReadOnlyList<Track> tracks, string? source = null)
+    {
+        if (tracks.Count == 0) return;
+        if (CurrentTrack == null) { PlayTracks(tracks, 0, source); return; }
+        if (_queue.Current == null && _queue.History.Count > 0 && ReferenceEquals(_queue.History[0], CurrentTrack))
+            _queue.Back();
+        if (_queue.AddBeforeCurrent(tracks)) QueueChanged();
+    }
+
     public void PlayNext(Track track) { _queue.AddNext(track); QueueChanged(); }
     public void AddToQueue(Track track) { _queue.Add(track); QueueChanged(); }
     public void RemoveFromQueue(int upNextIndex) { _queue.RemoveAt(upNextIndex); QueueChanged(); }

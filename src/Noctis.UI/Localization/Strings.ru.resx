@@ -3284,6 +3284,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Создать</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Воспроизвести далее</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Добавить в очередь</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Добавить перед текущей песней</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Добавлено перед текущей песней</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Перейти к альбому</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Перейти к исполнителю</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Переименовать</value></data>

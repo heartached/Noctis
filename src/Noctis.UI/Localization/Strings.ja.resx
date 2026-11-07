@@ -6977,6 +6977,8 @@
   <data name="Mobile.Create" xml:space="preserve"><value>作成</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>次に再生</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>キューに追加</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>再生中の曲の前に追加</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>再生中の曲の前に追加しました</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>アルバムへ移動</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>アーティストへ移動</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>名前を変更</value></data>

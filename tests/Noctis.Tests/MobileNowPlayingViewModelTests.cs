@@ -667,6 +667,78 @@ public class MobileNowPlayingViewModelTests : IDisposable
     }
 
     [Fact]
+    public void AddBeforeCurrent_KeepsTheSongPlaying_AndPreviousPlaysTheAddedOnes()
+    {
+        var t = Tracks(3);
+        var extra = Tracks(2);
+        var (vm, player, _, _) = Make(t.Concat(extra).ToArray());
+        vm.PlayTracks(t, 0);
+        var plays = player.PlayedPaths.Count;
+
+        vm.AddBeforeCurrent(extra);
+
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.Equal(plays, player.PlayedPaths.Count);       // nothing restarted
+        Assert.Equal(new[] { extra[0], extra[1] }, vm.PlayedSongs.Select(p => p.Track));
+        Assert.Equal(new[] { t[1], t[2] }, vm.UpNext);
+        Assert.Equal("Track 3 of 5", vm.QueuePositionText);
+
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(extra[1], vm.CurrentTrack);
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(extra[0], vm.CurrentTrack);
+        Assert.Equal(new[] { extra[1], t[0], t[1], t[2] }, vm.UpNext);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_WithNothingLoaded_PlaysTheSongs()
+    {
+        var t = Tracks(2);
+        var (vm, _, _, _) = Make(t);
+
+        vm.AddBeforeCurrent(t, "Alpha");
+
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.Equal(new[] { t[1] }, vm.UpNext);
+        Assert.Equal("Alpha", vm.SourceLabel);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_AfterTheQueueRanOut_GoesBeforeTheSongStillShown()
+    {
+        var t = Tracks(2);
+        var extra = Tracks(1);
+        var (vm, player, _, _) = Make(t.Concat(extra).ToArray());
+        vm.PlayTracks(t, 0);
+        player.RaiseTrackEnded();
+        player.RaiseTrackEnded();                            // ran out, t1 kept for the bar
+
+        vm.AddBeforeCurrent(extra);
+
+        Assert.Same(t[1], vm.CurrentTrack);
+        Assert.Equal(new[] { t[0], extra[0] }, vm.PlayedSongs.Select(p => p.Track));
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(extra[0], vm.CurrentTrack);
+    }
+
+    [Fact]
+    public async Task AddBeforeCurrent_IsSavedWithTheQueue()
+    {
+        var t = Tracks(2);
+        var extra = Tracks(1);
+        var all = t.Concat(extra).ToArray();
+        var (vm, _, _, persistence) = Make(all);
+        vm.PlayTracks(t, 0);
+        vm.AddBeforeCurrent(extra);
+        await vm.SaveStateAsync();
+
+        var state = await persistence.LoadQueueStateAsync();
+
+        Assert.Equal(new[] { extra[0].Id }, state!.HistoryIds);
+        Assert.Equal(1, state.PlayedInQueue);
+    }
+
+    [Fact]
     public void MoveInQueueList_AboveTheCurrentSong_KeepsItPlaying_AndPreviousPlaysTheMovedOne()
     {
         var t = Tracks(4);

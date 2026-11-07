@@ -187,6 +187,22 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         _shell.CloseSheet();
     }
 
+    /// <summary>Add Before Current Song shows while a song is loaded, and not on that song's own
+    /// menu (it would only go in before itself).</summary>
+    public bool CanAddBeforeCurrent => _shell.Player.CurrentTrack is { } current && Tracks.Count > 0
+        && !(Tracks.Count == 1 && Tracks[0].Id == current.Id);
+
+    /// <summary>The songs go in just before the playing one (Previous plays them), which keeps
+    /// playing; a short banner says so, since nothing on screen changes unless the Queue shows
+    /// its History.</summary>
+    [RelayCommand]
+    private void AddBeforeCurrent()
+    {
+        _shell.Player.AddBeforeCurrent(Tracks, Album?.Name ?? Playlist?.Name);
+        _shell.CloseSheet();
+        _shell.Player.Notice = Loc.T("Mobile.AddedBeforeCurrent");
+    }
+
     [RelayCommand]
     private async Task ToggleFavouriteAsync()
     {
