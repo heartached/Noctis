@@ -104,6 +104,7 @@ public sealed class UpdateService
     {
         InstallSource.Scoop => "Update with: scoop update noctis",
         InstallSource.Portable => "Download the new version from GitHub.",
+        InstallSource.DebPackage => "Download the new .deb from GitHub and open it to install.",
         _ => null
     };
 
@@ -147,16 +148,31 @@ public sealed class UpdateService
         if (OperatingSystem.IsLinux())
         {
             var appImage = Environment.GetEnvironmentVariable("APPIMAGE");
-            if (!string.IsNullOrEmpty(appImage) && File.Exists(appImage))
-                return InstallSource.Installed;
-
-            return IsDirectoryWritable(AppContext.BaseDirectory)
-                ? InstallSource.Installed
-                : InstallSource.Portable;
+            return ClassifyLinuxInstall(
+                isAppImage: !string.IsNullOrEmpty(appImage) && File.Exists(appImage),
+                isDebPackage: File.Exists(Path.Combine(AppContext.BaseDirectory, DebPackageMarkerFileName)),
+                // Lazy: the write probe only runs for a plain tarball copy.
+                isDirectoryWritable: () => IsDirectoryWritable(AppContext.BaseDirectory));
         }
 
         // macOS .dmg drag-install always applies.
         return InstallSource.Installed;
+    }
+
+    /// <summary>File the .deb ships beside the Noctis binary (packaging/linux/build-deb.sh).</summary>
+    internal const string DebPackageMarkerFileName = ".noctis-deb-package";
+
+    /// <summary>
+    /// Pure Linux classification. An AppImage swaps itself; the .deb belongs to dpkg (checked
+    /// before the write probe: run as root, /opt/noctis is writable and the tarball would be
+    /// extracted over package-owned files); any other copy is a tarball, updatable in place
+    /// only where this user can write. Internal for tests.
+    /// </summary>
+    internal static InstallSource ClassifyLinuxInstall(bool isAppImage, bool isDebPackage, Func<bool> isDirectoryWritable)
+    {
+        if (isAppImage) return InstallSource.Installed;
+        if (isDebPackage) return InstallSource.DebPackage;
+        return isDirectoryWritable() ? InstallSource.Installed : InstallSource.Portable;
     }
 
     /// <summary>Probes write access by creating (and auto-deleting) a zero-byte file —
@@ -1173,5 +1189,8 @@ public enum InstallSource
     /// <summary>Running from a Scoop-managed directory; update via <c>scoop update</c>.</summary>
     Scoop,
     /// <summary>Portable / manually-extracted copy with no installer.</summary>
-    Portable
+    Portable,
+    /// <summary>Installed by the Linux .deb (GitHub #191): dpkg owns the files, so the
+    /// in-app updater must never extract a tarball over them.</summary>
+    DebPackage
 }
