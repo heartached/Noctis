@@ -53,9 +53,12 @@ folder, so it starts with its own library rather than an installer copy's.
 Or download the installer or portable zip from the
 [latest release](https://github.com/heartached/Noctis/releases/latest).
 
-**macOS and Linux**: download the `.dmg`, the AppImage (x64) or the `.tar.gz` (x64 and ARM64) from the
+**macOS and Linux**: download the `.dmg`, the `.deb` (x64, for Debian, Ubuntu, Mint, Zorin OS
+and other Debian-based distros), the AppImage (x64) or the `.tar.gz` (x64 and ARM64) from the
 [latest release](https://github.com/heartached/Noctis/releases/latest).
-Both ship with everything they need, so there is nothing else to install.
+The `.dmg` and the AppImage ship with everything they need. The `.deb` installs VLC's libraries
+from your distro as dependencies, and the `.tar.gz` needs them installed (see
+[libvlc](#native-dependency-libvlc) below).
 
 **Self-hosting**: `noctis-server` is the same library scanner and OpenSubsonic API
 without a window, for a NAS, a VPS or Docker. Grab `noctis-server-linux-x64.tar.gz`
@@ -184,8 +187,9 @@ Supported platforms: Windows 10/11 (x64), macOS 12+ (Intel and Apple Silicon), L
 
 ### Native dependency: libvlc
 
-The released downloads already carry everything they need. This only matters if
-you are building from source.
+The released `.dmg`, AppImage and Windows downloads already carry everything they
+need, and the `.deb` pulls libvlc in as a dependency. This matters if you are building
+from source or running the Linux `.tar.gz`.
 
 - **Windows:** bundled automatically via NuGet, nothing to install.
 - **macOS:** install [VLC](https://www.videolan.org/vlc/), which Noctis loads from
@@ -194,12 +198,12 @@ you are building from source.
   ```bash
   brew install --cask vlc
   ```
-- **Linux:** install via your package manager. The `-dev` package provides the
-  unversioned `libvlc.so` symlink that the .NET loader looks for. The released
+- **Linux:** install via your package manager. Noctis loads the runtime library
+  (`libvlc.so.5`), so the `-dev` package is not needed (it works too). The released
   AppImage bundles libvlc and its plugins, so it runs without this.
   ```bash
   # Debian/Ubuntu
-  sudo apt install libvlc-dev
+  sudo apt install libvlc5 vlc-plugin-base
   # Fedora
   sudo dnf install vlc-devel
   # Arch
@@ -218,7 +222,13 @@ xattr -dr com.apple.quarantine Noctis.app   # remove Gatekeeper quarantine flag
 open Noctis.app
 ```
 
-**Linux**, using the AppImage:
+**Linux**, using the `.deb` (Debian/Ubuntu-based distros). Noctis then appears in your
+app menu and can be pinned to the dock; to update, install the next release's `.deb` the same way:
+```bash
+sudo apt install ./Noctis-linux-amd64.deb
+```
+
+Or the AppImage (needs glibc 2.35 or newer: Ubuntu 22.04, Debian 12 or later):
 ```bash
 chmod +x Noctis-x86_64.AppImage
 ./Noctis-x86_64.AppImage
