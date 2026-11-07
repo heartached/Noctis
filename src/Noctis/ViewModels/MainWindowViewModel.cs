@@ -1152,18 +1152,25 @@ public partial class MainWindowViewModel : ViewModelBase
     /// GitHub #71: with Settings → Library → "Import dropped files" off, a drop plays or
     /// queues the files from where they are — nothing is moved into Noctis Imports and
     /// the library is left alone. Folders expand to their audio files in name order.
-    /// Empty player: the drop replaces the queue and starts; otherwise it appends.
+    /// Empty player: the drop replaces the queue and starts; otherwise it appends, or with
+    /// <paramref name="insertAt"/> (GitHub #189: dropped onto the queue list) goes into Up Next
+    /// there, with no toast: the open list shows where they went.
     /// </summary>
-    public async Task QueueExternalMediaAsync(IReadOnlyList<string> paths)
+    public async Task QueueExternalMediaAsync(IReadOnlyList<string> paths, int? insertAt = null)
     {
         try
         {
+            // Reading the files takes a moment, and a song may start (leaving Up Next) or the
+            // queue change meanwhile: insert before the song the drop was above, not at an index.
+            var before = insertAt is { } at && at >= 0 && at < Player.UpNext.Count ? Player.UpNext[at] : null;
             var files = await Task.Run(() => DroppedFilesService.ExpandAudioFiles(paths));
             if (files.Count == 0) return;
             var tracks = await ResolveExternalTracksAsync(files);
             if (tracks.Count == 0) return;
             if (DropStartsPlayback)
                 Player.ReplaceQueueAndPlay(tracks, 0);
+            else if (insertAt is { } requested)
+                Player.InsertIntoQueue(QueueDropIndex(Player.UpNext, before, requested), tracks, announce: false);
             else
                 Player.AddRangeToQueue(tracks);
         }
@@ -1171,6 +1178,25 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Debug.WriteLine($"[MainWindowVM] QueueExternalMedia failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// GitHub #189: where a queue drop lands once its files are read: before the song it was
+    /// dropped above (<paramref name="before"/>, null for the end), wherever that song is now;
+    /// <paramref name="requested"/> (clamped) when it has left Up Next. A song queued twice
+    /// is the copy nearest the requested row.
+    /// </summary>
+    internal static int QueueDropIndex(IList<Track> upNext, Track? before, int requested)
+    {
+        if (before == null) return requested <= 0 ? 0 : upNext.Count;
+        var found = -1;
+        for (var i = 0; i < upNext.Count; i++)
+        {
+            if (ReferenceEquals(upNext[i], before)
+                && (found < 0 || Math.Abs(i - requested) < Math.Abs(found - requested)))
+                found = i;
+        }
+        return found >= 0 ? found : Math.Clamp(requested, 0, upNext.Count);
     }
 
     /// <summary>Library entries by path where known (play counts / ratings attach), else a

@@ -1906,6 +1906,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         MoveDragChip(e);
         _dragOverTicks++;
 
+        // GitHub #189: over a queue list the drop goes where its insertion line is.
+        if (TrackQueueDrop(e)) return;
+
         // Don't show import overlay for internal drags (album/track tiles dragged within the app)
         if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
             return;
@@ -1935,7 +1938,58 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             if (ticks != _dragOverTicks) return;
             ShowDragOverlay(false);
             SidebarPane?.EndExternalFileDrop();
+            QueueDropTarget.HideAll();
         }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// GitHub #189: a drag over a queue list that it takes — files / folders from outside the
+    /// app, or (queue panel only, GitHub #71) rows dragged from the library — shows the list's
+    /// insertion line instead of the drop overlay. False elsewhere (every line hidden).
+    /// </summary>
+    private bool TrackQueueDrop(DragEventArgs e)
+    {
+        var target = QueueDropTargetFor(e);
+        QueueDropTarget.HideAll(target);
+        if (target == null) return false;
+        target.Track(v => e.GetPosition(v));
+        ShowDragOverlay(false);
+        SidebarPane?.EndExternalFileDrop();
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+        return true;
+    }
+
+    /// <summary>The queue list under the pointer, when it takes this drag's payload.</summary>
+    private QueueDropTarget? QueueDropTargetFor(DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel) return null;
+        if (QueueDropTarget.At(v => e.GetPosition(v)) is not { } target) return null;
+        if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
+            return target.AcceptsInternalRows && Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is { Count: > 0 }
+                ? target : null;
+        return GetDroppedLocalPaths(e.DataTransfer).Any(IsImportablePath) ? target : null;
+    }
+
+    /// <summary>GitHub #189: a drop onto a queue list inserts there (see <see cref="TrackQueueDrop"/>).
+    /// Files are played from where they are, as a drop outside the zones does with "Import
+    /// dropped files" off; nothing is imported.</summary>
+    private bool TryQueueDrop(DragEventArgs e)
+    {
+        if (QueueDropTargetFor(e) is not { } target || DataContext is not MainWindowViewModel vm) return false;
+        var index = target.Track(v => e.GetPosition(v));
+        QueueDropTarget.HideAll();
+        ShowDragOverlay(false);
+        SidebarPane?.EndExternalFileDrop();
+        e.Handled = true;
+        if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is { Count: > 0 } rows)
+        {
+            // The rows land in the open queue list itself: that is the confirmation.
+            vm.Player.InsertIntoQueue(index, rows.ToList(), announce: false);
+            return true;
+        }
+        _ = vm.QueueExternalMediaAsync(GetDroppedLocalPaths(e.DataTransfer), index);
+        return true;
     }
 
     /// <summary>Counts DragEnter / DragOver, so a DragLeave can tell a crossing from an exit.</summary>
@@ -2007,6 +2061,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
     private async void OnWindowDrop(object? sender, DragEventArgs e)
     {
+        if (TryQueueDrop(e)) return;
+        QueueDropTarget.HideAll();
+
         // Ignore internal drags (album/track tiles dragged within the app)
         if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
             return;
@@ -3077,36 +3134,31 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             rootPanel.AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
         }
 
-        // GitHub #71 (3): rows dragged from any library page drop onto the queue popup
-        // to append them. The window handlers above leave in-app payloads alone, so this
-        // list is the one place that reads them here.
+        // GitHub #71 (3): rows dragged from any library page drop onto the queue popup.
+        // GitHub #189: so do files and folders from outside the app, and both land where the
+        // insertion line shows (the window handlers above route them, QueueDropTarget).
         if (this.FindControl<ListBox>("QueuePopupListBox") is { } queueDropTarget)
         {
             DragDrop.SetAllowDrop(queueDropTarget, true);
-            queueDropTarget.AddHandler(DragDrop.DragOverEvent, OnQueueDragOver);
-            queueDropTarget.AddHandler(DragDrop.DropEvent, OnQueueDrop);
+            if (this.FindControl<Border>("QueueDropLine") is { } dropLine)
+            {
+                var popupDrop = new QueueDropTarget(queueDropTarget, dropLine,
+                    row => (DataContext as MainWindowViewModel)?.Player.QueueInsertRowToUpNextIndex(row) ?? 0,
+                    index => (DataContext as MainWindowViewModel)?.Player.UpNextIndexToQueueRow(index) ?? index,
+                    () => DataContext is MainWindowViewModel { Player.IsQueuePopupOpen: true })
+                {
+                    Priority = 1, // the panel sits over the page, the Queue page's list included
+                    AcceptsInternalRows = true,
+                };
+                QueueDropTarget.Register(popupDrop);
+                Closed += (_, _) => QueueDropTarget.Unregister(popupDrop);
+            }
             // GitHub #88 rubber band. handledEventsToo: rows / ListBoxItems handle presses.
             queueDropTarget.AddHandler(PointerPressedEvent, OnQueueBandPressed, RoutingStrategies.Bubble, handledEventsToo: true);
             queueDropTarget.AddHandler(PointerMovedEvent, OnQueueBandMoved, RoutingStrategies.Bubble, handledEventsToo: true);
             queueDropTarget.AddHandler(PointerReleasedEvent, OnQueueBandReleased, RoutingStrategies.Bubble, handledEventsToo: true);
             queueDropTarget.AddHandler(PointerCaptureLostEvent, OnQueueBandCaptureLost, RoutingStrategies.Direct);
         }
-    }
-
-    private void OnQueueDragOver(object? sender, DragEventArgs e)
-    {
-        if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is not { Count: > 0 }) return;
-        e.DragEffects = DragDropEffects.Copy;
-        e.Handled = true;
-    }
-
-    private void OnQueueDrop(object? sender, DragEventArgs e)
-    {
-        if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is not { Count: > 0 } tracks) return;
-        if (DataContext is not MainWindowViewModel vm) return;
-        e.Handled = true;
-        // The rows land in the open queue list itself: that is the confirmation.
-        vm.Player.AddRangeToQueue(tracks.ToList(), announce: false);
     }
 
     // Backdrop click closes the Settings modal; clicks inside the card are swallowed.

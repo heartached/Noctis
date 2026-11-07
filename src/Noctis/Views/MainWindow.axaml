@@ -1556,7 +1556,7 @@
                             </ListBox>
 
                             <!-- GitHub #92: empty-queue hint. Not hit-testable, so a library row
-                                 dragged over it still lands on the ListBox (OnQueueDrop).
+                                 dragged over it still lands on the ListBox (QueueDropTarget).
                                  GitHub #134: only when there is nothing at all (it showed under a
                                  playing song and its played songs whenever Up Next was empty). -->
                             <StackPanel x:Name="QueueEmptyHint"
@@ -1685,6 +1685,18 @@
                                         Background="{DynamicResource AccentColorBrush}"
                                         Opacity="0.18" />
                             </Border>
+
+                            <!-- GitHub #189: where files dragged in from Explorer (or rows from the
+                                 library) land between the rows; placed from code-behind
+                                 (QueueDropTarget). Inset like the rows (12 px). -->
+                            <Border x:Name="QueueDropLine"
+                                    IsHitTestVisible="False"
+                                    IsVisible="False"
+                                    VerticalAlignment="Top"
+                                    Height="2"
+                                    Margin="16,0,16,0"
+                                    CornerRadius="1"
+                                    Background="{DynamicResource AccentColorBrush}" />
                         </Grid>
                     </DockPanel>
 

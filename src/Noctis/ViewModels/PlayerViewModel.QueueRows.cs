@@ -101,6 +101,18 @@ public partial class PlayerViewModel
         return i >= 0 && i < UpNext.Count ? i : -1;
     }
 
+    /// <summary>
+    /// GitHub #189: the Up Next index of a drop between rows, from the row it would land above
+    /// (<see cref="QueueRows"/>.Count: below the last). Above Up Next — among the played rows or
+    /// above the playing song — is Up Next's top (Play Next): nothing can land before the
+    /// playing song.
+    /// </summary>
+    public int QueueInsertRowToUpNextIndex(int row) => Math.Clamp(row - QueueUpNextOffset, 0, UpNext.Count);
+
+    /// <summary>The row songs inserted at Up Next <paramref name="index"/> appear above
+    /// (<see cref="QueueRows"/>.Count at the end): where the drop line is drawn.</summary>
+    public int UpNextIndexToQueueRow(int index) => Math.Clamp(index, 0, UpNext.Count) + QueueUpNextOffset;
+
     /// <summary>The History index (0 = newest) of a played row, or -1.</summary>
     private int QueueRowToHistoryIndex(int row)
         => row >= 0 && row < QueuePlayedRowCount ? History.Count - 1 - row : -1;

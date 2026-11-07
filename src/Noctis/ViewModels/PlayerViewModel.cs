@@ -2057,6 +2057,39 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// GitHub #189: inserts <paramref name="tracks"/> into Up Next at <paramref name="index"/>,
+    /// keeping their order, with ONE <see cref="TracksQueued"/> for the lot: where files dropped
+    /// onto the queue list land. 0 (or less) is Play Next, <see cref="UpNext"/>.Count (or more)
+    /// the end; the Repeat All cycle takes them at the same place.
+    /// </summary>
+    public void InsertIntoQueue(int index, IList<Track> tracks, string? sourceName = null, bool announce = true)
+    {
+        if (tracks.Count == 0) return;
+        if (index <= 0)
+        {
+            AddNextRange(tracks, sourceName, announce);
+            return;
+        }
+        if (index >= UpNext.Count)
+        {
+            AddRangeToQueue(tracks, sourceName, announce);
+            return;
+        }
+        DebugLogger.Info(DebugLogger.Category.Queue, "InsertIntoQueue", $"count={tracks.Count}, at={index}, newLen={UpNext.Count + tracks.Count}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
+        MirrorIntoRepeatCycle(index, tracks.ToList());
+        _suppressHasContentNotify = true;
+        try { UpNext.InsertRange(index, tracks); }
+        finally
+        {
+            _suppressHasContentNotify = false;
+            OnPropertyChanged(nameof(HasContent));
+        }
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
+    }
+
+    /// <summary>
     /// Mirrors <paramref name="tracks"/>, about to go into Up Next at <paramref name="upNextIndex"/>,
     /// into the Repeat All cycle at the same place, so a wrap replays the queue as edited:
     /// -1 is Play Next (after the playing song), <see cref="UpNext"/>.Count the end, anything
