@@ -1327,9 +1327,14 @@
                             Width="34" Height="34">
                         <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLinePlaylistAdd}" Foreground="{DynamicResource IslandIconFill}" />
                         <Button.Flyout>
+                            <!-- The hidden first row keeps the menu from ever being empty: a
+                                 MenuFlyout opened with no items never shows the rows its Opening
+                                 handler adds (IslandBarActions186Tests). -->
                             <MenuFlyout Placement="Top"
                                         PlacementConstraintAdjustment="FlipY"
-                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True" />
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <Separator IsVisible="False" />
+                            </MenuFlyout>
                         </Button.Flyout>
                     </Button>
                     <Button x:Name="TrashButton"

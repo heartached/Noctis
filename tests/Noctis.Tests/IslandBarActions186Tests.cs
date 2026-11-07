@@ -1,7 +1,9 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -558,6 +560,69 @@ public class IslandBarActions186Tests : IDisposable
         sidebar.Playlists.Remove(b);
         Assert.Equal(new[] { "Chill" },
             PlaybackBarView.BuildQuickPlaylistItems(host, rig.Player).Cast<MenuItem>().Select(r => (string)r.Header!));
+    }
+
+    private static void Pump(int ms = 60)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        do
+        {
+            Dispatcher.UIThread.RunJobs();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Thread.Sleep(2);
+        } while (sw.ElapsedMilliseconds < ms);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>Interface Size (GitHub #145): the buttons sit inside the window's scale host, and
+    /// the quick playlist menu's popup takes the button's scale like every other menu. Also the
+    /// menu really shows its rows: opened empty, a MenuFlyout never showed the rows its Opening
+    /// handler added (presenter ItemCount 0), hence the hidden placeholder row in the XAML.</summary>
+    [AvaloniaFact]
+    public void QuickPlaylistMenu_ShowsItsRows_AndFollowsTheInterfaceSize()
+    {
+        UiScale.Install(); // App.Initialize does this at startup
+        var rig = new Rig();
+        rig.Player.IslandShowQuickPlaylist = true;
+        rig.Player.IslandShowTrash = true;
+        rig.PlayTwo();
+        var bar = new PlaybackBarView { DataContext = rig.Player };
+        var win = new Window { Width = 1600, Height = 1200, Content = bar };
+        try
+        {
+            win.Show();
+            Dispatcher.UIThread.RunJobs();
+            var quick = bar.FindControl<Button>("QuickPlaylistButton")!;
+            var trash = bar.FindControl<Button>("TrashButton")!;
+            var menu = (MenuFlyout)quick.Flyout!;
+
+            static double PopupScale(Avalonia.Visual inside)
+                => inside.GetVisualAncestors().OfType<LayoutTransformControl>()
+                       .FirstOrDefault(l => l is not Noctis.Controls.UiScaleHost)?.LayoutTransform?.Value.M11 ?? 1.0;
+
+            foreach (var f in new[] { 1.0, 1.5 })
+            {
+                UiScale.SetFactor(f);
+                Pump();
+                Assert.Equal(f, UiScale.GetApplied(win));
+                Assert.Equal(f, trash.TransformToVisual(win)!.Value.M11, 3);
+
+                menu.ShowAt(quick);
+                Pump();
+                var row = menu.Items.OfType<MenuItem>().First();
+                Assert.Equal("Add to Playlist", row.Header);
+                Assert.True(row.IsAttachedToVisualTree());
+                Assert.True(row.IsEffectivelyVisible);
+                Assert.Equal(f, PopupScale(row), 3);
+                menu.Hide();
+                Pump(400); // let the close animation finish before the next open
+            }
+        }
+        finally
+        {
+            UiScale.SetFactor(1.0); // process-wide
+            win.Close();
+        }
     }
 
     [AvaloniaFact]

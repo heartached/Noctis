@@ -1951,7 +1951,8 @@ public partial class PlaybackBarView : UserControl
     private void OnQuickPlaylistMenuOpening(object? sender, EventArgs e)
     {
         if (sender is not MenuFlyout menu || DataContext is not PlayerViewModel vm) return;
-        menu.Items.Clear();
+        // Index 0 is the hidden placeholder from the XAML; see there.
+        for (var i = menu.Items.Count - 1; i >= 1; i--) menu.Items.RemoveAt(i);
         foreach (var item in BuildQuickPlaylistItems(this, vm))
             menu.Items.Add(item);
     }
