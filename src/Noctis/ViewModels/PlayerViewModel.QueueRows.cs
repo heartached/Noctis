@@ -38,8 +38,9 @@ public partial class PlayerViewModel
 
     /// <summary>
     /// GitHub #175: Clear Queue took the loaded song out of the queue too. It plays on, but
-    /// the panel lists it nowhere (no Now Playing card, no row) until another song loads or
-    /// something is queued after it. Up Next is always empty while this is set.
+    /// the panel lists it nowhere (no Now Playing card, no row) until another song loads.
+    /// GitHub #188: songs queued meanwhile do not bring it back; they are Up Next on their
+    /// own, and the Repeat All cycle is them alone.
     /// </summary>
     private bool _currentClearedFromQueue;
 
@@ -308,13 +309,8 @@ public partial class PlayerViewModel
 
     private void OnUpNextChangedForRows(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // Something queued after Clear Queue: the playing song is part of the queue again,
-        // its row back above what was added (GitHub #175). The flag change rebuilds the rows.
-        if (_currentClearedFromQueue && UpNext.Count > 0)
-        {
-            SetCurrentClearedFromQueue(false);
-            return;
-        }
+        // Songs queued after Clear Queue leave the playing song off the queue (GitHub #188):
+        // they used to bring it back here, as the Now Playing card / row above them.
         var offset = QueueUpNextOffset;
         switch (e.Action)
         {
