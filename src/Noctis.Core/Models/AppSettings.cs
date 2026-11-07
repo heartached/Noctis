@@ -883,6 +883,20 @@ public class AppSettings : IJsonOnDeserializing
     /// <see cref="IslandArtworkClicks.Parse"/>.</summary>
     public string PlaybackBarArtworkClick { get; set; } = IslandArtworkClicks.DefaultSetting;
 
+    /// <summary>GitHub #186: a Move to Trash button in the island's right cluster (off by default).</summary>
+    public bool PlaybackBarShowTrash { get; set; }
+
+    /// <summary>GitHub #186: where the Move to Trash button moves the playing song. Empty (the
+    /// default), or a folder that's gone, sends it to the Recycle Bin / Trash instead.</summary>
+    public string PlaybackBarTrashFolder { get; set; } = string.Empty;
+
+    /// <summary>GitHub #186: a Quick Add to Playlist button in the island's right cluster (off by default).</summary>
+    public bool PlaybackBarShowQuickPlaylist { get; set; }
+
+    /// <summary>GitHub #186: the quick playlists' ids, one per slot (at most three;
+    /// <see cref="Guid.Empty"/> = an empty slot).</summary>
+    public List<Guid> PlaybackBarQuickPlaylistIds { get; set; } = new();
+
     /// <summary>GitHub #92: the "Nothing playing · Queue" pill that stands in for the island
     /// while nothing is loaded. Off by default (owner, 2026-09-24).</summary>
     public bool PlaybackBarShowIdlePill { get; set; }

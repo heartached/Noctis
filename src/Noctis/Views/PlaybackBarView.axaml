@@ -1313,6 +1313,35 @@
                                             IsFavorite="{Binding CurrentTrack.IsFavorite, FallbackValue=False}" />
                     </Button>
 
+                    <!-- GitHub #186: Quick Add to Playlist and Move to Trash, each opt-in (Settings →
+                         Player → Player island buttons) and budgeted with the extras above. The quick
+                         playlist menu is a MenuFlyout (overlay-hosted and frosted by GlassMenus like
+                         the "…" menu), filled per open with the picked playlists
+                         (OnQuickPlaylistMenuOpening). Trash sits last, away from the heart. -->
+                    <Button x:Name="QuickPlaylistButton"
+                            Classes="secondary-btn"
+                            IsEnabled="{Binding CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            IsVisible="{Binding IslandShowQuickPlaylist}"
+                            ToolTip.Tip="{loc:T PlaybackBar.QuickPlaylistTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.QuickPlaylistTip}"
+                            Width="34" Height="34">
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLinePlaylistAdd}" Foreground="{DynamicResource IslandIconFill}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Top"
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True" />
+                        </Button.Flyout>
+                    </Button>
+                    <Button x:Name="TrashButton"
+                            Classes="secondary-btn"
+                            Command="{Binding TrashCurrentTrackCommand}"
+                            IsVisible="{Binding IslandShowTrash}"
+                            ToolTip.Tip="{Binding TrashButtonTip}"
+                            AutomationProperties.Name="{Binding TrashButtonTip}"
+                            Width="34" Height="34">
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineTrash}" Foreground="{DynamicResource IslandIconFill}" />
+                    </Button>
+
                     <!-- More options: the everyday "…" lives inside the track box
                          (BoxOptionsButton). This one owns the MenuFlyout and is the
                          fallback shown only while the box is hidden — the lyrics-page bar

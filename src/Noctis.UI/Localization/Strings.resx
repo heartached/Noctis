@@ -300,6 +300,18 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>A button on the right to switch to the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsButton" xml:space="preserve"><value>Lyrics button</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsButtonHint" xml:space="preserve"><value>The button on the right that opens the lyrics page. Hidden, the page still opens from its keyboard shortcut, or from the artwork (see Clicking the artwork).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylistButton" xml:space="preserve"><value>Quick Add to Playlist</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylistButtonHint" xml:space="preserve"><value>A button on the right that adds the playing song to one of up to three playlists you pick below.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylist1" xml:space="preserve"><value>Quick playlist 1</value><comment>Accessible name of the first quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylist2" xml:space="preserve"><value>Quick playlist 2</value><comment>Accessible name of the second quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylist3" xml:space="preserve"><value>Quick playlist 3</value><comment>Accessible name of the third quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>None</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
+  <data name="Settings.TrashButton" xml:space="preserve"><value>Move to Trash</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>A button on the right that takes the playing song out of your library in one click, without asking. It goes to the Trash folder below, or to the Recycle Bin / Trash if none is set.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashFolder" xml:space="preserve"><value>Trash folder</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
+  <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Where Move to Trash puts songs, so you can look through them later. Pick a folder outside your music folders, or the next scan adds them back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Not set: the Recycle Bin / Trash</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
+  <data name="Settings.TrashFolderMissing" xml:space="preserve"><value>This folder isn't there right now, so songs go to the Recycle Bin / Trash until it's back.</value><comment>Shown when the Trash folder set is not on disk (SettingsView.axaml)</comment></data>
   <data name="Settings.ArtworkClick" xml:space="preserve"><value>Clicking the artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>What a click on the song's artwork in the player island opens.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Mini Player</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
@@ -1828,6 +1840,13 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.EqualizerTip" xml:space="preserve"><value>Equalizer on/off</value><comment>ToolTip.Tip of the island EQ button (GitHub #94)</comment></data>
   <data name="PlaybackBar.MiniPlayerTip" xml:space="preserve"><value>Mini Player</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.FullScreenLyricsTip" xml:space="preserve"><value>Full Screen Lyrics</value><comment>Island artwork tooltip when it opens full-screen lyrics (PlayerViewModel.IslandArtworkTip)</comment></data>
+  <data name="PlaybackBar.QuickPlaylistTip" xml:space="preserve"><value>Quick Add to Playlist</value><comment>ToolTip.Tip and accessible name of the island Quick Add to Playlist button (GitHub #186)</comment></data>
+  <data name="PlaybackBar.ChooseQuickPlaylists" xml:space="preserve"><value>Choose Quick Playlists…</value><comment>Quick playlist menu row when none are picked: opens Settings &gt; Player (GitHub #186)</comment></data>
+  <data name="PlaybackBar.MoveToTip" xml:space="preserve"><value>Move to {0}</value><comment>ToolTip.Tip and accessible name of the island Move to Trash button; {0} = Trash folder name, or RemoveFromLibrary.RecycleBin / Trash</comment></data>
+  <data name="PlaybackBar.MovedTo" xml:space="preserve"><value>Moved to {0}</value><comment>Pill after the island Move to Trash button; {0} = Trash folder name, or RemoveFromLibrary.RecycleBin / Trash</comment></data>
+  <data name="PlaybackBar.CouldNotMove" xml:space="preserve"><value>Couldn't move to {0}</value><comment>Pill when the island Move to Trash button could not move the file; {0} = as in MovedTo</comment></data>
+  <data name="PlaybackBar.AddedToPlaylist" xml:space="preserve"><value>Added to {0}</value><comment>Pill after a quick playlist add; {0} = playlist name</comment></data>
+  <data name="PlaybackBar.AlreadyInPlaylist" xml:space="preserve"><value>Already in {0}</value><comment>Pill when the song is in the quick playlist already; {0} = playlist name</comment></data>
   <data name="PlaybackBar.ViewAlbumTip" xml:space="preserve"><value>View Album</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve"><value>View Artist</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>

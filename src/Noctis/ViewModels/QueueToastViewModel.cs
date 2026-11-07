@@ -37,18 +37,29 @@ public sealed partial class QueueToastViewModel : ObservableObject
         _schedule = schedule ?? ((delay, action) => DispatcherTimer.RunOnce(action, delay));
     }
 
-    /// <summary>Subscribes to <paramref name="player"/>'s user queue adds.</summary>
-    public void Attach(PlayerViewModel player) => player.TracksQueued += (_, e) => Show(e);
+    /// <summary>Subscribes to <paramref name="player"/>'s user queue adds and its island
+    /// buttons' confirmations (GitHub #186: Move to Trash, Quick Add to Playlist).</summary>
+    public void Attach(PlayerViewModel player)
+    {
+        player.TracksQueued += (_, e) => Show(e);
+        player.ToastRequested += (_, t) => Show(t.Headline, t.Detail);
+    }
 
     public void Show(QueueAddedEventArgs e)
     {
+        var (headline, detail) = Describe(e);
+        Show(headline, detail);
+    }
+
+    /// <summary>Shows any one-line confirmation in the same pill.</summary>
+    public void Show(string headline, string detail)
+    {
         if (!Dispatcher.UIThread.CheckAccess())
         {
-            Dispatcher.UIThread.Post(() => Show(e));
+            Dispatcher.UIThread.Post(() => Show(headline, detail));
             return;
         }
 
-        var (headline, detail) = Describe(e);
         Headline = headline;
         Detail = detail;
         _hold?.Dispose();
