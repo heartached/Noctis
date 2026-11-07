@@ -270,13 +270,17 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// Shuffle buttons on lists, albums and artists: start on a random track and shuffle the
     /// rest. The list is rotated so the start is first before <see cref="PlaybackQueue.ReplaceAll"/>
     /// (which queues only the tracks after the start index); the unshuffled order Shuffle-off
-    /// restores is then the list's own order from that track, wrapping round.
+    /// restores is then the list's own order from that track, wrapping round. The start is never
+    /// a track Shuffle holds out (snoozed, Skip When Shuffling; <see cref="PlaybackQueue.IsHeldOutOfShuffle"/>),
+    /// and a list of nothing else does not play, as on the desktop (PlayShuffled).
     /// </summary>
     public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null, string? source = null)
     {
         if (tracks.Count == 0) return;
         rng ??= Random.Shared;
-        var start = rng.Next(tracks.Count);
+        var candidates = Enumerable.Range(0, tracks.Count).Where(i => !PlaybackQueue.IsHeldOutOfShuffle(tracks[i])).ToList();
+        if (candidates.Count == 0) return;
+        var start = candidates[rng.Next(candidates.Count)];
         var rotated = tracks.Skip(start).Concat(tracks.Take(start)).ToList();
         var first = _queue.ReplaceAll(rotated, 0);
         SourceLabel = source;
