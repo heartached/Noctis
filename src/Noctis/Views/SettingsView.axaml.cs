@@ -187,8 +187,8 @@ public partial class SettingsView : UserControl
     // ── A plugin's own view, in place of its page ──
 
     /// <summary>
-    /// The size this view needs to give an open plugin view the size it asks for (its hint, else
-    /// PluginViewWindow's defaults) with the rail, the header and the margins around it; null once
+    /// The size this view needs to give an open plugin view the room it needs (PluginViewSize) with
+    /// the rail, the header and the margins around it; null once
     /// the view leaves. MainWindow grows the Settings card to it (SizeSettingsCard).
     /// </summary>
     public event Action<Size?>? CardSizeRequested;
@@ -241,19 +241,22 @@ public partial class SettingsView : UserControl
     }
 
     /// <summary>
-    /// The size a plugin view asks for, as its window would open (PluginViewWindow.Resolve, no
-    /// screen cap: the main window caps the card): the hint per axis, else 1000 x 680, never under
-    /// the minimum; on a size-to-content axis the control's own desired size.
+    /// The room a plugin view needs in place of its page: its minimum size (PluginViewWindow.Resolve,
+    /// no screen cap: the main window caps the card; the hint's minimum, else 480 x 360), and on a
+    /// size-to-content axis the control's own desired size, never under that minimum. Not the
+    /// preferred window size (1000 x 680 by default): that is for the pop-out window, and asking it
+    /// of the card made every plugin view grow Settings far past its other pages (Discord "Fix.
+    /// That. Modal.", 11-06). The card never shrinks below its own size, so most views just fill it.
     /// </summary>
     internal static Size PluginViewSize(Noctis.Services.Plugins.PluginViewSizeHint hint, Control? content)
     {
         var size = PluginViewWindow.Resolve(hint, null);
-        double width = size.Width, height = size.Height;
+        double width = size.MinWidth, height = size.MinHeight;
         var byWidth = size.SizeToContent.HasFlag(SizeToContent.Width);
         var byHeight = size.SizeToContent.HasFlag(SizeToContent.Height);
         if (content is not null && (byWidth || byHeight))
         {
-            content.Measure(new Size(byWidth ? double.PositiveInfinity : width, byHeight ? double.PositiveInfinity : height));
+            content.Measure(new Size(byWidth ? double.PositiveInfinity : size.Width, byHeight ? double.PositiveInfinity : size.Height));
             if (byWidth) width = Math.Max(size.MinWidth, content.DesiredSize.Width);
             if (byHeight) height = Math.Max(size.MinHeight, content.DesiredSize.Height);
             content.InvalidateMeasure(); // its slot measures it again with the real room
