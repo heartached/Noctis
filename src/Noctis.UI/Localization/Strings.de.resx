@@ -3592,6 +3592,15 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Indigo</value><comment>Accent colour name</comment></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Orchidee</value><comment>Accent colour name</comment></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Rosé</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Pfirsich</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Limette</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Waldgrün</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Minze</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Himmel</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Flieder</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Silber</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Schiefer</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Wie Cover</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Eigen</value><comment>Accent value: a colour that is not one of the presets</comment></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>System</value><comment>Theme choice: follow the phone</comment></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Hell</value><comment>Theme choice</comment></data>
@@ -3737,6 +3746,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Mehr für {0}</value><comment>Screen reader: a playlist’s … button. {0} = playlist</comment></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} entfernen</value><comment>Screen reader: a folder’s remove button. {0} = folder</comment></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Der Akzent färbt Schaltflächen, Schalter und Hervorhebungen.</value><comment>Accent page footnote. {0} = accent name</comment></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Wie Cover. Der Akzent nimmt die Farbe des Covers vom laufenden Song an. Läuft nichts oder ist das Cover grau, ist er {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Belegter Speicher, {0}</value><comment>Screen reader. {0} = "312 songs · 4.2 GB"</comment></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>In Songzeilen zeigen</value><comment>Settings › Library row: what song rows show at the end of the artist line</comment></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Aus</value><comment>Show in Song Rows choice: nothing</comment></data>

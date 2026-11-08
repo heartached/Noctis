@@ -7260,6 +7260,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>靛藍</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>蘭紫</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>玫瑰</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>蜜桃</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>青檸</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>森林</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>薄荷</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>晴空</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>丁香</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>銀色</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>岩灰</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>跟隨封面</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>自訂</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>跟隨系統</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>淺色</value></data>
@@ -7405,6 +7414,7 @@
   <data name="Mobile.MoreFor" xml:space="preserve"><value>「{0}」的更多選項</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。強調色會套用到按鈕、開關和醒目提示。</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>跟隨封面。強調色會採用正在播放歌曲的封面顏色。未播放或封面為灰色時為{0}。</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>已使用的儲存空間，{0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>在歌曲列中顯示</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>關閉</value></data>

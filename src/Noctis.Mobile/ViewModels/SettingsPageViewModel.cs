@@ -13,14 +13,37 @@ using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
 
-/// <summary>One accent swatch; the names and colours are the desktop's (App.AccentPresets).</summary>
+/// <summary>One accent swatch; the names and colours are the desktop's (App.AccentPresets), but
+/// for <see cref="Artwork"/>, Match Artwork, which has no colour of its own.</summary>
 public sealed record AccentSwatch(string Name, string Hex)
 {
     /// <summary>The preset's name in the current language; <see cref="Name"/> is the one saved.</summary>
     public string DisplayName => Loc.T("Mobile.Accent." + Name);
 
+    /// <summary>Match Artwork: the accent follows the playing cover.</summary>
+    public bool IsArtwork => Hex.Length == 0;
+
     // Immutable: not an AvaloniaObject, so the static Accents list can be built off the UI thread.
-    public IBrush Brush { get; } = new ImmutableSolidColorBrush(Color.Parse(Hex));
+    public IBrush Brush { get; } = Hex.Length == 0 ? ArtworkBrush : new ImmutableSolidColorBrush(Color.Parse(Hex));
+
+    /// <summary>Match Artwork's swatch: the hue wheel, a cover's every colour (the swatch carries
+    /// a white note glyph on top, so it reads as "from the music" rather than a colour picker).
+    /// Every stop keeps the white note and tick at 3:1 or more (3.45:1 the least, the green;
+    /// a first draft's #FF5E62 red read 2.99:1 in the theme sweep), hence no yellow.</summary>
+    public static IBrush ArtworkBrush { get; } = new ImmutableConicGradientBrush(
+        new[]
+        {
+            new ImmutableGradientStop(0.00, Color.Parse("#E5383B")),
+            new ImmutableGradientStop(0.17, Color.Parse("#E8590C")),
+            new ImmutableGradientStop(0.33, Color.Parse("#2F9E44")),
+            new ImmutableGradientStop(0.50, Color.Parse("#0C8599")),
+            new ImmutableGradientStop(0.67, Color.Parse("#3B5BDB")),
+            new ImmutableGradientStop(0.83, Color.Parse("#9C36B5")),
+            new ImmutableGradientStop(1.00, Color.Parse("#E5383B")),
+        });
+
+    /// <summary>The Match Artwork swatch, last on the Accent page.</summary>
+    public static AccentSwatch Artwork { get; } = new("MatchArtwork", "");
 }
 
 /// <summary>One configured music folder as Settings lists it: the root as saved (a SAF tree
@@ -113,14 +136,23 @@ public sealed partial class LanguageChoice : ObservableObject
 /// </summary>
 public sealed partial class SettingsPageViewModel : MobilePage
 {
-    /// <summary>Nine of the desktop presets, one per hue around the wheel (red, orange, yellow,
-    /// green, teal, blue, indigo, purple, pink), Crimson first as the default: five over four.</summary>
+    /// <summary>Seventeen of the desktop presets round the wheel, Crimson first as the default
+    /// (beta feedback 11-07 asked for more): the first nine, then a pastel peach, lime, a deep
+    /// forest, mint, sky, lilac, and two neutrals (silver, slate). With Match Artwork last they
+    /// fill three rows of six (<see cref="AccentChoices"/>). Any two stay clearly apart (CIE76
+    /// delta E 25 or more), which is why Coral (15 from Crimson) and Violet (17 from Indigo) are out.</summary>
     public static IReadOnlyList<AccentSwatch> Accents { get; } = new AccentSwatch[]
     {
-        new("Crimson", "#E74856"), new("Tangerine", "#FF8547"), new("Gold", "#F4D24B"), new("Emerald", "#12C76F"),
-        new("Teal", "#0FA3B1"), new("Cerulean", "#2A7FCF"), new("Indigo", "#4338CA"), new("Orchid", "#C45CE0"),
-        new("Rose", "#E754B5"),
+        new("Crimson", "#E74856"), new("Tangerine", "#FF8547"), new("Peach", "#FFB59A"), new("Gold", "#F4D24B"),
+        new("Lime", "#7ED957"), new("Emerald", "#12C76F"),
+        new("Forest", "#22714A"), new("Mint", "#8FE3C4"), new("Teal", "#0FA3B1"), new("Sky", "#39B5F0"),
+        new("Cerulean", "#2A7FCF"), new("Indigo", "#4338CA"),
+        new("Lilac", "#B39DDB"), new("Orchid", "#C45CE0"), new("Rose", "#E754B5"), new("Silver", "#B8BCC4"),
+        new("Slate", "#5B6C8F"),
     };
+
+    /// <summary>The Accent page's swatches: the presets, then Match Artwork.</summary>
+    public static IReadOnlyList<AccentSwatch> AccentChoiceList { get; } = Accents.Append(AccentSwatch.Artwork).ToArray();
 
     private static string SignInTitle => Loc.T("Mobile.Account.SignInTitle");
 
@@ -130,7 +162,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private bool _loaded;
     private SavedFields _setBeforeLoad;
     private string _accentHex = MobileTheme.DefaultAccent;
-    // The saved accent's name when it is not one of the nine ("Scarlet", picked on an earlier
+    // Settings › Accent › Match Artwork: the playing cover's colour stands in for _accentHex.
+    private bool _accentFollowsArtwork;
+    // The saved accent's name when it is not one of the presets ("Scarlet", picked on an earlier
     // phone build or on the desktop): kept, shown and saved back as it was.
     private string? _savedAccentName;
 
@@ -165,7 +199,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public IReadOnlyList<string> Appearances => MobileTheme.Appearances;
     public IReadOnlyList<string> DarkThemes => MobileTheme.DarkThemes;
-    public IReadOnlyList<AccentSwatch> AccentChoices => Accents;
+    public IReadOnlyList<AccentSwatch> AccentChoices => AccentChoiceList;
 
     // ── The pages inside the sheet ──
 
@@ -392,16 +426,28 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string ThemeRowName => Named(Loc.T("Mobile.Settings.Theme"), ThemeValue);
     public string AccentRowName => Named(Loc.T("Mobile.Settings.Accent"), AccentName);
 
-    /// <summary>The accent's dot on the Accent row.</summary>
+    /// <summary>The accent's dot on the Accent row (Match Artwork's own swatch while it is on).</summary>
     public IBrush AccentBrush => UsesThemeAccent && PhoneThemes.DarkOrInk(DarkTheme).Accent is { } own ? new ImmutableSolidColorBrush(own)
+        : UsesArtworkAccent ? AccentSwatch.ArtworkBrush
         : Color.TryParse(_accentHex, out var colour) ? new ImmutableSolidColorBrush(colour) : Accents[0].Brush;
 
-    /// <summary>The accent's preset name ("Crimson"); a saved accent outside the nine keeps the
+    /// <summary>The accent's preset name ("Crimson"); a saved accent outside the presets keeps the
     /// name it was saved with ("Scarlet"), else "Custom" (a colour picked on the desktop).</summary>
-    public string AccentName => UsesThemeAccent ? Loc.T("Mobile.Accent.MatchTheme") :
+    public string AccentName => UsesThemeAccent ? Loc.T("Mobile.Accent.MatchTheme")
+        : UsesArtworkAccent ? Loc.T("Mobile.Accent.MatchArtwork")
+        : FixedAccentName;
+
+    /// <summary>The chosen colour's name, Match Artwork or not: what shows when nothing plays.</summary>
+    public string FixedAccentName =>
         AccentPresetName is var name && Accents.Any(a => a.Name == name) ? Loc.T("Mobile.Accent." + name)
         : name == CustomAccent ? Loc.T("Mobile.Accent.Custom")
         : name;
+
+    /// <summary>Match Artwork is on (and Match Theme is not wearing a colour theme's accent).</summary>
+    public bool UsesArtworkAccent => _accentFollowsArtwork && !UsesThemeAccent;
+
+    /// <summary>Match Artwork is chosen: the setting as saved.</summary>
+    public bool AccentFollowsArtwork => _accentFollowsArtwork;
 
     private const string CustomAccent = "Custom";
 
@@ -914,8 +960,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 {
                     _accentHex = string.IsNullOrWhiteSpace(settings.AccentColorHex) ? MobileTheme.DefaultAccent : settings.AccentColorHex;
                     _savedAccentName = settings.AccentPresetName;
+                    _accentFollowsArtwork = settings.MobileAccentFollowsArtwork;
                     AccentChanged();
-                    SelectedAccent = Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase));
+                    SelectedAccent = _accentFollowsArtwork
+                        ? AccentSwatch.Artwork
+                        : Accents.FirstOrDefault(a => string.Equals(a.Hex, _accentHex, StringComparison.OrdinalIgnoreCase));
                 }
                 if (!kept.HasFlag(SavedFields.TextScale))
                     LyricsTextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
@@ -1020,7 +1069,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     partial void OnSelectedAccentChanged(AccentSwatch? value)
     {
-        if (value != null) _accentHex = value.Hex;
+        // Match Artwork keeps the chosen colour as its fallback; a colour turns it off.
+        if (value != null) _accentFollowsArtwork = value.IsArtwork;
+        if (value is { IsArtwork: false }) _accentHex = value.Hex;
         var fields = SavedFields.Accent;
         // A swatch picked while the theme's accent showed: the pick is what the user wants to see.
         if (value != null && !_loading && UsesThemeAccent)
@@ -1035,9 +1086,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
     private void AccentChanged()
     {
         OnPropertyChanged(nameof(AccentName));
+        OnPropertyChanged(nameof(FixedAccentName));
         OnPropertyChanged(nameof(AccentRowName));
         OnPropertyChanged(nameof(AccentBrush));
         OnPropertyChanged(nameof(UsesThemeAccent));
+        OnPropertyChanged(nameof(UsesArtworkAccent));
+        OnPropertyChanged(nameof(AccentFollowsArtwork));
     }
 
     /// <summary>The lyrics follow each step at once; settings.json is written once the slider
@@ -1072,7 +1126,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         else QueueSave(field);
     }
 
-    private void ApplyTheme() => Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex, AccentFollowsTheme);
+    private void ApplyTheme() => Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex, AccentFollowsTheme, _accentFollowsArtwork);
 
     /// <summary>The settings.json fields a save writes: only those the user changed.</summary>
     [Flags]
@@ -1110,6 +1164,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
                 {
                     settings.AccentColorHex = _accentHex;
                     settings.AccentPresetName = AccentPresetName;
+                    settings.MobileAccentFollowsArtwork = _accentFollowsArtwork;
                 }
                 if (fields.HasFlag(SavedFields.TextScale)) settings.MobileLyricsTextScale = LyricsTextScale;
                 if (fields.HasFlag(SavedFields.Language)) settings.Language = Language;

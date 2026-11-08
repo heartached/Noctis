@@ -218,8 +218,8 @@
             <Setter Property="Opacity" Value="1" />
         </Style>
 
-        <!-- Accent swatches: nine dots, five over four centred under them, each cell a full
-             touch target (a fifth of the card by 48); the chosen one gets a ring and a tick. -->
+        <!-- Accent swatches: seventeen dots and Match Artwork, three rows of six, each cell a full
+             touch target (a sixth of the card by 48); the chosen one gets a ring and a tick. -->
         <Style Selector="ListBox.swatches">
             <Setter Property="Margin" Value="8,10" />
         </Style>
@@ -240,6 +240,10 @@
         </Style>
         <Style Selector="ListBox.swatches ListBoxItem:selected Ellipse.swatch-ring, ListBox.swatches ListBoxItem:selected PathIcon.swatch-tick">
             <Setter Property="Opacity" Value="1" />
+        </Style>
+        <!-- Match Artwork's note gives way to the tick when it is chosen. -->
+        <Style Selector="ListBox.swatches ListBoxItem:selected PathIcon.swatch-glyph">
+            <Setter Property="Opacity" Value="0" />
         </Style>
 
         <!-- Music Folders: a folder whose access was lost, or that the last scan could not reach, reads as a warning. -->
@@ -900,7 +904,7 @@
                             <views:ListeningHistoryPane Name="HistoryPane" DataContext="{Binding History}" />
                         </Panel>
 
-                        <!-- Accent: the nine colours, then whether album and artist pages take the cover's colour. -->
+                        <!-- Accent: the colours and Match Artwork, then whether album and artist pages take the cover's colour. -->
                         <StackPanel Name="AccentPane" Classes="grouped-content" IsVisible="{Binding ShowsAccentPane}">
                             <!-- A colour theme's own accent (its hue), while on; a swatch below turns it off. -->
                             <StackPanel IsVisible="{Binding ShowsMatchTheme}">
@@ -917,7 +921,7 @@
                                     <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding SelectedAccent}">
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <views:CenteredRowsPanel Columns="5" />
+                                                <views:CenteredRowsPanel Columns="6" />
                                             </ItemsPanelTemplate>
                                         </ListBox.ItemsPanel>
                                         <ListBox.ItemTemplate>
@@ -928,13 +932,22 @@
                                                     <Ellipse Width="30" Height="30" Fill="{Binding Brush}"
                                                              Stroke="{DynamicResource PhoneChromeOutlineBrush}" StrokeThickness="1" />
                                                     <PathIcon Classes="swatch-tick" Data="{DynamicResource CheckmarkIcon}" Width="14" Height="14"
-                                                              Foreground="{DynamicResource AccentForegroundBrush}" />
+                                                              Foreground="{DynamicResource AccentForegroundBrush}" IsVisible="{Binding !IsArtwork}" />
+                                                    <!-- Match Artwork: a white note on the hue wheel, white tick once chosen. -->
+                                                    <PathIcon Classes="swatch-glyph" Data="{DynamicResource AppleMusicIcon}" Width="13" Height="13"
+                                                              Foreground="White" IsVisible="{Binding IsArtwork}" />
+                                                    <PathIcon Classes="swatch-tick" Data="{DynamicResource CheckmarkIcon}" Width="14" Height="14"
+                                                              Foreground="White" IsVisible="{Binding IsArtwork}" />
                                                 </Panel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
                                 </Border>
-                                <TextBlock Classes="group-footnote" Text="{Binding AccentName, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.AccentFootnote}" />
+                                <TextBlock Classes="group-footnote" IsVisible="{Binding !UsesArtworkAccent}"
+                                           Text="{Binding AccentName, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.AccentFootnote}" />
+                                <!-- Match Artwork: what it does, and the colour worn when nothing plays. -->
+                                <TextBlock Name="AccentArtworkFootnote" Classes="group-footnote" IsVisible="{Binding UsesArtworkAccent}"
+                                           Text="{Binding FixedAccentName, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.AccentArtworkFootnote}" />
                             </StackPanel>
                             <!-- Album and artist pages in a deep shade of the cover's colour (on by
                                  default); off, the theme's plain pages. The shell applies it at once

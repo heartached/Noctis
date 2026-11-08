@@ -2344,6 +2344,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Çivit</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Orkide</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Gül</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Şeftali</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Limon Yeşili</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Orman</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Nane</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Gök</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Leylak</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Gümüş</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Arduvaz</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Kapakla Eşleştir</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Özel</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>Sistem</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Açık</value></data>
@@ -2489,6 +2498,7 @@
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0} için diğer seçenekler</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} klasörünü kaldır</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Vurgu rengi düğmeleri, anahtarları ve vurguları renklendirir.</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Kapakla Eşleştir. Vurgu rengi çalan şarkının kapağının rengini alır. Hiçbir şey çalmıyorsa veya kapak griyse {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Kullanılan Alan, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Şarkı satırlarında göster</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Kapalı</value></data>

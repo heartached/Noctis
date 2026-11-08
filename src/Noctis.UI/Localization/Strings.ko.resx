@@ -7260,6 +7260,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>인디고</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>오키드</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>로즈</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>피치</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>라임</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>포레스트</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>민트</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>스카이</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>라일락</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>실버</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>슬레이트</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>아트워크와 동일하게</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>사용자 지정</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>시스템</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>라이트</value></data>
@@ -7405,6 +7414,7 @@
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0} 더 보기</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} 제거</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. 강조 색상은 버튼, 스위치, 하이라이트에 적용됩니다.</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>아트워크와 동일하게. 강조 색상이 재생 중인 곡의 아트워크 색상을 따릅니다. 재생 중인 곡이 없거나 아트워크가 회색이면 {0}입니다.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>사용 중인 저장 공간, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>노래 행에 표시</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>끔</value></data>

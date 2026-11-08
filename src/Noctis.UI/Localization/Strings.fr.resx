@@ -7260,6 +7260,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Indigo</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Orchidée</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Rose</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Pêche</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Citron vert</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Forêt</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Menthe</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Ciel</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Lilas</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Argent</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Ardoise</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Comme la pochette</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Personnalisée</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>Système</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Clair</value></data>
@@ -7405,6 +7414,7 @@
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Plus d’options pour {0}</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Retirer {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. La couleur d’accent colore les boutons, les interrupteurs et les éléments mis en évidence.</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Comme la pochette. La couleur d’accent prend celle de la pochette du morceau en cours. Sans lecture ou avec une pochette grise, c’est {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Stockage utilisé, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Afficher dans les lignes</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Désactivé</value></data>

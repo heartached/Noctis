@@ -288,10 +288,10 @@ public class MobileThemeSweepTests
     private static readonly Color?[] Tints = { null, Color.FromRgb(0x7A, 0x12, 0x14), Color.FromRgb(0xE8, 0xB4, 0xC0) };
 
     /// <summary>Each theme with one of the accents hardest on it (a pale Gold on Light's white, Indigo
-    /// on Smoke's slate...), Ink with the default Crimson.</summary>
+    /// on Smoke's slate, the dark neutral Slate on Midnight's blue-black...), Ink with the default Crimson.</summary>
     private static readonly Dictionary<string, string> Accents = new()
     {
-        ["Light"] = "#F4D24B", ["Ink"] = MobileTheme.DefaultAccent, ["Smoke"] = "#4338CA", ["Dark"] = "#FF8547", ["Midnight"] = "#12C76F",
+        ["Light"] = "#F4D24B", ["Ink"] = MobileTheme.DefaultAccent, ["Smoke"] = "#4338CA", ["Dark"] = "#FF8547", ["Midnight"] = "#5B6C8F",
         // A colour theme wears its own accent (Match Theme), or the user's: Indigo on Cobalt is the hardest.
         ["rose"] = PhoneThemes.EffectiveAccent("rose", MobileTheme.DefaultAccent, true), ["amber"] = "#F4D24B",
         ["forest"] = PhoneThemes.EffectiveAccent("forest", MobileTheme.DefaultAccent, true), ["cobalt"] = "#4338CA",
