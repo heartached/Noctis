@@ -6971,7 +6971,6 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>在播放列表中搜索</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>还没有播放列表。长按一首歌曲即可创建。</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>没有匹配的播放列表</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>搜索播放列表</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>排序播放列表</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>新建播放列表</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>创建</value></data>

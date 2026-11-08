@@ -3312,7 +3312,6 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Search in playlists</value><comment>Search field placeholder on Playlists</comment></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>No playlists yet. Long-press a song to start one.</value><comment>Empty Playlists page</comment></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>No playlists match</value><comment>Playlists search found nothing</comment></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Search playlists</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Sort playlists</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>New Playlist</value><comment>Playlists page: the + button's name and the prompt's title</comment></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Create</value><comment>Button: makes the new playlist</comment></data>

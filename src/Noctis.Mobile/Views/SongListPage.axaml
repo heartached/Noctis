@@ -8,36 +8,29 @@
              x:Class="Noctis.Mobile.Views.SongListPage"
              x:DataType="vm:SongListPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <!-- Select mode's bar (Select All, "3 Selected", Done) over the title row, embedded too. -->
-        <views:SelectionHeader Grid.Row="0" Name="SelectBar" DataContext="{Binding Selection}" Margin="16,4,16,8" />
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,4,16,8">
-            <Grid.IsVisible>
-                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                    <Binding Path="!IsEmbedded" />
-                    <Binding Path="!Selection.IsActive" />
-                </MultiBinding>
-            </Grid.IsVisible>
-            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource PhBack}" />
-            </Button>
-            <views:FitWidth Grid.Column="1" Name="TitleFit" VerticalAlignment="Center">
-                <TextBlock Classes="title" FontSize="26" Text="{Binding Title}"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            </views:FitWidth>
-            <!-- Embedded (the Favorites tab), the tab's own header carries the same pill. -->
-            <views:ListTools Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" />
-            <!-- A playlist's page: its ⋯ in a round glass button (Apple's), the playlist's menu with
-                 Rename and Delete Playlist. Shown on an empty playlist too, where the tools are not. -->
-            <controls:GlassPanel Grid.Column="3" Classes="header-glass" Margin="8,0,0,0" IsVisible="{Binding IsPlaylist}">
-                <Button Name="PlaylistMoreButton" Classes="glass-round" Command="{Binding ShowPlaylistMenuCommand}"
-                        AutomationProperties.Name="{loc:T Mobile.More}">
-                    <PathIcon Data="{DynamicResource PhMore}" />
-                </Button>
-            </controls:GlassPanel>
-        </Grid>
+        <!-- The shared header (PageHeader, the Artists page's look): "‹ Library" with the tools'
+             pill at its right, the large title below. Embedded (the Favorites tab), the tab's own
+             header carries the title and the same pill. Select mode's bar (Select All,
+             "3 Selected", Done) takes the back row's place; the title stays. -->
+        <views:PageHeader Grid.Row="0" Name="Header" IsVisible="{Binding !IsEmbedded}" IsNavHidden="{Binding Selection.IsActive}">
+            <views:PageHeader.Tools>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <views:ListTools VerticalAlignment="Center" />
+                    <!-- A playlist's page: its ⋯ in a round glass button (Apple's), the playlist's menu with
+                         Rename and Delete Playlist. Shown on an empty playlist too, where the tools are not. -->
+                    <controls:GlassPanel Classes="header-glass" IsVisible="{Binding IsPlaylist}">
+                        <Button Name="PlaylistMoreButton" Classes="glass-round" Command="{Binding ShowPlaylistMenuCommand}"
+                                AutomationProperties.Name="{loc:T Mobile.More}">
+                            <PathIcon Data="{DynamicResource PhMore}" />
+                        </Button>
+                    </controls:GlassPanel>
+                </StackPanel>
+            </views:PageHeader.Tools>
+        </views:PageHeader>
+        <views:SelectionHeader Grid.Row="0" Name="SelectBar" DataContext="{Binding Selection}" Margin="16,4,16,8" VerticalAlignment="Top" />
 
         <!-- The list's search (the Artists page's field, FindField), then Play and Shuffle, which
-             play what the list shows (the title row's pill sorts and filters it); the count says
+             play what the list shows (the header's pill sorts and filters it); the count says
              how much of the list that is. -->
         <StackPanel Grid.Row="1" IsVisible="{Binding HasSongs}">
             <views:FindField Name="ListFindField" Text="{Binding FilterText}" Placeholder="{loc:T Mobile.SongList.Find}" />

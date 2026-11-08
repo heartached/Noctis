@@ -294,12 +294,13 @@ public class MobileLibraryPagesTests
         Assert.Equal(new[] { "Zed", "Solo", "Duo" }, page.Playlists.Select(p => p.Name));
         page.ChooseSort(page.SortChoices.Single(c => c.Label == "Title"));
 
-        page.ToggleSearchCommand.Execute(null);
+        // "Find in Playlists": the list pages' shared field, always there (no toggle), as on Favorites.
+        Assert.True(MobileFixtures.Named<FindField>(root, "PlaylistFindField").IsEffectivelyVisible);
         page.FilterText = "so";
         Assert.Equal(new[] { "Solo" }, page.Playlists.Select(p => p.Name));
         page.FilterText = "nothing";
         Assert.True(page.ShowNoMatches);
-        page.ToggleSearchCommand.Execute(null);                  // closing the search clears it
+        page.FilterText = string.Empty;
         Assert.Equal(3, page.Playlists.Count);
         window.Close();
     }

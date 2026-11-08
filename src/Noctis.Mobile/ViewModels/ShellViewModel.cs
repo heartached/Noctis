@@ -793,6 +793,8 @@ public sealed partial class ShellViewModel : ObservableObject
         CloseSheet();
         if (IsPlayerUp) CloseNowPlaying();
         page.IsSheet = sheet;
+        page.PushedOver = Pages.Count > 0 ? Pages[^1] : null;
+        page.PushedOnTab = SelectedTab;
         Pages.Add(page);
         LastPageMove = PageMove.Push;
         CurrentPage = page;

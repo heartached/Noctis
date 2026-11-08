@@ -3312,7 +3312,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Поиск в плейлистах</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Плейлистов пока нет. Нажмите и удерживайте песню, чтобы создать первый.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Плейлисты не найдены</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Поиск плейлистов</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Сортировка плейлистов</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>Новый плейлист</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Создать</value></data>

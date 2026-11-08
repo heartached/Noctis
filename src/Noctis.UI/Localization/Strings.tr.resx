@@ -2055,7 +2055,6 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Çalma listelerinde ara</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Henüz çalma listesi yok. Başlatmak için bir şarkıya uzun bas.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Eşleşen çalma listesi yok</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Çalma listelerini ara</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Çalma listelerini sırala</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>Yeni Çalma Listesi</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Oluştur</value></data>

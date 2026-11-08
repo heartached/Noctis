@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.PageHeader"
+             x:DataType="vm:MobilePage">
+
+    <!-- A pushed list page's header (Songs, Albums, Artists, Playlists, a playlist, Favorites…),
+         Apple's Artists page for all of them (tester 11-07: "I like the artists' look a lot
+         more"): "‹ Library" in the accent on its own row, with the page's tools (Tools) in their
+         glass pill at that row's right end, and the large title under it across the full width,
+         shrinking to fit a long translation (FitWidth) rather than giving way to the pill. -->
+    <UserControl.Styles>
+        <Style Selector="Button.back-link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,0,12,0" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.back-link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.back-link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.back-link:pressed">
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="Button.back-link PathIcon">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Margin" Value="-4,0,-3,0" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+        </Style>
+        <Style Selector="Button.back-link TextBlock">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Margin" Value="2,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="MaxLines" Value="1" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+        </Style>
+        <!-- Select mode lays its own bar over the back row (SongListPage): the row steps aside. -->
+        <Style Selector="views|PageHeader.nav-hidden Grid#NavRow">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel>
+        <Grid Name="NavRow" ColumnDefinitions="*,Auto" MinHeight="44" Margin="6,4,16,0">
+            <Button Name="BackButton" Classes="back-link" HorizontalAlignment="Left"
+                    Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).NavigateBackCommand}"
+                    AutomationProperties.Name="{Binding BackTitle}">
+                <StackPanel Orientation="Horizontal">
+                    <PathIcon Data="{DynamicResource PhBack}" />
+                    <TextBlock Name="BackLabel" Text="{Binding BackTitle}" />
+                </StackPanel>
+            </Button>
+            <ContentPresenter Grid.Column="1" Name="ToolsHost" Margin="8,0,0,0" VerticalAlignment="Center"
+                              Content="{Binding $parent[views:PageHeader].Tools}" />
+        </Grid>
+        <views:FitWidth Name="TitleFit" HorizontalAlignment="Left" Margin="20,0,20,8">
+            <TextBlock Name="PageTitle" Classes="title" Text="{Binding Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+        </views:FitWidth>
+    </StackPanel>
+</UserControl>
