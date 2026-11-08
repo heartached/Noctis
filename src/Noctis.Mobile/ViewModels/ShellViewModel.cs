@@ -520,6 +520,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 {
                     UpdateMiniProgressBrushes();
                     Background.Cover = _miniTint?.TintColor;   // the Now Playing background follows the cover
+                    Theme?.CoverColourChanged(_miniTint?.TintColor);   // Settings › Accent › Match Artwork
                 }
             };
             return _miniTint;
