@@ -11,7 +11,7 @@ namespace Noctis.Tests;
 /// <summary>
 /// Discord #mobile-beta (Duckyvictus): "a blacklist for audio that you don't want to show up on
 /// your lists". Hide Song puts the song's path in the desktop's hidden-folder list
-/// (LibraryService.SetFolderHiddenAsync, which hides that one file); Settings › Hidden lists it
+/// (LibraryService.SetFolderHiddenAsync, which hides that one file); Settings › Library › Hidden lists it
 /// with Unhide. The rig's library is the fake, which hides by path the way LibraryService does.
 /// </summary>
 public class MobileHiddenSongsTests
@@ -37,7 +37,7 @@ public class MobileHiddenSongsTests
         Assert.Contains(song, shell.Library.Songs);
         Assert.Equal(1, shell.Library.SongCount);
         Assert.Empty(MobileSearch.Find(rig.Library, "PTT", 10, 10, 10).Songs);
-        Assert.Equal("Hidden. Settings › Hidden brings it back.", shell.Player.Notice);
+        Assert.Equal("Hidden. Settings › Library › Hidden brings it back.", shell.Player.Notice);
 
         shell.OpenSettingsCommand.Execute(null);
         var settings = Assert.IsType<SettingsPageViewModel>(shell.CurrentPage);

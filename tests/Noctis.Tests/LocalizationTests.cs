@@ -206,6 +206,27 @@ public class LocalizationTests
                     $"{Path.GetFileName(file)} {key} = \"{value}\" ends in an ellipsis");
     }
 
+    /// <summary>
+    /// The phone's Hidden row sits in Settings' Library group (SettingsPage.axaml, caption
+    /// Tab.Library), so the banner after Hide Song names Settings › Library › Hidden in every
+    /// language, with the same words as the group caption and the row.
+    /// </summary>
+    [Fact]
+    public void MobileHiddenNotice_NamesTheLibraryGroupAndTheHiddenRow()
+    {
+        var dir = Path.Combine(FindRepoRoot(), "src", "Noctis.UI", "Localization");
+        foreach (var file in Directory.GetFiles(dir, "Strings*.resx"))
+        {
+            var values = ReadValues(file);
+            var notice = values["Mobile.HiddenNotice"];
+            var library = values.TryGetValue("Tab.Library", out var l) ? l : ReadValues(Path.Combine(dir, "Strings.resx"))["Tab.Library"];
+            var hidden = values["Mobile.Settings.Hidden"];
+            var path = library.Trim() + " › " + hidden.Trim();
+            Assert.True(notice.Contains(path, StringComparison.Ordinal),
+                $"{Path.GetFileName(file)} Mobile.HiddenNotice = \"{notice}\" doesn't name \"{path}\"");
+        }
+    }
+
     [Theory]
     [InlineData("LyricShare.LyricsPage")]
     [InlineData("ShareLyrics.PageRangeSummary")]

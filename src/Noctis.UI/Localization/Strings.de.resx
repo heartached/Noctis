@@ -4073,7 +4073,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pausiert in {0}</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pausiert nach diesem Titel</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>Titel ausblenden</value></data>
-  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Ausgeblendet. Unter Einstellungen › Ausgeblendet wieder einblenden.</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Ausgeblendet. Unter Einstellungen › Bibliothek › Ausgeblendet wieder einblenden.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Ausgeblendet</value></data>
   <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Ausgeblendete Titel bleiben auf dem Telefon, erscheinen aber nicht in Mediathek, Suche, Zufallswiedergabe und Mixen.</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>Nichts ausgeblendet</value></data>

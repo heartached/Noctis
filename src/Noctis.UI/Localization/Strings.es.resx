@@ -7709,7 +7709,7 @@
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Se pausa en {0}</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Se pausa tras esta canción</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>Ocultar canción</value></data>
-  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Oculta. Vuelve a mostrarla en Ajustes › Ocultos.</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Oculta. Vuelve a mostrarla en Ajustes › Biblioteca › Ocultos.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Ocultos</value></data>
   <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Las canciones ocultas siguen en tu teléfono, pero no aparecen en la biblioteca, la búsqueda, el modo aleatorio ni los mixes.</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>No hay nada oculto</value></data>

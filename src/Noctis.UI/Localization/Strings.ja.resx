@@ -7709,7 +7709,7 @@
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 後に一時停止</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>この曲のあと一時停止</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>曲を非表示</value></data>
-  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>非表示にしました。設定 › 非表示 で戻せます。</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>非表示にしました。設定 › ライブラリ › 非表示 で戻せます。</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>非表示</value></data>
   <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>非表示の曲は端末に残りますが、ライブラリ、検索、シャッフル、ミックスには表示されません。</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>非表示の項目はありません</value></data>

@@ -7709,7 +7709,7 @@
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 後暫停</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>本曲結束後暫停</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>隱藏歌曲</value></data>
-  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>已隱藏。可在 設定 › 已隱藏 中恢復。</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>已隱藏。可在 設定 › 資料庫 › 已隱藏 中恢復。</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>已隱藏</value></data>
   <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>隱藏的歌曲仍保留在手機上，但不會出現在資料庫、搜尋、隨機播放和合輯中。</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>沒有隱藏的內容</value></data>

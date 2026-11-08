@@ -2793,7 +2793,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} sonra duraklatılır</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Bu şarkıdan sonra duraklatılır</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>Şarkıyı gizle</value></data>
-  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Gizlendi. Ayarlar › Gizlenenler'den geri getirebilirsiniz.</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Gizlendi. Ayarlar › Kitaplık › Gizlenenler'den geri getirebilirsiniz.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Gizlenenler</value></data>
   <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Gizlenen şarkılar telefonunuzda kalır ama kitaplıkta, aramada, karışık çalmada ve mikslerde görünmez.</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>Gizlenen bir şey yok</value></data>
