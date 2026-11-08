@@ -44,6 +44,28 @@ public class MobileLibraryHeadersShotsTests
         Dispatcher.UIThread.RunJobs();
     }
 
+    /// <summary>A 600 px square cover (a diagonal dusk gradient with a pale sun) in the shots folder.</summary>
+    private static string CoverFile(string dir)
+    {
+        var path = Path.Combine(dir, "cover-source.png");
+        if (File.Exists(path)) return path;
+        using var bitmap = new SkiaSharp.SKBitmap(600, 600);
+        using (var canvas = new SkiaSharp.SKCanvas(bitmap))
+        {
+            using var sky = new SkiaSharp.SKPaint
+            {
+                Shader = SkiaSharp.SKShader.CreateLinearGradient(new SkiaSharp.SKPoint(0, 0), new SkiaSharp.SKPoint(600, 600),
+                    new[] { new SkiaSharp.SKColor(0x2B, 0x1E, 0x5C), new SkiaSharp.SKColor(0xE0, 0x5A, 0x47) }, SkiaSharp.SKShaderTileMode.Clamp),
+            };
+            canvas.DrawRect(0, 0, 600, 600, sky);
+            using var sun = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(0xFF, 0xE3, 0xB0), IsAntialias = true };
+            canvas.DrawCircle(380, 230, 90, sun);
+        }
+        using var data = bitmap.Encode(SkiaSharp.SKEncodedImageFormat.Png, 90);
+        File.WriteAllBytes(path, data.ToArray());
+        return path;
+    }
+
     [AvaloniaFact]
     public void Shots_LibraryListHeaders_InEveryTheme()
     {
@@ -85,8 +107,11 @@ public class MobileLibraryHeadersShotsTests
                     MobileFixtures.MakeAlbum("Night Signals", "Aurora Lane", tracks[0], tracks[2], tracks[4]),
                     MobileFixtures.MakeAlbum("Dive", "Tycho", tracks[1], tracks[3], tracks[5]),
                 };
-                var mix = new Playlist { Name = "Night Drive", TrackIds = { tracks[0].Id, tracks[1].Id } };
-                using var rig = MobileFixtures.MakeRig(tracks, albums, seed: p => p.SavePlaylistsAsync(new List<Playlist> { mix }));
+                // Night Drive has a custom cover (the playlist page's cover), Late Show no art at all
+                // (its placeholder).
+                var mix = new Playlist { Name = "Night Drive", TrackIds = { tracks[0].Id, tracks[1].Id }, CoverArtPath = CoverFile(dir) };
+                var bare = new Playlist { Name = "Late Show", TrackIds = { tracks[2].Id } };
+                using var rig = MobileFixtures.MakeRig(tracks, albums, seed: p => p.SavePlaylistsAsync(new List<Playlist> { mix, bare }));
                 foreach (var artist in new[] { "Aurora Lane", "Tycho", "Bonobo", "Caribou" })
                     rig.Library.ArtistList.Add(new Artist { Id = Guid.NewGuid(), Name = artist, AlbumCount = 1, TrackCount = 3 });
                 var window = MobileFixtures.Mount(rig.Shell, out _, 412, 700);
@@ -110,12 +135,13 @@ public class MobileLibraryHeadersShotsTests
                     Shot("playlists", () => shell.OpenPlaylistsCommand.Execute(null));
                     Shot("favorites", () => shell.OpenFavouritesCommand.Execute(null));
                     Shot("recently-added", () => shell.OpenRecentlyAddedCommand.Execute(null));
-                    Shot("playlist", () =>
-                    {
-                        shell.OpenPlaylistsCommand.Execute(null);
-                        Pump(300);
-                        shell.OpenPlaylistCommand.Execute(shell.Library.Playlists.Single());
-                    });
+                    foreach (var (file, playlist) in new[] { ("playlist", "Night Drive"), ("playlist-noart", "Late Show") })
+                        Shot(file, () =>
+                        {
+                            shell.OpenPlaylistsCommand.Execute(null);
+                            Pump(300);
+                            shell.OpenPlaylistCommand.Execute(shell.Library.Playlists.Single(p => p.Name == playlist));
+                        });
                     Shot("pinned", () => shell.OpenPinnedCommand.Execute(null));
                 }
                 finally

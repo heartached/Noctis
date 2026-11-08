@@ -3,8 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
+using Noctis.Mobile.Views;
 using Noctis.Models;
 using Noctis.Services.Sync;
 using Xunit;
@@ -78,6 +85,103 @@ public class MobilePlaylistCoverTests
         Assert.Null(saved.CoverArtPath);
         Assert.Empty(Directory.GetFiles(PlaylistCovers.CoversDirectory(rig.Persistence.DataDirectory)));
         Assert.Equal(song.AlbumArtworkPath, shell.Library.PlaylistArtwork(shell.CurrentPlaylist(mix)));
+    }
+
+    /// <summary>
+    /// The playlist's own page shows its cover at the top (the custom one, else the tiles'
+    /// artwork), under the header, with the find field and Play / Shuffle under it, all scrolling
+    /// with the songs; Change Cover and Remove Cover from the page's ⋯ show at once. Other song
+    /// lists (Songs) have no cover and keep the find field fixed above the list.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task PlaylistPage_ShowsItsCover_OverTheList_AndFollowsChangeAndRemoveCover()
+    {
+        var (rig, shell, _) = Rig(new PickedPlaylistFile("cover.png", Png));
+        using var _r = rig;
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            shell.SelectTabCommand.Execute(MobileTab.Library);
+            shell.OpenPlaylistCommand.Execute(shell.Library.Playlists.Single());
+            MobileFixtures.Land(window);
+            var page = (SongListPageViewModel)shell.CurrentPage!;
+            var pageView = MobileFixtures.PageView(view, page);
+            var cover = MobileFixtures.Named<Border>(pageView, "PlaylistCover");
+            var art = MobileFixtures.Named<CachedImage>(pageView, "PlaylistCoverArt");
+            var mix = page.Playlist!;
+            Assert.True(cover.IsEffectivelyVisible);
+            Assert.Equal(shell.Library.PlaylistArtwork(mix), art.SourcePath);   // the tiles' cover
+            Assert.Equal(cover.Width, cover.Height);
+            Assert.InRange(cover.Width, 160, 300);
+
+            // Under the header's title, centred; the find field and Play under the cover, in the scroller.
+            var header = pageView.GetVisualDescendants().OfType<PageHeader>().Single();
+            var title = MobileFixtures.Named<FitWidth>(header, "TitleFit");
+            Assert.Equal("Night Drive", ((TextBlock)title.Child!).Text);
+            var coverTop = cover.TranslatePoint(new Point(0, 0), view)!.Value;
+            Assert.True(coverTop.Y >= title.TranslatePoint(new Point(0, title.Bounds.Height), view)!.Value.Y - 0.5);
+            Assert.Equal(view.Bounds.Width / 2, coverTop.X + cover.Width / 2, 1);
+            var scroll = MobileFixtures.Named<ScrollViewer>(pageView, "SongScroll");
+            var find = pageView.GetVisualDescendants().OfType<FindField>().Single();
+            Assert.Contains(scroll, find.GetVisualAncestors());
+            Assert.True(find.TranslatePoint(new Point(0, 0), view)!.Value.Y >= coverTop.Y + cover.Height - 0.5);
+
+            // Change Cover from the page's ⋯: the page shows the new cover.
+            page.ShowPlaylistMenuCommand.Execute(null);
+            await shell.Sheet!.ChangeCoverCommand.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
+            var saved = Assert.Single(await rig.Persistence.LoadPlaylistsAsync());
+            Assert.Equal(saved.CoverArtPath, page.CoverPath);
+            Assert.Equal(saved.CoverArtPath, art.SourcePath);
+
+            // Remove Cover: back to the tiles' artwork.
+            page.ShowPlaylistMenuCommand.Execute(null);
+            await shell.Sheet!.RemoveCoverCommand.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(shell.Library.PlaylistArtwork(page.Playlist!), art.SourcePath);
+            Assert.NotEqual(saved.CoverArtPath, art.SourcePath);
+
+            // The Songs list: no cover, the find field stays above the scroller.
+            shell.SelectTabCommand.Execute(MobileTab.Library);
+            shell.OpenSongsCommand.Execute(null);
+            MobileFixtures.Land(window);
+            var songsView = MobileFixtures.PageView(view, shell.CurrentPage!);
+            Assert.False(MobileFixtures.Named<Border>(songsView, "PlaylistCover").IsVisible);
+            var songsFind = songsView.GetVisualDescendants().OfType<FindField>().Single();
+            Assert.DoesNotContain(MobileFixtures.Named<ScrollViewer>(songsView, "SongScroll"), songsFind.GetVisualAncestors());
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>A long playlist's page still realizes only the rows on screen with the cover and
+    /// the find field in the scroller: the rows stay virtualized.</summary>
+    [AvaloniaFact]
+    public void LongPlaylistPage_KeepsItsRowsVirtualized()
+    {
+        var songs = Enumerable.Range(0, 600).Select(i => MobileFixtures.Song($"Song {i:D3}")).ToArray();
+        var mix = new Playlist { Name = "Everything", TrackIds = songs.Select(t => t.Id).ToList() };
+        using var rig = MobileFixtures.MakeRig(songs, seed: p => p.SavePlaylistsAsync(new List<Playlist> { mix }));
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        try
+        {
+            rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
+            rig.Shell.OpenPlaylistCommand.Execute(rig.Shell.Library.Playlists.Single());
+            MobileFixtures.Land(window);
+            var pageView = MobileFixtures.PageView(view, rig.Shell.CurrentPage!);
+            var scroll = MobileFixtures.Named<ScrollViewer>(pageView, "SongScroll");
+            var list = MobileFixtures.Named<ItemsControl>(pageView, "SongList");
+            var most = 0;
+            for (var y = 0; y <= 12000; y += 600)
+            {
+                scroll.Offset = new Vector(0, y);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                most = Math.Max(most, list.GetRealizedContainers().Count());
+            }
+            Assert.True(scroll.Offset.Y > 10000);
+            Assert.InRange(most, 1, 40);
+        }
+        finally { window.Close(); }
     }
 
     [Fact]

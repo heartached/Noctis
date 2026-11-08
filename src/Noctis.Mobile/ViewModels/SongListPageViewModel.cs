@@ -77,6 +77,20 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     /// <summary>A playlist's page has its own ⋯ (Rename, Delete Playlist and the playlist's actions).</summary>
     public bool IsPlaylist => _playlist != null;
 
+    /// <summary>A playlist page's cover over its songs: the custom cover when it has one, else the
+    /// cover its tiles show (<see cref="LibraryViewModel.PlaylistArtwork"/>); null without art
+    /// (the page shows the placeholder). Re-read on each library refresh, so Change Cover, Remove
+    /// Cover and a synced cover show at once; raised only when the path changes.</summary>
+    public string? CoverPath { get; private set; }
+
+    private void RefreshCover()
+    {
+        var path = Playlist is { } playlist ? Shell.Library.PlaylistArtwork(playlist) : null;
+        if (path == CoverPath) return;
+        CoverPath = path;
+        OnPropertyChanged(nameof(CoverPath));
+    }
+
     /// <summary>The title row's ⋯ on a playlist's page: the playlist's glass menu.</summary>
     [RelayCommand]
     private void ShowPlaylistMenu()
@@ -228,7 +242,11 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         _all = _source().ToList();
         TotalCount = _all.Count;
-        if (_playlist != null) OnPropertyChanged(nameof(Title));   // renamed since
+        if (_playlist != null)
+        {
+            OnPropertyChanged(nameof(Title));   // renamed since
+            RefreshCover();
+        }
         OnPropertyChanged(nameof(HasFilters));   // signed in or out since
         // A filter no longer offered does not stay on: with the filter button gone too (a
         // Favorites list) nothing could turn it off, and the list stayed empty.
