@@ -11,7 +11,7 @@ public enum PlayedFilter { Any, NeverPlayed, NotIn6Months }
 /// </summary>
 public sealed class RouletteFilter
 {
-    /// <summary>Genre to match (case-insensitive), or null for any.</summary>
+    /// <summary>Genre to match (case-insensitive, any one of the album's or song's genres), or null for any.</summary>
     public string? Genre { get; set; }
 
     /// <summary>Decade (1990 for the 1990s), or null for any.</summary>
@@ -45,9 +45,10 @@ public sealed class RouletteFilter
     public bool Matches(RouletteAlbum album, DateTimeOffset now)
     {
         if (SkipCompilations && album.IsCompilation) return false;
-        if (Genre is { } g && !string.Equals(album.Genre, g, StringComparison.OrdinalIgnoreCase)) return false;
+        if (Genre is { } g && !album.Genres.Contains(g, StringComparer.OrdinalIgnoreCase)) return false;
         if (Decade is { } d && album.Decade != d) return false;
-        if (Albums || EPs || Singles)
+        // Albums / EPs / Singles sort albums; in Song Roulette every song is its own pick.
+        if (!album.IsSong && (Albums || EPs || Singles))
         {
             var ok = album.Kind switch
             {
@@ -76,12 +77,13 @@ public sealed class RouletteFilter
         return list;
     }
 
-    /// <summary>The genres for the Genre chip: most albums first, at most <paramref name="max"/>.</summary>
+    /// <summary>The genres for the Genre chip, one per single genre ("Rock; Indie" gives both):
+    /// most albums (or songs) first, at most <paramref name="max"/>.</summary>
     public static IReadOnlyList<string> Genres(IReadOnlyList<RouletteAlbum> albums, int max = 24)
-        => albums.Where(a => a.Genre.Length > 0)
-            .GroupBy(a => a.Genre, StringComparer.OrdinalIgnoreCase)
+        => albums.SelectMany(a => a.Genres)
+            .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-            .Take(max).Select(g => g.First().Genre).ToList();
+            .Take(max).Select(g => g.First()).ToList();
 
     /// <summary>The decades for the Decade chip, newest first.</summary>
     public static IReadOnlyList<int> Decades(IReadOnlyList<RouletteAlbum> albums)

@@ -16,7 +16,10 @@ https://github.com/heartached/Noctis/blob/main/docs/PLUGINS.md
 ## Release notes
 
 - **1.7** (unreleased): `ILibraryReader.GetLyricLines` (the lyric lines Noctis already has for a
-  track; older Noctis versions throw `NotSupportedException`).
+  track; older Noctis versions throw `NotSupportedException`), `IPlaybackControl.QueueTracks` (Play
+  Next / Add to Queue as the app does them), and `RegisterLibraryCommand` with
+  `LibraryCommandPlaces` (entries on the artist page's menu and the Songs page's top bar, under
+  `menu.commands`).
 - **1.5** (Noctis 1.6.6+): the queue (`GetQueue`, `SetUpNext`, `TracksQueued`), more `TrackInfo`
   fields, lyrics effects, `ILibraryImport`, and the size a view's window opens at
   (`IPluginViewProvider.PreferredWindowSize`, `MinWindowSize`, `WindowSizeToContent`; older Noctis

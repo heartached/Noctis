@@ -9,10 +9,14 @@ using Noctis.Plugins.AlbumRoulette.Roulette;
 
 namespace Noctis.Plugins.AlbumRoulette.Views;
 
+/// <summary>Album Roulette spins albums; Song Roulette spins single songs (GitHub #198).</summary>
+public enum RouletteMode { Albums, Songs }
+
 /// <summary>
-/// Album Roulette's window: filter chips on top, the stage (a large cover on a soft accent glow,
-/// title, artist and year under it), the round Spin button, then Play, Shuffle and Open album.
-/// An empty state offers to clear the filters when nothing matches.
+/// Album Roulette's window: the Album Roulette / Song Roulette switch and the filter chips on top,
+/// the stage (a large cover on a soft accent glow, title, artist and year under it), the round
+/// Spin button, then Play, Shuffle and Open album (a song: Play, Play next, Add to queue, Open
+/// album). An empty state offers to clear the filters when nothing matches.
 /// </summary>
 public sealed class RouletteView : UserControl
 {
@@ -38,6 +42,7 @@ public sealed class RouletteView : UserControl
     private readonly TextBlock _decadeLabel;
     private readonly Button _artistChip;
     private readonly TextBlock _artistLabel;
+    private readonly Control[] _kindChips;
     private readonly TextBlock _count;
     private readonly TextBlock _caption;
     private readonly TextBlock _title;
@@ -52,9 +57,15 @@ public sealed class RouletteView : UserControl
     private readonly TextBlock _spinLabel;
     private readonly Button _play;
     private readonly Button _shuffle;
+    private readonly Button _playNext;
+    private readonly Button _addToQueue;
     private readonly Button _open;
     private RouletteTheme _theme = RouletteTheme.Dark;
+    private RouletteMode _mode = RouletteMode.Albums;
+    /// <summary>What is on the reel now: <see cref="_albumList"/> or <see cref="_songList"/>.</summary>
     private IReadOnlyList<RouletteAlbum> _albums = Array.Empty<RouletteAlbum>();
+    private IReadOnlyList<RouletteAlbum> _albumList = Array.Empty<RouletteAlbum>();
+    private IReadOnlyList<RouletteAlbum> _songList = Array.Empty<RouletteAlbum>();
     private List<RouletteAlbum> _matches = new();
     private bool _loadStarted;
     private int _albumsVersion;
@@ -67,6 +78,15 @@ public sealed class RouletteView : UserControl
         _random = random ?? new Random();
         _clock = clock ?? (() => DateTimeOffset.Now);
         _filter.SkipCompilations = host.SkipCompilations;
+
+        // ── Album Roulette / Song Roulette ──
+        var albumMode = ModeChip("Album Roulette", RouletteMode.Albums);
+        var songMode = ModeChip("Song Roulette", RouletteMode.Songs);
+        var modePanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 6,
+            Margin = new Thickness(0, 0, 0, 8), Children = { albumMode, songMode },
+        };
 
         // ── Chips ──
         (_genreChip, _genreLabel) = MenuChip("Genre", "Genre", BuildGenreMenu);
@@ -83,6 +103,7 @@ public sealed class RouletteView : UserControl
         _artistChip.IsVisible = false;
         ToolTip.SetTip(_artistChip, "Remove the artist filter");
 
+        _kindChips = new Control[] { albums, eps, singles };
         var chipPanel = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
         foreach (var c in new Control[] { _artistChip, _genreChip, _decadeChip, albums, eps, singles, never, stale })
         {
@@ -149,12 +170,17 @@ public sealed class RouletteView : UserControl
 
         _play = Pill("Play", () => { if (Pick is { } a) _host.PlayTracks(a.TrackIds); });
         _shuffle = Pill("Shuffle", () => { if (Pick is { } a) _host.PlayTracks(Shuffled(a.TrackIds)); });
+        _playNext = Pill("Play next", () => { if (Pick is { } a) _host.QueueTracks(a.TrackIds, playNext: true); });
+        _addToQueue = Pill("Add to queue", () => { if (Pick is { } a) _host.QueueTracks(a.TrackIds, playNext: false); });
         _open = Pill("Open album", () => { if (Pick is { } a) _host.ShowAlbum(a.AlbumId); });
-        var pillRow = new StackPanel
+        // Wraps in a narrow window (a song has four pills).
+        var pillRow = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+        foreach (var pill in new[] { _play, _shuffle, _playNext, _addToQueue, _open })
         {
-            Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 8,
-            Children = { _play, _shuffle, _open },
-        };
+            pill.Margin = new Thickness(4, 3);
+            pillRow.Children.Add(pill);
+        }
+        UpdateModeControls();
         SetPicked(null);
 
         var root = new Grid
@@ -162,7 +188,7 @@ public sealed class RouletteView : UserControl
             RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto,Auto"),
             Margin = new Thickness(16, 14, 16, 18),
         };
-        var top = new StackPanel { Children = { chipPanel, _count } };
+        var top = new StackPanel { Children = { modePanel, chipPanel, _count } };
         Grid.SetRow(top, 0);
         Grid.SetRow(stage, 1);
         Grid.SetRow(_details, 2);
@@ -187,6 +213,7 @@ public sealed class RouletteView : UserControl
     public CoverCache Covers => _covers;
     public RouletteFilter Filter => _filter;
     public IReadOnlyList<RouletteAlbum> Matches => _matches;
+    public RouletteMode Mode => _mode;
     public RouletteAlbum? Pick { get; private set; }
     public bool IsEmptyStateShown => _empty.IsVisible;
     public bool HasLibrary => _loaded;
@@ -196,6 +223,9 @@ public sealed class RouletteView : UserControl
     public string CaptionText => _caption.IsVisible ? _caption.Text ?? "" : "";
     public bool PillsEnabled => _play.IsEnabled && _shuffle.IsEnabled;
     public bool OpenAlbumEnabled => _open.IsEnabled;
+    public string SubtitleText => _year.Text ?? "";
+    public string EmptyText => _emptyText.Text ?? "";
+    public string HintText => _hint.Text ?? "";
     public bool SpinEnabled => _spin.IsEnabled;
 
     /// <summary>Raised when the view is gone (window closed).</summary>
@@ -244,22 +274,35 @@ public sealed class RouletteView : UserControl
     {
         _loadStarted = true;
         var version = _albumsVersion;
-        IReadOnlyList<RouletteAlbum> albums;
-        try { albums = await Task.Run(() => AlbumCatalog.Group(_host.LoadTracks())); }
+        var now = _clock();
+        IReadOnlyList<RouletteAlbum> albums, songs;
+        try
+        {
+            (albums, songs) = await Task.Run(() =>
+            {
+                var tracks = _host.LoadTracks();
+                return (AlbumCatalog.Group(tracks), SongCatalog.Build(tracks, now));
+            });
+        }
         catch (Exception ex)
         {
             _host.Log("could not read the library: " + ex.Message);
-            albums = Array.Empty<RouletteAlbum>();
+            albums = songs = Array.Empty<RouletteAlbum>();
         }
         // Albums set meanwhile (tests, the preview) win over this read.
-        if (version == _albumsVersion) SetAlbums(albums);
+        if (version == _albumsVersion) SetLibrary(albums, songs);
     }
 
     /// <summary>Puts <paramref name="albums"/> on the reel (tests and the preview call this directly).</summary>
-    public void SetAlbums(IReadOnlyList<RouletteAlbum> albums)
+    public void SetAlbums(IReadOnlyList<RouletteAlbum> albums) => SetLibrary(albums, _songList);
+
+    /// <summary>The albums and the songs (Song Roulette) of the library; the mode picks which spin.</summary>
+    public void SetLibrary(IReadOnlyList<RouletteAlbum> albums, IReadOnlyList<RouletteAlbum> songs)
     {
         _albumsVersion++;
-        _albums = albums;
+        _albumList = albums;
+        _songList = songs;
+        _albums = _mode == RouletteMode.Songs ? songs : albums;
         _loadStarted = true;
         _loaded = true;
         ApplyFilters();
@@ -271,12 +314,25 @@ public sealed class RouletteView : UserControl
         }
     }
 
-    /// <summary>"Spin from this artist": only that artist's albums, then a spin.</summary>
+    /// <summary>"Spin from this artist": only that artist's albums (or songs, in Song Roulette), then a spin.</summary>
     public void SpinFromArtist(string artist)
     {
         if (string.IsNullOrWhiteSpace(artist)) return;
+        SpinFor(null, artist);
+    }
+
+    /// <summary>Clears the chips, scopes the reel to <paramref name="artist"/> (null: the whole
+    /// library), switches to <paramref name="mode"/> (null: keeps it) and spins, once loaded.</summary>
+    public void SpinFor(RouletteMode? mode, string? artist)
+    {
         _filter.Clear();
-        _filter.Artist = artist.Trim();
+        _filter.Artist = string.IsNullOrWhiteSpace(artist) ? null : artist.Trim();
+        if (mode is { } m && m != _mode)
+        {
+            _mode = m;
+            _albums = m == RouletteMode.Songs ? _songList : _albumList;
+            UpdateModeControls();
+        }
         if (!_loaded)
         {
             _spinWhenLoaded = true;
@@ -285,6 +341,33 @@ public sealed class RouletteView : UserControl
         }
         ApplyFilters();
         Spin();
+    }
+
+    /// <summary>Album Roulette or Song Roulette (the switch on top calls it). The chips stay;
+    /// the stage clears, since an album is not a song.</summary>
+    public void SetMode(RouletteMode mode)
+    {
+        if (mode == _mode) return;
+        _mode = mode;
+        _albums = mode == RouletteMode.Songs ? _songList : _albumList;
+        UpdateModeControls();
+        Pick = null;
+        ApplyFilters();
+        if (_loaded) ShowAlbumOfTheDay();
+    }
+
+    private string Noun => _mode == RouletteMode.Songs ? "song" : "album";
+
+    /// <summary>Which pills and chips the mode shows (a song has no Shuffle, an album no queue pills;
+    /// Albums / EPs / Singles only sort albums).</summary>
+    private void UpdateModeControls()
+    {
+        var songs = _mode == RouletteMode.Songs;
+        _shuffle.IsVisible = !songs;
+        _playNext.IsVisible = songs;
+        _addToQueue.IsVisible = songs;
+        foreach (var c in _kindChips) c.IsVisible = !songs;
+        UpdateChips();
     }
 
     /// <summary>Spins (or, while spinning, lands right away).</summary>
@@ -346,11 +429,12 @@ public sealed class RouletteView : UserControl
         UpdateChips();
         var none = _loaded && _matches.Count == 0;
         _empty.IsVisible = none;
-        _emptyText.Text = _filter.IsActive || _albums.Count > 0 ? "No albums match these filters" : "Your library has no albums yet";
+        _emptyText.Text = _filter.IsActive || _albums.Count > 0 ? "No " + Noun + "s match these filters" : "Your library has no " + Noun + "s yet";
         _clearFilters.IsVisible = _filter.IsActive;
-        _hint.Text = _loaded ? "Press Spin to let the reel pick an album" : "Loading your albums...";
+        _hint.Text = !_loaded ? "Loading your " + Noun + "s..."
+            : _mode == RouletteMode.Songs ? "Press Spin to let the reel pick a song" : "Press Spin to let the reel pick an album";
         _spin.IsEnabled = _loaded && _matches.Count > 0;
-        _count.Text = !_loaded ? "" : _matches.Count == 1 ? "1 album" : _matches.Count.ToString("N0", CultureInfo.CurrentCulture) + " albums";
+        _count.Text = !_loaded ? "" : _matches.Count == 1 ? "1 " + Noun : _matches.Count.ToString("N0", CultureInfo.CurrentCulture) + " " + Noun + "s";
         // The album on stage stays if it still matches (the pool changed under it, so it goes
         // back on as the only slot); otherwise the stage clears.
         var caption = _caption.IsVisible ? _caption.Text : null;
@@ -377,7 +461,7 @@ public sealed class RouletteView : UserControl
     /// <summary>Album of the Day on the stage when today's pick is in the library.</summary>
     private void ShowAlbumOfTheDay()
     {
-        if (!_host.AlbumOfTheDayEnabled || Pick is not null || _reel.Motion.IsSpinning) return;
+        if (_mode != RouletteMode.Albums || !_host.AlbumOfTheDayEnabled || Pick is not null || _reel.Motion.IsSpinning) return;
         var today = _host.LoadDaily();
         if (today is null || today.Day != AlbumOfTheDay.DayKey(_clock())) return;
         var album = _albums.FirstOrDefault(a => a.Key == today.AlbumKey);
@@ -408,12 +492,14 @@ public sealed class RouletteView : UserControl
         _caption.IsVisible = false;
         _title.Text = album?.Title ?? "";
         _artist.Text = album?.Artist ?? "";
-        _year.Text = album is { Year: > 0 } ? album.Year.ToString(CultureInfo.InvariantCulture) : "";
+        var year = album is { Year: > 0 } ? album.Year.ToString(CultureInfo.InvariantCulture) : "";
+        // A song: "Album · 2006" under its artist.
+        _year.Text = album is { IsSong: true, AlbumTitle.Length: > 0 } ? (year.Length > 0 ? album.AlbumTitle + " · " + year : album.AlbumTitle) : year;
         _details.Opacity = spinning ? 0 : 1;
-        foreach (var b in new[] { _play, _shuffle }) b.IsEnabled = album is not null;
+        foreach (var b in new[] { _play, _shuffle, _playNext, _addToQueue }) b.IsEnabled = album is not null;
         _open.IsEnabled = album is { AlbumId.Length: > 0 };
         // The pills keep their own background, so a disabled one says so by fading.
-        foreach (var b in new[] { _play, _shuffle, _open }) b.Opacity = b.IsEnabled ? 1 : 0.4;
+        foreach (var b in new[] { _play, _shuffle, _playNext, _addToQueue, _open }) b.Opacity = b.IsEnabled ? 1 : 0.4;
         _spinLabel.Text = album is null ? "Spin" : "Spin again";
         _spinLabel.FontSize = album is null ? 17 : 13.5;
         AutomationName(_spin, _spinLabel.Text);
@@ -528,6 +614,13 @@ public sealed class RouletteView : UserControl
         AutomationName(b, text);
         b.Click += (_, _) => click();
         return (b, label);
+    }
+
+    private Button ModeChip(string text, RouletteMode mode)
+    {
+        var (b, label) = Chip(text, () => SetMode(mode));
+        _chips.Add((b, label, () => _mode == mode));
+        return b;
     }
 
     private Button ToggleChip(string text, Func<bool> on, Action toggle)

@@ -497,6 +497,14 @@ public partial class MainWindowViewModel : ViewModelBase
         if (App.Services?.GetService<System.Net.Http.HttpClient>() is { } pluginHttp)
             Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
+        // API 1.7: plugin entries on the artist page's menu and the Songs page's top bar.
+        PluginLibraryMenu.Source = place => Plugins.LibraryCommands(place);
+        void SyncSongsPluginButtons() => Dispatcher.UIThread.Post(() =>
+        {
+            if (TopBar.HasPageActions) TopBar.PagePluginButtons = PluginLibraryMenu.SongsPageButtons();
+        });
+        Plugins.LibraryCommandsChanged += (_, _) => SyncSongsPluginButtons();
+        Plugins.VisualLayersChanged += (_, _) => SyncSongsPluginButtons();
         TrackContextMenuBuilder.CreateMixCommand = CreateMixFromSongCommand;
         TrackContextMenuBuilder.OtherVersionsSource = song => SongVersions.FindOtherVersions(song, _library.Tracks);
         TrackContextMenuBuilder.SwitchVersionCommand = SwitchToVersionCommand;
@@ -2909,6 +2917,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }));
         TopBar.ShowSongsFilters(_songsVm.SummaryText, _songsVm.QualityFilter, _songsVm.SetQualityFilterCommand);
+        TopBar.PagePluginButtons = PluginLibraryMenu.SongsPageButtons();
         _songsVmTopBarHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(LibrarySongsViewModel.ShowOnlyFavorites))
