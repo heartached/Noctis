@@ -1389,6 +1389,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedTabDescription));
         OnPropertyChanged(nameof(ShowOlderVersionsLabel));
         foreach (var group in SectionGroups) group.Relabel();
+        RelabelSidebarPages();
         RefreshFlowingStyleOptions();
         PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
@@ -3385,9 +3386,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     public void SetUpdateService(UpdateService updateService) => _updateService = updateService;
 
-    /// <summary>Gets the navigation key for the default page.</summary>
-    public string GetDefaultPageKey() => "home";
-
     /// <summary>Loads settings from disk and populates the view.</summary>
     public async Task LoadAsync()
     {
@@ -3657,6 +3655,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
+            LoadSidebarLayout(_settings);
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
             TaskbarMediaControlsEnabled = _settings.TaskbarMediaControlsEnabled;
@@ -4189,6 +4188,7 @@ public partial class SettingsViewModel : ViewModelBase
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
+        SaveSidebarLayout();
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
         _settings.TaskbarMediaControlsEnabled = TaskbarMediaControlsEnabled;
@@ -8370,6 +8370,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
+            LoadSidebarLayout(defaultSettings);
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
             TaskbarMediaControlsEnabled = defaultSettings.TaskbarMediaControlsEnabled;

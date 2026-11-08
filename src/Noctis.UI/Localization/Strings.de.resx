@@ -141,6 +141,12 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.PinSidebarOpenAt" xml:space="preserve"><value>Seitenleiste immer offen anheften.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HoverExpandSidebar" xml:space="preserve"><value>Seitenleiste bei Hover ausklappen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SlideSidebarOpenHover" xml:space="preserve"><value>Seitenleiste bei Hover aufschieben.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPage" xml:space="preserve"><value>Startseite</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Die Seite, mit der Noctis öffnet. Eine ausgeblendete Seite fällt auf Start zurück.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPages" xml:space="preserve"><value>Seiten</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Seiten in der Seitenleiste ein- und ausblenden und neu anordnen. Einstellungen bleibt immer sichtbar.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Nach oben</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Nach unten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Album-Editionen zusammenfassen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve"><value>Eine Kachel pro Veröffentlichung. Weitere Editionen stehen unter „Andere Versionen“.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGrouping" xml:space="preserve"><value>Alben ohne Albuminterpret zusammenfassen</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>

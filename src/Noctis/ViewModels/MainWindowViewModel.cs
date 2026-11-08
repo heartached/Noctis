@@ -667,6 +667,18 @@ public partial class MainWindowViewModel : ViewModelBase
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
         };
+        // Settings › Interface › Sidebar (GitHub #199): the pages the user hid and their order.
+        // A hidden page is only off the rail: Navigate still opens it from shortcuts and links.
+        void SyncSidebarLayout() => Sidebar.ApplyUserLayout(Settings.SidebarPageOrderKeys, Settings.SidebarHiddenPageKeys);
+        Settings.SidebarLayoutChanged += (_, _) =>
+        {
+            if (Dispatcher.UIThread.CheckAccess()) SyncSidebarLayout();
+            else Dispatcher.UIThread.Post(SyncSidebarLayout);
+        };
+        Sidebar.PageAvailabilityChanged += (key, present) => Settings.SetSidebarPageAvailable(key, present);
+        foreach (var pageKey in SidebarViewModel.DefaultPageOrder)
+            Settings.SetSidebarPageAvailable(pageKey, Sidebar.IsPagePresent(pageKey));
+        if (Settings.IsSettingsLoaded) SyncSidebarLayout();
         // Folders sort (GitHub #89): mirror into the top bar and persist, adopting the
         // saved choice once settings load — same shape as the Artists sort above.
         var adoptingFoldersSort = false;
@@ -1093,8 +1105,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var allNavItems = Sidebar.NavItems
             .Concat(Sidebar.FavoritesItems)
             .Concat(Sidebar.PlaylistItems);
-        Sidebar.SelectedNavItem = allNavItems.FirstOrDefault(n => n.Key == defaultKey)
-                                  ?? Sidebar.NavItems[0];
+        // A start page without a sidebar row (hidden, GitHub #199) keeps the rail unselected:
+        // falling back to the first row would navigate away from the page just opened.
+        if (allNavItems.FirstOrDefault(n => n.Key == defaultKey) is { } startItem)
+            Sidebar.SelectedNavItem = startItem;
 
         // Play any files this launch was asked to open ("Open with Noctis"),
         // now that the window and player are up. Background priority so first
@@ -2827,8 +2841,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // navigation. Navigate closes and clears the search pill as part of the
         // section switch, so it may only be reopened once navigation is done.
         var songs = Sidebar.NavItems.FirstOrDefault(n => n.Key == "songs");
-        if (songs == null) return;
-        Sidebar.SelectedNavItem = songs;
+        // Songs hidden from the sidebar (GitHub #199): there is no row to select, go there directly.
+        if (songs == null) Navigate("songs");
+        else Sidebar.SelectedNavItem = songs;
         if (TopBar.IsSearchVisible)
             TopBar.OpenSearchCommand.Execute(null);
     }

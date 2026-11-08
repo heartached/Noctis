@@ -67,6 +67,7 @@ public partial class SidebarView : UserControl
         {
             _vm.PropertyChanged += OnViewModelPropertyChanged;
             _vm.FolderRowsInserted += OnFolderRowsInserted;
+            _vm.NavItemsLayoutChanged += SyncSelectionFromViewModel;
             _vm.FoldFolderRows = FoldFolderRowsAsync;
         }
         AttachTopBar(_vm?.TopBar);
@@ -1108,6 +1109,7 @@ public partial class SidebarView : UserControl
         {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
             _vm.FolderRowsInserted -= OnFolderRowsInserted;
+            _vm.NavItemsLayoutChanged -= SyncSelectionFromViewModel;
             if (_vm.FoldFolderRows == FoldFolderRowsAsync) _vm.FoldFolderRows = null;
         }
         AttachTopBar(null);
