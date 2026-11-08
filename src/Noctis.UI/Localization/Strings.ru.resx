@@ -142,6 +142,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PinSidebarOpenAt" xml:space="preserve"><value>Боковая панель всегда открыта.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HoverExpandSidebar" xml:space="preserve"><value>Раскрывать боковую панель при наведении</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SlideSidebarOpenHover" xml:space="preserve"><value>Боковая панель выезжает при наведении курсора.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPage" xml:space="preserve"><value>Стартовая страница</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Страница, с которой открывается Noctis. Вместо скрытой страницы откроется Главная.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPages" xml:space="preserve"><value>Страницы</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Показывайте, скрывайте и меняйте порядок страниц на боковой панели. Настройки видны всегда.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Переместить вверх</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Переместить вниз</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Объединять издания альбомов</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve"><value>Одна плитка на релиз. Другие издания показываются в разделе «Другие версии».</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGrouping" xml:space="preserve"><value>Объединять альбомы без исполнителя альбома</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>

@@ -942,6 +942,19 @@ public class AppSettings : IJsonOnDeserializing
     /// Off by default to preserve the compact icon rail.</summary>
     public bool SidebarAlwaysExpanded { get; set; } = false;
 
+    /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
+    /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
+    /// from the list keeps its built-in place.</summary>
+    public List<string> SidebarPageOrder { get; set; } = new();
+
+    /// <summary>Sidebar page keys the user hid (GitHub #199). Settings can never be hidden.
+    /// A hidden page stays reachable from shortcuts, menus and links.</summary>
+    public List<string> SidebarHiddenPages { get; set; } = new();
+
+    /// <summary>Page Noctis opens on (a sidebar page key). Falls back to "home" when the page is
+    /// hidden or not available (GitHub #199).</summary>
+    public string StartPage { get; set; } = "home";
+
     /// <summary>Executable the "Open in …" track context-menu item launches with the audio
     /// file (e.g. an audio editor or analyzer). Empty by default: on Windows the item falls
     /// back to the native "Open with" picker; elsewhere it is hidden until a path is set.</summary>

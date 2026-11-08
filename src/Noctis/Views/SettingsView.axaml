@@ -2352,6 +2352,80 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            <!-- Start page and the rail's pages: hide, show and reorder (GitHub #199).
+                 Settings always shows; a hidden page stays reachable from shortcuts and links. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.SidebarStartPage}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.SidebarStartPageHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="SidebarStartPageCombo"
+                              AutomationProperties.Name="{loc:T Settings.SidebarStartPage}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding StartPageOptions}"
+                              SelectedItem="{Binding StartPageChoice, Mode=TwoWay}"
+                              MinWidth="180"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SidebarPageOption">
+                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.SidebarPages}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.SidebarPagesHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl x:Name="SidebarPagesList" ItemsSource="{Binding SidebarPages}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SidebarPageOption">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsAvailable}">
+                                    <Button Grid.Column="0" Classes="account-icon-btn"
+                                            AutomationProperties.Name="{loc:T Settings.SidebarMoveUp}"
+                                            ToolTip.Tip="{loc:T Settings.SidebarMoveUp}"
+                                            IsEnabled="{Binding CanMoveUp}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveSidebarPageUpCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11"
+                                                  RenderTransform="rotate(180deg)"/>
+                                    </Button>
+                                    <Button Grid.Column="1" Classes="account-icon-btn"
+                                            AutomationProperties.Name="{loc:T Settings.SidebarMoveDown}"
+                                            ToolTip.Tip="{loc:T Settings.SidebarMoveDown}"
+                                            IsEnabled="{Binding CanMoveDown}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveSidebarPageDownCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11"/>
+                                    </Button>
+                                    <TextBlock Grid.Column="2" Text="{Binding Label}" FontSize="13"
+                                               Margin="8,0,0,0" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <controls:LottieToggle Grid.Column="3"
+                                                          AutomationProperties.Name="{Binding Label}"
+                                                          IsChecked="{Binding IsShown, Mode=TwoWay}"
+                                                          IsEnabled="{Binding CanHide}"
+                                                          VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
             </StackPanel>
             </Border>
 
