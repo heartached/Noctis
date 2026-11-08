@@ -7613,6 +7613,11 @@
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <TextBlock Text="{Binding LastFmQueueNote}"
+                                       IsVisible="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
                         </StackPanel>
 
                         <!-- Not connected state -->
@@ -7781,6 +7786,11 @@
                                 <TextBlock Text="{Binding ListenBrainzServerDisplay}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" MaxWidth="420"/>
                             </StackPanel>
+                            <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <TextBlock Text="{Binding ListenBrainzQueueNote}"
+                                       IsVisible="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
 
                             <!-- Token row lives inside the same StackPanel as the title so it sits
                                  right under the description instead of leaving a gap. The Connect

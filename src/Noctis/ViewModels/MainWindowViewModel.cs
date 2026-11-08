@@ -30,6 +30,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDiscordPresenceService _discord;
     private readonly ILastFmService _lastFm;
     private readonly IListenBrainzService _listenBrainz;
+    /// <summary>GitHub #197: plays wait here until Last.fm / ListenBrainz has taken them.</summary>
+    private readonly ScrobbleQueue _scrobbleQueue;
     private readonly ISyncService _syncService;
     private readonly ArtistImageService _artistImageService;
     private readonly LoonClient _loon;
@@ -384,6 +386,14 @@ public partial class MainWindowViewModel : ViewModelBase
         _discord = discord;
         _lastFm = lastFm;
         _listenBrainz = listenBrainz;
+        _scrobbleQueue = new ScrobbleQueue(
+            Path.Combine(persistence.DataDirectory ?? string.Empty, "pending_scrobbles.json"),
+            service => service == ScrobbleService.LastFm
+                ? _lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled
+                : _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled,
+            (service, plays, ct) => service == ScrobbleService.LastFm
+                ? _lastFm.SendScrobblesAsync(plays, ct)
+                : _listenBrainz.SendListensAsync(plays, ct));
         _syncService = syncService;
         _artistImageService = artistImageService;
         _loon = loon;
@@ -424,6 +434,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
         Settings.SetListenBrainz(listenBrainz);
+        Settings.SetScrobbleQueue(_scrobbleQueue);
         Settings.SetTidal(App.Services!.GetRequiredService<ITidalAuthService>());
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         // Deferred tag writes skip the file that is playing; the player knows which one.
@@ -928,6 +939,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         // Load settings
         await Settings.LoadAsync();
+        // GitHub #197: plays left waiting last time (offline, signed out) go out once loading settles.
+        _scrobbleQueue.FlushSoon(TimeSpan.FromSeconds(15));
 
         // Warm the play-history log off the UI thread. Every consumer (Home, Statistics,
         // Settings, Wrap) reads it from the UI thread, and the first read otherwise
@@ -3510,11 +3523,10 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_scrobbleTrack == null)
             return;
 
-        var lastFmActive = _lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled;
-        var listenBrainzActive = _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled;
+        var (lastFmOwed, listenBrainzOwed) = ScrobbleTargets();
         // Plugins' OnTrackScrobbled fires on the same rule, with or without a scrobbling service.
         var pluginsListening = Plugins.HasScrobbleListeners;
-        if (!lastFmActive && !listenBrainzActive && !pluginsListening)
+        if (!lastFmOwed && !listenBrainzOwed && !pluginsListening)
         {
             _scrobbleTrack = null;
             return;
@@ -3535,17 +3547,13 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var track = _scrobbleTrack;
             var startedAt = _scrobbleClock.StartedAt;
-            var pending = new List<Task>(2);
-            if (lastFmActive)
-                pending.Add(_lastFm.ScrobbleAsync(track, startedAt));
-            if (listenBrainzActive)
-                pending.Add(_listenBrainz.ScrobbleAsync(track, startedAt));
 
             // Exposed so shutdown can await it. Fire-and-forget here meant the outbound
             // HTTP request was killed with the process — the last track of every session
             // silently failed to scrobble, because App.OnFrameworkInitializationCompleted
-            // calls desktop.Shutdown() as soon as ShutdownAsync returns.
-            _pendingScrobbles = pending.Count > 0 ? Task.WhenAll(pending) : Task.CompletedTask;
+            // calls desktop.Shutdown() as soon as ShutdownAsync returns. The play is in the
+            // queue file before the send starts, so one cut short goes out at the next start.
+            _pendingScrobbles = QueueScrobbleAsync(track, startedAt, lastFmOwed, listenBrainzOwed);
 
             if (pluginsListening)
             {
@@ -3557,6 +3565,26 @@ public partial class MainWindowViewModel : ViewModelBase
         _scrobbleTrack = null;
     }
 
+    /// <summary>
+    /// GitHub #197: the services a counted play is owed to. Each one turned on and either signed in,
+    /// or signed out without the user asking for it — a session Last.fm expired, or a login only
+    /// another computer sharing the data folder can read: the account name stays then, while Log Out
+    /// clears it. Those plays wait in the queue and go out once the service is signed in again.
+    /// </summary>
+    private (bool LastFm, bool ListenBrainz) ScrobbleTargets() =>
+        (Settings.LastFmScrobblingEnabled && (_lastFm.IsAuthenticated || !string.IsNullOrEmpty(Settings.LastFmUsername)),
+         Settings.ListenBrainzScrobblingEnabled && (_listenBrainz.IsAuthenticated || !string.IsNullOrEmpty(Settings.ListenBrainzUsername)));
+
+    /// <summary>Queues a counted play for the services named, then sends what is queued (GitHub #197).</summary>
+    private Task QueueScrobbleAsync(Track track, DateTime startedAt, bool lastFm, bool listenBrainz)
+    {
+        if (!lastFm && !listenBrainz) return Task.CompletedTask;
+        var utc = startedAt.Kind == DateTimeKind.Local ? startedAt.ToUniversalTime() : DateTime.SpecifyKind(startedAt, DateTimeKind.Utc);
+        _scrobbleQueue.Add(new ScrobbleEntry(track.Artist ?? string.Empty, track.Title ?? string.Empty, track.Album,
+            (int)Math.Max(0, track.Duration.TotalSeconds), new DateTimeOffset(utc).ToUnixTimeSeconds()), lastFm, listenBrainz);
+        return _scrobbleQueue.FlushAsync(now: true);
+    }
+
     /// <summary>Whether a phone's plays go on to Last.fm and ListenBrainz from here (signed in and
     /// turned on), for the phone's Scrobbling page.</summary>
     public (bool LastFm, bool ListenBrainz) PhoneScrobbleServices =>
@@ -3565,18 +3593,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// A play from a phone in Through Computer mode (the server's scrobble call): the phone already
     /// applied the scrobble rule on its played time, and marks the plays it sent itself so they never
-    /// come here. This computer's own choices still decide: each service signed in and on, and its
-    /// "don't scrobble" songs, albums and artists. Sent with the phone's start time, as a desktop
-    /// play is. Plugins' OnTrackScrobbled is for this computer's own playback and is not raised.
+    /// come here. This computer's own choices still decide: each service on (and signed in, or
+    /// waiting for a sign-in, see <see cref="ScrobbleTargets"/>), and its "don't scrobble" songs,
+    /// albums and artists. Sent with the phone's start time through the same queue as a desktop
+    /// play. Plugins' OnTrackScrobbled is for this computer's own playback and is not raised.
     /// </summary>
     public Task ForwardPhoneScrobbleAsync(Track track, DateTime startedAtUtc)
     {
         if (Settings.IsScrobbleExcluded(track)) return Task.CompletedTask;
-        var (lastFmActive, listenBrainzActive) = PhoneScrobbleServices;
-        var pending = new List<Task>(2);
-        if (lastFmActive) pending.Add(_lastFm.ScrobbleAsync(track, startedAtUtc));
-        if (listenBrainzActive) pending.Add(_listenBrainz.ScrobbleAsync(track, startedAtUtc));
-        return pending.Count > 0 ? Task.WhenAll(pending) : Task.CompletedTask;
+        var (lastFm, listenBrainz) = ScrobbleTargets();
+        return QueueScrobbleAsync(track, startedAtUtc, lastFm, listenBrainz);
     }
 
     /// <summary>In-flight scrobble posts from the most recent track transition.</summary>

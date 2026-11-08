@@ -1109,6 +1109,20 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Last.fm session key for authenticated API calls.</summary>
     public string LastFmSessionKey { get; set; } = "";
 
+    /// <summary>GitHub #197: protected credentials this data folder holds that the computer which
+    /// saved it cannot decrypt — Windows DPAPI copies made by another computer or Windows user
+    /// sharing the folder (e.g. a data folder on a music drive used by two PCs). Keyed like the
+    /// field they belong to ("lastFmSessionKey", "listenBrainzToken", "sourceConnection:{id}").
+    /// Each computer decrypts the copy it made and keeps the others untouched, so signing in on
+    /// one computer (or not being signed in there at all) no longer signs the other one out.
+    /// Managed by PersistenceService on load and save; nothing else writes it.</summary>
+    public Dictionary<string, List<string>>? OtherComputerSecrets { get; set; }
+
+    /// <summary>True when <paramref name="field"/> has a credential saved on another computer or
+    /// Windows user that this one cannot read (see <see cref="OtherComputerSecrets"/>).</summary>
+    public bool HasOtherComputerSecret(string field) =>
+        OtherComputerSecrets?.TryGetValue(field, out var blobs) == true && blobs.Count > 0;
+
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
 

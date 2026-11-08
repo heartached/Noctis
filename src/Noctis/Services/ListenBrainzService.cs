@@ -185,6 +185,73 @@ public class ListenBrainzService : IListenBrainzService
         await PostListensAsync(payload, "single");
     }
 
+    public async Task<ScrobbleSendResult> SendListensAsync(IReadOnlyList<ScrobbleEntry> plays, CancellationToken ct = default)
+    {
+        var token = _userToken;
+        if (string.IsNullOrWhiteSpace(token)) return ScrobbleSendResult.SessionInvalid;
+        if (plays.Count == 0) return ScrobbleSendResult.Ok;
+        var kind = plays.Count == 1 ? "single" : "import";
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{ApiUrl}/1/submit-listens")
+            {
+                Content = new StringContent(BuildListensPayload(kind, plays), Encoding.UTF8, "application/json"),
+            };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Token", token);
+            using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+            if (resp.IsSuccessStatusCode) return ScrobbleSendResult.Ok;
+            var body = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
+            DebugLog.Write("ListenBrainz", $"submit-listens {kind} x{plays.Count} -> {(int)resp.StatusCode}: {Truncate(body, 200)}");
+            // Only a 400 says these listens will never be taken. A self-hosted server (GitHub #118)
+            // answering 404/502 while it is down or moving must not cost the queued plays.
+            return resp.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized => ScrobbleSendResult.SessionInvalid,
+                HttpStatusCode.BadRequest => ScrobbleSendResult.Rejected,
+                _ => ScrobbleSendResult.Retry,
+            };
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException ||
+                                   ex is OperationCanceledException && !ct.IsCancellationRequested)
+        {
+            DebugLog.Write("ListenBrainz", $"submit-listens {kind} failed: {ex.GetType().Name}");
+            return ScrobbleSendResult.Retry;
+        }
+    }
+
+    /// <summary>A submit-listens body for queued plays (GitHub #197), same fields as <see cref="BuildPayload"/>.</summary>
+    internal static string BuildListensPayload(string listenType, IReadOnlyList<ScrobbleEntry> plays)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("listen_type", listenType);
+            writer.WriteStartArray("payload");
+            foreach (var p in plays)
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("listened_at", p.Timestamp);
+                writer.WriteStartObject("track_metadata");
+                writer.WriteString("artist_name", p.Artist);
+                writer.WriteString("track_name", p.Title);
+                if (!string.IsNullOrWhiteSpace(p.Album))
+                    writer.WriteString("release_name", p.Album);
+                writer.WriteStartObject("additional_info");
+                if (p.DurationSeconds > 0)
+                    writer.WriteNumber("duration_ms", p.DurationSeconds * 1000L);
+                writer.WriteString("submission_client", SubmissionClient);
+                writer.WriteString("submission_client_version", SubmissionClientVersion);
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
     private async Task PostListensAsync(string jsonBody, string kind)
     {
         try

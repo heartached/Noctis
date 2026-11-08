@@ -208,6 +208,19 @@ public class LastFmService : ILastFmService
         }
     }
 
+    public async Task<ScrobbleSendResult> SendScrobblesAsync(IReadOnlyList<ScrobbleEntry> plays, CancellationToken ct = default)
+    {
+        var key = _sessionKey;
+        if (string.IsNullOrEmpty(key)) return ScrobbleSendResult.SessionInvalid;
+        var result = await new LastFmScrobbleClient(_http).ScrobbleAsync(key, plays, ct).ConfigureAwait(false);
+        // SessionInvalid also covers Last.fm's errors 4 and 26 (token / API key), which say nothing
+        // about this user's key, so the key is kept: the plays stay queued and the session check at
+        // the next start forgets a key Last.fm really revoked (error 9).
+        if (result != ScrobbleSendResult.Ok)
+            DebugLog.Write("LastFm", $"Scrobble of {plays.Count} play(s): {result}");
+        return result;
+    }
+
     /// <summary>Raised when a scrobble could not be delivered. Carries a display message.</summary>
     public event EventHandler<string>? ScrobbleFailed;
 
