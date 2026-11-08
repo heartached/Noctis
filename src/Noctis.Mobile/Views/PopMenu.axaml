@@ -253,6 +253,17 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- The playing song's menu: the sleep timer's choices (the desktop's clock glyph, MenuLineTimer). -->
+                                            <Button Name="MenuSleepTimer" Classes="row np-row" Command="{Binding ShowSleepTimerCommand}" IsVisible="{Binding CanSleepTimer}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhTimer}" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.SleepTimer}" />
+                                                        <TextBlock Classes="np-detail" Text="{Binding SleepTimerDetail}" IsVisible="{Binding HasSleepTimerDetail}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A playlist's own edits, the desktop's glyphs (MenuLineEdit, MenuLineTrash,
                                                  MenuLinePlaylistRemove); the destructive rows last, in red, as the
                                                  desktop's v2 menus and Apple's. -->

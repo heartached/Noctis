@@ -7689,4 +7689,11 @@
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>إلغاء التأجيل</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>تم التأجيل لمدة شهر</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>تم إلغاء التأجيل</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>مؤقت النوم</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} دقيقة</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>ساعة واحدة</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>نهاية الأغنية الحالية</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>إيقاف المؤقت</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>إيقاف مؤقت بعد {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>إيقاف مؤقت بعد هذه الأغنية</value></data>
 </root>

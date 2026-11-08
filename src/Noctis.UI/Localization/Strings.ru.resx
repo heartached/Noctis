@@ -4062,4 +4062,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>Вернуть</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Отложено на месяц</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Откладывание отменено</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Таймер сна</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} минут</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 час</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>В конце текущей песни</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Выключить таймер</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Пауза через {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Пауза после этой песни</value></data>
 </root>

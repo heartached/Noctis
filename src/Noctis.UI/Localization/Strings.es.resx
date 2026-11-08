@@ -7689,4 +7689,11 @@
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>Quitar posposición</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Pospuesta un mes</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Posposición quitada</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Temporizador</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} minutos</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 hora</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Al final de la canción</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Desactivar temporizador</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Se pausa en {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Se pausa tras esta canción</value></data>
 </root>

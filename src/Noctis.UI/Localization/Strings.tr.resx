@@ -2773,4 +2773,11 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>Ertelemeyi kaldır</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Bir ay ertelendi</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Erteleme kaldırıldı</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Uyku zamanlayıcısı</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} dakika</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 saat</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Çalan şarkının sonunda</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Zamanlayıcıyı kapat</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} sonra duraklatılır</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Bu şarkıdan sonra duraklatılır</value></data>
 </root>

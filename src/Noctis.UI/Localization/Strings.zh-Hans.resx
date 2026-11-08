@@ -7689,4 +7689,11 @@
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>取消暂停推荐</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>已暂停推荐一个月</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>已取消暂停推荐</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>睡眠定时</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} 分钟</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 小时</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>当前歌曲结束时</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>关闭定时</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 后暂停</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>本曲结束后暂停</value></data>
 </root>

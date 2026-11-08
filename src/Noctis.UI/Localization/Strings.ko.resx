@@ -7689,4 +7689,11 @@
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>스누즈 해제</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>한 달 동안 스누즈됨</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>스누즈 해제됨</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>취침 타이머</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0}분</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1시간</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>현재 곡이 끝날 때</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>타이머 끄기</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 후 일시정지</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>이 곡이 끝나면 일시정지</value></data>
 </root>

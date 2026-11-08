@@ -4053,4 +4053,11 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>Pause aufheben</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Für einen Monat pausiert</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Pause aufgehoben</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Sleep-Timer</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} Minuten</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 Stunde</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Ende des aktuellen Titels</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Timer ausschalten</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pausiert in {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pausiert nach diesem Titel</value></data>
 </root>

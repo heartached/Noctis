@@ -233,6 +233,19 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     [RelayCommand] private Task ClearRatingAsync() => RateAsync(0);
 
+    // ── Sleep Timer (the playing song's menu: Now Playing's ⋯, the Queue's) ──
+
+    /// <summary>The playing song's menu offers the sleep timer, as Now Playing's ⋯ does in Apple Music.</summary>
+    public bool CanSleepTimer => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id;
+
+    /// <summary>The row's second line while a timer is set ("Pauses in 29:54").</summary>
+    public string SleepTimerDetail => _shell.Player.SleepTimerStatus;
+
+    public bool HasSleepTimerDetail => _shell.Player.HasSleepTimer;
+
+    [RelayCommand]
+    private void ShowSleepTimer() => _shell.ShowSleepTimerMenuCommand.Execute(null);
+
     // ── Snooze for a Month (the desktop's song and album menus) ──
 
     /// <summary>A song's or an album's menu: Shuffle and the mixes leave the songs out for a month.</summary>

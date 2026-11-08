@@ -7689,4 +7689,11 @@
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>スヌーズを解除</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>1か月スヌーズしました</value></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>スヌーズを解除しました</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>スリープタイマー</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0}分</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1時間</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>再生中の曲の終わり</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>タイマーをオフ</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 後に一時停止</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>この曲のあと一時停止</value></data>
 </root>

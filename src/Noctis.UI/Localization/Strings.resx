@@ -4062,4 +4062,11 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>Unsnooze</value><comment>Song menu row on a snoozed song: ends the snooze now</comment></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Snoozed for a month</value><comment>Banner after Snooze for a Month</comment></data>
   <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Snooze removed</value><comment>Banner after Unsnooze</comment></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Sleep Timer</value><comment>Now Playing menu row and the sleep timer menu's title (the desktop's Sleep timer)</comment></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} Minutes</value><comment>Sleep timer choice; {0} is 15, 30 or 45</comment></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 Hour</value><comment>Sleep timer choice</comment></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>End of Current Song</value><comment>Sleep timer choice: pause when the playing song ends</comment></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Turn Off Timer</value><comment>Sleep timer menu: cancels the running timer</comment></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pauses in {0}</value><comment>Sleep timer running; {0} is the time left, e.g. 29:54</comment></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pauses after this song</value><comment>Sleep timer set to the end of the playing song</comment></data>
 </root>

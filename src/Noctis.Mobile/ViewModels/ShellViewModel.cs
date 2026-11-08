@@ -1281,6 +1281,11 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Player.CurrentTrack is { } track) Sheet = ContextSheetViewModel.ForTrack(this, track);
     }
 
+    /// <summary>The Sleep Timer's choices on the glass menu: from the playing song's ⋯ menu, or
+    /// out of Now Playing's timer pill while one runs.</summary>
+    [RelayCommand]
+    private void ShowSleepTimerMenu() => ShowOptions(OptionsMenuViewModel.ForSleepTimer(this, Player));
+
     /// <summary>The Library tab's ⋯: Add Folder…, Rescan Library and Settings on the glass menu.</summary>
     [RelayCommand]
     private void OpenLibraryMenu()
