@@ -6971,7 +6971,6 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>البحث في قوائم التشغيل</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>لا توجد قوائم تشغيل بعد. اضغط مطولًا على أغنية لإنشاء قائمة.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>لا توجد قوائم تشغيل مطابقة</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>البحث في قوائم التشغيل</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>فرز قوائم التشغيل</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>قائمة تشغيل جديدة</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>إنشاء</value></data>

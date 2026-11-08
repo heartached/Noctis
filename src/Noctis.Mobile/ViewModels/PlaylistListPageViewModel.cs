@@ -47,17 +47,10 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
     /// <summary>The search found nothing (the tools stay up so it can be cleared).</summary>
     public bool ShowNoMatches => HasPlaylists && Playlists.Count == 0;
 
-    [ObservableProperty] private bool _isSearchOpen;
+    /// <summary>The "Find in Playlists" text (FindField); the list follows it as it changes.</summary>
     [ObservableProperty] private string _filterText = string.Empty;
 
     partial void OnFilterTextChanged(string value) => Refresh();
-
-    [RelayCommand]
-    private void ToggleSearch()
-    {
-        IsSearchOpen = !IsSearchOpen;
-        if (!IsSearchOpen) FilterText = string.Empty;
-    }
 
     public IReadOnlyList<SortChoice> SortChoices { get; }
 

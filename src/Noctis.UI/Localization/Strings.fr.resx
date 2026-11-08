@@ -6971,7 +6971,6 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Rechercher dans les playlists</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Aucune playlist pour l’instant. Maintenez le doigt sur un morceau pour en créer une.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Aucune playlist trouvée</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Rechercher des playlists</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Trier les playlists</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>Nouvelle playlist</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Créer</value></data>

@@ -3303,7 +3303,6 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>In Playlists suchen</value><comment>Search field placeholder on Playlists</comment></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Noch keine Playlists. Halte einen Song gedrückt, um eine zu starten.</value><comment>Empty Playlists page</comment></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Keine passenden Playlists</value><comment>Playlists search found nothing</comment></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Playlists durchsuchen</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Playlists sortieren</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>Neue Playlist</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Erstellen</value></data>

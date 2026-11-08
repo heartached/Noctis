@@ -7,19 +7,19 @@
              x:Class="Noctis.Mobile.Views.PlaylistListPage"
              x:DataType="vm:PlaylistListPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="8,4,16,4" IsVisible="{Binding !IsEmbedded}">
-            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource PhBack}" />
-            </Button>
-            <views:FitWidth Grid.Column="1" Name="TitleFit" VerticalAlignment="Center">
-                <TextBlock Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            </views:FitWidth>
-            <!-- Embedded (the Playlists tab), the tab's own header carries the same pill. -->
-            <views:PlaylistTools Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" />
-        </Grid>
+        <!-- The shared header (PageHeader): "‹ Library" with the tools' pill at its right, the
+             large title below. Embedded (the Playlists tab), the tab's own header carries the
+             title and the same pill. -->
+        <views:PageHeader Grid.Row="0" Name="Header" IsVisible="{Binding !IsEmbedded}">
+            <views:PageHeader.Tools>
+                <views:PlaylistTools VerticalAlignment="Center" />
+            </views:PageHeader.Tools>
+        </views:PageHeader>
 
-        <TextBox Grid.Row="1" Name="PlaylistSearchBox" Classes="search-field" Margin="16,0,16,8" PlaceholderText="{loc:T Mobile.Playlists.Find}"
-                 Text="{Binding FilterText}" IsVisible="{Binding IsSearchOpen}" />
+        <!-- "Find in Playlists": the list pages' shared field (FindField), as on Artists, Albums
+             and Songs, on the Playlists tab too. -->
+        <views:FindField Grid.Row="1" Name="PlaylistFindField" Text="{Binding FilterText}" Placeholder="{loc:T Mobile.Playlists.Find}"
+                         IsVisible="{Binding HasPlaylists}" />
 
         <ScrollViewer Classes="page-scroll" Grid.Row="2" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="0,0,0,16">
