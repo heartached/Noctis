@@ -371,6 +371,37 @@ internal sealed partial class NoctisServerClient : IDisposable
     public Task<bool> GetAvatarAsync(string userName, string destination, CancellationToken ct) =>
         DownloadImageAsync("getAvatar", new KeyValuePair<string, string>[] { new("username", userName) }, destination, "avatar", ct);
 
+    /// <summary>
+    /// getNoctisPlaylistCover: the computer's custom cover of a playlist into
+    /// <paramref name="destination"/>. False when it has none, or is older than the call.
+    /// </summary>
+    public Task<bool> GetPlaylistCoverAsync(Guid playlistId, string destination, CancellationToken ct) =>
+        DownloadImageAsync("getNoctisPlaylistCover", new KeyValuePair<string, string>[] { new("id", playlistId.ToString("N")) },
+            destination, "playlist cover", ct);
+
+    /// <summary>
+    /// noctisUploadPlaylistCover: sends a playlist cover (a picture of at most
+    /// <see cref="Noctis.Services.Sync.PlaylistCovers.MaxBytes"/>) for the playlist push that names its hash. Returns the
+    /// hash the computer keeps it under. Throws <see cref="NoctisServerException"/> (Server) when the
+    /// computer refuses it or is older than the call.
+    /// </summary>
+    public async Task<string> UploadPlaylistCoverAsync(string path, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(ApiTimeout);
+        await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var request = Request(HttpMethod.Post, "noctisUploadPlaylistCover", Array.Empty<KeyValuePair<string, string>>());
+        request.Content = new StreamContent(source, 81920);
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        request.Content.Headers.ContentLength = source.Length;
+        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, "playlist cover upload", timeout.Token, ct).ConfigureAwait(false);
+        var r = await ReadEnvelopeAsync(response, "playlist cover upload", signingIn: false, timeout.Token, ct).ConfigureAwait(false);
+        var cover = r.TryGetProperty("noctisPlaylistCover", out var c) ? Str(c, "cover") : null;
+        return Noctis.Services.Sync.PlaylistCovers.IsHash(cover)
+            ? cover!
+            : throw Log(new NoctisServerException(NoctisErrorKind.Server, "The computer did not take the cover."), "playlist cover upload", 200);
+    }
+
     /// <summary>One picture endpoint into a file; false when the server answers with an error envelope.</summary>
     private async Task<bool> DownloadImageAsync(string endpoint, IEnumerable<KeyValuePair<string, string>> query, string destination,
         string what, CancellationToken ct)

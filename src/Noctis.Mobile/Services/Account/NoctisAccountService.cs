@@ -381,6 +381,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
                     removed = true;
                 }
+                foreach (var id in ids) PlaylistCovers.DeleteOthers(id, PlaylistCoversDirectory, except: null);
             }
             if (removeDownloads) DeleteAllDownloadFiles();
             else DeletePartFiles();
@@ -1113,11 +1114,15 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         var modified = NoctisServerClient.Date(p, "modifiedAt") ?? updatedUtc;
         if (modified > now) modified = now;
+        // "" = no custom cover, a hash = that picture; absent (an older desktop) or anything else
+        // says nothing, and the phone keeps the cover it has.
+        var cover = NoctisServerClient.Str(p, "cover");
+        if (cover is { Length: > 0 } && !PlaylistCovers.IsHash(cover)) cover = null;
         return new PlaylistSyncState(
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "name"), MaxPlaylistName) ?? string.Empty,
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "description"), MaxPlaylistDescription) ?? string.Empty,
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "color"), 32) ?? string.Empty,
-            ids, modified, NoctisServerClient.Bool(p, "deleted"));
+            ids, modified, NoctisServerClient.Bool(p, "deleted"), cover);
     }
 
     private async Task<int> PushTrackStatesAsync(NoctisServerClient client, CancellationToken ct)
@@ -1230,6 +1235,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
 
         if (RepointPlaylists(phone, agreed)) changed = true;
+        if (await SyncPlaylistCoversAsync(client, phone, agreed, ct).ConfigureAwait(false)) changed = true;
 
         var toPush = new List<(string Hex, PlaylistSyncState State)>();
         foreach (var (hex, at) in deleted)
@@ -1240,6 +1246,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             var local = phone.FirstOrDefault(p => NoctisRemoteIds.TryParseSyncId(hex, out var id) && p.Id == id);
             if (local is null || !Newer(local.ModifiedAt, state.ModifiedAt)) continue;
             var modified = NotAfter(Utc(local.ModifiedAt), now) ?? now;
+            var cover = await PushedCoverAsync(client, hex, local, state.Cover, ct).ConfigureAwait(false);
             // Within the server's limits, or it drops the whole item: name ≤ 200, description
             // ≤ 2000, ≤ 10000 songs, colour #RRGGBB[AA] or none (none keeps the desktop's).
             toPush.Add((hex, new PlaylistSyncState(
@@ -1247,7 +1254,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 NoctisServerClient.Cap(local.Description ?? string.Empty, MaxPlaylistDescription)!,
                 IsSyncColor(local.Color) ? local.Color! : string.Empty,
                 DesktopTrackIds(local.TrackIds),
-                modified, Deleted: false)));
+                modified, Deleted: false, cover)));
         }
 
         if (changed)
@@ -1255,7 +1262,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
             RaisePlaylistsChanged();
         }
+        PrunePlaylistCovers(phone);
 
+        var coverMarks = false;
         foreach (var chunk in PushChunks(toPush, p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)))
         {
             var items = chunk.Select(p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)).ToList();
@@ -1265,7 +1274,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 if (!state.Deleted)
                 {
-                    agreed[hex] = state;
+                    // No cover said: the computer kept the one agreed before.
+                    agreed[hex] = state.Cover is null && agreed.TryGetValue(hex, out var before) ? state with { Cover = before.Cover } : state;
+                    lock (_gate) coverMarks |= _pending.RemovedCovers.Remove(hex);
                     continue;
                 }
                 // Deleted on the computer now: no longer one of the playlists the phone keeps in step.
@@ -1277,7 +1288,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 }
                 tombstones = true;
             }
-            if (tombstones) SchedulePendingSave();
+            if (tombstones || coverMarks) SchedulePendingSave();
         }
 
         lock (_gate)
@@ -1367,6 +1378,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (IsSyncColor(state.Color)) local.Color = state.Color;
         local.TrackIds = state.TrackIds?.Where(g => g != Guid.Empty).Take(MaxPlaylistTracks).ToList() ?? new List<Guid>();
         local.ModifiedAt = Utc(state.ModifiedAt);
+        // Removed on the computer (its file goes with PrunePlaylistCovers). A new picture is
+        // fetched by SyncPlaylistCoversAsync; none said (an older desktop) keeps the phone's.
+        if (state.Cover is { Length: 0 }) local.CoverArtPath = null;
     }
 
     private async Task<int> SendPlaysAsync(NoctisServerClient client, CancellationToken ct)
@@ -1526,6 +1540,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     Tracks = new Dictionary<string, PendingTrackState>(_pending.Tracks),
                     Plays = _pending.Plays.ToList(),
                     DeletedPlaylists = new Dictionary<string, DateTime>(_pending.DeletedPlaylists),
+                    RemovedCovers = new Dictionary<string, DateTime>(_pending.RemovedCovers),
                 };
             }
             try

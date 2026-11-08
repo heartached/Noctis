@@ -213,6 +213,10 @@ public interface INoctisAccountService
     /// next sync (instead of being restored as a stale save's loss); a phone-only one is ignored.</summary>
     void RecordPlaylistDeleted(Guid playlistId) { }
 
+    /// <summary>The phone removed a playlist's custom cover: one of the computer's loses it there too
+    /// on the next sync; a phone-only one is ignored.</summary>
+    void RecordPlaylistCoverRemoved(Guid playlistId) { }
+
     // ── Downloads ──
     bool IsRemote(Track track);
 
