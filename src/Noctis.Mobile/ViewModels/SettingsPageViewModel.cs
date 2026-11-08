@@ -1128,7 +1128,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
         else QueueSave(field);
     }
 
-    private void ApplyTheme() => Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex, AccentFollowsTheme, _accentFollowsArtwork);
+    private void ApplyTheme()
+    {
+        Shell.Theme?.ApplyTheme(Appearance, DarkTheme, _accentHex, AccentFollowsTheme, _accentFollowsArtwork);
+        // After the host: turned on mid-song, the playing cover's colour blends in from the chosen accent.
+        Shell.AccentFollowsArtwork = _accentFollowsArtwork;
+    }
 
     /// <summary>The settings.json fields a save writes: only those the user changed.</summary>
     [Flags]

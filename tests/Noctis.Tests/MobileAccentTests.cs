@@ -11,6 +11,7 @@ using Avalonia.Styling;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
+using SkiaSharp;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -186,10 +187,12 @@ public class MobileAccentTests
         }
     }
 
-    /// <summary>The shell hands the host every playing cover's colour (MiniTint's), and null when
-    /// the song has none.</summary>
+    /// <summary>Under Match Artwork the shell hands the host each playing cover's vibrant colour
+    /// (the desktop's "Accent follows album art" source), not the mini player's edge tint, and
+    /// null when the song has none. Off, no cover is decoded for it; turned on mid-song, the
+    /// playing cover's colour goes at once.</summary>
     [AvaloniaFact]
-    public void Shell_HandsThePlayingCoversColour_ToTheThemeHost()
+    public void Shell_HandsThePlayingCoversVibrantColour_ToTheThemeHost_OnlyUnderMatchArtwork()
     {
         var cover = Path.Combine(Path.GetTempPath(), $"noctis-accent-cover-{Guid.NewGuid():N}.jpg");
         File.WriteAllBytes(cover, new byte[] { 1, 2, 3 });
@@ -199,17 +202,171 @@ public class MobileAccentTests
             withCover.AlbumArtworkPath = cover;
             var without = MobileFixtures.Song("Plain");
             var host = new RecordingHost();
+            var decodes = new List<string>();
             using var rig = MobileFixtures.MakeRig(new[] { withCover, without }, theme: host,
-                tint: () => new PageTint(_ => DeepRed, work => Task.FromResult(work())));
+                // The edge tint (a black frame) differs from the vibrant colour: only the latter may reach the host.
+                tint: () => new PageTint(_ => Colors.Black, work => Task.FromResult(work())),
+                artworkAccent: path => { decodes.Add(path); return "#1E6BFF"; });
             rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
-            Assert.Equal(DeepRed, host.Covers.Last());
+            Assert.Empty(decodes);
+            Assert.All(host.Covers, c => Assert.Null(c));
+            // The mini player (and the Now Playing background) keep the edge tint.
+            Assert.Equal(Colors.Black, rig.Shell.MiniTint.TintColor);
+
+            rig.Shell.AccentFollowsArtwork = true;   // mid-song
+            Assert.Equal(new[] { cover }, decodes);
+            Assert.Equal(Color.Parse("#1E6BFF"), host.Covers.Last());
+
             rig.Shell.Player.PlayTracks(rig.Library.TrackList, 1);
             Assert.Null(host.Covers.Last());
+            rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+            Assert.Equal(Color.Parse("#1E6BFF"), host.Covers.Last());
+
+            rig.Shell.AccentFollowsArtwork = false;
+            Assert.Null(host.Covers.Last());   // no stale cover kept for the next time
+            rig.Shell.Player.PlayTracks(rig.Library.TrackList, 1);
+            rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+            Assert.Equal(2, decodes.Count);
         }
         finally
         {
             File.Delete(cover);
         }
+    }
+
+    /// <summary>A slow decode for an earlier song must not land over a later song's colour.</summary>
+    [AvaloniaFact]
+    public void Shell_ArtworkAccent_NewestTrackWins()
+    {
+        var a = MobileFixtures.Song("A");
+        a.AlbumArtworkPath = "a.png";
+        var b = MobileFixtures.Song("B");
+        b.AlbumArtworkPath = "b.png";
+        var host = new RecordingHost();
+        var pending = new List<(string Hex, TaskCompletionSource<string?> Done)>();
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            TintFactory = () => new PageTint(_ => null, work => Task.FromResult(work())),
+            Theme = host,
+            ArtworkAccentSource = path => path == "a.png" ? "#E02020" : "#20C040",
+            RunArtworkAccent = work =>
+            {
+                var done = new TaskCompletionSource<string?>();
+                pending.Add((work()!, done));
+                return done.Task;
+            },
+        };
+        shell.AccentFollowsArtwork = true;
+        shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        shell.Player.PlayTracks(rig.Library.TrackList, 1);
+        Assert.Equal(new[] { "#E02020", "#20C040" }, pending.Select(p => p.Hex));
+        var covers = host.Covers.Count;
+        pending[1].Done.SetResult(pending[1].Hex);   // B lands first
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        pending[0].Done.SetResult(pending[0].Hex);   // then A's late result
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(covers + 1, host.Covers.Count);
+        Assert.Equal(Color.Parse("#20C040"), host.Covers.Last());
+    }
+
+    /// <summary>
+    /// The S23 bug (11-07): a cover on a black frame (10X &amp; 6ix9ine's "Tutu": a bright disc in a
+    /// black case) has a black edge, which the accent's grey check turns down, so Match Artwork
+    /// wore the fixed Crimson. The vibrant colour of its saturated centre is the accent, as on the
+    /// desktop.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task BlackFramedCover_GivesTheCentresHue_NotTheFallback()
+    {
+        var centre = new SKColor(0x1E, 0x6B, 0xFF);
+        var cover = FramedCover(SKColors.Black, centre);
+        try
+        {
+            // The edge colour (what Match Artwork used to take) is black: no accent from it.
+            Assert.Null(PhoneThemes.ArtworkAccentHex(Noctis.Services.DominantColorExtractor.ExtractEdgeBackgroundColorFromFile(cover)));
+
+            var song = MobileFixtures.Song("Framed");
+            song.AlbumArtworkPath = cover;
+            var host = new RecordingHost();
+            using var rig = MobileFixtures.MakeRig(new[] { song }, theme: host,
+                artworkAccent: Noctis.Services.ArtworkVibrantColor.GetAccentSourceHex);
+            rig.Shell.AccentFollowsArtwork = true;
+            rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+            await rig.Shell.ArtworkAccentReady;
+
+            var accent = PhoneThemes.EffectiveAccent("Ink", MobileTheme.DefaultAccent, false, true, host.Covers.Last());
+            Assert.NotEqual(MobileTheme.DefaultAccent, accent, StringComparer.OrdinalIgnoreCase);
+            var hue = Color.Parse(accent).ToHsl().H;
+            centre.ToHsl(out var centreHue, out _, out _);
+            Assert.InRange(hue, centreHue - 8, centreHue + 8);
+            // The desktop's "Accent follows album art" wears the same colour.
+            Assert.Equal(Noctis.Services.ArtworkVibrantColor.GetAccentHex(cover), accent);
+        }
+        finally
+        {
+            File.Delete(cover);
+        }
+    }
+
+    /// <summary>A grey cover keeps the chosen accent. The share card's background floor (30 %
+    /// saturation, at hue 0 for a grey) tinted a grey cover's colour red, and the desktop's accent
+    /// wore that red: the accent now tames the cover's own (grey) average.</summary>
+    [Fact]
+    public void GreyCover_KeepsTheChosenAccent()
+    {
+        var cover = FramedCover(new SKColor(0x30, 0x30, 0x30), new SKColor(0x9A, 0x9A, 0x9A));
+        try
+        {
+            // The card background keeps its floor (unchanged), which an accent would wear...
+            Assert.NotNull(Noctis.Helpers.ArtworkAccent.TameForAccent(Noctis.Services.ArtworkVibrantColor.GetHex(cover)));
+            // ...the accent does not take it.
+            Assert.Null(Noctis.Services.ArtworkVibrantColor.GetAccentHex(cover));
+            var source = Noctis.Services.ArtworkVibrantColor.GetAccentSourceHex(cover);
+            Assert.NotNull(source);
+            Assert.Equal("#2A7FCF", PhoneThemes.EffectiveAccent("Ink", "#2A7FCF", false, true, Color.Parse(source!)));
+            // No readable artwork: nothing to follow either.
+            Assert.Null(Noctis.Services.ArtworkVibrantColor.GetAccentSourceHex(cover + ".missing"));
+        }
+        finally
+        {
+            File.Delete(cover);
+        }
+    }
+
+    /// <summary>The share card's vibrant colour is the shared one (the desktop and the phone agree).</summary>
+    [Fact]
+    public void ShareCardVibrantColour_IsTheSharedOne()
+    {
+        var cover = FramedCover(SKColors.Black, new SKColor(0xE0, 0x40, 0x30));
+        try
+        {
+            Assert.False(Noctis.Services.ShareCardRenderer.HasVibrantColor(cover));
+            Assert.Equal(Noctis.Services.ArtworkVibrantColor.GetHex(cover), Noctis.Services.ShareCardRenderer.GetVibrantColorHex(cover));
+            Assert.True(Noctis.Services.ShareCardRenderer.HasVibrantColor(cover));
+            Assert.Equal(Noctis.Services.ArtworkVibrantColor.FallbackHex, Noctis.Services.ShareCardRenderer.GetVibrantColorHex(null));
+        }
+        finally
+        {
+            File.Delete(cover);
+        }
+    }
+
+    /// <summary>A 300 px PNG: a 60 px <paramref name="frame"/> border around a <paramref name="centre"/> square.</summary>
+    private static string FramedCover(SKColor frame, SKColor centre)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"noctis-framed-{Guid.NewGuid():N}.png");
+        using var bmp = new SKBitmap(300, 300);
+        using (var canvas = new SKCanvas(bmp))
+        {
+            canvas.Clear(frame);
+            using var paint = new SKPaint { Color = centre };
+            canvas.DrawRect(60, 60, 180, 180, paint);
+        }
+        using var img = SKImage.FromBitmap(bmp);
+        using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+        File.WriteAllBytes(path, data.ToArray());
+        return path;
     }
 
     /// <summary>Picking Match Artwork: the host is told, the chosen colour stays saved as the

@@ -20,9 +20,10 @@ public interface IThemeHost
     void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme, bool accentFollowsArtwork) =>
         ApplyTheme(appearance, darkTheme, accentHex, accentFollowsTheme);
 
-    /// <summary>The playing song's cover colour changed (ShellViewModel's MiniTint; null with
-    /// nothing playing or no cover). Under Match Artwork the host blends the accent into it
-    /// (<see cref="MobileTheme.SetAccent"/>). No-op by default.</summary>
+    /// <summary>The playing song's cover colour changed: its vibrant colour, the desktop's "Accent
+    /// follows album art" source (ShellViewModel, only while Match Artwork is on; null with nothing
+    /// playing, no cover, or Match Artwork off). Under Match Artwork the host blends the accent into
+    /// it (<see cref="MobileTheme.SetAccent"/>). No-op by default.</summary>
     void CoverColourChanged(Color? cover) { }
 
     /// <summary>

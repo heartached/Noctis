@@ -160,7 +160,7 @@ public static class PhoneThemes
         followsTheme && Find(resolvedTheme)?.Accent is { } own ? $"#{own.R:X2}{own.G:X2}{own.B:X2}" : accentHex;
 
     /// <summary>The same with Settings › Accent › Match Artwork: while on, the playing cover's
-    /// colour (<paramref name="cover"/>, the mini player's <see cref="ViewModels.PageTint"/>) stands
+    /// colour (<paramref name="cover"/>, its vibrant colour: <see cref="Noctis.Services.ArtworkVibrantColor.GetAccentSourceHex"/>) stands
     /// in for the chosen accent, which comes back with no cover or a grey one. Match Theme still
     /// wins on a colour theme.</summary>
     public static string EffectiveAccent(string resolvedTheme, string accentHex, bool followsTheme, bool followsArtwork, Color? cover) =>

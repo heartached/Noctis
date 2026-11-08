@@ -502,7 +502,74 @@ public sealed partial class ShellViewModel : ObservableObject
             OnPropertyChanged(nameof(IsMiniBarInlineVisible));
         }
         if (e.PropertyName is nameof(NowPlayingViewModel.CurrentTrack))
+        {
             MiniTint.Load(Player.CurrentTrack?.AlbumArtworkPath);
+            UpdateArtworkAccent();
+        }
+    }
+
+    // ── Settings › Accent › Match Artwork: the accent takes the playing cover's colour ──
+
+    /// <summary>
+    /// Match Artwork is on (Settings and the app set it alongside <see cref="IThemeHost.ApplyTheme(string, string, string, bool, bool)"/>).
+    /// While on, every playing cover's vibrant colour goes to <see cref="Theme"/>; turned on
+    /// mid-song, the current cover's goes at once. Off, no cover is decoded for it.
+    /// </summary>
+    public bool AccentFollowsArtwork
+    {
+        get => _accentFollowsArtwork;
+        set
+        {
+            if (_accentFollowsArtwork == value) return;
+            _accentFollowsArtwork = value;
+            UpdateArtworkAccent();
+        }
+    }
+    private bool _accentFollowsArtwork;
+
+    /// <summary>A cover path to the colour the accent tames, the desktop's "Accent follows album
+    /// art" one (<see cref="ArtworkVibrantColor.GetAccentSourceHex"/>: the cover's dominant
+    /// colourful region, not its edge); null without readable artwork. Tests inject one.</summary>
+    public Func<string, string?> ArtworkAccentSource { get; init; } = ArtworkVibrantColor.GetAccentSourceHex;
+
+    /// <summary>Runs <see cref="ArtworkAccentSource"/> (a Skia decode) off the UI thread; tests run it inline.</summary>
+    public Func<Func<string?>, Task<string?>> RunArtworkAccent { get; init; } = work => Task.Run(work);
+
+    /// <summary>The latest Match Artwork colour on its way to the host; tests await it.</summary>
+    public Task ArtworkAccentReady { get; private set; } = Task.CompletedTask;
+
+    private int _artworkAccentGeneration;
+
+    private void UpdateArtworkAccent()
+    {
+        var generation = ++_artworkAccentGeneration;
+        ArtworkAccentReady = Task.CompletedTask;
+        var path = AccentFollowsArtwork ? Player.CurrentTrack?.AlbumArtworkPath : null;
+        // Off, nothing playing or no cover: the host keeps (or goes back to) the chosen accent,
+        // and holds no stale cover for the next time Match Artwork is turned on.
+        if (string.IsNullOrEmpty(path))
+        {
+            Theme?.CoverColourChanged(null);
+            return;
+        }
+        ArtworkAccentReady = UpdateArtworkAccentAsync(path, generation);
+    }
+
+    private async Task UpdateArtworkAccentAsync(string path, int generation)
+    {
+        string? hex;
+        try
+        {
+            hex = await RunArtworkAccent(() => ArtworkAccentSource(path));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Artwork", $"Artwork accent failed: {ex.Message}");
+            hex = null;
+        }
+        // A later track (or Match Artwork turned off) won the race: only the newest paints.
+        if (generation != _artworkAccentGeneration) return;
+        Theme?.CoverColourChanged(hex != null && Avalonia.Media.Color.TryParse(hex, out var c) ? c : null);
     }
 
     // ── Mini player: the elapsed part of the song fills the capsule in the cover's colour ──
@@ -520,7 +587,6 @@ public sealed partial class ShellViewModel : ObservableObject
                 {
                     UpdateMiniProgressBrushes();
                     Background.Cover = _miniTint?.TintColor;   // the Now Playing background follows the cover
-                    Theme?.CoverColourChanged(_miniTint?.TintColor);   // Settings › Accent › Match Artwork
                 }
             };
             return _miniTint;

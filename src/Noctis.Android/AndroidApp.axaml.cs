@@ -32,7 +32,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     private readonly MobileTheme _theme = new();
     private (string Appearance, string DarkTheme, string Accent, bool AccentFollowsTheme, bool AccentFollowsArtwork) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent, true, false);
 
-    // Match Artwork: the playing cover's colour (ShellViewModel's MiniTint), and the accent last worn.
+    // Match Artwork: the playing cover's vibrant colour (ShellViewModel.AccentFollowsArtwork), and the accent last worn.
     private Avalonia.Media.Color? _coverColour;
     private string? _wornAccent;
     private PlatformThemeVariant? _appliedSystem;
@@ -429,13 +429,15 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}, accent {accent}");
         _theme.Apply(this, resolved, accent);
         _wornAccent = accent;
+        // Match Artwork: the shell decodes the playing cover's colour only while on (CoverColourChanged).
+        if (_shell != null) _shell.AccentFollowsArtwork = accentFollowsArtwork;
         // The theme rebuilt its palette: the background mesh goes back on top, its glass in the theme's colours.
         _shell?.Background.Reassert(PhoneThemes.DarkOrInk(darkTheme).Id);
         // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
         Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
     }
 
-    /// <summary>The playing cover's colour (ShellViewModel's MiniTint). Under Match Artwork the
+    /// <summary>The playing cover's vibrant colour (ShellViewModel, under Match Artwork). Under Match Artwork the
     /// accent blends into it, or back to the chosen one without a cover; only the accent overlay
     /// changes (<see cref="MobileTheme.SetAccent"/>), not the whole theme.</summary>
     public void CoverColourChanged(Avalonia.Media.Color? cover)
