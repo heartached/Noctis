@@ -91,6 +91,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public string UpmixMode { get; private set; } = "Off";
     public void SetUpmixMode(string mode) => UpmixMode = mode;
     public bool HeadphoneSurroundActive { get; set; }
+    public bool MultichannelOutputActive { get; set; }
     public (bool Mono, double Balance) ChannelMix { get; private set; }
     public void SetChannelMix(bool mono, double balance) => ChannelMix = (mono, balance);
     public bool ChannelMixAvailable { get; set; } = true;

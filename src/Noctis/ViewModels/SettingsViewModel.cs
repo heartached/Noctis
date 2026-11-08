@@ -3342,6 +3342,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer = audioPlayer;
         OnPropertyChanged(nameof(HeadphoneSurroundNeedsRestart));
+        OnPropertyChanged(nameof(MultichannelOutputNeedsRestart));
         RefreshChannelMixAvailability();
         // Only surface the output-mode status while Exclusive Mode is enabled (it
         // describes the exclusive/fell-back-to-shared state). When exclusive is off

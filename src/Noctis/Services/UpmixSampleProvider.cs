@@ -40,8 +40,7 @@ public sealed class UpmixSampleProvider : ISampleProvider
     private readonly int _inChannels;
     private readonly int _outChannels;
     private readonly UpmixMode _mode;
-    private readonly Role[] _layout;
-    private readonly Biquad _lfe;
+    private readonly Spreader _spreader;
     private float[] _scratch = Array.Empty<float>();
 
     public WaveFormat WaveFormat { get; }
@@ -58,9 +57,7 @@ public sealed class UpmixSampleProvider : ISampleProvider
             throw new ArgumentException("Upmix expects mono or stereo input", nameof(source));
         _outChannels = Math.Clamp(outputChannels, 1, 32);
         _mode = mode;
-        _layout = LayoutFor(_outChannels);
-        // 2nd-order Butterworth low-pass at 120 Hz for the LFE feed.
-        _lfe = Biquad.LowPass(source.WaveFormat.SampleRate, 120.0, 0.7071);
+        _spreader = new Spreader(source.WaveFormat.SampleRate, _outChannels, mode);
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(source.WaveFormat.SampleRate, _outChannels);
     }
 
@@ -104,21 +101,49 @@ public sealed class UpmixSampleProvider : ISampleProvider
             return gotFrames * _outChannels;
         }
 
-        var surround = _mode == UpmixMode.Surround;
         for (var f = 0; f < gotFrames; f++)
         {
             var i = f * _inChannels;
             var l = _scratch[i];
             var r = _inChannels == 2 ? _scratch[i + 1] : l;
+            _spreader.Spread(l, r, buffer.AsSpan(offset + f * _outChannels, _outChannels));
+        }
+        return gotFrames * _outChannels;
+    }
+
+    /// <summary>
+    /// The upmix matrix for one output layout, frame by frame. Shared by this provider (stereo
+    /// engine, output stage) and the multichannel engine, which spreads a stereo input that
+    /// LibVLC delivered as FL/FR inside an N-channel block (<see cref="SpreadFrontsInPlace"/>).
+    /// </summary>
+    internal sealed class Spreader
+    {
+        private readonly Role[] _layout;
+        private readonly Biquad _lfe;
+        private readonly bool _surround;
+        private readonly float[] _frame;
+
+        public Spreader(int sampleRate, int outChannels, UpmixMode mode)
+        {
+            _layout = LayoutFor(outChannels);
+            // 2nd-order Butterworth low-pass at 120 Hz for the LFE feed.
+            _lfe = Biquad.LowPass(sampleRate, 120.0, 0.7071);
+            _surround = mode == UpmixMode.Surround;
+            _frame = new float[outChannels];
+        }
+
+        public int Channels => _layout.Length;
+
+        public void Spread(float l, float r, Span<float> frame)
+        {
             var mid = 0.5f * (l + r);
             var centre = mid * Minus3Db;
             var lfe = _lfe.Process(mid);
             var ambience = 0.5f * (l - r) * Minus3Db;
-
-            var o = offset + f * _outChannels;
-            for (var c = 0; c < _outChannels; c++)
+            var surround = _surround;
+            for (var c = 0; c < frame.Length; c++)
             {
-                buffer[o + c] = _layout[c] switch
+                frame[c] = _layout[c] switch
                 {
                     Role.FL => l,
                     Role.FR => r,
@@ -133,7 +158,22 @@ public sealed class UpmixSampleProvider : ISampleProvider
                 };
             }
         }
-        return gotFrames * _outChannels;
+
+        /// <summary>
+        /// Interleaved S16 frames in WAVEFORMATEXTENSIBLE order whose FL/FR carry a stereo
+        /// signal: fills every other slot from them. FL/FR themselves are left bit-exact.
+        /// </summary>
+        public void SpreadFrontsInPlace(Span<short> interleaved)
+        {
+            var ch = _layout.Length;
+            if (ch < 3) return;
+            for (var i = 0; i + ch <= interleaved.Length; i += ch)
+            {
+                Spread(interleaved[i] / 32768f, interleaved[i + 1] / 32768f, _frame);
+                for (var c = 2; c < ch; c++)
+                    interleaved[i + c] = (short)Math.Clamp(_frame[c] * 32768f, -32768f, 32767f);
+            }
+        }
     }
 
     /// <summary>Direct-form transposed biquad (mono).</summary>

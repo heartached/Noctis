@@ -2603,6 +2603,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.HeadphoneSurround" xml:space="preserve"><value>Объёмный звук в наушниках</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Превращает файлы 5.1 и 7.1 в пространственный звук для наушников вместо плоского стереомикса. Стереозаписи не меняются.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Перезапустите Noctis, чтобы применить изменение.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutput" xml:space="preserve"><value>Многоканальный вывод</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Воспроизводит файлы 5.1 и 7.1 через все колонки системы объёмного звука вместо сведения в стерео. Стереозаписи звучат из фронтальных колонок, если не включён многоканальный апмикс. Не действует, пока включён объёмный звук в наушниках.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputRestart" xml:space="preserve"><value>Перезапустите Noctis, чтобы применить изменение.</value><comment>Shown under Multichannel Output after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Аккаунты и синхронизация устройств управляются в разделе «Аккаунт и синхронизация».</value><comment>Integrations → Noctis Server card footer</comment></data>
   <data name="Server.OpenAccountSync" xml:space="preserve"><value>Открыть «Аккаунт и синхронизация»</value><comment>Integrations → Noctis Server card button</comment></data>

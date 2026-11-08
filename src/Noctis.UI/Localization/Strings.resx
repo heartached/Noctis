@@ -2603,6 +2603,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.HeadphoneSurround" xml:space="preserve"><value>Headphone Surround</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Makes 5.1 and 7.1 files sound like surround in headphones. Stereo songs stay the same.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutput" xml:space="preserve"><value>Multichannel Output</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Plays 5.1 and 7.1 files on every speaker of a surround system instead of mixing them down to stereo. Stereo songs stay on the front speakers unless Multi-channel upmix is on. Off while Headphone Surround is on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Multichannel Output after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Accounts and device sync are managed in Account &amp; Sync.</value><comment>Integrations → Noctis Server card footer</comment></data>
   <data name="Server.OpenAccountSync" xml:space="preserve"><value>Open Account &amp; Sync</value><comment>Integrations → Noctis Server card button</comment></data>

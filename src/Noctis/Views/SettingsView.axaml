@@ -5083,6 +5083,25 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #200: 5.1/7.1 discrete on a surround device (MultichannelLayout). Applies at
+                 launch, like Headphone Surround, which overrides it. -->
+            <Border Classes="setting-row" IsVisible="{Binding IsUpmixSupported}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.MultichannelOutput}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.MultichannelOutputDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <controls:CollapsibleContent IsOpen="{Binding MultichannelOutputNeedsRestart}" Lift="6">
+                            <TextBlock Text="{loc:T Settings.MultichannelOutputRestart}"
+                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        </controls:CollapsibleContent>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.MultichannelOutput}"
+                                          IsChecked="{Binding MultichannelOutput}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <Border Classes="setting-row" IsVisible="{Binding IsUpmixSupported}">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">

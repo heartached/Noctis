@@ -52,6 +52,24 @@ public partial class SettingsViewModel
     partial void OnHeadphoneSurroundChanged(bool value)
     {
         OnPropertyChanged(nameof(HeadphoneSurroundNeedsRestart));
+        OnPropertyChanged(nameof(MultichannelOutputNeedsRestart));
+        if (!_settingsLoaded) return;
+        _ = SaveAsync();
+    }
+
+    // ── Multichannel output (Audio tab, Windows; GitHub #200) ──
+
+    [ObservableProperty] private bool _multichannelOutput;
+
+    /// <summary>The saved choice differs from what the running player started with: the engine's
+    /// channel count is fixed when its sink opens, so it applies at the next launch. Headphone
+    /// surround overrides it there, so the effective value is compared.</summary>
+    public bool MultichannelOutputNeedsRestart =>
+        _audioPlayer != null && (MultichannelOutput && !HeadphoneSurround) != _audioPlayer.MultichannelOutputActive;
+
+    partial void OnMultichannelOutputChanged(bool value)
+    {
+        OnPropertyChanged(nameof(MultichannelOutputNeedsRestart));
         if (!_settingsLoaded) return;
         _ = SaveAsync();
     }
@@ -557,6 +575,7 @@ public partial class SettingsViewModel
     {
         UpmixMode = GaplessSink.ParseUpmixMode(_settings.UpmixMode).ToString();
         HeadphoneSurround = _settings.HeadphoneSurround;
+        MultichannelOutput = _settings.MultichannelOutput;
         LoadChannelMixSettings();
 
         if (string.IsNullOrWhiteSpace(_settings.SyncDeviceId))
@@ -581,6 +600,7 @@ public partial class SettingsViewModel
     {
         _settings.UpmixMode = UpmixMode ?? "Off";
         _settings.HeadphoneSurround = HeadphoneSurround;
+        _settings.MultichannelOutput = MultichannelOutput;
         SaveChannelMixSettings();
         if (AccountFeatures.Enabled) _settings.SyncEnabled = SyncEnabled;
         _settings.SyncTurnedOffByUser = _syncTurnedOffByUser;

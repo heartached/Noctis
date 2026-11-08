@@ -521,6 +521,12 @@ public class AppSettings : IJsonOnDeserializing
     /// instance option), so a change applies the next time Noctis starts.</summary>
     public bool HeadphoneSurround { get; set; }
 
+    /// <summary>Settings → Audio (Windows, GitHub #200): on a 4–8 channel device, 5.1/7.1 files play
+    /// discretely on every speaker instead of a stereo downmix; stereo stays on FL/FR unless the
+    /// upmix is on. Read at launch (the engine's channel count is fixed for the session), so a change
+    /// applies the next time Noctis starts. Headphone surround wins when both are on.</summary>
+    public bool MultichannelOutput { get; set; }
+
     /// <summary>Settings → Audio: Mono Audio, left and right averaged onto both channels (hearing
     /// in one ear, a single earbud). Bypassed in Exclusive Mode.</summary>
     public bool MonoAudio { get; set; }

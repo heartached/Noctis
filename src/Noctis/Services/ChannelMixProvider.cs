@@ -68,7 +68,9 @@ public sealed class ChannelMixSettings
 /// length), per frame, so toggling never clicks. At the identity state (stereo, centre, no
 /// fade, no ramp running) Read returns the source samples untouched: the stage is bit-exact
 /// when unused. <c>allowChannelMix: false</c> (Exclusive Mode) ignores mono/balance so the
-/// output stays bit-perfect, and only the fade applies. Non-stereo streams get the fade only.
+/// output stays bit-perfect, and only the fade applies. Mono streams get the fade only. A
+/// multichannel stream (Multichannel output, Windows' speaker order) applies mono and balance to
+/// each left/right speaker pair (front, rear, side); centre, LFE and back centre get the fade only.
 /// </summary>
 public sealed class ChannelMixProvider : ISampleProvider
 {
@@ -81,6 +83,9 @@ public sealed class ChannelMixProvider : ISampleProvider
     private readonly int _channels;
     private readonly int _sampleRate;
     private readonly int _mixRampFrames;
+    // Left/right slot pairs mono and balance act on (flattened), and the remaining slots.
+    private readonly int[] _pairs;
+    private readonly int[] _others;
 
     // Render-thread state.
     private ChannelMixSettings.State? _seen;
@@ -100,6 +105,34 @@ public sealed class ChannelMixProvider : ISampleProvider
         _channels = Math.Max(1, source.WaveFormat.Channels);
         _sampleRate = Math.Max(1, source.WaveFormat.SampleRate);
         _mixRampFrames = Math.Max(1, _sampleRate * RampMs / 1000);
+        (_pairs, _others) = SpeakerPairs(_channels);
+    }
+
+    /// <summary>Left/right pairs in Windows' speaker order (see <see cref="UpmixSampleProvider.LayoutFor"/>).</summary>
+    internal static (int[] Pairs, int[] Others) SpeakerPairs(int channels)
+    {
+        if (channels == 2) return (new[] { 0, 1 }, Array.Empty<int>());
+        if (channels < 2) return (Array.Empty<int>(), Array.Empty<int>());
+        var layout = UpmixSampleProvider.LayoutFor(channels);
+        var pairs = new List<int>();
+        var paired = new bool[channels];
+        foreach (var (l, r) in new[]
+                 {
+                     (UpmixSampleProvider.Role.FL, UpmixSampleProvider.Role.FR),
+                     (UpmixSampleProvider.Role.BL, UpmixSampleProvider.Role.BR),
+                     (UpmixSampleProvider.Role.SL, UpmixSampleProvider.Role.SR),
+                 })
+        {
+            int li = Array.IndexOf(layout, l), ri = Array.IndexOf(layout, r);
+            if (li < 0 || ri < 0) continue;
+            pairs.Add(li);
+            pairs.Add(ri);
+            paired[li] = paired[ri] = true;
+        }
+        var others = new List<int>();
+        for (var c = 0; c < channels; c++)
+            if (!paired[c]) others.Add(c);
+        return (pairs.ToArray(), others.ToArray());
     }
 
     public WaveFormat WaveFormat => _source.WaveFormat;
@@ -127,22 +160,31 @@ public sealed class ChannelMixProvider : ISampleProvider
         var ch = _channels;
         var frames = n / ch;
         var end = offset + frames * ch;
-        if (ch == 2 && (_mixPos < _mixLen || _m != 0f || _gl != 1f || _gr != 1f))
+        if (_pairs.Length > 0 && (_mixPos < _mixLen || _m != 0f || _gl != 1f || _gr != 1f))
         {
-            for (var i = offset; i < end; i += 2)
+            var pairs = _pairs;
+            var others = _others;
+            for (var i = offset; i < end; i += ch)
             {
                 StepMix();
                 var f = StepFade();
-                var l = buffer[i];
-                var r = buffer[i + 1];
-                if (_m != 0f)
+                for (var p = 0; p < pairs.Length; p += 2)
                 {
-                    var mid = (l + r) * 0.5f;
-                    l += _m * (mid - l);
-                    r += _m * (mid - r);
+                    var li = i + pairs[p];
+                    var ri = i + pairs[p + 1];
+                    var l = buffer[li];
+                    var r = buffer[ri];
+                    if (_m != 0f)
+                    {
+                        var mid = (l + r) * 0.5f;
+                        l += _m * (mid - l);
+                        r += _m * (mid - r);
+                    }
+                    buffer[li] = l * _gl * f;
+                    buffer[ri] = r * _gr * f;
                 }
-                buffer[i] = l * _gl * f;
-                buffer[i + 1] = r * _gr * f;
+                if (f != 1f)
+                    for (var o = 0; o < others.Length; o++) buffer[i + others[o]] *= f;
             }
         }
         else
@@ -165,7 +207,7 @@ public sealed class ChannelMixProvider : ISampleProvider
         _seen = s;
 
         float m = 0f, gl = 1f, gr = 1f;
-        if (_allowChannelMix && _channels == 2)
+        if (_allowChannelMix && _pairs.Length > 0)
         {
             m = s.Mono ? 1f : 0f;
             (gl, gr) = BalanceGains(s.Balance);
