@@ -139,10 +139,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             app.SetAccent(vm.Settings.ActiveAccentHex);
             return;
         }
-        Task.Run(() => ShareCardRenderer.GetVibrantColorHex(path)).ContinueWith(t =>
+        // The same colour the phone's Match Artwork wears (ArtworkVibrantColor, shared): null
+        // for a grey or unreadable cover, which keeps the user's own accent.
+        Task.Run(() => ArtworkVibrantColor.GetAccentHex(path)).ContinueWith(t =>
         {
             if (!t.IsCompletedSuccessfully) return;
-            var hex = Noctis.Helpers.ArtworkAccent.TameForAccent(t.Result);
+            var hex = t.Result;
             Dispatcher.UIThread.Post(() =>
             {
                 // A later track may have won the race; only the newest path paints.
