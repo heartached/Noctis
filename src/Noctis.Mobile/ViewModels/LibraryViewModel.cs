@@ -5,6 +5,7 @@ using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Services.Sync;
 using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
@@ -325,9 +326,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     public IEnumerable<Track> OnRepeatTracks() =>
         OnRepeatRail.Select(r => r.Payload).OfType<Track>().Select(t => _library.GetTrackById(t.Id) ?? t);
 
-    /// <summary>A playlist's cover: the first of its tracks that has one.</summary>
+    /// <summary>A playlist's cover: its custom cover (set on the phone or synced from the
+    /// computer), else the first of its tracks that has one.</summary>
     public string? PlaylistArtwork(Playlist playlist) =>
-        playlist.TrackIds.Select(_library.GetTrackById).FirstOrDefault(t => !string.IsNullOrEmpty(t?.AlbumArtworkPath))?.AlbumArtworkPath;
+        HasCustomCover(playlist) ? playlist.CoverArtPath
+            : playlist.TrackIds.Select(_library.GetTrackById).FirstOrDefault(t => !string.IsNullOrEmpty(t?.AlbumArtworkPath))?.AlbumArtworkPath;
+
+    public static bool HasCustomCover(Playlist playlist) =>
+        !string.IsNullOrEmpty(playlist.CoverArtPath) && File.Exists(playlist.CoverArtPath);
 
     /// <summary>Pin or unpin an album on the Pinned rail (AppSettings.PinnedAlbumIds).</summary>
     public async Task SetAlbumPinnedAsync(Guid albumId, bool pinned)
@@ -417,9 +423,69 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     /// <summary>Desktop parity (SidebarViewModel.DeletePlaylistAsync): the playlist leaves
-    /// playlists.json, and the Pinned rail with it.</summary>
-    public Task DeletePlaylistAsync(Playlist playlist) =>
-        EditPlaylistsAsync(list => list.RemoveAll(p => p.Id == playlist.Id));
+    /// playlists.json, and the Pinned rail with it; its custom cover file goes too.</summary>
+    public async Task DeletePlaylistAsync(Playlist playlist)
+    {
+        await EditPlaylistsAsync(list => list.RemoveAll(p => p.Id == playlist.Id));
+        PlaylistCovers.DeleteOthers(playlist.Id, PlaylistCoversDirectory, except: null);
+    }
+
+    private string PlaylistCoversDirectory => PlaylistCovers.CoversDirectory(_persistence.DataDirectory);
+
+    /// <summary>
+    /// Desktop parity (EditPlaylistDialog's Change cover): <paramref name="image"/> becomes the
+    /// playlist's cover, saved in the data folder under a name made from its bytes (the image cache
+    /// is keyed by path), and ModifiedAt moves so the sync carries it to the computer. False when
+    /// the file is not a picture (JPEG, PNG, WebP, GIF, BMP) or is too big.
+    /// </summary>
+    public async Task<bool> SetPlaylistCoverAsync(Playlist playlist, byte[] image)
+    {
+        if (image.Length == 0 || image.Length > PlaylistCovers.MaxBytes || PlaylistCovers.ImageExtension(image) is null) return false;
+        string? path;
+        var dir = PlaylistCoversDirectory;
+        var temp = Path.Combine(dir, ".picked-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            path = await Task.Run(() =>
+            {
+                Directory.CreateDirectory(dir);
+                File.WriteAllBytes(temp, image);
+                return PlaylistCovers.Store(temp, playlist.Id, dir, move: true);
+            });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DebugLog.Write("Library", $"Playlist cover not saved: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        if (path is null) return false;
+        var now = DateTime.UtcNow;
+        playlist.CoverArtPath = path;
+        await EditPlaylistAsync(playlist, p =>
+        {
+            p.CoverArtPath = path;
+            p.ModifiedAt = now;
+        });
+        return true;
+    }
+
+    /// <summary>Desktop parity (Remove custom cover): back to the automatic cover (the first
+    /// song's), with a ModifiedAt bump for the sync.</summary>
+    public async Task RemovePlaylistCoverAsync(Playlist playlist)
+    {
+        var now = DateTime.UtcNow;
+        playlist.CoverArtPath = null;
+        await EditPlaylistAsync(playlist, p =>
+        {
+            p.CoverArtPath = null;
+            p.ModifiedAt = now;
+        });
+        PlaylistCovers.DeleteOthers(playlist.Id, PlaylistCoversDirectory, except: null);
+    }
 
     /// <summary>Desktop parity (PlaylistViewModel.RemoveTrack): the songs leave the playlist with
     /// their "added" stamps (TrackAddedAt), and ModifiedAt moves so the sync carries it. Not for

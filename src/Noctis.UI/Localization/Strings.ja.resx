@@ -6982,6 +6982,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>アルバムへ移動</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>アーティストへ移動</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>名前を変更</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>カバーを変更</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>カバーを削除</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>このファイルはカバーに使える画像ではありません。</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>プレイリストから削除</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>プレイリストを削除</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>フォルダを追加…</value></data>

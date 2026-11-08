@@ -255,6 +255,22 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- Change Cover: a picture from the phone (the desktop's Change cover); Remove
+                                                 Cover while it has one, back to the first song's. -->
+                                            <Button Name="MenuChangeCover" Classes="row np-row" Command="{Binding ChangeCoverCommand}" IsVisible="{Binding CanChangeCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhAlbum}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.ChangeCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Name="MenuRemoveCover" Classes="row np-row" Command="{Binding RemoveCoverCommand}" IsVisible="{Binding CanRemoveCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhClose}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RemoveCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <Button Name="MenuRemoveFromPlaylist" Classes="row np-row np-danger" Command="{Binding RemoveFromPlaylistCommand}"
                                                     IsVisible="{Binding CanRemoveFromPlaylist}">
                                                 <Grid ColumnDefinitions="56,*">

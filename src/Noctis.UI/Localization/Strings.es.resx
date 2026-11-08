@@ -6982,6 +6982,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Ir al álbum</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Ir al artista</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Renombrar</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Cambiar portada</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Quitar portada</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Ese archivo no es una imagen que Noctis pueda usar como portada.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Quitar de la playlist</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Eliminar playlist</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Añadir carpeta…</value></data>

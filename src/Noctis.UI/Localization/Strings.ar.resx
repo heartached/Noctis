@@ -6982,6 +6982,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>الانتقال إلى الألبوم</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>الانتقال إلى الفنان</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>إعادة التسمية</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>تغيير الغلاف</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>إزالة الغلاف</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>هذا الملف ليس صورة يمكن استخدامها كغلاف.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>إزالة من قائمة التشغيل</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>حذف قائمة التشغيل</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>إضافة مجلد…</value></data>

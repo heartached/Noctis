@@ -3323,6 +3323,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Go to Album</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Go to Artist</value><comment>Menu action</comment></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Rename</value><comment>Menu action</comment></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Change Cover</value><comment>Playlist menu action: pick a picture on the phone as the playlist cover</comment></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Remove Cover</value><comment>Playlist menu action: back to the automatic cover</comment></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>That file isn't a picture Noctis can use as a cover.</value><comment>Notice when the picked file is not a usable picture</comment></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Remove from Playlist</value><comment>Menu action</comment></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Delete Playlist</value><comment>Menu action and confirm button</comment></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Add Folder…</value><comment>Library … menu</comment></data>
