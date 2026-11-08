@@ -506,12 +506,139 @@ public class AlbumRoulettePluginTests
         => Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(root).OfType<T>()
             .First(c => Avalonia.Automation.AutomationProperties.GetName(c) == name);
 
+    // ── Song Roulette (GitHub #198) ──
+
+    internal static IReadOnlyList<TrackInfo> SongTracks() => new[]
+    {
+        T("Glow", "Nightfall", "Nova", 2006, genre: "Electronic", albumId: NightfallId, albumArtist: "Nova"),
+        T("Ember", "Nightfall", "Nova", 2006, plays: 4, last: Now.AddDays(-2), genre: "Electronic", albumId: NightfallId, albumArtist: "Nova", number: 2),
+        T("Duet", "Paper Moons", "Nova", 1996, genre: "Rock", releaseType: "EP", albumArtist: "Kite"),
+        T("Solo", "", "Ada", 2019, genre: "Pop", releaseType: "Single"),
+        T("Meh", "Paper Moons", "Kite", 1996, genre: "Rock", releaseType: "EP") with { IsDisliked = true },
+        T("Skipped", "Paper Moons", "Kite", 1996, genre: "Rock", releaseType: "EP") with { SkipWhenShuffling = true },
+        T("Snoozed", "Paper Moons", "Kite", 1996, genre: "Rock", releaseType: "EP") with { SnoozedUntil = Now.AddDays(3) },
+        T("Woke", "Paper Moons", "Kite", 1996, genre: "Rock", releaseType: "EP") with { SnoozedUntil = Now.AddDays(-3) },
+    };
+
+    [Fact]
+    public void SongCatalog_EverySongIsItsOwnEntry_WithoutTheOnesShuffleLeavesOut()
+    {
+        var songs = SongCatalog.Build(SongTracks(), Now);
+        Assert.Equal(new[] { "Glow", "Ember", "Duet", "Solo", "Woke" }, songs.Select(s => s.Title));
+        Assert.All(songs, s => Assert.True(s.IsSong));
+        Assert.All(songs, s => Assert.Single(s.TrackIds));
+        Assert.False(Library()[0].IsSong);
+
+        var duet = songs.Single(s => s.Title == "Duet");
+        Assert.Equal(("Nova", "Paper Moons", 1996, ReleaseKind.EP), (duet.Artist, duet.AlbumTitle, duet.Year, duet.Kind));
+        Assert.Equal(new[] { "Nova", "Kite" }, duet.Artists);
+        var ember = songs.Single(s => s.Title == "Ember");
+        Assert.Equal((4, Now.AddDays(-2), NightfallId), (ember.PlayCount, ember.LastPlayed, ember.AlbumId));
+
+        var f = new RouletteFilter { Artist = "nova" };
+        Assert.Equal(new[] { "Glow", "Ember", "Duet" }, f.Apply(songs, Now).Select(s => s.Title));
+        f.Clear();
+        f.Singles = true; // Albums / EPs / Singles sort albums, not songs
+        Assert.Equal(5, f.Apply(songs, Now).Count);
+        f.Clear();
+        f.Genre = "rock";
+        Assert.Equal(new[] { "Duet", "Woke" }, f.Apply(songs, Now).Select(s => s.Title));
+        f.Genre = null;
+        f.Played = PlayedFilter.NeverPlayed;
+        Assert.DoesNotContain("Ember", f.Apply(songs, Now).Select(s => s.Title));
+    }
+
+    [AvaloniaFact]
+    public void View_SongRoulette_SpinsASong_ThenPlayPlayNextAddToQueue()
+    {
+        var host = new FakeRouletteHost { Enabled = false };
+        var view = new RouletteView(host, new Random(5), () => Now);
+        var window = new Window { Content = view, Width = 440, Height = 700 };
+        window.Show();
+        view.Reel.ManualFrames = true;
+        var tracks = SongTracks();
+        view.SetLibrary(AlbumCatalog.Group(tracks), SongCatalog.Build(tracks, Now));
+        Assert.Equal(RouletteMode.Albums, view.Mode);
+        Assert.Equal("3 albums", view.CountText);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(Find<Button>(view, "Shuffle").IsVisible);
+        Assert.False(Find<Button>(view, "Play next").IsVisible);
+        Assert.True(Find<Button>(view, "EPs").IsVisible);
+
+        Find<Button>(view, "Song Roulette").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(RouletteMode.Songs, view.Mode);
+        Assert.Equal("5 songs", view.CountText);
+        Assert.Equal("Press Spin to let the reel pick a song", view.HintText);
+        Assert.False(Find<Button>(view, "Shuffle").IsVisible);
+        Assert.True(Find<Button>(view, "Play next").IsVisible);
+        Assert.True(Find<Button>(view, "Add to queue").IsVisible);
+        Assert.False(Find<Button>(view, "EPs").IsVisible);
+
+        view.Filter.Genre = "Electronic";
+        view.ApplyFilters();
+        Assert.Equal("2 songs", view.CountText);
+        view.Spin();
+        view.Spin(); // lands right away
+        var pick = view.Pick!;
+        Assert.True(pick.IsSong);
+        Assert.Contains(pick.Title, new[] { "Glow", "Ember" });
+        Assert.Equal("Nightfall · 2006", view.SubtitleText);
+        Assert.True(view.PillsEnabled);
+
+        Find<Button>(view, "Play").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Find<Button>(view, "Play next").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Find<Button>(view, "Add to queue").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Find<Button>(view, "Open album").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Assert.Equal(pick.TrackIds, host.Played.Single());
+        Assert.Equal(new[] { (pick.TrackIds[0], true), (pick.TrackIds[0], false) }, host.Queued.Select(q => (q.Ids.Single(), q.PlayNext)));
+        Assert.Equal(NightfallId, host.Shown.Single());
+
+        // Nothing matches: the empty state speaks of songs.
+        view.Filter.Genre = "Classical";
+        view.ApplyFilters();
+        Assert.Equal("No songs match these filters", view.EmptyText);
+
+        // Back to albums: the stage clears (an album is not a song), the chips stay.
+        view.Filter.Genre = "Electronic";
+        view.SetMode(RouletteMode.Albums);
+        Assert.Null(view.Pick);
+        Assert.Equal("1 album", view.CountText);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void View_SpinFor_SongsOfAnArtist_BeforeTheLibraryLoads()
+    {
+        var host = new FakeRouletteHost { Enabled = false };
+        var view = new RouletteView(host, new Random(2), () => Now);
+        view.Reel.ManualFrames = true;
+        view.Filter.Genre = "Pop";
+        view.SpinFor(RouletteMode.Songs, "Nova");
+        Assert.Equal(RouletteMode.Songs, view.Mode);
+        Assert.Null(view.Filter.Genre); // a fresh spin clears the chips
+        var tracks = SongTracks();
+        view.SetLibrary(AlbumCatalog.Group(tracks), SongCatalog.Build(tracks, Now));
+        Assert.True(view.Reel.Motion.IsSpinning);
+        Assert.Equal(new[] { "Glow", "Ember", "Duet" }, view.Matches.Select(m => m.Title));
+        view.Spin();
+        Assert.Contains("Nova", view.Pick!.Artists);
+
+        // The Songs page: the whole library, artist chip gone.
+        view.SpinFor(RouletteMode.Songs, null);
+        Assert.Null(view.Filter.Artist);
+        Assert.Equal(5, view.Matches.Count);
+        // "Spin from this artist" keeps the mode the window is in.
+        view.SpinFromArtist("Ada");
+        Assert.Equal(RouletteMode.Songs, view.Mode);
+        Assert.Equal("Solo", Assert.Single(view.Matches).Title);
+    }
+
     // ── Through the real loader ──
 
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumRoulette/bin/Release/Noctis.Plugins.AlbumRoulette-1.0.0.zip");
+        var zip = PluginSandbox.RepoFile($"plugins/Noctis.Plugins.AlbumRoulette/bin/Release/Noctis.Plugins.AlbumRoulette-{AlbumRoulettePlugin.Version}.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumRoulette -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -528,7 +655,7 @@ public class AlbumRoulettePluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Roulette", "1.0.0", "Noctis"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Album Roulette", AlbumRoulettePlugin.Version, "Noctis"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Empty(plugin.Manifest!.Warnings); // "icon" is tolerated, permissions all known
         Assert.Equal(new[] { "library.read", "playback.control", "notifications", "menu.commands" }, plugin.Manifest.Permissions);
         Assert.Equal(new[] { "albumOfTheDay", "dailyHour", "skipCompilations", "animation" }, plugin.Manifest.Settings.Select(s => s.Key));
@@ -555,6 +682,7 @@ public class AlbumRoulettePluginTests
     {
         public List<TrackInfo> Tracks = new();
         public readonly List<IReadOnlyList<string>> Played = new();
+        public readonly List<(IReadOnlyList<string> Ids, bool PlayNext)> Queued = new();
         public readonly List<string> Shown = new();
         public readonly List<string> Notices = new();
         public DailyState? Daily;
@@ -563,6 +691,7 @@ public class AlbumRoulettePluginTests
 
         public IReadOnlyList<TrackInfo> LoadTracks() => Tracks;
         public void PlayTracks(IReadOnlyList<string> trackIds) => Played.Add(trackIds.ToArray());
+        public void QueueTracks(IReadOnlyList<string> trackIds, bool playNext) => Queued.Add((trackIds.ToArray(), playNext));
         public bool ShowAlbum(string albumId) { Shown.Add(albumId); return true; }
         public void Notify(string message) { lock (Notices) Notices.Add(message); }
         public void Log(string message) { }

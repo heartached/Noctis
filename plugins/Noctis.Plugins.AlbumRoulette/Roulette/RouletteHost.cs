@@ -12,6 +12,9 @@ public interface IRouletteHost
     /// <summary>Replaces the queue with these tracks and plays.</summary>
     void PlayTracks(IReadOnlyList<string> trackIds);
 
+    /// <summary>Play Next (<paramref name="playNext"/> true) or Add to Queue (false).</summary>
+    void QueueTracks(IReadOnlyList<string> trackIds, bool playNext);
+
     /// <summary>Opens the album's page in the main window.</summary>
     bool ShowAlbum(string albumId);
 
@@ -30,7 +33,7 @@ public interface IRouletteHost
     void SaveDaily(DailyState state);
 }
 
-/// <summary>The real host (plugin API 1.4).</summary>
+/// <summary>The real host (plugin API 1.4; 1.7 when Noctis has it).</summary>
 public sealed class PluginRouletteHost : IRouletteHost, IDisposable
 {
     private readonly IPluginHost _host;
@@ -48,6 +51,21 @@ public sealed class PluginRouletteHost : IRouletteHost, IDisposable
     public IReadOnlyList<TrackInfo> LoadTracks() => _host.Library.GetAll();
     public void PlayTracks(IReadOnlyList<string> trackIds) => _host.Playback.PlayTracks(trackIds);
     public bool ShowAlbum(string albumId) => albumId.Length > 0 && _host.ShowAlbum(albumId);
+
+    /// <summary>API 1.7 queues the way the app's own menus do. On an older Noctis the songs go
+    /// into Up Next through API 1.5 (which switches Noctis's Shuffle off).</summary>
+    public void QueueTracks(IReadOnlyList<string> trackIds, bool playNext)
+    {
+        var playback = _host.Playback;
+        try
+        {
+            playback.QueueTracks(trackIds, playNext);
+            return;
+        }
+        catch (NotSupportedException) { }
+        var up = playback.GetQueue().UpNext;
+        playback.SetUpNext(playNext ? trackIds.Concat(up).ToArray() : up.Concat(trackIds).ToArray());
+    }
     public void Notify(string message) => _host.Notify(message);
     public void Log(string message) => _host.Log(message);
 

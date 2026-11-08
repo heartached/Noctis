@@ -47,7 +47,8 @@ public sealed class RouletteFilter
         if (SkipCompilations && album.IsCompilation) return false;
         if (Genre is { } g && !string.Equals(album.Genre, g, StringComparison.OrdinalIgnoreCase)) return false;
         if (Decade is { } d && album.Decade != d) return false;
-        if (Albums || EPs || Singles)
+        // Albums / EPs / Singles sort albums; in Song Roulette every song is its own pick.
+        if (!album.IsSong && (Albums || EPs || Singles))
         {
             var ok = album.Kind switch
             {

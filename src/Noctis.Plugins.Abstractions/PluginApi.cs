@@ -285,6 +285,7 @@ public interface IPluginSettings
 [Flags]
 public enum LibraryCommandPlaces
 {
+    /// <summary>Nowhere (not accepted by <see cref="IPluginHost.RegisterLibraryCommand"/>).</summary>
     None = 0,
     /// <summary>The "…" options menu on an artist's page.</summary>
     ArtistPage = 1,
