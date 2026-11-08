@@ -7696,4 +7696,13 @@
   <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>타이머 끄기</value></data>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 후 일시정지</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>이 곡이 끝나면 일시정지</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>곡 숨기기</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>숨겼습니다. 설정 › 숨긴 항목에서 다시 표시할 수 있습니다.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>숨긴 항목</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>숨긴 곡은 휴대폰에 남아 있지만 보관함, 검색, 셔플, 믹스에는 나타나지 않습니다.</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>숨긴 항목 없음</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>표시</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} 표시</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>폴더</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>지금 이 휴대폰에 없음</value></data>
 </root>

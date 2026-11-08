@@ -645,7 +645,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private async Task<(List<Track> Tracks, int Linked)> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists,
         bool keepUnlisted, CancellationToken ct)
     {
-        var known = new HashSet<Guid>(_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
+        // AllTracks: a desktop song hidden on the phone (Hide Song) is still here; read as unknown
+        // it took the catalog's state over the phone's and, with keepUnlisted, was dropped.
+        var known = new HashSet<Guid>(_library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
         if (songs.Count == 0 && known.Count > 0)
         {
             // Same rule as a scan: an empty answer never wipes a populated set. A desktop that is
@@ -653,7 +655,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             DebugLog.Write("Account", $"catalog: the desktop listed no songs; keeping the {known.Count} already here");
             int kept;
             lock (_gate) kept = _sync.Links.Count;
-            return (_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList(), kept);
+            return (_library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList(), kept);
         }
         var links = UpdateLinks(songs, keepUnlisted, out var fresh);
         var now = UtcNow;
@@ -692,7 +694,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (keepUnlisted)
         {
             var listed = new HashSet<Guid>(songs.Select(s => s.Id));
-            var unlisted = _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id) && !links.ContainsKey(t.Id)).ToList();
+            var unlisted = _library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id) && !links.ContainsKey(t.Id)).ToList();
             if (unlisted.Count > 0) DebugLog.Write("Account", $"catalog: keeping {unlisted.Count} songs the desktop did not list this time");
             tracks.AddRange(unlisted);
         }

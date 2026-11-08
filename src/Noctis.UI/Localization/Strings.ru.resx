@@ -4069,4 +4069,13 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Выключить таймер</value></data>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Пауза через {0}</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Пауза после этой песни</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Скрыть песню</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Скрыто. Вернуть можно в Настройки › Скрытые.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Скрытые</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Скрытые песни остаются на телефоне, но не показываются в медиатеке, поиске, перемешивании и миксах.</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Ничего не скрыто</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Показать</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Показать {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Папка</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Сейчас нет на телефоне</value></data>
 </root>

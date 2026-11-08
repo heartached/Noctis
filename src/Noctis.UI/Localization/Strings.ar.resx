@@ -7696,4 +7696,13 @@
   <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>إيقاف المؤقت</value></data>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>إيقاف مؤقت بعد {0}</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>إيقاف مؤقت بعد هذه الأغنية</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>إخفاء الأغنية</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>تم الإخفاء. يمكنك إظهارها من الإعدادات › المخفية.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>المخفية</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>تبقى الأغاني المخفية على هاتفك، لكنها لا تظهر في المكتبة أو البحث أو التشغيل العشوائي أو المزيجات.</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>لا يوجد شيء مخفي</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>إظهار</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>إظهار {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>مجلد</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>غير موجودة على هذا الهاتف الآن</value></data>
 </root>

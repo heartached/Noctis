@@ -275,6 +275,25 @@
         <Style Selector="Button.folder-remove:pressed">
             <Setter Property="Opacity" Value="0.5" />
         </Style>
+        <!-- Settings › Hidden: a row's Unhide, the accent's text at the row's end, a full finger tall. -->
+        <Style Selector="Button.unhide">
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Margin" Value="8,0,-12,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="FontSize" Value="16" />
+        </Style>
+        <Style Selector="Button.unhide:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.unhide:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Button.unhide:pressed">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
         <!-- The Windows Settings slider (SettingsView's accent-slider): an 8 dp round-ended track,
              the accent filling up to a round thumb, the rest a soft grey. A SmoothSlider, as on
              the desktop: the thumb follows the finger, the setting moves in whole steps.
@@ -630,6 +649,17 @@
                                             </views:SettingRow>
                                         </Button>
                                     </StackPanel>
+                                    <!-- Hidden: what Hide Song left out of the library (Discord #mobile-beta), with Unhide. -->
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="HiddenRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Hidden}" AutomationProperties.Name="{Binding HiddenRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconHidden}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Hidden}" />
+                                            <TextBlock Grid.Column="2" Name="HiddenValueLabel" Classes="row-value" Text="{Binding HiddenValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
                                             IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
@@ -885,6 +915,39 @@
                                     </ToggleButton>
                                 </Border>
                                 <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Folders.ScanOnStartupHint}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Hidden: each hidden song (title, artist) or folder with Unhide, the note under them. -->
+                        <StackPanel Name="HiddenPane" Classes="grouped-content" IsVisible="{Binding ShowsHiddenPane}">
+                            <StackPanel>
+                                <Border Name="HiddenCard" Classes="group-card">
+                                    <StackPanel>
+                                        <ItemsControl Name="HiddenList" ItemsSource="{Binding HiddenRows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:HiddenItem">
+                                                    <StackPanel>
+                                                        <Border Classes="row-separator plain" />
+                                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                                            <StackPanel VerticalAlignment="Center" Margin="0,10">
+                                                                <TextBlock Classes="row-label" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Classes="row-sub" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Classes="unhide" Content="{loc:T Mobile.Hidden.Unhide}"
+                                                                    Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).UnhideCommand}"
+                                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding UnhideName}" />
+                                                        </views:SettingRow>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <views:SettingRow Name="NoHiddenRow" Classes="setting-row" IsVisible="{Binding !HasHidden}">
+                                            <TextBlock Classes="row-label" Foreground="{DynamicResource PhoneSecondaryTextBrush}"
+                                                       Text="{loc:T Mobile.Hidden.None}" />
+                                        </views:SettingRow>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Hidden.Hint}" />
                             </StackPanel>
                         </StackPanel>
 

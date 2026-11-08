@@ -1268,6 +1268,29 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.Notice = Loc.T(snooze ? "Mobile.SnoozedNotice" : "Mobile.UnsnoozedNotice");
     }
 
+    /// <summary>
+    /// Hide Song (Discord #mobile-beta: voice notes and other audio that is not music): the
+    /// desktop's hidden-folder list (AppSettings.HiddenLibraryFolders, LibraryService.SetFolderHiddenAsync)
+    /// with the song's own path in it, which hides that one file (FolderPathMatch.IsInOrSameAsAny).
+    /// The library rebuilds without it, so Songs, Albums, Artists, search, Shuffle and the mixes
+    /// leave it out; Settings › Hidden shows it again. Nothing is deleted or rescanned.
+    /// </summary>
+    public async Task SetHiddenAsync(IReadOnlyList<string> paths, bool hidden)
+    {
+        foreach (var path in paths.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await Library.Service.SetFolderHiddenAsync(path, hidden);
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Library", $"Hide failed: {ex.Message}");
+            }
+        }
+        if (hidden) Player.Notice = Loc.T("Mobile.HiddenNotice");
+    }
+
     [RelayCommand]
     private async Task ToggleCurrentFavouriteAsync()
     {

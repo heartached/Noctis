@@ -246,6 +246,19 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [RelayCommand]
     private void ShowSleepTimer() => _shell.ShowSleepTimerMenuCommand.Execute(null);
 
+    // ── Hide Song (Settings › Hidden shows it again) ──
+
+    /// <summary>A song's menu: one file hidden from the library, the desktop's Hide Folder for a song.</summary>
+    public bool CanHide => Track is { FilePath.Length: > 0 };
+
+    [RelayCommand]
+    private async Task HideAsync()
+    {
+        var path = Track?.FilePath;
+        _shell.CloseSheet();
+        if (!string.IsNullOrEmpty(path)) await _shell.SetHiddenAsync(new[] { path }, hidden: true);
+    }
+
     // ── Snooze for a Month (the desktop's song and album menus) ──
 
     /// <summary>A song's or an album's menu: Shuffle and the mixes leave the songs out for a month.</summary>

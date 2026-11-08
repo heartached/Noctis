@@ -4069,4 +4069,13 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Turn Off Timer</value><comment>Sleep timer menu: cancels the running timer</comment></data>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pauses in {0}</value><comment>Sleep timer running; {0} is the time left, e.g. 29:54</comment></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pauses after this song</value><comment>Sleep timer set to the end of the playing song</comment></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Hide Song</value><comment>Song menu row: leaves the song out of the library (Settings › Hidden brings it back)</comment></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Hidden. Settings › Hidden brings it back.</value><comment>Banner after Hide Song</comment></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Hidden</value><comment>Settings › Library row and page: hidden songs and folders</comment></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Hidden songs stay on your phone, but your library, search, Shuffle and mixes leave them out.</value><comment>Settings › Hidden footnote</comment></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Nothing hidden</value><comment>Settings › Hidden when nothing is hidden</comment></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Unhide</value><comment>Settings › Hidden: the row's button that shows the song again</comment></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Unhide {0}</value><comment>Screen reader name of a row's Unhide; {0} is the song or folder</comment></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Folder</value><comment>Settings › Hidden: second line of a hidden folder</comment></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Not on this phone now</value><comment>Settings › Hidden: a hidden song the library no longer has</comment></data>
 </root>

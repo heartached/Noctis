@@ -7696,4 +7696,13 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Désactiver la minuterie</value></data>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pause dans {0}</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pause après ce morceau</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Masquer le morceau</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Masqué. Réaffichez-le dans Réglages › Masqués.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Masqués</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Les morceaux masqués restent sur votre téléphone, mais n'apparaissent plus dans la bibliothèque, la recherche, la lecture aléatoire et les mix.</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Rien n'est masqué</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Réafficher</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Réafficher {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Dossier</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>N'est plus sur ce téléphone</value></data>
 </root>
