@@ -141,6 +141,9 @@ internal class Program
             // load.
             VlcAudioPlayer.HeadphoneSurroundAtLaunch = PersistenceService.ReadBoolSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.HeadphoneSurround));
+            // Multichannel output fixes the engine's channel count when the sink opens (GitHub #200).
+            Noctis.Services.MultichannelLayout.EnabledAtLaunch = PersistenceService.ReadBoolSettingAtLaunch(
+                AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.MultichannelOutput));
             VlcAudioPlayer.OutputDeviceAtLaunch = PersistenceService.ReadStringSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.AudioOutputDeviceId));
             VlcAudioPlayer.DecoderFallbackListPathAtLaunch = Path.Combine(AppPaths.DataRoot, "mp3_decoder_fallback.txt");

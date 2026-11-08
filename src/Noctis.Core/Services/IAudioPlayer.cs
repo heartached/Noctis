@@ -171,6 +171,13 @@ public interface IAudioPlayer : IDisposable
     bool HeadphoneSurroundActive => false;
 
     /// <summary>
+    /// True when this player was started with Multichannel output on (and Headphone surround
+    /// off): the output runs at the device's surround channel count. Fixed for the player's
+    /// lifetime, so Settings compares it with the saved choice to say a restart is needed.
+    /// </summary>
+    bool MultichannelOutputActive => false;
+
+    /// <summary>
     /// Mono Audio (L and R averaged onto both channels) and the left/right balance
     /// (-1 left only … 0 centre … +1 right only), ramped click-free in the output's sample
     /// stage. Exclusive Mode bypasses both (bit-perfect).

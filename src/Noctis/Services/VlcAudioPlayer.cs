@@ -183,6 +183,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // block pending. A jump between consecutive blocks means VLC dropped audio
     // upstream and the hole is butt-spliced into the ring.
     private readonly long[] _engineExpectedPts = new long[2];
+    // Per slot: the upmix matrix spreading a stereo input on a multichannel engine (decoder
+    // thread only), rebuilt when the segment or Settings → Upmix changes.
+    private readonly (GaplessTrackSegment? Seg, UpmixMode Mode, UpmixSampleProvider.Spreader? Spreader)[] _engineSpread =
+        new (GaplessTrackSegment?, UpmixMode, UpmixSampleProvider.Spreader?)[2];
     private long _enginePtsGapCount;   // every PtsGap this session (the log line is rate-limited)
     private long _lastPtsGapLogTick;   // Environment.TickCount64 of the last PtsGap line
     // VLC clock date (µs) of the slot's pause callback; 0 = not paused. A pause moves
@@ -672,7 +676,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         HeadphoneSurroundActive = HeadphoneSurroundAtLaunch;
         if (StereoModeArg(HeadphoneSurroundActive) is { } stereoMode)
             vlcArgs.Add(stereoMode);
-        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting", $"headphoneSurround={HeadphoneSurroundActive}");
+        // Multichannel output needs a multichannel output, Headphone surround a stereo one to
+        // binauralize into: Headphone surround wins (it is the more specific choice, for headphones).
+        MultichannelOutputActive = OperatingSystem.IsWindows() && MultichannelLayout.EnabledAtLaunch && !HeadphoneSurroundActive;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+            $"headphoneSurround={HeadphoneSurroundActive}, multichannel={MultichannelOutputActive} (saved {MultichannelLayout.EnabledAtLaunch})");
 
         // Diagnostic: append arbitrary space-separated LibVLC args so output
         // modules / clock / time-stretch settings can be A/B-tested on real
@@ -758,7 +766,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (OperatingSystem.IsWindows() &&
             Environment.GetEnvironmentVariable("NOCTIS_WASAPI") == "1")
         {
-            wasapi = WasapiGainOutput.TryCreate(_outputDeviceId);
+            wasapi = WasapiGainOutput.TryCreate(_outputDeviceId, MultichannelOutputActive);
             if (wasapi != null)
             {
                 _audioPlayCb = AudioPlay;
@@ -832,7 +840,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                          Environment.GetEnvironmentVariable("NOCTIS_GAPLESS_ENGINE") != "0";
         if (_gaplessEngine)
         {
-            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId);
+            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId, MultichannelOutputActive);
             if (_gaplessSink == null)
             {
                 _gaplessEngine = false;
@@ -1827,6 +1835,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <inheritdoc />
     public bool HeadphoneSurroundActive { get; }
 
+    /// <inheritdoc />
+    public bool MultichannelOutputActive { get; }
+
+    /// <summary>The first audio track's channel count of a parsed Media (0 = unknown);
+    /// DSD media, which is never parsed, from its own header.</summary>
+    private static int SourceChannelsOf(Media media)
+    {
+        try
+        {
+            if (DsdPcmInput.TryGetFormat(media, out _, out var dsdChannels)) return dsdChannels;
+            foreach (var t in media.Tracks)
+                if (t.TrackType == TrackType.Audio) return (int)t.Data.Audio.Channels;
+        }
+        catch { /* unknown */ }
+        return 0;
+    }
+
     /// <summary>
     /// The players are wired into an NAudio chain with a <see cref="BeatTapProvider"/>:
     /// the gapless engine's sink, the exclusive-mode callbacks (whose sink, exclusive or
@@ -2208,6 +2233,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// bit-perfect; >16-bit content is truncated upstream by VLC 3.x — a hard
     /// LibVLC limitation). The track's rate comes from the already-parsed Media.
     /// </summary>
+    // Exclusive multichannel layouts ("device|rate|channels") a device refused this session.
+    private readonly HashSet<string> _exclusiveLayoutRejected = new(StringComparer.Ordinal);
+
     private void PrepareExclusiveOutputFor(Media media)
     {
         try
@@ -2225,9 +2253,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 (rate, channels) = (dsdRate, dsdChannels);
             // amem delivers the wrong amount of audio from 262144 Hz up (see AmemRate), so a
             // 352.8/384 kHz source opens the device at 176.4/192 kHz and VLC resamples 2:1.
-            // The sink renders at most stereo (LibVLC downmixes to what we pin below).
+            // The sink renders at most stereo (LibVLC downmixes to what we pin below), or with
+            // Multichannel output on a 4–8 channel source at its own count when the device takes it.
             rate = AmemRate.Fit(Math.Max(rate, 8000));
-            channels = Math.Clamp(channels, 1, 2);
+            channels = MultichannelOutputActive && MultichannelLayout.IsSupported(channels)
+                ? channels : Math.Clamp(channels, 1, 2);
 
             string? notice = null;
             int sinkRate, sinkChannels;
@@ -2237,6 +2267,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // the next track moves back once it returns).
             var pin = _outputDeviceId;
             var target = AudioOutputDeviceCatalog.Exists(pin) ? pin : null;
+            // A layout this device already refused exclusively goes straight to stereo, so the
+            // next 5.1 track does not close the open stereo stream just to fail again.
+            var layoutKey = $"{target}|{rate}|{channels}";
+            if (channels > 2 && _exclusiveLayoutRejected.Contains(layoutKey)) channels = 2;
 
             lock (_exclusiveSinkLock)
             {
@@ -2256,13 +2290,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_exclusiveOut == null)
                 {
                     var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out var reason);
+                    if (sink == null && channels > 2)
+                    {
+                        // The device does not take this layout exclusively: stay bit-perfect in
+                        // stereo (LibVLC downmixes) rather than leave exclusive mode.
+                        DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.MultichannelRejected",
+                            $"channels={channels}, rate={rate}, reason={reason}");
+                        _exclusiveLayoutRejected.Add(layoutKey);
+                        channels = 2;
+                        sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out reason);
+                    }
                     if (sink != null)
                     {
                         notice = $"Exclusive output active: {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
                     }
                     else
                     {
-                        sink = WasapiGainOutput.TryCreate(target);
+                        sink = WasapiGainOutput.TryCreate(target, MultichannelOutputActive);
                         // Read as an error before: it said what failed but not that
                         // playback is fine, nor that the next track retries exclusive
                         // (the reuse check above drops a shared fallback sink).
@@ -3073,7 +3117,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     // input decodes nothing — VLC 3 source-verified), no volume
                     // dance (the OS session owns the sink's stream).
                     _engineStagedPath = normalizedPath;
-                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath, mp3TailTrimFrames, onAvcodec);
+                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath, mp3TailTrimFrames, onAvcodec,
+                        SourceChannelsOf(media));
                     _standbyPlayer.Play(media);
                     if (startPositionMs > 0)
                     {
@@ -3630,7 +3675,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // EngineBeginSegment stores the base in both the segment and
                 // _enginePendingBaseMs, so an input-open flush re-bases to the
                 // same value the :start-time open actually begins at.
-                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames, onAvcodec);
+                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames, onAvcodec,
+                    SourceChannelsOf(_currentMedia));
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
@@ -4597,6 +4643,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
             buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
             System.Runtime.InteropServices.Marshal.Copy(samples, buf, 0, bytes);
+            // Multichannel: amem hands over VLC's channel order, WASAPI expects Windows' one.
+            if (channels > 2)
+                MultichannelLayout.ToWaveOrder(MemoryMarshal.Cast<byte, short>(buf.AsSpan(0, bytes)), channels);
             sink.Write(buf, bytes);
         }
         catch (Exception ex)
@@ -4686,6 +4735,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     catch { /* diagnostic only */ }
                 }
 
+                // Multichannel engine: VLC's channel order → Windows' (MultichannelLayout), and a
+                // stereo input, which VLC delivers on FL/FR only, spread by Settings → Upmix.
+                if (sink.Channels > 2)
+                    EngineToSpeakerLayout(slot, seg, buf.AsSpan(0, sampleCount), sink);
+
                 // Damaged data ahead (see ScanMp3Damage): on mpg123 the input ends right before
                 // it; FFmpeg's decoder plays through it and what it decodes from it is dropped.
                 if (seg.DamageAhead is { } damage &&
@@ -4710,6 +4764,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // libvlc decoder thread: never throw.
             try { NoteEnginePlayThrew(slot, ex); } catch { }
         }
+    }
+
+    /// <summary>Libvlc decoder thread: one multichannel engine block from amem order into the
+    /// sink's speaker order, upmixing a stereo input when Settings → Upmix asks for it.</summary>
+    private void EngineToSpeakerLayout(int slot, GaplessTrackSegment seg, Span<short> block, GaplessSink sink)
+    {
+        MultichannelLayout.ToWaveOrder(block, sink.Channels);
+        if (!seg.StereoSource) return;
+        var mode = GaplessSink.UpmixMode;
+        if (mode == UpmixMode.Off) return;
+        var spread = _engineSpread[slot];
+        if (!ReferenceEquals(spread.Seg, seg) || spread.Mode != mode || spread.Spreader == null)
+        {
+            spread = (seg, mode, new UpmixSampleProvider.Spreader(sink.SampleRate, sink.Channels, mode));
+            _engineSpread[slot] = spread;
+        }
+        spread.Spreader!.SpreadFrontsInPlace(block);
     }
 
     /// <summary>
@@ -5079,7 +5150,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <paramref name="path"/> is the input it carries (its ReplayGain level).
     /// </summary>
     private void EngineBeginSegment(MediaPlayer player, long basePositionMs, string path, int tailTrimFrames,
-        bool decodesThroughDamage)
+        bool decodesThroughDamage, int sourceChannels = 0)
     {
         var sink = _gaplessSink;
         if (sink == null) return;
@@ -5093,6 +5164,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         seg.TailTrimFrames = tailTrimFrames;
         seg.DamageAhead = KnownMp3Damage(path);
         seg.DecodesThroughDamage = decodesThroughDamage;
+        seg.StereoSource = sink.Channels > 2 && sourceChannels is 1 or 2;
         if (ReferenceEquals(player, _player)) Volatile.Write(ref _damageAheadReopenPath, null);
         // The reopen after a decoder wedge: start on the music, faded in, not on priming zeros.
         if (ReferenceEquals(player, _player) &&

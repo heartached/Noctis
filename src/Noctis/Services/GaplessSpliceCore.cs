@@ -65,8 +65,18 @@ public sealed class GaplessTrackSegment
     // primes after a mid-stream open (zeros, plus the resampler's ringing next to real audio).
     private const float SilentSample = 8f / 32768f;
 
+    /// <summary>Up to 7.1: the engine runs at the device's channel count with Multichannel output on.</summary>
+    public const int MaxChannels = 8;
+
     public int SampleRate { get; }
     public int Channels { get; }
+
+    /// <summary>
+    /// The input is mono/stereo on a multichannel engine (VLC fills FL/FR only, see
+    /// <see cref="MultichannelLayout"/>): the engine spreads it with Settings → Upmix when that is on.
+    /// Set before the player starts.
+    /// </summary>
+    public bool StereoSource { get; set; }
 
     // Identity of the MediaPlayer feeding this segment, so the engine can
     // discriminate callback senders (the standby's transport events must never
@@ -76,7 +86,7 @@ public sealed class GaplessTrackSegment
     public GaplessTrackSegment(int sampleRate, int channels, object? source, int capacitySeconds = 15, long basePositionMs = 0)
     {
         SampleRate = Math.Clamp(sampleRate, 1000, 384000);
-        Channels = Math.Clamp(channels, 1, 2);
+        Channels = Math.Clamp(channels, 1, MaxChannels);
         Source = source;
         _basePositionMs = Math.Max(0, basePositionMs);
         _ring = new float[SampleRate * Channels * Math.Clamp(capacitySeconds, 2, 60)];
@@ -576,7 +586,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _silentSamples;        // contiguous silence emitted so far (render thread only)
     private int _fadeRemaining;        // samples left of an in-progress fade-in
     private int _refillSamplesNeeded;  // >0 while the underrun hold is armed
-    private readonly float[] _lastFrame = new float[2]; // last emitted frame, for the cut declick
+    private readonly float[] _lastFrame = new float[GaplessTrackSegment.MaxChannels]; // last emitted frame, for the cut declick
     private int _declickRemaining;     // samples left of an in-progress cut ramp-to-zero
     private bool _cutFadePending;      // a cut junction is due a fade-in regardless of silence streak (render thread only)
     private volatile bool _pendingCutSignal; // cut raised off the render thread (Clear / abandon-swap)
@@ -600,7 +610,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _fadeElapsedSamples;   // render thread only
     private volatile bool _crossfadeArmed; // BeginCrossfade swapped the active off the render thread
     private float[]? _fadeScratch;
-    private readonly float[] _lastMixFrame = new float[2]; // last emitted frame of a read that mixed a tail
+    private readonly float[] _lastMixFrame = new float[GaplessTrackSegment.MaxChannels]; // last emitted frame of a read that mixed a tail
     private bool _tailMixed;           // the last read mixed a tail into its output (render thread only)
     private int _tailFadeInRemaining;  // un-park fade-in still due on the tail (render thread only)
 
@@ -641,7 +651,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0, int startFadeMs = 0)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(
-            Math.Clamp(sinkRate, 1000, 384000), Math.Clamp(sinkChannels, 1, 2));
+            Math.Clamp(sinkRate, 1000, 384000), Math.Clamp(sinkChannels, 1, GaplessTrackSegment.MaxChannels));
         _startThresholdMs = Math.Clamp(startThresholdMs, 0, 2000);
         // Whole frames: at 44.1 kHz stereo 5 ms is 441 SAMPLES, and an odd-length
         // junction ramp leaves the post-cut read at an odd offset — L/R swapped.
@@ -871,8 +881,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 {
                     // The emitted tail is now zero; a later silence pad must not
                     // ramp again from the stale pre-cut frame.
-                    _lastFrame[0] = 0f;
-                    _lastFrame[1] = 0f;
+                    Array.Clear(_lastFrame);
                 }
                 continue;
             }

@@ -2589,6 +2589,9 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="Settings.HeadphoneSurround" xml:space="preserve"><value>Kopfhörer-Surround</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Macht aus 5.1- und 7.1-Dateien räumlichen Kopfhörerklang statt flachem Stereomix. Stereosongs ändern sich nicht.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Starte Noctis neu, um die Änderung anzuwenden.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutput" xml:space="preserve"><value>Mehrkanal-Ausgabe</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Spielt 5.1- und 7.1-Dateien über alle Lautsprecher einer Surround-Anlage ab, statt sie auf Stereo herunterzumischen. Stereosongs bleiben auf den Frontlautsprechern, außer Mehrkanal-Upmix ist an. Aus, solange Kopfhörer-Surround an ist.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputRestart" xml:space="preserve"><value>Starte Noctis neu, um die Änderung anzuwenden.</value><comment>Shown under Multichannel Output after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Konten und Gerätesync werden unter Konto &amp; Sync verwaltet.</value><comment>Integrations → Noctis Server card footer</comment></data>
   <data name="Server.OpenAccountSync" xml:space="preserve"><value>Konto &amp; Sync öffnen</value><comment>Integrations → Noctis Server card button</comment></data>
