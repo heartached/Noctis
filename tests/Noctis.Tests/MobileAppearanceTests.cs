@@ -11,6 +11,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
@@ -112,6 +113,54 @@ public class MobileAppearanceTests
         Assert.Equal("Accent, Teal", vm.AccentRowName);
         await vm.PendingSave;
         Assert.Equal("Teal", (await rig.Persistence.LoadSettingsAsync()).AccentPresetName);
+    }
+
+    /// <summary>Match Theme on a colour theme wears the theme's own accent, so the grid ticks no
+    /// swatch (Crimson stayed ticked on Forest); tapping the saved swatch picks it and turns Match
+    /// Theme off, and the tick comes back. Match Artwork's swatch hides its tick the same way.</summary>
+    [AvaloniaFact]
+    public async Task MatchTheme_TicksNoSwatch_AndTappingTheSavedOneTurnsItOff()
+    {
+        var crimson = SettingsPageViewModel.Accents.Single(a => a.Name == "Crimson");
+        using var rig = MobileFixtures.MakeRig(theme: new FakeThemeHost(), seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MobileAppearance = "Dark";
+            s.MobileThemeName = "forest";
+            s.MobileAccentFollowsTheme = true;
+            s.AccentColorHex = crimson.Hex;
+            s.AccentPresetName = "Crimson";
+            await p.SaveSettingsAsync(s);
+        });
+        await WithAppearancePane(rig, (page, vm, window) =>
+        {
+            var list = MobileFixtures.Named<ListBox>(page, "AccentList");
+            Assert.True(vm.UsesThemeAccent);
+            Assert.Equal(crimson, vm.SelectedAccent);            // still the saved colour
+            Assert.Null(vm.ShownAccent);
+            Assert.Null(list.SelectedItem);
+            Assert.Equal(Loc.T("Mobile.Accent.MatchTheme"), vm.AccentName);   // the footnote's {0}
+
+            list.SelectedItem = crimson;                          // a tap on the saved swatch
+            Assert.False(vm.AccentFollowsTheme);
+            Assert.Equal(crimson, list.SelectedItem);
+            Assert.Equal(Loc.T("Mobile.Accent.Crimson"), vm.AccentName);
+
+            vm.AccentFollowsTheme = true;                         // the switch back on: the tick goes
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Null(list.SelectedItem);
+            Assert.Equal(crimson, vm.SelectedAccent);
+
+            list.SelectedItem = AccentSwatch.Artwork;             // Match Artwork, same rules
+            Assert.False(vm.AccentFollowsTheme);
+            Assert.True(vm.UsesArtworkAccent);
+            Assert.Same(AccentSwatch.Artwork, list.SelectedItem);
+            vm.AccentFollowsTheme = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Null(list.SelectedItem);
+            Assert.False(vm.UsesArtworkAccent);
+            Assert.Equal(Loc.T("Mobile.Accent.MatchTheme"), vm.AccentName);
+        });
     }
 
     /// <summary>A colour picked on the desktop's custom picker reads "Custom"; a stale saved name

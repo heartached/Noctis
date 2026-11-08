@@ -981,7 +981,7 @@
                             </StackPanel>
                             <StackPanel>
                                 <Border Classes="group-card">
-                                    <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding SelectedAccent}">
+                                    <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding ShownAccent}">
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <views:CenteredRowsPanel Columns="6" />

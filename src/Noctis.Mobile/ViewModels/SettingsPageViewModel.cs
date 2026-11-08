@@ -582,6 +582,24 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// <summary>The theme's accent is the one worn (Match Theme on, a colour theme, not Light).</summary>
     public bool UsesThemeAccent => AccentFollowsTheme && ShowsMatchTheme && Appearance != "Light";
 
+    /// <summary>The swatch the Accent grid ticks: none while Match Theme wears the theme's own
+    /// accent (Crimson ticked on Forest read as the colour in use), else the saved one. Setting
+    /// one is a pick, so a tap on the saved swatch while nothing is ticked turns Match Theme off.</summary>
+    public AccentSwatch? ShownAccent
+    {
+        get => UsesThemeAccent ? null : SelectedAccent;
+        set
+        {
+            // The grid writes null back when Match Theme clears it: not a pick.
+            if (value == null) return;
+            if (Equals(value, SelectedAccent))
+            {
+                if (UsesThemeAccent) OnSelectedAccentChanged(value);
+            }
+            else SelectedAccent = value;
+        }
+    }
+
     /// <summary>Settings › Library › Show in Song Rows: Off, Ratings or Favorites on the glass menu.</summary>
     [RelayCommand]
     private void ShowSongRowsMenu()
@@ -1094,6 +1112,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         OnPropertyChanged(nameof(UsesThemeAccent));
         OnPropertyChanged(nameof(UsesArtworkAccent));
         OnPropertyChanged(nameof(AccentFollowsArtwork));
+        OnPropertyChanged(nameof(ShownAccent));
     }
 
     /// <summary>The lyrics follow each step at once; settings.json is written once the slider
