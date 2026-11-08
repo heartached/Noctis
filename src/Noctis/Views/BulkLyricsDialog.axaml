@@ -88,7 +88,7 @@
                                     </Border>
                                     <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding Status}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
-                                              Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
+                                              Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Succeeded}" />
                                 </StackPanel>
                             </Grid>
                         </Border>

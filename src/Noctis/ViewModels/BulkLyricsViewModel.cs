@@ -313,8 +313,10 @@ public partial class BulkLyricsViewModel : ViewModelBase
         public bool IsExplicit => Track.IsExplicit;
         public string Subtitle => Track.ArtistDisplay;
         [ObservableProperty] private string _status = string.Empty;
-        [ObservableProperty] private bool _done;
-        [ObservableProperty] private bool _failed;
+        [ObservableProperty, NotifyPropertyChangedFor(nameof(Succeeded))] private bool _done;
+        [ObservableProperty, NotifyPropertyChangedFor(nameof(Succeeded))] private bool _failed;
+        /// <summary>The row's tick: a song that ended "not found" or "failed" showed it beside the red outcome.</summary>
+        public bool Succeeded => Done && !Failed;
         /// <summary>A review run's find for this song (GitHub #195); null when nothing better was found.</summary>
         public LyricsBulkFind? Find { get; set; }
         /// <summary>Word-synced / Line-synced / Plain: the find's format, shown as a badge.</summary>
