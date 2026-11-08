@@ -61,8 +61,9 @@
         <!-- Minimal layout (09-17): the spectrum owns the lower half of the pane on thin,
              round-capped bars; the caption and the look picker sit on one footer line
              above the playback island (bottom 130px). Runs only while this view is visible
-             (SpectrumVisualizer parks). -->
-        <Grid RowDefinitions="4*,5*,Auto" Margin="40,0,40,144">
+             (SpectrumVisualizer parks). GitHub #196: the spectrum runs edge to edge of the pane;
+             only the footer keeps the 40px side margin. -->
+        <Grid RowDefinitions="4*,5*,Auto" Margin="0,0,0,144">
             <controls:SpectrumVisualizer x:Name="PaneSpectrum"
                                          Grid.Row="1"
                                          Margin="0,0,0,28"
@@ -77,7 +78,7 @@
                                          IsActive="{Binding $self.IsVisible}"/>
 
             <!-- Footer: what is playing (left) + look picker (right) -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom">
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom" Margin="40,0">
                 <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Bottom" Margin="0,0,24,0">
                     <TextBlock Text="{loc:T Visualizer.NowPlaying}" FontSize="10" FontWeight="SemiBold"
                                LetterSpacing="1.8" Foreground="#66FFFFFF"
