@@ -295,7 +295,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
             // Drop any previous cover with a different extension — replacing a .png with
             // a .jpg wrote the new file and orphaned the old one forever, since
             // RemoveCoverArt only deletes the path currently recorded.
-            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}.*"))
+            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}*"))
             {
                 if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
                     try { File.Delete(stale); } catch { }

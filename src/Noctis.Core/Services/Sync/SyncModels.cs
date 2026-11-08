@@ -30,17 +30,20 @@ public sealed record TrackSyncState(
         new(t.IsFavorite, t.Rating, t.IsDisliked, t.PlayCount, t.LastPlayed, t.FavoritedAt);
 }
 
-/// <summary>A playlist as it travels between devices. <see cref="Deleted"/> is the tombstone.</summary>
+/// <summary>A playlist as it travels between devices. <see cref="Deleted"/> is the tombstone.
+/// <see cref="Cover"/> is the custom cover (see <see cref="PlaylistCovers"/>): "" none, a hash that
+/// picture, null (absent on the wire: an older app) says nothing and keeps the receiver's.</summary>
 public sealed record PlaylistSyncState(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("description")] string Description,
     [property: JsonPropertyName("color")] string Color,
     [property: JsonPropertyName("trackIds")] List<Guid> TrackIds,
     [property: JsonPropertyName("modifiedAt")] DateTime ModifiedAt,
-    [property: JsonPropertyName("deleted")] bool Deleted)
+    [property: JsonPropertyName("deleted")] bool Deleted,
+    [property: JsonPropertyName("cover")] string? Cover = null)
 {
     public static PlaylistSyncState From(Playlist p) =>
-        new(p.Name, p.Description, p.Color, p.TrackIds.ToList(), p.ModifiedAt, Deleted: false);
+        new(p.Name, p.Description, p.Color, p.TrackIds.ToList(), p.ModifiedAt, Deleted: false, PlaylistCovers.CoverOf(p.CoverArtPath));
 
     public static PlaylistSyncState Tombstone(Guid id, DateTime at) =>
         new(string.Empty, string.Empty, string.Empty, new List<Guid>(), at, Deleted: true);

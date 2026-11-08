@@ -247,6 +247,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
             await _library.SetTracksDislikedAsync(new[] { track }, state.Disliked);
         });
 
+    public string PlaylistCoverStagingDirectory => Sync.PlaylistCovers.StagingDirectory(_persistence.DataDirectory);
+
     public async Task ApplyPlaylistStateAsync(Guid playlistId, Sync.PlaylistSyncState state)
     {
         var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
@@ -268,6 +270,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
             if (!string.IsNullOrWhiteSpace(state.Color)) existing.Color = state.Color;
             existing.TrackIds = state.TrackIds?.ToList() ?? new List<Guid>();
             existing.ModifiedAt = state.ModifiedAt;
+            Sync.PlaylistCovers.Apply(existing, state.Cover,
+                Sync.PlaylistCovers.CoversDirectory(_persistence.DataDirectory), PlaylistCoverStagingDirectory);
         }
         await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
         await NotifyPlaylists().ConfigureAwait(false);
