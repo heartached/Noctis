@@ -44,6 +44,17 @@ public static class DeviceMusicScan
     /// <summary>Folders recorders save into, for Androids before 12 that have no IS_RECORDING.</summary>
     private static readonly string[] RecordingFolders = { "Recordings", "Call", "Voice Recorder", "Sounds/Call" };
 
+    /// <summary>
+    /// The end of the folder name messaging apps keep voice messages in: WhatsApp's
+    /// "WhatsApp Voice Notes" (Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Voice Notes/…),
+    /// WhatsApp Business's "WhatsApp Business Voice Notes". The index marks them music: MediaProvider
+    /// (FileUtils.computeAudioTypeValuesFromData) sets IS_RINGTONE/NOTIFICATION/ALARM/PODCAST/
+    /// AUDIOBOOK/RECORDING only for a "/Ringtones/", "/Notifications/", "/Alarms/", "/Podcasts/",
+    /// "/Audiobooks/" or "/Recordings/" path segment, and IS_MUSIC=1 for every other file, so voice
+    /// messages over <see cref="MinimumDuration"/> came in as songs (Discord #mobile-beta).
+    /// </summary>
+    private const string VoiceNotesFolderSuffix = " Voice Notes";
+
     public static bool IsDeviceMusicPath(string? path) =>
         path != null && (path.Equals(Root, StringComparison.Ordinal) || path.StartsWith(Root + "/", StringComparison.Ordinal));
 
@@ -75,6 +86,7 @@ public static class DeviceMusicScan
             var path = where[(where.IndexOf(':') + 1)..];
             if (RecordingFolders.Any(f => path.Equals(f, StringComparison.OrdinalIgnoreCase)
                                           || path.StartsWith(f + "/", StringComparison.OrdinalIgnoreCase))) return false;
+            if (path.Split('/').Any(segment => segment.EndsWith(VoiceNotesFolderSuffix, StringComparison.OrdinalIgnoreCase))) return false;
         }
         return true;
     }
