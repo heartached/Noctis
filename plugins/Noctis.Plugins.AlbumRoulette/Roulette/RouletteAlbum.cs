@@ -42,6 +42,17 @@ public sealed record RouletteAlbum(
 
     /// <summary>The song's album title (Song Roulette); empty for albums.</summary>
     public string AlbumTitle { get; init; } = "";
+
+    /// <summary>The single genres in <see cref="Genre"/>: Noctis keeps several in one tag as
+    /// "Rock; Indie" (split on ';' only: "Hip-Hop/Rap" is one genre).</summary>
+    public IReadOnlyList<string> Genres { get; } = SplitGenres(Genre);
+
+    /// <summary>Split on ';', trimmed, blanks dropped, case-insensitive duplicates dropped (Noctis's own rule).</summary>
+    public static string[] SplitGenres(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 }
 
 /// <summary>Song Roulette: every song is an entry of its own, as if it were a single.</summary>

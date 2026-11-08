@@ -119,6 +119,29 @@ public class AlbumRoulettePluginTests
         Assert.Equal(new[] { 2010, 2000, 1990 }, RouletteFilter.Decades(lib));
     }
 
+    [Fact]
+    public void GenreChip_SplitsSeveralGenres_AndMatchesAnyOfThem()
+    {
+        var lib = AlbumCatalog.Group(new[]
+        {
+            T("a", "Mixed", "Nova", genre: "Alternative Rock; Indie", albumId: "m"),
+            T("b", "Plain", "Kite", genre: "indie", albumId: "p"),
+            T("c", "Slash", "Ada", genre: "Hip-Hop/Rap", albumId: "s"),
+        });
+        // Most albums first; "indie" and "Indie" are one genre; "/" is not a separator.
+        Assert.Equal(new[] { "Indie", "Alternative Rock", "Hip-Hop/Rap" }, RouletteFilter.Genres(lib));
+        var f = new RouletteFilter { Genre = "INDIE" };
+        Assert.Equal(new[] { "Mixed", "Plain" }, f.Apply(lib, Now).Select(a => a.Title).OrderBy(t => t));
+        f.Genre = "Alternative Rock";
+        Assert.Equal("Mixed", Assert.Single(f.Apply(lib, Now)).Title);
+        f.Genre = "Rap";
+        Assert.Empty(f.Apply(lib, Now));
+
+        var songs = SongCatalog.Build(new[] { T("x", genre: "Malayalam; Pop"), T("y", genre: "Pop") }, Now);
+        Assert.Equal(new[] { "Pop", "Malayalam" }, RouletteFilter.Genres(songs));
+        Assert.Equal("x", Assert.Single(new RouletteFilter { Genre = "malayalam" }.Apply(songs, Now)).Title);
+    }
+
     // ── Album of the Day ──
 
     [Fact]
