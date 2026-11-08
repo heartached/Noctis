@@ -1930,6 +1930,7 @@ public partial class PlaybackBarView : UserControl
 
         var track = vm.CurrentTrack;
         BindViewArtist(vm, track);
+        TrackContextMenuBuilder.BindOtherVersions(OtherVersionsMenuItem, track);
         BindChapters(vm);
 
         LyricsBackgroundClearMenuItem.IsVisible = track != null &&

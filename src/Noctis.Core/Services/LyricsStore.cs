@@ -84,6 +84,42 @@ public sealed class LyricsStore
     }
 
     /// <summary>
+    /// <see cref="Read"/> for a whole-library pass (lyric search): served from the LRU when the
+    /// entry is there, else read from disk WITHOUT entering the LRU, so indexing thousands of
+    /// tracks doesn't evict the few the lyrics page is working with.
+    /// </summary>
+    public LyricsPair Peek(Guid trackId)
+    {
+        lock (_gate)
+        {
+            if (_cache.TryGetValue(trackId, out var node))
+                return node.Value.Value;
+        }
+        return ReadFromDisk(trackId);
+    }
+
+    /// <summary>Ids of every track with a stored entry, from one directory listing (empty when
+    /// the store folder doesn't exist yet). Saves a File.Exists per track in a library pass.</summary>
+    public HashSet<Guid> StoredIds()
+    {
+        var ids = new HashSet<Guid>();
+        try
+        {
+            if (!Directory.Exists(_directory)) return ids;
+            foreach (var path in Directory.EnumerateFiles(_directory, "*.json"))
+            {
+                if (Guid.TryParse(Path.GetFileNameWithoutExtension(path), out var id))
+                    ids.Add(id);
+            }
+        }
+        catch
+        {
+            // Unreadable folder: callers fall back to "nothing stored", like ReadFromDisk.
+        }
+        return ids;
+    }
+
+    /// <summary>
     /// Writes both lyric fields for a track. An all-empty pair deletes the file.
     /// Uses temp-then-rename so a torn write can never land at the final name —
     /// migration's write-if-absent check depends on a present file being complete.

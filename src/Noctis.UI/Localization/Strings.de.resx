@@ -4090,4 +4090,12 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} einblenden</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Ordner</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Derzeit nicht auf diesem Telefon</value></data>
+  <data name="Menu.OtherVersions" xml:space="preserve"><value>Andere Versionen</value></data>
+  <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value></data>
+  <data name="Search.LyricsTip" xml:space="preserve"><value>Songtexte durchsuchen</value></data>
+  <data name="Search.LyricsIncludeOn" xml:space="preserve"><value>Sucht in Titeln, Künstlern, Alben und Songtexten</value></data>
+  <data name="Search.LyricsOnlyOn" xml:space="preserve"><value>Sucht nur in Songtexten</value></data>
+  <data name="Search.LyricsOff" xml:space="preserve"><value>Songtexte nicht durchsuchen</value></data>
+  <data name="Search.LyricsInclude" xml:space="preserve"><value>Songtexte einbeziehen</value></data>
+  <data name="Search.LyricsOnly" xml:space="preserve"><value>Nur Songtexte</value></data>
 </root>

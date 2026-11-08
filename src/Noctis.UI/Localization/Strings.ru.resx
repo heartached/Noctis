@@ -4099,4 +4099,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Показать {0}</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Папка</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Сейчас нет на телефоне</value></data>
+  <data name="Menu.OtherVersions" xml:space="preserve"><value>Другие версии</value></data>
+  <data name="Menu.OriginalVersion" xml:space="preserve"><value>Оригинал</value></data>
+  <data name="Search.LyricsTip" xml:space="preserve"><value>Искать в текстах песен</value></data>
+  <data name="Search.LyricsIncludeOn" xml:space="preserve"><value>Поиск по названиям, исполнителям, альбомам и текстам</value></data>
+  <data name="Search.LyricsOnlyOn" xml:space="preserve"><value>Поиск только по текстам песен</value></data>
+  <data name="Search.LyricsOff" xml:space="preserve"><value>Не искать в текстах</value></data>
+  <data name="Search.LyricsInclude" xml:space="preserve"><value>Включая тексты песен</value></data>
+  <data name="Search.LyricsOnly" xml:space="preserve"><value>Только тексты песен</value></data>
 </root>
