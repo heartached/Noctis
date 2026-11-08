@@ -238,4 +238,126 @@ public class PersistenceServiceTests : IDisposable
         Assert.Equal(12, loaded.ReplayGainPreampDb);
         Assert.Equal(12, loaded.CrossfadeDuration);
     }
+
+    // ── GitHub #197: one data folder, two computers ──
+
+    /// <summary>A DPAPI copy made by another computer or Windows user: this one cannot decrypt it.</summary>
+    private static string ForeignBlob(byte seed) =>
+        "enc:dpapi:" + Convert.ToBase64String(Enumerable.Range(0, 64).Select(i => (byte)(i * 7 + seed)).ToArray());
+
+    private async Task WriteRawSettingsAsync(object settings)
+    {
+        Directory.CreateDirectory(_root);
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"),
+            JsonSerializer.Serialize(settings, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    }
+
+    private async Task<JsonElement> ReadRawSettingsAsync()
+    {
+        using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(_root, "settings.json")));
+        return doc.RootElement.Clone();
+    }
+
+    [Fact]
+    public async Task OtherComputersCredentials_ReadSignedOutHere_AndASaveKeepsThem()
+    {
+        var connId = Guid.NewGuid();
+        string lastFm = ForeignBlob(1), lb = ForeignBlob(2), pass = ForeignBlob(3);
+        await WriteRawSettingsAsync(new
+        {
+            lastFmScrobblingEnabled = true,
+            lastFmSessionKey = lastFm,
+            lastFmUsername = "listener",
+            listenBrainzToken = lb,
+            sourceConnections = new[] { new { id = connId, name = "navi", tokenOrPassword = pass } },
+        });
+
+        var svc = Create();
+        var loaded = await svc.LoadSettingsAsync();
+        Assert.Equal("", loaded.LastFmSessionKey);
+        Assert.Equal("", loaded.ListenBrainzToken);
+        Assert.Equal("", loaded.SourceConnections[0].TokenOrPassword);
+        Assert.True(loaded.HasOtherComputerSecret(PersistenceService.LastFmSessionKeyField));
+        Assert.True(loaded.HasOtherComputerSecret(PersistenceService.ListenBrainzTokenField));
+
+        // The save every settings change makes here used to write the empty values back,
+        // signing the other computer out too.
+        await svc.SaveSettingsAsync(loaded);
+
+        var raw = await ReadRawSettingsAsync();
+        Assert.Equal(lastFm, raw.GetProperty("lastFmSessionKey").GetString());
+        Assert.Equal(lb, raw.GetProperty("listenBrainzToken").GetString());
+        Assert.Equal(pass, raw.GetProperty("sourceConnections")[0].GetProperty("tokenOrPassword").GetString());
+        Assert.False(raw.TryGetProperty("otherComputerSecrets", out _));
+        Assert.Equal("listener", raw.GetProperty("lastFmUsername").GetString());
+    }
+
+    [Fact]
+    public async Task UpdateSettings_KeepsOtherComputersCredentials()
+    {
+        var blob = ForeignBlob(4);
+        await WriteRawSettingsAsync(new { lastFmSessionKey = blob });
+
+        var svc = Create();
+        await svc.UpdateSettingsAsync(s => s.Volume = 33);
+
+        Assert.Equal(blob, (await ReadRawSettingsAsync()).GetProperty("lastFmSessionKey").GetString());
+    }
+
+    [Fact]
+    public async Task SigningInHere_KeepsTheOtherComputersCopy_AndEachReadsItsOwn()
+    {
+        if (!OperatingSystem.IsWindows()) return; // DPAPI is Windows-only by design
+
+        var foreign = ForeignBlob(5);
+        await WriteRawSettingsAsync(new { lastFmSessionKey = foreign });
+        var svc = Create();
+        var loaded = await svc.LoadSettingsAsync();
+
+        loaded.LastFmSessionKey = "signed-in-here";
+        await svc.SaveSettingsAsync(loaded);
+
+        var raw = await ReadRawSettingsAsync();
+        var primary = raw.GetProperty("lastFmSessionKey").GetString()!;
+        Assert.StartsWith("enc:dpapi:", primary);
+        Assert.NotEqual(foreign, primary);
+        Assert.DoesNotContain("signed-in-here", raw.GetRawText());
+        Assert.Equal(new[] { foreign },
+            raw.GetProperty("otherComputerSecrets").GetProperty("lastFmSessionKey").EnumerateArray().Select(e => e.GetString()));
+
+        var reloaded = await svc.LoadSettingsAsync();
+        Assert.Equal("signed-in-here", reloaded.LastFmSessionKey);
+        Assert.True(reloaded.HasOtherComputerSecret(PersistenceService.LastFmSessionKeyField));
+    }
+
+    [Fact]
+    public async Task ThisComputersCopy_IsFoundAmongTheKeptOnes_WhenTheOtherComputerSignedInLast()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var foreign = ForeignBlob(6);
+        var mine = PersistenceService.ProtectSecret("my-session");
+        await WriteRawSettingsAsync(new
+        {
+            lastFmSessionKey = foreign,
+            otherComputerSecrets = new Dictionary<string, string[]> { ["lastFmSessionKey"] = new[] { mine } },
+        });
+
+        var svc = Create();
+        var loaded = await svc.LoadSettingsAsync();
+        Assert.Equal("my-session", loaded.LastFmSessionKey);
+
+        await svc.SaveSettingsAsync(loaded);
+        var raw = await ReadRawSettingsAsync();
+        Assert.Equal("my-session", PersistenceService.UnprotectSecret(raw.GetProperty("lastFmSessionKey").GetString()!));
+        Assert.Equal(new[] { foreign },
+            raw.GetProperty("otherComputerSecrets").GetProperty("lastFmSessionKey").EnumerateArray().Select(e => e.GetString()));
+
+        // Signing out here hands the field back to the other computer, still signed in there.
+        loaded.LastFmSessionKey = "";
+        await svc.SaveSettingsAsync(loaded);
+        raw = await ReadRawSettingsAsync();
+        Assert.Equal(foreign, raw.GetProperty("lastFmSessionKey").GetString());
+        Assert.False(raw.TryGetProperty("otherComputerSecrets", out _));
+    }
 }
