@@ -943,7 +943,7 @@ public class AppSettings : IJsonOnDeserializing
     public bool SidebarAlwaysExpanded { get; set; } = false;
 
     /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
-    /// Settings › Interface › Sidebar (GitHub #199). Empty = the built-in order; a page missing
+    /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
     /// from the list keeps its built-in place.</summary>
     public List<string> SidebarPageOrder { get; set; } = new();
 

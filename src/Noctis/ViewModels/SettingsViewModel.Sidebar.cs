@@ -6,7 +6,7 @@ using Noctis.Models;
 
 namespace Noctis.ViewModels;
 
-/// <summary>One row of Settings › Interface › Sidebar › Pages: a sidebar page with its Show
+/// <summary>One row of Settings › General › Sidebar › Pages: a sidebar page with its Show
 /// switch and move buttons (GitHub #199).</summary>
 public sealed partial class SidebarPageOption : ObservableObject
 {
@@ -40,7 +40,7 @@ public sealed partial class SidebarPageOption : ObservableObject
 
 public partial class SettingsViewModel
 {
-    /// <summary>Every sidebar page in the user's order (Settings › Interface › Sidebar).</summary>
+    /// <summary>Every sidebar page in the user's order (Settings › General › Sidebar).</summary>
     /// <summary>Filled by the settings load (and Reset).</summary>
     public ObservableCollection<SidebarPageOption> SidebarPages { get; } = new();
 

@@ -5,7 +5,7 @@ namespace Noctis.ViewModels;
 
 /// <summary>
 /// The user's sidebar layout (GitHub #199): pages they hid and the order they put them in
-/// (Settings › Interface › Sidebar). Optional pages (Inbox, Visualizer, Server, Audio CD) still
+/// (Settings › General › Sidebar). Optional pages (Inbox, Visualizer, Server, Audio CD) still
 /// come and go with their features; the layout only decides where a present page sits and
 /// whether it shows. Settings always shows.
 /// </summary>

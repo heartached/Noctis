@@ -7,7 +7,7 @@ using Xunit;
 namespace Noctis.Tests;
 
 /// <summary>
-/// GitHub #199: Settings › Interface › Sidebar lets the user hide sidebar pages (never Settings),
+/// GitHub #199: Settings › General › Sidebar lets the user hide sidebar pages (never Settings),
 /// reorder them and pick the start page, which falls back to Home when hidden or unavailable.
 /// </summary>
 public class SidebarCustomization199Tests : IDisposable

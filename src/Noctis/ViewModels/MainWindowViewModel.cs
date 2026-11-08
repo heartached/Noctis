@@ -667,7 +667,7 @@ public partial class MainWindowViewModel : ViewModelBase
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
         };
-        // Settings › Interface › Sidebar (GitHub #199): the pages the user hid and their order.
+        // Settings › General › Sidebar (GitHub #199): the pages the user hid and their order.
         // A hidden page is only off the rail: Navigate still opens it from shortcuts and links.
         void SyncSidebarLayout() => Sidebar.ApplyUserLayout(Settings.SidebarPageOrderKeys, Settings.SidebarHiddenPageKeys);
         Settings.SidebarLayoutChanged += (_, _) =>
