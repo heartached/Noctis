@@ -7262,6 +7262,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>インディゴ</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>オーキッド</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>ローズ</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>ピーチ</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>ライム</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>フォレスト</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>ミント</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>スカイ</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>ライラック</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>シルバー</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>スレート</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>アートワークに合わせる</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>カスタム</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>システム</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>ライト</value></data>
@@ -7407,6 +7416,7 @@
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0}のその他のオプション</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0}を削除</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。アクセントカラーはボタン、スイッチ、ハイライトに使われます。</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>アートワークに合わせる。アクセントカラーは再生中の曲のアートワークの色になります。再生していないときやアートワークが灰色のときは{0}です。</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>使用済みストレージ、{0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>曲の行に表示</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>オフ</value></data>

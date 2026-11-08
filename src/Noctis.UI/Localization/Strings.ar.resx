@@ -7262,6 +7262,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>نيلي</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>أوركيد</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>وردي</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>خوخي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>ليموني</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>أخضر غابي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>نعناعي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>سماء</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>ليلكي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>فضي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>أردوازي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>مطابقة الغلاف</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>مخصص</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>النظام</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>فاتح</value></data>
@@ -7407,6 +7416,7 @@
   <data name="Mobile.MoreFor" xml:space="preserve"><value>المزيد لـ {0}</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>إزالة {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. يلوّن لون التمييز الأزرار ومفاتيح التبديل والعناصر المميزة.</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>مطابقة الغلاف. يأخذ لون التمييز لون غلاف الأغنية قيد التشغيل. إن لم يُشغَّل شيء أو كان الغلاف رماديًا، يكون {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>مساحة التخزين المستخدمة، {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>العرض في صفوف الأغاني</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>إيقاف</value></data>

@@ -3603,6 +3603,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Индиго</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Орхидея</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Розовый</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Персиковый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Лаймовый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Лесной</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Мятный</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Небесный</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Сиреневый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Серебристый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Сланцевый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Как обложка</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Свой</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>Как в системе</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Светлая</value></data>
@@ -3748,6 +3757,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Ещё для «{0}»</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Акцентный цвет окрашивает кнопки, переключатели и выделение.</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Как обложка. Акцентный цвет берётся с обложки играющей песни. Если ничего не играет или обложка серая — {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Занято, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Показывать в строках песен</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Выкл.</value></data>

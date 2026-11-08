@@ -146,6 +146,11 @@ public class AppSettings : IJsonOnDeserializing
     /// of <see cref="AccentColorHex"/>. Themes without one (Light, the dark styles) keep the accent.</summary>
     public bool MobileAccentFollowsTheme { get; set; } = true;
 
+    /// <summary>Phone, Settings › Accent › Match Artwork: the accent takes the playing song's cover
+    /// colour; <see cref="AccentColorHex"/> stays the chosen one, worn when nothing plays or the
+    /// cover is grey. The phone's own (the desktop has <see cref="AccentFollowsArtwork"/>).</summary>
+    public bool MobileAccentFollowsArtwork { get; set; }
+
     /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
     public double MobileLyricsTextScale { get; set; } = 1.0;
 
