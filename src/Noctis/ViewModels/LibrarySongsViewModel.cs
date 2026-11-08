@@ -24,6 +24,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     private List<Track> _allTracks = new();
     private string _currentFilter = string.Empty;
     private int _filterGeneration;
+    /// <summary>The newest request's lyric-index wait. A newer request cancels the older one's,
+    /// which otherwise held a thread-pool thread on the index gate for the whole first build and
+    /// then filtered a result that was thrown away (one per search change while it indexed).</summary>
+    private CancellationTokenSource? _lyricsRefreshCts;
     private DispatcherTimer? _searchDebounce;
     private EventHandler? _libraryUpdatedHandler;
     private EventHandler? _viewStateLoadedHandler;
@@ -651,6 +655,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 ? LyricsIndexOverride ?? LyricsSearchIndex.Shared
                 : null;
             var snippets = lyricsIndex != null ? new Dictionary<Track, string>() : null;
+            _lyricsRefreshCts?.Cancel();
+            var lyricsCancel = (_lyricsRefreshCts = new CancellationTokenSource()).Token;
 
             // Run the heavy filter/sort work on a background thread
             var result = await Task.Run(() =>
@@ -661,7 +667,12 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
                 // Lyric search: the first one reads every song's lyrics once; later ones only
                 // the songs whose lyrics changed (LyricsSearchIndex).
-                lyricsIndex?.Refresh(tracks);
+                // Songs indexed before a cancel stay indexed; the newer request goes on from there.
+                if (lyricsIndex != null)
+                {
+                    try { lyricsIndex.Refresh(tracks, lyricsCancel); }
+                    catch (OperationCanceledException) { return new List<Track>(); } // superseded: dropped below
+                }
 
                 return BuildFilteredAndSortedTracks(tracks, filter, sortCol, sortAsc, favOnly, quality,
                     lyricsMode, lyricsIndex, snippets);

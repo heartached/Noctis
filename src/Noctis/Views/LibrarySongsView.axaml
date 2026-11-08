@@ -258,7 +258,8 @@
                 <!-- Lyric search (Discord, Cosmo 11-08): the matched line under the title. The
                      title moves up beside the 36px artwork to make room for it. -->
                 <Style Selector="Grid.with-snippet">
-                    <Setter Property="MinHeight" Value="34" />
+                    <!-- 13px title (~20) over the 11px line (~15): at 34 they touched. -->
+                    <Setter Property="MinHeight" Value="38" />
                 </Style>
                 <Style Selector="Grid.with-snippet > controls|HighlightTextBlock.one-line-explicit-title">
                     <Setter Property="VerticalAlignment" Value="Top" />
