@@ -204,6 +204,72 @@ public class LyricsAutoDownloadTests : IDisposable
         Assert.Contains(rig.Vm.UnsyncedLines, l => l.Text == "my own words");
     }
 
+    // ── Upgrade plain lyrics (GitHub #194) ──
+
+    private Rig MountPlainInTags(Func<Track, bool> upgrade, Action<int> onCall, string preferred = "WordSynced")
+    {
+        var rig = Mount(new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) },
+            ext: "flac", tag: f => ((TagLib.Ogg.XiphComment)f.GetTag(TagLib.TagTypes.Xiph, true)).SetField("UNSYNCEDLYRICS", "my own words"),
+            autoDownload: false, preferred: preferred);
+        var calls = 0;
+        rig.Vm.UpgradePlainLyrics = (t, _) => { onCall(++calls); return Task.FromResult(upgrade(t)); };
+        rig.Player.LyricsUpgradePlain = true;
+        return rig;
+    }
+
+    [AvaloniaFact]
+    public async Task PlainLyricsInTheTags_UpgradeOn_LooksUpOnce_AndShowsTheSavedSyncedLyrics()
+    {
+        var calls = 0;
+        var rig = MountPlainInTags(t => { File.WriteAllText(Path.ChangeExtension(t.FilePath, ".lrc"), Lrc); return true; }, n => calls = n);
+        rig.Vm.SetLyricsSurfaceVisible(true);
+
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await PumpUntilAsync(() => rig.Vm.HasSyncedLyricsAvailable);
+        await SettleAsync(rig.Vm);
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+
+        Assert.Equal(1, calls);
+        Assert.True(rig.Vm.HasSyncedLyricsAvailable);
+        Assert.Contains(rig.Vm.LyricLines, l => l.Text == "line timed");
+        Assert.Equal(0, rig.LrcLib.Calls); // the page's own search did not run
+    }
+
+    [AvaloniaFact]
+    public async Task PlainLyricsInTheTags_NothingBetterFound_ThePlainLyricsStay()
+    {
+        var calls = 0;
+        var rig = MountPlainInTags(_ => false, n => calls = n);
+        rig.Vm.SetLyricsSurfaceVisible(true);
+
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+
+        Assert.Equal(1, calls);
+        Assert.False(rig.Vm.HasSyncedLyricsAvailable);
+        Assert.Contains(rig.Vm.UnsyncedLines, l => l.Text == "my own words");
+        Assert.Equal("my own words", EmbeddedLyrics.ReadFile(rig.Track.FilePath).PlainText.Trim());
+    }
+
+    [AvaloniaFact]
+    public async Task PlainLyricsInTheTags_UpgradeOffOrPlainPreferred_NoLookup()
+    {
+        var calls = 0;
+        var plainPreferred = MountPlainInTags(_ => true, n => calls = n, preferred: "Plain");
+        plainPreferred.Vm.SetLyricsSurfaceVisible(true);
+        plainPreferred.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(plainPreferred.Vm);
+
+        var off = MountPlainInTags(_ => true, n => calls = n);
+        off.Player.LyricsUpgradePlain = false;
+        off.Vm.SetLyricsSurfaceVisible(true);
+        off.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(off.Vm);
+
+        Assert.Equal(0, calls);
+    }
+
     [AvaloniaFact]
     public async Task RemovedLyrics_AreNotDownloadedStraightBack()
     {

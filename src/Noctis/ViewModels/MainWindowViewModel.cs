@@ -764,6 +764,10 @@ public partial class MainWindowViewModel : ViewModelBase
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _lyricsVm.PluginLyricsSources = () => Plugins.LyricsProviders;
+        // GitHub #194: plain lyrics → the bulk lookup over the same sources, saving synced finds only.
+        if (App.Services?.GetService<Services.Lyrics.ILyricsBulkService>() is { } lyricsBulk)
+            _lyricsVm.UpgradePlainLyrics = async (track, ct) =>
+                (await lyricsBulk.FetchAsync(new[] { track }, new Services.Lyrics.LyricsBulkOptions(SyncedOnly: true), null, ct)).Synced > 0;
         // Musixmatch, lrc.red, Unison, Kugou and YouTube Music (issue #113): searched when switched
         // on in Settings, and always offered by the lyrics page's Choose Source dialog.
         if (App.Services?.GetService<IMusixmatchService>() is { } musixmatch

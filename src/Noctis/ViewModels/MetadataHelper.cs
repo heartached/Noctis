@@ -175,6 +175,11 @@ public static class MetadataHelper
         _libraryArtworkRun = null;
         // Its block list and "no match" memory belong to the old data; the next page reloads them.
         _albumArtworkFetcher = null;
+        // GitHub #195: the background lookup of new songs stops too.
+        if (App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>() is { } autoLyrics)
+        {
+            try { await autoLyrics.ClearAsync(); } catch { }
+        }
         if (lyrics is { IsRunning: true })
         {
             lyrics.StopCommand.Execute(null);

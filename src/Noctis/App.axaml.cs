@@ -211,6 +211,9 @@ public partial class App : Application
             // Automatic ReplayGain for new files (GitHub #148); a no-op while the setting is off.
             var autoReplayGain = Services!.GetRequiredService<ReplayGainAutoScanService>();
             autoReplayGain.Attach();
+            // Lyrics for new songs (GitHub #195); a no-op while the setting is off.
+            var autoLyrics = Services!.GetRequiredService<Noctis.Services.Lyrics.LyricsAutoFindService>();
+            autoLyrics.Attach();
             // Feeds the visualizer / beat-reactive backdrops whenever the output does not
             // tap the meters itself (LibVLC's own output: macOS, and Windows/Linux shared
             // mode without the gapless engine); stands aside while the engine or the
@@ -259,7 +262,8 @@ public partial class App : Application
                 {
                     await Task.WhenAll(
                         analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)),
-                        autoReplayGain.StopAsync(TimeSpan.FromSeconds(3)));
+                        autoReplayGain.StopAsync(TimeSpan.FromSeconds(3)),
+                        autoLyrics.StopAsync(TimeSpan.FromSeconds(3)));
                 }
                 catch { }
                 try { await mainVm.ShutdownAsync().WaitAsync(ShutdownSaveDeadline); }

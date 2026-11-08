@@ -782,6 +782,12 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Settings ▸ Lyrics ▸ Preferred lyrics type (GitHub #135): "WordSynced", "LineSynced" or "Plain".</summary>
     [ObservableProperty] private string _lyricsPreferredType = nameof(Models.LyricsPreferredType.WordSynced);
 
+    /// <summary>Settings ▸ Lyrics ▸ Upgrade plain lyrics (GitHub #194).</summary>
+    [ObservableProperty] private bool _lyricsUpgradePlain;
+
+    /// <summary>Settings ▸ Lyrics ▸ Find lyrics for new songs (GitHub #195).</summary>
+    [ObservableProperty] private bool _lyricsAutoFindNew;
+
     /// <summary>One row of a string-valued picker (lyrics saving, Discord status, queue rows): the stored value and its label.</summary>
     public sealed record LyricsChoiceOption(string Value, string Label)
     {
@@ -988,6 +994,20 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnLyricsAutoDownloadChanged(bool value)
     {
         ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsUpgradePlainChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsAutoFindNewChanged(bool value)
+    {
+        // Turning it off drops the songs still waiting and stops a lookup in progress.
+        if (!value)
+            _ = App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>()?.ClearAsync();
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -3614,6 +3634,8 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsSaveTarget = LyricsSaveOptions.ParseTarget(_settings.LyricsSaveTarget).ToString();
             LyricsAutoDownload = _settings.LyricsAutoDownload;
             LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(_settings.LyricsPreferredType).ToString();
+            LyricsUpgradePlain = _settings.LyricsUpgradePlain;
+            LyricsAutoFindNew = _settings.LyricsAutoFindNew;
             LyricsShowTranslations = _settings.LyricsShowTranslations;
             LyricsShowRomanization = _settings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = _settings.LyricsShowBackgroundVocals;
@@ -4152,6 +4174,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsSaveTarget = LyricsSaveOptions.ParseTarget(LyricsSaveTarget).ToString();
         _settings.LyricsAutoDownload = LyricsAutoDownload;
         _settings.LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(LyricsPreferredType).ToString();
+        _settings.LyricsUpgradePlain = LyricsUpgradePlain;
+        _settings.LyricsAutoFindNew = LyricsAutoFindNew;
         _settings.LyricsShowTranslations = LyricsShowTranslations;
         _settings.LyricsShowRomanization = LyricsShowRomanization;
         _settings.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
@@ -4526,6 +4550,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsSaveTarget = LyricsSaveTarget;
         _player.LyricsAutoDownload = LyricsAutoDownload;
         _player.LyricsPreferredType = LyricsPreferredType;
+        _player.LyricsUpgradePlain = LyricsUpgradePlain;
         _player.LyricsShowTranslations = LyricsShowTranslations;
         _player.LyricsShowRomanization = LyricsShowRomanization;
         _player.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
@@ -8297,6 +8322,8 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsSaveTarget = defaultSettings.LyricsSaveTarget;
             LyricsAutoDownload = defaultSettings.LyricsAutoDownload;
             LyricsPreferredType = defaultSettings.LyricsPreferredType;
+            LyricsUpgradePlain = defaultSettings.LyricsUpgradePlain;
+            LyricsAutoFindNew = defaultSettings.LyricsAutoFindNew;
             LyricsShowTranslations = defaultSettings.LyricsShowTranslations;
             LyricsShowRomanization = defaultSettings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = defaultSettings.LyricsShowBackgroundVocals;

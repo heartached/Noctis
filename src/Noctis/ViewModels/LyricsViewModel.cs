@@ -3119,6 +3119,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             MaybeAutoDownloadLyrics();
         }
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsUpgradePlain))
+        {
+            MaybeUpgradePlainLyrics();
+        }
         // Word-joining flipped: it changes how the sidecar is parsed, not how it is
         // drawn, so the current track has to go back through the load path.
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsJoinSplitWords))
@@ -3282,6 +3286,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     var swapClock = DebugLogger.IsEnabled ? System.Diagnostics.Stopwatch.StartNew() : null;
                     ApplyLocalLyricsResult(track, probe);
                     LyricsSwapped?.Invoke(this, EventArgs.Empty);
+                    MaybeUpgradePlainLyrics();
                     if (swapClock != null)
                     {
                         var swapMs = swapClock.ElapsedMilliseconds;
@@ -3574,6 +3579,57 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (!_autoDownloadTried.Add(track.Id)) return;
         DebugLogger.Info(DebugLogger.Category.Lyrics, "AutoDownload", $"title={track.Title}");
         SearchLyricsCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// GitHub #194: looks up the preferred synced lyrics for a song and saves them only when a
+    /// synced find is richer than what it has (the bulk lookup, <see cref="Services.Lyrics.ILyricsBulkService"/>
+    /// with SyncedOnly); true when something was saved. Set by MainWindowViewModel.
+    /// </summary>
+    internal Func<Track, CancellationToken, Task<bool>>? UpgradePlainLyrics { get; set; }
+
+    // Songs the plain-lyrics upgrade already looked up this session (the bulk ledger spaces
+    // lookups out across sessions too).
+    private readonly HashSet<Guid> _upgradeTried = new();
+
+    /// <summary>
+    /// Settings ▸ Lyrics ▸ "Upgrade plain lyrics" (GitHub #194): when a lyrics view shows a song's
+    /// own plain lyrics (tags, store or a lyrics file) and the preferred type is synced, look for
+    /// synced lyrics in the background. A synced find is saved per "Save lyrics to" and the page
+    /// reloads onto it; no find, a plain find or a failure leaves the plain lyrics as they are.
+    /// </summary>
+    private void MaybeUpgradePlainLyrics()
+    {
+        if (!_player.LyricsUpgradePlain || UpgradePlainLyrics is not { } upgrade || !IsAnyLyricsSurfaceVisible) return;
+        if (LyricsSaveOptions.ParsePreferredType(_player.LyricsPreferredType) == Models.LyricsPreferredType.Plain) return;
+        if (_currentTrack is not { } track || track.NoLyrics) return;
+        // Only plain lyrics on screen that came from the song itself, not from an online search
+        // (that search already picked the richest answer) or a Lyrics Studio preview.
+        if (_hasSyncedLyrics || ShowSearchButton || IsSearching || IsPreviewActive || _currentOnlineResult != null) return;
+        if (LyricLines.Count == 0 && UnsyncedLines.Count == 0) return;
+        if (track.SourceType != SourceType.Local || string.IsNullOrWhiteSpace(track.FilePath)) return;
+        if (!_upgradeTried.Add(track.Id)) return;
+        DebugLogger.Info(DebugLogger.Category.Lyrics, "UpgradePlain", $"title={track.Title}");
+        _ = RunPlainUpgradeAsync(track, upgrade);
+    }
+
+    private async Task RunPlainUpgradeAsync(Track track, Func<Track, CancellationToken, Task<bool>> upgrade)
+    {
+        bool saved;
+        try { saved = await upgrade(track, CancellationToken.None); }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "UpgradePlain:Failed", $"{track.Title}: {ex.Message}");
+            return;
+        }
+        DebugLogger.Info(DebugLogger.Category.Lyrics, "UpgradePlain:Done", $"title={track.Title}, saved={saved}");
+        if (!saved) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Still this song, and nothing newer took over the page: show what was saved.
+            if (_currentTrack?.Id == track.Id && !IsSearching && !IsPreviewActive && _currentOnlineResult == null)
+                LoadLyricsForTrack(track);
+        });
     }
 
     /// <summary>Applies embedded SyncedLyrics / Lyrics tags to the collections (in-memory, no I/O).</summary>
@@ -4098,8 +4154,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             _lyricsSyncTimer.Stop();
         else if (_hasSyncedLyrics && _player.State == Models.PlaybackState.Playing)
             _lyricsSyncTimer.Start();
-        // A lyrics view opening on a song already found to have none.
-        if (visible) MaybeAutoDownloadLyrics();
+        // A lyrics view opening on a song already found to have none (or plain ones only).
+        if (visible)
+        {
+            MaybeAutoDownloadLyrics();
+            MaybeUpgradePlainLyrics();
+        }
     }
 
     private bool IsAnyLyricsSurfaceVisible => _visibleLyricsSurfaces > 0;
