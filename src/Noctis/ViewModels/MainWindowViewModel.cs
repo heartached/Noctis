@@ -84,6 +84,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm.IsActive = ReferenceEquals(current, _homeVm);
         _coverFlowVm.IsActive = ReferenceEquals(current, _coverFlowVm);
         _songsVm.IsActive = ReferenceEquals(current, _songsVm);
+        // Lyric search lists library songs: offered on Songs (Discord, Cosmo 11-08).
+        TopBar.IsLyricsSearchAvailable = ReferenceEquals(CurrentView, _songsVm);
         _albumsVm.IsActive = ReferenceEquals(current, _albumsVm);
         _artistsVm.IsActive = ReferenceEquals(current, _artistsVm);
         _foldersVm.IsActive = ReferenceEquals(current, _foldersVm);
@@ -485,6 +487,8 @@ public partial class MainWindowViewModel : ViewModelBase
             Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
         TrackContextMenuBuilder.CreateMixCommand = CreateMixFromSongCommand;
+        TrackContextMenuBuilder.OtherVersionsSource = song => SongVersions.FindOtherVersions(song, _library.Tracks);
+        TrackContextMenuBuilder.SwitchVersionCommand = SwitchToVersionCommand;
         // API 1.3: plugin views open in a window of their own; ShowAlbum opens the album page here.
         Plugins.ViewPresenter = Views.PluginViewWindow.Present;
         // The sidebar's Plugins section follows the running plugins' views (loads and unloads
@@ -804,6 +808,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up search
         TopBar.SearchTextChanged += OnSearchTextChanged;
         TopBar.HomeSearchRedirectRequested += OnHomeSearchRedirectRequested;
+        TopBar.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TopBarViewModel.LyricsSearchMode))
+                _songsVm.LyricsSearchMode = TopBar.LyricsSearchMode;
+        };
 
         // Wire up album detail navigation from albums view
         _albumsVm.AlbumOpened += OnAlbumOpened;
@@ -2649,6 +2658,15 @@ public partial class MainWindowViewModel : ViewModelBase
         if (song is null) return Task.CompletedTask;
         var seed = MixSeed.FromSong(song);
         return CreatePlaylistAndOpenAsync(seed.PlaylistName, MixPlaylistBuilder.Build(seed, _library.Tracks));
+    }
+
+    /// <summary>Song menu ▸ Other Versions ▸ a version (Discord, Cosmo 11-08): see
+    /// <see cref="PlayerViewModel.SwitchToVersion"/>.</summary>
+    [RelayCommand]
+    private void SwitchToVersion(VersionSwitchRequest? request)
+    {
+        if (request is null) return;
+        Player.SwitchToVersion(request.From, request.To);
     }
 
     private void OnPlaylistOpened(object? sender, Playlist playlist)

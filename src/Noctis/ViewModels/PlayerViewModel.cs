@@ -1898,6 +1898,53 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Song menu ▸ Other Versions (Discord, Cosmo 11-08). Picked for the playing song, the playing
+    /// song becomes <paramref name="version"/> in place — same spot in the queue, nothing added
+    /// to the played list — at the same position when the two are about as long
+    /// (<see cref="Helpers.SongVersions.SwitchStartPosition"/>), else from the top. Picked from any
+    /// other row it plays now the way Play Next + Next would, the queue kept.
+    /// </summary>
+    public void SwitchToVersion(Track from, Track version)
+    {
+        if (ReferenceEquals(from, version)) return;
+        var current = CurrentTrack;
+        if (current == null || !(ReferenceEquals(current, from) || current.Id == from.Id))
+        {
+            AddNext(version, announce: false);
+            PlayFromUpNextAt(0);
+            return;
+        }
+
+        // A missing file would make PlayTrack walk on to the next song in the queue and the
+        // playing one would be gone: keep playing instead (the row shows as missing).
+        if (CheckMissing(version)) return;
+
+        var start = Helpers.SongVersions.SwitchStartPosition(Position, Duration, version.Duration);
+        DebugLogger.Info(DebugLogger.Category.Playback, "SwitchToVersion",
+            $"from={current.Id}, to={version.Id}, positionMs={Position.TotalMilliseconds:F0}, startMs={start.TotalMilliseconds:F0}");
+        CancelAutoMixTransition("version switch");
+        MarkQueueChanged();
+        // The queue's other copies of the playing song (Repeat All's cycle, Shuffle's
+        // original order, what preceded it) now mean the new version.
+        ReplaceReferences(_repeatCycleTracks, current, version);
+        ReplaceReferences(_originalQueue, current, version);
+        ReplaceReferences(_precedingInQueue, current, version);
+        _resumePositionMs = start > TimeSpan.Zero ? (long)start.TotalMilliseconds : -1;
+        _resumeTrackId = version.Id;
+        // Choosing another recording of the song is not skipping it (no skip in its history).
+        _switchingVersion = true;
+        try { PlayTrack(version); }
+        finally { _switchingVersion = false; }
+        SaveQueueStateInBackground();
+
+        static void ReplaceReferences(List<Track> list, Track old, Track replacement)
+        {
+            for (var i = 0; i < list.Count; i++)
+                if (ReferenceEquals(list[i], old)) list[i] = replacement;
+        }
+    }
+
+    /// <summary>
     /// GitHub #110: plays <paramref name="tracks"/> shuffled, in the mode the bar's Shuffle
     /// toggle turns on — it lights up, and turning it off continues <paramref name="tracks"/>'
     /// own order (album, playlist, folder order) after the playing song. Every Shuffle button
@@ -3389,9 +3436,12 @@ public partial class PlayerViewModel : ViewModelBase
     /// off within 30 s (10-09). Not when the song ended by itself, failed, or was stopped, and
     /// not for a play that isn't counted yet (it has no log event, GitHub #101).
     /// </summary>
+    /// <summary>Set while <see cref="SwitchToVersion"/> replaces the playing song.</summary>
+    private bool _switchingVersion;
+
     private void RecordSkipOnReplace()
     {
-        if (_endingByPlayback || CurrentTrack is not { } leaving || _playCountPending) return;
+        if (_endingByPlayback || _switchingVersion || CurrentTrack is not { } leaving || _playCountPending) return;
         if (State is not (PlaybackState.Playing or PlaybackState.Paused)) return;
         if (PositionFraction >= 0.5) return;
         _playHistory?.RecordSkip(leaving);

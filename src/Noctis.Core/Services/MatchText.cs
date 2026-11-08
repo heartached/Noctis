@@ -82,17 +82,40 @@ public static partial class MatchText
     /// {radio, edit}); "Song - Remastered 2011" → ("song", {}).
     /// </summary>
     public static (string Base, IReadOnlySet<string> Markers) AnalyzeTitle(string? title)
+        => AnalyzeTitle(title, segments: null);
+
+    /// <summary>
+    /// The version/edition suffix segments <see cref="AnalyzeTitle(string?)"/> strips, as written and in
+    /// title order: "Song (Live) [2011 Remaster]" → ["Live", "2011 Remaster"]; "Song - Radio Edit" →
+    /// ["Radio Edit"]. Featured-artist credits are not included. Empty for a plain title.
+    /// </summary>
+    public static IReadOnlyList<string> VersionSegments(string? title)
+    {
+        var segments = new List<string>();
+        AnalyzeTitle(title, segments);
+        return segments;
+    }
+
+    private static (string Base, IReadOnlySet<string> Markers) AnalyzeTitle(string? title, List<string>? segments)
     {
         var markers = new HashSet<string>(StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(title)) return (string.Empty, markers);
 
         var s = StripFeaturing(title);
-        s = BracketSegment().Replace(s, m => IsVersionSegment(m.Groups[1].Value, markers) ? " " : m.Value);
-        // Repeat for stacked suffixes ("Song - Live - 2004 Remaster").
+        s = BracketSegment().Replace(s, m =>
+        {
+            if (!IsVersionSegment(m.Groups[1].Value, markers)) return m.Value;
+            segments?.Add(m.Groups[1].Value.Trim());
+            return " ";
+        });
+        // Repeat for stacked suffixes ("Song - Live - 2004 Remaster"); stripped from the end,
+        // so each one goes in before the ones already found after it.
+        var dashAt = segments?.Count ?? 0;
         for (var i = 0; i < 3; i++)
         {
             var m = DashSegment().Match(s);
             if (!m.Success || !IsVersionSegment(m.Groups[1].Value, markers)) break;
+            segments?.Insert(dashAt, m.Groups[1].Value.Trim());
             s = s[..m.Index];
         }
 

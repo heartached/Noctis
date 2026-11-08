@@ -385,7 +385,7 @@ public partial class Track : ObservableObject
     public string Lyrics
     {
         get => _lyricsOverride ?? _legacyLyrics ?? ReadStoredLyrics().Plain;
-        set { _lyricsOverride = value ?? string.Empty; _lyricsAssigned = true; }
+        set { _lyricsOverride = value ?? string.Empty; _lyricsAssigned = true; LyricsEditVersion++; }
     }
 
     /// <summary>Time-synced lyrics in LRC format. See <see cref="Lyrics"/>.</summary>
@@ -393,8 +393,44 @@ public partial class Track : ObservableObject
     public string SyncedLyrics
     {
         get => _syncedLyricsOverride ?? _legacySyncedLyrics ?? ReadStoredLyrics().Synced;
-        set { _syncedLyricsOverride = value ?? string.Empty; _lyricsAssigned = true; }
+        set { _syncedLyricsOverride = value ?? string.Empty; _lyricsAssigned = true; LyricsEditVersion++; }
     }
+
+    /// <summary>Bumped by every lyric assignment, so the lyric search index
+    /// (<see cref="Services.LyricsSearchIndex"/>) re-reads only the songs whose lyrics changed.</summary>
+    internal int LyricsEditVersion { get; private set; }
+
+    /// <summary>
+    /// Both lyric fields for the lyric search index: pending/legacy values as the getters return
+    /// them, else the store entry read past the store's LRU (<see cref="Services.LyricsStore.Peek"/>).
+    /// <paramref name="storedIds"/> (<see cref="Services.LyricsStore.StoredIds"/>) skips the disk
+    /// probe for the many songs with nothing stored.
+    /// </summary>
+    internal (string Plain, string Synced) ReadLyricsForSearch(IReadOnlySet<Guid>? storedIds)
+    {
+        Services.LyricsStore.LyricsPair stored = Services.LyricsStore.LyricsPair.Empty;
+        var needStore = (_lyricsOverride ?? _legacyLyrics) == null || (_syncedLyricsOverride ?? _legacySyncedLyrics) == null;
+        if (needStore && _lyricsStore != null && (storedIds == null || storedIds.Contains(Id)))
+            stored = _lyricsStore.Peek(Id);
+        return (_lyricsOverride ?? _legacyLyrics ?? stored.Plain,
+                _syncedLyricsOverride ?? _legacySyncedLyrics ?? stored.Synced);
+    }
+
+    /// <summary>The store this track's lyrics live in (null until the library's first load/save
+    /// attaches one); the lyric search index lists it once per pass.</summary>
+    internal Services.LyricsStore? AttachedLyricsStore => _lyricsStore;
+
+    /// <summary>
+    /// The lyric line a Songs search matched ("Include lyrics" / "Lyrics only"), shown under the
+    /// title; null when the row matched on its tags or no lyric search is on. Session-only.
+    /// </summary>
+    [JsonIgnore]
+    public string? LyricsSearchSnippet
+    {
+        get => _lyricsSearchSnippet;
+        set => SetProperty(ref _lyricsSearchSnippet, value);
+    }
+    private string? _lyricsSearchSnippet;
 
     private Services.LyricsStore.LyricsPair ReadStoredLyrics()
         => _lyricsStore?.Read(Id) ?? Services.LyricsStore.LyricsPair.Empty;

@@ -1409,6 +1409,15 @@
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineArtist}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- Other Versions (Discord, Cosmo 11-08): switches the playing song to
+                                     another recording of it; filled per open, hidden when there is none. -->
+                                <MenuItem x:Name="OtherVersionsMenuItem"
+                                          Header="{loc:T Menu.OtherVersions}"
+                                          IsVisible="False">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.Metadata}"
                                           Command="{Binding OpenCurrentTrackMetadataCommand}">
