@@ -113,7 +113,23 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
 internal sealed class FakeLibraryService : ILibraryService
 {
     public List<Track> TrackList { get; } = new();
-    public IReadOnlyList<Track> Tracks => TrackList;
+    /// <summary>The visible songs: <see cref="TrackList"/> minus those hidden by path (as
+    /// LibraryService's Hide Folder / Hide Song), the same list when nothing is hidden.</summary>
+    public IReadOnlyList<Track> Tracks => HiddenList.Count == 0
+        ? TrackList
+        : TrackList.Where(t => !Noctis.Helpers.FolderPathMatch.IsInOrSameAsAny(t.FilePath, HiddenList)).ToList();
+    public IReadOnlyList<Track> AllTracks => TrackList;
+    public List<string> HiddenList { get; } = new();
+    public IReadOnlyList<string> HiddenFolders => HiddenList;
+    public Task SetFolderHiddenAsync(string folderPath, bool hidden)
+    {
+        var isHidden = HiddenList.Any(f => Noctis.Helpers.FolderPathMatch.IsSame(f, folderPath));
+        if (isHidden == hidden) return Task.CompletedTask;
+        if (hidden) HiddenList.Add(folderPath);
+        else HiddenList.RemoveAll(f => Noctis.Helpers.FolderPathMatch.IsSame(f, folderPath));
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
+    }
     public IReadOnlyList<Album> Albums { get; } = new List<Album>();
     public List<Artist> ArtistList { get; } = new();
     public IReadOnlyList<Artist> Artists => ArtistList;

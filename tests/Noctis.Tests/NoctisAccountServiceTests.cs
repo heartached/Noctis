@@ -807,6 +807,84 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(0, _t1.Rating);
     }
 
+    // ── Snooze for a Month, both ways (Discord #mobile-beta) ─────────────
+
+    [Fact]
+    public async Task SnoozeFromTheSongMenu_IsPushed_TheDesktopAppliesIt_AndAnUnsnoozeFollows()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var shell = PhoneShell();
+
+        var menu = ContextSheetViewModel.ForTrack(shell, Phone(_t1));
+        Assert.True(menu.CanSnooze);
+        Assert.False(menu.IsSnoozed);
+        await menu.ToggleSnoozeCommand.ExecuteAsync(null);
+        Assert.True(Phone(_t1).IsSnoozed);
+        await Until(() => svc.PendingTrackCount == 1);
+
+        var result = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, result.StateChangesPushed);
+        var applied = Assert.Single(_desk.AppliedTracks, a => a.Id == _t1.Id);
+        Assert.NotNull(applied.State.SnoozedUntil);
+        Assert.True(_t1.IsSnoozed);
+        Assert.Equal(0, svc.PendingTrackCount);
+        Assert.Equal(0, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).StateChangesPushed);   // no echo
+
+        var again = ContextSheetViewModel.ForTrack(shell, Phone(_t1));
+        Assert.True(again.IsSnoozed);
+        Assert.Equal("Unsnooze", again.SnoozeLabel);
+        await again.ToggleSnoozeCommand.ExecuteAsync(null);
+        Assert.False(Phone(_t1).IsSnoozed);
+        await Until(() => svc.PendingTrackCount == 1);
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(TrackSyncState.NotSnoozed, _desk.AppliedTracks.Last(a => a.Id == _t1.Id).State.SnoozedUntil);
+        Assert.False(_t1.IsSnoozed);
+        Assert.Equal(0, svc.PendingTrackCount);
+    }
+
+    [Fact]
+    public async Task DesktopSnooze_IsPulled_AnUnsnoozeToo_AndNeitherIsRecordedAsAPhoneEdit()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        _t2.SnoozedUntil = DateTime.UtcNow.AddDays(30);
+        _sync.RecordTrackStates(new[] { _t2 });
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.True(Phone(_t2).IsSnoozed);
+
+        // The desktop's Settings › Snoozed Tracks › Un-snooze clears the date (null).
+        _t2.SnoozedUntil = null;
+        _sync.RecordTrackStates(new[] { _t2 });
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.False(Phone(_t2).IsSnoozed);
+
+        await Task.Delay(300);
+        Assert.Equal(0, svc.PendingTrackCount);
+        Assert.Equal(0, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).StateChangesPushed);
+        Assert.DoesNotContain(_desk.AppliedTracks, a => a.Id == _t2.Id);
+    }
+
+    [Fact]
+    public async Task AFavoriteFromAPhoneThatSaysNothingAboutSnooze_LeavesTheDesktopSnoozeAlone()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var until = DateTime.UtcNow.AddDays(20);
+        _t1.SnoozedUntil = until;   // snoozed on the desktop; this phone has not pulled it yet
+
+        Phone(_t1).IsFavorite = true;   // the phone's song was never snoozed: its push has no snoozedUntil
+        await _phoneLibrary.SaveTrackUserStateAsync(new[] { Phone(_t1) });
+        await Until(() => svc.PendingTrackCount == 1);
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        var applied = Assert.Single(_desk.AppliedTracks, a => a.Id == _t1.Id);
+        Assert.True(applied.State.Favorite);
+        Assert.Null(applied.State.SnoozedUntil);
+        Assert.Equal(until, _t1.SnoozedUntil);
+    }
+
     [Fact]
     public async Task DesktopChange_IsPulled_AndApplyingItIsNotRecordedAsAPhoneEdit()
     {
@@ -1722,6 +1800,8 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             if (state.LastPlayed.HasValue && (t.LastPlayed is null || state.LastPlayed > t.LastPlayed)) t.LastPlayed = state.LastPlayed;
             t.Rating = Math.Clamp(state.Rating, 0, 5);
             t.IsDisliked = state.Disliked;
+            // As LibraryServerAdapter.ApplyTrackStateAsync: absent = say nothing, past = not snoozed.
+            if (state.SnoozedUntil is { } snooze) t.SnoozedUntil = snooze > DateTime.UtcNow ? snooze : null;
             Sync?.RecordTrackStates(new[] { t });
             return Task.CompletedTask;
         }

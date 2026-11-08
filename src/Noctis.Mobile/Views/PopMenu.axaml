@@ -218,6 +218,22 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- The desktop's Snooze for a Month (MenuLineSnooze); Unsnooze on a snoozed song. -->
+                                            <Button Name="MenuSnooze" Classes="row np-row" Command="{Binding ToggleSnoozeCommand}" IsVisible="{Binding CanSnooze}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhSnooze}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{Binding SnoozeLabel}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <!-- Out of the library, back from Settings › Hidden (the desktop's Hide Folder eye, MenuLineEyeOff). -->
+                                            <Button Name="MenuHide" Classes="row np-row" Command="{Binding HideCommand}" IsVisible="{Binding CanHide}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhHide}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.HideSong}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <Button Name="MenuGoToAlbum" Classes="row np-row" Command="{Binding GoToAlbumCommand}" IsVisible="{Binding CanGoToAlbum}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhAlbum}" />
@@ -242,6 +258,17 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhLyrics}" />
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Tab.Lyrics}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <!-- The playing song's menu: the sleep timer's choices (the desktop's clock glyph, MenuLineTimer). -->
+                                            <Button Name="MenuSleepTimer" Classes="row np-row" Command="{Binding ShowSleepTimerCommand}" IsVisible="{Binding CanSleepTimer}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhTimer}" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.SleepTimer}" />
+                                                        <TextBlock Classes="np-detail" Text="{Binding SleepTimerDetail}" IsVisible="{Binding HasSleepTimerDetail}" />
+                                                    </StackPanel>
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>

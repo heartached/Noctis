@@ -7684,4 +7684,24 @@
   <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
   <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
   <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>暫停推薦一個月</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>取消暫停推薦</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>已暫停推薦一個月</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>已取消暫停推薦</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>睡眠定時</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} 分鐘</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 小時</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>目前歌曲結束時</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>關閉定時</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 後暫停</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>本曲結束後暫停</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>隱藏歌曲</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>已隱藏。可在 設定 › 已隱藏 中恢復。</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>已隱藏</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>隱藏的歌曲仍保留在手機上，但不會出現在資料庫、搜尋、隨機播放和合輯中。</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>沒有隱藏的內容</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>取消隱藏</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>取消隱藏 {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>資料夾</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>目前不在此手機上</value></data>
 </root>

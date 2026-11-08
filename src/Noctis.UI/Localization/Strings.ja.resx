@@ -7684,4 +7684,24 @@
   <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
   <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
   <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>1か月スヌーズ</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>スヌーズを解除</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>1か月スヌーズしました</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>スヌーズを解除しました</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>スリープタイマー</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0}分</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1時間</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>再生中の曲の終わり</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>タイマーをオフ</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 後に一時停止</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>この曲のあと一時停止</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>曲を非表示</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>非表示にしました。設定 › 非表示 で戻せます。</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>非表示</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>非表示の曲は端末に残りますが、ライブラリ、検索、シャッフル、ミックスには表示されません。</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>非表示の項目はありません</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>表示する</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} を表示する</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>フォルダー</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>現在この端末にありません</value></data>
 </root>

@@ -75,6 +75,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _persistence = persistence;
         _history = history;
         _marshal = marshal ?? (a => Avalonia.Threading.Dispatcher.UIThread.Post(a));
+        ScheduleSleepTick = DefaultSleepTick;
 
         _player.PositionChanged += OnPlayerPosition;
         _player.DurationResolved += OnPlayerDuration;
@@ -270,13 +271,17 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// Shuffle buttons on lists, albums and artists: start on a random track and shuffle the
     /// rest. The list is rotated so the start is first before <see cref="PlaybackQueue.ReplaceAll"/>
     /// (which queues only the tracks after the start index); the unshuffled order Shuffle-off
-    /// restores is then the list's own order from that track, wrapping round.
+    /// restores is then the list's own order from that track, wrapping round. The start is never
+    /// a track Shuffle holds out (snoozed, Skip When Shuffling; <see cref="PlaybackQueue.IsHeldOutOfShuffle"/>),
+    /// and a list of nothing else does not play, as on the desktop (PlayShuffled).
     /// </summary>
     public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null, string? source = null)
     {
         if (tracks.Count == 0) return;
         rng ??= Random.Shared;
-        var start = rng.Next(tracks.Count);
+        var candidates = Enumerable.Range(0, tracks.Count).Where(i => !PlaybackQueue.IsHeldOutOfShuffle(tracks[i])).ToList();
+        if (candidates.Count == 0) return;
+        var start = candidates[rng.Next(candidates.Count)];
         var rotated = tracks.Skip(start).Concat(tracks.Take(start)).ToList();
         var first = _queue.ReplaceAll(rotated, 0);
         SourceLabel = source;
@@ -628,6 +633,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // Not recorded yet: a file that fails to load (broken.mp3, a revoked grant) must not
         // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
         FlushListened();
+        OnSleepTrackStarted(track);
         _unrecordedPlay = track;
         _unrecordedFrom = fromPosition ?? TimeSpan.Zero;
         _listened = TimeSpan.Zero;
@@ -661,7 +667,8 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         var upcoming = _computerUnreachable && NeedsComputer is { } needs
             ? _queue.UpNext.FirstOrDefault(t => !needs(t))
             : _queue.UpNext.FirstOrDefault();
-        if (RepeatMode == RepeatMode.One || upcoming == null || CurrentTrack == null)
+        // End of Current Song (the sleep timer): nothing may follow it, its end must reach us.
+        if (RepeatMode == RepeatMode.One || upcoming == null || CurrentTrack == null || StopAfterCurrentSong)
         {
             _player.CancelPreparedNext();
             return;
@@ -748,6 +755,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
             SavePositionNow();
             FlushListened();
         }
+        OnSleepPositionTick();
     });
 
     /// <summary>Adds what was heard since the previous tick (see <see cref="MaxListenStepSeconds"/>).</summary>
@@ -805,6 +813,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private void OnPlayerTrackEnded(object? sender, EventArgs e) => _marshal(() =>
     {
         if (_disposed) return;
+        if (TryStopAfterSong()) return;
         var next = AdvancePlayable(QueueAdvance.Natural, out var heldBack);
         if (next != null)
         {
@@ -937,6 +946,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        StopSleepTicker();
         _player.PositionChanged -= OnPlayerPosition;
         _player.DurationResolved -= OnPlayerDuration;
         _player.TrackEnded -= OnPlayerTrackEnded;

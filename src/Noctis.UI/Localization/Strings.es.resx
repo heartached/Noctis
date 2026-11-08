@@ -7684,4 +7684,24 @@
   <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
   <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
   <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>Posponer un mes</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>Quitar posposición</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Pospuesta un mes</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Posposición quitada</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Temporizador</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} minutos</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 hora</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Al final de la canción</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Desactivar temporizador</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Se pausa en {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Se pausa tras esta canción</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Ocultar canción</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Oculta. Vuelve a mostrarla en Ajustes › Ocultos.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Ocultos</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Las canciones ocultas siguen en tu teléfono, pero no aparecen en la biblioteca, la búsqueda, el modo aleatorio ni los mixes.</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>No hay nada oculto</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Mostrar</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Mostrar {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Carpeta</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Ya no está en este teléfono</value></data>
 </root>

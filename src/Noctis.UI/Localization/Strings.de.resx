@@ -4048,4 +4048,24 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
   <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
   <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>Einen Monat pausieren</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>Pause aufheben</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Für einen Monat pausiert</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Pause aufgehoben</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Sleep-Timer</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} Minuten</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 Stunde</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Ende des aktuellen Titels</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Timer ausschalten</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pausiert in {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pausiert nach diesem Titel</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Titel ausblenden</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Ausgeblendet. Unter Einstellungen › Ausgeblendet wieder einblenden.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Ausgeblendet</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Ausgeblendete Titel bleiben auf dem Telefon, erscheinen aber nicht in Mediathek, Suche, Zufallswiedergabe und Mixen.</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Nichts ausgeblendet</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Einblenden</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} einblenden</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Ordner</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Derzeit nicht auf diesem Telefon</value></data>
 </root>

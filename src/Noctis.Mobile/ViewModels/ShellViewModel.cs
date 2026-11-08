@@ -1241,6 +1241,58 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
+    /// <summary>The desktop's Snooze for a Month (PlayerViewModel.SnoozeDurationDays).</summary>
+    public const int SnoozeDays = 30;
+
+    /// <summary>
+    /// Snooze <paramref name="tracks"/> for a month, or end their snooze: the desktop's
+    /// SetTracksSnoozedAsync (app state only, no tag write), on the library's own songs and the
+    /// queue's copies. Shuffle then holds them out (PlaybackQueue.IsHeldOutOfShuffle) and the
+    /// Last.fm mixes are built again without them; a desktop song's snooze goes to the computer
+    /// on the next sync (NoctisAccountService.RecordTrackStates).
+    /// </summary>
+    public async Task SetSnoozedAsync(IReadOnlyList<Track> tracks, bool snooze)
+    {
+        if (tracks.Count == 0) return;
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).DistinctBy(t => t.Id).ToList();
+        DateTime? until = snooze ? DateTime.UtcNow.AddDays(SnoozeDays) : null;
+        try
+        {
+            await Library.Service.SetTracksSnoozedAsync(current, until);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Snooze save failed: {ex.Message}");
+        }
+        // After the save: a copy that is the library's own song must still differ when it runs.
+        foreach (var t in tracks) t.SnoozedUntil = until;
+        _lastFm?.SuggestionsChanged();
+        Player.Notice = Loc.T(snooze ? "Mobile.SnoozedNotice" : "Mobile.UnsnoozedNotice");
+    }
+
+    /// <summary>
+    /// Hide Song (Discord #mobile-beta: voice notes and other audio that is not music): the
+    /// desktop's hidden-folder list (AppSettings.HiddenLibraryFolders, LibraryService.SetFolderHiddenAsync)
+    /// with the song's own path in it, which hides that one file (FolderPathMatch.IsInOrSameAsAny).
+    /// The library rebuilds without it, so Songs, Albums, Artists, search, Shuffle and the mixes
+    /// leave it out; Settings › Hidden shows it again. Nothing is deleted or rescanned.
+    /// </summary>
+    public async Task SetHiddenAsync(IReadOnlyList<string> paths, bool hidden)
+    {
+        foreach (var path in paths.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await Library.Service.SetFolderHiddenAsync(path, hidden);
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Library", $"Hide failed: {ex.Message}");
+            }
+        }
+        if (hidden) Player.Notice = Loc.T("Mobile.HiddenNotice");
+    }
+
     [RelayCommand]
     private async Task ToggleCurrentFavouriteAsync()
     {
@@ -1253,6 +1305,11 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         if (Player.CurrentTrack is { } track) Sheet = ContextSheetViewModel.ForTrack(this, track);
     }
+
+    /// <summary>The Sleep Timer's choices on the glass menu: from the playing song's ⋯ menu, or
+    /// out of Now Playing's timer pill while one runs.</summary>
+    [RelayCommand]
+    private void ShowSleepTimerMenu() => ShowOptions(OptionsMenuViewModel.ForSleepTimer(this, Player));
 
     /// <summary>The Library tab's ⋯: Add Folder…, Rescan Library and Settings on the glass menu.</summary>
     [RelayCommand]

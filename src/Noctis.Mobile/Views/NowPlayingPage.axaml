@@ -240,7 +240,7 @@
                   </Panel>
                 </Viewbox>
 
-                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
                     <StackPanel VerticalAlignment="Center">
                         <!-- Left-aligned so the explicit badge follows the title, not the row's end. -->
                         <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
@@ -256,8 +256,22 @@
                             <TextBlock Classes="np-sub" Text="{Binding Player.CurrentTrack.Artist}" FontSize="20" TextTrimming="CharacterEllipsis" />
                         </Button>
                     </StackPanel>
+                    <!-- A sleep timer is set: what is left, on the quality badge's capsule; a tap
+                         opens its choices (Turn Off Timer among them) out of it. -->
+                    <Button Grid.Column="1" Name="SleepTimerPill" Classes="row np-badge" Margin="8,0,0,0"
+                            Command="{Binding ShowSleepTimerMenuCommand}" IsVisible="{Binding Player.HasSleepTimer}"
+                            AutomationProperties.Name="{Binding Player.SleepTimerStatus}">
+                        <Border Classes="np-badge-pill">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <PathIcon Data="{DynamicResource PhTimer}" Width="13" Height="13" VerticalAlignment="Center"
+                                          Foreground="{DynamicResource NowPlayingBadgeText}" />
+                                <TextBlock Name="SleepTimerText" Text="{Binding Player.SleepTimerRemainingText}" FontSize="12"
+                                           FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource NowPlayingBadgeText}" />
+                            </StackPanel>
+                        </Border>
+                    </Button>
                     <!-- Favourite and the rest live in the ⋯ menu (Apple's). -->
-                    <Button Grid.Column="1" Name="NowPlayingMore" Classes="icon" Margin="8,0,-10,0" VerticalAlignment="Center"
+                    <Button Grid.Column="2" Name="NowPlayingMore" Classes="icon" Margin="8,0,-10,0" VerticalAlignment="Center"
                             Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                         <PathIcon Data="{DynamicResource PhMore}" Width="26" Height="26" />
                     </Button>

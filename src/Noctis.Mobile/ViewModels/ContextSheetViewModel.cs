@@ -233,6 +233,50 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     [RelayCommand] private Task ClearRatingAsync() => RateAsync(0);
 
+    // ── Sleep Timer (the playing song's menu: Now Playing's ⋯, the Queue's) ──
+
+    /// <summary>The playing song's menu offers the sleep timer, as Now Playing's ⋯ does in Apple Music.</summary>
+    public bool CanSleepTimer => Track != null && _shell.Player.CurrentTrack?.Id == Track.Id;
+
+    /// <summary>The row's second line while a timer is set ("Pauses in 29:54").</summary>
+    public string SleepTimerDetail => _shell.Player.SleepTimerStatus;
+
+    public bool HasSleepTimerDetail => _shell.Player.HasSleepTimer;
+
+    [RelayCommand]
+    private void ShowSleepTimer() => _shell.ShowSleepTimerMenuCommand.Execute(null);
+
+    // ── Hide Song (Settings › Hidden shows it again) ──
+
+    /// <summary>A song's menu: one file hidden from the library, the desktop's Hide Folder for a song.</summary>
+    public bool CanHide => Track is { FilePath.Length: > 0 };
+
+    [RelayCommand]
+    private async Task HideAsync()
+    {
+        var path = Track?.FilePath;
+        _shell.CloseSheet();
+        if (!string.IsNullOrEmpty(path)) await _shell.SetHiddenAsync(new[] { path }, hidden: true);
+    }
+
+    // ── Snooze for a Month (the desktop's song and album menus) ──
+
+    /// <summary>A song's or an album's menu: Shuffle and the mixes leave the songs out for a month.</summary>
+    public bool CanSnooze => (Track != null || Album != null) && Tracks.Count > 0;
+
+    /// <summary>Every song here is snoozed now: the row ends the snooze instead.</summary>
+    public bool IsSnoozed => Tracks.Count > 0 && Tracks.All(t => t.IsSnoozed);
+
+    public string SnoozeLabel => IsSnoozed ? Loc.T("Mobile.Unsnooze") : Loc.T("Mobile.SnoozeForMonth");
+
+    [RelayCommand]
+    private async Task ToggleSnoozeAsync()
+    {
+        var snooze = !IsSnoozed;
+        _shell.CloseSheet();
+        await _shell.SetSnoozedAsync(Tracks, snooze);
+    }
+
     /// <summary>The menu's Add to Playlist: the menu closes and the bottom sheet opens on the
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
     [RelayCommand] private void ShowPlaylists() => IsPickingPlaylist = true;
