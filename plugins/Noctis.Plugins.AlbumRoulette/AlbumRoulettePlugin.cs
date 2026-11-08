@@ -7,9 +7,11 @@ namespace Noctis.Plugins.AlbumRoulette;
 
 /// <summary>
 /// Album Roulette (official Noctis plugin): Settings → Plugins → Album Roulette → "Open Album
-/// Roulette" opens the reel in a compact window. "Spin from this artist" in a track's menu opens
-/// it with that artist's albums and spins. With Album of the Day on, one album a day arrives as
-/// a notice at the hour the user picked.
+/// Roulette" opens the reel in a compact window, which spins albums or single songs. "Spin from
+/// this artist" in a track's menu opens it with that artist's albums and spins. On Noctis with
+/// plugin API 1.7, an artist page's "…" menu has Album Roulette and Song Roulette (that artist
+/// only), and the Songs page's top bar a Song Roulette button (the whole library). With Album of
+/// the Day on, one album a day arrives as a notice at the hour the user picked.
 /// </summary>
 public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
 {
@@ -17,6 +19,8 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
     public const string Version = "1.0.1";
     public const string About = "Spin a reel of your albums and let it pick what to play.";
     public const string SpinFromArtistLabel = "Spin from this artist";
+    public const string AlbumRouletteLabel = "Album Roulette";
+    public const string SongRouletteLabel = "Song Roulette";
     // A small wheel (24x24 box) for the menu entry.
     private const string WheelIcon = "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 2.07A8 8 0 0 1 19.93 11H13zM11 4.07V11H4.07A8 8 0 0 1 11 4.07zM4.07 13H11v6.93A8 8 0 0 1 4.07 13zM13 19.93V13h6.93A8 8 0 0 1 13 19.93z";
 
@@ -25,8 +29,9 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
     private DailyPicker? _daily;
     private IDisposable? _view;
     private IDisposable? _command;
+    private readonly List<IDisposable> _libraryCommands = new();
     private RouletteView? _open;
-    private string? _pendingArtist;
+    private (RouletteMode? Mode, string? Artist)? _pending;
 
     public PluginInfo Info { get; } = new(Id, "Album Roulette", Version, "Noctis", About);
 
@@ -43,6 +48,17 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
         _rouletteHost = new PluginRouletteHost(host);
         _view = host.RegisterView(this);
         _command = host.RegisterTrackCommand(SpinFromArtistLabel, WheelIcon, SpinFromArtist);
+        try
+        {
+            _libraryCommands.Add(host.RegisterLibraryCommand(AlbumRouletteLabel, WheelIcon, LibraryCommandPlaces.ArtistPage,
+                c => Open(RouletteMode.Albums, c.Artist)));
+            _libraryCommands.Add(host.RegisterLibraryCommand(SongRouletteLabel, WheelIcon,
+                LibraryCommandPlaces.ArtistPage | LibraryCommandPlaces.SongsPage, c => Open(RouletteMode.Songs, c.Artist)));
+        }
+        catch (NotSupportedException)
+        {
+            // Noctis before plugin API 1.7: the window and the track menu entry still work.
+        }
         _daily = new DailyPicker(_rouletteHost);
         _daily.Start();
     }
@@ -52,10 +68,10 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
         var host = _rouletteHost ?? throw new InvalidOperationException("Album Roulette is not running.");
         var view = new RouletteView(host);
         _open = view;
-        if (_pendingArtist is { } artist)
+        if (_pending is { } pending)
         {
-            _pendingArtist = null;
-            view.SpinFromArtist(artist);
+            _pending = null;
+            view.SpinFor(pending.Mode, pending.Artist);
         }
         // The window closed: drop the covers and the subscriptions this view held.
         view.DetachedFromVisualTree += (_, _) =>
@@ -66,25 +82,36 @@ public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
         return view;
     }
 
-    /// <summary>The track menu entry: that artist's albums on the reel, and a spin.</summary>
+    /// <summary>The track menu entry: that artist's albums on the reel (or songs, if the window
+    /// is in Song Roulette), and a spin.</summary>
     public void SpinFromArtist(TrackInfo track)
     {
         var artist = string.IsNullOrWhiteSpace(track.AlbumArtist) ? track.Artist : track.AlbumArtist;
-        if (string.IsNullOrWhiteSpace(artist) || _host is null) return;
+        if (string.IsNullOrWhiteSpace(artist)) return;
+        Open(null, artist);
+    }
+
+    /// <summary>Opens the window (or brings it forward) in <paramref name="mode"/> (null: as it is),
+    /// scoped to <paramref name="artist"/> (null: the whole library), and spins.</summary>
+    public void Open(RouletteMode? mode, string? artist)
+    {
+        if (_host is null) return;
         if (_open is { } view)
         {
-            view.SpinFromArtist(artist);
+            view.SpinFor(mode, artist);
             _host.OpenView(this); // brings the open window forward
             return;
         }
-        _pendingArtist = artist;
-        if (!_host.OpenView(this)) _pendingArtist = null;
+        _pending = (mode, artist);
+        if (!_host.OpenView(this)) _pending = null;
     }
 
     public void Shutdown()
     {
         _command?.Dispose();
         _command = null;
+        foreach (var c in _libraryCommands) c.Dispose();
+        _libraryCommands.Clear();
         _view?.Dispose();
         _view = null;
         _daily?.Dispose();

@@ -664,7 +664,90 @@ public class AlbumRoulettePluginTests
         Assert.Equal(PluginStatus.Running, plugin.Status);
         Assert.Equal("Album Roulette", Assert.Single(plugin.Views).Name);
         Assert.Contains(host.TrackCommands, c => c.Label == AlbumRoulettePlugin.SpinFromArtistLabel);
+        // API 1.7: Album Roulette and Song Roulette on the artist page, Song Roulette on the Songs page.
+        Assert.Equal(new[] { AlbumRoulettePlugin.AlbumRouletteLabel, AlbumRoulettePlugin.SongRouletteLabel },
+            host.LibraryCommands(LibraryCommandPlaces.ArtistPage).Select(c => c.Label));
+        var songsButton = Assert.Single(host.LibraryCommands(LibraryCommandPlaces.SongsPage));
+        Assert.Equal(AlbumRoulettePlugin.SongRouletteLabel, songsButton.Label);
+        Assert.False(string.IsNullOrEmpty(songsButton.Icon)); // the top-bar button is only its icon
         Assert.True(host.Remove(plugin, deleteData: true));
+    }
+
+    [AvaloniaFact]
+    public void Plugin_EntryPoints_OpenTheWindow_InTheirMode_AndAnOlderNoctisStillRunsIt()
+    {
+        var host = new MiniHost(withLibraryCommands: true);
+        var plugin = new AlbumRoulettePlugin();
+        plugin.Initialize(host);
+        Assert.Equal(new[] { "Album Roulette", "Song Roulette" }, host.Library.Select(c => c.Label));
+        Assert.Equal(new[] { LibraryCommandPlaces.ArtistPage, LibraryCommandPlaces.ArtistPage | LibraryCommandPlaces.SongsPage },
+            host.Library.Select(c => c.Places));
+
+        // Song Roulette from an artist page: the window opens scoped to that artist, in songs.
+        host.Library[1].Handler(new LibraryCommandContext(LibraryCommandPlaces.ArtistPage, "Nova"));
+        var view = Assert.IsType<RouletteView>(host.Opened.Single());
+        Assert.Equal(RouletteMode.Songs, view.Mode);
+        Assert.Equal("Nova", view.Filter.Artist);
+        // The window is open: another entry switches it.
+        host.Library[0].Handler(new LibraryCommandContext(LibraryCommandPlaces.ArtistPage, "Kite"));
+        Assert.Single(host.Opened); // brought forward, not a second window
+        Assert.Equal((RouletteMode.Albums, "Kite"), (view.Mode, view.Filter.Artist));
+        host.Library[1].Handler(new LibraryCommandContext(LibraryCommandPlaces.SongsPage, null));
+        Assert.Equal((RouletteMode.Songs, (string?)null), (view.Mode, view.Filter.Artist));
+        plugin.Shutdown();
+        Assert.Empty(host.Library);
+
+        // Noctis before API 1.7: no library commands, but the plugin starts.
+        var old = new MiniHost(withLibraryCommands: false);
+        var oldPlugin = new AlbumRoulettePlugin();
+        oldPlugin.Initialize(old);
+        Assert.Single(old.TrackCommandLabels);
+        oldPlugin.Shutdown();
+    }
+
+    /// <summary>Just enough of a Noctis for the plugin's Initialize: a view, a track command,
+    /// settings, and (when <c>withLibraryCommands</c>) API 1.7's library commands.</summary>
+    private sealed class MiniHost(bool withLibraryCommands) : IPluginHost, IPluginSettings
+    {
+        public readonly List<(string Label, LibraryCommandPlaces Places, Action<LibraryCommandContext> Handler)> Library = new();
+        public readonly List<string> TrackCommandLabels = new();
+        public readonly List<Control> Opened = new();
+        private IPluginViewProvider? _view;
+
+        public string AppVersion => "1.6.8";
+        public string DataDirectory { get; } = Path.Combine(Path.GetTempPath(), "noctis-roulette-mini-" + Guid.NewGuid().ToString("N"));
+        public INowPlaying NowPlaying => null!;
+        public IBeatSource Beat => null!;
+        public ISpectrumSource Spectrum => null!;
+        public void Log(string message) { }
+        public void RegisterVisualLayer(IVisualLayerProvider provider) { }
+        public IPluginSettings Settings => this;
+
+        public IDisposable RegisterView(IPluginViewProvider provider) { _view = provider; return new Off(() => _view = null); }
+        public bool OpenView(IPluginViewProvider provider)
+        {
+            if (Opened.Count == 0) Opened.Add(provider.CreateView());
+            return true;
+        }
+        public IDisposable RegisterTrackCommand(string label, string? icon, Action<TrackInfo> handler)
+        {
+            TrackCommandLabels.Add(label);
+            return new Off(() => TrackCommandLabels.Remove(label));
+        }
+        public IDisposable RegisterLibraryCommand(string label, string? icon, LibraryCommandPlaces places, Action<LibraryCommandContext> handler)
+        {
+            if (!withLibraryCommands) throw new NotSupportedException("This Noctis build does not implement plugin API 1.7.");
+            var entry = (label, places, handler);
+            Library.Add(entry);
+            return new Off(() => Library.Remove(entry));
+        }
+
+        public string? GetString(string key) => null;
+        public bool GetBool(string key, bool fallback = false) => key == "albumOfTheDay" ? false : fallback;
+        public double GetNumber(string key, double fallback = 0) => fallback;
+        public event EventHandler<string>? Changed { add { } remove { } }
+
+        private sealed class Off(Action off) : IDisposable { public void Dispose() => off(); }
     }
 
     [Fact]
