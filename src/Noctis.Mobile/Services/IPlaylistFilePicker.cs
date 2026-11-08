@@ -11,4 +11,8 @@ public sealed record PickedPlaylistFile(string Name, byte[] Content);
 public interface IPlaylistFilePicker
 {
     Task<IReadOnlyList<PickedPlaylistFile>> PickPlaylistFilesAsync();
+
+    /// <summary>A playlist's Change Cover: one picture from the same picker, read whole; null when
+    /// the user backs out or it cannot be read.</summary>
+    Task<PickedPlaylistFile?> PickImageAsync() => Task.FromResult<PickedPlaylistFile?>(null);
 }

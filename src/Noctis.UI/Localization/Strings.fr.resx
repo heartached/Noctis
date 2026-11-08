@@ -6981,6 +6981,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Afficher l’album</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Afficher l’artiste</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Renommer</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Changer la pochette</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Retirer la pochette</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Ce fichier n'est pas une image que Noctis peut utiliser comme pochette.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Retirer de la playlist</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Supprimer la playlist</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Ajouter un dossier…</value></data>

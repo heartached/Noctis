@@ -2065,6 +2065,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Albüme Git</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Sanatçıya Git</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Yeniden Adlandır</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Kapağı Değiştir</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Kapağı Kaldır</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Bu dosya kapak olarak kullanılabilecek bir resim değil.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Çalma Listesinden Kaldır</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Çalma Listesini Sil</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Klasör Ekle…</value></data>

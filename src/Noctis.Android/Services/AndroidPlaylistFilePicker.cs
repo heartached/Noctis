@@ -32,10 +32,21 @@ public sealed class AndroidPlaylistFilePicker : IPlaylistFilePicker
         if (MainActivity.Current is not { } activity) return Array.Empty<PickedPlaylistFile>();
         var uris = await activity.OpenDocumentsAsync(MimeTypes);
         if (uris.Count == 0) return Array.Empty<PickedPlaylistFile>();
-        return await Task.Run(() => uris.Select(Read).OfType<PickedPlaylistFile>().ToList());
+        return await Task.Run(() => uris.Select(u => Read(u, MaxBytes)).OfType<PickedPlaylistFile>().ToList());
     }
 
-    private PickedPlaylistFile? Read(global::Android.Net.Uri uri)
+    /// <summary>The pictures a playlist cover can be (what both apps decode).</summary>
+    private static readonly string[] ImageTypes = { "image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp" };
+
+    public async Task<PickedPlaylistFile?> PickImageAsync()
+    {
+        if (MainActivity.Current is not { } activity) return null;
+        var uris = await activity.OpenDocumentsAsync(ImageTypes, multiple: false);
+        if (uris.Count == 0) return null;
+        return await Task.Run(() => Read(uris[0], Noctis.Services.Sync.PlaylistCovers.MaxBytes));
+    }
+
+    private PickedPlaylistFile? Read(global::Android.Net.Uri uri, long maxBytes)
     {
         try
         {
@@ -49,13 +60,13 @@ public sealed class AndroidPlaylistFilePicker : IPlaylistFilePicker
             while ((read = input.Read(chunk, 0, chunk.Length)) > 0)
             {
                 buffer.Write(chunk, 0, read);
-                if (buffer.Length > MaxBytes) return null;
+                if (buffer.Length > maxBytes) return null;
             }
             return new PickedPlaylistFile(name, buffer.ToArray());
         }
         catch (Exception ex)
         {
-            DebugLog.Write("Import", $"Reading a picked playlist file failed: {ex.Message}");
+            DebugLog.Write("Import", $"Reading a picked file failed: {ex.Message}");
             return null;
         }
     }

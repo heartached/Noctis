@@ -107,6 +107,28 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         if (Playlist is { } playlist) _shell.AskDeletePlaylist(playlist);
     }
 
+    /// <summary>A playlist's menu: Change Cover (a picture from the phone), where there is a picker.</summary>
+    public bool CanChangeCover => Playlist != null && _shell.PlaylistFiles != null;
+
+    /// <summary>A playlist's menu: Remove Cover, while it has a custom one.</summary>
+    public bool CanRemoveCover => Playlist is { } p && LibraryViewModel.HasCustomCover(_shell.CurrentPlaylist(p));
+
+    [RelayCommand]
+    private async Task ChangeCoverAsync()
+    {
+        var playlist = Playlist;
+        _shell.CloseSheet();
+        if (playlist != null) await _shell.ChangePlaylistCoverAsync(playlist);
+    }
+
+    [RelayCommand]
+    private async Task RemoveCoverAsync()
+    {
+        var playlist = Playlist;
+        _shell.CloseSheet();
+        if (playlist != null) await _shell.RemovePlaylistCoverAsync(playlist);
+    }
+
     /// <summary>An artist sheet is about the artist (play, queue, pin), not a heart on every song.</summary>
     public bool CanFavourite => Artist == null;
 

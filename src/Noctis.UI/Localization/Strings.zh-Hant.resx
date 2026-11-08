@@ -6981,6 +6981,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>前往專輯</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>前往藝人</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>重新命名</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>更改封面</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>移除封面</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>此檔案不是可用作封面的圖片。</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>從播放清單中移除</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>刪除播放清單</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>加入資料夾…</value></data>

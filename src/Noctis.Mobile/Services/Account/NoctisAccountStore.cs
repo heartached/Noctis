@@ -54,6 +54,9 @@ internal sealed class NoctisPendingState
     /// <summary>The computer's playlists deleted on the phone (Guid "N" → when), sent as
     /// tombstones on the next sync.</summary>
     public Dictionary<string, DateTime> DeletedPlaylists { get; set; } = new();
+    /// <summary>The computer's playlists whose custom cover was removed on the phone (Guid "N" →
+    /// when), sent as "no cover" with the next push of the playlist.</summary>
+    public Dictionary<string, DateTime> RemovedCovers { get; set; } = new();
 }
 
 /// <summary>The phone's own songs already sent to (or found on) the computer of one server + user,

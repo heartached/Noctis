@@ -3322,6 +3322,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Перейти к альбому</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Перейти к исполнителю</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Переименовать</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Сменить обложку</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Удалить обложку</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Этот файл не является изображением, которое можно использовать как обложку.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Удалить из плейлиста</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Удалить плейлист</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Добавить папку…</value></data>

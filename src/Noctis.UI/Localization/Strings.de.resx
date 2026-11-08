@@ -3313,6 +3313,9 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Zum Album</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Zum Künstler</value><comment>Menu action</comment></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Umbenennen</value><comment>Menu action</comment></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Cover ändern</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Cover entfernen</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Diese Datei ist kein Bild, das Noctis als Cover verwenden kann.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Aus Playlist entfernen</value><comment>Menu action</comment></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Playlist löschen</value><comment>Menu action and confirm button</comment></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Ordner hinzufügen…</value><comment>Library … menu</comment></data>

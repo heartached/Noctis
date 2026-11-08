@@ -44,6 +44,10 @@ public interface IServerLibrary : Sync.ISyncApplier
     /// library, the way a dropped file is added (then it lists, streams and syncs like any other).</summary>
     Task ImportUploadedAsync(string path, CancellationToken ct) => Task.CompletedTask;
 
+    /// <summary>Where covers a phone sends (noctisUploadPlaylistCover) wait for the playlist push that
+    /// names them (<see cref="Sync.PlaylistCovers.Apply"/>). Null = this host takes no covers.</summary>
+    string? PlaylistCoverStagingDirectory => null;
+
     /// <summary>Stars/unstars tracks (albums and artists star every track they contain). Persists user state.</summary>
     Task SetStarredAsync(IReadOnlyList<Guid> trackIds, IReadOnlyList<Guid> albumIds, IReadOnlyList<Guid> artistIds, bool starred);
 

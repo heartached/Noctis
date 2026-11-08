@@ -1071,6 +1071,40 @@ public sealed partial class ShellViewModel : ObservableObject
         await Library.DeletePlaylistAsync(playlist);
     }
 
+    /// <summary>Change Cover: a picture from the phone's picker becomes the playlist's cover (one of
+    /// the computer's takes it there too on the next sync). A file that is not a picture says so.</summary>
+    public async Task ChangePlaylistCoverAsync(Playlist playlist)
+    {
+        if (PlaylistFiles is not { } picker) return;
+        PickedPlaylistFile? image;
+        try
+        {
+            image = await picker.PickImageAsync();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Picking a playlist cover failed: {ex.Message}");
+            return;
+        }
+        if (image is null) return;
+        if (!await Library.SetPlaylistCoverAsync(CurrentPlaylist(playlist), image.Content))
+            Player.Notice = Loc.T("Mobile.CoverNotPicture");
+    }
+
+    /// <summary>Remove Cover: back to the first song's cover, on the computer too for one of its playlists.</summary>
+    public async Task RemovePlaylistCoverAsync(Playlist playlist)
+    {
+        try
+        {
+            Account?.RecordPlaylistCoverRemoved(playlist.Id);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Recording a cover removal failed: {ex.Message}");
+        }
+        await Library.RemovePlaylistCoverAsync(CurrentPlaylist(playlist));
+    }
+
     /// <summary>A song's Remove from Playlist (no question asked, as on the desktop and Apple's).</summary>
     public async Task RemoveFromPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
     {

@@ -6981,6 +6981,9 @@
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>앨범으로 이동</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>아티스트로 이동</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>이름 변경</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>커버 변경</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>커버 제거</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>이 파일은 커버로 사용할 수 있는 이미지가 아닙니다.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>재생목록에서 제거</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>재생목록 삭제</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>폴더 추가…</value></data>
