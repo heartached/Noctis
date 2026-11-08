@@ -2387,6 +2387,18 @@
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <ItemsControl x:Name="SidebarPagesList" ItemsSource="{Binding SidebarPages}">
+                        <ItemsControl.Styles>
+                            <!-- Hide the item container, not just its row: a collapsed row inside a
+                                 visible container still took the panel's 6px spacing, so the rows
+                                 around turned-off pages (Inbox, Server, Audio CD) sat further apart. -->
+                            <Style Selector="ItemsControl#SidebarPagesList > ContentPresenter" x:DataType="vm:SidebarPageOption">
+                                <Setter Property="IsVisible" Value="{Binding IsAvailable}"/>
+                            </Style>
+                            <!-- Settings can't be hidden: LottieToggle has no disabled look of its own. -->
+                            <Style Selector="controls|LottieToggle:disabled">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Style>
+                        </ItemsControl.Styles>
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="6"/>
@@ -2394,7 +2406,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:SidebarPageOption">
-                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding IsAvailable}">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                                     <Button Grid.Column="0" Classes="account-icon-btn"
                                             AutomationProperties.Name="{loc:T Settings.SidebarMoveUp}"
                                             ToolTip.Tip="{loc:T Settings.SidebarMoveUp}"
