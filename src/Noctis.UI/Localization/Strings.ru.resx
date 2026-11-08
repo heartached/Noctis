@@ -2555,6 +2555,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
   <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Также улучшать обычный или построчный текст</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Снова искать для песен, уже проверенных раньше</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Проверить найденное перед сохранением</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
+  <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Сохранить выбранное ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.ReviewReady" xml:space="preserve"><value>Найден текст лучше для {0} песни. Снимите отметки с ненужного и сохраните.|Найден текст лучше для {0} песен. Снимите отметки с ненужного и сохраните.|Найден текст лучше для {0} песен. Снимите отметки с ненужного и сохраните.</value><comment>Status after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindWord" xml:space="preserve"><value>По словам</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindLine" xml:space="preserve"><value>По строкам</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Обычный</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>не сохранено</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
+  <data name="BulkLyrics.Saving" xml:space="preserve"><value>Сохранение…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Найти тексты…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Остановить</value><comment>Button: stops a bulk run</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value><comment>Dialog title (window)</comment></data>
@@ -2888,6 +2897,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Когда экран текста открыт для песни без текста, искать его в интернете и сохранять найденное. Уже имеющийся у песни текст никогда не заменяется.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>Предпочтительный тип текста</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Что Noctis сохраняет, когда сам выбирает текст из интернета.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>Улучшать обычные тексты</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Если у песни есть только обычный текст, ищет синхронизированный текст выбранного типа. Если ничего не найдено, обычный текст остаётся.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Искать тексты для новых песен</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Ищет тексты в фоне для песен, добавленных в медиатеку. Песни с синхронизированным текстом не трогаются.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>По словам (лучшее из доступного)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>По строкам</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Обычный текст</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>

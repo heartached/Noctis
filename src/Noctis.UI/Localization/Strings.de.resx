@@ -2547,6 +2547,15 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Schließen</value><comment>Secondary button</comment></data>
   <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Auch Songs mit Reintext- oder zeilensynchronem Songtext aufwerten</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Songs erneut prüfen, die ein früherer Durchlauf schon geprüft hat</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Funde vor dem Speichern prüfen</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
+  <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Auswahl speichern ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.ReviewReady" xml:space="preserve"><value>Bessere Songtexte für {0} Song gefunden. Entferne die Haken bei dem, was du nicht willst, und speichere.|Bessere Songtexte für {0} Songs gefunden. Entferne die Haken bei dem, was du nicht willst, und speichere.</value><comment>Status after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindWord" xml:space="preserve"><value>Wortgenau</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindLine" xml:space="preserve"><value>Zeilengenau</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Nur Text</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>nicht gespeichert</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
+  <data name="BulkLyrics.Saving" xml:space="preserve"><value>Wird gespeichert…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Songtexte finden…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Songtext-Studio öffnen</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Stopp</value><comment>Button: stops a bulk run</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Animiertes Artwork</value><comment>Dialog title (window)</comment></data>
@@ -2880,6 +2889,10 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Wenn die Songtextansicht auf einem Song ohne Songtext öffnet, online suchen und Gefundenes speichern. Vorhandener Songtext wird nie ersetzt.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>Bevorzugter Songtexttyp</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Was Noctis behält, wenn es selbst online Songtexte wählt.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>Einfache Songtexte aufwerten</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Hat ein Song nur einfachen Text, wird nach deinem bevorzugten synchronisierten Typ gesucht. Wird nichts gefunden, bleibt der einfache Text.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Songtexte für neue Songs finden</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Sucht im Hintergrund Songtexte für Songs, die zur Mediathek hinzukommen. Songs mit synchronisierten Texten bleiben unverändert.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>Wortsynchron (beste Wahl)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>Zeilensynchron</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Reintext</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>

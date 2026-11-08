@@ -1305,6 +1305,13 @@ public class AppSettings : IJsonOnDeserializing
     /// "LineSynced" or "Plain". See <see cref="LyricsSaveOptions.ParsePreferredType"/> (GitHub #135).</summary>
     public string LyricsPreferredType { get; set; } = nameof(Models.LyricsPreferredType.WordSynced);
 
+    /// <summary>GitHub #194: when a lyrics view opens on a song with plain lyrics only and the preferred
+    /// type is synced, look for synced lyrics and save them if found; otherwise the plain lyrics stay.</summary>
+    public bool LyricsUpgradePlain { get; set; }
+
+    /// <summary>GitHub #195: songs new to the library go through a background bulk lyrics run.</summary>
+    public bool LyricsAutoFindNew { get; set; }
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>

@@ -639,6 +639,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsAutoDownload;
     /// <summary>What an automatic online pick keeps ("WordSynced" / "LineSynced" / "Plain", GitHub #135). Driven by Settings.</summary>
     [ObservableProperty] private string _lyricsPreferredType = nameof(Models.LyricsPreferredType.WordSynced);
+    /// <summary>Look for synced lyrics when a lyrics view opens on plain ones (GitHub #194). Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsUpgradePlain;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 

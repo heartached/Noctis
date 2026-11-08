@@ -1378,6 +1378,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
+    /// <summary>GitHub #195: every song of the album (or the Ctrl-selection it is in) → bulk Find Lyrics.</summary>
+    [RelayCommand]
+    private async Task FindLyricsAlbum(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).Distinct().ToList();
+        ConsumeCtrlSelection();
+        await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: false);
+    }
+
     /// <summary>Asks for the grouped album's name and album artist (test seam; the two-field prompt).</summary>
     internal Func<string, string, string?, string, string?, string?, string?, Task<(string First, string Second)?>> PromptGroupTarget { get; set; }
         = Views.TextPromptDialog.ShowTwoAsync;

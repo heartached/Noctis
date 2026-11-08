@@ -594,6 +594,14 @@ internal class Program
                     return list;
                 },
                 Path.Combine(sp.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_bulk_ledger.json")));
+        // GitHub #195: new songs → a background bulk lyrics run. Inert until Settings ▸ Lyrics ▸
+        // "Find lyrics for new songs" is on.
+        services.AddSingleton<Services.Lyrics.LyricsAutoFindService>(sp =>
+            new Services.Lyrics.LyricsAutoFindService(
+                sp.GetRequiredService<Services.Lyrics.ILyricsBulkService>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         services.AddSingleton<Services.LyricsStudio.ILyricsStudioEngine>(sp =>
             new Services.LyricsStudio.LyricsStudioEngine(
                 sp.GetRequiredService<IAudioConverterService>(),
