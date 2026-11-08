@@ -820,7 +820,9 @@
                                           Width="14" Height="14"
                                           Foreground="{DynamicResource AccentTextExactBrush}" />
                                 <Button.Flyout>
+                                    <!-- Plugin entries (API 1.7 library commands) are added at the end on open. -->
                                     <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                                Opening="OnOptionsMenuOpening"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T ArtistDetail.PlayNext}" Command="{Binding PlayNextAllCommand}">
                                             <MenuItem.Icon>

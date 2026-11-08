@@ -538,6 +538,23 @@
                             <PathIcon Data="{StaticResource ViewIcon}"/>
                         </Button>
 
+                        <!-- Plugin buttons (API 1.7 library commands on the Songs page), e.g. Album Roulette. -->
+                        <ItemsControl ItemsSource="{Binding PagePluginButtons}" VerticalAlignment="Center"
+                                      IsVisible="{Binding HasPagePluginButtons}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="helpers:PluginPageButton">
+                                    <Button Classes="corner-icon" Command="{Binding Command}"
+                                            AutomationProperties.Name="{Binding Label}"
+                                            ToolTip.Tip="{Binding Label}">
+                                        <PathIcon Data="{Binding Icon}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PageShuffleCommand}"
                                 ToolTip.Tip="{loc:T Main.ShuffleTip}">

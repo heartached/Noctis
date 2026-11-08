@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -366,6 +367,11 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageSetShowOnlyFavoritesCommand;
     [ObservableProperty] private ICommand? _pageSortCommand;
     [ObservableProperty] private ICommand? _pageViewOptionsCommand;
+    /// <summary>Songs page: plugin buttons (API 1.7 library commands) before Shuffle.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPagePluginButtons))]
+    private IReadOnlyList<Helpers.PluginPageButton> _pagePluginButtons = Array.Empty<Helpers.PluginPageButton>();
+    public bool HasPagePluginButtons => PagePluginButtons.Count > 0;
 
     // Computed inverses for non-compiled binding compatibility
     public bool PageShowAllItems => !PageShowOnlyFavorites;
@@ -406,6 +412,7 @@ public partial class TopBarViewModel : ViewModelBase
     public void HidePageActions()
     {
         HasPageActions = false;
+        PagePluginButtons = Array.Empty<Helpers.PluginPageButton>();
         PageShuffleCommand = null;
         PageQueueCommand = null;
         PageSetShowAllItemsCommand = null;

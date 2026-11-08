@@ -255,13 +255,14 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `void Log(string)` | 1.0 | | Writes to the Noctis debug log, prefixed with the plugin name. |
 | `void RegisterVisualLayer(IVisualLayerProvider)` | 1.0 | | A lyrics-page background layer. |
 | `string PluginDirectory` | 1.1 | | The folder the plugin was loaded from. Assemblies are loaded from memory, so `Assembly.Location` is empty: use this for bundled files. |
-| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped); since 1.5 `GetQueue()`, `SetUpNext(trackIds)` and the `TracksQueued` event, see [The queue](#the-queue). Safe from any thread. |
+| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped); since 1.5 `GetQueue()`, `SetUpNext(trackIds)` and the `TracksQueued` event; since 1.7 `QueueTracks(trackIds, playNext)`, see [The queue](#the-queue). Safe from any thread. |
 | `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track; since 1.4 `GetPlaylists()`, see below. |
 | `IPluginSettings Settings` | 1.1 | | Declared settings (see above). |
 | `void Notify(string)` | 1.1 | `notifications` | A notice pill for ~4 s. At most one per second per plugin; long text is cut at 200 characters. |
 | `IDisposable RegisterLyricsProvider(ILyricsProvider)` | 1.1 | `lyrics.provider` | See below. |
 | `IDisposable RegisterTrackCommand(string label, string? icon, Action<TrackInfo>)` | 1.1 | `menu.commands` | Menu entry in the track context menu. `icon`: SVG path data (24×24 box) or null. The handler runs on the UI thread. |
 | `IDisposable RegisterTrackCommand(string label, string? icon, Func<TrackInfo, Task>)` | 1.1 | `menu.commands` | Async variant. |
+| `IDisposable RegisterLibraryCommand(string label, string? icon, LibraryCommandPlaces places, Action<LibraryCommandContext>)` | 1.7 | `menu.commands` | An entry on library pages: `ArtistPage` (the artist page's "…" menu; the context carries the `Artist`) and/or `SongsPage` (an icon button in the Songs page's top bar, next to Shuffle; needs `icon`). The handler runs on the UI thread. |
 | `IDisposable OnTrackScrobbled(Action<TrackInfo, DateTimeOffset>)` | 1.1 | | Fires when a track counts as listened (Last.fm rule), with its start time, whether or not a scrobbling service is connected. |
 | `ITrackAnalysisWriter TrackAnalysis` | 1.2 | `library.write.analysis` | Sets BPM and key of library tracks; see below. |
 | `IDisposable RegisterView(IPluginViewProvider)` | 1.3 | | A view of your own; see [Views](#views). |
@@ -300,6 +301,9 @@ API 1.5, `playback.control`:
   order, while the current song plays on (unknown ids are skipped; explicit songs are left out while
   Settings hides them). Noctis's own Shuffle is switched off, because the order is now yours; Track
   Radio ends; Repeat All repeats the playing song and this list. It does not raise `TracksQueued`.
+- `void QueueTracks(IReadOnlyList<string> trackIds, bool playNext)` (1.7): Play Next (`true`, to
+  the front, in this order) or Add to Queue (`false`, to the end), exactly like the app's own menu
+  entries: Shuffle stays as it is, the queue notice shows and `TracksQueued` is raised.
 - `event EventHandler<TracksQueuedEventArgs> TracksQueued`: the user queued songs themselves (Play
   Next or Add to Queue, one song or a batch), raised on the UI thread after the queue changed, with
   `TrackIds` (in the order they now stand) and `PlayNext` (true: they went to the front; false: the
@@ -494,7 +498,7 @@ separate process, so any format Noctis plays works.
 | `library.read` | `host.Library` | Read your library and playlists (titles, artists, albums, file paths, play counts) |
 | `network` | Nothing in the API: a **disclosure** that the plugin talks to the internet. Declare it if you do. | Connect to the internet |
 | `lyrics.provider` | `RegisterLyricsProvider` | Supply lyrics to the lyrics search |
-| `menu.commands` | `RegisterTrackCommand` | Add entries to the track menu |
+| `menu.commands` | `RegisterTrackCommand`, `RegisterLibraryCommand` (1.7) | Add entries to the track menu |
 | `notifications` | `Notify` | Show short notices |
 | `library.write.analysis` | `TrackAnalysis` (1.2) | Set the BPM and musical key of library tracks (in Noctis only, never in your files) |
 | `library.import` | `LibraryImport` (1.5) | Add audio files it saved (such as downloads) to your library |

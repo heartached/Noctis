@@ -512,6 +512,33 @@ public sealed class PluginTrackCommand
     public void Execute(Track track) => _owner.RunTrackCommand(this, track);
 }
 
+/// <summary>API 1.7: a plugin's entry on a library page (artist page menu, Songs page top bar).</summary>
+public sealed class PluginLibraryCommand
+{
+    private readonly PluginHost _owner;
+    internal readonly LoadedPlugin Plugin;
+    internal readonly Action<LibraryCommandContext> Handler;
+
+    internal PluginLibraryCommand(PluginHost owner, LoadedPlugin plugin, string label, string? icon, LibraryCommandPlaces places, Action<LibraryCommandContext> handler)
+    {
+        _owner = owner;
+        Plugin = plugin;
+        Label = label;
+        Icon = icon;
+        Places = places;
+        Handler = handler;
+    }
+
+    public string Label { get; }
+    /// <summary>SVG path data, or null.</summary>
+    public string? Icon { get; }
+    public LibraryCommandPlaces Places { get; }
+    public string PluginName => Plugin.Name;
+
+    /// <summary>Runs the handler for a click in <paramref name="place"/>; a throw marks the plugin Failed.</summary>
+    public void Execute(LibraryCommandPlaces place, string? artist = null) => _owner.RunLibraryCommand(this, place, artist);
+}
+
 /// <summary>API 1.3: a view a plugin registered, as Settings and the view window see it.</summary>
 public sealed class PluginViewEntry
 {
@@ -685,6 +712,22 @@ public sealed class PluginHost
     /// <summary>Track-menu commands of every running plugin, in load order.</summary>
     public IReadOnlyList<PluginTrackCommand> TrackCommands
         => Plugins.Where(p => p.Adapter is not null && p.Instance is not null).SelectMany(p => p.Adapter!.TrackCommands).ToList();
+
+    /// <summary>API 1.7: library-page commands of every running plugin that show in <paramref name="place"/>, in load order.</summary>
+    public IReadOnlyList<PluginLibraryCommand> LibraryCommands(LibraryCommandPlaces place)
+        => Plugins.Where(p => p.Adapter is not null && p.Instance is not null)
+            .SelectMany(p => p.Adapter!.LibraryCommands).Where(c => (c.Places & place) != 0).ToList();
+
+    /// <summary>A plugin registered or withdrew a library command. Loads and unloads raise
+    /// <see cref="VisualLayersChanged"/> instead (listen to both).</summary>
+    public event EventHandler? LibraryCommandsChanged;
+
+    internal void RaiseLibraryCommandsChanged()
+    {
+        void Raise() => LibraryCommandsChanged?.Invoke(this, EventArgs.Empty);
+        if (Dispatcher.UIThread.CheckAccess()) Raise();
+        else Dispatcher.UIThread.Post(Raise);
+    }
 
     /// <summary>True when some running plugin listens for scrobbles (so the player computes them even without Last.fm).</summary>
     public bool HasScrobbleListeners => Plugins.Any(p => p.Instance is not null && p.Adapter?.HasScrobbleHandlers == true);
@@ -1311,6 +1354,7 @@ public sealed class PluginHost
         {
             parts.AddRange(a.LyricsSources.Select(l => "Lyrics: " + l.Name));
             parts.AddRange(a.TrackCommands.Select(c => "Menu: " + c.Label));
+            parts.AddRange(a.LibraryCommands.Select(c => "Menu: " + c.Label));
             parts.AddRange(a.LyricsEffects.Select(e => "Lyrics motion: " + e.Name));
         }
         plugin.Extensions = string.Join(" · ", parts);
@@ -1334,6 +1378,12 @@ public sealed class PluginHost
         Task? pending = null;
         if (!Guard(command.Plugin, $"menu command '{command.Label}'", () => pending = command.Handler(info)) || pending is null) return;
         _ = ObserveCommandAsync(command, pending);
+    }
+
+    internal void RunLibraryCommand(PluginLibraryCommand command, LibraryCommandPlaces place, string? artist)
+    {
+        var context = new LibraryCommandContext(place, place == LibraryCommandPlaces.ArtistPage ? artist?.Trim() : null);
+        Guard(command.Plugin, $"menu command '{command.Label}'", () => command.Handler(context));
     }
 
     private async Task ObserveCommandAsync(PluginTrackCommand command, Task pending)
@@ -1700,6 +1750,7 @@ public sealed class PluginHost
         private readonly object _gate = new();
         private readonly List<PluginLyricsSource> _lyrics = new();
         private readonly List<PluginTrackCommand> _commands = new();
+        private readonly List<PluginLibraryCommand> _libraryCommands = new();
         private readonly List<Action<TrackInfo, DateTimeOffset>> _scrobbled = new();
         private bool _disposed;
 
@@ -1723,6 +1774,7 @@ public sealed class PluginHost
 
         internal IReadOnlyList<PluginLyricsSource> LyricsSources { get { lock (_gate) return _lyrics.ToList(); } }
         internal IReadOnlyList<PluginTrackCommand> TrackCommands { get { lock (_gate) return _commands.ToList(); } }
+        internal IReadOnlyList<PluginLibraryCommand> LibraryCommands { get { lock (_gate) return _libraryCommands.ToList(); } }
         internal bool HasScrobbleHandlers { get { lock (_gate) return _scrobbled.Count > 0; } }
 
         public void Dispose()
@@ -1743,6 +1795,7 @@ public sealed class PluginHost
             {
                 _lyrics.Clear();
                 _commands.Clear();
+                _libraryCommands.Clear();
                 _scrobbled.Clear();
             }
             // The plugin's lyrics effects go with it (Noctis's own motion comes back).
@@ -1835,6 +1888,21 @@ public sealed class PluginHost
                 foreach (var s in ids)
                     if (Guid.TryParse(s, out var id) && library.GetTrackById(id) is { } t) tracks.Add(t);
                 p.ReplaceUpNext(tracks);
+            });
+        }
+
+        public void QueueTracks(IReadOnlyList<string> trackIds, bool playNext)
+        {
+            if (_disposed || trackIds is null || _library is not { } library) return;
+            var ids = trackIds.ToArray();
+            OnUi(p =>
+            {
+                var tracks = new List<Track>(ids.Length);
+                foreach (var s in ids)
+                    if (Guid.TryParse(s, out var id) && library.GetTrackById(id) is { } t) tracks.Add(t);
+                if (tracks.Count == 0) return;
+                if (playNext) p.AddNextRange(tracks);
+                else p.AddRangeToQueue(tracks);
             });
         }
 
@@ -1968,6 +2036,26 @@ public sealed class PluginHost
             lock (_gate) _commands.Add(command);
             _owner.UpdateExtensions(_plugin);
             return new Registration(() => { lock (_gate) _commands.Remove(command); _owner.UpdateExtensions(_plugin); });
+        }
+
+        public IDisposable RegisterLibraryCommand(string label, string? icon, LibraryCommandPlaces places, Action<LibraryCommandContext> handler)
+        {
+            ArgumentNullException.ThrowIfNull(handler);
+            Require(PluginPermissions.MenuCommands);
+            if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("A menu command needs a label.", nameof(label));
+            places &= LibraryCommandPlaces.ArtistPage | LibraryCommandPlaces.SongsPage;
+            if (places == LibraryCommandPlaces.None) throw new ArgumentException("Say where the command shows.", nameof(places));
+            if (_disposed) return Registration.None;
+            var command = new PluginLibraryCommand(_owner, _plugin, label.Trim(), icon, places, handler);
+            lock (_gate) _libraryCommands.Add(command);
+            _owner.UpdateExtensions(_plugin);
+            _owner.RaiseLibraryCommandsChanged();
+            return new Registration(() =>
+            {
+                lock (_gate) _libraryCommands.Remove(command);
+                _owner.UpdateExtensions(_plugin);
+                _owner.RaiseLibraryCommandsChanged();
+            });
         }
 
         public IDisposable OnTrackScrobbled(Action<TrackInfo, DateTimeOffset> handler)
