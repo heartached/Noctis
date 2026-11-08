@@ -3906,6 +3906,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ConnectedAs" xml:space="preserve"><value>Подключено как {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ConnectedTo" xml:space="preserve"><value>Подключено к {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.WindowsOnly" xml:space="preserve"><value>Доступно только в Windows.</value><comment>Settings status line</comment></data>
+  <data name="Settings.Scrobble.OtherComputer" xml:space="preserve"><value>Вход выполнен на другом компьютере, который использует эту папку данных. Подключитесь здесь, чтобы отправлять прослушивания и с этого компьютера.</value><comment>Settings › Scrobbling card (Last.fm / ListenBrainz): the saved sign-in belongs to another computer or Windows user and can't be read here (GitHub #197)</comment></data>
+  <data name="Settings.Scrobble.OneWaiting" xml:space="preserve"><value>1 прослушивание ждёт отправки.</value><comment>Settings › Scrobbling card: one play queued while offline or signed out, sent once the service can be reached</comment></data>
+  <data name="Settings.Scrobble.Waiting" xml:space="preserve"><value>Прослушиваний ждёт отправки: {0:N0}.</value><comment>Settings › Scrobbling card: plays queued while offline or signed out; {0} is how many</comment></data>
   <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis удалён из списка «Открыть с помощью».</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Зарегистрировано. Выберите Noctis в «Параметры → Приложения → Приложения по умолчанию» или щёлкните песню правой кнопкой → «Открыть с помощью».</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Не удалось обновить типы файлов: {0}</value><comment>Settings status line</comment></data>

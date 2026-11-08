@@ -33,6 +33,12 @@ public interface IListenBrainzService
     /// <summary>Submits a "listen" once playback completed enough of the track (≥50% or ≥4 minutes).</summary>
     Task ScrobbleAsync(Track track, DateTime startedAt);
 
+    /// <summary>GitHub #197: submits up to <see cref="ScrobbleQueue.MaxBatch"/> queued listens in one
+    /// call ("single" for one, "import" for more) and says how it went, so the queue knows what to
+    /// keep. The default (test doubles) sends nothing and keeps them.</summary>
+    Task<ScrobbleSendResult> SendListensAsync(IReadOnlyList<ScrobbleEntry> plays, CancellationToken ct = default)
+        => Task.FromResult(ScrobbleSendResult.Retry);
+
     /// <summary>Submits a "playing_now" ping at track start. Best-effort, fire-and-forget.</summary>
     Task UpdateNowPlayingAsync(Track track);
 }

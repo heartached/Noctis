@@ -2886,6 +2886,44 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    // ── Waiting scrobbles (GitHub #197) ──
+    private ScrobbleQueue? _scrobbleQueue;
+
+    /// <summary>Under the Last.fm card's title: why it is signed out here when another computer
+    /// sharing the data folder holds the login, and how many plays wait to be sent. Empty = hidden.</summary>
+    [ObservableProperty] private string _lastFmQueueNote = "";
+
+    /// <summary>The same for the ListenBrainz card.</summary>
+    [ObservableProperty] private string _listenBrainzQueueNote = "";
+
+    /// <summary>The queue the main window sends scrobbles through.</summary>
+    public void SetScrobbleQueue(ScrobbleQueue queue)
+    {
+        _scrobbleQueue = queue;
+        queue.Changed += (_, _) => Dispatcher.UIThread.Post(RefreshScrobbleNotes);
+    }
+
+    partial void OnIsLastFmConnectedChanged(bool value) => RefreshScrobbleNotes();
+
+    partial void OnIsListenBrainzConnectedChanged(bool value) => RefreshScrobbleNotes();
+
+    private void RefreshScrobbleNotes()
+    {
+        LastFmQueueNote = ScrobbleNote(IsLastFmConnected, PersistenceService.LastFmSessionKeyField, ScrobbleService.LastFm);
+        ListenBrainzQueueNote = ScrobbleNote(IsListenBrainzConnected, PersistenceService.ListenBrainzTokenField, ScrobbleService.ListenBrainz);
+    }
+
+    private string ScrobbleNote(bool connected, string field, ScrobbleService service)
+    {
+        var parts = new List<string>(2);
+        if (!connected && _settings.HasOtherComputerSecret(field))
+            parts.Add(Loc.T("Settings.Scrobble.OtherComputer"));
+        var waiting = _scrobbleQueue?.PendingCount(service) ?? 0;
+        if (waiting > 0)
+            parts.Add(waiting == 1 ? Loc.T("Settings.Scrobble.OneWaiting") : Loc.T("Settings.Scrobble.Waiting", waiting));
+        return string.Join(" ", parts);
+    }
+
     // ── Media server ──
     // The editable fields below are typing state; the authoritative connected
     // state is _mediaServerConnection (token/user id inside), which is what
@@ -3789,6 +3827,7 @@ public partial class SettingsViewModel : ViewModelBase
                 if (IsListenBrainzConnected)
                     ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", _settings.ListenBrainzUsername);
             }
+            RefreshScrobbleNotes();
 
             // Media server (v1: a single Subsonic/Jellyfin connection)
             var serverConnection = _settings.SourceConnections
@@ -6764,6 +6803,8 @@ public partial class SettingsViewModel : ViewModelBase
                     LastFmStatusText = Loc.T("Settings.ConnectedAs", LastFmUsername);
                     _settings.LastFmSessionKey = _lastFm.GetSessionKey() ?? "";
                     await SaveAsync();
+                    // GitHub #197: plays that waited for this sign-in go out now.
+                    _ = _scrobbleQueue?.FlushAsync(now: true);
                     // GitHub #160: "Keep play counts in sync" left on from an earlier sign-in.
                     _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected");
                     return;
@@ -6802,6 +6843,8 @@ public partial class SettingsViewModel : ViewModelBase
     private void LogoutLastFm()
     {
         _lastFm?.Logout();
+        // GitHub #197: signed out on purpose, so plays waiting for Last.fm are no longer owed to it.
+        _scrobbleQueue?.Forget(ScrobbleService.LastFm);
         IsLastFmConnected = false;
         LastFmUsername = "";
         LastFmStatusText = Loc.T("Settings.NotConnected");
@@ -6869,6 +6912,8 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzScrobblingEnabled = true;
             ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", username);
             await SaveAsync();
+            // GitHub #197: listens that waited for this connection go out now.
+            _ = _scrobbleQueue?.FlushAsync(now: true);
             // GitHub #160: "Keep play counts in sync" left on from an earlier connection.
             _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.ListenBrainz, "connected");
         }
@@ -6891,6 +6936,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void LogoutListenBrainz()
     {
         _listenBrainz?.Logout();
+        _scrobbleQueue?.Forget(ScrobbleService.ListenBrainz);
         IsListenBrainzConnected = false;
         // Mirror the connect path (which sets this true): leaving the hidden toggle
         // armed meant any token typed after logout scrobbled without validation.
@@ -8421,6 +8467,8 @@ public partial class SettingsViewModel : ViewModelBase
             // re-persisted it (`_settings.LastFmSessionKey = lfm.GetSessionKey()`), so the
             // account stayed connected while the UI read "Not connected".
             _lastFm?.Logout();
+            _scrobbleQueue?.Forget(ScrobbleService.LastFm);
+            _scrobbleQueue?.Forget(ScrobbleService.ListenBrainz);
 
             ListenBrainzScrobblingEnabled = defaultSettings.ListenBrainzScrobblingEnabled;
             ListenBrainzToken = "";
