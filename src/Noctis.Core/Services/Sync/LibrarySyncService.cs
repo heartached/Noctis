@@ -113,16 +113,21 @@ public sealed class LibrarySyncService : ILibrarySyncService
         foreach (var t in tracks)
         {
             if (t is null || t.SourceType != SourceType.Local) continue;
-            var payload = SyncJson.Serialize(TrackSyncState.From(t));
             var id = t.Id.ToString("N");
+            var existing = Store.Get(SyncKinds.Track, id);
+            var payload = Payload(t, existing?.Payload);
             // Echo guard: applying a phone's change re-saves the track here; identical
             // payloads must not become a new "change" that bounces back to the phone.
-            var existing = Store.Get(SyncKinds.Track, id);
             if (existing is not null && existing.Payload == payload) continue;
             if (Store.Upsert(SyncKinds.Track, id, payload, now, device)) any = true;
         }
         if (any) Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>The track's ledger payload; an Unsnooze since the stored one says so
+    /// (<see cref="TrackSyncState.From(Track, TrackSyncState?)"/>).</summary>
+    private static string Payload(Track t, string? stored) =>
+        SyncJson.Serialize(TrackSyncState.From(t, stored is null ? null : SyncJson.Deserialize<TrackSyncState>(stored)));
 
     public async Task SeedAsync(IEnumerable<Track> tracks, IReadOnlyList<Playlist> playlists)
     {
@@ -135,12 +140,12 @@ public sealed class LibrarySyncService : ILibrarySyncService
             {
                 if (t is null || t.SourceType != SourceType.Local) continue;
                 var id = t.Id.ToString("N");
-                var payload = SyncJson.Serialize(TrackSyncState.From(t));
+                var payload = Payload(t, known.GetValueOrDefault(id));
                 // A song the ledger has is brought up to date: sync was off while it changed
                 // (unfavourited, re-rated), so nothing recorded that. A new one only with state.
                 if (known.TryGetValue(id, out var stored)
                         ? stored == payload
-                        : !t.IsFavorite && t.Rating == 0 && !t.IsDisliked && t.PlayCount == 0) continue;
+                        : !t.IsFavorite && t.Rating == 0 && !t.IsDisliked && t.PlayCount == 0 && !t.IsSnoozed) continue;
                 Store.Upsert(SyncKinds.Track, id, payload, now, device);
             }
             RefreshPlaylists(playlists);
@@ -231,6 +236,21 @@ public sealed class LibrarySyncService : ILibrarySyncService
     private static DateTime? ClampOptional(DateTime? value, DateTime now)
         => value is not { } v || ToUtc(v) < OldestStamp ? null : ClampStamp(v, now);
 
+    /// <summary>A snooze end in UTC, at most <see cref="MaxSnooze"/> ahead; any past date is
+    /// <see cref="TrackSyncState.NotSnoozed"/> (one value for "not snoozed", so the echo guard
+    /// sees the same payload whichever past date a device sent). Null stays null ("says nothing").</summary>
+    internal static DateTime? ClampSnooze(DateTime? value, DateTime now)
+    {
+        if (value is not { } v) return null;
+        v = ToUtc(v);
+        if (v <= now) return TrackSyncState.NotSnoozed;
+        var max = now + MaxSnooze;
+        return v > max ? max : v;
+    }
+
+    /// <summary>The longest snooze a push may set (the apps snooze for 30 days).</summary>
+    public static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(366);
+
     private static DateTime ToUtc(DateTime value) => value.Kind switch
     {
         DateTimeKind.Utc => value,
@@ -262,6 +282,7 @@ public sealed class LibrarySyncService : ILibrarySyncService
                     PlayCount = (int)Math.Clamp(s.PlayCount, 0L, maxPlays),
                     LastPlayed = ClampOptional(s.LastPlayed, now),
                     FavoritedAt = ClampOptional(s.FavoritedAt, now),
+                    SnoozedUntil = ClampSnooze(s.SnoozedUntil, now),
                 };
                 payload = SyncJson.Serialize(s);
                 break;

@@ -1239,6 +1239,35 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
+    /// <summary>The desktop's Snooze for a Month (PlayerViewModel.SnoozeDurationDays).</summary>
+    public const int SnoozeDays = 30;
+
+    /// <summary>
+    /// Snooze <paramref name="tracks"/> for a month, or end their snooze: the desktop's
+    /// SetTracksSnoozedAsync (app state only, no tag write), on the library's own songs and the
+    /// queue's copies. Shuffle then holds them out (PlaybackQueue.IsHeldOutOfShuffle) and the
+    /// Last.fm mixes are built again without them; a desktop song's snooze goes to the computer
+    /// on the next sync (NoctisAccountService.RecordTrackStates).
+    /// </summary>
+    public async Task SetSnoozedAsync(IReadOnlyList<Track> tracks, bool snooze)
+    {
+        if (tracks.Count == 0) return;
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).DistinctBy(t => t.Id).ToList();
+        DateTime? until = snooze ? DateTime.UtcNow.AddDays(SnoozeDays) : null;
+        try
+        {
+            await Library.Service.SetTracksSnoozedAsync(current, until);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Snooze save failed: {ex.Message}");
+        }
+        // After the save: a copy that is the library's own song must still differ when it runs.
+        foreach (var t in tracks) t.SnoozedUntil = until;
+        _lastFm?.SuggestionsChanged();
+        Player.Notice = Loc.T(snooze ? "Mobile.SnoozedNotice" : "Mobile.UnsnoozedNotice");
+    }
+
     [RelayCommand]
     private async Task ToggleCurrentFavouriteAsync()
     {

@@ -125,6 +125,10 @@ public sealed partial class LastFmHomeViewModel : ObservableObject
         _ = RefreshAsync(force: false);
     }
 
+    /// <summary>A song was snoozed or its snooze ended (no library event says so): the mixes are
+    /// matched again, so a snoozed song leaves them as it does on the desktop's Home.</summary>
+    public void SuggestionsChanged() => OnLibraryRefreshed(this, EventArgs.Empty);
+
     /// <summary>The UI language changed: the tiles' names and the entries' lines are built in code.</summary>
     public void Relabel()
     {

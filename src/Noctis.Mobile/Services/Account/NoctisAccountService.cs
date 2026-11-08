@@ -1049,7 +1049,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     else { _pending.Tracks.Remove(hex); pendingChanged = true; }
                 }
                 // Echo guard first: the library save below must not look like a phone edit.
-                if (preferences) SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked);
+                if (preferences) SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked, state.SnoozedUntil);
                 updates.Add((lib, state, preferences));
             }
         }
@@ -1070,6 +1070,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     if (s.Favorite && s.FavoritedAt is { } at && t.FavoritedAt != at) { t.FavoritedAt = at; any = true; }
                     if (t.Rating != s.Rating) { t.Rating = s.Rating; any = true; }
                     if (t.IsDisliked != s.Disliked) { t.IsDisliked = s.Disliked; any = true; }
+                    // Kept as sent, a past date too (not snoozed): it then equals the agreed state
+                    // and the save below is not taken for a phone edit. Absent: an older desktop.
+                    if (s.SnoozedUntil is { } snooze && t.SnoozedUntil != snooze) { t.SnoozedUntil = snooze; any = true; }
                 }
                 // Counts only grow (the desktop's rule): a device that missed plays never rolls them back.
                 if (s.PlayCount > t.PlayCount) { t.PlayCount = s.PlayCount; any = true; }
@@ -1092,7 +1095,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             NoctisServerClient.Bool(p, "disliked"),
             Math.Max(0, NoctisServerClient.Int(p, "playCount")),
             NotFuture(NoctisServerClient.Date(p, "lastPlayed"), now),
-            NotFuture(NoctisServerClient.Date(p, "favoritedAt"), now));
+            NotFuture(NoctisServerClient.Date(p, "favoritedAt"), now),
+            NoctisServerClient.Date(p, "snoozedUntil"));
     }
 
     /// <summary>Untrusted payload → a playlist state: capped strings, only valid non-empty track Guids.</summary>
@@ -1131,7 +1135,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             new TrackSyncState(kv.Value.Favorite, Math.Clamp(kv.Value.Rating, 0, 5), kv.Value.Disliked,
                 // Plays travel as scrobbles: 0 and no date leave the desktop's max-merge untouched.
                 PlayCount: 0, LastPlayed: null,
-                FavoritedAt: kv.Value.Favorite ? NotAfter(kv.Value.FavoritedAt, now) : null),
+                FavoritedAt: kv.Value.Favorite ? NotAfter(kv.Value.FavoritedAt, now) : null,
+                SnoozedUntil: kv.Value.SnoozedUntil),
             NotAfter(kv.Value.UpdatedUtc, now) ?? now)));
         foreach (var batch in PushChunks(all, x => x.Item))
         {
@@ -1145,7 +1150,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     // Only if untouched since the snapshot: a newer edit stays queued.
                     if (_pending.Tracks.TryGetValue(hex, out var current) && ReferenceEquals(current, state))
                         _pending.Tracks.Remove(hex);
-                    SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked);
+                    SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked, state.SnoozedUntil);
                 }
             }
             sent += items.Count;
@@ -1488,14 +1493,19 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             lock (_gate)
             {
                 var agreed = _sync.Baseline.TryGetValue(hex, out var b) ? b : Default;
-                if (agreed.Favorite == fav && agreed.Rating == rating && agreed.Disliked == disliked)
+                // The snooze as the wire says it: an Unsnooze (null here) of a song agreed snoozed
+                // is "not snoozed"; a song never snoozed says nothing (TrackSyncState.From).
+                var snoozed = TrackSyncState.Utc(t.SnoozedUntil) ?? (agreed.Snoozed != null ? TrackSyncState.NotSnoozed : null);
+                var sameSnooze = snoozed == null || snoozed == agreed.Snoozed;
+                if (agreed.Favorite == fav && agreed.Rating == rating && agreed.Disliked == disliked && sameSnooze)
                 {
                     if (_pending.Tracks.Remove(hex)) changed = true;
                     continue;
                 }
-                if (_pending.Tracks.TryGetValue(hex, out var p) && p.Favorite == fav && p.Rating == rating && p.Disliked == disliked)
+                if (_pending.Tracks.TryGetValue(hex, out var p) && p.Favorite == fav && p.Rating == rating && p.Disliked == disliked
+                    && p.SnoozedUntil == snoozed)
                     continue;
-                _pending.Tracks[hex] = new PendingTrackState(fav, rating, disliked, fav ? t.FavoritedAt : null, now);
+                _pending.Tracks[hex] = new PendingTrackState(fav, rating, disliked, fav ? t.FavoritedAt : null, now, snoozed);
                 changed = true;
             }
         }
@@ -1504,10 +1514,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     private static readonly SyncedTrackState Default = new(false, 0, false);
 
-    private void SetBaselineLocked(string hex, bool favorite, int rating, bool disliked)
+    /// <summary>The state agreed with the desktop for one song. <paramref name="snoozed"/> null:
+    /// nothing was said about the snooze (the catalog, an older desktop), so the agreed one stays.</summary>
+    private void SetBaselineLocked(string hex, bool favorite, int rating, bool disliked, DateTime? snoozed = null)
     {
-        if (!favorite && rating == 0 && !disliked) _sync.Baseline.Remove(hex);
-        else _sync.Baseline[hex] = new SyncedTrackState(favorite, rating, disliked);
+        snoozed ??= _sync.Baseline.TryGetValue(hex, out var old) ? old.Snoozed : null;
+        if (!favorite && rating == 0 && !disliked && snoozed == null) _sync.Baseline.Remove(hex);
+        else _sync.Baseline[hex] = new SyncedTrackState(favorite, rating, disliked, snoozed);
     }
 
     private void SchedulePendingSave() => _ = Task.Run(SavePendingNow);

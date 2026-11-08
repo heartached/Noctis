@@ -218,6 +218,14 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- The desktop's Snooze for a Month (MenuLineSnooze); Unsnooze on a snoozed song. -->
+                                            <Button Name="MenuSnooze" Classes="row np-row" Command="{Binding ToggleSnoozeCommand}" IsVisible="{Binding CanSnooze}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhSnooze}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{Binding SnoozeLabel}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <Button Name="MenuGoToAlbum" Classes="row np-row" Command="{Binding GoToAlbumCommand}" IsVisible="{Binding CanGoToAlbum}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhAlbum}" />

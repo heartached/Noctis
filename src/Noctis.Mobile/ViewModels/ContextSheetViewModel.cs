@@ -233,6 +233,24 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     [RelayCommand] private Task ClearRatingAsync() => RateAsync(0);
 
+    // ── Snooze for a Month (the desktop's song and album menus) ──
+
+    /// <summary>A song's or an album's menu: Shuffle and the mixes leave the songs out for a month.</summary>
+    public bool CanSnooze => (Track != null || Album != null) && Tracks.Count > 0;
+
+    /// <summary>Every song here is snoozed now: the row ends the snooze instead.</summary>
+    public bool IsSnoozed => Tracks.Count > 0 && Tracks.All(t => t.IsSnoozed);
+
+    public string SnoozeLabel => IsSnoozed ? Loc.T("Mobile.Unsnooze") : Loc.T("Mobile.SnoozeForMonth");
+
+    [RelayCommand]
+    private async Task ToggleSnoozeAsync()
+    {
+        var snooze = !IsSnoozed;
+        _shell.CloseSheet();
+        await _shell.SetSnoozedAsync(Tracks, snooze);
+    }
+
     /// <summary>The menu's Add to Playlist: the menu closes and the bottom sheet opens on the
     /// playlist list (with its keyboard-aware New playlist box), for whatever the menu was on.</summary>
     [RelayCommand] private void ShowPlaylists() => IsPickingPlaylist = true;

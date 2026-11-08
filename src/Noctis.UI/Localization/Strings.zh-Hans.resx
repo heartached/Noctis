@@ -7685,4 +7685,8 @@
   <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
   <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
   <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>暂停推荐一个月</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>取消暂停推荐</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>已暂停推荐一个月</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>已取消暂停推荐</value></data>
 </root>
