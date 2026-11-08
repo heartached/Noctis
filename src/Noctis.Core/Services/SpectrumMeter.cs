@@ -72,7 +72,9 @@ public sealed class SpectrumMeter
     {
         if (count <= 0 || channels <= 0 || sampleRate <= 0) return;
         var frames = count / channels;
-        var inv = 1.0f / channels;
+        // Above stereo (Multichannel output) a sum over 2, like a downmix: a stereo song on a 5.1
+        // engine (FL/FR only) reads exactly as on a stereo one instead of a third as loud.
+        var inv = 1.0f / Math.Min(channels, 2);
         var head = _head;
         var mask = RingFrames - 1;
         var end = offset + frames * channels;
