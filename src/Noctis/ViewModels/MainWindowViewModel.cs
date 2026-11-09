@@ -2802,6 +2802,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         detail.ViewAlbumRequested += OnViewAlbumFromTrack;
         detail.SetViewArtistAction(ViewArtistFromAlbumDetail);
+        detail.SetOpenGenreAction(OpenGenre);
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
         detail.SetOpenMoreByArtistAction(OpenMoreByArtistPage);
         CurrentView = detail;
@@ -2878,6 +2879,7 @@ public partial class MainWindowViewModel : ViewModelBase
         page.AlbumOpened += (_, album) => OpenAlbumDetail(album, backButtonText: page.ArtistName);
         // Similar Artists tile for an artist in the library: their page, this one in history.
         page.ArtistOpened += (_, name) => OpenArtistDiscography(name);
+        page.GenreOpened += (_, genre) => OpenGenre(genre);
         page.SearchLyricsRequested += (_, track) => SearchLyricsForTrack(track);
         CurrentView = page;
         HighlightSidebarSection("artists");

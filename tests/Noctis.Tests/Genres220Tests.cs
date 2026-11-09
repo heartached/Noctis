@@ -230,7 +230,47 @@ public class Genres220Tests : IDisposable
         Assert.False(vm.IsArtistFiltered);
     }
 
+    // ── Clickable genre labels ──
 
+    [Fact]
+    public void AlbumPage_GenreTokens_OnePerGenre_NoneForUnknown()
+    {
+        var album = NewAlbum("X", "Y");
+        album.Genre = "Rock; Alt-Pop";
+        var tokens = AlbumDetailViewModel.BuildGenreTokens(album);
+        Assert.Equal(new[] { "Rock", "Alt-Pop" }, tokens.Select(t => t.Name));
+        Assert.Equal(new[] { false, true }, tokens.Select(t => t.IsLast));
+        Assert.All(tokens, t => Assert.Equal(" · ", t.Separator));
+
+        album.Genre = "Unknown";
+        Assert.Empty(AlbumDetailViewModel.BuildGenreTokens(album));
+    }
+
+    [Fact]
+    public void ArtistPage_GenreFact_LinksOnlyGenresTheLibraryHas()
+    {
+        var library = new HashSet<string>(new[] { "Hip-Hop", "pop rap" }, StringComparer.OrdinalIgnoreCase);
+        var about = new ArtistInfo { Name = "A", Genres = new List<string> { "pop rap", "trap" } };
+        var links = ArtistDetailViewModel.BuildGenreFactLinks(about, "Hip-Hop", library);
+        Assert.Equal(new[] { "Pop rap", "Trap" }, links.Select(l => l.Text));
+        Assert.Equal(new[] { "pop rap", null }, links.Select(l => l.Genre));
+        Assert.Equal(new[] { true, false }, links.Select(l => l.CanOpen));
+
+        // No MusicBrainz genres: the library's dominant one, title-cased, opens as tagged.
+        var own = ArtistDetailViewModel.BuildGenreFactLinks(null, "hip-hop", library);
+        Assert.Equal("Hip-Hop", Assert.Single(own).Text);
+        Assert.Equal("hip-hop", own[0].Genre);
+        Assert.Empty(ArtistDetailViewModel.BuildGenreFactLinks(null, string.Empty, library));
+    }
+
+    [Fact]
+    public void ArtistPage_DominantGenreName_KeepsTheTaggedSpelling()
+    {
+        var songs = new[] { new Track { Genre = "Hip-Hop; Rap" }, new Track { Genre = "hip-hop" }, new Track { Genre = "" } };
+        Assert.Equal("Hip-Hop", ArtistDetailViewModel.DominantGenreName(songs));
+        Assert.Equal("HIP-HOP", ArtistDetailViewModel.DominantGenre(songs));
+        Assert.Null(ArtistDetailViewModel.DominantGenreName(new[] { new Track() }));
+    }
 
     // ── Sidebar ──
 
@@ -294,5 +334,55 @@ public class Genres220Tests : IDisposable
         finally { win.Close(); }
     }
 
+    [AvaloniaFact]
+    public void AlbumPage_GenreLinks_OpenTheGenre()
+    {
+        EnsureAppStyles();
+        var (lib, _, mixed, _) = Library();
+        mixed.Genre = "Rock; Pop";
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new AlbumDetailViewModel(mixed, player, persistence, lib, new SidebarViewModel(persistence, lib), null!);
+        string? opened = null;
+        vm.SetOpenGenreAction(g => opened = g);
+        var view = new AlbumDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var links = view.GetVisualDescendants().OfType<Button>()
+                .Where(b => b.CommandParameter is string && ReferenceEquals(b.Command, vm.OpenGenreCommand)).ToList();
+            Assert.Equal(new[] { "Rock", "Pop" }, links.Select(b => (string)b.CommandParameter!));
+            links[1].Command!.Execute(links[1].CommandParameter);
+            Assert.Equal("Pop", opened);
+        }
+        finally { win.Close(); }
+    }
 
+    [AvaloniaFact]
+    public void ArtistPage_KickerOpensTheLibraryGenre()
+    {
+        EnsureAppStyles();
+        var (lib, _, _, _) = Library();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var vm = new ArtistDetailViewModel("Band A", lib, player);
+        Assert.Equal("ROCK", vm.GenreKicker);
+        Assert.Equal("Rock", vm.KickerGenre);
+        string? opened = null;
+        vm.GenreOpened += (_, g) => opened = g;
+        var view = new ArtistDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var kicker = view.GetVisualDescendants().OfType<Button>()
+                .First(b => b.Classes.Contains("genre-link") && b.IsVisible);
+            Assert.True(kicker.IsHitTestVisible);
+            kicker.Command!.Execute(kicker.CommandParameter);
+            Assert.Equal("Rock", opened);
+        }
+        finally { win.Close(); }
+    }
 }
