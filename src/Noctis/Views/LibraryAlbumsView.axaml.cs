@@ -55,6 +55,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         }
         if (tile.DataContext is not Album album) return;
 
+        // GitHub #209: the gap between two covers is the tiles' own padding. With a selection
+        // up, a plain press there is a click beside the albums: it clears the selection and
+        // does not open the tile it happens to belong to.
+        if (_selectedAlbums.Count > 0 && IsInTilePadding(tile, e)
+            && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
+            && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
+            && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            ClearSelection();
+            e.Handled = true;
+            return;
+        }
+
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
@@ -66,6 +79,15 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
         if (_selectedAlbums.Count > 0)
             Focus();
+    }
+
+    /// <summary>The press landed in the tile's padding (the gap around its cover and caption).</summary>
+    private static bool IsInTilePadding(Button tile, PointerPressedEventArgs e)
+    {
+        var p = e.GetPosition(tile);
+        var pad = tile.Padding;
+        return p.X < pad.Left || p.Y < pad.Top
+            || p.X > tile.Bounds.Width - pad.Right || p.Y > tile.Bounds.Height - pad.Bottom;
     }
 
     /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
