@@ -1,6 +1,37 @@
 {
   "releases": [
     {
+      "tag": "plugin-albumroulette-v1.0.1",
+      "version": "plugin-albumroulette-v1.0.1",
+      "name": "Album Roulette plugin 1.0.1",
+      "label": "Album Roulette",
+      "publishedAt": "2026-11-09T05:13:10Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumroulette-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Song Roulette mode",
+            "Added Album Roulette and Song Roulette to the artist page menu, and Song Roulette to the Songs page"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved menu icons for Album Roulette and Song Roulette"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the genre filter missing songs with more than one genre"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "plugin-youtubeimport-v1.0.1",
       "version": "plugin-youtubeimport-v1.0.1",
       "name": "Add from YouTube plugin 1.0.1",
@@ -4177,6 +4208,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-06T06:20:23.562Z",
+  "updatedAt": "2026-11-09T05:13:24.693Z",
   "degraded": false
 }
