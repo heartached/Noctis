@@ -309,7 +309,7 @@
                 </Grid>
 
                 <!-- Filled glyphs, no circle, Play/Pause a little larger than the skips: the desktop
-                     player bar's 18 and 20, here 44 and 48 (the Queue pill: 30 and 33).
+                     player bar's 18 and 20, here 36 and 40 (owner 11-08: a little smaller; the Queue pill: 30 and 33).
                      Shuffle and Repeat at the row's ends (np-mode), as on the Queue pill too. -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
                     <Button Grid.Column="0" Name="ShuffleButton" Classes="icon np-mode" HorizontalAlignment="Left"
@@ -322,15 +322,15 @@
                     </Button>
                     <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
                             Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
-                        <controls:TransportGlyph Kind="Previous" Width="44" Height="44" />
+                        <controls:TransportGlyph Kind="Previous" Width="36" Height="36" />
                     </Button>
                     <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport tx"
                             Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
-                        <controls:TransportGlyph Kind="PlayPause" Width="48" Height="48" IsPlaying="{Binding Player.IsPlaying}" />
+                        <controls:TransportGlyph Kind="PlayPause" Width="40" Height="40" IsPlaying="{Binding Player.IsPlaying}" />
                     </Button>
                     <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
                             Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
-                        <controls:TransportGlyph Kind="Next" Width="44" Height="44" />
+                        <controls:TransportGlyph Kind="Next" Width="36" Height="36" />
                     </Button>
                     <Button Grid.Column="4" Name="RepeatButton" Classes="icon np-mode" HorizontalAlignment="Right"
                             Classes.on="{Binding Player.IsRepeatOn}"
