@@ -130,10 +130,9 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
-  <!-- Dependency Injection -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-  </ItemGroup>
+  <!-- Dependency Injection: Microsoft.Extensions.DependencyInjection needs no PackageReference.
+       The Microsoft.AspNetCore.App framework reference above already carries the 10.0.x copy,
+       so an 8.x package ref was inert and the SDK flagged it (NU1510). -->
 
   <!-- Audio playback via libVLC -->
   <ItemGroup>
