@@ -1,6 +1,86 @@
 {
   "releases": [
     {
+      "tag": "v1.6.9",
+      "version": "1.6.9",
+      "name": "v1.6.9",
+      "label": "1.6.9",
+      "publishedAt": "2026-11-09T05:27:13Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.9",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Quick Add to Playlist button for up to three playlists",
+            "Added Move to Trash button for the playing song and its lyrics files",
+            "Added Show Artists as Written in the Tags option",
+            "Added drop position for files dragged into the queue",
+            "Added Save Grouping to Files for album grouping",
+            "Added Group Untagged Albums switch",
+            "Added Linux .deb package",
+            "Added automatic upgrade of plain lyrics to synced lyrics",
+            "Added Find Lyrics for whole albums",
+            "Added review step before saving found lyrics",
+            "Added background lyrics search for new songs",
+            "Added offline Last.fm and ListenBrainz play queue",
+            "Added Song Roulette",
+            "Added sidebar page visibility and order settings",
+            "Added start page choice",
+            "Added Multichannel Output for 5.1 and 7.1 files",
+            "Added Include Lyrics and Lyrics Only search options",
+            "Added Other Versions for live, remastered and instrumental copies",
+            "Added Flyout state sync for Shuffle and Repeat"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved album grouping to keep original album information",
+            "Improved Linux CI to block AppImages needing newer system libraries",
+            "Improved Linux second-launch message in the terminal",
+            "Improved Statistics Time Listened text to fit",
+            "Improved Settings descriptions across all tabs",
+            "Improved \"feat.\" handling on the lyrics page and album header",
+            "Improved visualizer range from deep bass to high treble",
+            "Improved Visualizer and Lyrics page edge-to-edge spectrum",
+            "Improved sidebar settings row spacing",
+            "Improved lyrics search result layout",
+            "Improved search box to float over the page",
+            "Improved Other Versions menu with short rows and album covers",
+            "Improved menu icons for Other Versions, Find Lyrics, Album Roulette and Song Roulette",
+            "Improved Share Lyrics to remove the Lyrics Page layout"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playing song coming back after clearing the queue and adding songs",
+            "Fixed Repeat All after clearing the queue",
+            "Fixed loose singles with no album tag merging into one \"Various Artists\" album",
+            "Fixed Linux AppImage closing right after opening on Ubuntu 22.04 and Zorin OS 17",
+            "Fixed MP3s made with ffmpeg showing double their length",
+            "Fixed Settings getting wider when a plugin page is open",
+            "Fixed repeated \"played\" rows in the queue when Repeat All and Keep Played Songs are on",
+            "Fixed Remove from Library leaving .elrc lyrics files behind",
+            "Fixed Cover Flow and Discord status showing artist names differently from the rest of the app",
+            "Fixed Last.fm and ListenBrainz signing out on both computers when sharing one data folder",
+            "Fixed the flat block on the bass side of the Visualizer",
+            "Fixed Roulette genre filter missing songs with more than one genre",
+            "Fixed speed, mono, balance and visualizers with multichannel output",
+            "Fixed start page not falling back to Home when its page is hidden",
+            "Fixed Find Lyrics showing a tick next to songs not found",
+            "Fixed the first lyrics search stalling the app",
+            "Fixed tray menu cut off at 150% Interface Size",
+            "Fixed Shuffle and Repeat not working from the Windows media flyout",
+            "Fixed duplicate Noctis sliders in the volume mixer",
+            "Fixed black corners on the tray menu when transparency effects are off"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "plugin-albumroulette-v1.0.1",
       "version": "plugin-albumroulette-v1.0.1",
       "name": "Album Roulette plugin 1.0.1",
@@ -4208,6 +4288,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-09T05:13:24.693Z",
+  "updatedAt": "2026-11-09T05:27:49.477Z",
   "degraded": false
 }
