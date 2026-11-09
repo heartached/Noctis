@@ -53,7 +53,7 @@ public class PopupLineIconTests
         ("ReplayGainScannerDialog", "MenuLineReplayGain", ["Helpers/TrackContextMenuBuilder.cs", "Helpers/AlbumContextMenuBuilder.cs"]),
         ("SpectrogramWindow", "MenuLineSpectrogram", ["Helpers/TrackContextMenuBuilder.cs"]),
         ("SendToFolderDialog", "MenuLineSendToFolder", ["Helpers/TrackContextMenuBuilder.cs"]),
-        ("LyricsSearchDialog", "MenuLineLyrics", ["Helpers/TrackContextMenuBuilder.cs", "Helpers/AlbumContextMenuBuilder.cs"]),
+        ("LyricsSearchDialog", "MenuLineLyrics", ["Helpers/TrackContextMenuBuilder.cs"]),
         ("LyricsBackgroundPickerDialog", "MenuLineVideo", ["Helpers/TrackContextMenuBuilder.cs", "Helpers/AlbumContextMenuBuilder.cs"]),
         ("RemoveFromLibraryDialog", "MenuLineTrash", ["Helpers/TrackContextMenuBuilder.cs", "Helpers/AlbumContextMenuBuilder.cs"]),
         ("LyricShareDialog", "MenuLineCamera", ["Views/PlaybackBarView.axaml"]),

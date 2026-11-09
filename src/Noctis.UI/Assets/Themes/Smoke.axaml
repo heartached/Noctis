@@ -47,6 +47,11 @@
     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#0AFFFFFF" />
     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#14FFFFFF" />
     <SolidColorBrush x:Key="TrackListMultiSelectBrush" Color="#402F6ACB" />
+    <!-- GitHub #209: the Ctrl-selection plate and outline; App.SetAccent re-derives both. -->
+    <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
+    <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
+    <!-- GitHub #218: the soft glow behind a hovered album (Album Hover Zoom). -->
+    <BoxShadows x:Key="AlbumHoverGlow">0 0 24 1 #3DFFFFFF</BoxShadows>
 
     <!-- Text -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F1F2F6" />
