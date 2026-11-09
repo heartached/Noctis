@@ -38,7 +38,7 @@ public partial class TopBarViewModel : ViewModelBase
     public static string TabTitleKey(string tabName) => tabName switch
     {
         "Home" => "Nav.Home", "Songs" => "Nav.Songs", "Albums" => "Nav.Albums", "Artists" => "Nav.Artists",
-        "Folders" => "Nav.Folders", "Playlists" => "Nav.Playlists", "Favorites" => "Nav.Favorites",
+        "Folders" => "Nav.Folders", "Genres" => "Nav.Genres", "Playlists" => "Nav.Playlists", "Favorites" => "Nav.Favorites",
         "Visualizer" => "Nav.Visualizer", "Lyrics Studio" => "Nav.LyricsStudio", "Settings" => "Nav.Settings", "Server" => "Nav.Server", "Audio CD" => "Nav.AudioCd",
         "Statistics" => "Tab.Statistics", "Queue" => "Tab.Queue", "Lyrics" => "Tab.Lyrics",
         "Playlist" => "Tab.Playlist", "Library" => "Tab.Library",

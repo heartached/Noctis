@@ -46,13 +46,14 @@ public partial class SidebarViewModel : ViewModelBase
     /// </summary>
     public ObservableCollection<PlaylistNavItem> SidebarRows { get; } = new();
 
-    /// <summary>Main navigation items (Home, Songs, Albums, Artists, Folders, Playlists, Visualizer, Settings).</summary>
+    /// <summary>Main navigation items (Home, Songs, Albums, Artists, Genres, Folders, Playlists, Visualizer, Settings).</summary>
     public ObservableCollection<NavItem> NavItems { get; } = new()
     {
         new NavItem { Key = "home", Label = Loc.T("Nav.Home"), IconGlyph = "HomeIcon" },
         new NavItem { Key = "songs", Label = Loc.T("Nav.Songs"), IconGlyph = "SongsIcon" },
         new NavItem { Key = "albums", Label = Loc.T("Nav.Albums"), IconGlyph = "AlbumsIcon" },
         new NavItem { Key = "artists", Label = Loc.T("Nav.Artists"), IconGlyph = "ArtistsIcon" },
+        new NavItem { Key = "genres", Label = Loc.T("Nav.Genres"), IconGlyph = "TagIcon" },
         new NavItem { Key = "folders", Label = Loc.T("Nav.Folders"), IconGlyph = "FoldersIcon" },
         new NavItem { Key = "playlists", Label = Loc.T("Nav.Playlists"), IconGlyph = "PlaylistsIcon" },
         new NavItem { Key = "visualizer", Label = Loc.T("Nav.Visualizer"), IconGlyph = "SidebarVisualizerIcon" },
@@ -70,7 +71,7 @@ public partial class SidebarViewModel : ViewModelBase
     public static string LabelKey(string navKey) => navKey switch
     {
         "home" => "Nav.Home", "songs" => "Nav.Songs", "albums" => "Nav.Albums", "artists" => "Nav.Artists",
-        "folders" => "Nav.Folders", "playlists" => "Nav.Playlists", "visualizer" => "Nav.Visualizer", "lyricsstudio" => "Nav.LyricsStudio",
+        "genres" => "Nav.Genres", "folders" => "Nav.Folders", "playlists" => "Nav.Playlists", "visualizer" => "Nav.Visualizer", "lyricsstudio" => "Nav.LyricsStudio",
         "settings" => "Nav.Settings", "favorites" => "Nav.Favorites", "server" => "Nav.Server", "cd" => "Nav.AudioCd",
         "inbox" => "Nav.Inbox",
         _ => navKey,

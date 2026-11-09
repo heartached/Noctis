@@ -44,6 +44,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
+    /// <summary>The genre a Genres-page click narrowed the grid to (GitHub #220); empty otherwise.</summary>
+    [ObservableProperty] private string _genreFilterName = string.Empty;
     public double TileRowHeight => TileArtworkSize + TileTextHeight;
 
     /// <summary>Covers per row. Classic five in Automatic mode; otherwise derived from
@@ -399,13 +401,21 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// runs ahead of it by the debounce) and chips. The view resets its scroll only when this
     /// changes, so a library reload or column-count rebuild of the same results keeps its place.
     /// </summary>
-    internal string FilterKey => $"{ArtistFilterName}\n{_currentFilter}\n{ReleaseTypeFilter}\n{QualityFilter}";
+    internal string FilterKey => $"{ArtistFilterName}\n{GenreFilterName}\n{_currentFilter}\n{ReleaseTypeFilter}\n{QualityFilter}";
 
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
 
-    /// <summary>Dynamic header: artist name when filtered, "Albums" otherwise.</summary>
-    public string HeaderText => IsArtistFiltered ? ArtistFilterName : Loc.T("Nav.Albums");
+    /// <summary>Whether the view shows one genre's albums and songs (GitHub #220).</summary>
+    public bool IsGenreFiltered => !string.IsNullOrEmpty(GenreFilterName);
+
+    /// <summary>An artist or genre page rather than the whole grid: a Back target with its own title.</summary>
+    public bool IsPageFiltered => IsArtistFiltered || IsGenreFiltered;
+
+    /// <summary>Dynamic header: artist or genre name when filtered, "Albums" otherwise.</summary>
+    public string HeaderText => IsArtistFiltered ? ArtistFilterName
+        : IsGenreFiltered ? (GenreRow.IsUnknownKey(GenreFilterName) ? Loc.T("Genres.Unknown") : GenreFilterName)
+        : Loc.T("Nav.Albums");
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
@@ -527,7 +537,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _finishedPlays = new FinishedPlays(player, finished =>
         {
             var ranksByPlays = AlbumSortMode == "mostplayed" ||
-                (IsArtistFiltered && finished.Any(t => ContainsArtistToken(t.Artist, ArtistFilterName)));
+                (IsArtistFiltered && finished.Any(t => ContainsArtistToken(t.Artist, ArtistFilterName))) ||
+                (IsGenreFiltered && finished.Any(t => GenresViewModel.TrackHasGenre(t, GenreFilterName)));
             if (!ranksByPlays) return true;
             if (_isActive) RebuildFilteredRows(onlyIfChanged: true);
             else _isDirty = true;
@@ -577,6 +588,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     partial void OnArtistFilterNameChanged(string value)
     {
         OnPropertyChanged(nameof(IsArtistFiltered));
+        OnPropertyChanged(nameof(IsPageFiltered));
+        OnPropertyChanged(nameof(HeaderText));
+    }
+
+    partial void OnGenreFilterNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsGenreFiltered));
+        OnPropertyChanged(nameof(IsPageFiltered));
         OnPropertyChanged(nameof(HeaderText));
     }
 
@@ -598,12 +617,19 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
 
     /// <summary>Sets the artist filter for showing a specific artist's discography.</summary>
-    public void SetArtistFilter(string artistName)
+    public void SetArtistFilter(string artistName) => SetPageFilter(artistName, string.Empty);
+
+    /// <summary>Narrows the grid to one genre's albums with its songs above them (GitHub #220):
+    /// the Genres page's drill-down, a Back target like the artist filter.</summary>
+    public void SetGenreFilter(string genre) => SetPageFilter(string.Empty, genre.Trim());
+
+    private void SetPageFilter(string artistName, string genre)
     {
-        if (!IsArtistFiltered && !HasActiveFilter && SavedScrollOffset > 0)
+        if (!IsPageFiltered && !HasActiveFilter && SavedScrollOffset > 0)
             SavedUnfilteredScrollOffset = SavedScrollOffset;
 
         ArtistFilterName = artistName;
+        GenreFilterName = genre;
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
         SearchText = string.Empty;
@@ -623,18 +649,19 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst, GenreFilterName);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
-    /// <summary>Clears the artist filter (when navigating back to all albums).</summary>
+    /// <summary>Clears the artist or genre filter (when navigating back to all albums).</summary>
     public void ClearArtistFilter()
     {
         // Mark dirty if any filter was active so Refresh() rebuilds with cleared state
-        if (!string.IsNullOrEmpty(ArtistFilterName) || !string.IsNullOrEmpty(_currentFilter))
+        if (IsPageFiltered || !string.IsNullOrEmpty(_currentFilter))
             _isDirty = true;
 
         ArtistFilterName = string.Empty;
+        GenreFilterName = string.Empty;
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
         SearchText = string.Empty;
@@ -668,7 +695,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst, GenreFilterName);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -680,6 +707,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var generation = Interlocked.Increment(ref _rebuildGeneration);
         var albums = _allAlbums;
         var artistFilter = ArtistFilterName;
+        var genreFilter = GenreFilterName;
         var searchFilter = _currentFilter;
         var columns = GridColumns;
         var releaseTypeFilter = ReleaseTypeFilter;
@@ -695,7 +723,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (library != null)
                 albums = library.Albums.ToList();
 
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending, newestFirst);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending, newestFirst, genreFilter);
 
             // Only apply if no newer rebuild was requested. A superseded library
             // reload must re-mark dirty: the newer request may have captured the
@@ -740,7 +768,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private List<object> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
         ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default",
-        bool sortAscending = true, bool newestFirst = false)
+        bool sortAscending = true, bool newestFirst = false, string genreFilter = "")
     {
         var filtered = allAlbums.AsEnumerable();
 
@@ -767,6 +795,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             filtered = filtered.Where(a => ContainsArtistToken(a.Artist, artistFilter));
         }
+
+        // Genre page (GitHub #220): every album with at least one song carrying the genre.
+        var isGenrePage = !string.IsNullOrEmpty(genreFilter);
+        if (isGenrePage)
+            filtered = filtered.Where(a => a.Tracks.Any(t => GenresViewModel.TrackHasGenre(t, genreFilter)));
 
         // Apply search filter on top
         if (!string.IsNullOrWhiteSpace(searchFilter))
@@ -797,10 +830,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
+        else if (isGenrePage)
+        {
+            // A genre spans many artists: grouped by album artist like MusicBee's genre view,
+            // unless the top bar's sort menu picked another order.
+            filtered = sortMode == "default"
+                ? ApplySortMode(filtered, "albumartist", ascending: true)
+                : ApplySortMode(filtered, sortMode, sortAscending, _randomSortSeed, newestFirst);
+        }
 
         // Explicit sort modes replace the default ordering (and the recent-import
-        // float) when no artist/search filter narrows the grid.
-        if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
+        // float) when no artist/search/genre filter narrows the grid.
+        if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && !isGenrePage && string.IsNullOrWhiteSpace(searchFilter))
         {
             // Benign race: a mid-rebuild seed bump queues its own rebuild and the
             // generation guard discards this one, so a torn read cannot stick.
@@ -819,7 +860,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // anything added in the last 7 days — the placement survives a restart
         // (the previous flag-only check lost the float on every relaunch).
         IEnumerable<Album> ordered;
-        if (string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
+        if (string.IsNullOrEmpty(artistFilter) && !isGenrePage && string.IsNullOrWhiteSpace(searchFilter))
         {
             var recentCutoff = DateTime.UtcNow - TimeSpan.FromDays(7);
             var materialized = filtered.ToList();
@@ -858,7 +899,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // alone opens to a permanently empty page. Chip filters are album-level, so the
         // section is omitted while one narrows the grid.
         if (!string.IsNullOrEmpty(artistFilter) && !releaseTypeFilter.HasValue && qualityFilter.Length == 0)
-            return ComposeArtistRows(albumRows, allAlbums, artistFilter, searchFilter);
+            return ComposeArtistRows(albumRows, allAlbums, t => ContainsArtistToken(t.Artist, artistFilter), searchFilter);
+
+        // A genre page leads with the genre's most played songs the same way.
+        if (isGenrePage && !releaseTypeFilter.HasValue && qualityFilter.Length == 0)
+            return ComposeArtistRows(albumRows, allAlbums, t => GenresViewModel.TrackHasGenre(t, genreFilter), searchFilter);
 
         return albumRows.Cast<object>().ToList();
     }
@@ -954,15 +999,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// Prepends the artist's ranked Songs section (Home "Most Listened To" pill rows)
     /// to the album grid rows, with section headers when both sections are present.
     /// </summary>
+    /// <param name="belongs">The page's songs: for an artist, the full track credit (tokenised),
+    /// so feature appearances count as "associated with" — but tokens compare exactly, keeping
+    /// near-duplicate artist spellings (e.g. a quoted variant) on their own separate pages;
+    /// for a genre, the songs carrying it.</param>
     private static List<object> ComposeArtistRows(
-        List<AlbumRow> albumRows, List<Album> allAlbums, string artistFilter, string searchFilter)
+        List<AlbumRow> albumRows, List<Album> allAlbums, Func<Track, bool> belongs, string searchFilter)
     {
-        // Match on the full track credit (tokenised), so feature appearances count as
-        // "associated with" — but tokens compare exactly, keeping near-duplicate artist
-        // spellings (e.g. a quoted variant) on their own separate pages.
         IEnumerable<Track> tracks = allAlbums
             .SelectMany(a => a.Tracks)
-            .Where(t => ContainsArtistToken(t.Artist, artistFilter));
+            .Where(belongs);
 
         if (!string.IsNullOrWhiteSpace(searchFilter))
         {
@@ -1165,6 +1211,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var tracks = new List<Track>();
         var seen = new HashSet<Guid>();
+        // A genre page plays the genre's songs only, not the rest of a mixed album (GitHub #220).
+        var genre = GenreFilterName;
         foreach (var row in FilteredAlbumRows)
         {
             switch (row)
@@ -1177,7 +1225,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 case AlbumRow albumRow:
                     foreach (var album in albumRow.Albums)
                         foreach (var track in album.Tracks ?? new())
-                            if (seen.Add(track.Id))
+                            if ((genre.Length == 0 || GenresViewModel.TrackHasGenre(track, genre)) && seen.Add(track.Id))
                                 tracks.Add(track);
                     break;
             }
