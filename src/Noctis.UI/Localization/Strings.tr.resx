@@ -188,10 +188,6 @@
     <value>Ses Dosyalarını Noctis ile Aç</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>Noctis'i çaldığı biçimler için Windows'un Birlikte aç listesine ve Varsayılan uygulamalara ekle.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>Kaydet</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -342,10 +338,6 @@
   </data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve">
     <value>Sanatçı Etiketi Ayırıcıları</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>Bir sanatçı etiketini birden çoğa bölen metin. "Simon &amp; Garfunkel" gibi adları bütün tutmak için birini kaldır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -556,10 +548,6 @@
     <value>Vurgu rengi albüm kapağını izler</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>Vurgu rengini çalan kapaktan al. Hiçbir şey çalmazken seçtiğin vurgu rengi geri gelir.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Vurgu Rengi</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -578,10 +566,6 @@
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>BETA</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>Pencereyi, kenar çubuğunu, ayarları ve oynatma çubuğunu yarı saydam, bulanık cam yüzeylerle buzla.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -780,10 +764,6 @@
     <value>Oynatıcı Adası Genişliği</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>Daha geniş, arama çubuğuna daha fazla yer verir. Adanın kenarlarını da sürükleyebilirsin. Sıfırlamak için düğmeye çift tıkla.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>Daha dar</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -818,10 +798,6 @@
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>Akan Söz Arka Planı</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>Sürüklenme kapağı hareket ettirir ve ritimle atar. Kawarp onu yavaş bir sıvı akışına eritir. Eklenti stilleri de burada görünür.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -992,10 +968,6 @@
     <value>En Düşük Satır Opaklığı</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Her söz satırını hafifçe görünür tut; böylece herhangi bir satıra tıklayıp oraya atlayabilirsin. %0 geçerli satırdan uzak satırları gizler.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Bölünmüş Kelimeleri Birleştir</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1006,10 +978,6 @@
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>Oynatıcı Çubuğu Opaklığı</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>Oynatma çubuğunun arka planının ne kadar dolgun göründüğü.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1100,10 +1068,6 @@
     <value>Özel Mod</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>Windows karıştırıcısını atlayan bit-perfect çıkış. Diğer uygulamalar susar ve geçişler kapanır.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>Tempo ve Ton Analizi</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1114,10 +1078,6 @@
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>Analizi dosya etiketlerine kaydet</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>BPM ve tonu dosyanın etiketlerine yaz. Bu, dosyalarını değiştirir.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1194,10 +1154,6 @@
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>Sesi ReplayGain etiketlerinden ayarla. Parçaları sağ tıkla tarayabilirsin.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1598,10 +1554,6 @@
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>Klavye kısayolları</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Backspace bağı kaldırır. Medya tuşları her zaman çalışır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6168,4 +6120,5 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
