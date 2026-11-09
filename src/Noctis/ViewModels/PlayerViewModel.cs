@@ -195,6 +195,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>The current file's chapters sorted by start; empty when it has none.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasChapters))]
+    [NotifyPropertyChangedFor(nameof(IslandChaptersButtonVisible))]
     private IReadOnlyList<TrackChapter> _chapters = Array.Empty<TrackChapter>();
 
     /// <summary>Two or more chapters: something to jump between (a lone chapter is the whole file).</summary>
@@ -561,6 +562,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
     /// <summary>Visualizer paints with the artwork's colour (else white/accent). Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+    /// <summary>GitHub #205: the visualizer reads the analyser-weighted spectrum. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
     /// <summary>The current cover's vibrant colour (ShareCardRenderer's path-cached hue-bucket
     /// vote, computed off the UI thread when the track changes); null without artwork.
     /// The visualizer surfaces tint their bars with it.</summary>

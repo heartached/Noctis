@@ -1312,6 +1312,27 @@
                                             IsFavorite="{Binding CurrentTrack.IsFavorite, FallbackValue=False}" />
                     </Button>
 
+                    <!-- Discord "Chapter Button in Player Island": the "…" menu's Chapters list one
+                         click away for audiobooks. Opt-in (Settings → Player → Player island
+                         buttons), on screen only while the track has chapters, budgeted with the
+                         extras; rows filled per open (OnChaptersMenuOpening), with the hidden first
+                         row the quick playlist menu needs too. -->
+                    <Button x:Name="ChaptersButton"
+                            Classes="secondary-btn"
+                            IsVisible="{Binding IslandChaptersButtonVisible}"
+                            ToolTip.Tip="{loc:T PlaybackBar.Chapters}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.Chapters}"
+                            Width="34" Height="34">
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineChapters}" Foreground="{DynamicResource IslandIconFill}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Top"
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <Separator IsVisible="False" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <!-- GitHub #186: Quick Add to Playlist and Move to Trash, each opt-in (Settings →
                          Player → Player island buttons) and budgeted with the extras above. The quick
                          playlist menu is a MenuFlyout (overlay-hosted and frosted by GlassMenus like

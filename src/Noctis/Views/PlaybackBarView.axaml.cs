@@ -146,6 +146,8 @@ public partial class PlaybackBarView : UserControl
         }
         if (QuickPlaylistButton.Flyout is MenuFlyout quickPlaylistMenu)
             quickPlaylistMenu.Opening += OnQuickPlaylistMenuOpening;
+        if (ChaptersButton.Flyout is MenuFlyout chaptersMenu)
+            chaptersMenu.Opening += OnChaptersMenuOpening;
 
         // Seek slider: use Tunnel routing so our handlers fire BEFORE the
         // Slider's internal Thumb/Track handlers.  When we mark Handled the
@@ -413,6 +415,7 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowLyricsButton) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowQuickPlaylist) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTrash) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandChaptersButtonVisible) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTime))
         {
             UpdateIslandWidth();
@@ -1754,6 +1757,7 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowMiniPlayer ? 1 : 0)
                         + (vm.IslandShowQuickPlaylist ? 1 : 0) // GitHub #186
                         + (vm.IslandShowTrash ? 1 : 0)
+                        + (vm.IslandChaptersButtonVisible ? 1 : 0) // Discord: audiobook chapters
                         // GitHub #183: Lyrics is a stock button; hidden, it hands its 36px back.
                         - (vm.IslandLyricsButtonVisible ? 0 : 1);
             return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);
@@ -2048,7 +2052,28 @@ public partial class PlaybackBarView : UserControl
     {
         var item = ChaptersMenuItem;
         item.Items.Clear();
-        if (!vm.HasChapters) return;
+        foreach (var row in BuildChapterItems(vm))
+            item.Items.Add(row);
+    }
+
+    /// <summary>
+    /// Discord "Chapter Button in Player Island": the island's Chapters menu, rebuilt per open
+    /// with the same rows as "…" → Chapters ▸ (<see cref="BuildChapterItems"/>).
+    /// </summary>
+    private void OnChaptersMenuOpening(object? sender, EventArgs e)
+    {
+        if (sender is not MenuFlyout menu || DataContext is not PlayerViewModel vm) return;
+        // Index 0 is the hidden placeholder from the XAML (see the quick playlist menu).
+        for (var i = menu.Items.Count - 1; i >= 1; i--) menu.Items.RemoveAt(i);
+        foreach (var row in BuildChapterItems(vm))
+            menu.Items.Add(row);
+    }
+
+    /// <summary>One row per chapter of the playing track, for both chapter menus.</summary>
+    private List<MenuItem> BuildChapterItems(PlayerViewModel vm)
+    {
+        var rows = new List<MenuItem>();
+        if (!vm.HasChapters) return rows;
         var chapters = vm.Chapters;
         var current = TrackChapter.IndexAt(chapters, vm.Position);
         for (var i = 0; i < chapters.Count; i++)
@@ -2069,8 +2094,9 @@ public partial class PlaybackBarView : UserControl
             Avalonia.Automation.AutomationProperties.SetName(row, $"{title.Text}, {start.Text}");
             if (i == current)
                 row.Icon = new LineIcon { Data = MenuV2.FindGeometry(this, "MenuLineCheck"), Classes = { "mv2-icon", "mv2-check" } };
-            item.Items.Add(row);
+            rows.Add(row);
         }
+        return rows;
     }
 
     private int _artistAvatarGeneration;

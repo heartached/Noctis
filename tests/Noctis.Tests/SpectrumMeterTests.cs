@@ -18,32 +18,32 @@ public class SpectrumMeterTests
     private const int Bands = 48;
 
     /// <summary>Feeds <paramref name="seconds"/> of stereo audio in 10 ms reads, advancing the fake clock in step.</summary>
-    private static (SpectrumMeter meter, Func<double> now) Run(Func<double, float> sampleAt, double seconds, int latencyMs = 0)
+    private static (SpectrumMeter meter, Func<double> now) Run(Func<double, float> sampleAt, double seconds, int latencyMs = 0, int rate = Rate)
     {
         double clockMs = 0;
         var meter = new SpectrumMeter(() => clockMs);
-        var framesPerRead = Rate / 100;
+        var framesPerRead = rate / 100;
         var buffer = new float[framesPerRead * Channels];
-        var totalFrames = (int)(seconds * Rate);
+        var totalFrames = (int)(seconds * rate);
         for (var start = 0; start < totalFrames; start += framesPerRead)
         {
             for (var f = 0; f < framesPerRead; f++)
             {
-                var s = sampleAt((start + f) / (double)Rate);
+                var s = sampleAt((start + f) / (double)rate);
                 buffer[f * Channels] = s;
                 buffer[f * Channels + 1] = s;
             }
-            meter.Feed(buffer, 0, buffer.Length, Channels, Rate, latencyMs);
+            meter.Feed(buffer, 0, buffer.Length, Channels, rate, latencyMs);
             clockMs += 10;
         }
         return (meter, () => clockMs);
     }
 
-    private static int BandOf(double hz)
+    private static int BandOf(double hz, int bands = Bands)
     {
         var logMin = Math.Log(SpectrumMeter.MinHz);
         var logSpan = Math.Log(SpectrumMeter.MaxHz) - logMin;
-        return (int)Math.Floor((Math.Log(hz) - logMin) / logSpan * Bands);
+        return (int)Math.Floor((Math.Log(hz) - logMin) / logSpan * bands);
     }
 
     private static int ArgMax(float[] bands)
@@ -139,6 +139,138 @@ public class SpectrumMeterTests
         Assert.InRange(BandOf(hz), 0, Bands - 1);
         Assert.InRange(bands[BandOf(hz)], 0.6f, 1.0f);
         Assert.InRange(bands[BandOf(1000)], 0f, 0.15f);
+    }
+
+    /// <summary>GitHub #205: a tone lights its own band at every output rate, bass included.
+    /// The FFT was 2048 frames whatever the rate: 23 Hz bins at 48 kHz smeared every tone under
+    /// ~80 Hz across the first dozen bands (a 30 Hz tone peaked in the 20 Hz band), and at 96 and
+    /// 192 kHz (47 / 94 Hz bins) everything under the first bin read one flat plateau.</summary>
+    [Theory]
+    [InlineData(44100, 30.0)]
+    [InlineData(48000, 30.0)]
+    [InlineData(96000, 30.0)]
+    [InlineData(192000, 30.0)]
+    [InlineData(44100, 50.0)]
+    [InlineData(48000, 50.0)]
+    [InlineData(96000, 50.0)]
+    [InlineData(192000, 50.0)]
+    [InlineData(48000, 80.0)]
+    [InlineData(96000, 80.0)]
+    [InlineData(192000, 80.0)]
+    [InlineData(48000, 12000.0)]
+    [InlineData(96000, 12000.0)]
+    [InlineData(192000, 12000.0)]
+    [InlineData(44100, 18000.0)]
+    [InlineData(96000, 18000.0)]
+    [InlineData(192000, 18000.0)]
+    public void Sine_LightsItsOwnBand_AtEveryRate(int rate, double hz)
+    {
+        const int bandCount = 64; // the Visualizer page's band count
+        var (meter, now) = Run(t => (float)(0.3 * Math.Sin(2 * Math.PI * hz * t)), 0.5, rate: rate);
+
+        var bands = new float[bandCount];
+        Assert.True(meter.TryRead(now(), bands));
+        var own = BandOf(hz, bandCount);
+        Assert.InRange(ArgMax(bands), own - 1, own + 1);
+        Assert.InRange(bands[own], 0.6f, 1.0f);
+    }
+
+    /// <summary>GitHub #205: bass tones stay apart. A 50 Hz tone must not light the 20 Hz or the
+    /// 120 Hz band, so 30, 50 and 80 Hz read as three different shapes at every rate.</summary>
+    [Theory]
+    [InlineData(44100)]
+    [InlineData(48000)]
+    [InlineData(96000)]
+    [InlineData(192000)]
+    public void BassSine_StaysNarrow_AtEveryRate(int rate)
+    {
+        const int bandCount = 64;
+        var (meter, now) = Run(t => (float)(0.3 * Math.Sin(2 * Math.PI * 50 * t)), 0.5, rate: rate);
+
+        var bands = new float[bandCount];
+        Assert.True(meter.TryRead(now(), bands));
+        Assert.InRange(bands[BandOf(21, bandCount)], 0f, 0.4f);
+        Assert.InRange(bands[BandOf(120, bandCount)], 0f, 0.4f);
+    }
+
+    /// <summary>Pink noise (equal energy per octave, roughly music's long-term balance), averaged
+    /// over several reads: mean band level per decade (20-200 Hz, 200 Hz-2 kHz, 2-20 kHz).</summary>
+    private static double[] PinkDecadeMeans(int rate, bool fullSpectrum)
+    {
+        const int bandCount = 64;
+        double clockMs = 0;
+        var meter = new SpectrumMeter(() => clockMs);
+        var rnd = new Random(7);
+        double b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        var framesPerRead = rate / 100;
+        var buffer = new float[framesPerRead];
+        var sums = new double[bandCount];
+        var reads = 0;
+        for (var block = 0; block < 300; block++)
+        {
+            for (var f = 0; f < framesPerRead; f++)
+            {
+                // Paul Kellet's pink filter on white noise.
+                var w = rnd.NextDouble() * 2 - 1;
+                b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759;
+                b2 = 0.96900 * b2 + w * 0.1538520; b3 = 0.86650 * b3 + w * 0.3104856;
+                b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980;
+                buffer[f] = (float)((b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.05);
+                b6 = w * 0.115926;
+            }
+            meter.Feed(buffer, 0, buffer.Length, 1, rate, 0);
+            clockMs += 10;
+            if (block >= 50 && block % 5 == 0)
+            {
+                var bands = new float[bandCount];
+                meter.TryRead(clockMs, bands, fullSpectrum);
+                for (var i = 0; i < bandCount; i++) sums[i] += bands[i];
+                reads++;
+            }
+        }
+        var means = new double[3];
+        for (var d = 0; d < 3; d++)
+        {
+            var from = d * bandCount / 3;
+            var to = (d + 1) * bandCount / 3;
+            for (var i = from; i < to; i++) means[d] += sums[i] / reads;
+            means[d] /= to - from;
+        }
+        return means;
+    }
+
+    /// <summary>GitHub #205: Full spectrum weights the bands like a studio analyser (+1.5 dB per
+    /// octave around 1 kHz, see the constant), so pink noise reads level from 20 Hz to 20 kHz. The default look is
+    /// unweighted: pink noise leans to the bass there.</summary>
+    [Theory]
+    [InlineData(48000)]
+    [InlineData(96000)]
+    public void FullSpectrum_ReadsPinkNoiseLevel(int rate)
+    {
+        var full = PinkDecadeMeans(rate, fullSpectrum: true);
+        Assert.InRange(full[0] - full[2], -0.06, 0.06);
+        Assert.InRange(full[1] - full[2], -0.06, 0.06);
+
+        var plain = PinkDecadeMeans(rate, fullSpectrum: false);
+        Assert.True(plain[0] - plain[2] > 0.1, $"default look: bass {plain[0]:0.00} vs treble {plain[2]:0.00}");
+    }
+
+    /// <summary>GitHub #205: a quiet top octave (a -66 dBFS 16 kHz component, the level of a
+    /// typical master's air band) sits under the default look's -60 dB floor; Full spectrum
+    /// shows it.</summary>
+    [Fact]
+    public void FullSpectrum_ShowsAQuietTopOctave()
+    {
+        const int bandCount = 64;
+        var (meter, now) = Run(t => (float)(0.0005 * Math.Sin(2 * Math.PI * 16000 * t)), 0.5);
+
+        var plain = new float[bandCount];
+        Assert.True(meter.TryRead(now(), plain));
+        Assert.Equal(0f, plain[BandOf(16000, bandCount)]);
+
+        var full = new float[bandCount];
+        Assert.True(meter.TryRead(now(), full, fullSpectrum: true));
+        Assert.InRange(full[BandOf(16000, bandCount)], 0.2f, 1f);
     }
 
     [Fact]

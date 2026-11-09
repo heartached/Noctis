@@ -51,7 +51,13 @@ public sealed class SpectrumVisualizer : Control
     public static readonly StyledProperty<double> BarWidthFractionProperty =
         AvaloniaProperty.Register<SpectrumVisualizer, double>(nameof(BarWidthFraction), double.NaN);
 
+    /// <summary>GitHub #205: read the meter with the analyser weighting (Settings → Full spectrum),
+    /// so the quiet top octave and the sub-bass stay on screen.</summary>
+    public static readonly StyledProperty<bool> FullSpectrumProperty =
+        AvaloniaProperty.Register<SpectrumVisualizer, bool>(nameof(FullSpectrum));
+
     public bool IsActive { get => GetValue(IsActiveProperty); set => SetValue(IsActiveProperty, value); }
+    public bool FullSpectrum { get => GetValue(FullSpectrumProperty); set => SetValue(FullSpectrumProperty, value); }
     public string? StyleName { get => GetValue(StyleNameProperty); set => SetValue(StyleNameProperty, value); }
     public IBrush? Fill { get => GetValue(FillProperty); set => SetValue(FillProperty, value); }
     public int BandCount { get => GetValue(BandCountProperty); set => SetValue(BandCountProperty, value); }
@@ -198,7 +204,7 @@ public sealed class SpectrumVisualizer : Control
         }
 
         // Not live → targets are already zero; the release smoothing decays the bars to rest.
-        _meter.TryRead(_meter.NowMs, _target);
+        _meter.TryRead(_meter.NowMs, _target, FullSpectrum);
         Smooth(_shown, _target, dtMs);
     }
 

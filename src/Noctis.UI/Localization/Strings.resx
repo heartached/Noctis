@@ -333,6 +333,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>None</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>Move to Trash</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Removes the playing song in one click. It goes to the Trash folder below, or the Recycle Bin if none is set.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChaptersButton" xml:space="preserve"><value>Chapters</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
+  <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Opens the chapter list. Shows only while an audiobook with chapters plays.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Trash folder</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Pick a folder outside your music folders, or the next scan adds the songs back.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Not set: the Recycle Bin / Trash</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
@@ -364,6 +366,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>A live spectrum along the bottom of the lyrics page.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork colour</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Tint the bars with the cover colour. Off paints them white.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FullSpectrum" xml:space="preserve"><value>Full spectrum</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Weight the bars like a studio analyser, so the quiet highs up to 20 kHz stay visible.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Frequency bars rising from the bottom</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Bars" xml:space="preserve"><value>Bars</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>Bars mirrored about the centre line</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

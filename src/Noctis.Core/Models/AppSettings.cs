@@ -909,6 +909,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #186: a Quick Add to Playlist button in the island's right cluster (off by default).</summary>
     public bool PlaybackBarShowQuickPlaylist { get; set; }
 
+    /// <summary>Discord "Chapter Button in Player Island": a Chapters button in the island's right
+    /// cluster, opening the "…" menu's chapter list; shown only while the track has chapters.
+    /// Off by default, like the #186 buttons.</summary>
+    public bool PlaybackBarShowChapters { get; set; }
+
     /// <summary>GitHub #186: the quick playlists' ids, one per slot (at most three;
     /// <see cref="Guid.Empty"/> = an empty slot).</summary>
     public List<Guid> PlaybackBarQuickPlaylistIds { get; set; } = new();
@@ -1250,6 +1255,10 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>Visualizer bars take the current artwork's colour (default) instead of white/accent.</summary>
     public bool LyricsVisualizerArtworkColor { get; set; } = true;
+
+    /// <summary>GitHub #205: the visualizer's bars weighted like a studio analyser (tilted up toward
+    /// the treble, deeper floor) so the quiet top octave shows. Off by default: the stock look.</summary>
+    public bool LyricsVisualizerFullSpectrum { get; set; }
 
     /// <summary>Optional looping video/GIF the lyrics page paints behind the lyrics
     /// (copied into the data root by Settings → Appearance). Empty = none; the blurred

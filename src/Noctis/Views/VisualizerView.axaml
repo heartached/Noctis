@@ -72,6 +72,7 @@
                                          Fill="{DynamicResource AccentColorBrush}"
                                          ArtworkColor="{Binding Player.ArtworkAccentColor}"
                                          UseArtworkColor="{Binding Player.LyricsVisualizerArtworkColor}"
+                                         FullSpectrum="{Binding Player.LyricsVisualizerFullSpectrum}"
                                          Opacity="0.95"
                                          IsHitTestVisible="False"
                                          StyleName="{Binding Player.LyricsVisualizerStyle}"

@@ -703,6 +703,30 @@ public class IslandBarActions186Tests : IDisposable
         Assert.True(vm.ShowTrashFolderMissingHint);
     }
 
+    /// <summary>Discord "Chapter Button in Player Island": the Settings toggle drives the
+    /// player, survives a save and reload, and Reset turns it off again.</summary>
+    [AvaloniaFact]
+    public async Task ChaptersButtonSetting_MirrorsOntoThePlayer_SurvivesReload_AndResets()
+    {
+        var vm = CreateSettings();
+        await vm.LoadAsync();
+        var rig = new Rig();
+        vm.SetPlayer(rig.Player);
+        Assert.False(vm.PlaybackBarShowChapters);
+        Assert.False(rig.Player.IslandShowChapters);
+
+        vm.PlaybackBarShowChapters = true;
+        Assert.True(rig.Player.IslandShowChapters);
+        await vm.SaveAsync();
+
+        var reloaded = CreateSettings();
+        await reloaded.LoadAsync();
+        Assert.True(reloaded.PlaybackBarShowChapters);
+
+        reloaded.ResetSettingsToDefaults(new AppSettings());
+        Assert.False(reloaded.PlaybackBarShowChapters);
+    }
+
     [AvaloniaFact]
     public async Task Settings_SurviveSaveAndReload_AndResetTurnsThemOff()
     {
